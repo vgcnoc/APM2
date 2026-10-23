@@ -747,10 +747,13 @@ const categoryMap = {
         'Monitoring Kinerja Teknisi',
     ],
     'gudang': [
-        'Material & Stok Gudang',
-        'Material & Logistik Gudang',
-        'Sirkulasi Material Lapangan',
-        'Serah Terima & Request Material Lapangan',
+        'Data Material & Stok',
+        'Stok Barang per Area',
+        'Katalog Produk & Satuan',
+        'Order Toko (Restock)',
+        'Surat Jalan & Pengambilan',
+        'Serah Terima & Retur',
+        'Mutasi & Kondisi Barang',
     ],
     'hrd': [
         'Karyawan & SDM (HR)',
@@ -1321,6 +1324,10 @@ const getGroupColor = (icon) => {
         'package': 'bg-sky-100 text-sky-700',
         'map': 'bg-emerald-100 text-emerald-700',
         'lock-closed': 'bg-indigo-100 text-indigo-700',
+        'truck': 'bg-blue-100 text-blue-700',
+        'switch-horizontal': 'bg-indigo-100 text-indigo-700',
+        'tag': 'bg-emerald-100 text-emerald-700',
+        'clipboard-list': 'bg-teal-100 text-teal-700',
     };
     return colors[icon] || 'bg-gray-100 text-gray-700';
 };
@@ -1355,6 +1362,10 @@ const iconPaths = {
     map: 'M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7',
     'lock-closed': 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z',
     scissors: 'M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879a3 3 0 11-1.414-1.414L10.586 12 7.707 9.121a3 3 0 111.414-1.414L12 10.586m0 0L19 12',
+    truck: 'M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h2',
+    'switch-horizontal': 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4',
+    tag: 'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z',
+    'clipboard-list': 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01',
 };
 
 // Auto-select first role on mount if none selected

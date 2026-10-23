@@ -1042,10 +1042,10 @@ const menuItems = [
         active: (url) => ['/materials', '/warehouse-stocks', '/order-toko', '/produk'].some(path => (url || '').startsWith(path)),
         permission: ['menu_materials', 'menu_warehouse_stocks', 'menu_purchase_orders', 'menu_products'],
         children: [
-            { href: '/materials', label: 'Data Material & Stok', active: (url) => (url || '').startsWith('/materials'), permission: ['menu_materials', 'menu_warehouse_stocks'] },
-            { href: '/warehouse-stocks', label: 'Stok Barang per Area', active: (url) => (url || '').startsWith('/warehouse-stocks'), permission: ['menu_warehouse_stocks', 'menu_materials'] },
-            { href: '/produk', label: 'Katalog Produk & Satuan', active: (url) => (url || '').startsWith('/produk'), permission: ['menu_products', 'menu_materials'] },
-            { href: '/order-toko', label: 'Order Toko (Restock)', active: (url) => (url || '').startsWith('/order-toko'), permission: ['menu_purchase_orders', 'menu_materials'] },
+            { href: '/materials', label: 'Data Material & Stok', active: (url) => (url || '').startsWith('/materials'), permission: 'menu_materials' },
+            { href: '/warehouse-stocks', label: 'Stok Barang per Area', active: (url) => (url || '').startsWith('/warehouse-stocks'), permission: 'menu_warehouse_stocks' },
+            { href: '/produk', label: 'Katalog Produk & Satuan', active: (url) => (url || '').startsWith('/produk'), permission: 'menu_products' },
+            { href: '/order-toko', label: 'Order Toko (Restock)', active: (url) => (url || '').startsWith('/order-toko'), permission: 'menu_purchase_orders' },
         ]
     },
     {
@@ -1054,11 +1054,11 @@ const menuItems = [
         label: 'Sirkulasi & Lapangan',
         theme: 'brown',
         active: (url) => ['/material-transactions', '/material-handovers', '/material-mutations'].some(path => (url || '').startsWith(path)),
-        permission: ['menu_material_transactions', 'menu_material_handovers', 'menu_material_mutations', 'menu_materials'],
+        permission: ['menu_material_transactions', 'menu_material_handovers', 'menu_material_mutations'],
         children: [
-            { href: '/material-transactions', label: 'Surat Jalan & Pengambilan', active: (url) => (url || '').startsWith('/material-transactions'), permission: ['menu_material_transactions', 'menu_materials'] },
-            { href: '/material-handovers', label: 'Serah Terima & Retur', active: (url) => (url || '').startsWith('/material-handovers'), permission: ['menu_material_handovers', 'menu_materials'] },
-            { href: '/material-mutations', label: 'Mutasi & Kondisi Barang', active: (url) => (url || '').startsWith('/material-mutations'), permission: ['menu_material_mutations', 'menu_materials'] },
+            { href: '/material-transactions', label: 'Surat Jalan & Pengambilan', active: (url) => (url || '').startsWith('/material-transactions'), permission: 'menu_material_transactions' },
+            { href: '/material-handovers', label: 'Serah Terima & Retur', active: (url) => (url || '').startsWith('/material-handovers'), permission: 'menu_material_handovers' },
+            { href: '/material-mutations', label: 'Mutasi & Kondisi Barang', active: (url) => (url || '').startsWith('/material-mutations'), permission: 'menu_material_mutations' },
         ]
     },
 

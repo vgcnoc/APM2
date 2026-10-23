@@ -575,85 +575,138 @@ class PermissionRegistry
                 ],
             ],
 
-            // ── 14. MATERIAL & STOK GUDANG ───────────────────────────
+            // ── 14. LOGISTIK & GUDANG ─────────────────────────────────
+            // 14.1. Data Material & Stok (/materials)
             [
-                'group' => 'Material & Stok Gudang',
+                'group' => 'Data Material & Stok',
                 'category' => 'gudang',
                 'icon' => 'archive',
                 'menu_parent' => 'menu_materials',
                 'permissions' => [
                     ['name' => 'menu_materials', 'type' => 'menu', 'label' => 'Akses Menu Data Material & Stok'],
-                    ['name' => 'menu_warehouse_stocks', 'type' => 'menu', 'label' => 'Akses Menu Stok Barang per Area'],
-                    ['name' => 'menu_products', 'type' => 'menu', 'label' => 'Akses Menu Katalog Produk & Satuan'],
-                    ['name' => 'menu_purchase_orders', 'type' => 'menu', 'label' => 'Akses Menu Order Toko (Restock)'],
-                    ['name' => 'menu_inventory', 'type' => 'menu', 'label' => 'Akses Inventaris & Stock Opname'],
                     ['name' => 'materials_card_stats', 'type' => 'card', 'label' => 'Card Total Stok & Peringatan Stok Menipis'],
-                    ['name' => 'materials_tab_stocks', 'type' => 'tab', 'label' => 'Tab Stok Material Per Area'],
-                    ['name' => 'materials_tab_transactions', 'type' => 'tab', 'label' => 'Tab Mutasi & Pengeluaran'],
-                    ['name' => 'materials_filter_category', 'type' => 'filter', 'label' => 'Filter Kategori (Kabel, Dropcore, ONT, Splicer)'],
+                    ['name' => 'materials_filter_category', 'type' => 'filter', 'label' => 'Filter Kategori & Status Stok'],
                     ['name' => 'materials_filter_area', 'type' => 'filter', 'label' => 'Filter Gudang Cabang / Area'],
                     ['name' => 'materials_create', 'type' => 'button', 'label' => 'Tombol Tambah Master Material'],
                     ['name' => 'materials_edit', 'type' => 'button', 'label' => 'Tombol Edit Data Material'],
                     ['name' => 'materials_delete', 'type' => 'button', 'label' => 'Tombol Hapus Material'],
                     ['name' => 'materials_add_stock', 'type' => 'button', 'label' => 'Tombol Restock / Tambah Stok Masuk'],
-                    ['name' => 'warehouse_stocks_delete', 'type' => 'button', 'label' => 'Tombol Hapus Barang dari Gudang Cabang'],
-                    ['name' => 'products_create', 'type' => 'button', 'label' => 'Tombol Tambah Master Katalog Produk'],
-                    ['name' => 'products_edit', 'type' => 'button', 'label' => 'Tombol Edit Katalog Produk'],
-                    ['name' => 'products_delete', 'type' => 'button', 'label' => 'Tombol Hapus Katalog Produk'],
-                    ['name' => 'purchase_orders_create', 'type' => 'button', 'label' => 'Tombol Buat Order Toko (Restock) Baru'],
-                    ['name' => 'purchase_orders_send_ont', 'type' => 'button', 'label' => 'Tombol Kirim / Distribusi ONT ke Toko'],
-                    ['name' => 'inventory_manage', 'type' => 'button', 'label' => 'Tombol Kelola Stock Opname & Koreksi Stok'],
-                    
-                    // Field
                     ['name' => 'materials_field_price', 'type' => 'field', 'label' => 'Field / Kolom Harga Modal & Harga Jual'],
                     ['name' => 'materials_field_supplier', 'type' => 'field', 'label' => 'Field / Kolom Nama Supplier'],
                     ['name' => 'materials_field_initial_stock', 'type' => 'field', 'label' => 'Field / Kolom Stok Awal'],
-
-                    // Scope
                     ['name' => 'materials_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Gudang'],
                     ['name' => 'materials_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Gudang Sesuai Area User'],
                 ],
             ],
 
-            // ── 14B. SIRKULASI & SERAH TERIMA LAPANGAN ────────────────
+            // 14.2. Stok Barang per Area (/warehouse-stocks)
             [
-                'group' => 'Sirkulasi Material Lapangan',
+                'group' => 'Stok Barang per Area',
                 'category' => 'gudang',
-                'icon' => 'switch-horizontal',
+                'icon' => 'box',
+                'menu_parent' => 'menu_warehouse_stocks',
+                'permissions' => [
+                    ['name' => 'menu_warehouse_stocks', 'type' => 'menu', 'label' => 'Akses Menu Stok Barang per Area'],
+                    ['name' => 'warehouse_stocks_card_stats', 'type' => 'card', 'label' => 'Card Ringkasan Varian, Stok Tersedia & Habis'],
+                    ['name' => 'warehouse_stocks_filter', 'type' => 'filter', 'label' => 'Filter Pencarian, Kategori, Area & Status Stok'],
+                    ['name' => 'warehouse_stocks_btn_status', 'type' => 'button', 'label' => 'Tombol Buat Status Material (Layak / Rusak / Retur)'],
+                    ['name' => 'warehouse_stocks_btn_retur', 'type' => 'button', 'label' => 'Tombol Catat Retur Sisa (Layak Pakai)'],
+                    ['name' => 'warehouse_stocks_btn_rusak', 'type' => 'button', 'label' => 'Tombol Catat Barang Rusak'],
+                    ['name' => 'warehouse_stocks_delete', 'type' => 'button', 'label' => 'Tombol Hapus Barang dari Gudang Cabang'],
+                    ['name' => 'warehouse_stocks_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Seluruh Area Gudang'],
+                    ['name' => 'warehouse_stocks_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Sesuai Area Gudang User'],
+                ],
+            ],
+
+            // 14.3. Katalog Produk & Satuan (/produk)
+            [
+                'group' => 'Katalog Produk & Satuan',
+                'category' => 'gudang',
+                'icon' => 'tag',
+                'menu_parent' => 'menu_products',
+                'permissions' => [
+                    ['name' => 'menu_products', 'type' => 'menu', 'label' => 'Akses Menu Katalog Produk & Satuan'],
+                    ['name' => 'products_filter', 'type' => 'filter', 'label' => 'Filter Pencarian & Kategori Produk'],
+                    ['name' => 'products_create', 'type' => 'button', 'label' => 'Tombol Tambah Master Katalog Produk'],
+                    ['name' => 'products_edit', 'type' => 'button', 'label' => 'Tombol Edit Data Katalog Produk'],
+                    ['name' => 'products_delete', 'type' => 'button', 'label' => 'Tombol Hapus Data Katalog Produk'],
+                ],
+            ],
+
+            // 14.4. Order Toko (Restock) (/order-toko)
+            [
+                'group' => 'Order Toko (Restock)',
+                'category' => 'gudang',
+                'icon' => 'shopping-cart',
+                'menu_parent' => 'menu_purchase_orders',
+                'permissions' => [
+                    ['name' => 'menu_purchase_orders', 'type' => 'menu', 'label' => 'Akses Menu Order Toko (Restock)'],
+                    ['name' => 'purchase_orders_card_stats', 'type' => 'card', 'label' => 'Card Total Transaksi Order & Biaya Belanja'],
+                    ['name' => 'purchase_orders_filter', 'type' => 'filter', 'label' => 'Filter Pencarian & Kriteria Order Toko'],
+                    ['name' => 'purchase_orders_create', 'type' => 'button', 'label' => 'Tombol Buat Order Toko (Restock) Baru'],
+                    ['name' => 'purchase_orders_send_ont', 'type' => 'button', 'label' => 'Tombol Kirim / Distribusi ONT ke Toko'],
+                    ['name' => 'purchase_orders_btn_kas', 'type' => 'button', 'label' => 'Tombol Shortcut Buku Kas Umum'],
+                ],
+            ],
+
+            // 14.5. Surat Jalan & Pengambilan (/material-transactions)
+            [
+                'group' => 'Surat Jalan & Pengambilan',
+                'category' => 'gudang',
+                'icon' => 'truck',
                 'menu_parent' => 'menu_material_transactions',
                 'permissions' => [
                     ['name' => 'menu_material_transactions', 'type' => 'menu', 'label' => 'Akses Menu Surat Jalan & Pengambilan'],
-                    ['name' => 'menu_material_handovers', 'type' => 'menu', 'label' => 'Akses Menu Serah Terima & Retur Lapangan'],
-                    ['name' => 'menu_material_mutations', 'type' => 'menu', 'label' => 'Akses Menu Mutasi & Kondisi Barang'],
+                    ['name' => 'material_transactions_card_stats', 'type' => 'card', 'label' => 'Card Total Order, Item Keluar & Nilai Keluar'],
+                    ['name' => 'material_transactions_filter', 'type' => 'filter', 'label' => 'Filter Tanggal, Pencarian & Petugas'],
                     ['name' => 'material_transactions_create', 'type' => 'button', 'label' => 'Tombol Buat Surat Jalan Pengambilan Teknisi'],
                     ['name' => 'material_transactions_delete', 'type' => 'button', 'label' => 'Tombol Hapus / Batal Surat Jalan'],
-                    ['name' => 'material_handover_card_stats', 'type' => 'card', 'label' => 'Card Statistik Serah Terima & Request'],
+                    ['name' => 'material_transactions_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Transaksi Seluruh Cabang'],
+                    ['name' => 'material_transactions_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Transaksi Sesuai Area User'],
+                    ['name' => 'material_transactions_view_own', 'type' => 'feature', 'label' => 'Scope: Hanya Tampilkan Transaksi Pengambilan Sendiri'],
+                ],
+            ],
+
+            // 14.6. Serah Terima & Retur (/material-handovers)
+            [
+                'group' => 'Serah Terima & Retur',
+                'category' => 'gudang',
+                'icon' => 'switch-horizontal',
+                'menu_parent' => 'menu_material_handovers',
+                'permissions' => [
+                    ['name' => 'menu_material_handovers', 'type' => 'menu', 'label' => 'Akses Menu Serah Terima & Retur Lapangan'],
+                    ['name' => 'material_handover_card_stats', 'type' => 'card', 'label' => 'Card Statistik Menunggu, Approval & Selesai'],
                     ['name' => 'material_handover_tab_returns', 'type' => 'tab', 'label' => 'Tab Serah Terima Pengembalian Gudang'],
                     ['name' => 'material_handover_tab_requests', 'type' => 'tab', 'label' => 'Tab Permintaan Material & Ganti ONT'],
                     ['name' => 'material_handover_tab_history', 'type' => 'tab', 'label' => 'Tab Riwayat Selesai & Berita Acara'],
                     ['name' => 'material_handover_filter_status', 'type' => 'filter', 'label' => 'Filter Status (Menunggu, Selesai, Ditolak)'],
-                    ['name' => 'material_handover_filter_source', 'type' => 'filter', 'label' => 'Filter Sumber (Instalasi, PGS, PGK, PGJ, Rollout)'],
+                    ['name' => 'material_handover_filter_source', 'type' => 'filter', 'label' => 'Filter Sumber (Instalasi, PGS, PGK, PGJ, Rollout, CBP)'],
                     ['name' => 'material_handover_filter_area', 'type' => 'filter', 'label' => 'Filter Berdasarkan Area Gudang'],
-                    
-                    // Tombol / Aksi
                     ['name' => 'material_handover_btn_receive', 'type' => 'button', 'label' => 'Tombol Terima Serah Terima Gudang (Karyawan Gudang/Ka.Teknisi)'],
                     ['name' => 'material_handover_btn_reject_handover', 'type' => 'button', 'label' => 'Tombol Tolak / Revisi Serah Terima Pengembalian'],
                     ['name' => 'material_handover_btn_approve_request', 'type' => 'button', 'label' => 'Tombol Setujui Permintaan Material & Ganti ONT (Ka.Teknisi)'],
                     ['name' => 'material_handover_btn_reject_request', 'type' => 'button', 'label' => 'Tombol Tolak Permintaan Material & Ganti ONT'],
                     ['name' => 'material_handover_btn_create_return', 'type' => 'button', 'label' => 'Tombol Ajukan Pengembalian Sisa / Rusak'],
                     ['name' => 'material_handover_btn_create_request', 'type' => 'button', 'label' => 'Tombol Ajukan Permintaan Material Tambahan / Ganti ONT'],
-
-                    // Field
                     ['name' => 'material_handover_field_condition', 'type' => 'field', 'label' => 'Field Kondisi Material (Layak Pakai / Tidak Layak / Rusak)'],
                     ['name' => 'material_handover_field_cost', 'type' => 'field', 'label' => 'Field Nilai / Estimasi Biaya Material'],
                     ['name' => 'material_handover_field_notes', 'type' => 'field', 'label' => 'Field Catatan / Berita Acara'],
-
-                    // Scope
-                    ['name' => 'material_transactions_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Transaksi'],
-                    ['name' => 'material_transactions_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Transaksi Sesuai Area'],
-                    ['name' => 'material_transactions_view_own', 'type' => 'feature', 'label' => 'Scope: Hanya Tampilkan Transaksi Pengambilan Sendiri'],
                     ['name' => 'material_handover_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Serah Terima Seluruh Cabang'],
                     ['name' => 'material_handover_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Serah Terima Sesuai Wilayah/Area User'],
+                ],
+            ],
+
+            // 14.7. Mutasi & Kondisi Barang (/material-mutations)
+            [
+                'group' => 'Mutasi & Kondisi Barang',
+                'category' => 'gudang',
+                'icon' => 'clipboard-list',
+                'menu_parent' => 'menu_material_mutations',
+                'permissions' => [
+                    ['name' => 'menu_material_mutations', 'type' => 'menu', 'label' => 'Akses Menu Mutasi & Kondisi Barang'],
+                    ['name' => 'material_mutations_filter', 'type' => 'filter', 'label' => 'Filter Pencarian, Tipe Mutasi & Kondisi Barang'],
+                    ['name' => 'material_mutations_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Seluruh Mutasi Seluruh Cabang'],
+                    ['name' => 'material_mutations_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Mutasi Sesuai Area User'],
                 ],
             ],
 
@@ -1052,7 +1105,6 @@ class PermissionRegistry
                 'menu_infrastructure_work_orders', 'infrastructure_work_orders_report', 'infrastructure_work_orders_view_area', 'infrastructure_work_orders_view_assigned',
                 'menu_materials', 'materials_card_stats', 'materials_filter_category', 'materials_view_area',
                 'menu_material_transactions', 'material_transactions_create', 'material_transactions_view_area', 'material_transactions_view_own',
-                'materials_tab_transactions',
                 'menu_material_handovers', 'material_handover_tab_returns', 'material_handover_tab_requests', 'material_handover_btn_create_return', 'material_handover_btn_create_request', 'material_handover_field_condition', 'material_handover_view_area',
                 'menu_customers_booking', 'customers_booking_card_stats', 'customers_booking_filter_area', 'customers_booking_create', 'customers_booking_edit', 'customers_booking_whatsapp', 'customers_booking_view_area', 'customers_booking_view_own',
                 'menu_customers_survey', 'customers_survey_card_stats', 'customers_survey_filter', 'customers_survey_report', 'customers_survey_view_assigned',
@@ -1082,7 +1134,6 @@ class PermissionRegistry
                 'menu_infrastructure_work_orders', 'infrastructure_work_orders_report', 'infrastructure_work_orders_view_area', 'infrastructure_work_orders_view_assigned',
                 'menu_materials', 'materials_card_stats', 'materials_filter_category', 'materials_view_area',
                 'menu_material_transactions', 'material_transactions_create', 'material_transactions_view_area', 'material_transactions_view_own',
-                'materials_tab_transactions',
                 'menu_material_handovers', 'material_handover_tab_returns', 'material_handover_tab_requests', 'material_handover_btn_create_return', 'material_handover_btn_create_request', 'material_handover_field_condition', 'material_handover_view_area',
                 'menu_customers_booking', 'customers_booking_card_stats', 'customers_booking_filter_area', 'customers_booking_create', 'customers_booking_edit', 'customers_booking_whatsapp', 'customers_booking_view_area', 'customers_booking_view_own',
                 'menu_customers_survey', 'customers_survey_card_stats', 'customers_survey_filter', 'customers_survey_report', 'customers_survey_view_assigned',
@@ -1111,7 +1162,6 @@ class PermissionRegistry
                 'infrastructure_work_orders_dispatch', 'infrastructure_work_orders_report', 'infrastructure_work_orders_approve', 'infrastructure_work_orders_view_all',
                 'menu_materials', 'materials_card_stats', 'materials_filter_category', 'materials_create', 'materials_edit', 'materials_add_stock', 'materials_field_price', 'materials_field_supplier', 'materials_view_all',
                 'menu_material_transactions', 'material_transactions_create', 'material_transactions_view_all',
-                'materials_tab_transactions',
                 'menu_material_handovers', 'material_handover_card_stats', 'material_handover_tab_returns', 'material_handover_tab_requests', 'material_handover_tab_history', 'material_handover_filter_status', 'material_handover_filter_source', 'material_handover_filter_area', 'material_handover_btn_receive', 'material_handover_btn_reject_handover', 'material_handover_btn_approve_request', 'material_handover_btn_reject_request', 'material_handover_btn_create_return', 'material_handover_btn_create_request', 'material_handover_field_condition', 'material_handover_view_all',
                 'menu_customers_booking', 'customers_booking_card_stats', 'customers_booking_filter_area', 'customers_booking_create', 'customers_booking_edit', 'customers_booking_whatsapp', 'customers_booking_view_all',
                 'menu_customers_survey', 'customers_survey_card_stats', 'customers_survey_filter', 'customers_survey_assign', 'customers_survey_reschedule', 'customers_survey_report', 'customers_survey_mark_ready', 'customers_survey_cancel', 'customers_survey_delete', 'customers_survey_view_all',
@@ -1316,22 +1366,24 @@ class PermissionRegistry
             ],
             'gudang' => [
                 'menu_dashboard', 'dashboard_card_stats', 'dashboard_filter_area',
-                'menu_materials', 'menu_warehouse_stocks', 'menu_products', 'menu_purchase_orders', 'menu_inventory',
-                'materials_card_stats', 'materials_tab_stocks', 'materials_tab_transactions',
-                'materials_filter_category', 'materials_filter_area',
+                'menu_materials', 'materials_card_stats', 'materials_filter_category', 'materials_filter_area',
                 'materials_create', 'materials_edit', 'materials_delete', 'materials_add_stock',
-                'warehouse_stocks_delete', 'products_create', 'products_edit', 'products_delete',
-                'purchase_orders_create', 'purchase_orders_send_ont', 'inventory_manage',
-                'materials_field_price', 'materials_field_supplier', 'materials_field_initial_stock',
-                'materials_view_all',
-                'menu_material_transactions', 'menu_material_handovers', 'menu_material_mutations',
+                'materials_field_price', 'materials_field_supplier', 'materials_field_initial_stock', 'materials_view_all',
+                'menu_warehouse_stocks', 'warehouse_stocks_card_stats', 'warehouse_stocks_filter',
+                'warehouse_stocks_btn_status', 'warehouse_stocks_btn_retur', 'warehouse_stocks_btn_rusak', 'warehouse_stocks_delete',
+                'warehouse_stocks_view_all',
+                'menu_products', 'products_filter', 'products_create', 'products_edit', 'products_delete',
+                'menu_purchase_orders', 'purchase_orders_card_stats', 'purchase_orders_filter',
+                'purchase_orders_create', 'purchase_orders_send_ont', 'purchase_orders_btn_kas',
+                'menu_material_transactions', 'material_transactions_card_stats', 'material_transactions_filter',
                 'material_transactions_create', 'material_transactions_delete', 'material_transactions_view_all',
-                'material_handover_card_stats', 'material_handover_tab_returns', 'material_handover_tab_requests', 'material_handover_tab_history',
+                'menu_material_handovers', 'material_handover_card_stats', 'material_handover_tab_returns', 'material_handover_tab_requests', 'material_handover_tab_history',
                 'material_handover_filter_status', 'material_handover_filter_source', 'material_handover_filter_area',
                 'material_handover_btn_receive', 'material_handover_btn_reject_handover', 'material_handover_btn_approve_request', 'material_handover_btn_reject_request',
                 'material_handover_btn_create_return', 'material_handover_btn_create_request',
                 'material_handover_field_condition', 'material_handover_field_cost', 'material_handover_field_notes',
                 'material_handover_view_all',
+                'menu_material_mutations', 'material_mutations_filter', 'material_mutations_view_all',
                 'menu_attendances', 'attendance_tab_reguler', 'attendances_view_own',
                 'menu_payroll', 'payroll_view_own', 'payroll_btn_print_slip',
             ],
