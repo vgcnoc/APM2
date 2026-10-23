@@ -304,6 +304,8 @@ class PermissionRegistry
                     ['name' => 'cbp_btn_assign', 'type' => 'button', 'label' => 'Tombol Tugaskan Teknisi CBP'],
                     ['name' => 'cbp_btn_report', 'type' => 'button', 'label' => 'Tombol Submit Laporan Eksekusi CBP'],
                     ['name' => 'cbp_btn_cancel', 'type' => 'button', 'label' => 'Tombol Batalkan Request CBP'],
+                    ['name' => 'cbp_btn_delete', 'type' => 'button', 'label' => 'Tombol Hapus Tiket CBP'],
+                    ['name' => 'cbp_btn_delete_all', 'type' => 'button', 'label' => 'Tombol Hapus Terpilih / Semua Data CBP'],
                     ['name' => 'cbp_manage', 'type' => 'button', 'label' => 'Tombol Kelola Jadwal & Eksekusi CBP'],
                     ['name' => 'cbp_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Data CBP (All Area)'],
                     ['name' => 'cbp_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Data CBP Sesuai Area User'],
@@ -400,31 +402,6 @@ class PermissionRegistry
                 ],
             ],
 
-            // ── 9D. CABUT PERANGKAT (CBP) ───────────────────────────
-            [
-                'group' => 'Cabut Perangkat (CBP)',
-                'category' => 'tiket',
-                'icon' => 'scissors',
-                'menu_parent' => 'menu_cbp',
-                'permissions' => [
-                    ['name' => 'menu_cbp', 'type' => 'menu', 'label' => 'Akses CBP - 1. Request Cabut'],
-                    ['name' => 'menu_cbp_jadwal', 'type' => 'menu', 'label' => 'Akses CBP - 2. Jadwal CBP'],
-                    ['name' => 'menu_cbp_laporan', 'type' => 'menu', 'label' => 'Akses CBP - 3. Laporan CBP'],
-                    ['name' => 'cbp_card_stats', 'type' => 'card', 'label' => 'Card Statistik Ringkasan CBP'],
-                    ['name' => 'cbp_filter', 'type' => 'filter', 'label' => 'Filter Status, Wilayah & Periode CBP'],
-                    ['name' => 'cbp_btn_request', 'type' => 'button', 'label' => 'Tombol Buat Form Request CBP'],
-                    ['name' => 'cbp_btn_dispatch', 'type' => 'button', 'label' => 'Tombol Kirim ke Jadwal CBP'],
-                    ['name' => 'cbp_btn_assign', 'type' => 'button', 'label' => 'Tombol Tugaskan Teknisi CBP'],
-                    ['name' => 'cbp_btn_report', 'type' => 'button', 'label' => 'Tombol Lapor Selesai CBP'],
-                    ['name' => 'cbp_btn_cancel', 'type' => 'button', 'label' => 'Tombol Batalkan CBP'],
-                    ['name' => 'cbp_btn_delete', 'type' => 'button', 'label' => 'Tombol Hapus Tiket CBP (Salah Satu)'],
-                    ['name' => 'cbp_btn_delete_all', 'type' => 'button', 'label' => 'Tombol Hapus Terpilih / Semua Data CBP'],
-                    ['name' => 'cbp_manage', 'type' => 'button', 'label' => 'Tombol Kelola Semua Fitur CBP'],
-                    ['name' => 'cbp_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Tiket CBP (All Area)'],
-                    ['name' => 'cbp_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Tiket CBP Sesuai Area User'],
-                    ['name' => 'cbp_view_own', 'type' => 'feature', 'label' => 'Scope: Hanya Tampilkan Tiket CBP yang Ditugaskan ke Diri Sendiri'],
-                ],
-            ],
 
             // ── 10. TOPOLOGI & RADAR JARINGAN ────────────────────────
             [

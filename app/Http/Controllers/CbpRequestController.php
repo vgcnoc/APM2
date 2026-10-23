@@ -98,11 +98,12 @@ class CbpRequestController extends Controller
             ->paginate($request->per_page ?? 15)
             ->withQueryString();
 
-        $areas = \App\Models\Area::all();
-        $customers = \App\Models\Customer::where('status', 'active')
+        $areas = DataScopeService::getScopedAreas($user, 'cbp');
+        $customerQuery = \App\Models\Customer::where('status', 'active')
             ->select('id', 'name', 'customer_code', 'area_id', 'phone', 'address', 'status', 'service_status', 'package_id')
-            ->with('package:id,name')
-            ->get();
+            ->with('package:id,name');
+        DataScopeService::applyCustomerScope($customerQuery, $user);
+        $customers = $customerQuery->get();
 
         return Inertia::render('Tickets/Cbp', [
             'requests' => $cbpRequests,
@@ -129,15 +130,17 @@ class CbpRequestController extends Controller
         $baseJadwalCountQuery = CbpRequest::query()->whereNotNull('sent_to_schedule_at');
         DataScopeService::applyCbpScope($baseJadwalCountQuery);
 
+        $completedTodayQuery = CbpRequest::query()
+            ->whereNotNull('sent_to_schedule_at')
+            ->where('status', 'completed')
+            ->whereDate('completed_at', today());
+        DataScopeService::applyCbpScope($completedTodayQuery, $user);
+
         $jadwalCounts = [
             'all' => (clone $baseJadwalCountQuery)->whereIn('status', ['pending', 'assigned'])->count(),
             'pending' => (clone $baseJadwalCountQuery)->where('status', 'pending')->count(),
             'assigned' => (clone $baseJadwalCountQuery)->where('status', 'assigned')->count(),
-            'completed_today' => CbpRequest::query()
-                ->whereNotNull('sent_to_schedule_at')
-                ->where('status', 'completed')
-                ->whereDate('completed_at', today())
-                ->count(),
+            'completed_today' => $completedTodayQuery->count(),
         ];
 
         // Tiket yang masuk ke jadwal HANYA yang sudah dikirim ke jadwal (sent_to_schedule_at tidak null)
@@ -181,7 +184,7 @@ class CbpRequestController extends Controller
             ->withQueryString();
 
         $technicians = \App\Models\User::role('teknisi')->get();
-        $areas = \App\Models\Area::all();
+        $areas = DataScopeService::getScopedAreas($user, 'cbp');
 
         return Inertia::render('Tickets/CbpJadwal', [
             'requests' => $cbpRequests,
@@ -249,7 +252,7 @@ class CbpRequestController extends Controller
             ->withQueryString();
 
         $materials = \App\Models\Material::all();
-        $areas = \App\Models\Area::all();
+        $areas = DataScopeService::getScopedAreas($user, 'cbp');
 
         return Inertia::render('Tickets/CbpLaporan', [
             'requests' => $cbpRequests,

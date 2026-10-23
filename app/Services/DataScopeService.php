@@ -108,6 +108,29 @@ class DataScopeService
     }
 
     /**
+     * Dapatkan koleksi Area yang berhak dilihat oleh user berdasarkan level scope modul
+     */
+    public static function getScopedAreas(?User $user = null, string $module = 'cbp', array $columns = ['id', 'name']): \Illuminate\Database\Eloquent\Collection
+    {
+        $user = $user ?? auth()->user();
+        if (!$user) {
+            return Area::select($columns)->orderBy('name')->get();
+        }
+
+        $level = self::getScopeLevel($user, $module);
+        if ($level === 'all') {
+            return Area::select($columns)->orderBy('name')->get();
+        }
+
+        $accessibleAreas = $user->getAccessibleAreaIds();
+        if (empty($accessibleAreas)) {
+            return Area::whereRaw('1 = 0')->get();
+        }
+
+        return Area::whereIn('id', $accessibleAreas)->select($columns)->orderBy('name')->get();
+    }
+
+    /**
      * Terapkan filter scope pada query Pelanggan
      */
     public static function applyCustomerScope(Builder $query, ?User $user = null, string $module = 'customers_all'): Builder
