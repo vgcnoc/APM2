@@ -23,13 +23,33 @@ class AffiliateManagementController extends Controller
      */
     public function index(Request $request)
     {
-        $tab = $request->query('tab', 'settings');
+        $user = auth()->user();
+        $tab = $request->query('tab');
+        if (!$tab) {
+            $isAdmin = $user && ($user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin');
+            if ($user && !$isAdmin) {
+                if ($user->can('menu_affiliate_settings') || $user->can('affiliate_tab_settings')) {
+                    $tab = 'settings';
+                } elseif ($user->can('menu_affiliate_diagram') || $user->can('affiliate_tab_diagram')) {
+                    $tab = 'diagram';
+                } elseif ($user->can('menu_affiliate_agents') || $user->can('affiliate_tab_affiliates')) {
+                    $tab = 'affiliates';
+                } elseif ($user->can('menu_affiliate_commissions') || $user->can('affiliate_tab_commissions')) {
+                    $tab = 'commissions';
+                } elseif ($user->can('menu_affiliate_withdrawals') || $user->can('affiliate_tab_withdrawals')) {
+                    $tab = 'withdrawals';
+                } else {
+                    $tab = 'settings';
+                }
+            } else {
+                $tab = 'settings';
+            }
+        }
         $search = $request->query('search', '');
 
         // 1. Settings
         $settings = AffiliateService::getSettings();
 
-        $user = auth()->user();
         $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('marketing_affiliates_view_all');
         $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
 

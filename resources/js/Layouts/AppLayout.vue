@@ -969,12 +969,20 @@ const menuItems = [
         label: 'Marketing Afiliasi',
         theme: 'orange',
         active: (url) => (url || '').startsWith('/marketing/affiliates'),
-        permission: 'menu_marketing_affiliates',
+        permission: [
+            'menu_marketing_affiliates',
+            'menu_affiliate_settings', 'affiliate_tab_settings',
+            'menu_affiliate_diagram', 'affiliate_tab_diagram',
+            'menu_affiliate_agents', 'affiliate_tab_affiliates',
+            'menu_affiliate_commissions', 'affiliate_tab_commissions',
+            'menu_affiliate_withdrawals', 'affiliate_tab_withdrawals',
+        ],
         children: [
-            { href: '/marketing/affiliates?tab=settings', label: 'Pengaturan Komisi', active: (url) => (url || '').includes('/marketing/affiliates') && ((url || '').includes('tab=settings') || !(url || '').includes('tab=')), permission: 'menu_marketing_affiliates' },
-            { href: '/marketing/affiliates?tab=affiliates', label: 'Mitra & Agen Sales', active: (url) => (url || '').includes('/marketing/affiliates') && (url || '').includes('tab=affiliates'), permission: 'menu_marketing_affiliates' },
-            { href: '/marketing/affiliates?tab=commissions', label: 'Riwayat Komisi', active: (url) => (url || '').includes('/marketing/affiliates') && (url || '').includes('tab=commissions'), permission: 'menu_marketing_affiliates' },
-            { href: '/marketing/affiliates?tab=withdrawals', label: 'Pencairan Komisi', active: (url) => (url || '').includes('/marketing/affiliates') && (url || '').includes('tab=withdrawals'), permission: 'menu_marketing_affiliates' },
+            { href: '/marketing/affiliates?tab=settings', label: 'Pengaturan Komisi', active: (url) => (url || '').includes('/marketing/affiliates') && ((url || '').includes('tab=settings') || (!(url || '').includes('tab=') && hasPermission(['menu_affiliate_settings', 'affiliate_tab_settings']))), permission: ['menu_affiliate_settings', 'affiliate_tab_settings'] },
+            { href: '/marketing/affiliates?tab=diagram', label: 'Diagram Multi-Tier', active: (url) => (url || '').includes('/marketing/affiliates') && (url || '').includes('tab=diagram'), permission: ['menu_affiliate_diagram', 'affiliate_tab_diagram'] },
+            { href: '/marketing/affiliates?tab=affiliates', label: 'Mitra & Agen Sales', active: (url) => (url || '').includes('/marketing/affiliates') && (url || '').includes('tab=affiliates'), permission: ['menu_affiliate_agents', 'affiliate_tab_affiliates'] },
+            { href: '/marketing/affiliates?tab=commissions', label: 'Riwayat Komisi', active: (url) => (url || '').includes('/marketing/affiliates') && (url || '').includes('tab=commissions'), permission: ['menu_affiliate_commissions', 'affiliate_tab_commissions'] },
+            { href: '/marketing/affiliates?tab=withdrawals', label: 'Pencairan Komisi', active: (url) => (url || '').includes('/marketing/affiliates') && (url || '').includes('tab=withdrawals'), permission: ['menu_affiliate_withdrawals', 'affiliate_tab_withdrawals'] },
         ]
     },
     {
@@ -984,7 +992,7 @@ const menuItems = [
         label: 'Portal Mitra Saya',
         theme: 'orange',
         active: (url) => (url || '').startsWith('/affiliate'),
-        permission: 'menu_marketing_affiliates',
+        permission: ['menu_affiliate_portal', 'menu_marketing_affiliates_portal', 'affiliate_portal'],
     },
 
     // 7. INFRASTRUKTUR JARINGAN

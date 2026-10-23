@@ -75,11 +75,11 @@
                 <div class="p-4 border-b border-slate-100 flex items-center gap-2 overflow-x-auto">
                     <button
                         v-for="t in [
-                            { id: 'settings', label: 'Pengaturan Komisi', icon: '⚙️', perm: 'affiliate_tab_settings' },
-                            { id: 'diagram', label: 'Diagram Multi-Tier Affiliate', icon: '🌳', perm: 'affiliate_tab_diagram' },
-                            { id: 'affiliates', label: 'Daftar Agen Afiliasi (' + affiliates.total + ')', icon: '👥', perm: 'affiliate_tab_affiliates' },
-                            { id: 'commissions', label: 'Riwayat Log Komisi', icon: '📜', perm: 'affiliate_tab_commissions' },
-                            { id: 'withdrawals', label: 'Permintaan Pencairan (' + withdrawals.total + ')', icon: '💸', perm: 'affiliate_tab_withdrawals' },
+                            { id: 'settings', label: 'Pengaturan Komisi', icon: '⚙️', perm: ['menu_affiliate_settings', 'affiliate_tab_settings'] },
+                            { id: 'diagram', label: 'Diagram Multi-Tier Affiliate', icon: '🌳', perm: ['menu_affiliate_diagram', 'affiliate_tab_diagram'] },
+                            { id: 'affiliates', label: 'Daftar Agen Afiliasi (' + affiliates.total + ')', icon: '👥', perm: ['menu_affiliate_agents', 'affiliate_tab_affiliates'] },
+                            { id: 'commissions', label: 'Riwayat Log Komisi', icon: '📜', perm: ['menu_affiliate_commissions', 'affiliate_tab_commissions'] },
+                            { id: 'withdrawals', label: 'Permintaan Pencairan (' + withdrawals.total + ')', icon: '💸', perm: ['menu_affiliate_withdrawals', 'affiliate_tab_withdrawals'] },
                         ]"
                         :key="t.id"
                         v-can="t.perm"
@@ -93,7 +93,7 @@
                 </div>
 
                 <!-- ════ TAB 1: PENGATURAN KOMISI SALES & AFILIASI (PERSIS SEPERTI SCREENSHOT) ════ -->
-                <div v-if="currentTab === 'settings'" v-can="'affiliate_tab_settings'" class="p-6 sm:p-8">
+                <div v-if="currentTab === 'settings'" v-can="['menu_affiliate_settings', 'affiliate_tab_settings']" class="p-6 sm:p-8">
                     <div class="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-7 shadow-xs">
                         <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
                             <div>
@@ -285,7 +285,7 @@
                 </div>
 
                 <!-- ════ TAB DIAGRAM: MULTI-TIER AFFILIATE DIAGRAM (PERSIS SCREENSHOT - LEBIH RAPIH & CANGGIH) ════ -->
-                <div v-if="currentTab === 'diagram'" v-can="'affiliate_tab_diagram'" class="p-6 sm:p-8 space-y-6">
+                <div v-if="currentTab === 'diagram'" v-can="['menu_affiliate_diagram', 'affiliate_tab_diagram']" class="p-6 sm:p-8 space-y-6">
                     <!-- Top Container Card with Diagram & List Toggle -->
                     <div class="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
                         
@@ -1107,7 +1107,7 @@
                 </div>
 
                 <!-- ════ TAB 2: DAFTAR AGEN AFILIASI ════ -->
-                <div v-if="currentTab === 'affiliates'" v-can="'affiliate_tab_affiliates'" class="p-6">
+                <div v-if="currentTab === 'affiliates'" v-can="['menu_affiliate_agents', 'affiliate_tab_affiliates']" class="p-6">
                     <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
                         <div v-can="'affiliate_filter_search'" class="relative w-full sm:w-72">
                             <input
@@ -1218,7 +1218,7 @@
                 </div>
 
                 <!-- ════ TAB 3: RIWAYAT LOG KOMISI ════ -->
-                <div v-if="currentTab === 'commissions'" v-can="'affiliate_tab_commissions'" class="p-6">
+                <div v-if="currentTab === 'commissions'" v-can="['menu_affiliate_commissions', 'affiliate_tab_commissions']" class="p-6">
                     <div v-if="commissions.data && commissions.data.length > 0" class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-slate-100 text-xs">
                             <thead class="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider text-left">
@@ -1281,7 +1281,7 @@
                 </div>
 
                 <!-- ════ TAB 4: PERMINTAAN PENARIKAN (WITHDRAWALS) ════ -->
-                <div v-if="currentTab === 'withdrawals'" v-can="'affiliate_tab_withdrawals'" class="p-6">
+                <div v-if="currentTab === 'withdrawals'" v-can="['menu_affiliate_withdrawals', 'affiliate_tab_withdrawals']" class="p-6">
                     <div v-if="withdrawals.data && withdrawals.data.length > 0" class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-slate-100 text-xs">
                             <thead class="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider text-left">
@@ -1969,7 +1969,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { router, useForm, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Swal from 'sweetalert2';
@@ -1992,18 +1992,18 @@ const props = defineProps({
 
 const page = usePage();
 const availableTabsList = [
-    { id: 'diagram', perm: 'affiliate_tab_diagram' },
-    { id: 'affiliates', perm: 'affiliate_tab_affiliates' },
-    { id: 'settings', perm: 'affiliate_tab_settings' },
-    { id: 'commissions', perm: 'affiliate_tab_commissions' },
-    { id: 'withdrawals', perm: 'affiliate_tab_withdrawals' },
+    { id: 'settings', perm: ['menu_affiliate_settings', 'affiliate_tab_settings'] },
+    { id: 'diagram', perm: ['menu_affiliate_diagram', 'affiliate_tab_diagram'] },
+    { id: 'affiliates', perm: ['menu_affiliate_agents', 'affiliate_tab_affiliates'] },
+    { id: 'commissions', perm: ['menu_affiliate_commissions', 'affiliate_tab_commissions'] },
+    { id: 'withdrawals', perm: ['menu_affiliate_withdrawals', 'affiliate_tab_withdrawals'] },
 ];
 
 const resolveInitialTab = () => {
     const user = page.props.auth?.user;
-    const requested = props.tab || 'diagram';
+    const requested = props.tab || 'settings';
     const found = availableTabsList.find(t => t.id === requested);
-    if (!found || checkUserPermission(found.perm, null, user)) {
+    if (found && checkUserPermission(found.perm, null, user)) {
         return requested;
     }
     const firstAllowed = availableTabsList.find(t => checkUserPermission(t.perm, null, user));
@@ -2011,6 +2011,12 @@ const resolveInitialTab = () => {
 };
 
 const currentTab = ref(resolveInitialTab());
+
+onMounted(() => {
+    if (currentTab.value && props.tab !== currentTab.value) {
+        switchTab(currentTab.value);
+    }
+});
 const searchQuery = ref(props.filters?.search || '');
 const diagramActiveFilter = ref('all');
 

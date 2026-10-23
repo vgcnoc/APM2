@@ -25,7 +25,7 @@ class AffiliatePortalController extends Controller
         // Cek hak akses: hanya admin, user dengan izin marketing afiliasi, atau role sales/affiliate
         $hasAccess = (method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super admin')))
             || in_array(strtolower($user->role ?? ''), ['admin', 'sales', 'affiliate'])
-            || (method_exists($user, 'can') && $user->can('menu_marketing_affiliates'));
+            || (method_exists($user, 'can') && ($user->can('menu_marketing_affiliates') || $user->can('menu_affiliate_portal')));
 
         if (!$hasAccess) {
             return redirect()->route('dashboard')->with('error', 'Anda tidak memiliki hak akses ke Portal Afiliasi.');
@@ -211,7 +211,7 @@ class AffiliatePortalController extends Controller
          $user = Auth::user();
          $hasAccess = (method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super admin')))
              || in_array(strtolower($user->role ?? ''), ['admin', 'sales', 'affiliate'])
-             || (method_exists($user, 'can') && $user->can('menu_marketing_affiliates'));
+             || (method_exists($user, 'can') && ($user->can('menu_marketing_affiliates') || $user->can('menu_affiliate_portal')));
 
          if (!$hasAccess) {
              return back()->with('error', 'Anda tidak memiliki hak akses.');
@@ -238,7 +238,7 @@ class AffiliatePortalController extends Controller
          $user = Auth::user();
          $hasAccess = (method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super admin')))
              || in_array(strtolower($user->role ?? ''), ['admin', 'sales', 'affiliate'])
-             || (method_exists($user, 'can') && $user->can('menu_marketing_affiliates'));
+             || (method_exists($user, 'can') && ($user->can('menu_marketing_affiliates') || $user->can('menu_affiliate_portal')));
 
          if (!$hasAccess) {
              return back()->with('error', 'Anda tidak memiliki hak akses.');

@@ -727,7 +727,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ── Manajemen Afiliasi & Pengaturan Komisi (Admin) ─────────
-    Route::middleware(['permission:menu_marketing_affiliates'])->prefix('marketing/affiliates')->name('admin.affiliates.')->group(function () {
+    Route::middleware(['permission:menu_marketing_affiliates|menu_affiliate_settings|affiliate_tab_settings|menu_affiliate_diagram|affiliate_tab_diagram|menu_affiliate_agents|affiliate_tab_affiliates|menu_affiliate_commissions|affiliate_tab_commissions|menu_affiliate_withdrawals|affiliate_tab_withdrawals'])->prefix('marketing/affiliates')->name('admin.affiliates.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Admin\AffiliateManagementController::class, 'index'])->name('index');
         Route::post('/settings', [\App\Http\Controllers\Admin\AffiliateManagementController::class, 'saveSettings'])->name('settings');
         Route::post('/store', [\App\Http\Controllers\Admin\AffiliateManagementController::class, 'storeAffiliate'])->name('store');
