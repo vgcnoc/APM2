@@ -467,7 +467,7 @@ class AffiliateManagementController extends Controller
                 'email' => strtolower(trim($validated['email'])),
                 'phone' => trim($validated['phone']),
                 'password' => $validated['password'], // User model auto-hashes through 'password' => 'hashed' cast
-                'role' => 'sales',
+                'role' => 'affiliate',
                 'is_active' => true,
                 'area_id' => !empty($validated['area_id']) ? (int) $validated['area_id'] : null,
                 'bank_name' => $validated['bank_name'] ?? null,
@@ -476,7 +476,7 @@ class AffiliateManagementController extends Controller
             ]);
 
             try {
-                $role = Role::firstOrCreate(['name' => 'sales', 'guard_name' => 'web']);
+                $role = Role::firstOrCreate(['name' => 'affiliate', 'guard_name' => 'web']);
                 $user->assignRole($role);
             } catch (\Throwable $e) {
                 // Ignore fallback

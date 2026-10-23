@@ -1176,6 +1176,12 @@ class PermissionRegistry
                 'menu_attendances', 'attendance_tab_reguler', 'attendances_view_own',
                 'menu_payroll', 'payroll_view_own', 'payroll_btn_print_slip',
             ],
+            'affiliate' => [
+                'menu_dashboard',
+                'menu_customers_booking', 'customers_booking_card_stats', 'customers_booking_create', 'customers_booking_whatsapp', 'customers_booking_view_own',
+                'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
+                'menu_vouchers_free', 'voucher_free_card_stats', 'voucher_free_tab_generated', 'voucher_free_tab_customers', 'vouchers_free_create', 'vouchers_free_print', 'voucher_free_filter_connection', 'voucher_free_color_indicator',
+            ],
             'finance' => [
                 'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_revenue', 'dashboard_filter_area', 'dashboard_btn_refresh',
                 'menu_customers_booking', 'customers_booking_card_stats', 'customers_booking_create', 'customers_booking_view_all',

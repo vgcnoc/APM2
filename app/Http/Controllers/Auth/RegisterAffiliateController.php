@@ -99,13 +99,13 @@ class RegisterAffiliateController extends Controller
                 'email' => strtolower(trim($validated['email'])),
                 'phone' => $validated['phone'],
                 'password' => Hash::make($validated['password']),
-                'role' => 'sales',
+                'role' => 'affiliate',
                 'is_active' => true,
             ]);
 
-            // Assign role sales
+            // Assign role affiliate
             try {
-                $role = Role::firstOrCreate(['name' => 'sales', 'guard_name' => 'web']);
+                $role = Role::firstOrCreate(['name' => 'affiliate', 'guard_name' => 'web']);
                 $user->assignRole($role);
             } catch (\Exception $e) {
                 // Ignore fallback

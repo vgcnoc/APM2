@@ -59,7 +59,7 @@ class UserController extends Controller
 
         // Fetch roles from Spatie with fallback presets
         $spatieRoles = \Spatie\Permission\Models\Role::orderBy('name')->pluck('name')->toArray();
-        $presetRoles = ['admin', 'teknisi', 'noc', 'cs', 'sales', 'finance', 'maintenance', 'reseller', 'manager', 'hrd'];
+        $presetRoles = ['admin', 'teknisi', 'noc', 'cs', 'sales', 'affiliate', 'finance', 'maintenance', 'reseller', 'manager', 'hrd'];
         $allRoles = array_values(array_unique(array_merge($spatieRoles, $presetRoles)));
         sort($allRoles);
 
