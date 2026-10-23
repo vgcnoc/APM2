@@ -15,6 +15,7 @@
 
                 <div class="flex items-center gap-2">
                     <a
+                        v-can="'affiliate_btn_register_link'"
                         :href="route('register-affiliate')"
                         target="_blank"
                         class="px-4 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
@@ -26,7 +27,7 @@
             </div>
 
             <!-- KPI Cards Overview -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div v-can="'affiliate_card_stats'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                 <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
                     <div>
                         <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Total Agen Mitra</span>
@@ -47,7 +48,7 @@
                     </div>
                 </div>
 
-                <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+                <div v-can="'affiliate_field_commissions'" class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
                     <div>
                         <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Total Komisi Disalurkan</span>
                         <span class="text-xl font-extrabold text-emerald-600 mt-1 block">{{ formatRupiah(kpi.total_commissions_paid) }}</span>
@@ -74,13 +75,14 @@
                 <div class="p-4 border-b border-slate-100 flex items-center gap-2 overflow-x-auto">
                     <button
                         v-for="t in [
-                            { id: 'settings', label: 'Pengaturan Komisi', icon: '⚙️' },
-                            { id: 'diagram', label: 'Diagram Multi-Tier Affiliate', icon: '🌳' },
-                            { id: 'affiliates', label: 'Daftar Agen Afiliasi (' + affiliates.total + ')', icon: '👥' },
-                            { id: 'commissions', label: 'Riwayat Log Komisi', icon: '📜' },
-                            { id: 'withdrawals', label: 'Permintaan Pencairan (' + withdrawals.total + ')', icon: '💸' },
+                            { id: 'settings', label: 'Pengaturan Komisi', icon: '⚙️', perm: 'affiliate_tab_settings' },
+                            { id: 'diagram', label: 'Diagram Multi-Tier Affiliate', icon: '🌳', perm: 'affiliate_tab_diagram' },
+                            { id: 'affiliates', label: 'Daftar Agen Afiliasi (' + affiliates.total + ')', icon: '👥', perm: 'affiliate_tab_affiliates' },
+                            { id: 'commissions', label: 'Riwayat Log Komisi', icon: '📜', perm: 'affiliate_tab_commissions' },
+                            { id: 'withdrawals', label: 'Permintaan Pencairan (' + withdrawals.total + ')', icon: '💸', perm: 'affiliate_tab_withdrawals' },
                         ]"
                         :key="t.id"
+                        v-can="t.perm"
                         @click="switchTab(t.id)"
                         class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap flex items-center gap-1.5"
                         :class="currentTab === t.id ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'"
@@ -91,7 +93,7 @@
                 </div>
 
                 <!-- ════ TAB 1: PENGATURAN KOMISI SALES & AFILIASI (PERSIS SEPERTI SCREENSHOT) ════ -->
-                <div v-if="currentTab === 'settings'" class="p-6 sm:p-8">
+                <div v-if="currentTab === 'settings'" v-can="'affiliate_tab_settings'" class="p-6 sm:p-8">
                     <div class="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-7 shadow-xs">
                         <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
                             <div>
@@ -269,6 +271,7 @@
 
                             <div class="pt-4 border-t border-slate-100 flex justify-end">
                                 <button
+                                    v-can="'marketing_affiliates_manage'"
                                     type="submit"
                                     :disabled="settingsForm.processing"
                                     class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 disabled:opacity-50"
@@ -282,7 +285,7 @@
                 </div>
 
                 <!-- ════ TAB DIAGRAM: MULTI-TIER AFFILIATE DIAGRAM (PERSIS SCREENSHOT - LEBIH RAPIH & CANGGIH) ════ -->
-                <div v-if="currentTab === 'diagram'" class="p-6 sm:p-8 space-y-6">
+                <div v-if="currentTab === 'diagram'" v-can="'affiliate_tab_diagram'" class="p-6 sm:p-8 space-y-6">
                     <!-- Top Container Card with Diagram & List Toggle -->
                     <div class="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
                         
@@ -303,7 +306,7 @@
                             </div>
 
                             <!-- Right Controls: Search bar & View Toggle -->
-                            <div class="flex flex-wrap items-center gap-3">
+                            <div v-can="'affiliate_filter_diagram'" class="flex flex-wrap items-center gap-3">
                                 <div class="relative w-full sm:w-72">
                                     <input
                                         v-model="treeSearch"
@@ -1104,9 +1107,9 @@
                 </div>
 
                 <!-- ════ TAB 2: DAFTAR AGEN AFILIASI ════ -->
-                <div v-if="currentTab === 'affiliates'" class="p-6">
+                <div v-if="currentTab === 'affiliates'" v-can="'affiliate_tab_affiliates'" class="p-6">
                     <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
-                        <div class="relative w-full sm:w-72">
+                        <div v-can="'affiliate_filter_search'" class="relative w-full sm:w-72">
                             <input
                                 v-model="searchQuery"
                                 @keyup.enter="handleSearch"
@@ -1121,6 +1124,7 @@
 
                         <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
                             <button
+                                v-can="'affiliate_btn_create'"
                                 type="button"
                                 @click="openCreateAffiliateModal"
                                 class="px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5"
@@ -1140,8 +1144,8 @@
                                     <th class="px-4 py-3">Upline Sponsor</th>
                                     <th class="px-4 py-3">Pelanggan</th>
                                     <th class="px-4 py-3">Jaringan Tim</th>
-                                    <th class="px-4 py-3">Saldo Aktif</th>
-                                    <th class="px-4 py-3">Total Komisi</th>
+                                    <th v-can="'affiliate_field_balance'" class="px-4 py-3">Saldo Aktif</th>
+                                    <th v-can="'affiliate_field_balance'" class="px-4 py-3">Total Komisi</th>
                                     <th class="px-4 py-3">Status</th>
                                     <th class="px-4 py-3 text-center">Aksi</th>
                                 </tr>
@@ -1162,6 +1166,7 @@
                                                 {{ a.upline_name }}
                                             </span>
                                             <button
+                                                v-can="'affiliate_btn_change_upline'"
                                                 type="button"
                                                 @click="openUplineModal(a)"
                                                 class="text-[10px] text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-1.5 py-0.5 rounded transition-colors focus:outline-none"
@@ -1173,8 +1178,8 @@
                                     </td>
                                     <td class="px-4 py-3 font-semibold text-slate-800">{{ a.total_customers }} Pelanggan</td>
                                     <td class="px-4 py-3 font-semibold text-purple-600">{{ a.total_downlines }} Mitra</td>
-                                    <td class="px-4 py-3 font-extrabold text-emerald-600">{{ formatRupiah(a.balance) }}</td>
-                                    <td class="px-4 py-3 font-medium text-slate-700">{{ formatRupiah(a.total_earned) }}</td>
+                                    <td v-can="'affiliate_field_balance'" class="px-4 py-3 font-extrabold text-emerald-600">{{ formatRupiah(a.balance) }}</td>
+                                    <td v-can="'affiliate_field_balance'" class="px-4 py-3 font-medium text-slate-700">{{ formatRupiah(a.total_earned) }}</td>
                                     <td class="px-4 py-3">
                                         <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase" :class="a.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'">
                                             {{ a.status }}
@@ -1183,6 +1188,7 @@
                                     <td class="px-4 py-3 text-center">
                                         <div class="flex items-center justify-center gap-1.5">
                                             <button
+                                                v-can="'affiliate_btn_change_upline'"
                                                 type="button"
                                                 @click="openUplineModal(a)"
                                                 class="px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors border bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 flex items-center gap-1 shadow-2xs focus:outline-none"
@@ -1192,6 +1198,7 @@
                                                 <span>Atur Upline</span>
                                             </button>
                                             <button
+                                                v-can="'affiliate_btn_toggle_status'"
                                                 type="button"
                                                 @click="toggleAffiliateStatus(a)"
                                                 class="px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors border shadow-2xs"
@@ -1211,7 +1218,7 @@
                 </div>
 
                 <!-- ════ TAB 3: RIWAYAT LOG KOMISI ════ -->
-                <div v-if="currentTab === 'commissions'" class="p-6">
+                <div v-if="currentTab === 'commissions'" v-can="'affiliate_tab_commissions'" class="p-6">
                     <div v-if="commissions.data && commissions.data.length > 0" class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-slate-100 text-xs">
                             <thead class="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider text-left">
@@ -1220,7 +1227,7 @@
                                     <th class="px-4 py-3">Penerima Komisi</th>
                                     <th class="px-4 py-3">Tipe Komisi</th>
                                     <th class="px-4 py-3">Deskripsi Transaksi</th>
-                                    <th class="px-4 py-3 text-right">Nominal</th>
+                                    <th v-can="'affiliate_field_commissions'" class="px-4 py-3 text-right">Nominal</th>
                                     <th class="px-4 py-3 text-center">Status</th>
                                 </tr>
                             </thead>
@@ -1249,7 +1256,7 @@
                                         </span>
                                     </td>
                                     <td class="px-4 py-3 text-slate-700">{{ c.description }}</td>
-                                    <td class="px-4 py-3 text-right font-extrabold whitespace-nowrap" :class="c.amount < 0 || c.type === 'clawback_booking' || c.type === 'clawback_survey' ? 'text-rose-600' : 'text-emerald-600'">
+                                    <td v-can="'affiliate_field_commissions'" class="px-4 py-3 text-right font-extrabold whitespace-nowrap" :class="c.amount < 0 || c.type === 'clawback_booking' || c.type === 'clawback_survey' ? 'text-rose-600' : 'text-emerald-600'">
                                         {{ (c.amount < 0 || c.type === 'clawback_booking' || c.type === 'clawback_survey') ? '-' : '+' }}{{ formatRupiah(Math.abs(c.amount)) }}
                                     </td>
                                     <td class="px-4 py-3 text-center">
@@ -1274,14 +1281,14 @@
                 </div>
 
                 <!-- ════ TAB 4: PERMINTAAN PENARIKAN (WITHDRAWALS) ════ -->
-                <div v-if="currentTab === 'withdrawals'" class="p-6">
+                <div v-if="currentTab === 'withdrawals'" v-can="'affiliate_tab_withdrawals'" class="p-6">
                     <div v-if="withdrawals.data && withdrawals.data.length > 0" class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-slate-100 text-xs">
                             <thead class="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider text-left">
                                 <tr>
                                     <th class="px-4 py-3">No. Referensi</th>
                                     <th class="px-4 py-3">Nama Mitra</th>
-                                    <th class="px-4 py-3">Rekening Pencairan</th>
+                                    <th v-can="'affiliate_field_bank'" class="px-4 py-3">Rekening Pencairan</th>
                                     <th class="px-4 py-3">Nominal Tarik</th>
                                     <th class="px-4 py-3 text-center">Status</th>
                                     <th class="px-4 py-3">Tanggal</th>
@@ -1300,7 +1307,7 @@
                                             </span>
                                         </div>
                                     </td>
-                                    <td class="px-4 py-3">
+                                    <td v-can="'affiliate_field_bank'" class="px-4 py-3">
                                         <div class="font-semibold text-slate-800">{{ w.bank_name }} - {{ w.bank_account_number }}</div>
                                         <div class="text-[11px] text-slate-500">a.n {{ w.bank_account_holder }}</div>
                                     </td>
@@ -1321,6 +1328,7 @@
                                     <td class="px-4 py-3 text-center whitespace-nowrap">
                                         <div v-if="w.status === 'pending'" class="flex items-center justify-center gap-1.5">
                                             <button
+                                                v-can="'marketing_affiliates_withdraw_approve'"
                                                 type="button"
                                                 @click="openApproveModal(w)"
                                                 class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-lg shadow-2xs"
@@ -1328,6 +1336,7 @@
                                                 Approve / Transfer
                                             </button>
                                             <button
+                                                v-can="'marketing_affiliates_withdraw_reject'"
                                                 type="button"
                                                 @click="openRejectModal(w)"
                                                 class="px-2.5 py-1 bg-white hover:bg-rose-50 border border-rose-300 text-rose-700 font-bold text-[11px] rounded-lg"
@@ -1961,9 +1970,10 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { router, useForm } from '@inertiajs/vue3';
+import { router, useForm, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Swal from 'sweetalert2';
+import { checkUserPermission } from '@/Directives/can';
 
 const props = defineProps({
     tab: String,
@@ -1980,7 +1990,27 @@ const props = defineProps({
     filters: Object,
 });
 
-const currentTab = ref(props.tab || 'diagram');
+const page = usePage();
+const availableTabsList = [
+    { id: 'diagram', perm: 'affiliate_tab_diagram' },
+    { id: 'affiliates', perm: 'affiliate_tab_affiliates' },
+    { id: 'settings', perm: 'affiliate_tab_settings' },
+    { id: 'commissions', perm: 'affiliate_tab_commissions' },
+    { id: 'withdrawals', perm: 'affiliate_tab_withdrawals' },
+];
+
+const resolveInitialTab = () => {
+    const user = page.props.auth?.user;
+    const requested = props.tab || 'diagram';
+    const found = availableTabsList.find(t => t.id === requested);
+    if (!found || checkUserPermission(found.perm, null, user)) {
+        return requested;
+    }
+    const firstAllowed = availableTabsList.find(t => checkUserPermission(t.perm, null, user));
+    return firstAllowed ? firstAllowed.id : requested;
+};
+
+const currentTab = ref(resolveInitialTab());
 const searchQuery = ref(props.filters?.search || '');
 const diagramActiveFilter = ref('all');
 

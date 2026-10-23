@@ -29,8 +29,17 @@ class AffiliateManagementController extends Controller
         // 1. Settings
         $settings = AffiliateService::getSettings();
 
+        $user = auth()->user();
+        $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('marketing_affiliates_view_all');
+        $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
+
         // 2. Daftar Agen Afiliasi
         $affiliatesQuery = AffiliateProfile::with(['user', 'upline']);
+        if (!$isGlobal && !empty($accessibleAreas)) {
+            $affiliatesQuery->whereHas('user', function ($uq) use ($accessibleAreas) {
+                $uq->whereIn('area_id', $accessibleAreas);
+            });
+        }
         if ($search) {
             $affiliatesQuery->where(function ($q) use ($search) {
                 $q->where('referral_code', 'like', "%{$search}%")
@@ -69,8 +78,13 @@ class AffiliateManagementController extends Controller
             });
 
         // 3. Riwayat Komisi
-        $commissions = AffiliateCommission::with(['affiliate', 'customer', 'sourceUser'])
-            ->latest('id')
+        $commissionsQuery = AffiliateCommission::with(['affiliate', 'customer', 'sourceUser']);
+        if (!$isGlobal && !empty($accessibleAreas)) {
+            $commissionsQuery->whereHas('affiliate.user', function ($uq) use ($accessibleAreas) {
+                $uq->whereIn('area_id', $accessibleAreas);
+            });
+        }
+        $commissions = $commissionsQuery->latest('id')
             ->paginate(20)
             ->through(function ($c) {
                 return [
@@ -88,8 +102,13 @@ class AffiliateManagementController extends Controller
             });
 
         // 4. Permintaan Penarikan (Withdrawals)
-        $withdrawals = AffiliateWithdrawal::with(['affiliate', 'processor'])
-            ->latest('id')
+        $withdrawalsQuery = AffiliateWithdrawal::with(['affiliate', 'processor']);
+        if (!$isGlobal && !empty($accessibleAreas)) {
+            $withdrawalsQuery->whereHas('affiliate.user', function ($uq) use ($accessibleAreas) {
+                $uq->whereIn('area_id', $accessibleAreas);
+            });
+        }
+        $withdrawals = $withdrawalsQuery->latest('id')
             ->paginate(15)
             ->through(function ($w) {
                 $unpaidCount = 0;
@@ -122,7 +141,13 @@ class AffiliateManagementController extends Controller
             });
 
         // 5. Data Struktur Pohon Jaringan Multi-Tier (Network Tree Diagram)
-        $allProfiles = AffiliateProfile::with(['user:id,name,email,phone,role,is_active', 'customers:id,sales_id,name,status'])->get();
+        $allProfilesQuery = AffiliateProfile::with(['user:id,name,email,phone,role,is_active,area_id', 'customers:id,sales_id,name,status']);
+        if (!$isGlobal && !empty($accessibleAreas)) {
+            $allProfilesQuery->whereHas('user', function ($uq) use ($accessibleAreas) {
+                $uq->whereIn('area_id', $accessibleAreas);
+            });
+        }
+        $allProfiles = $allProfilesQuery->get();
         $profilesByUser = $allProfiles->keyBy('user_id');
         $uplineUserIds = $allProfiles->whereNotNull('upline_id')->pluck('upline_id')->unique()->values()->toArray();
 
@@ -249,13 +274,23 @@ class AffiliateManagementController extends Controller
             'total_members' => count($networkTrees) + $totalDownline1Count + $totalDownline2Count,
         ];
 
-        $kpi = [
-            'total_affiliates' => AffiliateProfile::count(),
-            'total_customers' => Customer::whereNotNull('sales_id')->count(),
-            'total_commissions_paid' => (float) AffiliateCommission::where('status', 'paid')->sum('amount'),
-            'pending_withdrawals_count' => AffiliateWithdrawal::where('status', 'pending')->count(),
-            'pending_withdrawals_amount' => (float) AffiliateWithdrawal::where('status', 'pending')->sum('amount'),
-        ];
+        if (!$isGlobal && !empty($accessibleAreas)) {
+            $kpi = [
+                'total_affiliates' => AffiliateProfile::whereHas('user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas))->count(),
+                'total_customers' => Customer::whereNotNull('sales_id')->whereIn('area_id', $accessibleAreas)->count(),
+                'total_commissions_paid' => (float) AffiliateCommission::whereHas('affiliate.user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas))->where('status', 'paid')->sum('amount'),
+                'pending_withdrawals_count' => AffiliateWithdrawal::whereHas('affiliate.user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas))->where('status', 'pending')->count(),
+                'pending_withdrawals_amount' => (float) AffiliateWithdrawal::whereHas('affiliate.user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas))->where('status', 'pending')->sum('amount'),
+            ];
+        } else {
+            $kpi = [
+                'total_affiliates' => AffiliateProfile::count(),
+                'total_customers' => Customer::whereNotNull('sales_id')->count(),
+                'total_commissions_paid' => (float) AffiliateCommission::where('status', 'paid')->sum('amount'),
+                'pending_withdrawals_count' => AffiliateWithdrawal::where('status', 'pending')->count(),
+                'pending_withdrawals_amount' => (float) AffiliateWithdrawal::where('status', 'pending')->sum('amount'),
+            ];
+        }
 
         $availableUplines = AffiliateProfile::with('user:id,name,email,role')
             ->where('status', 'active')

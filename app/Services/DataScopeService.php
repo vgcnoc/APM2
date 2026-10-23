@@ -631,4 +631,33 @@ class DataScopeService
 
         return $query;
     }
+
+    /**
+     * Terapkan filter scope pada query Marketing Afiliasi & Mitra
+     */
+    public static function applyAffiliateScope(Builder $query, ?User $user = null): Builder
+    {
+        $user = $user ?? auth()->user();
+        if (!$user) {
+            return $query;
+        }
+
+        $level = self::getScopeLevel($user, 'marketing_affiliates');
+        if ($level === 'all' || $user->can('marketing_affiliates_view_all')) {
+            return $query;
+        }
+
+        if ($level === 'area' || $user->can('marketing_affiliates_view_area')) {
+            $accessibleAreas = $user->getAccessibleAreaIds();
+            return $query->whereHas('user', function ($uq) use ($accessibleAreas) {
+                $uq->whereIn('area_id', $accessibleAreas);
+            });
+        }
+
+        // Own data scope
+        return $query->where(function ($q) use ($user) {
+            $q->where('user_id', $user->id)
+              ->orWhere('upline_id', $user->id);
+        });
+    }
 }
