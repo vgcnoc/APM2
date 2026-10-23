@@ -3877,6 +3877,7 @@ class CustomerController extends Controller
             $user->hasRole('admin') ||
             $user->can('customers_delete') ||
             $user->can('customers_booking_delete') ||
+            $user->can('customers_survey_cancel') ||
             $user->can('customers_installed_cancel') ||
             $user->can('menu_customers_booking') ||
             $user->can('menu_customers_survey') ||

@@ -359,9 +359,10 @@
                     </div>
 
                     <!-- Grup 2: Tindakan Pembatalan & Hapus -->
-                    <div class="py-1">
+                    <div v-if="canCancel || canDelete" class="py-1">
                         <!-- Batalkan Pelanggan -->
                         <button 
+                            v-if="canCancel"
                             type="button"
                             @click="openCancelModal(activeDropdownRow); closeDropdown()"
                             class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-orange-50/80 hover:text-orange-700 transition-colors font-medium group cursor-pointer"
@@ -895,7 +896,7 @@ const props = defineProps({
 });
 
 const page = usePage();
-const hasPermission = (permission) => {
+const hasPermission = (...permissions) => {
     try {
         const user = page.props.auth?.user;
         if (!user) return false;
@@ -911,9 +912,7 @@ const hasPermission = (permission) => {
         if (Array.isArray(user.permissions)) perms = user.permissions;
         else if (user.permissions) perms = Object.values(user.permissions);
         
-        if (perms.includes(permission)) return true;
-        
-        return false;
+        return permissions.some(p => perms.includes(p));
     } catch (e) {
         return false;
     }
@@ -921,37 +920,11 @@ const hasPermission = (permission) => {
 const selectedIds = ref([]);
 
 const canDelete = computed(() => {
-    try {
-        if (!page || !page.props || !page.props.auth || !page.props.auth.user) return false;
-        
-        const user = page.props.auth.user;
-        
-        if (user.role && typeof user.role === 'string') {
-            const roleStr = user.role.toLowerCase().trim();
-            if (roleStr === 'admin' || roleStr === 'super admin' || roleStr.includes('admin')) {
-                return true;
-            }
-        }
-        
-        let roles = [];
-        if (Array.isArray(user.roles)) roles = user.roles;
-        else if (user.roles) roles = Object.values(user.roles);
-        
-        for (let r of roles) {
-            if (typeof r === 'string') {
-                const rStr = r.toLowerCase().trim();
-                if (rStr === 'admin' || rStr === 'super admin' || rStr.includes('admin')) return true;
-            }
-        }
-        
-        let perms = [];
-        if (Array.isArray(user.permissions)) perms = user.permissions;
-        else if (user.permissions) perms = Object.values(user.permissions);
-        
-        return perms.includes('menu_customers_survey') || perms.includes('customers_survey_delete') || perms.includes('customers_delete');
-    } catch (e) {
-        return false;
-    }
+    return hasPermission('customers_survey_delete', 'customers_delete');
+});
+
+const canCancel = computed(() => {
+    return hasPermission('customers_survey_cancel', 'customers_booking_delete', 'customers_delete');
 });
 
 function bulkDelete() {
