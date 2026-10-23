@@ -18,6 +18,19 @@ class AffiliatePortalController extends Controller
     public function dashboard(Request $request)
     {
         $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        // Cek hak akses: hanya admin, user dengan izin marketing afiliasi, atau role sales/affiliate
+        $hasAccess = (method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super admin')))
+            || in_array(strtolower($user->role ?? ''), ['admin', 'sales', 'affiliate'])
+            || (method_exists($user, 'can') && $user->can('menu_marketing_affiliates'));
+
+        if (!$hasAccess) {
+            return redirect()->route('dashboard')->with('error', 'Anda tidak memiliki hak akses ke Portal Afiliasi.');
+        }
+
         $profile = AffiliateService::ensureAffiliateProfile($user);
 
         // Pelanggan yang diajak
@@ -193,37 +206,54 @@ class AffiliatePortalController extends Controller
     /**
      * Update data rekening bank / e-wallet.
      */
-    public function updateBank(Request $request)
-    {
-        $validated = $request->validate([
-            'bank_name' => 'required|string|max:50',
-            'bank_account_number' => 'required|string|max:50',
-            'bank_account_holder' => 'required|string|max:100',
-            'whatsapp' => 'nullable|string|max:25',
-        ]);
+     public function updateBank(Request $request)
+     {
+         $user = Auth::user();
+         $hasAccess = (method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super admin')))
+             || in_array(strtolower($user->role ?? ''), ['admin', 'sales', 'affiliate'])
+             || (method_exists($user, 'can') && $user->can('menu_marketing_affiliates'));
 
-        $user = Auth::user();
-        $profile = AffiliateService::ensureAffiliateProfile($user);
-        $profile->update($validated);
+         if (!$hasAccess) {
+             return back()->with('error', 'Anda tidak memiliki hak akses.');
+         }
 
-        return back()->with('success', 'Rekening bank / E-Wallet berhasil diperbarui.');
-    }
+         $validated = $request->validate([
+             'bank_name' => 'required|string|max:50',
+             'bank_account_number' => 'required|string|max:50',
+             'bank_account_holder' => 'required|string|max:100',
+             'whatsapp' => 'nullable|string|max:25',
+         ]);
+
+         $profile = AffiliateService::ensureAffiliateProfile($user);
+         $profile->update($validated);
+
+         return back()->with('success', 'Rekening bank / E-Wallet berhasil diperbarui.');
+     }
 
     /**
      * Ajukan penarikan saldo komisi.
      */
-    public function withdraw(Request $request)
-    {
-        $validated = $request->validate([
-            'amount' => 'required|numeric|min:1',
-            'notes' => 'nullable|string|max:255',
-        ]);
+     public function withdraw(Request $request)
+     {
+         $user = Auth::user();
+         $hasAccess = (method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super admin')))
+             || in_array(strtolower($user->role ?? ''), ['admin', 'sales', 'affiliate'])
+             || (method_exists($user, 'can') && $user->can('menu_marketing_affiliates'));
 
-        try {
-            AffiliateService::requestWithdrawal(Auth::user(), (float) $validated['amount'], $validated['notes'] ?? null);
-            return back()->with('success', 'Pengajuan penarikan dana berhasil dikirim! Admin akan segera memproses pencairan ke rekening Anda.');
-        } catch (\Exception $e) {
-            return back()->with('error', $e->getMessage());
-        }
-    }
+         if (!$hasAccess) {
+             return back()->with('error', 'Anda tidak memiliki hak akses.');
+         }
+
+         $validated = $request->validate([
+             'amount' => 'required|numeric|min:1',
+             'notes' => 'nullable|string|max:255',
+         ]);
+
+         try {
+             AffiliateService::requestWithdrawal(Auth::user(), (float) $validated['amount'], $validated['notes'] ?? null);
+             return back()->with('success', 'Pengajuan penarikan dana berhasil dikirim! Admin akan segera memproses pencairan ke rekening Anda.');
+         } catch (\Exception $e) {
+             return back()->with('error', $e->getMessage());
+         }
+     }
 }
