@@ -580,4 +580,55 @@ class DataScopeService
         // Default fallback own data: filter by user_id
         return $query->where('user_id', $user->id);
     }
+
+    /**
+     * Terapkan filter scope pada query Master Material & Stok
+     */
+    public static function applyMaterialScope(Builder $query, ?User $user = null): Builder
+    {
+        $user = $user ?? auth()->user();
+        if (!$user) {
+            return $query;
+        }
+
+        $level = self::getScopeLevel($user, 'materials');
+
+        if ($level === 'all') {
+            return $query;
+        }
+
+        if ($level === 'area') {
+            $accessibleAreas = $user->getAccessibleAreaIds();
+            return $query->whereHas('stocks', function ($sq) use ($accessibleAreas) {
+                $sq->whereIn('area_id', $accessibleAreas);
+            });
+        }
+
+        return $query;
+    }
+
+    /**
+     * Terapkan filter scope pada query Stok Barang per Area
+     */
+    public static function applyWarehouseStockScope(Builder $query, ?User $user = null): Builder
+    {
+        $user = $user ?? auth()->user();
+        if (!$user) {
+            return $query;
+        }
+
+        $level = self::getScopeLevel($user, 'warehouse_stocks');
+        if ($level === 'all' || $user->can('materials_view_all')) {
+            return $query;
+        }
+
+        if ($level === 'area' || $user->can('materials_view_area')) {
+            $accessibleAreas = $user->getAccessibleAreaIds();
+            return $query->whereHas('stocks', function ($sq) use ($accessibleAreas) {
+                $sq->whereIn('area_id', $accessibleAreas);
+            });
+        }
+
+        return $query;
+    }
 }

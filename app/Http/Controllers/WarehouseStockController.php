@@ -10,9 +10,42 @@ class WarehouseStockController extends Controller
 {
     public function index(Request $request)
     {
-        $query = \App\Models\Material::with(['stocks.area']);
+        $user = auth()->user();
+        $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('warehouse_stocks_view_all') || $user->can('materials_view_all');
+        $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
 
-        // 1. Pencarian Cerdas (Nama, Kategori, Supplier, Satuan, Keterangan)
+        $query = \App\Models\Material::with(['stocks' => function ($sq) use ($accessibleAreas, $request, $isGlobal) {
+            if (!$isGlobal && !empty($accessibleAreas)) {
+                $sq->whereIn('area_id', $accessibleAreas);
+            }
+            if ($request->filled('area_id')) {
+                $sq->where('area_id', $request->area_id);
+            }
+            $sq->with('area');
+        }]);
+
+        // 1. Scope restriction
+        if (!$isGlobal && !empty($accessibleAreas)) {
+            $query->whereHas('stocks', function ($sq) use ($accessibleAreas, $request) {
+                if ($request->filled('area_id')) {
+                    $sq->where('area_id', $request->area_id);
+                } else {
+                    $sq->whereIn('area_id', $accessibleAreas);
+                }
+            });
+            $areas = \App\Models\Area::whereIn('id', $accessibleAreas)->orderBy('name')->get(['id', 'name']);
+        } else {
+            // Filter Area Gudang jika dipilih
+            if ($request->filled('area_id')) {
+                $areaId = $request->area_id;
+                $query->whereHas('stocks', function ($q) use ($areaId) {
+                    $q->where('area_id', $areaId)->where('stock', '>', 0);
+                });
+            }
+            $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
+        }
+
+        // 2. Pencarian Cerdas (Nama, Kategori, Supplier, Satuan, Keterangan)
         if ($request->filled('search')) {
             $search = trim($request->search);
             $query->where(function ($q) use ($search) {
@@ -24,38 +57,48 @@ class WarehouseStockController extends Controller
             });
         }
 
-        // 2. Filter Kategori
+        // 3. Filter Kategori
         if ($request->filled('category')) {
             $query->where('category', $request->category);
         }
 
-        // 3. Filter Satuan (Unit)
+        // 4. Filter Satuan (Unit)
         if ($request->filled('unit')) {
             $query->where('unit', $request->unit);
         }
 
-        // 4. Filter Area Gudang
-        if ($request->filled('area_id')) {
-            $areaId = $request->area_id;
-            $query->whereHas('stocks', function ($q) use ($areaId) {
-                $q->where('area_id', $areaId)->where('stock', '>', 0);
-            });
-        }
+        $scopedAreaIds = $request->filled('area_id') ? [$request->area_id] : (!$isGlobal && !empty($accessibleAreas) ? $accessibleAreas : null);
 
         // 5. Filter Status Stok
         if ($request->filled('stock_status')) {
-            if ($request->stock_status === 'out_of_stock') {
-                $query->whereDoesntHave('stocks', function ($sq) {
-                    $sq->where('stock', '>', 0);
-                });
-            } elseif ($request->stock_status === 'available') {
-                $query->whereHas('stocks', function ($sq) {
-                    $sq->where('stock', '>', 0);
-                });
-            } elseif ($request->stock_status === 'low_stock') {
-                $query->whereHas('stocks', function ($sq) {
-                    $sq->where('stock', '>', 0)->where('stock', '<=', 20);
-                });
+            if ($scopedAreaIds) {
+                if ($request->stock_status === 'out_of_stock') {
+                    $query->whereDoesntHave('stocks', function ($sq) use ($scopedAreaIds) {
+                        $sq->whereIn('area_id', $scopedAreaIds)->where('stock', '>', 0);
+                    });
+                } elseif ($request->stock_status === 'available') {
+                    $query->whereHas('stocks', function ($sq) use ($scopedAreaIds) {
+                        $sq->whereIn('area_id', $scopedAreaIds)->where('stock', '>', 0);
+                    });
+                } elseif ($request->stock_status === 'low_stock') {
+                    $query->whereHas('stocks', function ($sq) use ($scopedAreaIds) {
+                        $sq->whereIn('area_id', $scopedAreaIds)->where('stock', '>', 0)->where('stock', '<=', 20);
+                    });
+                }
+            } else {
+                if ($request->stock_status === 'out_of_stock') {
+                    $query->whereDoesntHave('stocks', function ($sq) {
+                        $sq->where('stock', '>', 0);
+                    });
+                } elseif ($request->stock_status === 'available') {
+                    $query->whereHas('stocks', function ($sq) {
+                        $sq->where('stock', '>', 0);
+                    });
+                } elseif ($request->stock_status === 'low_stock') {
+                    $query->whereHas('stocks', function ($sq) {
+                        $sq->where('stock', '>', 0)->where('stock', '<=', 20);
+                    });
+                }
             }
         }
 
@@ -78,16 +121,25 @@ class WarehouseStockController extends Controller
 
         $categories = \App\Models\Material::whereNotNull('category')->where('category', '!=', '')->distinct()->pluck('category')->sort()->values();
         $units = \App\Models\Material::whereNotNull('unit')->where('unit', '!=', '')->distinct()->pluck('unit')->sort()->values();
-        $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
 
         // Summary counts
-        $totalMaterials = \App\Models\Material::count();
-        $outOfStockCount = \App\Models\Material::whereDoesntHave('stocks', function ($sq) {
-            $sq->where('stock', '>', 0);
-        })->count();
-        $availableCount = \App\Models\Material::whereHas('stocks', function ($sq) {
-            $sq->where('stock', '>', 0);
-        })->count();
+        if ($scopedAreaIds) {
+            $totalMaterials = \App\Models\Material::whereHas('stocks', fn($sq) => $sq->whereIn('area_id', $scopedAreaIds))->count();
+            $outOfStockCount = \App\Models\Material::whereDoesntHave('stocks', function ($sq) use ($scopedAreaIds) {
+                $sq->whereIn('area_id', $scopedAreaIds)->where('stock', '>', 0);
+            })->count();
+            $availableCount = \App\Models\Material::whereHas('stocks', function ($sq) use ($scopedAreaIds) {
+                $sq->whereIn('area_id', $scopedAreaIds)->where('stock', '>', 0);
+            })->count();
+        } else {
+            $totalMaterials = \App\Models\Material::count();
+            $outOfStockCount = \App\Models\Material::whereDoesntHave('stocks', function ($sq) {
+                $sq->where('stock', '>', 0);
+            })->count();
+            $availableCount = \App\Models\Material::whereHas('stocks', function ($sq) {
+                $sq->where('stock', '>', 0);
+            })->count();
+        }
 
         return Inertia::render('Inventory/Warehouse/Index', [
             'materials' => $materials,

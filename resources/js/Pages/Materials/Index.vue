@@ -14,7 +14,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="glass-card p-5 border-2 border-emerald-500/10 hover:border-emerald-500/30 transition-all">
+                <div v-can="'materials_field_price'" class="glass-card p-5 border-2 border-emerald-500/10 hover:border-emerald-500/30 transition-all">
                     <div class="flex items-center gap-4">
                         <div class="p-3 bg-emerald-100 text-emerald-600 rounded-xl">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -68,6 +68,11 @@
                     <select v-can="'materials_filter_category'" v-model="filterCategory" @change="performSearch" class="w-full sm:w-48 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm bg-gray-50/50">
                         <option value="all">Semua Kategori</option>
                         <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+                    </select>
+
+                    <select v-can="'materials_filter_area'" v-model="filterArea" @change="performSearch" class="w-full sm:w-48 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm bg-gray-50/50">
+                        <option value="">Semua Gudang / Area</option>
+                        <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
                     </select>
 
                     <select v-can="'materials_filter_category'" v-model="filterStockStatus" @change="performSearch" class="w-full sm:w-48 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm bg-gray-50/50">
@@ -134,7 +139,7 @@
 
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Kategori</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Stok</th>
-                                <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">H. Modal / Jual</th>
+                                <th v-can="'materials_field_price'" class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">H. Modal / Jual</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Aksi</th>
                             </tr>
                         </thead>
@@ -155,7 +160,7 @@
                                             <span>⚡</span> Buat Status
                                         </button>
                                     </div>
-                                    <p v-if="item.supplier" class="text-xs text-blue-600 mt-0.5">Supplier: {{ item.supplier }}</p>
+                                    <p v-can="'materials_field_supplier'" v-if="item.supplier" class="text-xs text-blue-600 mt-0.5">Supplier: {{ item.supplier }}</p>
                                 </td>
 
                                 <td class="py-4 px-6">
@@ -165,7 +170,7 @@
                                 </td>
                                 <td class="py-4 px-6 text-right">
                                     <div class="flex flex-col items-end gap-1">
-                                        <div class="flex items-center gap-1.5" title="Stok Awal">
+                                        <div v-can="'materials_field_initial_stock'" class="flex items-center gap-1.5" title="Stok Awal">
                                             <span class="text-[10px] font-bold text-gray-400 uppercase">Awal:</span>
                                             <span class="text-xs font-semibold text-gray-600">
                                                 {{ formatNumber(item.initial_stock) }} 
@@ -196,7 +201,7 @@
                                         </div>
                                     </div>
                                 </td>
-                                <td class="py-4 px-6 text-right text-sm">
+                                <td v-can="'materials_field_price'" class="py-4 px-6 text-right text-sm">
                                     <p class="text-gray-900">M: Rp {{ formatNumber(item.price_per_unit) }}</p>
                                     <p class="text-emerald-600 font-medium">J: Rp {{ formatNumber(item.selling_price) }}</p>
                                 </td>
@@ -790,6 +795,7 @@ const props = defineProps({
 const search = ref(props.filters.search || '');
 const filterCategory = ref(props.filters.category || 'all');
 const filterStockStatus = ref(props.filters.stock_status || '');
+const filterArea = ref(props.filters.area_id || '');
 const showModal = ref(false);
 const showAddStockModal = ref(false);
 const selectedMaterial = ref(null);
@@ -911,7 +917,8 @@ const performSearch = () => {
     router.get('/materials', { 
         search: search.value,
         category: filterCategory.value,
-        stock_status: filterStockStatus.value
+        stock_status: filterStockStatus.value,
+        area_id: filterArea.value || ''
     }, { preserveState: true, preserveScroll: true });
 };
 
@@ -1023,7 +1030,7 @@ const closeModal = () => {
 const openAddStockModal = (item) => {
     selectedMaterial.value = item;
     addStockForm.reset();
-    addStockForm.area_id = '';
+    addStockForm.area_id = (props.areas && props.areas.length === 1) ? props.areas[0].id : (filterArea.value || '');
     addStockForm.added_stock = '';
     addStockForm.added_rolls = '';
     addStockForm.added_packs = '';

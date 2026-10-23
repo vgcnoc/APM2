@@ -10,7 +10,17 @@ class MaterialMutationController extends Controller
 {
     public function index(Request $request)
     {
+        $user = auth()->user();
+        $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('material_mutations_view_all') || $user->can('materials_view_all');
+        $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
+
         $query = MaterialTransactionItem::with(['material', 'transaction.user']);
+
+        if (!$isGlobal && !empty($accessibleAreas)) {
+            $query->whereHas('transaction', function ($tq) use ($accessibleAreas) {
+                $tq->whereIn('area_id', $accessibleAreas);
+            });
+        }
 
         if ($request->has('search') && $request->search != '') {
             $search = $request->search;

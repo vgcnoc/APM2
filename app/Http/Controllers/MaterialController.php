@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Material;
+use App\Services\DataScopeService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -10,12 +11,48 @@ class MaterialController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Material::with('stocks.area');
-        
+        $user = auth()->user();
+        $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('materials_view_all');
+        $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
+
+        $query = Material::query();
+
+        // Scope relationship & filtering
+        if (!$isGlobal && !empty($accessibleAreas)) {
+            $query->with(['stocks' => function ($sq) use ($accessibleAreas, $request) {
+                if ($request->filled('area_id')) {
+                    $sq->where('area_id', $request->area_id);
+                } else {
+                    $sq->whereIn('area_id', $accessibleAreas);
+                }
+                $sq->with('area');
+            }]);
+
+            if ($request->filled('area_id')) {
+                $query->whereHas('stocks', function ($sq) use ($request) {
+                    $sq->where('area_id', $request->area_id);
+                });
+            }
+        } else {
+            $query->with(['stocks' => function ($sq) use ($request) {
+                if ($request->filled('area_id')) {
+                    $sq->where('area_id', $request->area_id);
+                }
+                $sq->with('area');
+            }]);
+
+            if ($request->filled('area_id')) {
+                $query->whereHas('stocks', function ($sq) use ($request) {
+                    $sq->where('area_id', $request->area_id);
+                });
+            }
+        }
+
         if ($request->search) {
             $query->where(function($q) use ($request) {
                 $q->where('name', 'like', "%{$request->search}%")
-                  ->orWhere('category', 'like', "%{$request->search}%");
+                  ->orWhere('category', 'like', "%{$request->search}%")
+                  ->orWhere('supplier', 'like', "%{$request->search}%");
             });
         }
         
@@ -23,27 +60,75 @@ class MaterialController extends Controller
             $query->where('category', $request->category);
         }
 
+        $scopedAreaIds = $request->filled('area_id') ? [$request->area_id] : (!$isGlobal && !empty($accessibleAreas) ? $accessibleAreas : null);
+
         if ($request->stock_status) {
-            if ($request->stock_status === 'empty') {
-                $query->where('stock', '<=', 0);
-            } elseif ($request->stock_status === 'low') {
-                $query->where('stock', '>', 0)->where('stock', '<=', 10);
-            } elseif ($request->stock_status === 'available') {
-                $query->where('stock', '>', 10);
+            if ($scopedAreaIds) {
+                if ($request->stock_status === 'empty') {
+                    $query->where(function ($q) use ($scopedAreaIds) {
+                        $q->whereDoesntHave('stocks', fn($sq) => $sq->whereIn('area_id', $scopedAreaIds)->where('stock', '>', 0));
+                    });
+                } elseif ($request->stock_status === 'low') {
+                    $query->whereHas('stocks', function ($sq) use ($scopedAreaIds) {
+                        $sq->whereIn('area_id', $scopedAreaIds)->where('stock', '>', 0)->where('stock', '<=', 10);
+                    });
+                } elseif ($request->stock_status === 'available') {
+                    $query->whereHas('stocks', function ($sq) use ($scopedAreaIds) {
+                        $sq->whereIn('area_id', $scopedAreaIds)->where('stock', '>', 10);
+                    });
+                }
+            } else {
+                if ($request->stock_status === 'empty') {
+                    $query->where('stock', '<=', 0);
+                } elseif ($request->stock_status === 'low') {
+                    $query->where('stock', '>', 0)->where('stock', '<=', 10);
+                } elseif ($request->stock_status === 'available') {
+                    $query->where('stock', '>', 10);
+                }
             }
         }
 
-        $materials = $query->latest()->paginate(10)->withQueryString();
+        $materials = $query->latest('id')->paginate(10)->withQueryString();
 
-        $areas = \App\Models\Area::orderBy('name')->get();
+        if ($scopedAreaIds) {
+            $materials->getCollection()->transform(function ($material) {
+                $material->scoped_stock = (float) $material->stocks->sum('stock');
+                $material->scoped_initial_stock = (float) $material->stocks->sum('initial_stock');
+                return $material;
+            });
+        }
+
+        $areas = $isGlobal 
+            ? \App\Models\Area::orderBy('name')->get(['id', 'name'])
+            : \App\Models\Area::whereIn('id', $accessibleAreas)->orderBy('name')->get(['id', 'name']);
         
-        // Summary Stats
-        $summary = [
-            'total_items' => Material::count(),
-            'out_of_stock' => Material::where('stock', '<=', 0)->count(),
-            'low_stock' => Material::where('stock', '>', 0)->where('stock', '<=', 10)->count(),
-            'total_value' => Material::sum(\Illuminate\Support\Facades\DB::raw('stock * price_per_unit')),
-        ];
+        // Summary Stats (Scoped to area if restricted or selected)
+        if ($scopedAreaIds) {
+            $stockQuery = \App\Models\MaterialStock::whereIn('area_id', $scopedAreaIds);
+            
+            $totalItems = (clone $stockQuery)->where('stock', '>', 0)->distinct('material_id')->count('material_id');
+            $outOfStock = Material::whereDoesntHave('stocks', fn($sq) => $sq->whereIn('area_id', $scopedAreaIds)->where('stock', '>', 0))->count();
+            $lowStock = (clone $stockQuery)->where('stock', '>', 0)->where('stock', '<=', 10)->distinct('material_id')->count('material_id');
+            
+            $totalValue = (float) \Illuminate\Support\Facades\DB::table('material_stocks')
+                ->join('materials', 'material_stocks.material_id', '=', 'materials.id')
+                ->whereIn('material_stocks.area_id', $scopedAreaIds)
+                ->sum(\Illuminate\Support\Facades\DB::raw('material_stocks.stock * COALESCE(materials.price_per_unit, 0)'));
+
+            $summary = [
+                'total_items' => $totalItems,
+                'out_of_stock' => $outOfStock,
+                'low_stock' => $lowStock,
+                'total_value' => $totalValue,
+            ];
+        } else {
+            $summary = [
+                'total_items' => Material::count(),
+                'out_of_stock' => Material::where('stock', '<=', 0)->count(),
+                'low_stock' => Material::where('stock', '>', 0)->where('stock', '<=', 10)->count(),
+                'total_value' => (float) Material::sum(\Illuminate\Support\Facades\DB::raw('stock * COALESCE(price_per_unit, 0)')),
+            ];
+        }
         
         $categories = Material::select('category')->whereNotNull('category')->where('category', '!=', '')->distinct()->pluck('category');
 
@@ -52,7 +137,7 @@ class MaterialController extends Controller
             'areas' => $areas,
             'categories' => $categories,
             'summary' => $summary,
-            'filters' => $request->only(['search', 'category', 'stock_status'])
+            'filters' => $request->only(['search', 'category', 'stock_status', 'area_id'])
         ]);
     }
 
@@ -154,6 +239,14 @@ class MaterialController extends Controller
             'price_per_unit' => 'nullable|numeric|min:0',
             'selling_price' => 'nullable|numeric|min:0',
         ]);
+
+        $user = auth()->user();
+        $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('materials_view_all');
+        $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
+
+        if (!$isGlobal && !empty($accessibleAreas) && !in_array((int)$validated['area_id'], array_map('intval', $accessibleAreas))) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki wewenang untuk menambah stok pada area ini.');
+        }
 
         // Update global stock
         $material->stock += $validated['added_stock'];

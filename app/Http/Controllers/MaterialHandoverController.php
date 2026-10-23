@@ -25,6 +25,16 @@ class MaterialHandoverController extends Controller
         $areaId = $request->query('area_id', '');
         $condition = $request->query('condition', '');
 
+        $user = auth()->user();
+        $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('material_handovers_view_all') || $user->can('materials_view_all');
+        $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
+
+        $applyAreaScope = function ($q) use ($isGlobal, $accessibleAreas) {
+            if (!$isGlobal && !empty($accessibleAreas)) {
+                $q->whereIn('area_id', $accessibleAreas);
+            }
+        };
+
         // Summary Counters
         $pendingReturnsCount = MaterialTransaction::where(function ($q) {
                 $q->where('request_type', 'return_handover')
@@ -41,10 +51,12 @@ class MaterialHandoverController extends Controller
                          });
                   });
             })
+            ->tap($applyAreaScope)
             ->count();
 
         $pendingRequestsCount = MaterialTransaction::whereIn('request_type', ['additional_material', 'ont_replacement'])
             ->where('status', 'pending')
+            ->tap($applyAreaScope)
             ->count();
 
         $totalReceivedCount = MaterialTransaction::where('handover_status', 'received')
@@ -58,6 +70,7 @@ class MaterialHandoverController extends Controller
                            ->orWhereIn('request_type', ['additional_material', 'ont_replacement']);
                    });
             })
+            ->tap($applyAreaScope)
             ->count();
 
         $receivedTodayCount = MaterialTransaction::where(function ($q) {
@@ -70,6 +83,7 @@ class MaterialHandoverController extends Controller
                       $sq->whereNull('received_at')->whereDate('created_at', today());
                   });
             })
+            ->tap($applyAreaScope)
             ->count();
 
         // Base Query
@@ -81,7 +95,7 @@ class MaterialHandoverController extends Controller
             'customer',
             'oldOnt',
             'replacementOnt',
-        ])->latest('id');
+        ])->tap($applyAreaScope)->latest('id');
 
         if ($tab === 'returns') {
             $query->where(function ($q) {
@@ -161,7 +175,7 @@ class MaterialHandoverController extends Controller
 
         // Dropdown Data
         $materials = Material::select('id', 'name', 'unit', 'stock', 'category')->where('is_active', true)->orderBy('name')->get();
-        $areas = Area::select('id', 'name')->orderBy('name')->get();
+        $areas = $isGlobal ? Area::select('id', 'name')->orderBy('name')->get() : Area::whereIn('id', $accessibleAreas)->select('id', 'name')->orderBy('name')->get();
         $availableOnts = Ont::select('id', 'serial_number', 'brand', 'model', 'status', 'area_id')
             ->whereIn('status', ['inventory', 'ready', 'available', 'stock'])
             ->orderBy('serial_number')
