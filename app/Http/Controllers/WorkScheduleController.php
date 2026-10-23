@@ -20,6 +20,11 @@ class WorkScheduleController extends Controller
      */
     public function index(Request $request)
     {
+        $user = auth()->user();
+        if ($user && !$user->hasRole('admin') && !$user->can('menu_work_schedules') && !$user->can('menu_shifts')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk membuka Jadwal Kerja & Roster Shift.');
+        }
+
         $month = $request->query('month', Carbon::now()->format('Y-m'));
         
         try {

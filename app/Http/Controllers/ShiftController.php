@@ -16,6 +16,11 @@ class ShiftController extends Controller
      */
     public function index(Request $request): Response
     {
+        $user = auth()->user();
+        if ($user && !$user->hasRole('admin') && !$user->can('menu_shifts')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk membuka Master Shift Kerja.');
+        }
+
         $query = Shift::withCount('employees');
 
         if ($request->filled('search')) {

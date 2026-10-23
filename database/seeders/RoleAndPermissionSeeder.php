@@ -36,6 +36,12 @@ class RoleAndPermissionSeeder extends Seeder
             }
         }
 
+        // Auto-grant menu_work_schedules to any role that already had menu_shifts
+        $rolesWithShifts = Role::whereHas('permissions', fn($q) => $q->where('name', 'menu_shifts'))->get();
+        foreach ($rolesWithShifts as $r) {
+            $r->givePermissionTo(['menu_work_schedules', 'work_schedules_manage']);
+        }
+
         // 3. Assign roles to users based on user->role if they don't have roles assigned
         $users = User::all();
         foreach ($users as $user) {
