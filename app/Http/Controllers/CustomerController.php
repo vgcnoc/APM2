@@ -1976,7 +1976,7 @@ class CustomerController extends Controller
             $customer->delete();
         });
 
-        return redirect()->back()->with('success', "Pelanggan {$customerName} ({$customerCode}) dan seluruh data terhubung berhasil dihapus.");
+        return redirect()->route('customers.index')->with('success', "Pelanggan {$customerName} ({$customerCode}) dan seluruh data terhubung berhasil dihapus.");
     }
 
     /**

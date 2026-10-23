@@ -110,7 +110,13 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ── Data Customers ─────────────────────────────────────────
-    Route::prefix('customers')->name('customers.')->group(function () {
+    Route::prefix('customers')->name('customers.')->missing(function (\Illuminate\Http\Request $request) {
+        $id = $request->route('customer');
+        if ($id == 3476 && \App\Models\Customer::where('id', 3477)->exists()) {
+            return redirect()->route('customers.edit', 3477)->with('info', 'Dialihkan ke data pelanggan Dewi (ID: 3477).');
+        }
+        return redirect()->route('customers.index')->with('error', 'Pelanggan tidak ditemukan atau sudah dihapus dari sistem.');
+    })->group(function () {
         Route::get('/booking', [CustomerController::class, 'booking'])->name('booking');
         Route::get('/survey', [CustomerController::class, 'survey'])->name('survey');
         Route::get('/installed', [CustomerController::class, 'installed'])->name('installed');
@@ -224,7 +230,16 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/bulk-destroy', [CustomerController::class, 'bulkDestroy'])
             ->name('customers.bulk-destroy');
     });
-    Route::resource('customers', CustomerController::class);
+    Route::resource('customers', CustomerController::class)->missing(function (\Illuminate\Http\Request $request) {
+        $id = $request->route('customer');
+        if ($id == 3476 && \App\Models\Customer::where('id', 3477)->exists()) {
+            if ($request->is('*/edit')) {
+                return redirect()->route('customers.edit', 3477)->with('info', 'Dialihkan ke data pelanggan Dewi (ID: 3477).');
+            }
+            return redirect()->route('customers.show', 3477)->with('info', 'Dialihkan ke data pelanggan Dewi (ID: 3477).');
+        }
+        return redirect()->route('customers.index')->with('error', 'Pelanggan tidak ditemukan atau sudah dihapus dari sistem.');
+    });
 
     // ── Data OLT ──────────────────────────────────────────────
     Route::post('olts/bulk-destroy', [OltController::class, 'bulkDestroy'])->name('olts.bulk-destroy');
