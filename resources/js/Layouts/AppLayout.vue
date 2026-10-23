@@ -847,6 +847,15 @@ const menuItems = [
     { type: 'group', label: 'OPERASIONAL & GANGGUAN', theme: 'rose' },
     {
         type: 'link',
+        href: '/operational/daily-progress',
+        icon: 'clipboard-check',
+        label: 'Progress Harian Operasional',
+        theme: 'rose',
+        active: (url) => (url || '').startsWith('/operational/daily-progress'),
+        permission: ['menu_operational_progress', 'menu_monitoring_teknisi', 'menu_pgk', 'menu_pgs', 'menu_cbp'],
+    },
+    {
+        type: 'link',
         href: '/monitoring-teknisi',
         icon: 'presentation-chart-line',
         label: 'Monitor Kinerja Teknisi',

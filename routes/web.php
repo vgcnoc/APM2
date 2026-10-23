@@ -484,6 +484,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/monitoring-teknisi/detail/{technician}', [\App\Http\Controllers\TechnicianMonitoringController::class, 'technicianDetail'])->name('technician-monitoring.detail');
     });
 
+    // ── Progress Harian Operasional (PGS, PGK, PGJ, CBP, Instalasi, Survey & Teknisi) ──
+    Route::middleware(['permission:menu_operational_progress|menu_monitoring_teknisi|menu_pgk|menu_pgs|menu_cbp'])->group(function () {
+        Route::get('/operational/daily-progress', [\App\Http\Controllers\OperationalDailyProgressController::class, 'index'])->name('operational.daily-progress.index');
+        Route::post('/operational/daily-progress/send-wa', [\App\Http\Controllers\OperationalDailyProgressController::class, 'sendWa'])->name('operational.daily-progress.send-wa');
+    });
+
     // ── Customer Billing (Penagihan Lapangan) ─────────────────────
     Route::middleware(['permission:menu_customer_billing'])->group(function () {
         Route::get('/customer-billing', [\App\Http\Controllers\CustomerBillingController::class, 'index'])->name('customer-billing.index');
