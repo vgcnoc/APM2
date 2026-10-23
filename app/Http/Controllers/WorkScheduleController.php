@@ -61,6 +61,9 @@ class WorkScheduleController extends Controller
         // Query Employees dengan eager load area & shift
         $employeeQuery = Employee::with(['area', 'shift']);
 
+        // Terapkan Scope Hak Akses Jadwal Roster (all, area, own)
+        \App\Services\DataScopeService::applyWorkScheduleEmployeeScope($employeeQuery, $user);
+
         if ($request->filled('branch') || $request->filled('area')) {
             $branchVal = $request->branch ?? $request->area;
             if (is_numeric($branchVal)) {
@@ -146,21 +149,28 @@ class WorkScheduleController extends Controller
         arsort($shiftCounts);
 
         // Ambil daftar Master Cabang (Area) dan Jabatan (Position)
-        $branches = Area::orderBy('name')->get(['id', 'name'])->map(function ($item) {
+        $scopeLevel = \App\Services\DataScopeService::getScopeLevel($user, 'work_schedules');
+        $branchQuery = Area::orderBy('name');
+        if ($user && ($scopeLevel === 'area' || $scopeLevel === 'own')) {
+            $branchQuery->whereIn('id', $user->getAccessibleAreaIds());
+        }
+        $branches = $branchQuery->get(['id', 'name'])->map(function ($item) {
             return [
                 'id' => $item->id,
                 'name' => $item->name,
             ];
         });
 
-        // Tambahkan branch custom yang tercatat di tabel employees jika ada
-        $extraBranches = Employee::whereNotNull('branch')
-            ->where('branch', '!=', '')
-            ->distinct()
-            ->pluck('branch');
-        foreach ($extraBranches as $eb) {
-            if (!$branches->contains('name', $eb)) {
-                $branches->push(['id' => $eb, 'name' => $eb]);
+        if ($scopeLevel === 'all') {
+            // Tambahkan branch custom yang tercatat di tabel employees jika ada
+            $extraBranches = Employee::whereNotNull('branch')
+                ->where('branch', '!=', '')
+                ->distinct()
+                ->pluck('branch');
+            foreach ($extraBranches as $eb) {
+                if (!$branches->contains('name', $eb)) {
+                    $branches->push(['id' => $eb, 'name' => $eb]);
+                }
             }
         }
 
@@ -194,6 +204,7 @@ class WorkScheduleController extends Controller
             'branches' => $branches,
             'areas' => $branches,
             'positions' => $positions,
+            'scopeLevel' => $scopeLevel,
             'filters' => [
                 'branch' => $request->branch ?? $request->area ?? '',
                 'area' => $request->area ?? $request->branch ?? '',
@@ -214,6 +225,11 @@ class WorkScheduleController extends Controller
      */
     public function saveBatch(Request $request)
     {
+        $user = auth()->user();
+        if ($user && !$user->hasRole('admin') && !$user->can('work_schedules_manage')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengubah jadwal kerja.');
+        }
+
         $request->validate([
             'month' => 'required|string',
             'changes' => 'required|array',
@@ -223,6 +239,23 @@ class WorkScheduleController extends Controller
             'changes.*.status' => 'nullable|string',
             'changes.*.notes' => 'nullable|string',
         ]);
+
+        $scopeLevel = \App\Services\DataScopeService::getScopeLevel($user, 'work_schedules');
+        if ($scopeLevel === 'area') {
+            $allowedEmpIds = Employee::whereIn('area_id', $user->getAccessibleAreaIds())->pluck('id')->toArray();
+            foreach ($request->changes as $change) {
+                if (!in_array($change['employee_id'], $allowedEmpIds)) {
+                    abort(403, 'Anda hanya dapat mengubah jadwal karyawan pada area/cabang Anda.');
+                }
+            }
+        } elseif ($scopeLevel === 'own') {
+            $ownEmpId = $user->employee?->id ?? Employee::where('email', $user->email)->value('id');
+            foreach ($request->changes as $change) {
+                if ($change['employee_id'] != $ownEmpId) {
+                    abort(403, 'Anda hanya dapat mengubah jadwal kerja Anda sendiri.');
+                }
+            }
+        }
 
         DB::transaction(function () use ($request) {
             foreach ($request->changes as $change) {
@@ -266,6 +299,11 @@ class WorkScheduleController extends Controller
      */
     public function generate(Request $request)
     {
+        $user = auth()->user();
+        if ($user && !$user->hasRole('admin') && !$user->can('work_schedules_manage')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk men-generate jadwal kerja.');
+        }
+
         $request->validate([
             'month' => 'required|string',
             'start_date' => 'nullable|date_format:Y-m-d',
@@ -279,6 +317,22 @@ class WorkScheduleController extends Controller
             'stagger' => 'nullable|boolean',
             'overwrite_mode' => 'nullable|string', // 'all', 'empty_only', 'preserve_off'
         ]);
+
+        $scopeLevel = \App\Services\DataScopeService::getScopeLevel($user, 'work_schedules');
+        if ($scopeLevel === 'area') {
+            $allowedEmpIds = Employee::whereIn('area_id', $user->getAccessibleAreaIds())->pluck('id')->toArray();
+            $filtered = array_intersect($request->employee_ids, $allowedEmpIds);
+            if (empty($filtered)) {
+                return back()->with('error', 'Tidak ada karyawan dalam area Anda yang dipilih.');
+            }
+            $request->merge(['employee_ids' => array_values($filtered)]);
+        } elseif ($scopeLevel === 'own') {
+            $ownEmpId = $user->employee?->id ?? Employee::where('email', $user->email)->value('id');
+            if (!in_array($ownEmpId, $request->employee_ids)) {
+                return back()->with('error', 'Anda hanya dapat meng-generate jadwal untuk diri Anda sendiri.');
+            }
+            $request->merge(['employee_ids' => [$ownEmpId]]);
+        }
 
         $month = $request->month;
         $currentMonth = Carbon::parse($month . '-01');
@@ -396,6 +450,11 @@ class WorkScheduleController extends Controller
      */
     public function continuePreviousMonth(Request $request)
     {
+        $user = auth()->user();
+        if ($user && !$user->hasRole('admin') && !$user->can('work_schedules_manage')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengelola jadwal roster.');
+        }
+
         $request->validate([
             'month' => 'required|string',
         ]);
@@ -408,8 +467,18 @@ class WorkScheduleController extends Controller
         $endDatePrev = $prevMonth->copy()->endOfMonth()->format('Y-m-d');
 
         // Ambil riwayat jadwal bulan lalu diurutkan ASC
-        $prevSchedules = WorkSchedule::whereBetween('date', [$startDatePrev, $endDatePrev])
-            ->orderBy('date', 'asc')
+        $prevQuery = WorkSchedule::whereBetween('date', [$startDatePrev, $endDatePrev]);
+
+        $scopeLevel = \App\Services\DataScopeService::getScopeLevel($user, 'work_schedules');
+        if ($scopeLevel === 'area') {
+            $accessibleAreas = $user->getAccessibleAreaIds();
+            $prevQuery->whereHas('employee', fn($eq) => $eq->whereIn('area_id', $accessibleAreas));
+        } elseif ($scopeLevel === 'own') {
+            $ownEmpId = $user->employee?->id ?? Employee::where('email', $user->email)->value('id');
+            $prevQuery->where('employee_id', $ownEmpId);
+        }
+
+        $prevSchedules = $prevQuery->orderBy('date', 'asc')
             ->get()
             ->groupBy('employee_id');
 
@@ -541,6 +610,11 @@ class WorkScheduleController extends Controller
      */
     public function copyMonth(Request $request)
     {
+        $user = auth()->user();
+        if ($user && !$user->hasRole('admin') && !$user->can('work_schedules_manage')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengelola jadwal roster.');
+        }
+
         $request->validate([
             'from_month' => 'required|string',
             'to_month' => 'required|string',
@@ -552,7 +626,18 @@ class WorkScheduleController extends Controller
         $startFrom = $fromMonth->copy()->startOfMonth()->format('Y-m-d');
         $endFrom = $fromMonth->copy()->endOfMonth()->format('Y-m-d');
 
-        $sourceSchedules = WorkSchedule::whereBetween('date', [$startFrom, $endFrom])->get();
+        $sourceQuery = WorkSchedule::whereBetween('date', [$startFrom, $endFrom]);
+
+        $scopeLevel = \App\Services\DataScopeService::getScopeLevel($user, 'work_schedules');
+        if ($scopeLevel === 'area') {
+            $accessibleAreas = $user->getAccessibleAreaIds();
+            $sourceQuery->whereHas('employee', fn($eq) => $eq->whereIn('area_id', $accessibleAreas));
+        } elseif ($scopeLevel === 'own') {
+            $ownEmpId = $user->employee?->id ?? Employee::where('email', $user->email)->value('id');
+            $sourceQuery->where('employee_id', $ownEmpId);
+        }
+
+        $sourceSchedules = $sourceQuery->get();
 
         if ($sourceSchedules->isEmpty()) {
             return back()->with('error', 'Bulan sumber (' . $fromMonth->translatedFormat('F Y') . ') belum memiliki jadwal.');
@@ -588,6 +673,11 @@ class WorkScheduleController extends Controller
      */
     public function resetMonth(Request $request)
     {
+        $user = auth()->user();
+        if ($user && !$user->hasRole('admin') && !$user->can('work_schedules_manage')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengosongkan jadwal roster.');
+        }
+
         $request->validate([
             'month' => 'required|string',
             'scope' => 'nullable|string', // 'all', 'employee', 'date_range', 'single_day', 'branch', 'shift'
@@ -605,6 +695,15 @@ class WorkScheduleController extends Controller
 
         $query = WorkSchedule::query();
         $scope = $request->input('scope', 'all');
+
+        $scopeLevel = \App\Services\DataScopeService::getScopeLevel($user, 'work_schedules');
+        if ($scopeLevel === 'area') {
+            $accessibleAreas = $user->getAccessibleAreaIds();
+            $query->whereHas('employee', fn($eq) => $eq->whereIn('area_id', $accessibleAreas));
+        } elseif ($scopeLevel === 'own') {
+            $ownEmpId = $user->employee?->id ?? Employee::where('email', $user->email)->value('id');
+            $query->where('employee_id', $ownEmpId);
+        }
 
         if ($scope === 'date_range' && $request->filled('start_date') && $request->filled('end_date')) {
             $query->whereBetween('date', [$request->start_date, $request->end_date]);
@@ -652,6 +751,11 @@ class WorkScheduleController extends Controller
      */
     public function storePattern(Request $request)
     {
+        $user = auth()->user();
+        if ($user && !$user->hasRole('admin') && !$user->can('work_schedules_manage')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengelola pola roster.');
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:100',
             'pattern_data' => 'required|array',
@@ -668,6 +772,11 @@ class WorkScheduleController extends Controller
      */
     public function destroyPattern($id)
     {
+        $user = auth()->user();
+        if ($user && !$user->hasRole('admin') && !$user->can('work_schedules_manage')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus pola roster.');
+        }
+
         $pattern = RosterPattern::findOrFail($id);
         $pattern->delete();
 
@@ -679,6 +788,11 @@ class WorkScheduleController extends Controller
      */
     public function quickStoreShift(Request $request)
     {
+        $user = auth()->user();
+        if ($user && !$user->hasRole('admin') && !$user->can('work_schedules_manage') && !$user->can('shifts_manage')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menambah shift.');
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:100',
             'start_time' => 'required|string|max:10',

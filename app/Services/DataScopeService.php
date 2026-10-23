@@ -496,6 +496,55 @@ class DataScopeService
             if ($empId) {
                 $q->orWhere('id', $empId);
             }
+            if (!empty($user->phone)) {
+                $q->orWhere('phone', $user->phone);
+            }
+            if (!empty($user->name)) {
+                $q->orWhere('name', $user->name);
+            }
+        });
+    }
+
+    /**
+     * Terapkan filter scope pada query Karyawan Jadwal Kerja / Roster
+     */
+    public static function applyWorkScheduleEmployeeScope(Builder $query, ?User $user = null): Builder
+    {
+        $user = $user ?? auth()->user();
+        if (!$user) {
+            return $query;
+        }
+
+        $level = self::getScopeLevel($user, 'work_schedules');
+
+        if ($level === 'all') {
+            return $query;
+        }
+
+        if ($level === 'area') {
+            $accessibleAreas = $user->getAccessibleAreaIds();
+            return $query->where(function ($q) use ($accessibleAreas) {
+                $q->whereIn('area_id', $accessibleAreas);
+                $areaNames = Area::whereIn('id', $accessibleAreas)->pluck('name')->filter()->toArray();
+                if (!empty($areaNames)) {
+                    $q->orWhereIn('branch', $areaNames);
+                }
+            });
+        }
+
+        // Level: 'own' (Hanya jadwal roster diri sendiri)
+        $empId = $user->employee?->id;
+        return $query->where(function ($q) use ($user, $empId) {
+            $q->where('email', $user->email);
+            if ($empId) {
+                $q->orWhere('id', $empId);
+            }
+            if (!empty($user->phone)) {
+                $q->orWhere('phone', $user->phone);
+            }
+            if (!empty($user->name)) {
+                $q->orWhere('name', $user->name);
+            }
         });
     }
 

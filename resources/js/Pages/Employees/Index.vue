@@ -1,6 +1,26 @@
 <template>
     <AppLayout title="Data Karyawan" subtitle="Kelola data personalia, masa kerja, dan status karyawan perusahaan">
         <div class="space-y-6">
+            <!-- Scope Badge Alert jika scope dibatasi -->
+            <div v-if="scopeLevel === 'own'" class="flex items-center justify-between p-3.5 bg-blue-50 border border-blue-200 rounded-2xl text-blue-800 text-xs shadow-xs animate-fade-in">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-base">🔒</span>
+                    <div>
+                        <span class="font-bold">Mode Scope: Biodata Diri Sendiri (Restricted)</span>
+                        <p class="text-blue-600 text-[11px] mt-0.5">Sesuai hak akses role Anda, Anda hanya dapat melihat dan mengakses biodata profil Anda sendiri.</p>
+                    </div>
+                </div>
+            </div>
+            <div v-else-if="scopeLevel === 'area'" class="flex items-center justify-between p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-xs shadow-xs animate-fade-in">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-base">🏢</span>
+                    <div>
+                        <span class="font-bold">Mode Scope: Karyawan Per Area Cabang</span>
+                        <p class="text-emerald-600 text-[11px] mt-0.5">Menampilkan seluruh data karyawan yang ditempatkan pada wilayah kerja/cabang operasional Anda.</p>
+                    </div>
+                </div>
+            </div>
+
             <!-- Summary Cards -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <!-- 1. Total Karyawan -->
@@ -144,7 +164,7 @@
 
                         <!-- Action: Hapus Semua -->
                         <button 
-                            v-if="can(['hr_employees_delete_all', 'hr_employees_delete'])"
+                            v-if="scopeLevel !== 'own' && can(['hr_employees_delete_all', 'hr_employees_delete'])"
                             @click="openDeleteAllModal"
                             type="button"
                             class="inline-flex items-center justify-center gap-1.5 py-2.5 px-3.5 rounded-xl border border-red-200 bg-red-50/70 text-red-700 hover:bg-red-100/90 font-semibold text-sm transition-all shadow-xs"
@@ -1234,6 +1254,10 @@ const props = defineProps({
     avg_tenure: String,
     counts: Object,
     filters: Object,
+    scopeLevel: {
+        type: String,
+        default: 'all',
+    },
 });
 
 const search = ref(props.filters?.search || '');

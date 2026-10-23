@@ -10,12 +10,25 @@
                         </svg>
                     </div>
                     <div>
-                        <h1 class="text-2xl font-bold tracking-tight text-slate-800">Jadwal Kerja</h1>
-                        <p class="text-xs text-slate-500 font-medium mt-0.5">Kelola roster & pola shift karyawan</p>
+                        <div class="flex items-center gap-2">
+                            <h1 class="text-2xl font-bold tracking-tight text-slate-800">Jadwal Kerja</h1>
+                            <span v-if="scopeLevel === 'own'" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs">
+                                <span>🔒</span> Scope: Roster Pribadi
+                            </span>
+                            <span v-else-if="scopeLevel === 'area'" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                                <span>🏢</span> Scope: Roster Per Area
+                            </span>
+                            <span v-else class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs">
+                                <span>🌐</span> Scope: Semua Area
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-500 font-medium mt-0.5">
+                            {{ scopeLevel === 'own' ? 'Menampilkan jadwal roster pribadi Anda' : 'Kelola roster & pola shift karyawan' }}
+                        </p>
                     </div>
                 </div>
 
-                <div class="flex items-center gap-2.5">
+                <div v-if="hasPermission('work_schedules_manage')" class="flex items-center gap-2.5">
                     <button
                         @click="openPatternModal = true"
                         type="button"
@@ -238,57 +251,60 @@
                             <span>Print</span>
                         </button>
 
-                        <!-- Copy Bulan -->
-                        <button
-                            @click="openCopyModal = true"
-                            type="button"
-                            class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition active:scale-95 shadow-2xs"
-                        >
-                            <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/>
-                            </svg>
-                            <span>Copy Bulan</span>
-                        </button>
+                        <!-- Tombol Kelola Roster (Hanya jika memiliki hak akses work_schedules_manage) -->
+                        <template v-if="hasPermission('work_schedules_manage')">
+                            <!-- Copy Bulan -->
+                            <button
+                                @click="openCopyModal = true"
+                                type="button"
+                                class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition active:scale-95 shadow-2xs"
+                            >
+                                <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/>
+                                </svg>
+                                <span>Copy Bulan</span>
+                            </button>
 
-                        <!-- Lanjutkan dari Bulan Lalu -->
-                        <button
-                            @click="continueFromPrevMonth"
-                            type="button"
-                            class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50/70 border border-indigo-200/60 rounded-xl hover:bg-indigo-100/70 transition active:scale-95"
-                        >
-                            <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                            </svg>
-                            <span>Lanjutkan dari Bulan Lalu</span>
-                        </button>
+                            <!-- Lanjutkan dari Bulan Lalu -->
+                            <button
+                                @click="continueFromPrevMonth"
+                                type="button"
+                                class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50/70 border border-indigo-200/60 rounded-xl hover:bg-indigo-100/70 transition active:scale-95"
+                            >
+                                <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                </svg>
+                                <span>Lanjutkan dari Bulan Lalu</span>
+                            </button>
 
-                        <!-- Mode Penghapus Cepat (Eraser Tool) -->
-                        <button
-                            @click="toggleEraserMode"
-                            type="button"
-                            :class="[
-                                isEraserMode
-                                    ? 'bg-rose-600 text-white shadow-md shadow-rose-500/25 ring-2 ring-rose-400 animate-pulse font-bold'
-                                    : 'bg-white text-slate-700 hover:bg-rose-50 hover:text-rose-600 border border-slate-200 font-medium',
-                                'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-xl transition active:scale-95 shadow-2xs'
-                            ]"
-                            :title="isEraserMode ? 'Klik untuk mematikan mode penghapus' : 'Mode Penghapus Cepat: klik kotak mana saja di kalender untuk menghapusnya seketika'"
-                        >
-                            <span>🧹</span>
-                            <span>{{ isEraserMode ? 'Mode Hapus AKTIF' : 'Mode Hapus' }}</span>
-                        </button>
+                            <!-- Mode Penghapus Cepat (Eraser Tool) -->
+                            <button
+                                @click="toggleEraserMode"
+                                type="button"
+                                :class="[
+                                    isEraserMode
+                                        ? 'bg-rose-600 text-white shadow-md shadow-rose-500/25 ring-2 ring-rose-400 animate-pulse font-bold'
+                                        : 'bg-white text-slate-700 hover:bg-rose-50 hover:text-rose-600 border border-slate-200 font-medium',
+                                    'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-xl transition active:scale-95 shadow-2xs'
+                                ]"
+                                :title="isEraserMode ? 'Klik untuk mematikan mode penghapus' : 'Mode Penghapus Cepat: klik kotak mana saja di kalender untuk menghapusnya seketika'"
+                            >
+                                <span>🧹</span>
+                                <span>{{ isEraserMode ? 'Mode Hapus AKTIF' : 'Mode Hapus' }}</span>
+                            </button>
 
-                        <!-- Hapus Jadwal Cerdas -->
-                        <button
-                            @click="openClearScheduleModal = true"
-                            type="button"
-                            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 hover:bg-rose-100 hover:text-rose-700 rounded-xl transition active:scale-95 shadow-2xs"
-                        >
-                            <svg class="w-3.5 h-3.5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                            </svg>
-                            <span>Hapus Jadwal</span>
-                        </button>
+                            <!-- Hapus Jadwal Cerdas -->
+                            <button
+                                @click="openClearScheduleModal = true"
+                                type="button"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 hover:bg-rose-100 hover:text-rose-700 rounded-xl transition active:scale-95 shadow-2xs"
+                            >
+                                <svg class="w-3.5 h-3.5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                </svg>
+                                <span>Hapus Jadwal</span>
+                            </button>
+                        </template>
                     </div>
                 </div>
 
@@ -317,6 +333,7 @@
 
                     <!-- Tombol Tambah Shift Cepat -->
                     <button
+                        v-if="hasPermission('work_schedules_manage') || hasPermission('shifts_manage')"
                         @click="openAddShiftModal = true"
                         type="button"
                         class="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600 bg-white border border-dashed border-slate-300 rounded-full hover:bg-slate-50 hover:text-blue-600 transition ml-1"
@@ -383,6 +400,7 @@
                                     </div>
                                     <!-- Tombol Cepat Hapus Tanggal Ini -->
                                     <button
+                                        v-if="hasPermission('work_schedules_manage')"
                                         type="button"
                                         @click.stop="quickClearDate(day.date, day.day, day.day_name)"
                                         title="Kosongkan jadwal semua karyawan pada tanggal ini"
@@ -416,6 +434,7 @@
                                         </div>
                                         <!-- Tombol Cepat Hapus Jadwal Karyawan Ini -->
                                         <button
+                                            v-if="hasPermission('work_schedules_manage')"
                                             type="button"
                                             @click.stop="quickClearEmployee(emp)"
                                             title="Kosongkan jadwal karyawan ini di bulan ini"
@@ -435,8 +454,10 @@
                                     @click="handleCellClick(emp, day.date, $event)"
                                     @contextmenu.prevent="openContextMenu(emp, day.date, $event)"
                                     :class="[
-                                        'px-0.5 py-1.5 border-r border-slate-100/80 last:border-r-0 cursor-pointer transition relative',
-                                        isEraserMode ? 'hover:bg-rose-200/50 cursor-crosshair' : 'hover:bg-blue-100/40',
+                                        'px-0.5 py-1.5 border-r border-slate-100/80 last:border-r-0 transition relative',
+                                        hasPermission('work_schedules_manage')
+                                            ? (isEraserMode ? 'hover:bg-rose-200/50 cursor-crosshair' : 'hover:bg-blue-100/40 cursor-pointer')
+                                            : 'cursor-default',
                                         day.is_sunday ? 'bg-rose-50/20' : '',
                                         hasChange(emp.id, day.date) ? 'ring-1 ring-inset ring-blue-500 bg-blue-50/50' : ''
                                     ]"
@@ -1468,9 +1489,28 @@
 
 <script setup>
 import { ref, computed, reactive, watch } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Swal from 'sweetalert2';
+
+const page = usePage();
+const hasPermission = (...permissions) => {
+    try {
+        const user = page.props.auth?.user;
+        if (!user) return false;
+        if (user.role === 'admin' || user.role === 'Super Admin') return true;
+        let roles = [];
+        if (Array.isArray(user.roles)) roles = user.roles;
+        else if (user.roles) roles = Object.values(user.roles);
+        if (roles.includes('admin') || roles.includes('Super Admin')) return true;
+        let perms = [];
+        if (Array.isArray(user.permissions)) perms = user.permissions;
+        else if (user.permissions) perms = Object.values(user.permissions);
+        return permissions.some(p => perms.includes(p));
+    } catch (e) {
+        return false;
+    }
+};
 
 const props = defineProps({
     month: String,
@@ -1485,6 +1525,10 @@ const props = defineProps({
     positions: Array,
     filters: Object,
     stats: Object,
+    scopeLevel: {
+        type: String,
+        default: 'all',
+    },
 });
 
 // State Filter Toolbar
@@ -1528,6 +1572,7 @@ const topShifts = computed(() => {
 // ── MODE PENGHAPUS CEPAT (ERASER TOOL) ──
 const isEraserMode = ref(false);
 const toggleEraserMode = () => {
+    if (!hasPermission('work_schedules_manage')) return;
     isEraserMode.value = !isEraserMode.value;
     if (isEraserMode.value) {
         closeCellPicker();
@@ -1536,6 +1581,7 @@ const toggleEraserMode = () => {
 };
 
 const handleCellClick = (emp, date, event) => {
+    if (!hasPermission('work_schedules_manage')) return;
     if (isEraserMode.value) {
         quickEraseCell(emp.id, date);
         return;
@@ -1544,6 +1590,7 @@ const handleCellClick = (emp, date, event) => {
 };
 
 const quickEraseCell = (empId, date) => {
+    if (!hasPermission('work_schedules_manage')) return;
     const changeKey = `${empId}_${date}`;
     if (localMap.value[empId]) {
         delete localMap.value[empId][date];
@@ -1559,6 +1606,7 @@ const quickEraseCell = (empId, date) => {
 // ── CONTEXT MENU (KLIK KANAN PADA CELL) ──
 const contextMenu = ref(null);
 const openContextMenu = (emp, date, event) => {
+    if (!hasPermission('work_schedules_manage')) return;
     closeCellPicker();
     const rect = event.currentTarget.getBoundingClientRect();
     let left = rect.left + window.scrollX;

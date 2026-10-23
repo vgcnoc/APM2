@@ -42,6 +42,12 @@ class RoleAndPermissionSeeder extends Seeder
             $r->givePermissionTo(['menu_work_schedules', 'work_schedules_manage']);
         }
 
+        // Auto-grant work_schedules_view_all to roles with hr_employees_view_all
+        $rolesWithAll = Role::whereHas('permissions', fn($q) => $q->where('name', 'hr_employees_view_all'))->get();
+        foreach ($rolesWithAll as $r) {
+            $r->givePermissionTo('work_schedules_view_all');
+        }
+
         // 3. Assign roles to users based on user->role if they don't have roles assigned
         $users = User::all();
         foreach ($users as $user) {

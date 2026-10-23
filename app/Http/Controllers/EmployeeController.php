@@ -12,15 +12,12 @@ class EmployeeController extends Controller
             abort(403, 'Anda tidak memiliki hak akses untuk mengakses halaman data karyawan.');
         }
 
+        $user = auth()->user();
         $query = \App\Models\Employee::query();
 
-        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('hr_employees_view_all')) {
-            if (auth()->user()->can('hr_employees_view_area')) {
-                $query->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
-            } else {
-                $query->where('email', auth()->user()->email);
-            }
-        }
+        // Scope Hak Akses Data Karyawan (all, area, own)
+        \App\Services\DataScopeService::applyEmployeeScope($query, $user);
+        $scopeLevel = \App\Services\DataScopeService::getScopeLevel($user, 'hr_employees');
         
         if ($request->filled('search')) {
             $search = strtolower($request->search);
@@ -66,14 +63,6 @@ class EmployeeController extends Controller
             }
         }
 
-        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('hr_employees_view_all')) {
-            if (auth()->user()->can('hr_employees_view_area')) {
-                $query->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
-            } else {
-                $query->where('email', auth()->user()->email);
-            }
-        }
-
         // Sorting
         if ($request->sort === 'senior') {
             $query->orderByRaw('CASE WHEN join_date IS NULL THEN 1 ELSE 0 END, join_date ASC');
@@ -100,7 +89,11 @@ class EmployeeController extends Controller
             return $emp;
         });
         
-        $areas = \App\Models\Area::orderBy('name')->get();
+        $areaQuery = \App\Models\Area::orderBy('name');
+        if ($user && ($scopeLevel === 'area' || $scopeLevel === 'own')) {
+            $areaQuery->whereIn('id', $user->getAccessibleAreaIds());
+        }
+        $areas = $areaQuery->get();
         $positions = \App\Models\Position::orderBy('name')->get();
 
         // Hitung rata-rata masa kerja seluruh karyawan yang memiliki tanggal gabung
@@ -126,13 +119,8 @@ class EmployeeController extends Controller
 
         // Hitung total counts berdasarkan status (dalam scope akses user)
         $baseQuery = \App\Models\Employee::query();
-        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('hr_employees_view_all')) {
-            if (auth()->user()->can('hr_employees_view_area')) {
-                $baseQuery->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
-            } else {
-                $baseQuery->where('email', auth()->user()->email);
-            }
-        }
+        \App\Services\DataScopeService::applyEmployeeScope($baseQuery, $user);
+
         $totalActive = (clone $baseQuery)->where(function($q) { $q->where('status', 'active')->orWhereNull('status'); })->count();
         $totalResigned = (clone $baseQuery)->where('status', 'resigned')->count();
         $totalAll = (clone $baseQuery)->count();
@@ -147,14 +135,30 @@ class EmployeeController extends Controller
                 'resigned' => $totalResigned,
                 'all' => $totalAll,
             ],
+            'scopeLevel' => $scopeLevel,
             'filters' => $request->only(['search', 'area_id', 'employee_type', 'tenure', 'sort', 'status'])
         ]);
     }
 
     public function show(\App\Models\Employee $employee)
     {
-        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('hr_employees_view') && !auth()->user()->can('menu_hr_employees')) {
+        $user = auth()->user();
+        if ($user && !$user->hasRole('admin') && !$user->can('hr_employees_view') && !$user->can('menu_hr_employees')) {
             abort(403, 'Anda tidak memiliki hak akses untuk melihat detail data karyawan.');
+        }
+
+        $scopeLevel = \App\Services\DataScopeService::getScopeLevel($user, 'hr_employees');
+        if ($scopeLevel === 'area') {
+            if ($employee->area_id && !in_array($employee->area_id, $user->getAccessibleAreaIds())) {
+                abort(403, 'Anda tidak memiliki hak akses untuk melihat data karyawan di luar area Anda.');
+            }
+        } elseif ($scopeLevel === 'own') {
+            $isOwn = ($employee->email === $user->email)
+                || (!empty($user->phone) && $employee->phone === $user->phone)
+                || (strcasecmp($employee->name, $user->name) === 0);
+            if (!$isOwn) {
+                abort(403, 'Anda hanya memiliki hak akses untuk melihat profil data diri Anda sendiri.');
+            }
         }
 
         return response()->json($employee->load('area'));
@@ -286,8 +290,18 @@ class EmployeeController extends Controller
 
     public function destroy(\App\Models\Employee $employee)
     {
-        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('hr_employees_delete') && !auth()->user()->can('hr_employees_delete_all')) {
+        $user = auth()->user();
+        if ($user && !$user->hasRole('admin') && !$user->can('hr_employees_delete') && !$user->can('hr_employees_delete_all')) {
             abort(403, 'Anda tidak memiliki hak akses untuk menghapus data karyawan.');
+        }
+
+        $scopeLevel = \App\Services\DataScopeService::getScopeLevel($user, 'hr_employees');
+        if ($scopeLevel === 'area') {
+            if ($employee->area_id && !in_array($employee->area_id, $user->getAccessibleAreaIds())) {
+                abort(403, 'Anda tidak memiliki hak akses untuk menghapus karyawan di luar area Anda.');
+            }
+        } elseif ($scopeLevel === 'own') {
+            abort(403, 'Anda tidak diperkenankan menghapus profil Anda sendiri.');
         }
 
         if ($employee->photo && \Illuminate\Support\Facades\Storage::disk('public')->exists($employee->photo)) {
@@ -301,20 +315,13 @@ class EmployeeController extends Controller
 
     public function bulkDestroy(Request $request)
     {
-        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('hr_employees_delete') && !auth()->user()->can('hr_employees_delete_all')) {
+        $user = auth()->user();
+        if ($user && !$user->hasRole('admin') && !$user->can('hr_employees_delete') && !$user->can('hr_employees_delete_all')) {
             return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk menghapus data karyawan.');
         }
 
         $query = \App\Models\Employee::query();
-
-        // Scope check per role
-        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('hr_employees_view_all')) {
-            if (auth()->user()->can('hr_employees_view_area')) {
-                $query->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
-            } else {
-                $query->where('email', auth()->user()->email);
-            }
-        }
+        \App\Services\DataScopeService::applyEmployeeScope($query, $user);
 
         $isAll = $request->boolean('all', false);
         $ids = $request->input('ids', []);
