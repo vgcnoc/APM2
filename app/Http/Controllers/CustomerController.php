@@ -1951,8 +1951,10 @@ class CustomerController extends Controller
             $user->can('customers_delete') ||
             $user->can('customers_booking_delete') ||
             $user->can('customers_survey_delete') ||
+            $user->can('customers_installed_delete') ||
             $user->can('menu_customers_booking') ||
             $user->can('menu_customers_survey') ||
+            $user->can('menu_customers_installed') ||
             $user->can('menu_customers_all')
         );
 
@@ -1976,7 +1978,11 @@ class CustomerController extends Controller
             $customer->delete();
         });
 
-        return redirect()->route('customers.index')->with('success', "Pelanggan {$customerName} ({$customerCode}) dan seluruh data terhubung berhasil dihapus.");
+        if (request()->routeIs('customers.show') || str_contains(url()->previous(), "/customers/{$customer->id}")) {
+            return redirect()->route('customers.index')->with('success', "Pelanggan {$customerName} ({$customerCode}) dan seluruh data terhubung berhasil dihapus.");
+        }
+
+        return redirect()->back()->with('success', "Pelanggan {$customerName} ({$customerCode}) dan seluruh data terhubung berhasil dihapus.");
     }
 
     /**
@@ -3866,6 +3872,22 @@ class CustomerController extends Controller
 
     public function cancel(Request $request, Customer $customer): RedirectResponse
     {
+        $user = auth()->user();
+        $canCancel = $user && (
+            $user->hasRole('admin') ||
+            $user->can('customers_delete') ||
+            $user->can('customers_booking_delete') ||
+            $user->can('customers_installed_cancel') ||
+            $user->can('menu_customers_booking') ||
+            $user->can('menu_customers_survey') ||
+            $user->can('menu_customers_installed') ||
+            $user->can('menu_customers_all')
+        );
+
+        if (!$canCancel) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk membatalkan pendaftaran/pemasangan pelanggan.');
+        }
+
         $request->validate([
             'cancel_reason' => 'required|string|max:1000',
             'cancel_date' => 'required|date',
@@ -3993,8 +4015,10 @@ class CustomerController extends Controller
             $user->can('customers_delete') ||
             $user->can('customers_booking_delete') ||
             $user->can('customers_survey_delete') ||
+            $user->can('customers_installed_delete') ||
             $user->can('menu_customers_booking') ||
             $user->can('menu_customers_survey') ||
+            $user->can('menu_customers_installed') ||
             $user->can('menu_customers_all')
         );
 
