@@ -1,9 +1,5 @@
 <template>
-    <component :is="layoutComponent" title="Data Voucher Gratis" subtitle="Kelola dan generate voucher hotspot gratis">
-        <div v-if="layoutComponent === ClientAreaLayout" class="mb-6">
-            <h1 class="text-2xl font-bold text-gray-900">Data Voucher Gratis</h1>
-            <p class="text-sm text-gray-500">Kelola dan generate voucher hotspot gratis</p>
-        </div>
+    <AppLayout title="Data Voucher Gratis" subtitle="Kelola dan generate voucher hotspot gratis">
 
         <!-- EXECUTIVE KPI STATS CARDS -->
         <div v-if="can('voucher_free_card_stats')" class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 sm:gap-4 mb-6">
@@ -1193,22 +1189,18 @@
             </div>
         </Teleport>
 
-    </component>
+    </AppLayout>
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { useForm, router, Link, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import ClientAreaLayout from '@/Layouts/ClientAreaLayout.vue';
 import Swal from 'sweetalert2';
 import { usePermission } from '@/Composables/usePermission';
 
 const page = usePage();
 const { can, hasRole } = usePermission();
-const layoutComponent = computed(() => {
-    return page.props.auth?.user?.role === 'reseller' ? ClientAreaLayout : AppLayout;
-});
 
 const props = defineProps({
     vouchers: Object,

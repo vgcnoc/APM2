@@ -916,8 +916,8 @@ const menuItems = [
         ]
     },
 
-    // 5. RESELLER & VOUCHER
-    { type: 'group', label: 'RESELLER & VOUCHER', theme: 'purple' },
+    // 5. HOTSPOT & VOUCHER
+    { type: 'group', label: 'HOTSPOT & VOUCHER', theme: 'purple' },
     { 
         type: 'dropdown',
         icon: 'ticket',
@@ -933,12 +933,15 @@ const menuItems = [
             { href: '/vouchers/free', label: 'Voucher Gratis', active: (url) => (url || '').startsWith('/vouchers/free'), permission: 'menu_vouchers_free' },
         ]
     },
-    { type: 'link', href: '/resellers', icon: 'users', label: 'Data Reseller', theme: 'purple', active: (url) => (url || '').startsWith('/resellers'), permission: 'menu_resellers' },
+
+    // 6. MITRA & RESELLER
+    { type: 'group', label: 'MITRA & RESELLER', theme: 'green' },
+    { type: 'link', href: '/resellers', icon: 'users', label: 'Data Reseller', theme: 'green', active: (url) => (url || '').startsWith('/resellers'), permission: 'menu_resellers' },
     {
         type: 'dropdown',
         icon: 'credit-card',
         label: 'Keuangan Reseller',
-        theme: 'purple',
+        theme: 'green',
         active: (url) => ['/reseller-requests', '/reseller-billing', '/reseller-settlements', '/reseller-reports'].some(path => (url || '').startsWith(path)),
         permission: 'menu_resellers',
         children: [

@@ -139,24 +139,6 @@
                                     </div>
                                 </Link>
 
-                                <!-- Voucher Gratis -->
-                                <Link 
-                                    href="/vouchers/free" 
-                                    @click="showVoucherDropdown = false"
-                                    class="flex items-center gap-3 px-3.5 py-2.5 hover:bg-amber-50/70 dark:hover:bg-gray-800/80 transition-colors group"
-                                    :class="$page.url.startsWith('/vouchers/free') ? 'bg-amber-50/50 dark:bg-gray-800/50' : ''"
-                                >
-                                    <div class="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/>
-                                        </svg>
-                                    </div>
-                                    <div class="min-w-0 flex-1">
-                                        <p class="text-xs font-semibold text-gray-900 dark:text-gray-100 group-hover:text-amber-600 dark:group-hover:text-amber-400">Voucher Gratis</p>
-                                        <p class="text-[11px] text-gray-500 dark:text-gray-400 truncate">Klaim kuota voucher gratis</p>
-                                    </div>
-                                </Link>
-
                                 <!-- Voucher Expired -->
                                 <Link 
                                     href="/vouchers/expired" 
@@ -334,14 +316,6 @@
                             >
                                 <span>Monitoring Sesi</span>
                                 <span class="text-[10px] font-bold px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 rounded">Live</span>
-                            </Link>
-                            <Link 
-                                href="/vouchers/free" 
-                                @click="showMobileMenu = false"
-                                class="block px-3 py-2 rounded-lg text-sm transition-colors" 
-                                :class="$page.url.startsWith('/vouchers/free') ? 'text-amber-600 font-bold bg-amber-50/60 dark:bg-amber-950/40' : 'text-gray-600 dark:text-gray-400 hover:text-amber-600'"
-                            >
-                                Voucher Gratis
                             </Link>
                             <Link 
                                 href="/vouchers/expired" 

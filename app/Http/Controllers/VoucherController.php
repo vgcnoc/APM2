@@ -17,7 +17,7 @@ class VoucherController extends Controller
     public function free(Request $request)
     {
         $user = auth()->user();
-        if ($user && !$user->isAdmin() && !$user->can('menu_vouchers_free') && !$user->can('menu_vouchers') && !$user->hasRole('reseller')) {
+        if ($user && !$user->isAdmin() && !$user->can('menu_vouchers_free') && !$user->can('menu_vouchers')) {
             abort(403, 'Anda tidak memiliki hak akses untuk membuka Menu Voucher Gratis.');
         }
 
