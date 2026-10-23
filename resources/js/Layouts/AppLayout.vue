@@ -3,119 +3,407 @@
         <div v-show="mobileMenuOpen" class="fixed inset-0 bg-gray-900/50 z-40 lg:hidden transition-opacity" @click="mobileMenuOpen = false"></div>
         <aside
             :class="[
-                'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm transition-transform duration-300 print:hidden',
+                'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-[2px_0_24px_rgba(0,0,0,0.03)] dark:shadow-[2px_0_24px_rgba(0,0,0,0.4)] transition-all duration-300 print:hidden',
                 mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
                 sidebarOpen ? 'w-64' : 'w-20 lg:w-20 w-64'
             ]"
         >
-            <!-- Logo -->
-            <div class="flex items-center justify-between px-5 py-5 border-b border-gray-200 dark:border-gray-800">
-                <Link href="/" class="block">
+            <!-- Logo & Brand Header -->
+            <div class="flex items-center justify-between px-4 py-4 border-b border-slate-200/80 dark:border-slate-800/80 shrink-0">
+                <Link href="/" class="block transition-transform hover:scale-[1.02]">
                     <AppLogo :sidebar-collapsed="!sidebarOpen" context="desktop" />
                 </Link>
+                <!-- Desktop Mini Collapse Toggle inside Header -->
+                <button
+                    v-if="sidebarOpen"
+                    type="button"
+                    @click="setSidebarOpen(false)"
+                    class="hidden lg:flex p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                    title="Ciutkan Sidebar (Ctrl+B)"
+                >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
+                </button>
                 <!-- Mobile Close Button -->
-                <button @click="mobileMenuOpen = false" class="lg:hidden text-gray-400 hover:text-gray-600 p-1">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                <button 
+                    @click="mobileMenuOpen = false" 
+                    class="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    title="Tutup Menu"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
 
-            <!-- Navigation -->
-            <!-- Catatan: sengaja TIDAK memakai atribut `scroll-region`, karena Inertia akan me-reset scroll-nya ke 0 di setiap kunjungan halaman (penyebab sidebar loncat). Posisi scroll dikelola sendiri oleh useSidebarState. -->
-            <nav ref="sidebarNav" class="flex-1 overflow-y-auto overscroll-contain px-3 py-4 space-y-1" @scroll.passive="saveScrollPosition">
-                <template v-for="(item, index) in filteredMenuItems" :key="index">
-                    <!-- Group Label -->
-                    <div v-if="item.type === 'group' && sidebarOpen" class="pt-5 pb-2 px-3">
-                        <div class="flex items-center gap-2">
-                            <span :class="['group-badge', `group-badge--${item.theme || 'default'}`]">
-                                <span class="group-badge__dot"></span>
-                                {{ item.label }}
-                            </span>
-                            <div class="h-px flex-1" :class="themeDividers[item.theme] || 'bg-gray-200/60'"></div>
-                        </div>
+            <!-- Smart Menu Search Bar (Cerdas) -->
+            <div v-if="sidebarOpen" class="px-3 pt-3 pb-2 shrink-0">
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
                     </div>
-                    <div v-else-if="item.type === 'group' && !sidebarOpen" class="my-2 border-t mx-3" :class="themeCollapsedDividers[item.theme] || 'border-gray-200/60'"></div>
-
-                    <!-- Link -->
-                    <Link 
-                        v-if="item.type === 'link'" 
-                        :href="item.href" 
-                        @click="mobileMenuOpen = false" 
-                        :class="[
-                            'sidebar-link', 
-                            { 
-                                active: item.active($page.url), 
-                                'pl-11': item.indent
-                            }
-                        ]"
+                    <input
+                        ref="searchInputRef"
+                        v-model="searchQuery"
+                        type="text"
+                        placeholder="Cari menu... (Ctrl+K atau /)"
+                        class="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/60 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-800 transition-all shadow-sm"
+                    />
+                    <button
+                        v-if="searchQuery"
+                        type="button"
+                        @click="searchQuery = ''"
+                        class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                        title="Bersihkan pencarian"
                     >
-                        <svg v-if="!item.indent" class="w-5 h-5 shrink-0 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPaths[item.icon]"/>
-                        </svg>
-                        <svg v-else class="w-3.5 h-3.5 shrink-0 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" :d="iconPaths['submenu-dot']"/>
-                        </svg>
-                        <span v-if="sidebarOpen" :class="['truncate', item.indent ? 'text-[13px] font-medium' : '']">{{ item.label }}</span>
-                    </Link>
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                    <span v-else class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-[10px] font-mono text-slate-400 pointer-events-none">
+                        /
+                    </span>
+                </div>
+            </div>
+            <div v-else class="px-2 pt-3 pb-2 flex justify-center shrink-0">
+                <button
+                    type="button"
+                    @click="focusSearch"
+                    class="p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
+                    title="Cari Menu (Ctrl+K)"
+                >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                </button>
+            </div>
 
-                    <!-- Dropdown -->
-                    <div v-else-if="item.type === 'dropdown'">
-                        <button 
-                            type="button"
-                            @click="toggleDropdown(index)" 
-                            :class="[
-                                'sidebar-link', 
-                                'w-full text-left', 
-                                { active: item.active($page.url) }
-                            ]"
+            <!-- Navigation Scroll Container -->
+            <nav 
+                ref="sidebarNav" 
+                class="flex-1 overflow-y-auto overscroll-contain px-2.5 py-2 space-y-1 scrollbar-thin"
+                @scroll.passive="saveScrollPosition"
+            >
+                <!-- SEARCH RESULTS VIEW (When User Types Search Query) -->
+                <div v-if="isSearching" class="space-y-1 p-1">
+                    <div class="flex items-center justify-between px-2 py-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        <span>Hasil Pencarian</span>
+                        <span class="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 text-[10px] font-bold">{{ searchResults.length }}</span>
+                    </div>
+
+                    <div v-if="searchResults.length === 0" class="py-10 text-center text-slate-400">
+                        <svg class="w-8 h-8 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        <p class="text-xs font-medium">Menu tidak ditemukan</p>
+                        <p class="text-[10px] text-slate-400 mt-1">Coba kata kunci lain...</p>
+                    </div>
+
+                    <template v-for="(res, sidx) in searchResults" :key="sidx">
+                        <Link
+                            :href="res.href"
+                            @click="mobileMenuOpen = false; searchQuery = ''"
+                            class="flex items-center gap-2.5 p-2 rounded-xl transition-all group"
+                            :class="res.active ? 'bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/60 shadow-sm' : 'hover:bg-slate-100 dark:hover:bg-slate-800/80'"
                         >
-                            <svg class="w-5 h-5 shrink-0 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPaths[item.icon]"/>
-                            </svg>
-                            <span v-if="sidebarOpen" class="truncate flex-1">{{ item.label }}</span>
-                            <svg v-if="sidebarOpen" :class="['w-4 h-4 shrink-0 transition-transform duration-200 text-gray-400', openDropdowns.includes(index) ? 'rotate-90' : '']" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                            </svg>
-                        </button>
-                        
-                        <!-- Dropdown Items -->
-                        <div 
-                            v-show="sidebarOpen && openDropdowns.includes(index)" 
-                            class="mt-1 space-y-0.5"
-                        >
-                            <template v-for="(child, childIndex) in item.children" :key="childIndex">
-                                <Link 
-                                    v-if="!child.permission || hasPermission(child.permission)"
-                                    :href="child.href" 
-                                    @click="mobileMenuOpen = false" 
+                            <div :class="['w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-white text-xs font-bold shadow-sm', themeMap[res.theme]?.activeBg || 'bg-blue-600']">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPaths[res.icon] || iconPaths['dashboard']"/>
+                                </svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-xs font-bold leading-tight" :class="res.active ? 'text-blue-600 dark:text-blue-400' : 'text-slate-900 dark:text-white'">
+                                    {{ res.label }}
+                                </p>
+                                <p class="text-[10px] text-slate-400 truncate mt-0.5">
+                                    {{ res.group }} <span v-if="res.parentLabel">› {{ res.parentLabel }}</span>
+                                </p>
+                            </div>
+                            <svg class="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </Link>
+                    </template>
+                </div>
+
+                <!-- NORMAL CATEGORY HIERARCHY (When Not Searching) -->
+                <template v-else>
+                    <div v-for="(grp, gIdx) in structuredGroups" :key="gIdx" class="mb-3">
+                        <!-- Group Header (Accordion Toggle) -->
+                        <div v-if="sidebarOpen" class="pt-2 pb-1.5 px-2">
+                            <button
+                                type="button"
+                                @click="toggleGroup(grp.label)"
+                                class="w-full flex items-center justify-between group/grp text-left cursor-pointer select-none"
+                                title="Klik untuk Ciutkan / Bentangkan Kategori"
+                            >
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <span :class="['group-badge', themeMap[grp.theme]?.badge || 'group-badge--blue']">
+                                        <span class="group-badge__dot"></span>
+                                        {{ grp.label }}
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-1.5 text-slate-400">
+                                    <span class="text-[10px] font-bold opacity-60 group-hover/grp:opacity-100 transition-opacity">{{ grp.items.length }}</span>
+                                    <svg
+                                        class="w-3.5 h-3.5 transition-transform duration-200"
+                                        :class="isGroupCollapsed(grp) ? '-rotate-90 text-slate-400' : 'rotate-0 text-slate-500'"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </div>
+                            </button>
+                        </div>
+                        <div v-else class="my-2 border-t mx-3" :class="themeCollapsedDividers[grp.theme] || 'border-slate-200/60 dark:border-slate-800'"></div>
+
+                        <!-- Group Items List -->
+                        <div v-show="!sidebarOpen || !isGroupCollapsed(grp)" class="space-y-0.5 mt-0.5">
+                            <template v-for="(item, itemIdx) in grp.items" :key="itemIdx">
+                                <!-- Direct Link Item -->
+                                <Link
+                                    v-if="item.type === 'link'"
+                                    :href="item.href"
+                                    @click="mobileMenuOpen = false"
+                                    @mouseenter="onFlyoutEnter(item, $event)"
+                                    @mouseleave="onFlyoutLeave"
                                     :class="[
-                                        'sidebar-link pl-11', 
-                                        { active: child.active($page.url) }
+                                        'flex items-center gap-2.5 rounded-xl transition-all duration-200 group relative',
+                                        sidebarOpen ? 'px-3 py-2 text-xs font-semibold' : 'justify-center p-2.5 mx-auto w-10 h-10',
+                                        item.active($page.url)
+                                            ? (themeMap[grp.theme]?.activeBg || 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25')
+                                            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100/90 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white'
                                     ]"
                                 >
-                                    <svg class="w-3.5 h-3.5 shrink-0 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" :d="iconPaths['submenu-dot']"/>
-                                    </svg>
-                                    <span class="truncate text-[13px] font-medium">{{ child.label }}</span>
+                                    <!-- Icon Box with Category Theme -->
+                                    <div
+                                        :class="[
+                                            'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105',
+                                            item.active($page.url)
+                                                ? 'bg-white/20 text-white shadow-inner'
+                                                : (themeMap[grp.theme]?.iconBg || 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400')
+                                        ]"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPaths[item.icon] || iconPaths['dashboard']"/>
+                                        </svg>
+                                    </div>
+
+                                    <span v-if="sidebarOpen" class="truncate flex-1 tracking-tight">
+                                        {{ item.label }}
+                                    </span>
+
+                                    <!-- Active Dot Indicator -->
+                                    <span v-if="sidebarOpen && item.active($page.url)" class="w-1.5 h-1.5 rounded-full bg-white shrink-0 animate-pulse"></span>
                                 </Link>
+
+                                <!-- Dropdown Item -->
+                                <div v-else-if="item.type === 'dropdown'" class="relative">
+                                    <button
+                                        type="button"
+                                        @click="handleToggleDropdown(item)"
+                                        @mouseenter="onFlyoutEnter(item, $event)"
+                                        @mouseleave="onFlyoutLeave"
+                                        :class="[
+                                            'flex items-center gap-2.5 rounded-xl transition-all duration-200 w-full group relative text-left cursor-pointer',
+                                            sidebarOpen ? 'px-3 py-2 text-xs font-semibold' : 'justify-center p-2.5 mx-auto w-10 h-10',
+                                            item.active($page.url)
+                                                ? (sidebarOpen ? (themeMap[grp.theme]?.activeBg || 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25') : 'bg-blue-600 text-white shadow-md')
+                                                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100/90 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white'
+                                        ]"
+                                    >
+                                        <!-- Icon Box with Category Theme -->
+                                        <div
+                                            :class="[
+                                                'w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105',
+                                                item.active($page.url)
+                                                    ? 'bg-white/20 text-white shadow-inner'
+                                                    : (themeMap[grp.theme]?.iconBg || 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400')
+                                            ]"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPaths[item.icon] || iconPaths['dashboard']"/>
+                                            </svg>
+                                        </div>
+
+                                        <span v-if="sidebarOpen" class="truncate flex-1 tracking-tight">
+                                            {{ item.label }}
+                                        </span>
+
+                                        <!-- Badge when collapsed but active child inside -->
+                                        <span
+                                            v-if="sidebarOpen && !isDropdownOpen(item) && item.active($page.url)"
+                                            class="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-white/25 text-white mr-1 shadow-sm"
+                                        >
+                                            Aktif
+                                        </span>
+
+                                        <svg
+                                            v-if="sidebarOpen"
+                                            :class="[
+                                                'w-3.5 h-3.5 shrink-0 transition-transform duration-200',
+                                                item.active($page.url) ? 'text-white' : 'text-slate-400',
+                                                isDropdownOpen(item) ? 'rotate-90' : 'rotate-0'
+                                            ]"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </button>
+
+                                    <!-- Submenu Tree Guide (When Dropdown Open) -->
+                                    <div
+                                        v-show="sidebarOpen && isDropdownOpen(item)"
+                                        class="mt-1 ml-6 pl-2.5 border-l-2 border-slate-200/80 dark:border-slate-800 space-y-0.5 animate-slide-in"
+                                    >
+                                        <template v-for="(child, childIndex) in item.children" :key="childIndex">
+                                            <Link
+                                                v-if="!child.permission || hasPermission(child.permission)"
+                                                :href="child.href"
+                                                @click="mobileMenuOpen = false"
+                                                :class="[
+                                                    'flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all duration-150 relative group/sub',
+                                                    child.active($page.url)
+                                                        ? (themeMap[grp.theme]?.subActive || 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 font-bold shadow-sm')
+                                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/50 font-medium'
+                                                ]"
+                                            >
+                                                <span
+                                                    class="w-1.5 h-1.5 rounded-full shrink-0 transition-all duration-200"
+                                                    :class="child.active($page.url) ? (themeMap[grp.theme]?.dot || 'bg-blue-600') + ' scale-125' : 'bg-slate-300 dark:bg-slate-600 group-hover/sub:bg-slate-400'"
+                                                ></span>
+                                                <span class="truncate">{{ child.label }}</span>
+                                            </Link>
+                                        </template>
+                                    </div>
+                                </div>
                             </template>
                         </div>
                     </div>
                 </template>
             </nav>
 
-            <!-- Sidebar Toggle (Desktop Only) -->
-            <div class="hidden lg:block border-t border-gray-200 dark:border-gray-800 p-3">
+            <!-- Bottom User & Quick Session Dock -->
+            <div v-if="sidebarOpen" class="p-3 border-t border-slate-200/80 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/70 shrink-0">
+                <div class="flex items-center gap-2.5 p-2 rounded-xl bg-white dark:bg-slate-800/70 border border-slate-200/70 dark:border-slate-700/60 shadow-sm">
+                    <!-- User Avatar -->
+                    <div class="relative shrink-0">
+                        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                            {{ $page.props.auth?.user?.name?.charAt(0) || 'A' }}
+                        </div>
+                        <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full" title="Online"></span>
+                    </div>
+
+                    <!-- User Meta -->
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs font-bold text-slate-900 dark:text-white truncate leading-tight">{{ $page.props.auth?.user?.name || 'Administrator' }}</p>
+                        <div class="flex items-center gap-1.5 mt-0.5">
+                            <span class="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.2 rounded bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400 truncate max-w-[90px]">
+                                {{ $page.props.auth?.user?.role || 'Admin' }}
+                            </span>
+                            <span v-if="$page.props.auth?.user?.is_on_duty" class="text-[9px] font-bold text-emerald-600 dark:text-emerald-400">● ON</span>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="flex items-center gap-0.5 shrink-0">
+                        <button
+                            type="button"
+                            @click="toggleTheme"
+                            class="p-1.5 text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-slate-700/80 rounded-lg transition-colors cursor-pointer"
+                            :title="isDarkMode ? 'Mode Terang' : 'Mode Gelap'"
+                        >
+                            <svg v-if="isDarkMode" class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                            <svg v-else class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                        </button>
+                        <button
+                            type="button"
+                            @click="setSidebarOpen(false)"
+                            class="hidden lg:flex p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700/80 rounded-lg transition-colors cursor-pointer"
+                            title="Ciutkan Sidebar"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Dock when Collapsed -->
+            <div v-else class="p-2.5 border-t border-slate-200/80 dark:border-slate-800/80 flex flex-col items-center gap-2 shrink-0 bg-slate-50/70 dark:bg-slate-900/70">
+                <div class="relative cursor-pointer" :title="$page.props.auth?.user?.name">
+                    <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                        {{ $page.props.auth?.user?.name?.charAt(0) || 'A' }}
+                    </div>
+                    <span class="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full"></span>
+                </div>
                 <button
                     type="button"
-                    @click="setSidebarOpen(!sidebarOpen)"
-                    class="w-full flex items-center justify-center p-2.5 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100 transition-all"
+                    @click="toggleTheme"
+                    class="p-2 text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+                    :title="isDarkMode ? 'Mode Terang' : 'Mode Gelap'"
                 >
-                    <svg class="w-5 h-5 transition-transform" :class="{ 'rotate-180': !sidebarOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/>
-                    </svg>
+                    <svg v-if="isDarkMode" class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                    <svg v-else class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                </button>
+                <button
+                    type="button"
+                    @click="setSidebarOpen(true)"
+                    class="hidden lg:flex p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+                    title="Bentangkan Sidebar"
+                >
+                    <svg class="w-4 h-4 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
                 </button>
             </div>
         </aside>
+
+        <!-- Collapsed Sidebar Floating Flyout Menu (Teleported to Body for zero clipping) -->
+        <Teleport to="body">
+            <div
+                v-if="!sidebarOpen && hoveredFlyout"
+                class="fixed z-[9999] w-64 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-3 animate-fade-in-up"
+                :style="{ top: hoveredFlyout.top + 'px', left: '84px' }"
+                @mouseenter="cancelFlyoutLeave"
+                @mouseleave="onFlyoutLeave"
+            >
+                <!-- Flyout Header -->
+                <div class="flex items-center gap-2.5 pb-2.5 mb-2 border-b border-slate-100 dark:border-slate-800">
+                    <div :class="['w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-white font-bold shadow-sm', themeMap[hoveredFlyout.theme || 'blue']?.activeBg || 'bg-blue-600']">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="iconPaths[hoveredFlyout.item.icon] || iconPaths['dashboard']"/>
+                        </svg>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs font-bold text-slate-900 dark:text-white truncate">{{ hoveredFlyout.item.label }}</p>
+                        <span class="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Pintasan Menu</span>
+                    </div>
+                </div>
+
+                <!-- If Direct Link -->
+                <Link 
+                    v-if="hoveredFlyout.item.type === 'link'"
+                    :href="hoveredFlyout.item.href"
+                    class="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                    @click="hoveredFlyout = null"
+                >
+                    <span>Buka Halaman</span>
+                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </Link>
+
+                <!-- If Dropdown with Submenus -->
+                <div v-else-if="hoveredFlyout.item.type === 'dropdown'" class="space-y-1 max-h-72 overflow-y-auto overscroll-contain pr-1">
+                    <template v-for="(child, ci) in hoveredFlyout.item.children" :key="ci">
+                        <Link
+                            v-if="!child.permission || hasPermission(child.permission)"
+                            :href="child.href"
+                            class="flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all"
+                            :class="child.active($page.url) ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white font-medium'"
+                            @click="hoveredFlyout = null"
+                        >
+                            <div class="flex items-center gap-2 truncate">
+                                <span class="w-1.5 h-1.5 rounded-full" :class="child.active($page.url) ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-300 dark:bg-slate-600'"></span>
+                                <span class="truncate">{{ child.label }}</span>
+                            </div>
+                            <svg class="w-3.5 h-3.5 text-slate-400 shrink-0 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </Link>
+                    </template>
+                </div>
+            </div>
+        </Teleport>
 
         <!-- Main Content -->
         <main
@@ -142,7 +430,7 @@
                             class="relative p-2 rounded-xl border transition-all duration-200 cursor-pointer flex items-center justify-center group"
                             :class="isDarkMode 
                                 ? 'bg-gray-800 border-gray-700 text-amber-400 hover:bg-gray-700 shadow-sm' 
-                                : 'bg-gray-50 border-gray-200 text-slate-600 hover:bg-gray-100 shadow-2xs'"
+                                : 'bg-gray-50 border-gray-200 text-slate-600 hover:bg-gray-100 shadow-sm'"
                             :title="isDarkMode ? 'Beralih ke Mode Terang (Light Mode)' : 'Beralih ke Mode Gelap (Dark Mode)'"
                         >
                             <!-- Sun icon when dark -->
@@ -231,6 +519,9 @@ const {
 } = useSidebarState();
 const mobileMenuOpen = ref(false);
 const sidebarNav = ref(null);
+const searchInputRef = ref(null);
+const searchQuery = ref('');
+
 // Baca tema langsung dari <html> agar ikon tidak berkedip saat render pertama
 const isDarkMode = ref(typeof document !== 'undefined' && document.documentElement.classList.contains('dark'));
 
@@ -257,6 +548,188 @@ const initTheme = () => {
             document.documentElement.classList.remove('dark');
         }
     } catch (e) {}
+};
+
+// Collapsed Category Groups (LocalStorage Persisted)
+const loadCollapsedGroups = () => {
+    if (typeof window === 'undefined') return [];
+    try {
+        const raw = localStorage.getItem('apm_collapsed_groups');
+        return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+        return [];
+    }
+};
+
+const collapsedGroups = ref(loadCollapsedGroups());
+
+const toggleGroup = (groupLabel) => {
+    if (collapsedGroups.value.includes(groupLabel)) {
+        collapsedGroups.value = collapsedGroups.value.filter(l => l !== groupLabel);
+    } else {
+        collapsedGroups.value = [...collapsedGroups.value, groupLabel];
+    }
+    try {
+        localStorage.setItem('apm_collapsed_groups', JSON.stringify(collapsedGroups.value));
+    } catch (e) {}
+};
+
+const isGroupCollapsed = (grp) => {
+    if (isSearching.value) return false;
+    // Don't collapse if an item in the group is active
+    const hasActiveItem = grp.items.some(item => {
+        if (item.type === 'link') return item.active(page.url);
+        if (item.type === 'dropdown' && item.children) {
+            return item.children.some(c => c.active(page.url));
+        }
+        return false;
+    });
+    if (hasActiveItem) return false;
+    return collapsedGroups.value.includes(grp.label);
+};
+
+// Dropdown State Helper: Supports both string item.label and legacy integer index
+const isDropdownOpen = (item) => {
+    return openDropdowns.value.includes(item.label) || openDropdowns.value.includes(item._index);
+};
+
+const handleToggleDropdown = (item) => {
+    if (openDropdowns.value.includes(item.label)) {
+        toggleDropdown(item.label);
+    } else if (openDropdowns.value.includes(item._index)) {
+        toggleDropdown(item._index);
+    } else {
+        toggleDropdown(item.label);
+    }
+};
+
+// Collapsed Sidebar Flyout Handling
+const hoveredFlyout = ref(null);
+let flyoutLeaveTimer = null;
+
+const onFlyoutEnter = (item, event) => {
+    if (sidebarOpen.value) return;
+    if (flyoutLeaveTimer) clearTimeout(flyoutLeaveTimer);
+    const rect = event.currentTarget.getBoundingClientRect();
+    hoveredFlyout.value = {
+        item,
+        theme: item.theme || 'default',
+        top: Math.max(12, Math.min(rect.top, window.innerHeight - 340)),
+    };
+};
+
+const onFlyoutLeave = () => {
+    if (flyoutLeaveTimer) clearTimeout(flyoutLeaveTimer);
+    flyoutLeaveTimer = setTimeout(() => {
+        hoveredFlyout.value = null;
+    }, 150);
+};
+
+const cancelFlyoutLeave = () => {
+    if (flyoutLeaveTimer) clearTimeout(flyoutLeaveTimer);
+};
+
+const focusSearch = () => {
+    if (!sidebarOpen.value) {
+        setSidebarOpen(true);
+    }
+    setTimeout(() => {
+        searchInputRef.value?.focus();
+        searchInputRef.value?.select();
+    }, 60);
+};
+
+const handleGlobalKeydown = (e) => {
+    const tag = e.target?.tagName?.toLowerCase();
+    const isInput = tag === 'input' || tag === 'textarea' || tag === 'select' || e.target?.isContentEditable;
+    if ((e.ctrlKey || e.metaKey) && e.key?.toLowerCase() === 'k') {
+        e.preventDefault();
+        focusSearch();
+    } else if (e.key === '/' && !isInput) {
+        e.preventDefault();
+        focusSearch();
+    } else if (e.key === 'Escape') {
+        if (searchQuery.value) {
+            searchQuery.value = '';
+        }
+        if (hoveredFlyout.value) {
+            hoveredFlyout.value = null;
+        }
+    }
+};
+
+// Color & Visual Theme Palette Mapping
+const themeMap = {
+    blue: {
+        badge: 'group-badge--blue',
+        iconBg: 'bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 border border-sky-200/80 dark:border-sky-800/60',
+        activeBg: 'bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-md shadow-sky-500/25',
+        subActive: 'text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/70 font-bold',
+        dot: 'bg-sky-500 shadow-sm shadow-sky-400',
+    },
+    green: {
+        badge: 'group-badge--green',
+        iconBg: 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-800/60',
+        activeBg: 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/25',
+        subActive: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/70 font-bold',
+        dot: 'bg-emerald-500 shadow-sm shadow-emerald-400',
+    },
+    rose: {
+        badge: 'group-badge--rose',
+        iconBg: 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200/80 dark:border-rose-800/60',
+        activeBg: 'bg-gradient-to-r from-rose-600 to-red-600 text-white shadow-md shadow-rose-500/25',
+        subActive: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/70 font-bold',
+        dot: 'bg-rose-500 shadow-sm shadow-rose-400',
+    },
+    purple: {
+        badge: 'group-badge--purple',
+        iconBg: 'bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 border border-purple-200/80 dark:border-purple-800/60',
+        activeBg: 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/25',
+        subActive: 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/70 font-bold',
+        dot: 'bg-purple-500 shadow-sm shadow-purple-400',
+    },
+    orange: {
+        badge: 'group-badge--orange',
+        iconBg: 'bg-orange-50 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 border border-orange-200/80 dark:border-orange-800/60',
+        activeBg: 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-md shadow-orange-500/25',
+        subActive: 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/70 font-bold',
+        dot: 'bg-orange-500 shadow-sm shadow-orange-400',
+    },
+    pink: {
+        badge: 'group-badge--pink',
+        iconBg: 'bg-pink-50 dark:bg-pink-950/60 text-pink-600 dark:text-pink-400 border border-pink-200/80 dark:border-pink-800/60',
+        activeBg: 'bg-gradient-to-r from-pink-600 to-rose-600 text-white shadow-md shadow-pink-500/25',
+        subActive: 'text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-950/70 font-bold',
+        dot: 'bg-pink-500 shadow-sm shadow-pink-400',
+    },
+    brown: {
+        badge: 'group-badge--brown',
+        iconBg: 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200/80 dark:border-amber-800/60',
+        activeBg: 'bg-gradient-to-r from-amber-600 to-yellow-600 text-white shadow-md shadow-amber-500/25',
+        subActive: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/70 font-bold',
+        dot: 'bg-amber-500 shadow-sm shadow-amber-400',
+    },
+    slate: {
+        badge: 'group-badge--slate',
+        iconBg: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700',
+        activeBg: 'bg-gradient-to-r from-slate-700 to-slate-900 text-white shadow-md shadow-slate-500/25',
+        subActive: 'text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 font-bold',
+        dot: 'bg-slate-500 shadow-sm shadow-slate-400',
+    },
+    violet: {
+        badge: 'group-badge--violet',
+        iconBg: 'bg-violet-50 dark:bg-violet-950/60 text-violet-600 dark:text-violet-400 border border-violet-200/80 dark:border-violet-800/60',
+        activeBg: 'bg-gradient-to-r from-violet-600 to-purple-700 text-white shadow-md shadow-violet-500/25',
+        subActive: 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/70 font-bold',
+        dot: 'bg-violet-500 shadow-sm shadow-violet-400',
+    },
+    default: {
+        badge: 'group-badge',
+        iconBg: 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/80 dark:border-blue-800/60',
+        activeBg: 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25',
+        subActive: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/70 font-bold',
+        dot: 'bg-blue-500 shadow-sm shadow-blue-400',
+    }
 };
 
 const themeDividers = {
@@ -557,13 +1030,16 @@ const menuItems = [
         icon: 'archive',
         label: 'Inventaris & Stok',
         theme: 'brown',
-        active: (url) => (url || '').startsWith('/produk') || (url || '').startsWith('/order-toko') || (url || '').startsWith('/stok-in-out') || (url || '').startsWith('/warehouse-stocks') || (url || '').startsWith('/material-mutations') || (url || '').startsWith('/material-handovers'),
+        active: (url) => ['/materials', '/material-transactions', '/material-mutations', '/material-handovers', '/warehouse-stocks', '/order-toko', '/produk'].some(path => (url || '').startsWith(path)),
         permission: ['menu_materials', 'menu_inventory', 'menu_material_transactions', 'menu_material_handovers'],
         children: [
-            { href: '/warehouse-stocks', label: 'Stok Barang', active: (url) => (url || '').startsWith('/warehouse-stocks'), permission: 'menu_materials' },
+            { href: '/materials', label: 'Data Material & Stok', active: (url) => (url || '').startsWith('/materials'), permission: 'menu_materials' },
+            { href: '/material-transactions', label: 'Surat Jalan & Pengambilan', active: (url) => (url || '').startsWith('/material-transactions'), permission: 'menu_material_transactions' },
+            { href: '/material-mutations', label: 'Mutasi & Kondisi Barang', active: (url) => (url || '').startsWith('/material-mutations'), permission: 'menu_materials' },
             { href: '/material-handovers', label: 'Serah Terima & Retur', active: (url) => (url || '').startsWith('/material-handovers'), permission: 'menu_material_handovers' },
+            { href: '/warehouse-stocks', label: 'Stok Barang Gudang', active: (url) => (url || '').startsWith('/warehouse-stocks'), permission: 'menu_materials' },
             { href: '/order-toko', label: 'Order Toko (Restock)', active: (url) => (url || '').startsWith('/order-toko'), permission: 'menu_materials' },
-            { href: '/produk', label: 'Data Material', active: (url) => (url || '').startsWith('/produk'), permission: 'menu_materials' },
+            { href: '/produk', label: 'Katalog Produk', active: (url) => (url || '').startsWith('/produk'), permission: 'menu_materials' },
         ]
     },
 
@@ -693,11 +1169,85 @@ const filteredMenuItems = computed(() => {
     }
 });
 
+const structuredGroups = computed(() => {
+    const groups = [];
+    let currentGroup = { label: 'MENU UTAMA', theme: 'default', items: [] };
+
+    filteredMenuItems.value.forEach((item, idx) => {
+        if (item.type === 'group') {
+            if (currentGroup.items.length > 0) {
+                groups.push(currentGroup);
+            }
+            currentGroup = {
+                label: item.label,
+                theme: item.theme || 'default',
+                items: []
+            };
+        } else {
+            currentGroup.items.push({ ...item, _index: idx });
+        }
+    });
+
+    if (currentGroup.items.length > 0) {
+        groups.push(currentGroup);
+    }
+
+    return groups;
+});
+
+const isSearching = computed(() => searchQuery.value.trim().length > 0);
+
+const searchResults = computed(() => {
+    const q = searchQuery.value.trim().toLowerCase();
+    if (!q) return [];
+
+    const results = [];
+
+    structuredGroups.value.forEach(group => {
+        group.items.forEach(item => {
+            if (item.type === 'link') {
+                if (item.label.toLowerCase().includes(q) || group.label.toLowerCase().includes(q)) {
+                    results.push({
+                        label: item.label,
+                        href: item.href,
+                        group: group.label,
+                        theme: group.theme,
+                        icon: item.icon,
+                        active: item.active(page.url),
+                    });
+                }
+            } else if (item.type === 'dropdown') {
+                const parentMatches = item.label.toLowerCase().includes(q);
+                if (Array.isArray(item.children)) {
+                    item.children.forEach(child => {
+                        if (!child.permission || hasPermission(child.permission)) {
+                            if (parentMatches || child.label.toLowerCase().includes(q) || group.label.toLowerCase().includes(q)) {
+                                results.push({
+                                    label: child.label,
+                                    parentLabel: item.label,
+                                    href: child.href,
+                                    group: group.label,
+                                    theme: group.theme,
+                                    icon: item.icon,
+                                    active: child.active(page.url),
+                                });
+                            }
+                        }
+                    });
+                }
+            }
+        });
+    });
+
+    return results;
+});
+
 // Buka dropdown yang sesuai URL aktif SEBELUM render pertama,
 // sehingga tinggi sidebar sudah final saat posisi scroll dipulihkan.
 filteredMenuItems.value.forEach((item, index) => {
     if (item.type === 'dropdown' && item.active(page.url)) {
         ensureDropdownOpen(index);
+        ensureDropdownOpen(item.label);
     }
 });
 
@@ -717,11 +1267,20 @@ onMounted(() => {
 
     // Pastikan tema tersinkron (mis. jika diubah di tab lain)
     initTheme();
+
+    // Listener pintasan keyboard global (Ctrl+K dan /)
+    if (typeof window !== 'undefined') {
+        window.addEventListener('keydown', handleGlobalKeydown);
+    }
 });
 
 onBeforeUnmount(() => {
     // Simpan posisi terakhir tepat sebelum layout diganti halaman berikutnya
     saveScrollPosition();
+
+    if (typeof window !== 'undefined') {
+        window.removeEventListener('keydown', handleGlobalKeydown);
+    }
 });
 
 const iconPaths = {

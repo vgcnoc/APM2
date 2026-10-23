@@ -11,7 +11,7 @@ class Survey extends Model
     use HasFactory;
 
     protected $fillable = [
-        'customer_id', 'odp_id', 'port_number', 'surveyor_id', 'signal_loss',
+        'customer_id', 'area_id', 'odp_id', 'port_number', 'surveyor_id', 'signal_loss',
         'distance_meters', 'port_available', 'feasibility',
         'survey_date', 'notes', 'photos',
     ];
@@ -30,6 +30,11 @@ class Survey extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function area(): BelongsTo
+    {
+        return $this->belongsTo(Area::class);
     }
 
     public function odp(): BelongsTo

@@ -194,12 +194,12 @@ html.dark h1, html.dark h2, html.dark h3, html.dark h4, html.dark h5, html.dark 
 
 /* ── Sidebar ────────────────────────────────────────────────── */
 .sidebar-link {
-    @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-gray-600 font-medium
-           transition-all duration-200 hover:bg-gray-100 hover:text-gray-900;
+    @apply flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium text-slate-600 dark:text-slate-300
+           transition-all duration-200 hover:bg-slate-100/90 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white;
 }
 
 .sidebar-link.active {
-    @apply bg-blue-50 text-blue-700 border-l-[3px] border-blue-600 rounded-l-none pl-[13px];
+    @apply bg-blue-50/90 text-blue-700 dark:bg-blue-950/70 dark:text-blue-300 font-semibold border-l-[3px] border-blue-600 dark:border-blue-400 rounded-l-none pl-[11px] shadow-sm;
 }
 
 /* ── Sidebar Purple (Reseller & Voucher Block) ──────────────── */

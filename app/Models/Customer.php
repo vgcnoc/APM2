@@ -454,16 +454,27 @@ class Customer extends Model
                 }
             }
 
-            // 2. Sinkronisasi Area ke ONT & Survey yang terhubung
+            // 2. Sinkronisasi Area ke ONT, Jadwal Teknisi, & Survey yang terhubung (aman dari error kolom)
             if ($customer->wasChanged('area_id')) {
-                if ($customer->area_id) {
-                    $areaName = \App\Models\Area::where('id', $customer->area_id)->value('name');
-                    if ($areaName && $customer->area !== $areaName) {
-                        $customer->newQuery()->where('id', $customer->id)->update(['area' => $areaName]);
+                try {
+                    if ($customer->area_id) {
+                        $areaName = \App\Models\Area::where('id', $customer->area_id)->value('name');
+                        if ($areaName && $customer->area !== $areaName) {
+                            $customer->newQuery()->where('id', $customer->id)->update(['area' => $areaName]);
+                        }
                     }
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('onts', 'area_id')) {
+                        \App\Models\Ont::where('customer_id', $customer->id)->update(['area_id' => $customer->area_id]);
+                    }
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('technician_schedules', 'area_id')) {
+                        \App\Models\TechnicianSchedule::where('customer_id', $customer->id)->update(['area_id' => $customer->area_id]);
+                    }
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('surveys', 'area_id')) {
+                        \App\Models\Survey::where('customer_id', $customer->id)->update(['area_id' => $customer->area_id]);
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[Customer::updated] Area sync error: ' . $e->getMessage());
                 }
-                \App\Models\Ont::where('customer_id', $customer->id)->update(['area_id' => $customer->area_id]);
-                \App\Models\Survey::where('customer_id', $customer->id)->update(['area_id' => $customer->area_id]);
             }
 
             // 3. Otomatis buat tiket Cabut Perangkat (CBP) jika status menjadi terminated / berhenti
