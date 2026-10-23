@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Olt;
 use App\Models\Area;
+use App\Services\DataScopeService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,15 +15,9 @@ class OltController extends Controller
 {
     public function index(Request $request): Response
     {
+        $user = $request->user();
         $baseQuery = Olt::query();
-
-        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('network_olt_view_all')) {
-            if (auth()->user()->can('network_olt_view_area')) {
-                $baseQuery->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
-            } else {
-                $baseQuery->where('id', -1);
-            }
-        }
+        DataScopeService::applyOltScope($baseQuery, $user);
 
         // Stats calculation
         $stats = [
@@ -71,7 +66,7 @@ class OltController extends Controller
             ->paginate($request->input('per_page', 15))
             ->withQueryString();
 
-        $areas = Area::orderBy('name')->get();
+        $areas = DataScopeService::getScopedAreas($user, 'network_olt');
 
         return Inertia::render('Infrastructure/Olt/Index', [
             'olts' => $olts,

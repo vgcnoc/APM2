@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Odc;
 use App\Models\Odp;
+use App\Services\DataScopeService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -14,15 +15,9 @@ class OdpController extends Controller
 {
     public function index(Request $request): Response
     {
+        $user = $request->user();
         $baseQuery = Odp::query();
-
-        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('network_odp_view_all')) {
-            if (auth()->user()->can('network_odp_view_area')) {
-                $baseQuery->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
-            } else {
-                $baseQuery->where('id', -1);
-            }
-        }
+        DataScopeService::applyOdpScope($baseQuery, $user);
 
         // Stats calculation
         $totalOdps = (clone $baseQuery)->count();
@@ -129,10 +124,13 @@ class OdpController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
+        $odcQuery = Odc::with('olt')->where('status', 'active');
+        DataScopeService::applyOdcScope($odcQuery, $user);
+
         return Inertia::render('Infrastructure/Odp/Index', [
             'odps' => $odps,
-            'odcs' => Odc::with('olt')->where('status', 'active')->get(['id', 'name', 'area_id', 'capacity', 'olt_id', 'pon_port', 'splitter_ratio']),
-            'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
+            'odcs' => $odcQuery->get(['id', 'name', 'area_id', 'capacity', 'olt_id', 'pon_port', 'splitter_ratio']),
+            'areas' => DataScopeService::getScopedAreas($user, 'network_odp'),
             'types' => $types,
             'portOptions' => [4, 8, 16, 32],
             'stats' => $stats,

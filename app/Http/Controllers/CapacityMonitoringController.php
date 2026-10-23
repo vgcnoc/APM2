@@ -6,6 +6,7 @@ use App\Models\Area;
 use App\Models\Odc;
 use App\Models\Odp;
 use App\Models\Olt;
+use App\Services\DataScopeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -421,9 +422,13 @@ class CapacityMonitoringController extends Controller
             'expansion_matrix' => $expansionMatrix->values(),
             'smart_insights' => $smartInsights,
             'filter_options' => [
-                'areas' => Area::orderBy('name')->get(['id', 'name']),
-                'olts' => Olt::where('status', 'active')->get(['id', 'name']),
-                'odcs' => Odc::where('status', 'active')->get(['id', 'name', 'area_id', 'capacity']),
+                'areas' => DataScopeService::getScopedAreas($user, 'network_capacity'),
+                'olts' => Olt::where('status', 'active')
+                    ->when($accessibleAreaIds !== null, fn($q) => $q->whereIn('area_id', $accessibleAreaIds))
+                    ->get(['id', 'name']),
+                'odcs' => Odc::where('status', 'active')
+                    ->when($accessibleAreaIds !== null, fn($q) => $q->whereIn('area_id', $accessibleAreaIds))
+                    ->get(['id', 'name', 'area_id', 'capacity']),
             ],
             'filters' => [
                 'tab' => $tab,

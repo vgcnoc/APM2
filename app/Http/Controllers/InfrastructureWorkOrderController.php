@@ -11,6 +11,7 @@ use App\Models\Odc;
 use App\Models\Olt;
 use App\Models\User;
 use App\Services\InfrastructureWorkOrderService;
+use App\Services\DataScopeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -72,8 +73,15 @@ class InfrastructureWorkOrderController extends Controller
 
         // KPI Ringkasan Status
         $kpiQuery = InfrastructureWorkOrder::query();
-        if (Auth::check() && !Auth::user()->hasRole('admin') && Auth::user()->role === 'teknisi') {
-            $kpiQuery->where('technician_id', Auth::id());
+        if (Auth::check() && !Auth::user()->hasRole('admin') && !Auth::user()->can('infrastructure_work_orders_view_all')) {
+            if (Auth::user()->can('infrastructure_work_orders_view_area')) {
+                $kpiQuery->whereIn('area_id', Auth::user()->getAccessibleAreaIds());
+            } else {
+                $kpiQuery->where(function ($q) {
+                    $q->where('technician_id', Auth::id())
+                      ->orWhereHas('technicians', fn($t) => $t->where('users.id', Auth::id()));
+                });
+            }
         }
 
         $kpi = [
@@ -88,7 +96,7 @@ class InfrastructureWorkOrderController extends Controller
         return Inertia::render('Infrastructure/WorkOrders/Index', [
             'workOrders' => $workOrders,
             'kpi' => $kpi,
-            'areas' => Area::orderBy('name')->get(['id', 'name']),
+            'areas' => DataScopeService::getScopedAreas(Auth::user(), 'infrastructure_work_orders'),
             'technicians' => User::whereIn('role', ['teknisi', 'admin', 'noc'])->orderBy('name')->get(['id', 'name']),
             'filters' => $request->only(['search', 'type', 'device_type', 'status', 'area_id', 'technician_id']),
         ]);
@@ -112,10 +120,17 @@ class InfrastructureWorkOrderController extends Controller
             ->limit(200)
             ->get();
 
+        $user = Auth::user();
+        $oltQuery = Olt::where('status', 'active');
+        DataScopeService::applyOltScope($oltQuery, $user);
+
+        $odcQuery = Odc::with('olt')->where('status', 'active');
+        DataScopeService::applyOdcScope($odcQuery, $user);
+
         return Inertia::render('Infrastructure/WorkOrders/Create', [
-            'areas' => Area::orderBy('name')->get(['id', 'name']),
-            'olts' => Olt::where('status', 'active')->get(['id', 'name', 'area_id', 'total_pon_ports', 'pon_vlans']),
-            'odcs' => Odc::with('olt')->where('status', 'active')->get(['id', 'name', 'area_id', 'capacity', 'olt_id', 'pon_port', 'splitter_ratio']),
+            'areas' => DataScopeService::getScopedAreas($user, 'infrastructure_work_orders'),
+            'olts' => $oltQuery->get(['id', 'name', 'area_id', 'total_pon_ports', 'pon_vlans']),
+            'odcs' => $odcQuery->get(['id', 'name', 'area_id', 'capacity', 'olt_id', 'pon_port', 'splitter_ratio']),
             'technicians' => User::whereIn('role', ['teknisi', 'admin', 'noc'])->orderBy('name')->get(['id', 'name']),
             'materials' => $materials,
             'materialTransactions' => $materialTransactions,

@@ -35,25 +35,36 @@ class OperationalDailyProgressController extends Controller
         $carbonDate = Carbon::parse($date)->locale('id');
         $indonesianDayDate = $this->formatIndonesianDayDate($carbonDate);
 
-        // Ambil Data Area
-        $areas = Area::orderBy('name')->get(['id', 'name']);
+        $user = auth()->user();
+        $isGlobal = $user && ($user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->can('operational_progress_view_all'));
+        $accessibleAreaIds = (!$isGlobal && $user) ? $user->getAccessibleAreaIds() : null;
+
+        $targetAreaIds = null;
+        if ($areaId) {
+            $targetAreaIds = [(int) $areaId];
+        } elseif ($accessibleAreaIds !== null) {
+            $targetAreaIds = $accessibleAreaIds;
+        }
+
+        // Ambil Data Area sesuai scope
+        $areas = \App\Services\DataScopeService::getScopedAreas($user, 'operational_progress');
         $selectedArea = $areaId ? Area::find($areaId) : null;
-        $areaLabel = $selectedArea ? $selectedArea->name : 'Semua Wilayah / Area';
+        $areaLabel = $selectedArea ? $selectedArea->name : ($accessibleAreaIds !== null ? 'Wilayah Ditugaskan' : 'Semua Wilayah / Area');
 
         // 1. DATA GANGGUAN (PGS, PGK, PGJ)
-        $gangguanList = $this->getGangguanData($date, $areaId);
+        $gangguanList = $this->getGangguanData($date, $targetAreaIds);
 
         // 2. DATA PEMASANGAN BARU (INSTALASI)
-        $pemasanganList = $this->getPemasanganData($date, $areaId);
+        $pemasanganList = $this->getPemasanganData($date, $targetAreaIds);
 
         // 3. DATA SURVEY PELANGGAN BARU
-        $surveyList = $this->getSurveyData($date, $areaId);
+        $surveyList = $this->getSurveyData($date, $targetAreaIds);
 
         // 4. DATA PENCABUTAN / CBP
-        $cbpList = $this->getCbpData($date, $areaId);
+        $cbpList = $this->getCbpData($date, $targetAreaIds);
 
         // 5. STATUS TEKNISI (On Duty, Libur, Masuk Malam)
-        $technicianStatus = $this->getTechnicianStatus($date, $areaId);
+        $technicianStatus = $this->getTechnicianStatus($date, $targetAreaIds);
 
         // 6. RINGKASAN DATA
         $summary = [
@@ -193,9 +204,10 @@ class OperationalDailyProgressController extends Controller
     /**
      * Ambil Data Gangguan (PGS, PGK, PGJ)
      */
-    private function getGangguanData(string $date, ?string $areaId): array
+    private function getGangguanData(string $date, string|array|null $areaId): array
     {
         $items = [];
+        $areaIds = is_array($areaId) ? $areaId : ($areaId ? [$areaId] : []);
 
         // 1. PGS
         $pgsQuery = PgsTicket::with(['customer.ont.odp', 'technicians', 'leadTechnician', 'area'])
@@ -208,8 +220,8 @@ class OperationalDailyProgressController extends Controller
                   });
             });
 
-        if ($areaId) {
-            $pgsQuery->where('area_id', $areaId);
+        if (!empty($areaIds)) {
+            $pgsQuery->whereIn('area_id', $areaIds);
         }
 
         foreach ($pgsQuery->get() as $pgs) {
@@ -256,8 +268,8 @@ class OperationalDailyProgressController extends Controller
                   });
             });
 
-        if ($areaId) {
-            $pgkQuery->where('area_id', $areaId);
+        if (!empty($areaIds)) {
+            $pgkQuery->whereIn('area_id', $areaIds);
         }
 
         foreach ($pgkQuery->get() as $pgk) {
@@ -304,8 +316,8 @@ class OperationalDailyProgressController extends Controller
                   });
             });
 
-        if ($areaId) {
-            $pgjQuery->where('area_id', $areaId);
+        if (!empty($areaIds)) {
+            $pgjQuery->whereIn('area_id', $areaIds);
         }
 
         foreach ($pgjQuery->get() as $pgj) {
@@ -340,17 +352,18 @@ class OperationalDailyProgressController extends Controller
     /**
      * Ambil Data Pemasangan Baru (Instalasi)
      */
-    private function getPemasanganData(string $date, ?string $areaId): array
+    private function getPemasanganData(string $date, string|array|null $areaId): array
     {
         $items = [];
+        $areaIds = is_array($areaId) ? $areaId : ($areaId ? [$areaId] : []);
 
         // Ambil dari TechnicianSchedule type = 'installation'
         $scheduleQuery = TechnicianSchedule::with(['customer.ont.odp', 'customer.package', 'technician'])
             ->where('type', 'installation')
             ->whereDate('scheduled_date', $date);
 
-        if ($areaId) {
-            $scheduleQuery->whereHas('customer', fn($q) => $q->where('area_id', $areaId));
+        if (!empty($areaIds)) {
+            $scheduleQuery->whereHas('customer', fn($q) => $q->whereIn('area_id', $areaIds));
         }
 
         $seenCustomerIds = [];
@@ -390,8 +403,8 @@ class OperationalDailyProgressController extends Controller
                   });
             });
 
-        if ($areaId) {
-            $activeQuery->where('area_id', $areaId);
+        if (!empty($areaIds)) {
+            $activeQuery->whereIn('area_id', $areaIds);
         }
 
         foreach ($activeQuery->get() as $cust) {
@@ -419,18 +432,19 @@ class OperationalDailyProgressController extends Controller
     /**
      * Ambil Data Survey Pelanggan Baru
      */
-    private function getSurveyData(string $date, ?string $areaId): array
+    private function getSurveyData(string $date, string|array|null $areaId): array
     {
         $items = [];
+        $areaIds = is_array($areaId) ? $areaId : ($areaId ? [$areaId] : []);
 
         // 1. Dari model Survey
         $surveyQuery = Survey::with(['customer.package', 'odp', 'surveyor'])
             ->whereDate('survey_date', $date);
 
-        if ($areaId) {
-            $surveyQuery->where(function ($q) use ($areaId) {
-                $q->where('area_id', $areaId)
-                  ->orWhereHas('customer', fn($sq) => $sq->where('area_id', $areaId));
+        if (!empty($areaIds)) {
+            $surveyQuery->where(function ($q) use ($areaIds) {
+                $q->whereIn('area_id', $areaIds)
+                  ->orWhereHas('customer', fn($sq) => $sq->whereIn('area_id', $areaIds));
             });
         }
 
@@ -500,9 +514,10 @@ class OperationalDailyProgressController extends Controller
     /**
      * Ambil Data Pencabutan / CBP
      */
-    private function getCbpData(string $date, ?string $areaId): array
+    private function getCbpData(string $date, string|array|null $areaId): array
     {
         $items = [];
+        $areaIds = is_array($areaId) ? $areaId : ($areaId ? [$areaId] : []);
 
         $cbpQuery = CbpRequest::with(['customer.ont.odp', 'technicians'])
             ->where(function ($q) use ($date) {
@@ -511,8 +526,8 @@ class OperationalDailyProgressController extends Controller
                   ->orWhereDate('sent_to_schedule_at', $date);
             });
 
-        if ($areaId) {
-            $cbpQuery->whereHas('customer', fn($q) => $q->where('area_id', $areaId));
+        if (!empty($areaIds)) {
+            $cbpQuery->whereHas('customer', fn($q) => $q->whereIn('area_id', $areaIds));
         }
 
         foreach ($cbpQuery->get() as $cbp) {
@@ -545,8 +560,10 @@ class OperationalDailyProgressController extends Controller
     /**
      * Ambil Status Teknisi (On Duty, Libur, Masuk Malam)
      */
-    private function getTechnicianStatus(string $date, ?string $areaId): array
+    private function getTechnicianStatus(string $date, string|array|null $areaId): array
     {
+        $areaIds = is_array($areaId) ? $areaId : ($areaId ? [$areaId] : []);
+
         // 1. Ambil seluruh teknisi
         $allTechnicians = User::where(function ($q) {
             $q->whereHas('roles', function ($r) {
@@ -554,9 +571,9 @@ class OperationalDailyProgressController extends Controller
             })->orWhereIn('role', ['teknisi', 'kepala teknisi', 'maintenance']);
         });
 
-        if ($areaId) {
-            $allTechnicians->where(function ($q) use ($areaId) {
-                $q->where('area_id', $areaId)->orWhereNull('area_id');
+        if (!empty($areaIds)) {
+            $allTechnicians->where(function ($q) use ($areaIds) {
+                $q->whereIn('area_id', $areaIds)->orWhereNull('area_id');
             });
         }
 

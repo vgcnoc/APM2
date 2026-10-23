@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Odp;
 use App\Models\Ont;
 use App\Models\Area;
+use App\Services\DataScopeService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,15 +16,9 @@ class OntController extends Controller
 {
     public function index(Request $request): Response
     {
+        $user = $request->user();
         $baseQuery = Ont::query();
-        
-        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('network_ont_view_all')) {
-            if (auth()->user()->can('network_ont_view_area')) {
-                $baseQuery->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
-            } else {
-                $baseQuery->where('id', -1); // empty result if they don't have view permissions
-            }
-        }
+        DataScopeService::applyOntScope($baseQuery, $user);
 
         // Hitung statistik untuk cards
         $stats = [
@@ -82,7 +77,7 @@ class OntController extends Controller
             ->paginate($request->input('per_page', 15))
             ->withQueryString();
 
-        $areas = Area::all();
+        $areas = DataScopeService::getScopedAreas($user, 'network_ont');
 
         return Inertia::render('Infrastructure/Ont/Index', [
             'onts' => $onts,
@@ -314,13 +309,7 @@ class OntController extends Controller
         $query = Ont::query();
 
         // Scope check per role if not admin
-        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('network_ont_view_all')) {
-            if (auth()->user()->can('network_ont_view_area')) {
-                $query->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
-            } else {
-                return redirect()->back()->with('error', 'Anda tidak memiliki hak akses wilayah untuk menghapus data ONT.');
-            }
-        }
+        DataScopeService::applyOntScope($query, auth()->user());
 
         if (!empty($ids) && is_array($ids)) {
             $query->whereIn('id', $ids);

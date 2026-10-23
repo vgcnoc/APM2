@@ -164,7 +164,7 @@ class CustomerReportController extends Controller
                 ];
             });
 
-        $areas = Area::orderBy('name')->get(['id', 'name']);
+        $areas = \App\Services\DataScopeService::getScopedAreas(auth()->user(), 'customer_reports');
 
         return Inertia::render('CustomerReports/Index', [
             'month' => (int)$month,

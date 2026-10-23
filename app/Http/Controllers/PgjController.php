@@ -147,12 +147,23 @@ class PgjController extends Controller
             'completed' => (clone $baseCountQuery)->where('status', 'completed')->count(),
         ];
 
-        $areas = Area::withCount(['customers' => function($q) {
-            $q->whereIn('service_status', ['active', 'isolir']);
-        }])->orderBy('name')->get();
-        $olts = Olt::select('id', 'name', 'area_id', 'ip_address', 'location', 'total_pon_ports')->withCount('odcs')->orderBy('name')->get();
-        $odcs = Odc::withCount('odps')->orderBy('name')->get();
-        $odps = Odp::with('odc')->orderBy('name')->get();
+        $areas = DataScopeService::getScopedAreas($user, 'pgj', ['id', 'name'], function($q) {
+            $q->withCount(['customers' => function($cq) {
+                $cq->whereIn('service_status', ['active', 'isolir']);
+            }]);
+        });
+
+        $oltQuery = Olt::select('id', 'name', 'area_id', 'ip_address', 'location', 'total_pon_ports')->withCount('odcs')->orderBy('name');
+        DataScopeService::applyOltScope($oltQuery, $user);
+        $olts = $oltQuery->get();
+
+        $odcQuery = Odc::withCount('odps')->orderBy('name');
+        DataScopeService::applyOdcScope($odcQuery, $user);
+        $odcs = $odcQuery->get();
+
+        $odpQuery = Odp::with('odc')->orderBy('name');
+        DataScopeService::applyOdpScope($odpQuery, $user);
+        $odps = $odpQuery->get();
 
         $oltCustomerCounts = [];
         foreach ($olts as $o) {
@@ -160,7 +171,10 @@ class PgjController extends Controller
                 $q->where('olt_id', $o->id);
             })->whereIn('service_status', ['active', 'isolir'])->count();
         }
-        $totalActiveCustomers = Customer::whereIn('service_status', ['active', 'isolir'])->count();
+
+        $totalActiveCustQuery = Customer::whereIn('service_status', ['active', 'isolir']);
+        DataScopeService::applyCustomerScope($totalActiveCustQuery, $user);
+        $totalActiveCustomers = $totalActiveCustQuery->count();
 
         $technicians = User::whereHas('roles', function($q) {
             $q->whereIn('name', ['teknisi', 'kepala teknisi']);
@@ -326,7 +340,7 @@ class PgjController extends Controller
                          ->paginate(15)
                          ->withQueryString();
 
-        $areas = Area::orderBy('name')->get();
+        $areas = DataScopeService::getScopedAreas($user, 'pgj');
 
         $technicians = User::whereHas('roles', function($q) {
             $q->whereIn('name', ['teknisi', 'kepala teknisi']);
@@ -469,7 +483,7 @@ class PgjController extends Controller
         }
 
         $tickets = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
-        $areas = Area::orderBy('name')->get();
+        $areas = DataScopeService::getScopedAreas($user, 'pgj');
 
         return Inertia::render('Pgj/Laporan', [
             'tickets' => $tickets,

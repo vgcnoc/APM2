@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Odc;
 use App\Models\Olt;
+use App\Services\DataScopeService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,15 +16,9 @@ class OdcController extends Controller
 {
     public function index(Request $request): Response
     {
+        $user = $request->user();
         $baseQuery = Odc::query();
-
-        if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('network_odc_view_all')) {
-            if (auth()->user()->can('network_odc_view_area')) {
-                $baseQuery->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
-            } else {
-                $baseQuery->where('id', -1);
-            }
-        }
+        DataScopeService::applyOdcScope($baseQuery, $user);
 
         // Stats calculation
         $stats = [
@@ -114,10 +109,13 @@ class OdcController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
+        $oltQuery = Olt::where('status', 'active');
+        DataScopeService::applyOltScope($oltQuery, $user);
+
         return Inertia::render('Infrastructure/Odc/Index', [
             'odcs' => $odcs,
-            'olts' => Olt::where('status', 'active')->get(['id', 'name', 'total_pon_ports', 'area_id', 'pon_vlans']),
-            'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
+            'olts' => $oltQuery->get(['id', 'name', 'total_pon_ports', 'area_id', 'pon_vlans']),
+            'areas' => DataScopeService::getScopedAreas($user, 'network_odc'),
             'capacities' => $capacities,
             'types' => $types,
             'stats' => $stats,

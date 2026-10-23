@@ -37,8 +37,8 @@ class TechnicianMonitoringController extends Controller
 
         [$startDate, $endDate, $periodLabel] = $this->resolveDateRange($period, $customStart, $customEnd);
 
-        // Ambil Daftar Area
-        $areas = Area::orderBy('name')->get();
+        // Ambil Daftar Area sesuai scope hak akses
+        $areas = \App\Services\DataScopeService::getScopedAreas($user, 'monitoring_teknisi');
 
         // Ambil Daftar Teknisi
         $technicianQuery = User::where(function ($q) {

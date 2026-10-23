@@ -54,6 +54,11 @@ class DataScopeService
             $viewAllPerms[] = 'material_transactions_view_all';
             $viewAllPerms[] = 'materials_view_all';
         }
+        if (in_array($module, ['network_data', 'topology', 'radar', 'network_map'])) {
+            $viewAllPerms[] = 'network_olt_view_all';
+            $viewAllPerms[] = 'network_odp_view_all';
+            $viewAllPerms[] = 'ftth_view_all';
+        }
 
         foreach ($viewAllPerms as $perm) {
             if ($user->can($perm)) {
@@ -74,6 +79,11 @@ class DataScopeService
         if ($module === 'purchase_orders') {
             $viewAreaPerms[] = 'material_transactions_view_area';
             $viewAreaPerms[] = 'materials_view_area';
+        }
+        if (in_array($module, ['network_data', 'topology', 'radar', 'network_map'])) {
+            $viewAreaPerms[] = 'network_olt_view_area';
+            $viewAreaPerms[] = 'network_odp_view_area';
+            $viewAreaPerms[] = 'ftth_view_area';
         }
 
         foreach ($viewAreaPerms as $perm) {
@@ -110,24 +120,55 @@ class DataScopeService
     /**
      * Dapatkan koleksi Area yang berhak dilihat oleh user berdasarkan level scope modul
      */
-    public static function getScopedAreas(?User $user = null, string $module = 'cbp', array $columns = ['id', 'name']): \Illuminate\Database\Eloquent\Collection
-    {
+    public static function getScopedAreas(
+        ?User $user = null,
+        string $module = 'general',
+        array $columns = ['id', 'name'],
+        ?callable $queryCallback = null
+    ): \Illuminate\Database\Eloquent\Collection {
         $user = $user ?? auth()->user();
         if (!$user) {
-            return Area::select($columns)->orderBy('name')->get();
+            $q = Area::orderBy('name');
+            if (!empty($columns) && $columns !== ['*']) {
+                $q->select($columns);
+            }
+            if ($queryCallback) {
+                $queryCallback($q);
+            }
+            return $q->get();
         }
 
         $level = self::getScopeLevel($user, $module);
-        if ($level === 'all') {
-            return Area::select($columns)->orderBy('name')->get();
+        $q = Area::orderBy('name');
+        if (!empty($columns) && $columns !== ['*']) {
+            $q->select($columns);
         }
 
-        $accessibleAreas = $user->getAccessibleAreaIds();
-        if (empty($accessibleAreas)) {
-            return Area::whereRaw('1 = 0')->get();
+        if ($level !== 'all') {
+            $accessibleAreas = $user->getAccessibleAreaIds();
+            if (empty($accessibleAreas)) {
+                return Area::whereRaw('1 = 0')->get();
+            }
+            $q->whereIn('id', $accessibleAreas);
         }
 
-        return Area::whereIn('id', $accessibleAreas)->select($columns)->orderBy('name')->get();
+        if ($queryCallback) {
+            $queryCallback($q);
+        }
+
+        return $q->get();
+    }
+
+    /**
+     * Dapatkan array nama Area yang berhak dilihat oleh user
+     */
+    public static function getScopedAreaNames(?User $user = null, string $module = 'general'): array
+    {
+        return self::getScopedAreas($user, $module, ['id', 'name'])
+            ->pluck('name')
+            ->filter()
+            ->values()
+            ->toArray();
     }
 
     /**
@@ -264,7 +305,12 @@ class DataScopeService
 
         if ($level === 'area') {
             $accessibleAreas = $user->getAccessibleAreaIds();
-            return $query->whereIn('area_id', $accessibleAreas);
+            return $query->where(function ($q) use ($accessibleAreas) {
+                $q->whereIn('area_id', $accessibleAreas)
+                  ->orWhereHas('olt', fn($oq) => $oq->whereIn('area_id', $accessibleAreas))
+                  ->orWhereHas('odc', fn($odcq) => $odcq->whereIn('area_id', $accessibleAreas))
+                  ->orWhereHas('odp', fn($odpq) => $odpq->whereIn('area_id', $accessibleAreas));
+            });
         }
 
         // Level: 'own' (Dibuat oleh user, ditugaskan sebagai lead, atau anggota teknisi pelaksana)
@@ -293,9 +339,15 @@ class DataScopeService
 
         if ($level === 'area') {
             $accessibleAreas = $user->getAccessibleAreaIds();
-            return $query->where(function ($q) use ($accessibleAreas) {
+            $areaNames = Area::whereIn('id', $accessibleAreas)->pluck('name')->filter()->toArray();
+            return $query->where(function ($q) use ($accessibleAreas, $areaNames) {
                 $q->whereIn('area_id', $accessibleAreas)
-                  ->orWhereHas('customer', fn($cq) => $cq->whereIn('area_id', $accessibleAreas));
+                  ->orWhereHas('customer', function ($cq) use ($accessibleAreas, $areaNames) {
+                      $cq->whereIn('area_id', $accessibleAreas);
+                      if (!empty($areaNames)) {
+                          $cq->orWhereIn('area', $areaNames);
+                      }
+                  });
             });
         }
 
@@ -325,9 +377,15 @@ class DataScopeService
 
         if ($level === 'area') {
             $accessibleAreas = $user->getAccessibleAreaIds();
-            return $query->where(function ($q) use ($accessibleAreas) {
+            $areaNames = Area::whereIn('id', $accessibleAreas)->pluck('name')->filter()->toArray();
+            return $query->where(function ($q) use ($accessibleAreas, $areaNames) {
                 $q->whereIn('area_id', $accessibleAreas)
-                  ->orWhereHas('customer', fn($cq) => $cq->whereIn('area_id', $accessibleAreas));
+                  ->orWhereHas('customer', function ($cq) use ($accessibleAreas, $areaNames) {
+                      $cq->whereIn('area_id', $accessibleAreas);
+                      if (!empty($areaNames)) {
+                          $cq->orWhereIn('area', $areaNames);
+                      }
+                  });
             });
         }
 
@@ -337,6 +395,91 @@ class DataScopeService
                 ->orWhere('lead_technician_id', $user->id)
                 ->orWhereHas('technicians', fn($tq) => $tq->where('users.id', $user->id));
         });
+    }
+
+    /**
+     * Terapkan filter scope pada query OLT
+     */
+    public static function applyOltScope(Builder $query, ?User $user = null): Builder
+    {
+        $user = $user ?? auth()->user();
+        if (!$user) return $query;
+        $level = self::getScopeLevel($user, 'network_olt');
+        if ($level === 'all') return $query;
+
+        $accessibleAreas = $user->getAccessibleAreaIds();
+        if (empty($accessibleAreas)) return $query->whereRaw('1 = 0');
+        return $query->whereIn('area_id', $accessibleAreas);
+    }
+
+    /**
+     * Terapkan filter scope pada query ODC
+     */
+    public static function applyOdcScope(Builder $query, ?User $user = null): Builder
+    {
+        $user = $user ?? auth()->user();
+        if (!$user) return $query;
+        $level = self::getScopeLevel($user, 'network_odc');
+        if ($level === 'all') return $query;
+
+        $accessibleAreas = $user->getAccessibleAreaIds();
+        if (empty($accessibleAreas)) return $query->whereRaw('1 = 0');
+        return $query->where(function ($q) use ($accessibleAreas) {
+            $q->whereIn('area_id', $accessibleAreas)
+              ->orWhereHas('olt', fn($oq) => $oq->whereIn('area_id', $accessibleAreas));
+        });
+    }
+
+    /**
+     * Terapkan filter scope pada query ODP
+     */
+    public static function applyOdpScope(Builder $query, ?User $user = null): Builder
+    {
+        $user = $user ?? auth()->user();
+        if (!$user) return $query;
+        $level = self::getScopeLevel($user, 'network_odp');
+        if ($level === 'all') return $query;
+
+        $accessibleAreas = $user->getAccessibleAreaIds();
+        if (empty($accessibleAreas)) return $query->whereRaw('1 = 0');
+        return $query->where(function ($q) use ($accessibleAreas) {
+            $q->whereIn('area_id', $accessibleAreas)
+              ->orWhereHas('odc', fn($odcq) => $odcq->whereIn('area_id', $accessibleAreas));
+        });
+    }
+
+    /**
+     * Terapkan filter scope pada query ONT
+     */
+    public static function applyOntScope(Builder $query, ?User $user = null): Builder
+    {
+        $user = $user ?? auth()->user();
+        if (!$user) return $query;
+        $level = self::getScopeLevel($user, 'network_ont');
+        if ($level === 'all') return $query;
+
+        $accessibleAreas = $user->getAccessibleAreaIds();
+        if (empty($accessibleAreas)) return $query->whereRaw('1 = 0');
+        return $query->where(function ($q) use ($accessibleAreas) {
+            $q->whereIn('area_id', $accessibleAreas)
+              ->orWhereHas('odp', fn($odpq) => $odpq->whereIn('area_id', $accessibleAreas))
+              ->orWhereHas('customer', fn($cq) => $cq->whereIn('area_id', $accessibleAreas));
+        });
+    }
+
+    /**
+     * Terapkan filter scope pada query FTTH Design
+     */
+    public static function applyFtthScope(Builder $query, ?User $user = null): Builder
+    {
+        $user = $user ?? auth()->user();
+        if (!$user) return $query;
+        $level = self::getScopeLevel($user, 'ftth');
+        if ($level === 'all') return $query;
+
+        $accessibleAreas = $user->getAccessibleAreaIds();
+        if (empty($accessibleAreas)) return $query->whereRaw('1 = 0');
+        return $query->whereIn('area_id', $accessibleAreas);
     }
 
     /**

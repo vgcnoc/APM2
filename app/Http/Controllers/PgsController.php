@@ -122,20 +122,24 @@ class PgsController extends Controller
 
         $tickets = $query->latest('id')->paginate($request->per_page ?? 15)->withQueryString();
 
-        // Statistics / counts
+        // Statistics / counts dengan cakupan hak akses
+        $baseCountQuery = PgsTicket::query();
+        DataScopeService::applyPgsScope($baseCountQuery, $user);
+
         $counts = [
-            'all' => PgsTicket::count(),
-            'admin_handling' => PgsTicket::where('status', 'admin_handling')->count(),
-            'escalated_to_lead' => PgsTicket::where('status', 'escalated_to_lead')->count(),
-            'scheduled' => PgsTicket::where('status', 'scheduled')->count(),
-            'in_progress' => PgsTicket::where('status', 'in_progress')->count(),
-            'completed' => PgsTicket::whereIn('status', ['completed', 'resolved_by_admin'])->count(),
+            'all' => (clone $baseCountQuery)->count(),
+            'admin_handling' => (clone $baseCountQuery)->where('status', 'admin_handling')->count(),
+            'escalated_to_lead' => (clone $baseCountQuery)->where('status', 'escalated_to_lead')->count(),
+            'scheduled' => (clone $baseCountQuery)->where('status', 'scheduled')->count(),
+            'in_progress' => (clone $baseCountQuery)->where('status', 'in_progress')->count(),
+            'completed' => (clone $baseCountQuery)->whereIn('status', ['completed', 'resolved_by_admin'])->count(),
         ];
 
-        $customers = Customer::whereIn('status', ['active', 'suspended', 'isolir', 'installing'])
+        $customerQuery = Customer::whereIn('status', ['active', 'suspended', 'isolir', 'installing'])
             ->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'area', 'package_id')
-            ->with(['package:id,name', 'areaModel:id,name', 'ont:id,customer_id,serial_number,status,rx_power,odp_id', 'ont.odp:id,name'])
-            ->get();
+            ->with(['package:id,name', 'areaModel:id,name', 'ont:id,customer_id,serial_number,status,rx_power,odp_id', 'ont.odp:id,name']);
+        DataScopeService::applyCustomerScope($customerQuery, $user);
+        $customers = $customerQuery->get();
 
         $technicians = User::role(['teknisi', 'kepala teknisi'])->select('id', 'name', 'phone')->get();
         if ($technicians->isEmpty()) {
@@ -148,7 +152,7 @@ class PgsController extends Controller
         }
 
         $materials = Material::select('id', 'name', 'category', 'unit', 'stock')->where('stock', '>', 0)->get();
-        $areas = Area::select('id', 'name')->orderBy('name')->get();
+        $areas = DataScopeService::getScopedAreas($user, 'pgs');
 
         return Inertia::render('Pgs/Index', [
             'tickets' => $tickets,
@@ -364,12 +368,13 @@ class PgsController extends Controller
             ->orderBy('name')
             ->get();
         $materialTransactions = RestockStockService::getRestockTransactions();
-        $areas = Area::select('id', 'name')->orderBy('name')->get();
-        $availableOnts = Ont::whereNull('customer_id')
+        $areas = DataScopeService::getScopedAreas($user, 'pgs');
+        $ontQuery = Ont::whereNull('customer_id')
             ->whereIn('status', ['Sudah Set', 'Belum Set/Baru Input'])
             ->select('id', 'ont_id', 'serial_number', 'brand', 'model', 'status', 'area_id')
-            ->orderBy('serial_number')
-            ->get();
+            ->orderBy('serial_number');
+        DataScopeService::applyOntScope($ontQuery, $user);
+        $availableOnts = $ontQuery->get();
 
         return Inertia::render('Pgs/Jadwal', [
             'tickets' => $tickets,
@@ -561,12 +566,13 @@ class PgsController extends Controller
 
         $materials = Material::select('id', 'name', 'category', 'unit', 'stock')->get();
         $materialTransactions = RestockStockService::getRestockTransactions();
-        $areas = Area::select('id', 'name')->orderBy('name')->get();
-        $availableOnts = Ont::whereNull('customer_id')
+        $areas = DataScopeService::getScopedAreas($user, 'pgs');
+        $ontQuery = Ont::whereNull('customer_id')
             ->whereIn('status', ['Sudah Set', 'Belum Set/Baru Input'])
             ->select('id', 'ont_id', 'serial_number', 'brand', 'model', 'status', 'area_id')
-            ->orderBy('serial_number')
-            ->get();
+            ->orderBy('serial_number');
+        DataScopeService::applyOntScope($ontQuery, $user);
+        $availableOnts = $ontQuery->get();
 
         return Inertia::render('Pgs/Laporan', [
             'tickets' => $tickets,

@@ -8,6 +8,7 @@ use App\Models\Odp;
 use App\Models\Ont;
 use App\Models\Area;
 use App\Models\Customer;
+use App\Services\DataScopeService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -31,6 +32,7 @@ class NetworkDataController extends Controller
 
         // Base ODP query with relations
         $odpQuery = Odp::with(['odc.olt', 'area', 'onts.customer.latestCbpRequest.technicians', 'surveys.customer']);
+        DataScopeService::applyOdpScope($odpQuery, $user);
 
         // Apply filters
         if ($oltId) {
@@ -72,27 +74,52 @@ class NetworkDataController extends Controller
 
         $odps = $odpQuery->get();
 
-        // Analytics/Stats
-        $totalOdc = Odc::count();
-        $totalOdp = Odp::count();
-        $totalPort = Odp::sum('total_ports');
-        $portTerpakai = Odp::sum('used_ports');
+        // Analytics/Stats with data scope
+        $baseOdcQuery = Odc::query();
+        DataScopeService::applyOdcScope($baseOdcQuery, $user);
+        $totalOdc = $baseOdcQuery->count();
+
+        $baseOdpQuery = Odp::query();
+        DataScopeService::applyOdpScope($baseOdpQuery, $user);
+        $totalOdp = (clone $baseOdpQuery)->count();
+        $totalPort = (clone $baseOdpQuery)->sum('total_ports');
+        $portTerpakai = (clone $baseOdpQuery)->sum('used_ports');
         $portTersedia = max(0, $totalPort - $portTerpakai);
 
-        $pelangganAktif = Customer::where('status', 'active')->count();
-        $pelangganGratis = Customer::where('service_status', 'gratis')->where('status', 'active')->count();
-        $pelangganOffline = Customer::where('status', 'suspended')->count() + Customer::where('status', 'terminated')->count();
-        $stopPermanen = Customer::where('status', 'terminated')->count();
-        $totalProsesCbp = \App\Models\CbpRequest::whereIn('status', ['pending', 'assigned'])->count();
+        $baseCustomerQuery = Customer::query();
+        DataScopeService::applyCustomerScope($baseCustomerQuery, $user);
+
+        $pelangganAktif = (clone $baseCustomerQuery)->where('status', 'active')->count();
+        $pelangganGratis = (clone $baseCustomerQuery)->where('service_status', 'gratis')->where('status', 'active')->count();
+        $pelangganOffline = (clone $baseCustomerQuery)->whereIn('status', ['suspended', 'terminated'])->count();
+        $stopPermanen = (clone $baseCustomerQuery)->where('status', 'terminated')->count();
+
+        $baseCbpQuery = \App\Models\CbpRequest::whereIn('status', ['pending', 'assigned']);
+        DataScopeService::applyCbpScope($baseCbpQuery, $user);
+        $totalProsesCbp = (clone $baseCbpQuery)->count();
         
-        $terminatedCustomers = Customer::where('status', 'terminated')->with(['ont.odp', 'latestCbpRequest.technicians'])->get();
-        $cbpRequests = \App\Models\CbpRequest::whereIn('status', ['pending', 'assigned'])->with(['customer', 'technicians'])->get();
+        $termCustQuery = Customer::where('status', 'terminated')->with(['ont.odp', 'latestCbpRequest.technicians']);
+        DataScopeService::applyCustomerScope($termCustQuery, $user);
+        $terminatedCustomers = $termCustQuery->get();
+
+        $cbpQuery = \App\Models\CbpRequest::whereIn('status', ['pending', 'assigned'])->with(['customer', 'technicians']);
+        DataScopeService::applyCbpScope($cbpQuery, $user);
+        $cbpRequests = $cbpQuery->get();
+
+        $oltFilterQuery = Olt::query();
+        DataScopeService::applyOltScope($oltFilterQuery, $user);
+
+        $odcFilterQuery = Odc::query();
+        DataScopeService::applyOdcScope($odcFilterQuery, $user);
+
+        $odpFilterQuery = Odp::query();
+        DataScopeService::applyOdpScope($odpFilterQuery, $user);
 
         return Inertia::render('NetworkData/Index', [
-            'olts' => Olt::all(),
-            'odcs' => Odc::all(),
-            'odps_filter' => Odp::all(),
-            'areas' => Area::all(),
+            'olts' => $oltFilterQuery->get(),
+            'odcs' => $odcFilterQuery->get(),
+            'odps_filter' => $odpFilterQuery->get(),
+            'areas' => DataScopeService::getScopedAreas($user, 'network_data'),
             'odps' => $odps,
             'stats' => [
                 'total_odc' => $totalOdc,

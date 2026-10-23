@@ -13,6 +13,7 @@ use App\Models\Odc;
 use App\Models\Odp;
 use App\Models\Olt;
 use App\Models\Ont;
+use App\Services\DataScopeService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -20,22 +21,46 @@ class FtthController extends Controller
 {
     public function index(Request $request)
     {
-        $areas = Area::orderBy('name')->get();
+        $user = $request->user();
+        $areas = DataScopeService::getScopedAreas($user, 'ftth');
+
+        $oltQuery = Olt::query();
+        $odcQuery = Odc::query();
+        $odpQuery = Odp::query();
+        $customerQuery = Customer::where('status', 'active');
+        $designQuery = FtthDesign::with(['area', 'creator']);
+
+        DataScopeService::applyOltScope($oltQuery, $user);
+        DataScopeService::applyOdcScope($odcQuery, $user);
+        DataScopeService::applyOdpScope($odpQuery, $user);
+        DataScopeService::applyCustomerScope($customerQuery, $user);
+        DataScopeService::applyFtthScope($designQuery, $user);
 
         // Summary stats
         $summary = [
-            'olts' => Olt::count(),
-            'odcs' => Odc::count(),
-            'odps' => Odp::count(),
-            'customers' => Customer::where('status', 'active')->count(),
+            'olts' => $oltQuery->count(),
+            'odcs' => $odcQuery->count(),
+            'odps' => $odpQuery->count(),
+            'customers' => $customerQuery->count(),
             'total_cable_km' => round(FtthCableRoute::sum('distance') / 1000, 1),
             'materials' => Material::count(),
-            'areas' => Area::count(),
-            'designs' => FtthDesign::count(),
+            'areas' => $areas->count(),
+            'designs' => (clone $designQuery)->count(),
         ];
 
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $designQuery->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+        if ($request->filled('area_id')) {
+            $designQuery->where('area_id', $request->area_id);
+        }
+
         // Designs list
-        $designs = FtthDesign::with(['area', 'creator'])
+        $designs = $designQuery
             ->latest()
             ->paginate(10)
             ->withQueryString();
@@ -53,6 +78,7 @@ class FtthController extends Controller
      */
     public function mapData(Request $request)
     {
+        $user = $request->user();
         $areaId = $request->area_id;
 
         $oltsQuery = Olt::with('area')->whereNotNull('latitude')->whereNotNull('longitude');
@@ -61,6 +87,11 @@ class FtthController extends Controller
         $customersQuery = Customer::where('status', 'active')
             ->whereNotNull('latitude')->whereNotNull('longitude')
             ->select('id', 'customer_code', 'name', 'address', 'latitude', 'longitude', 'area_id', 'status');
+
+        DataScopeService::applyOltScope($oltsQuery, $user);
+        DataScopeService::applyOdcScope($odcsQuery, $user);
+        DataScopeService::applyOdpScope($odpsQuery, $user);
+        DataScopeService::applyCustomerScope($customersQuery, $user);
 
         if ($areaId) {
             $oltsQuery->where('area_id', $areaId);

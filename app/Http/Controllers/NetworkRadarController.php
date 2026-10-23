@@ -8,6 +8,7 @@ use App\Models\Odc;
 use App\Models\Odp;
 use App\Models\Customer;
 use App\Models\Ont;
+use App\Services\DataScopeService;
 
 class NetworkRadarController extends Controller
 {
@@ -18,20 +19,24 @@ class NetworkRadarController extends Controller
             abort(403, 'Anda tidak memiliki hak akses ke menu Radar Tikor Jaringan.');
         }
 
-        $odcs = Odc::select('id', 'name', 'latitude', 'longitude', 'location as address', 'capacity', 'status', 'area_id')
+        $odcQuery = Odc::select('id', 'name', 'latitude', 'longitude', 'location as address', 'capacity', 'status', 'area_id')
             ->with(['area:id,name'])
-            ->withCount('odps')
-            ->get();
+            ->withCount('odps');
+        DataScopeService::applyOdcScope($odcQuery, $user);
+        $odcs = $odcQuery->get();
 
-        $odps = Odp::select('id', 'name', 'latitude', 'longitude', 'address', 'odc_id', 'area_id', 'total_ports', 'used_ports', 'status')
-            ->with(['odc:id,name', 'area:id,name'])
-            ->get();
+        $odpQuery = Odp::select('id', 'name', 'latitude', 'longitude', 'address', 'odc_id', 'area_id', 'total_ports', 'used_ports', 'status')
+            ->with(['odc:id,name', 'area:id,name']);
+        DataScopeService::applyOdpScope($odpQuery, $user);
+        $odps = $odpQuery->get();
 
-        $customers = Customer::select('id', 'name', 'customer_code', 'latitude', 'longitude', 'address', 'is_reseller', 'status', 'service_status', 'area_id')
+        $customerQuery = Customer::select('id', 'name', 'customer_code', 'latitude', 'longitude', 'address', 'is_reseller', 'status', 'service_status', 'area_id', 'area')
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
-            ->with(['ont.odp:id,name,odc_id', 'areaModel:id,name'])
-            ->get()
+            ->with(['ont.odp:id,name,odc_id', 'areaModel:id,name']);
+        DataScopeService::applyCustomerScope($customerQuery, $user);
+
+        $customers = $customerQuery->get()
             ->map(function ($customer) {
                 $arr = $customer->toArray();
                 $arr['odp'] = $customer->ont ? $customer->ont->odp : null;
@@ -42,7 +47,7 @@ class NetworkRadarController extends Controller
                 return $arr;
             });
 
-        $areas = \App\Models\Area::select('id', 'name')->orderBy('name')->get();
+        $areas = DataScopeService::getScopedAreas($user, 'radar');
 
         // Aktivitas Karyawan (Absensi GPS & Tugas Luar Hari Ini / Terkini)
         $employeeActivities = collect();

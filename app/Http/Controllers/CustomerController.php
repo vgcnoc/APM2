@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\Invoice;
 use App\Models\Setting;
 use App\Services\RadiusService;
+use App\Services\DataScopeService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -124,11 +125,19 @@ class CustomerController extends Controller
             ->paginate($request->per_page ?? 10)
             ->withQueryString();
 
+        $odpFilterQuery = class_exists('\App\Models\Odp') ? \App\Models\Odp::orderBy('name') : null;
+        if ($odpFilterQuery) {
+            DataScopeService::applyOdpScope($odpFilterQuery, $request->user());
+            $odpsList = $odpFilterQuery->get();
+        } else {
+            $odpsList = [];
+        }
+
         return Inertia::render('Customers/Index', [
             'customers' => $customers,
             'packages' => InternetPackage::active()->get(),
-            'areas' => \App\Models\Area::orderBy('name')->get(),
-            'odps' => class_exists('\App\Models\Odp') ? \App\Models\Odp::orderBy('name')->get() : [],
+            'areas' => DataScopeService::getScopedAreas($request->user(), 'customers_all'),
+            'odps' => $odpsList,
             'officers' => \App\Models\User::where('is_on_duty', true)->get(['id', 'name', 'phone', 'role']),
             'filters' => $request->only(['search', 'status', 'service_status', 'package_id', 'area_id', 'odp_id', 'sort_by']),
             'stats' => [
@@ -376,7 +385,7 @@ class CustomerController extends Controller
 
         return Inertia::render('Customers/Online', [
             'customers' => $paginated,
-            'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
+            'areas' => DataScopeService::getScopedAreas($request->user(), 'customers_all'),
             'packages' => InternetPackage::where('access_mode', '!=', 'voucher')->orderBy('name')->get(['id', 'name']),
             'filters' => [
                 'search' => $request->search,
@@ -481,7 +490,7 @@ class CustomerController extends Controller
         return Inertia::render('Customers/Gratis', [
             'customers' => $customers,
             'packages' => InternetPackage::active()->get(['id', 'name', 'speed_mbps', 'price', 'access_mode']),
-            'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
+            'areas' => DataScopeService::getScopedAreas($request->user(), 'customers_all'),
             'filters' => $request->only(['search', 'area_id', 'package_id', 'status', 'connection_status', 'access_mode']),
             'onlineUsernames' => $onlineUsernames,
             'stats' => [
@@ -556,7 +565,7 @@ class CustomerController extends Controller
         return Inertia::render('Customers/FreeHome', [
             'customers' => $customers,
             'packages' => InternetPackage::active()->get(['id', 'name', 'speed_mbps', 'price']),
-            'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
+            'areas' => DataScopeService::getScopedAreas($request->user(), 'customers_all'),
             'filters' => $request->only(['search', 'area_id', 'status']),
             'onlineUsernames' => $onlineUsernames,
             'stats' => [
@@ -682,8 +691,8 @@ class CustomerController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        // Get all areas for dropdown
-        $areas = \App\Models\Area::orderBy('name')->pluck('name')->toArray();
+        // Get scoped areas for dropdown
+        $areas = DataScopeService::getScopedAreaNames($request->user(), 'customers_all');
 
         // Calculate statistics based on the current filtered view
         $stats = [
@@ -862,8 +871,8 @@ class CustomerController extends Controller
         // Ambil semua user yang aktif (sesuai request untuk menampilkan semua karyawan)
         $technicians = User::where('is_active', true)->get();
 
-        // Get all areas for dropdown
-        $areas = \App\Models\Area::orderBy('name')->pluck('name')->toArray();
+        // Get scoped areas for dropdown
+        $areas = DataScopeService::getScopedAreaNames($request->user(), 'customers_all');
 
         $openCustomer = null;
         if ($request->filled('open_report')) {
@@ -1022,7 +1031,7 @@ class CustomerController extends Controller
             ->orderBy('name')
             ->get();
 
-        $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
+        $areas = DataScopeService::getScopedAreas($request->user(), 'customers_all');
 
         return Inertia::render('Customers/Installed', [
             'customers' => $customers,
@@ -1128,7 +1137,7 @@ class CustomerController extends Controller
             'customers' => $customers,
             'stats' => $stats,
             'packages' => \App\Models\InternetPackage::orderBy('price')->get(['id', 'name', 'price']),
-            'areas' => \App\Models\Area::orderBy('name')->pluck('name')->toArray(),
+            'areas' => DataScopeService::getScopedAreaNames($request->user(), 'customers_all'),
             'filters' => array_merge(['tab' => $currentTab], $request->only(['search', 'tab', 'date', 'area', 'date_from', 'date_to'])),
             'taxSettings' => [
                 'tax_ppn' => \App\Models\Setting::get('tax_ppn', '0'),
@@ -1258,7 +1267,7 @@ class CustomerController extends Controller
         return Inertia::render('Customers/Terminated', [
             'customers' => $customers,
             'packages' => InternetPackage::active()->get(['id', 'name', 'price']),
-            'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
+            'areas' => DataScopeService::getScopedAreas($request->user(), 'customers_all'),
             'stats' => $stats,
             'filters' => array_merge($request->only(['search', 'area_id', 'package_id', 'ont_status', 'billing_status']), ['tab' => $tab]),
             'company' => [
@@ -1442,7 +1451,7 @@ class CustomerController extends Controller
      */
     public function create(): Response
     {
-        $areas = \App\Models\Area::pluck('name');
+        $areas = DataScopeService::getScopedAreaNames(request()->user(), 'customers_all');
         
         $sales = User::where('is_active', true)
             ->whereNotIn('role', ['customer'])
@@ -1646,7 +1655,7 @@ class CustomerController extends Controller
             'availableOnts' => Ont::where('status', 'Sudah Set')->whereNull('customer_id')->get(),
             'technicians' => User::where('is_active', true)->orderBy('name')->get(['id', 'name', 'phone', 'role']),
             'packages' => InternetPackage::active()->get(),
-            'areas' => \App\Models\Area::orderBy('name')->get(),
+            'areas' => DataScopeService::getScopedAreas(request()->user(), 'customers_all'),
             'salesUsers' => User::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'materials' => \App\Models\Material::orderBy('name')->get(),
             'materialRequests' => $materialRequests,
@@ -1765,7 +1774,7 @@ class CustomerController extends Controller
     {
         $customer->load(['ont.odp', 'package']);
         
-        $areas = \App\Models\Area::pluck('name');
+        $areas = DataScopeService::getScopedAreaNames(request()->user(), 'customers_all');
 
         $sales = User::where('is_active', true)
             ->whereNotIn('role', ['customer'])

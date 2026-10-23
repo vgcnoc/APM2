@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Area;
 use App\Models\Olt;
+use App\Services\DataScopeService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -11,6 +12,7 @@ class NetworkTopologyController extends Controller
 {
     public function index(Request $request)
     {
+        $user = $request->user();
         $areaId = $request->input('area_id');
 
         $query = Olt::with([
@@ -20,12 +22,14 @@ class NetworkTopologyController extends Controller
             'pons.odcs.area'
         ]);
 
+        DataScopeService::applyOltScope($query, $user);
+
         if ($areaId) {
             $query->where('area_id', $areaId);
         }
 
         $olts = $query->get();
-        $areas = Area::all();
+        $areas = DataScopeService::getScopedAreas($user, 'topology');
 
         return Inertia::render('Infrastructure/Topology/Index', [
             'olts' => $olts,
