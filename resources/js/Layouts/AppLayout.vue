@@ -1037,18 +1037,28 @@ const menuItems = [
     {
         type: 'dropdown',
         icon: 'archive',
-        label: 'Inventaris & Stok',
+        label: 'Material & Stok Gudang',
         theme: 'brown',
-        active: (url) => ['/materials', '/material-transactions', '/material-mutations', '/material-handovers', '/warehouse-stocks', '/order-toko', '/produk'].some(path => (url || '').startsWith(path)),
-        permission: ['menu_materials', 'menu_inventory', 'menu_material_transactions', 'menu_material_handovers'],
+        active: (url) => ['/materials', '/warehouse-stocks', '/order-toko', '/produk'].some(path => (url || '').startsWith(path)),
+        permission: ['menu_materials', 'menu_warehouse_stocks', 'menu_purchase_orders', 'menu_products'],
         children: [
-            { href: '/materials', label: 'Data Material & Stok', active: (url) => (url || '').startsWith('/materials'), permission: 'menu_materials' },
-            { href: '/material-transactions', label: 'Surat Jalan & Pengambilan', active: (url) => (url || '').startsWith('/material-transactions'), permission: 'menu_material_transactions' },
-            { href: '/material-mutations', label: 'Mutasi & Kondisi Barang', active: (url) => (url || '').startsWith('/material-mutations'), permission: 'menu_materials' },
-            { href: '/material-handovers', label: 'Serah Terima & Retur', active: (url) => (url || '').startsWith('/material-handovers'), permission: 'menu_material_handovers' },
-            { href: '/warehouse-stocks', label: 'Stok Barang Gudang', active: (url) => (url || '').startsWith('/warehouse-stocks'), permission: 'menu_materials' },
-            { href: '/order-toko', label: 'Order Toko (Restock)', active: (url) => (url || '').startsWith('/order-toko'), permission: 'menu_materials' },
-            { href: '/produk', label: 'Katalog Produk', active: (url) => (url || '').startsWith('/produk'), permission: 'menu_materials' },
+            { href: '/materials', label: 'Data Material & Stok', active: (url) => (url || '').startsWith('/materials'), permission: ['menu_materials', 'menu_warehouse_stocks'] },
+            { href: '/warehouse-stocks', label: 'Stok Barang per Area', active: (url) => (url || '').startsWith('/warehouse-stocks'), permission: ['menu_warehouse_stocks', 'menu_materials'] },
+            { href: '/produk', label: 'Katalog Produk & Satuan', active: (url) => (url || '').startsWith('/produk'), permission: ['menu_products', 'menu_materials'] },
+            { href: '/order-toko', label: 'Order Toko (Restock)', active: (url) => (url || '').startsWith('/order-toko'), permission: ['menu_purchase_orders', 'menu_materials'] },
+        ]
+    },
+    {
+        type: 'dropdown',
+        icon: 'truck',
+        label: 'Sirkulasi & Lapangan',
+        theme: 'brown',
+        active: (url) => ['/material-transactions', '/material-handovers', '/material-mutations'].some(path => (url || '').startsWith(path)),
+        permission: ['menu_material_transactions', 'menu_material_handovers', 'menu_material_mutations', 'menu_materials'],
+        children: [
+            { href: '/material-transactions', label: 'Surat Jalan & Pengambilan', active: (url) => (url || '').startsWith('/material-transactions'), permission: ['menu_material_transactions', 'menu_materials'] },
+            { href: '/material-handovers', label: 'Serah Terima & Retur', active: (url) => (url || '').startsWith('/material-handovers'), permission: ['menu_material_handovers', 'menu_materials'] },
+            { href: '/material-mutations', label: 'Mutasi & Kondisi Barang', active: (url) => (url || '').startsWith('/material-mutations'), permission: ['menu_material_mutations', 'menu_materials'] },
         ]
     },
 
@@ -1334,6 +1344,7 @@ const iconPaths = {
     sparkles: 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.286L13 21l-2.286-6.857L5 12l5.714-2.286L13 3z',
     'presentation-chart-line': 'M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z',
     'desktop-computer': 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
+    truck: 'M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h2',
     home: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6'
 };
 </script>

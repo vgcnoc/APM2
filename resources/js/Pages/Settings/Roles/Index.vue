@@ -747,7 +747,9 @@ const categoryMap = {
         'Monitoring Kinerja Teknisi',
     ],
     'gudang': [
+        'Material & Stok Gudang',
         'Material & Logistik Gudang',
+        'Sirkulasi Material Lapangan',
         'Serah Terima & Request Material Lapangan',
     ],
     'hrd': [
@@ -1055,6 +1057,12 @@ const availablePresets = [
         desc: 'Broadcast pesan cerdas WhatsApp blast, promosi pelanggan, dan pengelolaan mitra afiliasi & komisi.',
     },
     {
+        key: 'gudang',
+        emoji: '📦',
+        title: 'Logistik & Gudang',
+        desc: 'Master data material & stok cabang, surat jalan pengambilan teknisi, retur, dan order toko.',
+    },
+    {
         key: 'finance',
         emoji: '💰',
         title: 'Finance & Keuangan',
@@ -1113,6 +1121,7 @@ const applyPreset = (presetName) => {
         if (key.includes('teknisi')) matchingKey = 'teknisi';
         else if (key.includes('cs') || key.includes('customer')) matchingKey = 'cs';
         else if (key.includes('marketing') || key.includes('komunikasi') || key.includes('marcom')) matchingKey = 'marketing';
+        else if (key.includes('gudang') || key.includes('logistik') || key.includes('inventory')) matchingKey = 'gudang';
         else if (key.includes('sales')) matchingKey = 'sales';
         else if (key.includes('finance') || key.includes('keuangan')) matchingKey = 'finance';
         else if (key.includes('noc')) matchingKey = 'noc';
