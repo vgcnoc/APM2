@@ -835,7 +835,7 @@ class PermissionRegistry
             // ── 19. MARKETING & AFILIASI ─────────────────────────────
             [
                 'group' => 'Marketing Afiliasi & Komisi',
-                'category' => 'voucher',
+                'category' => 'marketing',
                 'icon' => 'gift',
                 'menu_parent' => 'menu_marketing_affiliates',
                 'permissions' => [
@@ -853,7 +853,7 @@ class PermissionRegistry
             // ── 20. WHATSAPP GATEWAY & BLAST ─────────────────────────
             [
                 'group' => 'WhatsApp Gateway & Smart Blast',
-                'category' => 'whatsapp',
+                'category' => 'marketing',
                 'icon' => 'zap',
                 'menu_parent' => 'menu_whatsapp_blast',
                 'permissions' => [
@@ -1288,9 +1288,27 @@ class PermissionRegistry
                 'payroll_categories_manage', 'master_fees_manage',
                 'payroll_view_all', 'payroll_field_salary_edit', 'payroll_field_bank_view',
             ],
+            'marketing' => [
+                'menu_dashboard', 'dashboard_card_stats', 'dashboard_filter_area',
+                'menu_whatsapp_blast', 'whatsapp_card_gateway_status', 'whatsapp_card_blast_summary',
+                'whatsapp_tab_device', 'whatsapp_tab_blast', 'whatsapp_tab_history', 'whatsapp_tab_settings',
+                'whatsapp_filter_target', 'whatsapp_btn_scan_qr', 'whatsapp_btn_logout', 'whatsapp_btn_restart', 'whatsapp_btn_test_send', 'whatsapp_btn_start_blast', 'whatsapp_btn_pause_blast',
+                'menu_marketing_affiliates', 'affiliate_card_stats', 'affiliate_tab_settings', 'affiliate_tab_affiliates', 'affiliate_tab_commissions', 'affiliate_tab_withdrawals',
+                'marketing_affiliates_manage', 'marketing_affiliates_withdraw_approve',
+                'menu_customers_booking', 'customers_booking_card_stats', 'customers_booking_filter_area', 'customers_booking_create', 'customers_booking_edit', 'customers_booking_whatsapp', 'customers_booking_view_all',
+                'menu_customers_survey', 'customers_survey_card_stats', 'customers_survey_filter', 'customers_survey_view_all',
+                'menu_customers_all', 'customers_card_summary', 'customers_btn_whatsapp', 'customers_all_view_all',
+                'menu_vouchers_free', 'voucher_free_card_stats', 'voucher_free_tab_generated', 'voucher_free_tab_customers', 'vouchers_free_create', 'vouchers_free_print', 'voucher_free_filter_connection', 'voucher_free_color_indicator',
+                'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
+                'menu_attendances', 'attendance_tab_reguler', 'attendances_view_own',
+                'menu_payroll', 'payroll_view_own', 'payroll_btn_print_slip',
+            ],
         ];
 
         // Role alias / turunan jabatan agar sinkron otomatis saat sinkronisasi izin
+        $presets['marketing & komunikasi'] = $presets['marketing'];
+        $presets['marcom'] = $presets['marketing'];
+        $presets['komunikasi'] = $presets['marketing'];
         $presets['kolektor'] = $presets['sales'];
         $presets['infrastruktur'] = $presets['teknisi'];
         $presets['tim serbu'] = $presets['teknisi'];

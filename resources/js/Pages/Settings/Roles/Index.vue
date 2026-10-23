@@ -755,9 +755,12 @@ const categoryMap = {
         'Presensi & Absensi Karyawan',
         'Penggajian & Insentif (Payroll)',
     ],
+    'marketing': [
+        'WhatsApp Gateway & Smart Blast',
+        'Marketing Afiliasi & Komisi',
+    ],
     'voucher': [
         'Voucher & Mitra Reseller',
-        'Marketing Afiliasi & Komisi',
     ],
     'whatsapp': [
         'WhatsApp Gateway & Smart Blast',
@@ -811,8 +814,8 @@ const categoryTabs = computed(() => {
         { id: 'tiket', label: 'Tiket & Operasional', count: countPermissionsByCategory('tiket') },
         { id: 'gudang', label: 'Gudang & Stok', count: countPermissionsByCategory('gudang') },
         { id: 'hrd', label: 'HRD & Payroll', count: countPermissionsByCategory('hrd') },
+        { id: 'marketing', label: '📢 Marketing & Komunikasi', count: countPermissionsByCategory('marketing') },
         { id: 'voucher', label: 'Voucher & Reseller', count: countPermissionsByCategory('voucher') },
-        { id: 'whatsapp', label: '⚡ WhatsApp Blast', count: countPermissionsByCategory('whatsapp') },
         { id: 'setting', label: 'Master & Pengaturan', count: countPermissionsByCategory('setting') },
     ];
 });
@@ -1042,8 +1045,14 @@ const availablePresets = [
     {
         key: 'sales',
         emoji: '💼',
-        title: 'Sales / Marketing',
+        title: 'Sales Lapangan / D2D',
         desc: 'Pendaftaran booking pelanggan baru, cek kapasitas ODP, voucher gratis, dan komisi afiliasi.',
+    },
+    {
+        key: 'marketing',
+        emoji: '📢',
+        title: 'Marketing & Komunikasi',
+        desc: 'Broadcast pesan cerdas WhatsApp blast, promosi pelanggan, dan pengelolaan mitra afiliasi & komisi.',
     },
     {
         key: 'finance',
@@ -1103,6 +1112,7 @@ const applyPreset = (presetName) => {
     if (!matchingKey) {
         if (key.includes('teknisi')) matchingKey = 'teknisi';
         else if (key.includes('cs') || key.includes('customer')) matchingKey = 'cs';
+        else if (key.includes('marketing') || key.includes('komunikasi') || key.includes('marcom')) matchingKey = 'marketing';
         else if (key.includes('sales')) matchingKey = 'sales';
         else if (key.includes('finance') || key.includes('keuangan')) matchingKey = 'finance';
         else if (key.includes('noc')) matchingKey = 'noc';
