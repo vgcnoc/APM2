@@ -4,7 +4,7 @@ import { Dialog, DialogPanel, DialogTitle, DialogDescription } from '@headlessui
 import {
     ArrowRightIcon, ArrowUpRightIcon, BuildingOffice2Icon, CheckIcon,
     CreditCardIcon, EyeIcon, EyeSlashIcon, GlobeAltIcon, LockClosedIcon,
-    ReceiptPercentIcon, SignalIcon, SparklesIcon, UserGroupIcon, UserIcon, XMarkIcon,
+    ReceiptPercentIcon, ServerStackIcon, SignalIcon, SparklesIcon, UserGroupIcon, UserIcon, XMarkIcon,
 } from '@heroicons/vue/24/outline';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import axios from 'axios';
@@ -137,6 +137,7 @@ onUnmounted(() => {
                     <div class="connection-node node-one"><SignalIcon /><span>Operasional<span>Terorganisasi</span></span></div>
                     <div class="connection-node node-two"><UserGroupIcon /><span>Kemitraan<span>Saling bertumbuh</span></span></div>
                     <div class="connection-node node-three"><SparklesIcon /><span>Layanan<span>Lebih sederhana</span></span></div>
+                    <div class="connection-node node-four"><ServerStackIcon /><span>Billing Radius<span>Autentikasi &amp; billing</span></span></div>
                     <div class="art-caption"><span></span> TERHUBUNG DALAM SATU EKOSISTEM</div>
                 </div>
             </section>
@@ -278,6 +279,7 @@ onUnmounted(() => {
 .node-one { left: 2%; top: 20%; }
 .node-two { right: 0; top: 38%; }
 .node-three { left: 13%; bottom: 13%; }
+.node-four { right: 3%; top: 2%; border-color: #8cbdd432; }
 .art-caption { position: absolute; bottom: -6px; left: 0; right: 0; display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 8px; letter-spacing: .17em; color: #647f97; }
 .art-caption > span { width: 4px; height: 4px; background: #719db1; border-radius: 50%; }
 .portal-panel { border: 1px solid var(--access-border); border-radius: 24px; padding: 34px 30px 22px; background: linear-gradient(145deg, #152131d9, #101a29ed); box-shadow: 0 28px 80px #00000020, inset 0 1px #ffffff05; }
