@@ -444,7 +444,10 @@ class DataScopeService
         if (empty($accessibleAreas)) return $query->whereRaw('1 = 0');
         return $query->where(function ($q) use ($accessibleAreas) {
             $q->whereIn('area_id', $accessibleAreas)
-              ->orWhereHas('odc', fn($odcq) => $odcq->whereIn('area_id', $accessibleAreas));
+              ->orWhereHas('odc', function ($odcq) use ($accessibleAreas) {
+                  $odcq->whereIn('area_id', $accessibleAreas)
+                       ->orWhereHas('olt', fn($oq) => $oq->whereIn('area_id', $accessibleAreas));
+              });
         });
     }
 

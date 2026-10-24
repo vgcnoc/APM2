@@ -115,17 +115,34 @@ const parseCoordinate = (val) => {
     return isNaN(num) ? null : num;
 };
 
+const escapeHtmlAttr = (str) => {
+    if (!str) return '';
+    return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+};
+
+// State for Nearby API
+const isSearchingNearby = ref(false);
+const nearbyResults = ref(null);
+const closestOdp = ref(null);
+const closestLineLayer = ref(null);
+
 // Filtered Lists
 const visibleOdcs = computed(() => {
     if (!checkOdc.value) return [];
-    return props.odcs.filter(item => {
+    const sourceList = (nearbyResults.value && nearbyResults.value.odcs && nearbyResults.value.odcs.length > 0)
+        ? nearbyResults.value.odcs
+        : props.odcs;
+
+    return sourceList.filter(item => {
         if (!item.latitude || !item.longitude) return false;
         if (filterCabang.value && item.area_id != filterCabang.value) return false;
         if (filterOdc.value && item.id != filterOdc.value) return false;
 
         // Radius filter if user location is set
         if (myLocation.value) {
-            const dist = calculateDistanceMeters(myLocation.value.lat, myLocation.value.lng, parseFloat(item.latitude), parseFloat(item.longitude));
+            const dist = item.distance_meters !== undefined
+                ? item.distance_meters
+                : calculateDistanceMeters(myLocation.value.lat, myLocation.value.lng, parseFloat(item.latitude), parseFloat(item.longitude));
             if (dist > searchRadiusMeters.value) return false;
         }
         return true;
@@ -134,14 +151,20 @@ const visibleOdcs = computed(() => {
 
 const visibleOdps = computed(() => {
     if (!checkOdp.value) return [];
-    return props.odps.filter(item => {
+    const sourceList = (nearbyResults.value && nearbyResults.value.odps && nearbyResults.value.odps.length > 0)
+        ? nearbyResults.value.odps
+        : props.odps;
+
+    return sourceList.filter(item => {
         if (!item.latitude || !item.longitude) return false;
         if (filterCabang.value && item.area_id != filterCabang.value) return false;
         if (filterOdc.value && item.odc_id != filterOdc.value) return false;
         if (filterOdp.value && item.id != filterOdp.value) return false;
 
         if (myLocation.value) {
-            const dist = calculateDistanceMeters(myLocation.value.lat, myLocation.value.lng, parseFloat(item.latitude), parseFloat(item.longitude));
+            const dist = item.distance_meters !== undefined
+                ? item.distance_meters
+                : calculateDistanceMeters(myLocation.value.lat, myLocation.value.lng, parseFloat(item.latitude), parseFloat(item.longitude));
             if (dist > searchRadiusMeters.value) return false;
         }
         return true;
@@ -150,7 +173,11 @@ const visibleOdps = computed(() => {
 
 const visibleCustomers = computed(() => {
     if (!checkPelanggan.value) return [];
-    return props.customers.filter(item => {
+    const sourceList = (nearbyResults.value && nearbyResults.value.customers && nearbyResults.value.customers.length > 0)
+        ? nearbyResults.value.customers
+        : props.customers;
+
+    return sourceList.filter(item => {
         if (!item.latitude || !item.longitude) return false;
         if (filterCabang.value && item.area_id != filterCabang.value) return false;
         if (filterOdc.value && item.odc_id != filterOdc.value) return false;
@@ -169,7 +196,9 @@ const visibleCustomers = computed(() => {
         }
 
         if (myLocation.value) {
-            const dist = calculateDistanceMeters(myLocation.value.lat, myLocation.value.lng, parseFloat(item.latitude), parseFloat(item.longitude));
+            const dist = item.distance_meters !== undefined
+                ? item.distance_meters
+                : calculateDistanceMeters(myLocation.value.lat, myLocation.value.lng, parseFloat(item.latitude), parseFloat(item.longitude));
             if (dist > searchRadiusMeters.value) return false;
         }
         return true;
@@ -203,6 +232,60 @@ const totalVisiblePoints = computed(() => {
     return visibleOdcs.value.length + visibleOdps.value.length + visibleCustomers.value.length;
 });
 
+// Draw Direct Line to Closest ODP on Map
+const drawDirectLineToClosestOdp = () => {
+    if (!map || !L) return;
+    if (closestLineLayer.value) {
+        map.removeLayer(closestLineLayer.value);
+        closestLineLayer.value = null;
+    }
+
+    if (!closestOdp.value || !myLocation.value) return;
+
+    const odpLat = parseFloat(closestOdp.value.latitude);
+    const odpLng = parseFloat(closestOdp.value.longitude);
+    if (!odpLat || !odpLng) return;
+
+    const userCoords = [myLocation.value.lat, myLocation.value.lng];
+    const odpCoords = [odpLat, odpLng];
+
+    const distText = formatDistance(closestOdp.value.distance_meters || 0);
+
+    const polyline = L.polyline([userCoords, odpCoords], {
+        color: '#2563eb',
+        weight: 3,
+        dashArray: '6, 6',
+        opacity: 0.85,
+    });
+
+    const midLat = (userCoords[0] + odpCoords[0]) / 2;
+    const midLng = (userCoords[1] + odpCoords[1]) / 2;
+
+    const labelMarker = L.marker([midLat, midLng], {
+        icon: L.divIcon({
+            className: 'closest-distance-badge',
+            html: `
+                <div class="px-2.5 py-1 bg-blue-900 text-white rounded-full shadow-md text-[10px] font-black tracking-wider whitespace-nowrap transform -translate-x-1/2 -translate-y-1/2 border border-white flex items-center gap-1">
+                    <span>🎯 ODP Terdekat:</span>
+                    <span class="text-emerald-300 font-bold">${distText}</span>
+                </div>
+            `,
+            iconSize: [0, 0],
+        }),
+        zIndexOffset: 1500,
+    });
+
+    closestLineLayer.value = L.layerGroup([polyline, labelMarker]).addTo(map);
+};
+
+// Focus map to specific ODP
+const focusToOdp = (odp) => {
+    if (!map || !odp || !odp.latitude || !odp.longitude) return;
+    const lat = parseFloat(odp.latitude);
+    const lng = parseFloat(odp.longitude);
+    map.flyTo([lat, lng], 17, { duration: 1.2 });
+};
+
 // GPS Location Detection
 const getMyLocation = () => {
     if (!navigator.geolocation) {
@@ -220,7 +303,7 @@ const getMyLocation = () => {
             myLocation.value = { lat: latitude, lng: longitude, accuracy: accuracy || 50 };
             gpsLoading.value = false;
             updateUserMarkerAndCircle(latitude, longitude, true);
-            refreshMapMarkers();
+            handleSearchNearby();
         },
         (err) => {
             gpsLoading.value = false;
@@ -233,16 +316,38 @@ const getMyLocation = () => {
 };
 
 // Handle "Cari Terdekat" Button Click
-const handleSearchNearby = () => {
+const handleSearchNearby = async () => {
     const lat = parseCoordinate(inputLat.value);
     const lng = parseCoordinate(inputLng.value);
 
-    if (lat !== null && lng !== null) {
-        myLocation.value = { lat, lng, accuracy: 50 };
-        updateUserMarkerAndCircle(lat, lng, true);
-        refreshMapMarkers();
-    } else {
+    if (lat === null || lng === null) {
         getMyLocation();
+        return;
+    }
+
+    myLocation.value = { lat, lng, accuracy: 50 };
+    updateUserMarkerAndCircle(lat, lng, true);
+
+    isSearchingNearby.value = true;
+    try {
+        const response = await axios.post('/network-radar/nearby', {
+            lat,
+            lng,
+            radius: searchRadiusMeters.value || 5000,
+            type: 'all',
+            area_id: filterCabang.value || null,
+        });
+
+        nearbyResults.value = response.data;
+        closestOdp.value = response.data.closest_odp || null;
+
+        drawDirectLineToClosestOdp();
+        refreshMapMarkers();
+    } catch (err) {
+        console.error('Error fetching nearby radar data:', err);
+        refreshMapMarkers();
+    } finally {
+        isSearchingNearby.value = false;
     }
 };
 
@@ -479,7 +584,7 @@ const refreshMapMarkers = () => {
                     <a href="${getGoogleMapsUrl(odc.latitude, odc.longitude)}" target="_blank" class="text-[11px] font-bold text-blue-600 hover:underline">
                         🗺️ Navigasi
                     </a>
-                    <button type="button" class="text-[11px] font-bold text-gray-700 hover:text-blue-600 route-btn" onclick="window.drawRadarRoute(${odc.latitude}, ${odc.longitude}, '${odc.name}')">
+                    <button type="button" class="text-[11px] font-bold text-gray-700 hover:text-blue-600 route-btn" onclick="window.drawRadarRoute(${odc.latitude}, ${odc.longitude}, '${escapeHtmlAttr(odc.name)}')">
                         🚗 Rute Jalan
                     </button>
                 </div>
@@ -494,7 +599,9 @@ const refreshMapMarkers = () => {
             icon: createDotIcon('#10b981', 12),
         });
 
-        const available = (odp.total_ports || 0) - (odp.used_ports || 0);
+        const available = odp.available_ports !== undefined
+            ? odp.available_ports
+            : Math.max(0, (odp.total_ports || 0) - (odp.used_ports || 0));
 
         marker.bindPopup(`
             <div class="font-sans text-xs min-w-[210px]">
@@ -503,7 +610,7 @@ const refreshMapMarkers = () => {
                     <span class="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-semibold">${odp.status || 'Active'}</span>
                 </div>
                 <h4 class="font-bold text-gray-900 text-sm mb-0.5">${odp.name}</h4>
-                <p class="text-[10px] text-gray-400 font-medium mb-1.5">ODC: ${odp.odc?.name || '-'}</p>
+                <p class="text-[10px] text-gray-400 font-medium mb-1.5">ODC: ${odp.odc_name || odp.odc?.name || '-'}</p>
                 <div class="mb-2">
                     <div class="flex justify-between text-[10px] text-gray-500 font-semibold mb-0.5">
                         <span>Port: ${odp.used_ports || 0}/${odp.total_ports || 0}</span>
@@ -523,7 +630,7 @@ const refreshMapMarkers = () => {
                     <a href="${getGoogleMapsUrl(odp.latitude, odp.longitude)}" target="_blank" class="text-[11px] font-bold text-blue-600 hover:underline">
                         🗺️ Navigasi
                     </a>
-                    <button type="button" class="text-[11px] font-bold text-gray-700 hover:text-blue-600 route-btn" onclick="window.drawRadarRoute(${odp.latitude}, ${odp.longitude}, '${odp.name}')">
+                    <button type="button" class="text-[11px] font-bold text-gray-700 hover:text-blue-600 route-btn" onclick="window.drawRadarRoute(${odp.latitude}, ${odp.longitude}, '${escapeHtmlAttr(odp.name)}')">
                         🚗 Rute Jalan
                     </button>
                 </div>
@@ -568,7 +675,7 @@ const refreshMapMarkers = () => {
                 </div>
                 <h4 class="font-bold text-gray-900 text-sm mb-0.5">${c.name}</h4>
                 <p class="text-[10px] text-gray-400 font-mono mb-1">${c.customer_code || '-'}</p>
-                <p class="text-[10px] text-gray-500 font-medium mb-1.5">ODP: ${c.odp?.name || '-'}</p>
+                <p class="text-[10px] text-gray-500 font-medium mb-1.5">ODP: ${c.odp_name || c.odp?.name || '-'}</p>
                 <p class="text-xs text-gray-500 mb-2">${c.address || 'Tanpa Alamat'}</p>
                 <div class="text-[11px] bg-gray-50 p-1.5 rounded border border-gray-100 font-mono text-gray-600 mb-2.5">
                     📍 ${parseFloat(c.latitude).toFixed(6)}, ${parseFloat(c.longitude).toFixed(6)}
@@ -577,7 +684,7 @@ const refreshMapMarkers = () => {
                     <a href="${getGoogleMapsUrl(c.latitude, c.longitude)}" target="_blank" class="text-[11px] font-bold text-blue-600 hover:underline">
                         🗺️ Navigasi
                     </a>
-                    <button type="button" class="text-[11px] font-bold text-gray-700 hover:text-blue-600 route-btn" onclick="window.drawRadarRoute(${c.latitude}, ${c.longitude}, '${c.name}')">
+                    <button type="button" class="text-[11px] font-bold text-gray-700 hover:text-blue-600 route-btn" onclick="window.drawRadarRoute(${c.latitude}, ${c.longitude}, '${escapeHtmlAttr(c.name)}')">
                         🚗 Rute Jalan
                     </button>
                 </div>
@@ -590,7 +697,22 @@ const refreshMapMarkers = () => {
 };
 
 // Watchers
-watch([checkOdc, checkOdp, checkPelanggan, filterCabang, filterOdc, filterOdp, filterStatusPelanggan, activeTab], () => {
+watch([checkOdc, checkOdp, checkPelanggan, filterStatusPelanggan, activeTab], () => {
+    refreshMapMarkers();
+});
+
+watch(filterCabang, () => {
+    filterOdc.value = '';
+    filterOdp.value = '';
+    if (myLocation.value) {
+        handleSearchNearby();
+    } else {
+        refreshMapMarkers();
+    }
+});
+
+watch(filterOdc, () => {
+    filterOdp.value = '';
     refreshMapMarkers();
 });
 
@@ -611,7 +733,11 @@ watch(searchRadiusMeters, (newVal) => {
     if (myLocationCircle && myLocation.value) {
         myLocationCircle.setRadius(newVal || 5000);
     }
-    refreshMapMarkers();
+    if (myLocation.value) {
+        handleSearchNearby();
+    } else {
+        refreshMapMarkers();
+    }
 });
 
 // Map Initialization
@@ -670,12 +796,12 @@ onMounted(async () => {
     myLocation.value = { lat: defaultLat, lng: defaultLng, accuracy: 50 };
     updateUserMarkerAndCircle(defaultLat, defaultLng, false);
 
-    // Plot markers
-    refreshMapMarkers();
-
-    // If initial query params provided, center there
+    // If initial query params provided, trigger search nearby immediately
     if (props.initLat && props.initLng) {
         map.setView([defaultLat, defaultLng], 14);
+        handleSearchNearby();
+    } else {
+        refreshMapMarkers();
     }
 
     // Resize observer
@@ -687,6 +813,10 @@ onMounted(async () => {
 
 onUnmounted(() => {
     if (window.drawRadarRoute) delete window.drawRadarRoute;
+    if (closestLineLayer.value && map) {
+        map.removeLayer(closestLineLayer.value);
+        closestLineLayer.value = null;
+    }
     if (map) {
         map.remove();
         map = null;
@@ -846,14 +976,82 @@ onUnmounted(() => {
                 <button
                     type="button"
                     @click="handleSearchNearby"
-                    class="px-5 py-2.5 bg-blue-900 hover:bg-blue-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-sm cursor-pointer"
+                    :disabled="isSearchingNearby"
+                    class="px-5 py-2.5 bg-blue-900 hover:bg-blue-800 disabled:opacity-60 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-colors shadow-sm cursor-pointer"
                 >
-                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg v-if="!isSearchingNearby" class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <circle cx="11" cy="11" r="8" stroke-width="2" />
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35" />
                     </svg>
-                    <span>Cari Terdekat</span>
+                    <svg v-else class="w-4 h-4 animate-spin text-white" viewBox="0 0 24 24" fill="none">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    <span>{{ isSearchingNearby ? 'Mencari Perangkat Terdekat...' : 'Cari Terdekat' }}</span>
                 </button>
+            </div>
+
+            <!-- ═══ CARD: HASIL RADAR TIKOR TERDEKAT ═══ -->
+            <div v-if="closestOdp" class="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-2xl p-5 text-white shadow-lg border border-blue-700/60 transition-all">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="space-y-1.5">
+                        <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/25 text-blue-200 border border-blue-400/30">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            ODP Terdekat Ditemukan
+                        </div>
+                        <h3 class="text-xl font-extrabold tracking-tight flex items-center gap-2">
+                            <span>{{ closestOdp.name }}</span>
+                            <span class="text-xs px-2.5 py-0.5 rounded-md font-bold bg-emerald-500/25 text-emerald-300 border border-emerald-500/40">
+                                {{ closestOdp.available_ports }} Port Kosong
+                            </span>
+                        </h3>
+                        <div class="text-xs text-blue-200 flex flex-wrap items-center gap-x-4 gap-y-1 font-medium">
+                            <span>📍 Jarak: <strong class="text-white font-black">{{ formatDistance(closestOdp.distance_meters) }}</strong></span>
+                            <span>🏢 ODC: <strong class="text-white">{{ closestOdp.odc_name || '-' }}</strong></span>
+                            <span>🌐 Cabang: <strong class="text-white">{{ closestOdp.area_name || '-' }}</strong></span>
+                            <span>🔌 Terpakai: <strong class="text-white">{{ closestOdp.used_ports || 0 }} / {{ closestOdp.total_ports || 0 }}</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button
+                            type="button"
+                            @click="focusToOdp(closestOdp)"
+                            class="px-3.5 py-2 bg-white/15 hover:bg-white/25 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors border border-white/20 cursor-pointer"
+                        >
+                            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="9" stroke-width="2"/>
+                                <circle cx="12" cy="12" r="3" stroke-width="2"/>
+                            </svg>
+                            <span>Fokus di Peta</span>
+                        </button>
+                        <button
+                            type="button"
+                            @click="drawRoadRoute(closestOdp.latitude, closestOdp.longitude, closestOdp.name)"
+                            class="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+                        >
+                            <span>🚗 Rute Jalan</span>
+                        </button>
+                        <a
+                            :href="getGoogleMapsUrl(closestOdp.latitude, closestOdp.longitude)"
+                            target="_blank"
+                            class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
+                        >
+                            <span>🗺️ Google Maps</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notice jika pencarian tidak menemukan ODP -->
+            <div v-else-if="nearbyResults && nearbyResults.odps && nearbyResults.odps.length === 0" class="bg-amber-50 rounded-2xl p-4 border border-amber-200 text-amber-800 flex items-center gap-3">
+                <svg class="w-5 h-5 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div class="text-xs">
+                    <strong class="font-bold">Tidak ada ODP dalam radius {{ formatDistance(searchRadiusMeters) }}.</strong>
+                    <span class="text-amber-700 ml-1">Silakan perbesar nilai radius pencarian atau sesuaikan filter Cabang.</span>
+                </div>
             </div>
 
             <!-- ═══ CARD 2: FILTER DATA ═══ -->

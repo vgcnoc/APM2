@@ -20,21 +20,22 @@ class NetworkRadarController extends Controller
         }
 
         $odcQuery = Odc::select('id', 'name', 'latitude', 'longitude', 'location as address', 'capacity', 'status', 'area_id')
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
             ->with(['area:id,name'])
             ->withCount('odps');
-        DataScopeService::applyOdcScope($odcQuery, $user);
         $odcs = $odcQuery->get();
 
         $odpQuery = Odp::select('id', 'name', 'latitude', 'longitude', 'address', 'odc_id', 'area_id', 'total_ports', 'used_ports', 'status')
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
             ->with(['odc:id,name', 'area:id,name']);
-        DataScopeService::applyOdpScope($odpQuery, $user);
         $odps = $odpQuery->get();
 
         $customerQuery = Customer::select('id', 'name', 'customer_code', 'latitude', 'longitude', 'address', 'is_reseller', 'status', 'service_status', 'area_id', 'area')
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->with(['ont.odp:id,name,odc_id', 'areaModel:id,name']);
-        DataScopeService::applyCustomerScope($customerQuery, $user);
 
         $customers = $customerQuery->get()
             ->map(function ($customer) {
@@ -47,7 +48,7 @@ class NetworkRadarController extends Controller
                 return $arr;
             });
 
-        $areas = DataScopeService::getScopedAreas($user, 'radar');
+        $areas = \App\Models\Area::select('id', 'name')->orderBy('name')->get();
 
         // Aktivitas Karyawan (Absensi GPS & Tugas Luar Hari Ini / Terkini)
         $employeeActivities = collect();
@@ -128,74 +129,129 @@ class NetworkRadarController extends Controller
         $request->validate([
             'lat' => 'required|numeric',
             'lng' => 'required|numeric',
-            'radius' => 'nullable|numeric|min:0.1|max:50000', // meter or km
+            'radius' => 'nullable|numeric|min:1|max:500000', // meter
             'type' => 'nullable|in:odp,odc,customer,all',
+            'area_id' => 'nullable|numeric',
         ]);
 
-        $lat = $request->lat;
-        $lng = $request->lng;
-        $rawRadius = $request->radius ?? 5;
-        $radius = $rawRadius > 50 ? ($rawRadius / 1000) : $rawRadius; // convert meter to km if > 50
+        $lat = (float) $request->lat;
+        $lng = (float) $request->lng;
+        $rawRadius = (float) ($request->radius ?? 5000);
+        $radiusKm = $rawRadius > 50 ? ($rawRadius / 1000) : $rawRadius;
         $type = $request->type ?? 'all';
+        $areaId = $request->area_id ? (int) $request->area_id : null;
 
         $results = [];
+        $odpsList = [];
+        $odcsList = [];
+        $customersList = [];
 
         // Haversine formula in raw SQL (km)
         $haversine = "(6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude))))";
 
         if ($type === 'all' || $type === 'odp') {
-            $odps = Odp::select('id', 'name', 'latitude', 'longitude', 'address', 'odc_id', 'total_ports', 'used_ports', 'status')
-                ->selectRaw("$haversine AS distance", [$lat, $lng, $lat])
+            $odpQuery = Odp::select('id', 'name', 'latitude', 'longitude', 'address', 'odc_id', 'area_id', 'total_ports', 'used_ports', 'status')
+                ->selectRaw("$haversine AS distance_km", [$lat, $lng, $lat])
                 ->whereNotNull('latitude')
                 ->whereNotNull('longitude')
-                ->having('distance', '<=', $radius)
-                ->orderBy('distance')
-                ->limit(20)
-                ->with(['odc:id,name'])
-                ->get()
-                ->map(fn($item) => array_merge($item->toArray(), ['_type' => 'odp']));
-            $results = array_merge($results, $odps->toArray());
+                ->having('distance_km', '<=', $radiusKm)
+                ->orderBy('distance_km')
+                ->limit(50)
+                ->with(['odc:id,name', 'area:id,name']);
+
+            if ($areaId) {
+                $odpQuery->where('area_id', $areaId);
+            }
+
+            $odps = $odpQuery->get()->map(function ($item) {
+                $arr = $item->toArray();
+                $arr['_type'] = 'odp';
+                $arr['distance_meters'] = round($item->distance_km * 1000);
+                $arr['available_ports'] = max(0, ($item->total_ports ?? 0) - ($item->used_ports ?? 0));
+                $arr['odc_name'] = $item->odc?->name ?? '-';
+                $arr['area_name'] = $item->area?->name ?? '-';
+                return $arr;
+            });
+            $odpsList = $odps->values()->toArray();
+            $results = array_merge($results, $odpsList);
         }
 
         if ($type === 'all' || $type === 'odc') {
-            $odcs = Odc::select('id', 'name', 'latitude', 'longitude', 'location as address', 'capacity', 'status')
-                ->selectRaw("$haversine AS distance", [$lat, $lng, $lat])
+            $odcQuery = Odc::select('id', 'name', 'latitude', 'longitude', 'location as address', 'capacity', 'status', 'area_id')
+                ->selectRaw("$haversine AS distance_km", [$lat, $lng, $lat])
                 ->whereNotNull('latitude')
                 ->whereNotNull('longitude')
-                ->having('distance', '<=', $radius)
-                ->orderBy('distance')
-                ->limit(20)
-                ->withCount('odps')
-                ->get()
-                ->map(fn($item) => array_merge($item->toArray(), ['_type' => 'odc']));
-            $results = array_merge($results, $odcs->toArray());
+                ->having('distance_km', '<=', $radiusKm)
+                ->orderBy('distance_km')
+                ->limit(30)
+                ->with(['area:id,name'])
+                ->withCount('odps');
+
+            if ($areaId) {
+                $odcQuery->where('area_id', $areaId);
+            }
+
+            $odcs = $odcQuery->get()->map(function ($item) {
+                $arr = $item->toArray();
+                $arr['_type'] = 'odc';
+                $arr['distance_meters'] = round($item->distance_km * 1000);
+                $arr['area_name'] = $item->area?->name ?? '-';
+                return $arr;
+            });
+            $odcsList = $odcs->values()->toArray();
+            $results = array_merge($results, $odcsList);
         }
 
         if ($type === 'all' || $type === 'customer') {
-            $customers = Customer::select('id', 'name', 'customer_code', 'latitude', 'longitude', 'address', 'is_reseller', 'status')
-                ->selectRaw("$haversine AS distance", [$lat, $lng, $lat])
+            $customerQuery = Customer::select('id', 'name', 'customer_code', 'latitude', 'longitude', 'address', 'is_reseller', 'status', 'service_status', 'area_id', 'area')
+                ->selectRaw("$haversine AS distance_km", [$lat, $lng, $lat])
                 ->whereNotNull('latitude')
                 ->whereNotNull('longitude')
-                ->having('distance', '<=', $radius)
-                ->orderBy('distance')
-                ->limit(20)
-                ->get()
-                ->map(function($item) {
-                    $type = 'customer';
-                    if ($item->is_reseller) $type = 'reseller';
-                    else if ($item->status === 'booking') $type = 'booking';
-                    return array_merge($item->toArray(), ['_type' => $type]);
-                });
-            $results = array_merge($results, $customers->toArray());
+                ->having('distance_km', '<=', $radiusKm)
+                ->orderBy('distance_km')
+                ->limit(50)
+                ->with(['areaModel:id,name', 'ont.odp:id,name']);
+
+            if ($areaId) {
+                $customerQuery->where('area_id', $areaId);
+            }
+
+            $customers = $customerQuery->get()->map(function ($item) {
+                $subType = 'customer';
+                if ($item->is_reseller) $subType = 'reseller';
+                elseif ($item->status === 'booking') $subType = 'booking';
+                $arr = $item->toArray();
+                $arr['_type'] = $subType;
+                $arr['distance_meters'] = round($item->distance_km * 1000);
+                $arr['odp_name'] = $item->ont?->odp?->name ?? '-';
+                $arr['area_name'] = $item->areaModel?->name ?? $item->area ?? '-';
+                unset($arr['ont']);
+                return $arr;
+            });
+            $customersList = $customers->values()->toArray();
+            $results = array_merge($results, $customersList);
         }
 
-        // Sort semua hasil gabungan by distance
-        usort($results, fn($a, $b) => $a['distance'] <=> $b['distance']);
+        // Sort all combined results by distance
+        usort($results, fn($a, $b) => ($a['distance_km'] ?? 0) <=> ($b['distance_km'] ?? 0));
+
+        $closestOdp = !empty($odpsList) ? $odpsList[0] : null;
 
         return response()->json([
-            'results' => array_slice($results, 0, 30),
+            'results' => array_slice($results, 0, 50),
+            'odps' => $odpsList,
+            'odcs' => $odcsList,
+            'customers' => $customersList,
+            'closest_odp' => $closestOdp,
             'center' => ['lat' => $lat, 'lng' => $lng],
-            'radius' => $radius,
+            'radius_meters' => round($radiusKm * 1000),
+            'radius_km' => $radiusKm,
+            'stats' => [
+                'odc' => count($odcsList),
+                'odp' => count($odpsList),
+                'pelanggan' => count($customersList),
+                'total' => count($results),
+            ],
         ]);
     }
 }
