@@ -3,7 +3,7 @@ const conn = new Client();
 
 const commands = `
 cd /var/www/APM2
-php artisan tinker --execute="\\$u = \\App\\Models\\User::where('email', 'admin@isp.local')->first(); echo json_encode(\\$u->toArray());"
+php artisan tinker --execute="\\$custs = \\App\\Models\\Customer::whereIn('customer_code', ['CUS-001001', 'CUS-001002', 'CUS-001003', 'CUS-001004'])->with(['technicianSchedules', 'areaModel'])->get(); echo json_encode(\\$custs->map(fn(\\$c) => ['code' => \\$c->customer_code, 'name' => \\$c->name, 'status' => \\$c->status, 'area' => \\$c->areaModel?->name, 'area_id' => \\$c->area_id, 'schedules' => \\$c->technicianSchedules->map(fn(\\$s) => ['tech_id' => \\$s->technician_id, 'type' => \\$s->type, 'status' => \\$s->status])]));"
 `;
 
 conn.on('ready', () => {

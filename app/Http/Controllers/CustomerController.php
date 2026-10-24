@@ -755,7 +755,9 @@ class CustomerController extends Controller
         $baseQuery = Customer::survey()
             ->with(['package', 'surveys.odp', 'surveys.surveyor', 'technicianSchedules.technician'])
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_survey_view_all'), function($q) {
-                if (auth()->user()->hasRole('teknisi')) {
+                if (auth()->user()->can('customers_survey_view_area')) {
+                    $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+                } elseif (auth()->user()->can('customers_survey_view_assigned') || auth()->user()->hasRole('teknisi')) {
                     $q->where(function($sub) {
                         $sub->whereHas('technicianSchedules', function($sq) {
                             $sq->where('technician_id', auth()->id())->where('type', 'survey');
@@ -765,19 +767,15 @@ class CustomerController extends Controller
                         });
                     });
                 } else {
-                    if (auth()->user()->can('customers_survey_view_area')) {
-                        $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
-                    } else {
-                        $q->where(function($sub) {
-                            $sub->where('sales_id', auth()->id())
-                                ->orWhereHas('technicianSchedules', function($sq) {
-                                    $sq->where('technician_id', auth()->id())->where('type', 'survey');
-                                })
-                                ->orWhereHas('surveys', function($sq) {
-                                    $sq->where('surveyor_id', auth()->id());
-                                });
-                        });
-                    }
+                    $q->where(function($sub) {
+                        $sub->where('sales_id', auth()->id())
+                            ->orWhereHas('technicianSchedules', function($sq) {
+                                $sq->where('technician_id', auth()->id())->where('type', 'survey');
+                            })
+                            ->orWhereHas('surveys', function($sq) {
+                                $sq->where('surveyor_id', auth()->id());
+                            });
+                    });
                 }
             })
             ->when($request->technician_id, function ($q, $techId) {
@@ -878,7 +876,9 @@ class CustomerController extends Controller
         if ($request->filled('open_report')) {
             $openCustomerQuery = Customer::with(['package', 'surveys.odp', 'surveys.surveyor', 'technicianSchedules.technician']);
             if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_survey_view_all')) {
-                if (auth()->user()->hasRole('teknisi')) {
+                if (auth()->user()->can('customers_survey_view_area')) {
+                    $openCustomerQuery->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+                } elseif (auth()->user()->can('customers_survey_view_assigned') || auth()->user()->hasRole('teknisi')) {
                     $openCustomerQuery->where(function($sub) {
                         $sub->whereHas('technicianSchedules', function($sq) {
                             $sq->where('technician_id', auth()->id())->where('type', 'survey');
@@ -911,21 +911,19 @@ class CustomerController extends Controller
         $baseQuery = Customer::whereIn('status', ['installing', 'active']);
         
         if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_installed_view_all')) {
-            if (auth()->user()->hasRole('teknisi')) {
+            if (auth()->user()->can('customers_installed_view_area')) {
+                $baseQuery->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+            } elseif (auth()->user()->can('customers_installed_view_assigned') || auth()->user()->hasRole('teknisi')) {
                 $baseQuery->whereHas('technicianSchedules', function ($sq) {
                     $sq->where('technician_id', auth()->id())->where('type', 'installation');
                 });
             } else {
-                if (auth()->user()->can('customers_installed_view_area')) {
-                    $baseQuery->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
-                } else {
-                    $baseQuery->where(function($q) {
-                        $q->where('sales_id', auth()->id())
-                          ->orWhereHas('technicianSchedules', function ($sq) {
-                              $sq->where('technician_id', auth()->id())->where('type', 'installation');
-                          });
-                    });
-                }
+                $baseQuery->where(function($q) {
+                    $q->where('sales_id', auth()->id())
+                      ->orWhereHas('technicianSchedules', function ($sq) {
+                          $sq->where('technician_id', auth()->id())->where('type', 'installation');
+                      });
+                });
             }
         }
         
