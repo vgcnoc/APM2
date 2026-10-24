@@ -63,7 +63,11 @@ class SyncPermissionsCommand extends Command
         $presets = PermissionRegistry::getDefaultRolePresets();
         $isFresh = $this->option('fresh');
 
-        $this->info($isFresh ? 'Mereset ulang izin role ke template standar (--fresh)...' : 'Memperbarui dan melengkapi izin role dari template standar...');
+        if ($isFresh) {
+            $this->warn('Mereset ulang izin seluruh role ke template standar (--fresh)...');
+        } else {
+            $this->info('Memeriksa role dan mempertahankan konfigurasi hak akses kustom admin...');
+        }
 
         foreach ($presets as $roleName => $perms) {
             if ($roleName === 'admin') continue;
@@ -72,13 +76,18 @@ class SyncPermissionsCommand extends Command
             $validPerms = Permission::whereIn('name', $perms)->pluck('name')->toArray();
 
             if ($isFresh) {
+                // Hanya timpa seluruh izin jika opsi --fresh dipanggil secara sengaja
                 $role->syncPermissions($validPerms);
+                $this->line("  ✓ Role '{$roleName}': di-reset ke template standar ({$role->permissions()->count()} izin)");
+            } elseif ($role->wasRecentlyCreated || $role->permissions()->count() === 0) {
+                // Role baru yang belum memiliki izin sama sekali: inisialisasi dengan preset awal
+                $role->syncPermissions($validPerms);
+                $this->line("  ✓ Role baru '{$roleName}': diinisialisasi dengan preset awal ({$role->permissions()->count()} izin)");
             } else {
-                $role->givePermissionTo($validPerms);
+                // Role yang sudah ada dan telah disetting oleh admin: PERTAHANKAN dan JANGAN DIUBAH!
+                $currentCount = $role->permissions()->count();
+                $this->line("  ✓ Role '{$roleName}': izin dipertahankan sesuai konfigurasi admin ({$currentCount} izin aktif)");
             }
-
-            $currentCount = $role->permissions()->count();
-            $this->line("  ✓ Role '{$roleName}': {$currentCount} izin aktif");
         }
 
         // Refresh cache
