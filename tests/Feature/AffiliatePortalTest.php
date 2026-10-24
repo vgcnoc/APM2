@@ -267,4 +267,11 @@ class AffiliatePortalTest extends TestCase
                 ->where('auth.user.id', $owner->id)->where('auth.user.affiliate_portal', true)
                 ->has('officers', 0));
     }
+
+    public function test_administrator_can_use_affiliate_portal_without_spatie_role_assignment(): void
+    {
+        $user = $this->user('super admin');
+        $this->post('/login', ['email' => $user->email, 'password' => 'portal-test-password', 'portal' => 'affiliate'])
+            ->assertRedirect(route('affiliate.dashboard'))->assertSessionHas('login_portal', 'affiliate');
+    }
 }

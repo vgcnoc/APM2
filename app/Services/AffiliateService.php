@@ -21,7 +21,7 @@ class AffiliateService
             return false;
         }
 
-        return in_array(strtolower(trim((string) $user->role)), ['sales', 'affiliate'], true)
+        return in_array(strtolower(trim((string) $user->role)), ['sales', 'affiliate', 'admin', 'super admin', 'superadmin', 'super-admin'], true)
             || self::isInternalEmployee($user)
             || $user->employee()->exists()
             || $user->hasAnyRole(['sales', 'affiliate', 'admin', 'super admin'])
