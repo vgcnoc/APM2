@@ -889,12 +889,23 @@ class DashboardController extends Controller
                 'phone' => $c->phone ?? '-',
             ]);
 
-        // Max Capacity (minimal 3600 sesuai desain atau kapasitas dinamis)
-        $maxCapacity = max(3600, (int) (ceil(max($realOnline, $totalActiveCust) / 500) * 500));
+        // Max Capacity: dideteksi otomatis dari kekuatan CPU router MikroTik (fallback: CPU server)
+        $capacityService = app(\App\Services\RouterCapacityService::class);
+        try {
+            $capacity = $capacityService->detect(
+                $capacityService->nasIdsForScope($areaId, $canViewAllAreas, $userAccessibleAreaIds)
+            );
+        } catch (\Throwable $e) {
+            $capacity = ['max_capacity' => 0, 'source' => 'unknown', 'cpu_load' => null, 'devices' => []];
+        }
+        $maxCapacity = max(1, (int) $capacity['max_capacity']);
 
         return [
             'real_online'      => $realOnline,
             'max_capacity'     => $maxCapacity,
+            'capacity_source'  => $capacity['source'],
+            'capacity_cpu_load' => $capacity['cpu_load'],
+            'capacity_devices' => $capacity['devices'],
             'online_voucher'   => $onlineVoucherCount,
             'online_billing'   => $onlineBillingCount,
             'pending_count'    => $pendingCount,

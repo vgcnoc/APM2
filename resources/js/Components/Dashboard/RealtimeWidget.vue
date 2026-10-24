@@ -40,7 +40,10 @@
                             {{ formatNumber(currentStats.real_online) }}<span class="text-slate-400 font-semibold text-lg">/{{ formatNumber(currentStats.max_capacity) }}</span>
                         </p>
                     </div>
-                    <span class="px-3 py-1 rounded-full text-xs font-black bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/50 shadow-2xs">
+                    <span
+                        class="px-3 py-1 rounded-full text-xs font-black bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/50 shadow-2xs cursor-help"
+                        :title="capacityTooltip"
+                    >
                         Max {{ formatNumber(currentStats.max_capacity) }}
                     </span>
                 </div>
@@ -57,6 +60,19 @@
                     </div>
                     <span v-if="realOnlinePercent <= 10" class="text-[11px] font-black text-purple-600 dark:text-purple-400 px-2.5">
                         {{ formatNumber(currentStats.real_online) }}
+                    </span>
+                </div>
+
+                <!-- Info Sumber Kapasitas (Deteksi Otomatis CPU) -->
+                <div v-if="capacitySummary" class="flex items-center justify-between gap-2 text-[10px] text-slate-400 dark:text-slate-500">
+                    <span class="truncate" :title="capacityTooltip">
+                        <span class="font-bold" :class="currentStats.capacity_source === 'router' ? 'text-indigo-500' : 'text-amber-500'">
+                            {{ currentStats.capacity_source === 'router' ? 'CPU Router' : 'CPU Server' }}
+                        </span>
+                        · {{ capacitySummary }}
+                    </span>
+                    <span v-if="currentStats.capacity_cpu_load !== null && currentStats.capacity_cpu_load !== undefined" class="shrink-0 font-bold" :class="cpuLoadClass">
+                        Load {{ currentStats.capacity_cpu_load }}%
                     </span>
                 </div>
             </div>
@@ -268,13 +284,16 @@ const props = defineProps({
     stats: {
         type: Object,
         default: () => ({
-            real_online: 2077,
-            max_capacity: 3600,
-            online_voucher: 176,
-            online_billing: 1368,
-            pending_count: 84,
-            unpaid_count: 1,
-            isolir_count: 108,
+            real_online: 0,
+            max_capacity: 0,
+            capacity_source: null,
+            capacity_cpu_load: null,
+            capacity_devices: [],
+            online_voucher: 0,
+            online_billing: 0,
+            pending_count: 0,
+            unpaid_count: 0,
+            isolir_count: 0,
             unpaid_customers: [],
             isolir_customers: [],
         }),
@@ -306,20 +325,61 @@ const formatCurrency = (amount) => {
 
 // Row 1: Real Online %
 const realOnlinePercent = computed(() => {
-    const max = currentStats.value.max_capacity || 3600;
+    const max = currentStats.value.max_capacity || 1;
     const current = currentStats.value.real_online || 0;
     return Math.min(100, Math.max(0, (current / max) * 100));
 });
 
+// Ringkasan perangkat sumber kapasitas (hasil deteksi otomatis CPU)
+const capacityDevices = computed(() => currentStats.value.capacity_devices || []);
+
+const describeDevice = (d) => {
+    const parts = [];
+    parts.push(d.board || d.name || 'Perangkat');
+    if (d.cores) {
+        const ghz = d.mhz ? ` @${(d.mhz / 1000).toFixed(1)}GHz` : '';
+        parts.push(`${d.cores} core${ghz}`);
+    }
+    return parts.join(' · ');
+};
+
+const capacitySummary = computed(() => {
+    const usable = capacityDevices.value.filter((d) => d.capacity > 0);
+    if (!usable.length) return '';
+    if (usable.length === 1) return describeDevice(usable[0]);
+    return `${usable.length} perangkat`;
+});
+
+const capacityTooltip = computed(() => {
+    if (!capacityDevices.value.length) return 'Kapasitas belum terdeteksi';
+    const lines = capacityDevices.value.map((d) => {
+        const status = d.status === 'online' ? 'online' : 'tidak terjangkau';
+        const cap = d.capacity > 0 ? `±${formatNumber(d.capacity)} sesi` : 'belum terdeteksi';
+        const extra = d.status !== 'online' && d.capacity > 0 ? ' (data deteksi terakhir)' : '';
+        return `${d.name}: ${describeDevice(d)} — ${cap}, ${status}${extra}`;
+    });
+    const header = currentStats.value.capacity_source === 'router'
+        ? 'Kapasitas dihitung otomatis dari CPU router MikroTik:'
+        : 'Router belum terdeteksi, kapasitas sementara dari CPU server:';
+    return [header, ...lines].join('\n');
+});
+
+const cpuLoadClass = computed(() => {
+    const load = currentStats.value.capacity_cpu_load || 0;
+    if (load >= 80) return 'text-rose-500';
+    if (load >= 60) return 'text-amber-500';
+    return 'text-emerald-500';
+});
+
 // Row 2: Voucher % vs Billing %
 const voucherPercent = computed(() => {
-    const max = currentStats.value.max_capacity || 3600;
+    const max = currentStats.value.max_capacity || 1;
     const voucher = currentStats.value.online_voucher || 0;
     return Math.min(100, Math.max(0, (voucher / max) * 100));
 });
 
 const billingPercent = computed(() => {
-    const max = currentStats.value.max_capacity || 3600;
+    const max = currentStats.value.max_capacity || 1;
     const billing = currentStats.value.online_billing || 0;
     return Math.min(100, Math.max(0, (billing / max) * 100));
 });
