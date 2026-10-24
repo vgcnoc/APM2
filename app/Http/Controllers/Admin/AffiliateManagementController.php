@@ -9,6 +9,7 @@ use App\Models\AffiliateWithdrawal;
 use App\Models\Customer;
 use App\Models\User;
 use App\Services\AffiliateService;
+use App\Support\SimpleXlsx;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -595,7 +596,37 @@ class AffiliateManagementController extends Controller
     }
 
     /**
-     * Export data Marketing & Afiliasi ke format CSV (Excel-friendly).
+     * Helper response untuk file Excel (.xlsx) atau CSV
+     */
+    protected function exportResponse(string $baseFilename, array $headers, array $dataRows, string $format = 'xlsx')
+    {
+        if ($format === 'xlsx' && class_exists('ZipArchive')) {
+            $tempDir = storage_path('app/temp');
+            if (!is_dir($tempDir)) {
+                @mkdir($tempDir, 0777, true);
+            }
+            $tempPath = $tempDir . '/' . $baseFilename . '_' . uniqid() . '.xlsx';
+            if (SimpleXlsx::create($headers, $dataRows, $tempPath)) {
+                return response()->download($tempPath, $baseFilename . '.xlsx', [
+                    'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                ])->deleteFileAfterSend(true);
+            }
+        }
+
+        // CSV fallback
+        return response()->streamDownload(function () use ($headers, $dataRows) {
+            $handle = fopen('php://output', 'w');
+            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
+            fputcsv($handle, $headers);
+            foreach ($dataRows as $r) {
+                fputcsv($handle, $r);
+            }
+            fclose($handle);
+        }, $baseFilename . '.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /**
+     * Export data Marketing & Afiliasi ke format Excel (.xlsx) atau CSV.
      */
     public function export(Request $request)
     {
@@ -605,192 +636,172 @@ class AffiliateManagementController extends Controller
         }
 
         $type = $request->query('type', 'affiliates'); // 'affiliates' | 'commissions' | 'withdrawals'
+        $format = $request->query('format', 'xlsx'); // 'xlsx' | 'csv'
         $isGlobal = $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->can('marketing_affiliates_view_all');
         $accessibleAreas = $isGlobal ? [] : $user->getAccessibleAreaIds();
 
         $timestamp = date('Y-m-d_His');
 
         if ($type === 'commissions') {
-            $filename = "riwayat_komisi_afiliasi_{$timestamp}.csv";
-            return response()->streamDownload(function () use ($isGlobal, $accessibleAreas) {
-                $handle = fopen('php://output', 'w');
-                fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF)); // UTF-8 BOM
-                fputcsv($handle, [
-                    'ID Transaksi',
-                    'Tanggal Transaksi',
-                    'Penerima Komisi',
-                    'Email Penerima',
-                    'WhatsApp / HP',
-                    'Tipe Komisi',
-                    'Tingkat Penerima',
-                    'Sumber Pelanggan',
-                    'Deskripsi Transaksi',
-                    'Nominal Komisi (Rp)',
-                    'Status',
-                ]);
+            $headers = [
+                'ID Transaksi',
+                'Tanggal Transaksi',
+                'Penerima Komisi',
+                'Email Penerima',
+                'WhatsApp / HP',
+                'Tipe Komisi',
+                'Tingkat Penerima',
+                'Sumber Pelanggan',
+                'Deskripsi Transaksi',
+                'Nominal Komisi (Rp)',
+                'Status',
+            ];
 
-                $query = AffiliateCommission::with(['affiliate.user', 'customer', 'sourceUser']);
-                if (!$isGlobal && !empty($accessibleAreas)) {
-                    $query->whereHas('affiliate.user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas));
-                }
+            $query = AffiliateCommission::with(['affiliate.user', 'customer', 'sourceUser']);
+            if (!$isGlobal && !empty($accessibleAreas)) {
+                $query->whereHas('affiliate.user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas));
+            }
 
-                $query->latest('id')->chunk(500, function ($rows) use ($handle) {
-                    foreach ($rows as $c) {
-                        fputcsv($handle, [
-                            $c->id,
-                            $c->created_at ? $c->created_at->format('Y-m-d H:i:s') : '-',
-                            $c->affiliate?->user?->name ?? 'Unknown',
-                            $c->affiliate?->user?->email ?? '-',
-                            $c->affiliate?->whatsapp ?? $c->affiliate?->user?->phone ?? '-',
-                            $c->commission_type ?? 'referral',
-                            $c->tier_level ? 'Level ' . $c->tier_level : 'Direct',
-                            $c->customer?->name ?? '-',
-                            $c->description ?? '-',
-                            (float) $c->amount,
-                            $c->status ?? 'paid',
-                        ]);
-                    }
-                });
+            $dataRows = [];
+            foreach ($query->latest('id')->get() as $c) {
+                $dataRows[] = [
+                    $c->id,
+                    $c->created_at ? $c->created_at->format('Y-m-d H:i:s') : '-',
+                    $c->affiliate?->user?->name ?? 'Unknown',
+                    $c->affiliate?->user?->email ?? '-',
+                    $c->affiliate?->whatsapp ?? $c->affiliate?->user?->phone ?? '-',
+                    $c->commission_type ?? 'referral',
+                    $c->tier_level ? 'Level ' . $c->tier_level : 'Direct',
+                    $c->customer?->name ?? '-',
+                    $c->description ?? '-',
+                    (float) $c->amount,
+                    $c->status ?? 'paid',
+                ];
+            }
 
-                fclose($handle);
-            }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+            return $this->exportResponse("riwayat_komisi_afiliasi_{$timestamp}", $headers, $dataRows, $format);
         }
 
         if ($type === 'withdrawals') {
-            $filename = "pencairan_komisi_afiliasi_{$timestamp}.csv";
-            return response()->streamDownload(function () use ($isGlobal, $accessibleAreas) {
-                $handle = fopen('php://output', 'w');
-                fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
-                fputcsv($handle, [
-                    'ID',
-                    'No. Referensi',
-                    'Tanggal Pengajuan',
-                    'Nama Mitra',
-                    'Email Mitra',
-                    'WhatsApp Mitra',
-                    'Nama Bank / E-Wallet',
-                    'Nomor Rekening',
-                    'Pemilik Rekening',
-                    'Nominal Penarikan (Rp)',
-                    'Status',
-                    'Catatan Pemohon',
-                    'Diproses Oleh',
-                    'Tanggal Diproses',
-                ]);
+            $headers = [
+                'ID',
+                'No. Referensi',
+                'Tanggal Pengajuan',
+                'Nama Mitra',
+                'Email Mitra',
+                'WhatsApp Mitra',
+                'Nama Bank / E-Wallet',
+                'Nomor Rekening',
+                'Pemilik Rekening',
+                'Nominal Penarikan (Rp)',
+                'Status',
+                'Catatan Pemohon',
+                'Diproses Oleh',
+                'Tanggal Diproses',
+            ];
 
-                $query = AffiliateWithdrawal::with(['affiliate.user', 'processor']);
-                if (!$isGlobal && !empty($accessibleAreas)) {
-                    $query->whereHas('affiliate.user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas));
-                }
+            $query = AffiliateWithdrawal::with(['affiliate.user', 'processor']);
+            if (!$isGlobal && !empty($accessibleAreas)) {
+                $query->whereHas('affiliate.user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas));
+            }
 
-                $query->latest('id')->chunk(500, function ($rows) use ($handle) {
-                    foreach ($rows as $w) {
-                        fputcsv($handle, [
-                            $w->id,
-                            $w->reference_no ?? '-',
-                            $w->created_at ? $w->created_at->format('Y-m-d H:i:s') : '-',
-                            $w->affiliate?->user?->name ?? '-',
-                            $w->affiliate?->user?->email ?? '-',
-                            $w->affiliate?->whatsapp ?? $w->affiliate?->user?->phone ?? '-',
-                            $w->bank_name ?? '-',
-                            $w->bank_account_number ?? '-',
-                            $w->bank_account_holder ?? '-',
-                            (float) $w->amount,
-                            strtoupper($w->status ?? 'pending'),
-                            $w->notes ?? '-',
-                            $w->processor?->name ?? '-',
-                            $w->processed_at ? \Carbon\Carbon::parse($w->processed_at)->format('Y-m-d H:i:s') : '-',
-                        ]);
-                    }
-                });
+            $dataRows = [];
+            foreach ($query->latest('id')->get() as $w) {
+                $dataRows[] = [
+                    $w->id,
+                    $w->reference_no ?? '-',
+                    $w->created_at ? $w->created_at->format('Y-m-d H:i:s') : '-',
+                    $w->affiliate?->user?->name ?? '-',
+                    $w->affiliate?->user?->email ?? '-',
+                    $w->affiliate?->whatsapp ?? $w->affiliate?->user?->phone ?? '-',
+                    $w->bank_name ?? '-',
+                    $w->bank_account_number ?? '-',
+                    $w->bank_account_holder ?? '-',
+                    (float) $w->amount,
+                    strtoupper($w->status ?? 'pending'),
+                    $w->notes ?? '-',
+                    $w->processor?->name ?? '-',
+                    $w->processed_at ? \Carbon\Carbon::parse($w->processed_at)->format('Y-m-d H:i:s') : '-',
+                ];
+            }
 
-                fclose($handle);
-            }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+            return $this->exportResponse("pencairan_komisi_afiliasi_{$timestamp}", $headers, $dataRows, $format);
         }
 
         // Default: Daftar Agen Afiliasi
-        $filename = "daftar_agen_afiliasi_{$timestamp}.csv";
-        return response()->streamDownload(function () use ($isGlobal, $accessibleAreas) {
-            $handle = fopen('php://output', 'w');
-            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
-            fputcsv($handle, [
-                'ID Agen',
-                'Nama Agen',
-                'Email',
-                'Nomor WhatsApp',
-                'Kode Referral',
-                'Nama Upline Sponsor',
-                'Kode Referral Upline',
-                'Total Pelanggan Referral',
-                'Total Downline Langsung',
-                'Saldo Aktif (Rp)',
-                'Total Komisi Diterima (Rp)',
-                'Total Dana Ditarik (Rp)',
-                'Nama Bank / E-Wallet',
-                'Nomor Rekening',
-                'Nama Pemilik Rekening',
-                'Status',
-                'Tipe Akun',
-                'Tanggal Bergabung',
-            ]);
+        $headers = [
+            'ID Agen',
+            'Nama Agen',
+            'Email',
+            'Nomor WhatsApp',
+            'Kode Referral',
+            'Nama Upline Sponsor',
+            'Kode Referral Upline',
+            'Total Pelanggan Referral',
+            'Total Downline Langsung',
+            'Saldo Aktif (Rp)',
+            'Total Komisi Diterima (Rp)',
+            'Total Dana Ditarik (Rp)',
+            'Nama Bank / E-Wallet',
+            'Nomor Rekening',
+            'Nama Pemilik Rekening',
+            'Status',
+            'Tipe Akun',
+            'Tanggal Bergabung',
+        ];
 
-            $query = AffiliateProfile::with(['user', 'upline.affiliateProfile'])->withCount(['customers', 'downlinesLevel1']);
-            if (!$isGlobal && !empty($accessibleAreas)) {
-                $query->whereHas('user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas));
-            }
+        $query = AffiliateProfile::with(['user', 'upline.affiliateProfile'])->withCount(['customers', 'downlinesLevel1']);
+        if (!$isGlobal && !empty($accessibleAreas)) {
+            $query->whereHas('user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas));
+        }
 
-            $query->latest('id')->chunk(500, function ($rows) use ($handle) {
-                foreach ($rows as $a) {
-                    fputcsv($handle, [
-                        $a->id,
-                        $a->user?->name ?? 'Unknown',
-                        $a->user?->email ?? '-',
-                        $a->whatsapp ?? $a->user?->phone ?? '-',
-                        $a->referral_code ?? '-',
-                        $a->upline?->name ?? 'Tanpa Upline',
-                        $a->upline?->affiliateProfile?->referral_code ?? '-',
-                        (int) $a->customers_count,
-                        (int) $a->downlines_level1_count,
-                        (float) $a->balance,
-                        (float) $a->total_earned,
-                        (float) $a->total_withdrawn,
-                        $a->bank_name ?? '-',
-                        $a->bank_account_number ?? '-',
-                        $a->bank_account_holder ?? '-',
-                        strtoupper($a->status ?? 'active'),
-                        AffiliateService::isInternalEmployee($a->user) ? 'Internal / Karyawan' : 'Eksternal / Mitra',
-                        $a->created_at ? $a->created_at->format('Y-m-d H:i:s') : '-',
-                    ]);
-                }
-            });
+        $dataRows = [];
+        foreach ($query->latest('id')->get() as $a) {
+            $dataRows[] = [
+                $a->id,
+                $a->user?->name ?? 'Unknown',
+                $a->user?->email ?? '-',
+                $a->whatsapp ?? $a->user?->phone ?? '-',
+                $a->referral_code ?? '-',
+                $a->upline?->name ?? 'Tanpa Upline',
+                $a->upline?->affiliateProfile?->referral_code ?? '-',
+                (int) $a->customers_count,
+                (int) $a->downlines_level1_count,
+                (float) $a->balance,
+                (float) $a->total_earned,
+                (float) $a->total_withdrawn,
+                $a->bank_name ?? '-',
+                $a->bank_account_number ?? '-',
+                $a->bank_account_holder ?? '-',
+                strtoupper($a->status ?? 'active'),
+                AffiliateService::isInternalEmployee($a->user) ? 'Internal / Karyawan' : 'Eksternal / Mitra',
+                $a->created_at ? $a->created_at->format('Y-m-d H:i:s') : '-',
+            ];
+        }
 
-            fclose($handle);
-        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+        return $this->exportResponse("daftar_agen_afiliasi_{$timestamp}", $headers, $dataRows, $format);
     }
 
     /**
-     * Unduh Template CSV untuk Import Data Agen Afiliasi
+     * Unduh Template Excel (.xlsx) untuk Import Data Agen Afiliasi
      */
-    public function downloadTemplate()
+    public function downloadTemplate(Request $request)
     {
-        $filename = "template_import_agen_afiliasi.csv";
-        return response()->streamDownload(function () {
-            $handle = fopen('php://output', 'w');
-            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
-            fputcsv($handle, [
-                'Nama Lengkap',
-                'Email',
-                'Nomor WhatsApp',
-                'Password',
-                'Kode Referral',
-                'Upline (Email / Kode Referral)',
-                'Nama Bank / E-Wallet',
-                'Nomor Rekening',
-                'Nama Pemilik Rekening',
-                'Alamat',
-            ]);
-            // Sample row 1
-            fputcsv($handle, [
+        $headers = [
+            'Nama Lengkap',
+            'Email',
+            'Nomor WhatsApp',
+            'Password',
+            'Kode Referral',
+            'Upline (Email / Kode Referral)',
+            'Nama Bank / E-Wallet',
+            'Nomor Rekening',
+            'Nama Pemilik Rekening',
+            'Alamat',
+        ];
+
+        $sampleRows = [
+            [
                 'Budi Santoso',
                 'budi.santoso@contoh.com',
                 '081234567890',
@@ -801,9 +812,8 @@ class AffiliateManagementController extends Controller
                 '1234567890',
                 'Budi Santoso',
                 'Jl. Mawar No. 12, Jakarta',
-            ]);
-            // Sample row 2
-            fputcsv($handle, [
+            ],
+            [
                 'Siti Rahmawati',
                 'siti.rahma@contoh.com',
                 '082198765432',
@@ -814,13 +824,37 @@ class AffiliateManagementController extends Controller
                 '9876543210123',
                 'Siti Rahmawati',
                 'Jl. Melati No. 5, Bandung',
-            ]);
+            ],
+        ];
+
+        $format = $request->query('format', 'xlsx');
+        if ($format === 'xlsx' && class_exists('ZipArchive')) {
+            $tempDir = storage_path('app/temp');
+            if (!is_dir($tempDir)) {
+                @mkdir($tempDir, 0777, true);
+            }
+            $tempPath = $tempDir . '/template_import_agen_afiliasi_' . uniqid() . '.xlsx';
+            if (SimpleXlsx::create($headers, $sampleRows, $tempPath)) {
+                return response()->download($tempPath, 'template_import_agen_afiliasi.xlsx', [
+                    'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                ])->deleteFileAfterSend(true);
+            }
+        }
+
+        $filename = "template_import_agen_afiliasi.csv";
+        return response()->streamDownload(function () use ($headers, $sampleRows) {
+            $handle = fopen('php://output', 'w');
+            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
+            fputcsv($handle, $headers);
+            foreach ($sampleRows as $row) {
+                fputcsv($handle, $row);
+            }
             fclose($handle);
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     /**
-     * Import Data Agen Afiliasi dari file CSV
+     * Import Data Agen Afiliasi dari file Excel (.xlsx / .xls / .csv)
      */
     public function import(Request $request)
     {
@@ -830,36 +864,37 @@ class AffiliateManagementController extends Controller
         }
 
         $request->validate([
-            'file' => 'required|file|mimes:csv,txt|max:5120',
+            'file' => 'required|file|max:10240',
         ], [
-            'file.required' => 'Pilih file CSV yang ingin diimpor.',
-            'file.mimes' => 'Format file harus berupa CSV (.csv).',
-            'file.max' => 'Ukuran file maksimal 5 MB.',
+            'file.required' => 'Pilih file Excel (.xlsx / .xls / .csv) yang ingin diimpor.',
+            'file.max' => 'Ukuran file maksimal 10 MB.',
         ]);
 
         $file = $request->file('file');
-        $handle = fopen($file->getRealPath(), 'r');
-        if (!$handle) {
-            return back()->with('error', 'Gagal membaca file CSV yang diunggah.');
+        $rawRows = SimpleXlsx::read($file->getRealPath());
+
+        if (empty($rawRows)) {
+            return back()->with('error', 'File Excel kosong atau format tidak dapat dibaca.');
         }
 
-        $header = fgetcsv($handle, 1000, ',');
-        if (!$header) {
-            fclose($handle);
-            return back()->with('error', 'File CSV kosong atau tidak memiliki baris header.');
+        $header = array_shift($rawRows);
+        if (!$header || empty(array_filter($header))) {
+            return back()->with('error', 'File Excel tidak memiliki baris header yang valid.');
         }
 
         // Map normalized headers
         $headerMap = [];
         foreach ($header as $idx => $col) {
-            $clean = strtolower(trim($col, "\xEF\xBB\xBF \t\n\r\0\x0B"));
+            $clean = strtolower(trim((string)$col, "\xEF\xBB\xBF \t\n\r\0\x0B"));
+            $clean = str_replace(['_', '-'], ' ', $clean);
             $headerMap[$clean] = $idx;
         }
 
         $getCol = function($row, ...$keys) use ($headerMap) {
             foreach ($keys as $k) {
-                if (isset($headerMap[$k]) && isset($row[$headerMap[$k]])) {
-                    $val = trim($row[$headerMap[$k]]);
+                $normK = str_replace(['_', '-'], ' ', strtolower($k));
+                if (isset($headerMap[$normK]) && isset($row[$headerMap[$normK]])) {
+                    $val = trim((string)$row[$headerMap[$normK]]);
                     if ($val !== '') return $val;
                 }
             }
@@ -875,9 +910,9 @@ class AffiliateManagementController extends Controller
 
         DB::beginTransaction();
         try {
-            while (($row = fgetcsv($handle, 2000, ',')) !== false) {
+            foreach ($rawRows as $row) {
                 $rowNum++;
-                if (empty(array_filter($row))) continue;
+                if (empty(array_filter($row, fn($x) => trim((string)$x) !== ''))) continue;
 
                 $name = $getCol($row, 'nama lengkap', 'nama', 'name', 'nama agen');
                 $email = $getCol($row, 'email', 'e-mail', 'alamat email');
@@ -997,7 +1032,6 @@ class AffiliateManagementController extends Controller
             }
 
             DB::commit();
-            fclose($handle);
 
             $msg = "Import selesai! {$createdCount} agen baru berhasil ditambahkan";
             if ($updatedCount > 0) $msg .= ", {$updatedCount} data mitra diperbarui";
@@ -1005,9 +1039,8 @@ class AffiliateManagementController extends Controller
             $msg .= ".";
 
             return back()->with('success', $msg);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
-            fclose($handle);
             return back()->with('error', 'Terjadi kesalahan saat mengimpor data baris ke-' . $rowNum . ': ' . $e->getMessage());
         }
     }

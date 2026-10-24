@@ -1148,16 +1148,16 @@
                                 class="px-3 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
                             >
                                 <span>📥</span>
-                                <span>Import CSV</span>
+                                <span>Import Excel</span>
                             </button>
                             <button
                                 v-can="'affiliate_btn_export'"
                                 type="button"
-                                @click="triggerExport('affiliates')"
+                                @click="triggerExport('affiliates', 'xlsx')"
                                 class="px-3 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
                             >
                                 <span>📤</span>
-                                <span>Export Agen</span>
+                                <span>Export Excel</span>
                             </button>
                             <button
                                 v-can="'affiliate_btn_create'"
@@ -2108,10 +2108,10 @@
                             </button>
                             <button
                                 type="button"
-                                @click="triggerExport(exportSelectedType)"
+                                @click="triggerExport(exportSelectedType, 'xlsx')"
                                 class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
                             >
-                                <span>📥 Download File CSV</span>
+                                <span>📥 Download File Excel (.xlsx)</span>
                             </button>
                         </div>
                     </div>
@@ -2128,7 +2128,7 @@
                             <span class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg">📥</span>
                             <div>
                                 <h3 class="text-base font-bold text-slate-900">Import Data Mitra Agen</h3>
-                                <p class="text-xs text-slate-500 mt-0.5">Unggah file CSV untuk menambahkan / memperbarui mitra</p>
+                                <p class="text-xs text-slate-500 mt-0.5">Unggah file Excel (.xlsx / .xls / .csv) untuk menambahkan / memperbarui mitra</p>
                             </div>
                         </div>
                         <button type="button" @click="showImportModal = false" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">✕</button>
@@ -2139,40 +2139,40 @@
                         <div class="p-4 bg-indigo-50/60 border border-indigo-100 rounded-2xl flex items-center justify-between gap-3">
                             <div>
                                 <div class="text-xs font-bold text-indigo-950">Gunakan Format Standar</div>
-                                <div class="text-[11px] text-indigo-700/80 mt-0.5">Pastikan kolom CSV sesuai template agar impor lancar.</div>
+                                <div class="text-[11px] text-indigo-700/80 mt-0.5">Pastikan kolom file Excel sesuai template agar impor lancar.</div>
                             </div>
                             <a
-                                :href="route('admin.affiliates.template')"
+                                :href="route('admin.affiliates.template', { format: 'xlsx' })"
                                 target="_blank"
                                 class="px-3 py-1.5 bg-white border border-indigo-200 text-indigo-700 font-bold text-xs rounded-xl hover:bg-indigo-50 transition-colors shadow-2xs whitespace-nowrap flex items-center gap-1"
                             >
-                                <span>📄 Template CSV</span>
+                                <span>📄 Template Excel (.xlsx)</span>
                             </a>
                         </div>
 
                         <!-- Step 2: Upload File Drag & Drop / Input -->
                         <div>
                             <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                                Pilih File CSV:
+                                Pilih File Excel:
                             </label>
                             <div class="border-2 border-dashed border-slate-300 hover:border-indigo-400 rounded-2xl p-6 text-center transition-colors bg-slate-50/50">
                                 <input
                                     ref="importFileInput"
                                     type="file"
-                                    accept=".csv,text/csv"
+                                    accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
                                     @change="onImportFileChange"
                                     class="hidden"
-                                    id="import-csv-file"
+                                    id="import-excel-file"
                                 />
-                                <label for="import-csv-file" class="cursor-pointer block">
-                                    <span class="text-3xl block mb-2">📁</span>
+                                <label for="import-excel-file" class="cursor-pointer block">
+                                    <span class="text-3xl block mb-2">📊</span>
                                     <span v-if="importForm.file" class="text-xs font-bold text-indigo-600 block">
                                         {{ importForm.file.name }} ({{ (importForm.file.size / 1024).toFixed(1) }} KB)
                                     </span>
                                     <span v-else class="text-xs font-semibold text-slate-600 block">
-                                        Klik untuk memilih file CSV atau drag &amp; drop ke sini
+                                        Klik untuk memilih file Excel (.xlsx, .xls, .csv) atau drag &amp; drop ke sini
                                     </span>
-                                    <span class="text-[11px] text-slate-400 mt-1 block">Format .csv maksimal 5MB</span>
+                                    <span class="text-[11px] text-slate-400 mt-1 block">Format .xlsx, .xls, .csv maksimal 10MB</span>
                                 </label>
                             </div>
                             <p v-if="importForm.errors.file" class="text-rose-500 text-[11px] font-semibold mt-1">
@@ -2213,7 +2213,7 @@
                                 class="px-5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 disabled:opacity-50"
                             >
                                 <span v-if="importForm.processing" class="inline-block animate-spin">⏳</span>
-                                <span>{{ importForm.processing ? 'Mengunggah & Memproses...' : 'Proses Impor CSV' }}</span>
+                                <span>{{ importForm.processing ? 'Mengunggah & Memproses...' : 'Proses Impor Excel' }}</span>
                             </button>
                         </div>
                     </form>
@@ -2596,10 +2596,10 @@ const openExportModal = (defaultType = 'affiliates') => {
     showExportModal.value = true;
 };
 
-const triggerExport = (type) => {
+const triggerExport = (type, format = 'xlsx') => {
     const targetType = type || exportSelectedType.value || 'affiliates';
     showExportModal.value = false;
-    window.location.href = route('admin.affiliates.export', { type: targetType });
+    window.location.href = route('admin.affiliates.export', { type: targetType, format: format });
 };
 
 const openImportModal = () => {
@@ -2623,7 +2623,7 @@ const submitImport = () => {
         Swal.fire({
             icon: 'warning',
             title: 'File Belum Dipilih',
-            text: 'Silakan pilih file CSV yang ingin diimpor.',
+            text: 'Silakan pilih file Excel (.xlsx / .xls / .csv) yang ingin diimpor.',
         });
         return;
     }
@@ -2640,7 +2640,7 @@ const submitImport = () => {
             });
         },
         onError: (errors) => {
-            const msg = Object.values(errors).flat().join('\n') || 'Gagal memproses file CSV.';
+            const msg = Object.values(errors).flat().join('\n') || 'Gagal memproses file Excel.';
             Swal.fire({
                 icon: 'error',
                 title: 'Impor Gagal',
