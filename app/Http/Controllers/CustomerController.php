@@ -1447,6 +1447,24 @@ class CustomerController extends Controller
     }
 
     /**
+     * Cetak Formulir & Bukti Pendaftaran Booking Pelanggan
+     */
+    public function printBooking(Customer $customer)
+    {
+        $customer->load(['package', 'areaModel', 'sales.employee']);
+
+        $company = [
+            'name' => Setting::get('company_name', config('app.name', 'ISP Management')),
+            'address' => Setting::get('company_address', 'Layanan Internet Cepat & Stabil'),
+            'phone' => Setting::get('company_phone', ''),
+            'email' => Setting::get('company_email', ''),
+            'logo' => Setting::get('company_logo', null),
+        ];
+
+        return view('print.booking', compact('customer', 'company'));
+    }
+
+    /**
      * Form tambah pelanggan baru (booking)
      */
     public function create(): Response

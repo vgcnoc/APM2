@@ -772,7 +772,12 @@ const categoryMap = {
     ],
     'jaringan': [
         'Topologi & Radar Jaringan FTTH',
-        'Perangkat OSP (OLT, ODC, ODP, ONT)',
+        'Peta GIS, Topologi & Radar Jaringan',
+        'Perangkat OSP - 1. OLT (Optical Line Terminal)',
+        'Perangkat OSP - 2. ODC (Optical Distribution Cabinet)',
+        'Perangkat OSP - 3. ODP (Optical Distribution Point)',
+        'Perangkat OSP - 4. ONT / Modem Pelanggan',
+        'Monitoring Kapasitas ODC & ODP',
         'Rollout Pembangunan ODC & ODP',
         'MikroTik & RADIUS Billing',
     ],

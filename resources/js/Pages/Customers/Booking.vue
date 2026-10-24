@@ -148,22 +148,75 @@
             </template>
 
             <template #rowActions="{ row }">
-                <div class="flex items-center justify-end gap-2">
+                <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
                     <!-- Status / Aksi Utama -->
                     <button v-can="'customers_booking_request_survey'" 
                         v-if="row.status === 'booking'" 
                         @click="requestSurvey(row)" 
-                        class="btn-primary py-1.5 px-3 text-xs flex items-center gap-1.5 shadow-xs" 
+                        class="btn-primary py-1 px-2.5 text-xs flex items-center gap-1 shadow-2xs hover:shadow-xs" 
                         title="Pindah ke Data Survey">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"/>
                         </svg>
                         <span>Kirim Survey</span>
                     </button>
-                    <span v-else class="px-2.5 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg text-xs font-semibold flex items-center gap-1" title="Sudah Masuk Proses Selanjutnya">
+                    <span v-else class="px-2 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg text-xs font-semibold flex items-center gap-1" title="Sudah Masuk Proses Selanjutnya">
                         <svg class="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                         <span>Terkirim</span>
                     </span>
+
+                    <!-- Aksi Cepat: View Detail Booking -->
+                    <button 
+                        v-can="'customers_booking_view'"
+                        type="button"
+                        @click="viewCustomer(row)"
+                        class="w-7 h-7 rounded-lg bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white border border-blue-200/80 flex items-center justify-center transition-all shadow-2xs hover:shadow-xs focus:outline-none cursor-pointer"
+                        title="Lihat Detail Booking"
+                    >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                    </button>
+
+                    <!-- Aksi Cepat: Edit Data Booking -->
+                    <Link 
+                        v-can="'customers_booking_edit'"
+                        :href="`/customers/${row.id}/edit`"
+                        class="w-7 h-7 rounded-lg bg-amber-50 hover:bg-amber-600 text-amber-600 hover:text-white border border-amber-200/80 flex items-center justify-center transition-all shadow-2xs hover:shadow-xs focus:outline-none cursor-pointer"
+                        title="Edit Data Booking"
+                    >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                        </svg>
+                    </Link>
+
+                    <!-- Aksi Cepat: Cetak / Print Booking -->
+                    <a 
+                        v-can="'customers_booking_print'"
+                        :href="`/customers/${row.id}/print-booking`"
+                        target="_blank"
+                        class="w-7 h-7 rounded-lg bg-purple-50 hover:bg-purple-600 text-purple-600 hover:text-white border border-purple-200/80 flex items-center justify-center transition-all shadow-2xs hover:shadow-xs focus:outline-none cursor-pointer"
+                        title="Cetak Formulir / Bukti Booking"
+                    >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                        </svg>
+                    </a>
+
+                    <!-- Aksi Cepat: Hapus Data Booking -->
+                    <button 
+                        v-can="'customers_booking_delete'"
+                        v-if="canDelete"
+                        type="button"
+                        @click="confirmDelete(row)"
+                        class="w-7 h-7 rounded-lg bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200/80 flex items-center justify-center transition-all shadow-2xs hover:shadow-xs focus:outline-none cursor-pointer"
+                        title="Hapus Booking"
+                    >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                    </button>
 
                     <!-- Tombol Dropdown Menu Aksi -->
                     <button 
@@ -211,6 +264,7 @@
                     <div class="py-1">
                         <!-- Lihat Detail Booking -->
                         <button 
+                            v-can="'customers_booking_view'"
                             type="button"
                             @click="viewCustomer(activeDropdownRow); closeDropdown()"
                             class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-blue-50/80 hover:text-blue-700 transition-colors font-medium group cursor-pointer"
@@ -244,6 +298,25 @@
                                 <p class="text-[10px] text-slate-400 group-hover:text-amber-500 font-normal leading-tight">Koreksi paket, kontak, atau lokasi</p>
                             </div>
                         </Link>
+
+                        <!-- Cetak Formulir Booking -->
+                        <a 
+                            v-can="'customers_booking_print'"
+                            :href="`/customers/${activeDropdownRow.id}/print-booking`" 
+                            target="_blank"
+                            @click="closeDropdown"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-purple-50/80 hover:text-purple-700 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-purple-50 group-hover:bg-purple-100/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                </svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-slate-800 group-hover:text-purple-700">Cetak Formulir Booking</span>
+                                <p class="text-[10px] text-slate-400 group-hover:text-purple-500 font-normal leading-tight">Bukti registrasi & SPK pemasangan</p>
+                            </div>
+                        </a>
 
                         <!-- Pindah ke Data Survey (Jika status booking) -->
                         <button 
@@ -418,8 +491,34 @@
                         </div>
                     </div>
                     
-                    <div class="sticky bottom-0 bg-white/90 backdrop-blur-xl border-t border-gray-200 px-6 py-4 flex justify-end">
-                        <button @click="closeViewModal" class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-xl text-sm font-medium transition-colors">
+                    <div class="sticky bottom-0 bg-white/90 backdrop-blur-xl border-t border-gray-200 px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex items-center gap-2">
+                            <!-- Tombol Cetak dari Modal -->
+                            <a 
+                                v-can="'customers_booking_print'"
+                                :href="`/customers/${selectedCustomer.id}/print-booking`" 
+                                target="_blank"
+                                class="px-3.5 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+                            >
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                </svg>
+                                Cetak Formulir (Print)
+                            </a>
+
+                            <!-- Tombol Edit dari Modal -->
+                            <Link 
+                                v-can="'customers_booking_edit'"
+                                :href="`/customers/${selectedCustomer.id}/edit`" 
+                                class="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+                            >
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                                Edit Data
+                            </Link>
+                        </div>
+                        <button @click="closeViewModal" class="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-xl text-xs font-medium transition-colors">
                             Tutup
                         </button>
                     </div>

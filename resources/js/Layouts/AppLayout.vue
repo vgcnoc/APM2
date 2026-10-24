@@ -1018,7 +1018,7 @@ const menuItems = [
         label: 'Perangkat OSP / FTTH',
         theme: 'pink',
         active: (url) => ['/olts', '/odcs', '/odps', '/onts', '/find-onu', '/infrastructure/work-orders', '/network/capacity-monitoring'].some(path => (url || '').startsWith(path)),
-        permission: ['menu_network_capacity', 'menu_infrastructure_work_orders', 'menu_network_olt', 'menu_network_odc', 'menu_network_odp', 'menu_network_ont'],
+        permission: ['menu_network_capacity', 'menu_infrastructure_work_orders', 'menu_network_olt', 'menu_network_odc', 'menu_network_odp', 'menu_network_ont', 'menu_network_find_onu'],
         children: [
             { href: '/network/capacity-monitoring', label: '📊 Monitoring Kapasitas ODC/ODP', active: (url) => (url || '').startsWith('/network/capacity-monitoring'), permission: ['menu_network_capacity', 'menu_network_odc', 'menu_network_odp'] },
             { href: '/infrastructure/work-orders', label: '⚡ Rollout ODC & ODP', active: (url) => (url || '').startsWith('/infrastructure/work-orders'), permission: ['menu_infrastructure_work_orders', 'menu_network_odc', 'menu_network_odp'] },
