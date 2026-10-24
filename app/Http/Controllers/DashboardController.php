@@ -25,6 +25,7 @@ use App\Models\ResellerTransaction;
 use App\Models\Radius\RadAcct;
 use App\Models\Radius\Nas;
 use App\Models\User;
+use App\Services\RouterTrafficService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -849,6 +850,10 @@ class DashboardController extends Controller
             return $query;
         };
 
+        // ── 0. Pengukuran Trafik Jaringan Internet 100% Real (RouterOS API / RADIUS) ──
+        $trafficService = app(RouterTrafficService::class);
+        $realTraffic = $trafficService->getRealTraffic($nasId);
+
         // ── 1. Ambil Sesi RADIUS Online & Disconnect Terakhir ───────────────────────
         $onlineSessions = collect();
         $lastDisconnects = collect();
@@ -883,8 +888,11 @@ class DashboardController extends Controller
         } catch (\Throwable $e) {}
 
         $onlineUsernames = $onlineSessions->keys()->all();
+        if (!empty($realTraffic['active_ppp_users'])) {
+            $onlineUsernames = array_unique(array_merge($onlineUsernames, $realTraffic['active_ppp_users']));
+        }
 
-        // ── 2. Data Pelanggan PPPoE & Status UP/DOWN Lengkap ─────────────────────────
+        // ── 2. Data Pelanggan PPPoE & Status UP/DOWN Lengkap (100% Real) ────────────
         $custBase = Customer::query()
             ->whereNotNull('package_id')
             ->with(['areaModel', 'ont.odp', 'package']);
@@ -899,15 +907,10 @@ class DashboardController extends Controller
         foreach ($rawCustomers as $c) {
             $u = $c->ont?->pppoe_user ?: $c->customer_code;
             $s = $onlineSessions->get($u);
-            $isOnline = !is_null($s);
+            $isOnline = !is_null($s) || in_array($u, $realTraffic['active_ppp_users'] ?? []);
             $last = $lastDisconnects->get($u);
 
             $isIsolir = in_array($c->status, ['suspended']) || $c->service_status === 'isolir';
-            
-            // Bila koneksi lab/testing belum ada paket RADIUS live, fallback status pelanggan aktif
-            if (count($onlineUsernames) === 0 && !$isIsolir && $c->status === 'active') {
-                $isOnline = true;
-            }
 
             if ($isIsolir) {
                 $statusKey = 'isolir';
@@ -1002,10 +1005,8 @@ class DashboardController extends Controller
                 $voucherCountToday = $todayUsedVouchers->count();
                 $voucherSalesToday = (float) $todayUsedVouchers->sum(fn($v) => (float) ($v->profile?->price ?? 0));
 
-                // Breakdown per profile hari ini (atau fallback all-time jika hari ini 0 agar ada visual informatif)
-                $targetBreakdownVouchers = $voucherCountToday > 0 
-                    ? $todayUsedVouchers 
-                    : Voucher::with('profile')->where('status', 'used')->orderByDesc('used_at')->take(10)->get();
+                // Breakdown per profile HANYA untuk voucher yang benar-benar terjual hari ini (100% Real)
+                $targetBreakdownVouchers = $todayUsedVouchers;
 
                 $grouped = $targetBreakdownVouchers->groupBy(fn($v) => $v->profile?->name ?? 'Hotspot Reguler');
                 foreach ($grouped as $profName => $groupItems) {
@@ -1030,7 +1031,7 @@ class DashboardController extends Controller
 
                 foreach ($sampleVouchers as $v) {
                     $vUser = $v->username ?: $v->code;
-                    $isVOnline = in_array($vUser, $onlineUsernames);
+                    $isVOnline = in_array($vUser, $onlineUsernames) || in_array($vUser, $realTraffic['active_hotspot_users'] ?? []);
                     if ($isVOnline) {
                         $vStatus = 'up';
                         $hotspotOnlineCount++;
@@ -1115,46 +1116,14 @@ class DashboardController extends Controller
             }
         } catch (\Throwable $e) {}
 
-        // ── 5. Trafik Internet Realtime (Bandwidth Throughput & Transfer Data) ────────
-        $totalInputBytes = 0;
-        $totalOutputBytes = 0;
-        try {
-            if (class_exists(RadAcct::class)) {
-                $totalInputBytes = (float) RadAcct::sum('acctinputoctets');
-                $totalOutputBytes = (float) RadAcct::sum('acctoutputoctets');
-            }
-        } catch (\Throwable $e) {}
-
-        $downloadGbToday = round($totalOutputBytes / (1024 * 1024 * 1024), 2);
-        $uploadGbToday = round($totalInputBytes / (1024 * 1024 * 1024), 2);
-        $totalGbToday = round(($totalInputBytes + $totalOutputBytes) / (1024 * 1024 * 1024), 2);
-
-        // Hitung estimasi throughput real-time live Mbps
-        $activeSessionCount = count($onlineUsernames);
-        if ($activeSessionCount === 0 && $pppoeOnlineCount > 0) {
-            $activeSessionCount = $pppoeOnlineCount;
-        }
-
-        // Live Throughput dinamis (Mbps)
-        $baseThroughput = max(12.5, $activeSessionCount * 3.2);
-        $currentRxMbps = round($baseThroughput + (sin(time() / 10) * 4.5), 1);
-        $currentTxMbps = round(($baseThroughput * 0.38) + (cos(time() / 10) * 1.8), 1);
-        $peakMbpsToday = round(max($currentRxMbps * 1.85, 48.5), 1);
-
-        // 12 data points history sparkline untuk grafik live
-        $trafficHistory = [];
-        $now = now()->timezone('Asia/Jakarta');
-        for ($i = 11; $i >= 0; $i--) {
-            $ptTime = $now->copy()->subMinutes($i * 5);
-            $wave = sin(($ptTime->timestamp / 300)) * 6;
-            $ptRx = max(4.0, round($currentRxMbps - ($i * 0.8) + $wave, 1));
-            $ptTx = max(1.5, round($currentTxMbps - ($i * 0.3) + ($wave * 0.4), 1));
-            $trafficHistory[] = [
-                'time' => $ptTime->format('H:i'),
-                'rx'   => $ptRx,
-                'tx'   => $ptTx,
-            ];
-        }
+        // ── 5. Trafik Internet Realtime (100% Real dari RouterTrafficService) ────────
+        $currentRxMbps = (float) ($realTraffic['download_mbps'] ?? 0.0);
+        $currentTxMbps = (float) ($realTraffic['upload_mbps'] ?? 0.0);
+        $peakMbpsToday = (float) ($realTraffic['peak_mbps_today'] ?? 0.0);
+        $downloadGbToday = (float) ($realTraffic['download_gb_today'] ?? 0.0);
+        $uploadGbToday = (float) ($realTraffic['upload_gb_today'] ?? 0.0);
+        $totalGbToday = (float) ($realTraffic['total_gb_today'] ?? 0.0);
+        $trafficHistory = $realTraffic['history'] ?? [];
 
         // ── 6. Deteksi Cerdas Gangguan Massal (Smart Outage Detection) ────────────────
         $downClusters = [];
@@ -1290,7 +1259,7 @@ class DashboardController extends Controller
             'unpaid_customers'   => $unpaidCustomers,
             'isolir_customers'   => $isolirCustomers,
 
-            // Trafik Internet Lengkap
+            // Trafik Internet Lengkap (100% Real)
             'traffic' => [
                 'download_mbps'    => $currentRxMbps,
                 'upload_mbps'      => $currentTxMbps,
@@ -1300,6 +1269,9 @@ class DashboardController extends Controller
                 'upload_gb_today'  => $uploadGbToday,
                 'total_gb_today'   => $totalGbToday,
                 'history'          => $trafficHistory,
+                'source_type'      => $realTraffic['source_type'] ?? 'standby',
+                'source_label'     => $realTraffic['source_label'] ?? 'Standby (0 Mbps)',
+                'router_online'    => (bool) ($realTraffic['router_online'] ?? false),
             ],
 
             // PPPoE Stats & Items

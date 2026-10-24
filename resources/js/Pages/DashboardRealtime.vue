@@ -254,8 +254,23 @@
                             <div>
                                 <h3 class="text-base font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
                                     <span>Trafik Jaringan Internet Live</span>
-                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 border border-emerald-200/60 animate-pulse">
-                                        ● STREAM
+                                    <span
+                                        v-if="trafficStats.source_type === 'routeros'"
+                                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 animate-pulse"
+                                    >
+                                        ● LIVE MIKROTIK
+                                    </span>
+                                    <span
+                                        v-else-if="trafficStats.source_type === 'radius'"
+                                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200/60 animate-pulse"
+                                    >
+                                        ● LIVE RADIUS
+                                    </span>
+                                    <span
+                                        v-else
+                                        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200/60"
+                                    >
+                                        ● STANDBY (0 Mbps)
                                     </span>
                                 </h3>
                                 <p class="text-[11px] text-slate-400 font-medium">Throughput live bandwidth download (Rx) & upload (Tx)</p>
@@ -276,7 +291,7 @@
                         <div class="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40">
                             <div class="flex items-center justify-between text-emerald-600 dark:text-emerald-400 text-xs font-bold mb-1">
                                 <span>↓ Download (Rx)</span>
-                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                                <span class="w-2 h-2 rounded-full" :class="trafficStats.download_mbps > 0 ? 'bg-emerald-500 animate-ping' : 'bg-slate-400'"></span>
                             </div>
                             <p class="text-lg font-black text-emerald-700 dark:text-emerald-300 font-mono">
                                 {{ trafficStats.download_mbps }} <span class="text-[10px] font-bold">Mbps</span>
@@ -288,7 +303,7 @@
                         <div class="p-3 rounded-xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/40">
                             <div class="flex items-center justify-between text-sky-600 dark:text-sky-400 text-xs font-bold mb-1">
                                 <span>↑ Upload (Tx)</span>
-                                <span class="w-2 h-2 rounded-full bg-sky-500"></span>
+                                <span class="w-2 h-2 rounded-full" :class="trafficStats.upload_mbps > 0 ? 'bg-sky-500' : 'bg-slate-400'"></span>
                             </div>
                             <p class="text-lg font-black text-sky-700 dark:text-sky-300 font-mono">
                                 {{ trafficStats.upload_mbps }} <span class="text-[10px] font-bold">Mbps</span>
@@ -302,7 +317,7 @@
                             <p class="text-lg font-black text-purple-700 dark:text-purple-300 font-mono">
                                 {{ trafficStats.peak_mbps_today }} <span class="text-[10px] font-bold">Mbps</span>
                             </p>
-                            <p class="text-[10px] text-purple-600/80 mt-0.5">Peak Max Terdeteksi</p>
+                            <p class="text-[10px] text-purple-600/80 mt-0.5">Puncak Terukur Hari Ini</p>
                         </div>
 
                         <!-- 4. Total Kuota GB Hari Ini -->
@@ -311,7 +326,7 @@
                             <p class="text-lg font-black text-amber-700 dark:text-amber-300 font-mono">
                                 {{ trafficStats.total_gb_today }} <span class="text-[10px] font-bold">GB</span>
                             </p>
-                            <p class="text-[10px] text-amber-600/80 mt-0.5">Akumulasi Kuota</p>
+                            <p class="text-[10px] text-amber-600/80 mt-0.5">Akumulasi Kuota Hari Ini</p>
                         </div>
                     </div>
 
@@ -373,8 +388,12 @@
                 <!-- Footer Status -->
                 <div class="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-400">
                     <span>Diperbarui: <strong class="text-slate-700 dark:text-slate-300 font-mono">{{ stats.last_updated_full || lastUpdated }}</strong></span>
-                    <span class="inline-flex items-center gap-1 text-[11px] text-emerald-600 font-bold">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Sesi RADIUS Live Sync
+                    <span
+                        class="inline-flex items-center gap-1.5 text-[11px] font-bold"
+                        :class="trafficStats.source_type === 'routeros' ? 'text-emerald-600 dark:text-emerald-400' : (trafficStats.source_type === 'radius' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400')"
+                    >
+                        <span class="w-1.5 h-1.5 rounded-full" :class="trafficStats.source_type !== 'standby' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'"></span>
+                        {{ trafficStats.source_label || 'Standby (0 Mbps)' }}
                     </span>
                 </div>
             </div>
