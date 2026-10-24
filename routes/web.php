@@ -81,6 +81,8 @@ Route::middleware(['auth'])->group(function () {
 
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/realtime', [DashboardController::class, 'realtime'])->name('dashboard.realtime');
+    Route::get('/dashboard/realtime-api', [DashboardController::class, 'realtimeApi'])->name('dashboard.realtime-api');
 
     // Client Area (Reseller)
     Route::middleware(['role:reseller|customer'])->prefix('client-area')->name('client-area.')->group(function () {

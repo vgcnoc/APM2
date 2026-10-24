@@ -19,6 +19,10 @@ use App\Models\SpecialTeam;
 use App\Models\SpecialTeamMember;
 use App\Models\WorkSchedule;
 use App\Models\Shift;
+use App\Models\Voucher;
+use App\Models\Radius\RadAcct;
+use App\Models\Radius\Nas;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -385,6 +389,7 @@ class DashboardController extends Controller
             'selectedAreaDetail'   => $selectedAreaDetail,
             'canViewAllAreas'      => $canViewAllAreas,
             'canFilterArea'        => $canFilterArea,
+            'realtimeStats'        => $this->getRealtimeData($user, $selectedAreaId),
         ]);
     }
 
@@ -636,6 +641,215 @@ class DashboardController extends Controller
                 'late_today' => $lateToday,
                 'completed_today' => $completedToday,
             ],
+        ];
+    }
+
+    /**
+     * Halaman Menu Dashboard Realtime
+     */
+    public function realtime(Request $request)
+    {
+        $user = auth()->user();
+
+        // Hak akses view dashboard realtime
+        if ($user && !$user->hasRole('admin') && !$user->hasRole('super admin') && $user->role !== 'admin' && $user->role !== 'super admin') {
+            if (!$user->can('menu_dashboard_realtime') && !$user->can('dashboard_card_realtime')) {
+                abort(403, 'Anda tidak memiliki hak akses untuk membuka Dashboard Realtime.');
+            }
+        }
+
+        $canViewAllAreas = $user && (
+            $user->hasRole('admin') || 
+            $user->role === 'admin' || 
+            $user->hasRole('super admin') || 
+            $user->role === 'super admin' || 
+            $user->can('dashboard_view_all') || 
+            $user->can('customers_all_view_all')
+        );
+
+        $userAccessibleAreaIds = $user ? $user->getAccessibleAreaIds() : [];
+
+        if ($canViewAllAreas) {
+            $availableAreas = Area::orderBy('name')->get(['id', 'name', 'address', 'radius_meters']);
+        } else {
+            $availableAreas = Area::whereIn('id', $userAccessibleAreaIds)->orderBy('name')->get(['id', 'name', 'address', 'radius_meters']);
+        }
+
+        $selectedAreaId = 'all';
+        if ($request->filled('area_id')) {
+            $reqArea = $request->input('area_id');
+            if ($reqArea === 'all') {
+                $selectedAreaId = 'all';
+            } else {
+                $reqAreaId = (int) $reqArea;
+                if ($canViewAllAreas || in_array($reqAreaId, $userAccessibleAreaIds)) {
+                    $selectedAreaId = $reqAreaId;
+                } else {
+                    $selectedAreaId = $canViewAllAreas ? 'all' : (count($userAccessibleAreaIds) > 0 ? $userAccessibleAreaIds[0] : 'all');
+                }
+            }
+        } elseif (!$canViewAllAreas && count($userAccessibleAreaIds) === 1) {
+            $selectedAreaId = $userAccessibleAreaIds[0];
+        }
+
+        $realtimeStats = $this->getRealtimeData($user, $selectedAreaId);
+
+        $nasCount = 1;
+        try {
+            if (class_exists(Nas::class)) {
+                $nasCount = max(1, Nas::count());
+            }
+        } catch (\Throwable $e) {}
+
+        return Inertia::render('DashboardRealtime', [
+            'realtimeStats'  => $realtimeStats,
+            'availableAreas' => $availableAreas,
+            'selectedAreaId' => $selectedAreaId,
+            'nasStats'       => ['total_nas' => $nasCount],
+        ]);
+    }
+
+    /**
+     * API Polling data realtime untuk AJAX / live poll
+     */
+    public function realtimeApi(Request $request)
+    {
+        $user = auth()->user();
+        $selectedAreaId = $request->input('area_id', 'all');
+
+        $stats = $this->getRealtimeData($user, $selectedAreaId);
+
+        return response()->json($stats);
+    }
+
+    /**
+     * Helper perhitungan statistik realtime untuk widget Realtime
+     */
+    public function getRealtimeData(?User $user = null, $areaId = 'all'): array
+    {
+        $user = $user ?? auth()->user();
+
+        $canViewAllAreas = $user && (
+            $user->hasRole('admin') || 
+            $user->role === 'admin' || 
+            $user->hasRole('super admin') || 
+            $user->role === 'super admin' || 
+            $user->can('dashboard_view_all') || 
+            $user->can('customers_all_view_all')
+        );
+
+        $userAccessibleAreaIds = $user ? $user->getAccessibleAreaIds() : [];
+
+        // Scope filter helper
+        $applyAreaScope = function ($query, $tablePrefix = '') use ($areaId, $canViewAllAreas, $userAccessibleAreaIds) {
+            $col = $tablePrefix ? "{$tablePrefix}.area_id" : 'area_id';
+            if (is_numeric($areaId)) {
+                $query->where($col, (int) $areaId);
+            } elseif (!$canViewAllAreas && count($userAccessibleAreaIds) > 0) {
+                $query->whereIn($col, $userAccessibleAreaIds);
+            }
+            return $query;
+        };
+
+        // 1. Sesi RADIUS Online
+        $onlineUsernames = [];
+        try {
+            if (class_exists(RadAcct::class)) {
+                $onlineUsernames = RadAcct::online()->pluck('username')->filter()->unique()->toArray();
+            }
+        } catch (\Throwable $e) {
+            $onlineUsernames = [];
+        }
+
+        // Voucher online vs PPPoE / Billing Online
+        $voucherUsernames = [];
+        try {
+            if (count($onlineUsernames) > 0) {
+                $voucherUsernames = Voucher::whereIn('username', $onlineUsernames)->pluck('username')->toArray();
+            }
+        } catch (\Throwable $e) {
+            $voucherUsernames = [];
+        }
+
+        $onlineVoucherCount = count($voucherUsernames);
+        // Sisanya adalah sesi pelanggan PPPoE / Billing
+        $onlineBillingCount = max(0, count($onlineUsernames) - $onlineVoucherCount);
+
+        // Jika data RADIUS online kosong (misal lab/dev/radius offline), fallback ke data pelanggan aktif
+        $custBase = Customer::query();
+        $applyAreaScope($custBase);
+        $totalActiveCust = (clone $custBase)->where('status', 'active')->count();
+
+        if (count($onlineUsernames) === 0 && $totalActiveCust > 0) {
+            $onlineBillingCount = $totalActiveCust;
+            $onlineVoucherCount = Voucher::where('status', 'used')->where('is_active', true)->count();
+        }
+
+        $realOnline = $onlineVoucherCount + $onlineBillingCount;
+
+        // Pending count: pelanggan proses pemasangan/aktivasi
+        $pendingCount = (clone $custBase)->whereIn('status', ['booking', 'survey', 'installing', 'menunggu_aktivasi'])->count();
+
+        // Billing UNPAID
+        $invoiceBase = Invoice::query()->whereIn('status', ['unpaid', 'partially_paid', 'pending']);
+        if (is_numeric($areaId)) {
+            $invoiceBase->whereHas('customer', fn($q) => $q->where('area_id', (int) $areaId));
+        } elseif (!$canViewAllAreas && count($userAccessibleAreaIds) > 0) {
+            $invoiceBase->whereHas('customer', fn($q) => $q->whereIn('area_id', $userAccessibleAreaIds));
+        }
+        $unpaidCount = (clone $invoiceBase)->count();
+
+        // Sample list unpaid untuk modal aksi
+        $unpaidCustomers = (clone $invoiceBase)
+            ->with(['customer.areaModel'])
+            ->orderByDesc('id')
+            ->limit(10)
+            ->get()
+            ->map(fn($inv) => [
+                'id' => $inv->id,
+                'customer_name' => $inv->customer?->name ?? 'Pelanggan',
+                'customer_code' => $inv->customer?->customer_code ?? '-',
+                'invoice_number' => $inv->invoice_number,
+                'area_name' => $inv->customer?->areaModel?->name ?? 'Area Default',
+                'amount' => $inv->amount,
+                'customer_phone' => $inv->customer?->phone ?? '-',
+            ]);
+
+        // Billing ISOLIR
+        $isolirBase = Customer::query()->where(function ($q) {
+            $q->where('status', 'suspended')->orWhere('service_status', 'isolir');
+        });
+        $applyAreaScope($isolirBase);
+        $isolirCount = (clone $isolirBase)->count();
+
+        // Sample list isolir untuk modal aksi
+        $isolirCustomers = (clone $isolirBase)
+            ->with(['areaModel'])
+            ->orderByDesc('id')
+            ->limit(10)
+            ->get()
+            ->map(fn($c) => [
+                'id' => $c->id,
+                'name' => $c->name,
+                'customer_code' => $c->customer_code,
+                'area_name' => $c->areaModel?->name ?? 'Area Default',
+                'phone' => $c->phone ?? '-',
+            ]);
+
+        // Max Capacity (minimal 3600 sesuai desain atau kapasitas dinamis)
+        $maxCapacity = max(3600, (int) (ceil(max($realOnline, $totalActiveCust) / 500) * 500));
+
+        return [
+            'real_online'      => $realOnline,
+            'max_capacity'     => $maxCapacity,
+            'online_voucher'   => $onlineVoucherCount,
+            'online_billing'   => $onlineBillingCount,
+            'pending_count'    => $pendingCount,
+            'unpaid_count'     => $unpaidCount,
+            'isolir_count'     => $isolirCount,
+            'unpaid_customers' => $unpaidCustomers,
+            'isolir_customers' => $isolirCustomers,
+            'last_updated'     => now()->timezone('Asia/Jakarta')->format('H:i:s'),
         ];
     }
 }

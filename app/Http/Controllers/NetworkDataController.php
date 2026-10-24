@@ -87,7 +87,7 @@ class NetworkDataController extends Controller
         $portTersedia = max(0, $totalPort - $portTerpakai);
 
         $baseCustomerQuery = Customer::query();
-        DataScopeService::applyCustomerScope($baseCustomerQuery, $user);
+        DataScopeService::applyCustomerScope($baseCustomerQuery, $user, 'network_data');
 
         $pelangganAktif = (clone $baseCustomerQuery)->where('status', 'active')->count();
         $pelangganGratis = (clone $baseCustomerQuery)->where('service_status', 'gratis')->where('status', 'active')->count();
@@ -99,7 +99,7 @@ class NetworkDataController extends Controller
         $totalProsesCbp = (clone $baseCbpQuery)->count();
         
         $termCustQuery = Customer::where('status', 'terminated')->with(['ont.odp', 'latestCbpRequest.technicians']);
-        DataScopeService::applyCustomerScope($termCustQuery, $user);
+        DataScopeService::applyCustomerScope($termCustQuery, $user, 'network_data');
         $terminatedCustomers = $termCustQuery->get();
 
         $cbpQuery = \App\Models\CbpRequest::whereIn('status', ['pending', 'assigned'])->with(['customer', 'technicians']);

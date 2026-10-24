@@ -145,6 +145,15 @@
         <!-- ═══ Presensi Reguler Staf Widget ═══ -->
         <DashboardAttendanceWidget :attendance-data="attendanceData" class="mb-6" />
 
+        <!-- ═══ Realtime Live Monitoring Widget ═══ -->
+        <div v-can="'dashboard_card_realtime'" class="mb-6">
+            <RealtimeWidget
+                :stats="realtimeStats"
+                :area-id="selectedAreaId"
+                :auto-poll="true"
+            />
+        </div>
+
         <!-- ═══ Stat Cards (Operasional Umum Karyawan - Tanpa Keuangan) ═══ -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
             <!-- 1. Pelanggan Aktif -->
@@ -550,8 +559,10 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DashboardAttendanceWidget from '@/Components/Attendance/DashboardAttendanceWidget.vue';
+import RealtimeWidget from '@/Components/Dashboard/RealtimeWidget.vue';
 
 const props = defineProps({
+    realtimeStats: { type: Object, default: () => ({}) },
     customerStats: Object,
     infraStats: Object,
     ticketStats: Object,

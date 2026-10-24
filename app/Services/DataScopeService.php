@@ -54,9 +54,11 @@ class DataScopeService
             $viewAllPerms[] = 'material_transactions_view_all';
             $viewAllPerms[] = 'materials_view_all';
         }
-        if (in_array($module, ['network_data', 'topology', 'radar', 'network_map'])) {
+        if (in_array($module, ['network_data', 'network_odp', 'network_odc', 'network_olt', 'network_ont', 'topology', 'radar', 'network_map'])) {
+            $viewAllPerms[] = 'network_data_view_all';
             $viewAllPerms[] = 'network_olt_view_all';
             $viewAllPerms[] = 'network_odp_view_all';
+            $viewAllPerms[] = 'network_odc_view_all';
             $viewAllPerms[] = 'ftth_view_all';
         }
 
@@ -80,9 +82,11 @@ class DataScopeService
             $viewAreaPerms[] = 'material_transactions_view_area';
             $viewAreaPerms[] = 'materials_view_area';
         }
-        if (in_array($module, ['network_data', 'topology', 'radar', 'network_map'])) {
+        if (in_array($module, ['network_data', 'network_odp', 'network_odc', 'network_olt', 'network_ont', 'topology', 'radar', 'network_map'])) {
+            $viewAreaPerms[] = 'network_data_view_area';
             $viewAreaPerms[] = 'network_olt_view_area';
             $viewAreaPerms[] = 'network_odp_view_area';
+            $viewAreaPerms[] = 'network_odc_view_area';
             $viewAreaPerms[] = 'ftth_view_area';
         }
 
@@ -426,7 +430,10 @@ class DataScopeService
         if (empty($accessibleAreas)) return $query->whereRaw('1 = 0');
         return $query->where(function ($q) use ($accessibleAreas) {
             $q->whereIn('area_id', $accessibleAreas)
-              ->orWhereHas('olt', fn($oq) => $oq->whereIn('area_id', $accessibleAreas));
+              ->orWhere(function ($fallback) use ($accessibleAreas) {
+                  $fallback->whereNull('area_id')
+                      ->whereHas('olt', fn($oq) => $oq->whereIn('area_id', $accessibleAreas));
+              });
         });
     }
 
@@ -444,9 +451,15 @@ class DataScopeService
         if (empty($accessibleAreas)) return $query->whereRaw('1 = 0');
         return $query->where(function ($q) use ($accessibleAreas) {
             $q->whereIn('area_id', $accessibleAreas)
-              ->orWhereHas('odc', function ($odcq) use ($accessibleAreas) {
-                  $odcq->whereIn('area_id', $accessibleAreas)
-                       ->orWhereHas('olt', fn($oq) => $oq->whereIn('area_id', $accessibleAreas));
+              ->orWhere(function ($fallback) use ($accessibleAreas) {
+                  $fallback->whereNull('area_id')
+                      ->whereHas('odc', function ($odcq) use ($accessibleAreas) {
+                          $odcq->whereIn('area_id', $accessibleAreas)
+                               ->orWhere(function ($odcFallback) use ($accessibleAreas) {
+                                   $odcFallback->whereNull('area_id')
+                                       ->whereHas('olt', fn($oq) => $oq->whereIn('area_id', $accessibleAreas));
+                               });
+                      });
               });
         });
     }
@@ -465,8 +478,13 @@ class DataScopeService
         if (empty($accessibleAreas)) return $query->whereRaw('1 = 0');
         return $query->where(function ($q) use ($accessibleAreas) {
             $q->whereIn('area_id', $accessibleAreas)
-              ->orWhereHas('odp', fn($odpq) => $odpq->whereIn('area_id', $accessibleAreas))
-              ->orWhereHas('customer', fn($cq) => $cq->whereIn('area_id', $accessibleAreas));
+              ->orWhere(function ($fallback) use ($accessibleAreas) {
+                  $fallback->whereNull('area_id')
+                      ->where(function ($f) use ($accessibleAreas) {
+                          $f->whereHas('odp', fn($odpq) => $odpq->whereIn('area_id', $accessibleAreas))
+                            ->orWhereHas('customer', fn($cq) => $cq->whereIn('area_id', $accessibleAreas));
+                      });
+              });
         });
     }
 

@@ -730,6 +730,7 @@ const hasPermission = (permission) => {
 const menuItems = [
     // 1. DASHBOARD
     { type: 'link', href: '/', icon: 'dashboard', label: 'Dashboard', active: (url) => (url || '').length > 0 && url === '/', permission: 'menu_dashboard' },
+    { type: 'link', href: '/dashboard/realtime', icon: 'zap', label: 'Dashboard Realtime', active: (url) => (url || '').startsWith('/dashboard/realtime'), permission: 'menu_dashboard_realtime' },
     
     // 2. PELANGGAN & LAYANAN
     { type: 'group', label: 'PELANGGAN & LAYANAN', theme: 'blue' },

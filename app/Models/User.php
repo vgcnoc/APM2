@@ -126,11 +126,11 @@ class User extends Authenticatable
 
     public function getAccessibleAreaIds(): array
     {
-        $areas = (array) ($this->accessible_areas ?? []);
+        $areas = array_filter((array) ($this->accessible_areas ?? []));
         if ($this->area_id && !in_array($this->area_id, $areas)) {
             $areas[] = $this->area_id;
         }
-        return $areas;
+        return array_values(array_unique(array_map('intval', $areas)));
     }
 
     /**
