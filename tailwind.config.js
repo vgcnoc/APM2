@@ -15,8 +15,19 @@ export default {
                 mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
             },
             colors: {
+                // Tema Mode Gelap: Hitam Agak Keunguan (Dark Purple-tinted Black)
+                slate: {
+                    750: '#251a4a',
+                    800: '#1c1438', // purple-tinted dark surface & inner wells
+                    850: '#160f2e',
+                    900: '#110b24', // deep dark purple-black cards & sidebars
+                    950: '#0b0718', // deepest void purple-black background
+                },
                 gray: {
-                    950: '#0a0e1a',
+                    800: '#1c1438',
+                    850: '#160f2e',
+                    900: '#110b24',
+                    950: '#0b0718',
                 },
                 brown: {
                     50: '#fdf8f5',

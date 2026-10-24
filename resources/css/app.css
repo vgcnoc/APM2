@@ -18,13 +18,13 @@ html {
 
 @media screen {
     html.dark {
-        @apply bg-gray-950;
+        background-color: #0b0718 !important;
         color-scheme: dark;
     }
 }
 
 body {
-    @apply text-gray-900 antialiased bg-gray-50 min-h-screen selection:bg-blue-500/30 selection:text-blue-900;
+    @apply text-gray-900 antialiased bg-gray-50 min-h-screen selection:bg-purple-500/30 selection:text-purple-900;
     font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
     zoom: 80%;
     transition: background-color 0.2s ease, color 0.2s ease;
@@ -32,7 +32,9 @@ body {
 
 @media screen {
     html.dark body {
-        @apply text-gray-100 bg-gray-950 selection:bg-blue-600/40 selection:text-white;
+        @apply text-gray-100 selection:bg-purple-600/40 selection:text-white;
+        background-color: #0b0718 !important;
+        color: #f8f7fc !important;
     }
 }
 
@@ -222,17 +224,19 @@ h1, h2, h3, h4, h5, h6 {
 .sidebar-link-purple {
     @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold
            bg-purple-50/90 text-purple-900 border border-purple-200/80 shadow-sm
-           transition-all duration-200 hover:bg-purple-100 hover:text-purple-950 hover:border-purple-300;
+           dark:bg-purple-950/40 dark:text-purple-100 dark:border-purple-800/60
+           transition-all duration-200 hover:bg-purple-100 hover:text-purple-950 hover:border-purple-300
+           dark:hover:bg-purple-900/60 dark:hover:text-white dark:hover:border-purple-600;
 }
 
 .sidebar-link-purple.active {
     @apply bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold
-           border-l-[4px] border-l-purple-900 rounded-l-none pl-[12px] shadow-sm;
+           border-l-[4px] border-l-purple-900 dark:border-l-purple-400 rounded-l-none pl-[12px] shadow-sm;
 }
 
 .sidebar-sub-purple {
-    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-purple-900
-           transition-all duration-150 hover:bg-purple-200/80 hover:text-purple-950 pl-8;
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-purple-900 dark:text-purple-200
+           transition-all duration-150 hover:bg-purple-200/80 hover:text-purple-950 dark:hover:bg-purple-900/60 dark:hover:text-white pl-8;
 }
 
 .sidebar-sub-purple.active {
@@ -243,17 +247,19 @@ h1, h2, h3, h4, h5, h6 {
 .sidebar-link-rose {
     @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold
            bg-rose-50/90 text-rose-900 border border-rose-200/80 shadow-sm
-           transition-all duration-200 hover:bg-rose-100 hover:text-rose-950 hover:border-rose-300;
+           dark:bg-rose-950/40 dark:text-rose-100 dark:border-rose-800/60
+           transition-all duration-200 hover:bg-rose-100 hover:text-rose-950 hover:border-rose-300
+           dark:hover:bg-rose-900/60 dark:hover:text-white dark:hover:border-rose-600;
 }
 
 .sidebar-link-rose.active {
     @apply bg-gradient-to-r from-rose-600 to-red-600 text-white font-bold
-           border-l-[4px] border-l-rose-900 rounded-l-none pl-[12px] shadow-sm;
+           border-l-[4px] border-l-rose-900 dark:border-l-rose-400 rounded-l-none pl-[12px] shadow-sm;
 }
 
 .sidebar-sub-rose {
-    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-rose-900
-           transition-all duration-150 hover:bg-rose-200/80 hover:text-rose-950 pl-8;
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-rose-900 dark:text-rose-200
+           transition-all duration-150 hover:bg-rose-200/80 hover:text-rose-950 dark:hover:bg-rose-900/60 dark:hover:text-white pl-8;
 }
 
 .sidebar-sub-rose.active {
@@ -264,17 +270,19 @@ h1, h2, h3, h4, h5, h6 {
 .sidebar-link-blue {
     @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold
            bg-sky-50/90 text-sky-950 border border-sky-200/80 shadow-sm
-           transition-all duration-200 hover:bg-sky-100 hover:text-sky-950 hover:border-sky-300;
+           dark:bg-sky-950/40 dark:text-sky-100 dark:border-sky-800/60
+           transition-all duration-200 hover:bg-sky-100 hover:text-sky-950 hover:border-sky-300
+           dark:hover:bg-sky-900/60 dark:hover:text-white dark:hover:border-sky-600;
 }
 
 .sidebar-link-blue.active {
     @apply bg-gradient-to-r from-sky-600 to-blue-600 text-white font-bold
-           border-l-[4px] border-l-blue-900 rounded-l-none pl-[12px] shadow-sm;
+           border-l-[4px] border-l-blue-900 dark:border-l-blue-400 rounded-l-none pl-[12px] shadow-sm;
 }
 
 .sidebar-sub-blue {
-    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-sky-950
-           transition-all duration-150 hover:bg-sky-200/80 hover:text-sky-950 pl-8;
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-sky-950 dark:text-sky-200
+           transition-all duration-150 hover:bg-sky-200/80 hover:text-sky-950 dark:hover:bg-sky-900/60 dark:hover:text-white pl-8;
 }
 
 .sidebar-sub-blue.active {
@@ -285,17 +293,19 @@ h1, h2, h3, h4, h5, h6 {
 .sidebar-link-green {
     @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold
            bg-emerald-50/90 text-emerald-950 border border-emerald-200/80 shadow-sm
-           transition-all duration-200 hover:bg-emerald-100 hover:text-emerald-950 hover:border-emerald-300;
+           dark:bg-emerald-950/40 dark:text-emerald-100 dark:border-emerald-800/60
+           transition-all duration-200 hover:bg-emerald-100 hover:text-emerald-950 hover:border-emerald-300
+           dark:hover:bg-emerald-900/60 dark:hover:text-white dark:hover:border-emerald-600;
 }
 
 .sidebar-link-green.active {
     @apply bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold
-           border-l-[4px] border-l-emerald-900 rounded-l-none pl-[12px] shadow-sm;
+           border-l-[4px] border-l-emerald-900 dark:border-l-emerald-400 rounded-l-none pl-[12px] shadow-sm;
 }
 
 .sidebar-sub-green {
-    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-emerald-950
-           transition-all duration-150 hover:bg-emerald-200/80 hover:text-emerald-950 pl-8;
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-emerald-950 dark:text-emerald-200
+           transition-all duration-150 hover:bg-emerald-200/80 hover:text-emerald-950 dark:hover:bg-emerald-900/60 dark:hover:text-white pl-8;
 }
 
 .sidebar-sub-green.active {
@@ -306,17 +316,19 @@ h1, h2, h3, h4, h5, h6 {
 .sidebar-link-orange {
     @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold
            bg-orange-50/90 text-orange-950 border border-orange-200/80 shadow-sm
-           transition-all duration-200 hover:bg-orange-100 hover:text-orange-950 hover:border-orange-300;
+           dark:bg-orange-950/40 dark:text-orange-100 dark:border-orange-800/60
+           transition-all duration-200 hover:bg-orange-100 hover:text-orange-950 hover:border-orange-300
+           dark:hover:bg-orange-900/60 dark:hover:text-white dark:hover:border-orange-600;
 }
 
 .sidebar-link-orange.active {
     @apply bg-gradient-to-r from-orange-500 to-amber-600 text-white font-bold
-           border-l-[4px] border-l-orange-900 rounded-l-none pl-[12px] shadow-sm;
+           border-l-[4px] border-l-orange-900 dark:border-l-orange-400 rounded-l-none pl-[12px] shadow-sm;
 }
 
 .sidebar-sub-orange {
-    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-orange-950
-           transition-all duration-150 hover:bg-orange-200/80 hover:text-orange-950 pl-8;
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-orange-950 dark:text-orange-200
+           transition-all duration-150 hover:bg-orange-200/80 hover:text-orange-950 dark:hover:bg-orange-900/60 dark:hover:text-white pl-8;
 }
 
 .sidebar-sub-orange.active {
@@ -327,17 +339,19 @@ h1, h2, h3, h4, h5, h6 {
 .sidebar-link-pink {
     @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold
            bg-pink-50/90 text-pink-950 border border-pink-200/80 shadow-sm
-           transition-all duration-200 hover:bg-pink-100 hover:text-pink-950 hover:border-pink-300;
+           dark:bg-pink-950/40 dark:text-pink-100 dark:border-pink-800/60
+           transition-all duration-200 hover:bg-pink-100 hover:text-pink-950 hover:border-pink-300
+           dark:hover:bg-pink-900/60 dark:hover:text-white dark:hover:border-pink-600;
 }
 
 .sidebar-link-pink.active {
     @apply bg-gradient-to-r from-pink-600 to-rose-600 text-white font-bold
-           border-l-[4px] border-l-pink-900 rounded-l-none pl-[12px] shadow-sm;
+           border-l-[4px] border-l-pink-900 dark:border-l-pink-400 rounded-l-none pl-[12px] shadow-sm;
 }
 
 .sidebar-sub-pink {
-    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-pink-950
-           transition-all duration-150 hover:bg-pink-200/80 hover:text-pink-950 pl-8;
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-pink-950 dark:text-pink-200
+           transition-all duration-150 hover:bg-pink-200/80 hover:text-pink-950 dark:hover:bg-pink-900/60 dark:hover:text-white pl-8;
 }
 
 .sidebar-sub-pink.active {
@@ -348,17 +362,19 @@ h1, h2, h3, h4, h5, h6 {
 .sidebar-link-brown {
     @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold
            bg-brown-50/90 text-brown-950 border border-brown-200/80 shadow-sm
-           transition-all duration-200 hover:bg-brown-100 hover:text-brown-950 hover:border-brown-300;
+           dark:bg-amber-950/40 dark:text-amber-100 dark:border-amber-800/60
+           transition-all duration-200 hover:bg-brown-100 hover:text-brown-950 hover:border-brown-300
+           dark:hover:bg-amber-900/60 dark:hover:text-white dark:hover:border-amber-600;
 }
 
 .sidebar-link-brown.active {
     @apply bg-gradient-to-r from-brown-600 to-brown-700 text-white font-bold
-           border-l-[4px] border-l-brown-900 rounded-l-none pl-[12px] shadow-sm;
+           border-l-[4px] border-l-brown-900 dark:border-l-amber-400 rounded-l-none pl-[12px] shadow-sm;
 }
 
 .sidebar-sub-brown {
-    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-brown-950
-           transition-all duration-150 hover:bg-brown-200/80 hover:text-brown-950 pl-8;
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-brown-950 dark:text-amber-200
+           transition-all duration-150 hover:bg-brown-200/80 hover:text-brown-950 dark:hover:bg-amber-900/60 dark:hover:text-white pl-8;
 }
 
 .sidebar-sub-brown.active {
@@ -369,17 +385,19 @@ h1, h2, h3, h4, h5, h6 {
 .sidebar-link-slate {
     @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold
            bg-slate-100/90 text-slate-900 border border-slate-300/80 shadow-sm
-           transition-all duration-200 hover:bg-slate-200/80 hover:text-slate-950 hover:border-slate-400;
+           dark:bg-slate-800/70 dark:text-slate-100 dark:border-slate-700/60
+           transition-all duration-200 hover:bg-slate-200/80 hover:text-slate-950 hover:border-slate-400
+           dark:hover:bg-slate-700/80 dark:hover:text-white dark:hover:border-slate-500;
 }
 
 .sidebar-link-slate.active {
     @apply bg-gradient-to-r from-slate-700 to-slate-800 text-white font-bold
-           border-l-[4px] border-l-slate-950 rounded-l-none pl-[12px] shadow-sm;
+           border-l-[4px] border-l-slate-950 dark:border-l-slate-400 rounded-l-none pl-[12px] shadow-sm;
 }
 
 .sidebar-sub-slate {
-    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-slate-900
-           transition-all duration-150 hover:bg-slate-200 hover:text-slate-950 pl-8;
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-slate-900 dark:text-slate-200
+           transition-all duration-150 hover:bg-slate-200 hover:text-slate-950 dark:hover:bg-slate-800 dark:hover:text-white pl-8;
 }
 
 .sidebar-sub-slate.active {
@@ -390,17 +408,19 @@ h1, h2, h3, h4, h5, h6 {
 .sidebar-link-violet {
     @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold
            bg-violet-50/90 text-violet-950 border border-violet-200/80 shadow-sm
-           transition-all duration-200 hover:bg-violet-100 hover:text-violet-950 hover:border-violet-300;
+           dark:bg-violet-950/40 dark:text-violet-100 dark:border-violet-800/60
+           transition-all duration-200 hover:bg-violet-100 hover:text-violet-950 hover:border-violet-300
+           dark:hover:bg-violet-900/60 dark:hover:text-white dark:hover:border-violet-600;
 }
 
 .sidebar-link-violet.active {
     @apply bg-gradient-to-r from-violet-600 to-purple-700 text-white font-bold
-           border-l-[4px] border-l-violet-950 rounded-l-none pl-[12px] shadow-sm;
+           border-l-[4px] border-l-violet-950 dark:border-l-violet-400 rounded-l-none pl-[12px] shadow-sm;
 }
 
 .sidebar-sub-violet {
-    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-violet-950
-           transition-all duration-150 hover:bg-violet-200/80 hover:text-violet-950 pl-8;
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-violet-950 dark:text-violet-200
+           transition-all duration-150 hover:bg-violet-200/80 hover:text-violet-950 dark:hover:bg-violet-900/60 dark:hover:text-white pl-8;
 }
 
 .sidebar-sub-violet.active {
@@ -483,4 +503,151 @@ html.dark .group-badge--violet  { --gb-text: #ddd6fe; --gb-bg: rgba(139, 92, 246
 .delay-2 { animation-delay: 0.1s; }
 .delay-3 { animation-delay: 0.15s; }
 .delay-4 { animation-delay: 0.2s; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ── TEMA MODE GELAP: HITAM AGAK KEUNGUAN & TYPOGRAPHY TINGGI KONTRAS ──
+   ══════════════════════════════════════════════════════════════════════════ */
+html.dark {
+    --bg-dark-base: #0b0718;
+    --bg-dark-surface: #110b24;
+    --bg-dark-card: #150f2e;
+    --bg-dark-well: #1c1438;
+    --border-dark: rgba(168, 85, 247, 0.2);
+    color-scheme: dark;
+}
+
+/* Base text contrast */
+html.dark {
+    color: #f8f7fc;
+}
+
+html.dark body {
+    background-color: #0b0718 !important;
+    color: #f8f7fc !important;
+}
+
+/* Ensure all headings in dark mode are crisp bright white */
+html.dark :is(h1, h2, h3, h4, h5, h6) {
+    color: #ffffff !important;
+}
+
+/* Shell, Sidebar, and Topbar in dark mode */
+html.dark .apm-shell {
+    background-color: #0b0718 !important;
+}
+
+html.dark .apm-sidebar {
+    background-color: rgba(17, 11, 36, 0.96) !important;
+    border-color: rgba(168, 85, 247, 0.16) !important;
+    box-shadow: 2px 0 24px rgba(11, 7, 24, 0.7) !important;
+}
+
+html.dark .apm-topbar {
+    background-color: rgba(17, 11, 36, 0.94) !important;
+    border-color: rgba(168, 85, 247, 0.16) !important;
+    box-shadow: 0 4px 20px rgba(11, 7, 24, 0.5) !important;
+}
+
+/* Cards & Glass panels */
+html.dark .glass {
+    background-color: #150f2e !important;
+    border-color: rgba(168, 85, 247, 0.18) !important;
+}
+
+html.dark .glass-card {
+    background-color: #150f2e !important;
+    border-color: rgba(168, 85, 247, 0.18) !important;
+    box-shadow: 0 4px 20px rgba(11, 7, 24, 0.45) !important;
+}
+
+/* High-Contrast Readable Text Fallbacks across All Pages & Menus */
+html.dark .text-slate-900:not([class*="dark:text-"]),
+html.dark .text-gray-900:not([class*="dark:text-"]),
+html.dark .text-slate-800:not([class*="dark:text-"]),
+html.dark .text-gray-800:not([class*="dark:text-"]) {
+    color: #ffffff !important;
+}
+
+html.dark .text-slate-700:not([class*="dark:text-"]),
+html.dark .text-gray-700:not([class*="dark:text-"]) {
+    color: #e5ddf5 !important;
+}
+
+html.dark .text-slate-600:not([class*="dark:text-"]),
+html.dark .text-gray-600:not([class*="dark:text-"]) {
+    color: #cfc4e6 !important;
+}
+
+html.dark .text-slate-500:not([class*="dark:text-"]),
+html.dark .text-gray-500:not([class*="dark:text-"]) {
+    color: #b7a9d4 !important;
+}
+
+html.dark .text-slate-400:not([class*="dark:text-"]),
+html.dark .text-gray-400:not([class*="dark:text-"]) {
+    color: #a494c4 !important;
+}
+
+/* High Contrast Form Inputs & Selects in Dark Mode */
+html.dark .form-input,
+html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="color"]):not([type="range"]),
+html.dark select,
+html.dark textarea {
+    background-color: #1a1236 !important;
+    border-color: rgba(168, 85, 247, 0.28) !important;
+    color: #f8f7fc !important;
+}
+
+html.dark input:focus,
+html.dark select:focus,
+html.dark textarea:focus {
+    border-color: #a855f7 !important;
+    background-color: #201642 !important;
+    box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.25) !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+    color: #8c7aa8 !important;
+}
+
+html.dark .form-label {
+    color: #e5ddf5 !important;
+}
+
+/* High Contrast Data Tables in Dark Mode */
+html.dark .data-table thead,
+html.dark table thead {
+    background-color: #171032 !important;
+    border-color: rgba(168, 85, 247, 0.2) !important;
+}
+
+html.dark .data-table thead th,
+html.dark table thead th {
+    color: #d1c5e7 !important;
+    border-color: rgba(168, 85, 247, 0.2) !important;
+}
+
+html.dark .data-table tbody tr,
+html.dark table tbody tr {
+    border-color: rgba(168, 85, 247, 0.12) !important;
+}
+
+html.dark .data-table tbody tr:hover,
+html.dark table tbody tr:hover {
+    background-color: rgba(168, 85, 247, 0.08) !important;
+}
+
+html.dark .data-table tbody td,
+html.dark table tbody td {
+    color: #f1edfb !important;
+}
+
+/* Modals & Dialogs in Dark Mode */
+html.dark .modal-content,
+html.dark [role="dialog"] {
+    background-color: #130d29 !important;
+    border-color: rgba(168, 85, 247, 0.25) !important;
+}
+
 

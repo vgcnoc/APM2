@@ -11,7 +11,7 @@
             <!-- Logo & Brand Header -->
             <div class="flex items-center justify-between px-4 py-4 border-b border-slate-200/80 dark:border-slate-800/80 shrink-0">
                 <Link href="/" class="block transition-transform hover:scale-[1.02]">
-                    <AppLogo :sidebar-collapsed="!sidebarOpen" context="desktop" />
+                    <AppLogo :sidebar-collapsed="!sidebarOpen" context="desktop" :white="isDarkMode" />
                 </Link>
                 <!-- Desktop Mini Collapse Toggle inside Header -->
                 <button
