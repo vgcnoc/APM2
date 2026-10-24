@@ -4,6 +4,7 @@ import { Head, Link } from '@inertiajs/vue3';
 import StatCard from '@/Components/StatCard.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 import DashboardAttendanceWidget from '@/Components/Attendance/DashboardAttendanceWidget.vue';
+import CustomerSearchWidget from '@/Components/Dashboard/CustomerSearchWidget.vue';
 
 defineProps({
     stats: Object,
@@ -29,6 +30,9 @@ const formatDate = (dateStr) => {
     <AppLayout title="Dashboard Teknisi" subtitle="Ringkasan tugas dan jadwal yang ditugaskan kepada Anda">
         <!-- Presensi Reguler Teknisi Widget -->
         <DashboardAttendanceWidget :attendance-data="attendanceData" class="mb-6" />
+
+        <!-- ═══ Pencarian Cepat Pelanggan & Foto Rumah (Tampil untuk Semua User) ═══ -->
+        <CustomerSearchWidget class="mb-6" />
 
         <!-- Statistik Cards -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

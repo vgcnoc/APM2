@@ -522,6 +522,8 @@ class DashboardController extends Controller
         $shiftToday = null;
         $todayAttendance = null;
         $officeLocation = null;
+        $isDayOff = false;
+        $dayOffReason = null;
 
         if ($currentEmployee) {
             if ($isSpecialTeam) {
@@ -562,9 +564,6 @@ class DashboardController extends Controller
                     ->where('employee_id', $currentEmployee->id)
                     ->where('date', $today)
                     ->first();
-
-                $isDayOff = false;
-                $dayOffReason = null;
 
                 if ($todaySchedule) {
                     if ($todaySchedule->status === 'off' || empty($todaySchedule->shift_id)) {
@@ -675,7 +674,7 @@ class DashboardController extends Controller
                 'status'   => $todaySchedule->status,
                 'notes'    => $todaySchedule->notes,
                 'shift_id' => $todaySchedule->shift_id,
-                'is_off'   => $isDayOff,
+                'is_off'   => (bool) ($isDayOff ?? false),
             ] : null,
             'shiftToday' => $shiftToday ? [
                 'id'                => $shiftToday->id,
@@ -687,8 +686,8 @@ class DashboardController extends Controller
                 'color'             => $shiftToday->color ?? 'blue',
                 'duration_text'     => $shiftToday->duration_text ?? null,
             ] : null,
-            'isDayOff' => $isDayOff ?? false,
-            'dayOffReason' => $dayOffReason,
+            'isDayOff' => (bool) ($isDayOff ?? false),
+            'dayOffReason' => $dayOffReason ?? null,
             'todayAttendance' => $todayAttendance,
             'officeLocation' => $officeLocation,
             'attendanceSummary' => [
@@ -810,6 +809,198 @@ class DashboardController extends Controller
         );
 
         return response()->json($stats);
+    }
+
+    /**
+     * Pencarian Cepat Nama Pelanggan beserta Alamat Lengkap & Foto Rumah (Tampil di Dashboard untuk Semua User)
+     */
+    public function searchCustomer(Request $request)
+    {
+        $query = trim((string) $request->input('q', ''));
+        if (mb_strlen($query) < 2) {
+            return response()->json([
+                'success' => true,
+                'count' => 0,
+                'customers' => [],
+            ]);
+        }
+
+        $user = auth()->user();
+        $areaId = $request->input('area_id', 'all');
+
+        $customerQuery = Customer::query()
+            ->with([
+                'package:id,name,price,speed_mbps',
+                'areaModel:id,name',
+                'surveys' => fn($q) => $q->latest()->select('id', 'customer_id', 'photos', 'survey_date', 'notes'),
+                'ont' => fn($q) => $q->select('id', 'customer_id', 'odp_id', 'port_number', 'photo_odp', 'photo_installation', 'photo_ont', 'photo_customer', 'photo_redaman')->with('odp:id,name,code'),
+            ]);
+
+        $canViewAllAreas = $user && (
+            (method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super admin'))) || 
+            $user->role === 'admin' || 
+            $user->role === 'super admin' || 
+            (method_exists($user, 'can') && ($user->can('dashboard_view_all') || $user->can('customers_all_view_all')))
+        );
+
+        $userAccessibleAreaIds = ($user && method_exists($user, 'getAccessibleAreaIds')) ? $user->getAccessibleAreaIds() : [];
+
+        if (!$canViewAllAreas && count($userAccessibleAreaIds) > 0) {
+            $customerQuery->whereIn('area_id', $userAccessibleAreaIds);
+        }
+
+        if (is_numeric($areaId) && (int) $areaId > 0) {
+            $customerQuery->where('area_id', (int) $areaId);
+        }
+
+        // Pencarian multi-kolom cerdas: prioritas nama pelanggan, didukung juga ID pelanggan, alamat, dan nomor telepon
+        $customerQuery->where(function ($sub) use ($query) {
+            $sub->where('name', 'like', "%{$query}%")
+                ->orWhere('customer_code', 'like', "%{$query}%")
+                ->orWhere('address', 'like', "%{$query}%")
+                ->orWhere('phone', 'like', "%{$query}%");
+        });
+
+        $customers = $customerQuery
+            ->orderByRaw("CASE 
+                WHEN name LIKE ? THEN 1 
+                WHEN name LIKE ? THEN 2 
+                WHEN customer_code LIKE ? THEN 3 
+                ELSE 4 
+            END", ["{$query}%", "%{$query}%", "%{$query}%"])
+            ->limit(24)
+            ->get();
+
+        $results = $customers->map(function ($cust) {
+            $housePhotoUrl = null;
+            $housePhotoSource = null;
+            $allPhotos = [];
+
+            // 1. Ekstraksi dari dokumentasi survey (label 'Foto Rumah' atau foto survey)
+            if ($cust->surveys) {
+                foreach ($cust->surveys as $survey) {
+                    if (is_array($survey->photos)) {
+                        foreach ($survey->photos as $p) {
+                            $label = is_array($p) ? ($p['label'] ?? '') : '';
+                            $path = is_array($p) ? ($p['path'] ?? '') : (is_string($p) ? $p : '');
+                            if (!empty($path)) {
+                                $cleanPath = ltrim($path, '/');
+                                $fullUrl = \Illuminate\Support\Str::startsWith($cleanPath, ['http://', 'https://']) 
+                                    ? $cleanPath 
+                                    : asset('storage/' . $cleanPath);
+                                
+                                $photoLabel = $label ?: 'Foto Survey Lokasi';
+                                $allPhotos[] = [
+                                    'type' => 'survey',
+                                    'label' => $photoLabel,
+                                    'url' => $fullUrl,
+                                ];
+
+                                if (!$housePhotoUrl && stripos($photoLabel, 'rumah') !== false) {
+                                    $housePhotoUrl = $fullUrl;
+                                    $housePhotoSource = $photoLabel;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 2. Ekstraksi dari dokumentasi instalasi ONT pelanggan
+            if ($cust->ont) {
+                if (!empty($cust->ont->photo_installation)) {
+                    $clean = ltrim($cust->ont->photo_installation, '/');
+                    $url = \Illuminate\Support\Str::startsWith($clean, ['http://', 'https://']) ? $clean : asset('storage/' . $clean);
+                    $allPhotos[] = ['type' => 'installation', 'label' => 'Foto Instalasi Rumah', 'url' => $url];
+                    if (!$housePhotoUrl) {
+                        $housePhotoUrl = $url;
+                        $housePhotoSource = 'Foto Instalasi Rumah';
+                    }
+                }
+                if (!empty($cust->ont->photo_customer)) {
+                    $clean = ltrim($cust->ont->photo_customer, '/');
+                    $url = \Illuminate\Support\Str::startsWith($clean, ['http://', 'https://']) ? $clean : asset('storage/' . $clean);
+                    $allPhotos[] = ['type' => 'customer', 'label' => 'Foto Pelanggan & Rumah', 'url' => $url];
+                    if (!$housePhotoUrl) {
+                        $housePhotoUrl = $url;
+                        $housePhotoSource = 'Foto Pelanggan & Rumah';
+                    }
+                }
+                if (!empty($cust->ont->photo_ont)) {
+                    $clean = ltrim($cust->ont->photo_ont, '/');
+                    $url = \Illuminate\Support\Str::startsWith($clean, ['http://', 'https://']) ? $clean : asset('storage/' . $clean);
+                    $allPhotos[] = ['type' => 'ont', 'label' => 'Foto Posisi ONT', 'url' => $url];
+                    if (!$housePhotoUrl) {
+                        $housePhotoUrl = $url;
+                        $housePhotoSource = 'Foto Posisi ONT';
+                    }
+                }
+                if (!empty($cust->ont->photo_odp)) {
+                    $clean = ltrim($cust->ont->photo_odp, '/');
+                    $url = \Illuminate\Support\Str::startsWith($clean, ['http://', 'https://']) ? $clean : asset('storage/' . $clean);
+                    $allPhotos[] = ['type' => 'odp', 'label' => 'Foto ODP / Port', 'url' => $url];
+                }
+            }
+
+            // 3. Fallback jika tidak ada label eksplisit 'rumah', pakai foto dokumentasi survey pertama
+            if (!$housePhotoUrl && count($allPhotos) > 0) {
+                $housePhotoUrl = $allPhotos[0]['url'];
+                $housePhotoSource = $allPhotos[0]['label'];
+            }
+
+            // 4. Foto KTP / Identitas jika ada
+            $identityPhotoUrl = null;
+            if (!empty($cust->identity_photo)) {
+                $clean = ltrim($cust->identity_photo, '/');
+                $identityPhotoUrl = \Illuminate\Support\Str::startsWith($clean, ['http://', 'https://']) ? $clean : asset('storage/' . $clean);
+                $allPhotos[] = ['type' => 'identity', 'label' => 'Foto KTP / Identitas', 'url' => $identityPhotoUrl];
+            }
+
+            // URL Navigasi Google Maps
+            $mapsUrl = null;
+            if ($cust->latitude && $cust->longitude) {
+                $mapsUrl = "https://www.google.com/maps?q={$cust->latitude},{$cust->longitude}";
+            } elseif (!empty($cust->address)) {
+                $mapsUrl = "https://www.google.com/maps/search/?api=1&query=" . urlencode($cust->address);
+            }
+
+            // Format nomor WhatsApp internasional (62xxx)
+            $waNumber = preg_replace('/[^0-9]/', '', (string)$cust->phone);
+            if (\Illuminate\Support\Str::startsWith($waNumber, '0')) {
+                $waNumber = '62' . substr($waNumber, 1);
+            }
+
+            return [
+                'id' => $cust->id,
+                'customer_code' => $cust->customer_code,
+                'name' => $cust->name,
+                'phone' => $cust->phone,
+                'wa_url' => $waNumber ? "https://wa.me/{$waNumber}" : null,
+                'address' => $cust->address ?: 'Alamat belum diisi',
+                'area_name' => $cust->areaModel?->name ?? $cust->area ?? '-',
+                'package_name' => $cust->package?->name ?? '-',
+                'package_price' => (float) ($cust->package?->price ?? $cust->base_amount ?? 0),
+                'status' => $cust->status,
+                'service_status' => $cust->service_status ?? 'active',
+                'house_photo_url' => $housePhotoUrl,
+                'house_photo_source' => $housePhotoSource,
+                'identity_photo_url' => $identityPhotoUrl,
+                'all_photos' => $allPhotos,
+                'latitude' => $cust->latitude,
+                'longitude' => $cust->longitude,
+                'maps_url' => $mapsUrl,
+                'odp_name' => $cust->ont?->odp?->name ?? $cust->ont?->odp?->code ?? null,
+                'port_number' => $cust->ont?->port_number ?? null,
+                'registration_date' => $cust->registration_date ? \Carbon\Carbon::parse($cust->registration_date)->translatedFormat('d M Y') : null,
+                'activation_date' => $cust->activation_date ? \Carbon\Carbon::parse($cust->activation_date)->translatedFormat('d M Y') : null,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'count' => $results->count(),
+            'customers' => $results,
+        ]);
     }
 
     /**

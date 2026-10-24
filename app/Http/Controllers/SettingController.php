@@ -227,6 +227,43 @@ class SettingController extends Controller
                 'attendance_reward_auto_date' => (int) Setting::get('attendance_reward_auto_date', 1),
                 'attendance_reward_auto_hour' => (int) Setting::get('attendance_reward_auto_hour', 0),
                 'attendance_reward_auto_minute' => (int) Setting::get('attendance_reward_auto_minute', 6),
+
+                // =======================================================
+                // PERATURAN SEMUA JENIS ABSEN & BATAS TERAKHIR PULANG
+                // =======================================================
+                // Batas Terakhir Absen Pulang
+                'attendance_checkout_deadline_mode' => Setting::get('attendance_checkout_deadline_mode', 'before_cron'),
+                'attendance_checkout_deadline_time' => Setting::get('attendance_checkout_deadline_time', '23:30'),
+                'attendance_checkout_deadline_hours' => (int) Setting::get('attendance_checkout_deadline_hours', 4),
+                'attendance_checkout_min_work_hours' => (int) Setting::get('attendance_checkout_min_work_hours', 4),
+                'attendance_checkout_early_tolerance' => (int) Setting::get('attendance_checkout_early_tolerance', 15),
+                'attendance_checkout_auto_lock' => Setting::get('attendance_checkout_auto_lock', '1') === '1',
+
+                // Aturan Presensi Reguler (Staf & Karyawan Shift / WFO)
+                'attendance_regular_require_photo' => Setting::get('attendance_regular_require_photo', '1') === '1',
+                'attendance_regular_require_gps' => Setting::get('attendance_regular_require_gps', '1') === '1',
+                'attendance_regular_strict_radius' => Setting::get('attendance_regular_strict_radius', '1') === '1',
+                'attendance_regular_default_radius' => (int) Setting::get('attendance_regular_default_radius', 200),
+                'attendance_regular_allow_wfh' => Setting::get('attendance_regular_allow_wfh', '0') === '1',
+                'attendance_regular_allow_field' => Setting::get('attendance_regular_allow_field', '1') === '1',
+                'attendance_regular_allow_overtime' => Setting::get('attendance_regular_allow_overtime', '1') === '1',
+
+                // Aturan Presensi Tim Khusus (Mobile / Proyek / Lapangan)
+                'attendance_special_default_start' => Setting::get('attendance_special_default_start', '08:30'),
+                'attendance_special_default_end' => Setting::get('attendance_special_default_end', '18:00'),
+                'attendance_special_default_tolerance' => (int) Setting::get('attendance_special_default_tolerance', 15),
+                'attendance_special_deadline_time' => Setting::get('attendance_special_deadline_time', '23:30'),
+                'attendance_special_without_radius' => Setting::get('attendance_special_without_radius', '1') === '1',
+                'attendance_special_late_deduction' => (int) Setting::get('attendance_special_late_deduction', 10000),
+                'attendance_special_missing_out_deduction' => (int) Setting::get('attendance_special_missing_out_deduction', 10000),
+                'attendance_special_alpha_deduction' => (int) Setting::get('attendance_special_alpha_deduction', 35000),
+
+                // Aturan Presensi Tugas Luar (Field Duties / Teknisi)
+                'attendance_field_default_mode' => Setting::get('attendance_field_default_mode', 'replace_both'),
+                'attendance_field_require_photo' => Setting::get('attendance_field_require_photo', '1') === '1',
+                'attendance_field_require_gps' => Setting::get('attendance_field_require_gps', '1') === '1',
+                'attendance_field_auto_sync' => Setting::get('attendance_field_auto_sync', '1') === '1',
+                'attendance_field_deadline_time' => Setting::get('attendance_field_deadline_time', '22:00'),
             ]
         ]);
     }
@@ -288,6 +325,37 @@ class SettingController extends Controller
             'attendance_reward_auto_date' => 'nullable|integer|min:1|max:28',
             'attendance_reward_auto_hour' => 'nullable|integer|min:0|max:23',
             'attendance_reward_auto_minute' => 'nullable|integer|min:0|max:59',
+
+            // Peraturan Jam Pulang & Semua Jenis Absen
+            'attendance_checkout_deadline_mode' => 'nullable|string|in:before_cron,shift_relative,fixed_time',
+            'attendance_checkout_deadline_time' => 'nullable|string',
+            'attendance_checkout_deadline_hours' => 'nullable|integer|min:1|max:12',
+            'attendance_checkout_min_work_hours' => 'nullable|integer|min:0|max:12',
+            'attendance_checkout_early_tolerance' => 'nullable|integer|min:0|max:120',
+            'attendance_checkout_auto_lock' => 'nullable|boolean',
+
+            'attendance_regular_require_photo' => 'nullable|boolean',
+            'attendance_regular_require_gps' => 'nullable|boolean',
+            'attendance_regular_strict_radius' => 'nullable|boolean',
+            'attendance_regular_default_radius' => 'nullable|integer|min:10|max:5000',
+            'attendance_regular_allow_wfh' => 'nullable|boolean',
+            'attendance_regular_allow_field' => 'nullable|boolean',
+            'attendance_regular_allow_overtime' => 'nullable|boolean',
+
+            'attendance_special_default_start' => 'nullable|string',
+            'attendance_special_default_end' => 'nullable|string',
+            'attendance_special_default_tolerance' => 'nullable|integer|min:0',
+            'attendance_special_deadline_time' => 'nullable|string',
+            'attendance_special_without_radius' => 'nullable|boolean',
+            'attendance_special_late_deduction' => 'nullable|numeric|min:0',
+            'attendance_special_missing_out_deduction' => 'nullable|numeric|min:0',
+            'attendance_special_alpha_deduction' => 'nullable|numeric|min:0',
+
+            'attendance_field_default_mode' => 'nullable|string|in:replace_both,replace_in,replace_out',
+            'attendance_field_require_photo' => 'nullable|boolean',
+            'attendance_field_require_gps' => 'nullable|boolean',
+            'attendance_field_auto_sync' => 'nullable|boolean',
+            'attendance_field_deadline_time' => 'nullable|string',
         ]);
 
         Setting::set('attendance_late_enabled', $request->boolean('attendance_late_enabled') ? '1' : '0');
@@ -343,6 +411,67 @@ class SettingController extends Controller
         Setting::set('attendance_reward_auto_date', $request->filled('attendance_reward_auto_date') ? (int) $request->attendance_reward_auto_date : 1);
         Setting::set('attendance_reward_auto_hour', $request->filled('attendance_reward_auto_hour') ? (int) $request->attendance_reward_auto_hour : 0);
         Setting::set('attendance_reward_auto_minute', $request->filled('attendance_reward_auto_minute') ? (int) $request->attendance_reward_auto_minute : 6);
+
+        // Save Peraturan Jam Pulang & Semua Jenis Absen
+        if ($request->has('attendance_checkout_deadline_mode')) {
+            Setting::set('attendance_checkout_deadline_mode', $request->attendance_checkout_deadline_mode);
+        }
+        if ($request->has('attendance_checkout_deadline_time')) {
+            Setting::set('attendance_checkout_deadline_time', $request->attendance_checkout_deadline_time ?: '23:30');
+        }
+        if ($request->has('attendance_checkout_deadline_hours')) {
+            Setting::set('attendance_checkout_deadline_hours', (int) $request->attendance_checkout_deadline_hours);
+        }
+        if ($request->has('attendance_checkout_min_work_hours')) {
+            Setting::set('attendance_checkout_min_work_hours', (int) $request->attendance_checkout_min_work_hours);
+        }
+        if ($request->has('attendance_checkout_early_tolerance')) {
+            Setting::set('attendance_checkout_early_tolerance', (int) $request->attendance_checkout_early_tolerance);
+        }
+        Setting::set('attendance_checkout_auto_lock', $request->boolean('attendance_checkout_auto_lock') ? '1' : '0');
+
+        Setting::set('attendance_regular_require_photo', $request->boolean('attendance_regular_require_photo') ? '1' : '0');
+        Setting::set('attendance_regular_require_gps', $request->boolean('attendance_regular_require_gps') ? '1' : '0');
+        Setting::set('attendance_regular_strict_radius', $request->boolean('attendance_regular_strict_radius') ? '1' : '0');
+        if ($request->has('attendance_regular_default_radius')) {
+            Setting::set('attendance_regular_default_radius', (int) $request->attendance_regular_default_radius);
+        }
+        Setting::set('attendance_regular_allow_wfh', $request->boolean('attendance_regular_allow_wfh') ? '1' : '0');
+        Setting::set('attendance_regular_allow_field', $request->boolean('attendance_regular_allow_field') ? '1' : '0');
+        Setting::set('attendance_regular_allow_overtime', $request->boolean('attendance_regular_allow_overtime') ? '1' : '0');
+
+        if ($request->has('attendance_special_default_start')) {
+            Setting::set('attendance_special_default_start', $request->attendance_special_default_start ?: '08:30');
+        }
+        if ($request->has('attendance_special_default_end')) {
+            Setting::set('attendance_special_default_end', $request->attendance_special_default_end ?: '18:00');
+        }
+        if ($request->has('attendance_special_default_tolerance')) {
+            Setting::set('attendance_special_default_tolerance', (int) $request->attendance_special_default_tolerance);
+        }
+        if ($request->has('attendance_special_deadline_time')) {
+            Setting::set('attendance_special_deadline_time', $request->attendance_special_deadline_time ?: '23:30');
+        }
+        Setting::set('attendance_special_without_radius', $request->boolean('attendance_special_without_radius') ? '1' : '0');
+        if ($request->has('attendance_special_late_deduction')) {
+            Setting::set('attendance_special_late_deduction', (float) $request->attendance_special_late_deduction);
+        }
+        if ($request->has('attendance_special_missing_out_deduction')) {
+            Setting::set('attendance_special_missing_out_deduction', (float) $request->attendance_special_missing_out_deduction);
+        }
+        if ($request->has('attendance_special_alpha_deduction')) {
+            Setting::set('attendance_special_alpha_deduction', (float) $request->attendance_special_alpha_deduction);
+        }
+
+        if ($request->has('attendance_field_default_mode')) {
+            Setting::set('attendance_field_default_mode', $request->attendance_field_default_mode ?: 'replace_both');
+        }
+        Setting::set('attendance_field_require_photo', $request->boolean('attendance_field_require_photo') ? '1' : '0');
+        Setting::set('attendance_field_require_gps', $request->boolean('attendance_field_require_gps') ? '1' : '0');
+        Setting::set('attendance_field_auto_sync', $request->boolean('attendance_field_auto_sync') ? '1' : '0');
+        if ($request->has('attendance_field_deadline_time')) {
+            Setting::set('attendance_field_deadline_time', $request->attendance_field_deadline_time ?: '22:00');
+        }
 
         return redirect()->back()->with('success', 'Pengaturan absensi & reward terbaik berhasil diperbarui.');
     }

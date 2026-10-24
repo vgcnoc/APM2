@@ -10,6 +10,7 @@ use App\Models\Incentive;
 use App\Models\Position;
 use App\Models\Setting;
 use App\Models\Shift;
+use App\Models\SpecialAttendance;
 use App\Models\SpecialTeam;
 use App\Models\SpecialTeamMember;
 use App\Models\User;
@@ -388,6 +389,9 @@ class AttendanceController extends Controller
             $shift = $this->resolveDefaultShiftForEmployee($employee);
         }
 
+        // Cek apakah hari ini dijadwalkan Libur (OFF)
+        $isHolidayOff = ($schedule && $schedule->status === 'off');
+
         // Auto-sinkronisasi ke Jadwal Kerja / Roster jika belum ada jadwal hari ini
         if (!$schedule && $shift) {
             $schedule = WorkSchedule::updateOrCreate(
@@ -403,21 +407,62 @@ class AttendanceController extends Controller
             );
         }
 
-        // Hitung Keterlambatan & Validasi Izin Tipe Kehadiran
-        $status = 'present';
-        $lateMinutes = 0;
+        // Tipe Kehadiran & Validasi
         $attendanceType = $request->attendance_type ?: 'wfo';
+        if ($isHolidayOff) {
+            $attendanceType = 'lembur'; // Masuk di hari libur otomatis diakui sebagai Lembur
+        }
 
         // Jika role user tidak memiliki izin memilih tipe kehadiran, otomatis paksa ke 'wfo'
         $user = $request->user();
-        if ($user && method_exists($user, 'can') && !$user->can('attendance_select_type')) {
+        if ($user && method_exists($user, 'can') && !$user->can('attendance_select_type') && !$isHolidayOff) {
             $attendanceType = 'wfo';
         }
 
-        if ($shift && $shift->start_time && $attendanceType !== 'dinas_luar') {
+        // ==============================================================
+        // VALIDASI RADIUS TITIK KOORDINAT BERPATOKAN PER AREA / WILAYAH
+        // ==============================================================
+        $distanceCalculated = $request->distance ? (int) $request->distance : null;
+        if ($attendanceType === 'wfo') {
+            $strictRadius = Setting::get('attendance_regular_strict_radius', '1') === '1';
+            $requireGps = Setting::get('attendance_regular_require_gps', '1') === '1';
+
+            if ($employee->area && $employee->area->latitude && $employee->area->longitude) {
+                if ($requireGps && (!$request->latitude || !$request->longitude)) {
+                    return back()->with('error', "Titik koordinat GPS wajib diaktifkan untuk absensi reguler di area '{$employee->area->name}'. Pastikan GPS dan izin lokasi aktif di browser Anda.");
+                }
+
+                if ($request->latitude && $request->longitude) {
+                    $distanceCalculated = $this->calculateDistanceMeters(
+                        (float) $request->latitude,
+                        (float) $request->longitude,
+                        (float) $employee->area->latitude,
+                        (float) $employee->area->longitude
+                    );
+
+                    $allowedRadius = (int) ($employee->area->radius_meters ?: Setting::get('attendance_regular_default_radius', 200));
+
+                    if ($strictRadius && $distanceCalculated > $allowedRadius) {
+                        return back()->with('error', "Presensi Masuk Ditolak: Anda berada di luar radius kantor cabang area '{$employee->area->name}'. Jarak Anda saat ini: {$distanceCalculated} meter dari titik kantor (Batas toleransi radius: {$allowedRadius} meter). Silakan mendekat ke lokasi kantor untuk melakukan presensi.");
+                    }
+                }
+            }
+        } elseif ($attendanceType === 'wfh') {
+            $allowWfh = Setting::get('attendance_regular_allow_wfh', '0') === '1';
+            if (!$allowWfh) {
+                return back()->with('error', "Tipe presensi Work From Home (WFH) saat ini tidak diaktifkan di pengaturan sistem.");
+            }
+        }
+
+        // Evaluasi Keterlambatan Berdasarkan Jadwal Shift & Toleransi Pengaturan
+        $status = 'present';
+        $lateMinutes = 0;
+        if ($shift && $shift->start_time && $attendanceType !== 'dinas_luar' && !$isHolidayOff) {
             $shiftStartTime = Carbon::createFromFormat('Y-m-d H:i', $today . ' ' . substr($shift->start_time, 0, 5));
-            // Toleransi 5 menit keterlambatan
-            if ($now->greaterThan($shiftStartTime->copy()->addMinutes(5))) {
+            $toleranceMinutes = (int) ($shift->tolerance_minutes ?? Setting::get('attendance_late_tolerance', 10));
+            $lateThreshold = $shiftStartTime->copy()->addMinutes($toleranceMinutes);
+
+            if ($now->greaterThan($lateThreshold)) {
                 $status = 'late';
                 $lateMinutes = $now->diffInMinutes($shiftStartTime);
             }
@@ -425,6 +470,11 @@ class AttendanceController extends Controller
 
         // Simpan Foto Selfie Base64
         $photoPath = $this->saveBase64Photo($request->photo, 'attendances/in', "in_{$employee->id}_{$today}");
+
+        $notesFinal = $request->notes;
+        if ($isHolidayOff) {
+            $notesFinal = $notesFinal ? ($notesFinal . ' (Masuk saat Jadwal Libur/Lembur)') : 'Masuk saat Jadwal Libur/Lembur';
+        }
 
         Attendance::updateOrCreate(
             [
@@ -439,10 +489,10 @@ class AttendanceController extends Controller
                 'photo_in' => $photoPath,
                 'lat_in' => $request->latitude,
                 'lng_in' => $request->longitude,
-                'distance_in' => $request->distance,
+                'distance_in' => $distanceCalculated,
                 'status' => $status,
                 'late_minutes' => $lateMinutes,
-                'notes' => $request->notes,
+                'notes' => $notesFinal,
                 'duty_location' => $request->duty_location,
                 'is_verified' => true,
             ]
@@ -481,7 +531,7 @@ class AttendanceController extends Controller
             'notes' => 'nullable|string|max:500',
         ]);
 
-        $employee = Employee::findOrFail($request->employee_id);
+        $employee = Employee::with('area')->findOrFail($request->employee_id);
 
         // Karyawan Tim Khusus harus absen lewat menu Absen Tim Khusus
         $specialCheck = SpecialTeamMember::with('team')
@@ -506,6 +556,75 @@ class AttendanceController extends Controller
             return back()->with('error', 'Anda sudah melakukan absen pulang hari ini.');
         }
 
+        // Pengecekan Batas Waktu Terakhir Absen Pulang (Clock-Out Cut-Off Deadline)
+        $autoLock = Setting::get('attendance_checkout_auto_lock', '1') === '1';
+        $deadlineTime = Setting::get('attendance_checkout_deadline_time', '23:30');
+        if ($autoLock) {
+            $deadlineCarbon = Carbon::parse($today . ' ' . $deadlineTime);
+            if ($now->greaterThan($deadlineCarbon)) {
+                return back()->with('error', "Batas waktu terakhir absen pulang hari ini adalah pukul {$deadlineTime} WIB. Waktu telah berakhir sehingga absensi pulang dikunci otomatis (Lupa Absen Pulang). Silakan hubungi Admin / HRD untuk koreksi manual.");
+            }
+        }
+
+        // Pengecekan Durasi Kerja Minimal Sebelum Diizinkan Absen Pulang
+        $minWorkHours = (int) Setting::get('attendance_checkout_min_work_hours', 4);
+        if ($minWorkHours > 0 && !empty($attendance->clock_in)) {
+            $clockInTime = Carbon::parse($today . ' ' . $attendance->clock_in);
+            $workedMinutes = $clockInTime->diffInMinutes($now, false);
+            if ($workedMinutes < ($minWorkHours * 60)) {
+                $remainingMinutes = ($minWorkHours * 60) - $workedMinutes;
+                $remHours = floor($remainingMinutes / 60);
+                $remMins = $remainingMinutes % 60;
+                $remStr = $remHours > 0 ? "{$remHours} jam {$remMins} menit" : "{$remMins} menit";
+                return back()->with('error', "Anda baru masuk pada pukul {$attendance->clock_in}. Durasi kerja minimal sebelum diizinkan absen pulang adalah {$minWorkHours} jam (kurang {$remStr} lagi).");
+            }
+        }
+
+        // ==============================================================
+        // VALIDASI RADIUS TITIK KOORDINAT BERPATOKAN PER AREA / WILAYAH
+        // ==============================================================
+        $distanceOutCalculated = $request->distance ? (int) $request->distance : null;
+        if ($attendance->attendance_type === 'wfo') {
+            $strictRadius = Setting::get('attendance_regular_strict_radius', '1') === '1';
+            $requireGps = Setting::get('attendance_regular_require_gps', '1') === '1';
+
+            if ($employee->area && $employee->area->latitude && $employee->area->longitude) {
+                if ($requireGps && (!$request->latitude || !$request->longitude)) {
+                    return back()->with('error', "Titik koordinat GPS wajib diaktifkan untuk absensi pulang di area '{$employee->area->name}'. Pastikan GPS aktif.");
+                }
+
+                if ($request->latitude && $request->longitude) {
+                    $distanceOutCalculated = $this->calculateDistanceMeters(
+                        (float) $request->latitude,
+                        (float) $request->longitude,
+                        (float) $employee->area->latitude,
+                        (float) $employee->area->longitude
+                    );
+
+                    $allowedRadius = (int) ($employee->area->radius_meters ?: Setting::get('attendance_regular_default_radius', 200));
+
+                    if ($strictRadius && $distanceOutCalculated > $allowedRadius) {
+                        return back()->with('error', "Absen Pulang Ditolak: Anda berada di luar radius kantor area '{$employee->area->name}'. Jarak Anda saat ini: {$distanceOutCalculated} meter dari kantor (Batas toleransi radius: {$allowedRadius} meter).");
+                    }
+                }
+            }
+        }
+
+        // Evaluasi Pulang Lebih Awal terhadap Jam Selesai Shift
+        $notesFinal = $request->notes ?: $attendance->notes;
+        $shift = $attendance->shift ?: ($attendance->shift_id ? Shift::find($attendance->shift_id) : null);
+        if ($shift && $shift->end_time && $attendance->attendance_type !== 'dinas_luar') {
+            $shiftEndTime = Carbon::createFromFormat('Y-m-d H:i', $today . ' ' . substr($shift->end_time, 0, 5));
+            $earlyTolerance = (int) Setting::get('attendance_early_leave_tolerance', Setting::get('attendance_checkout_early_tolerance', 15));
+            $earlyThreshold = $shiftEndTime->copy()->subMinutes($earlyTolerance);
+
+            if ($now->lessThan($earlyThreshold)) {
+                $earlyMins = $now->diffInMinutes($shiftEndTime);
+                $earlyNote = "Pulang lebih awal {$earlyMins} menit (Jadwal shift berakhir: {$shift->end_time})";
+                $notesFinal = $notesFinal ? "{$notesFinal} | {$earlyNote}" : $earlyNote;
+            }
+        }
+
         $photoPath = $this->saveBase64Photo($request->photo, 'attendances/out', "out_{$employee->id}_{$today}");
 
         $attendance->update([
@@ -513,8 +632,8 @@ class AttendanceController extends Controller
             'photo_out' => $photoPath,
             'lat_out' => $request->latitude,
             'lng_out' => $request->longitude,
-            'distance_out' => $request->distance,
-            'notes' => $request->notes ?: $attendance->notes,
+            'distance_out' => $distanceOutCalculated,
+            'notes' => $notesFinal,
         ]);
 
         // SINKRONISASI KE STATUS USER ON-DUTY (Teknisi Selesai Bertugas)
@@ -583,7 +702,7 @@ class AttendanceController extends Controller
     }
 
     /**
-     * Sinkronisasi Potongan Keterlambatan ke Modul Penggajian (Payroll)
+     * Sinkronisasi Jadwal Kerja, Absensi, Potongan & Reward Otomatis ke Modul Penggajian (Payroll)
      */
     public function syncToPayroll(Request $request)
     {
@@ -594,104 +713,262 @@ class AttendanceController extends Controller
 
         $request->validate([
             'month' => 'required|string', // Format: YYYY-MM
-            'penalty_per_minute' => 'nullable|numeric|min:0', // misal Rp 1.000 / menit
-            'fixed_penalty_per_late' => 'nullable|numeric|min:0', // misal Rp 20.000 / kejadian
+            'penalty_per_minute' => 'nullable|numeric|min:0',
+            'fixed_penalty_per_late' => 'nullable|numeric|min:0',
         ]);
 
         $month = $request->month;
-        $penaltyPerMinute = (float) ($request->penalty_per_minute ?? 1000);
-        $fixedPenalty = (float) ($request->fixed_penalty_per_late ?? 0);
+        $latePenaltyMode = Setting::get('attendance_late_penalty_mode', 'per_kejadian');
+        $penaltyPerMinute = (float) ($request->penalty_per_minute ?? Setting::get('attendance_late_per_minute_amount', 1000));
+        $fixedPenalty = (float) ($request->fixed_penalty_per_late ?? Setting::get('attendance_late_amount', 10000));
+        $missingOutAmount = (float) Setting::get('attendance_missing_out_amount', 10000);
+        $earlyLeaveAmount = (float) Setting::get('attendance_early_leave_amount', 10000);
+        $alphaAmount = (float) Setting::get('attendance_alpha_amount', 35000);
+
+        $latePenaltyEnabled = Setting::get('attendance_late_penalty_enabled', '1') === '1';
+        $missingOutPenaltyEnabled = Setting::get('attendance_missing_out_penalty_enabled', '1') === '1';
+        $earlyLeavePenaltyEnabled = Setting::get('attendance_early_leave_penalty_enabled', '1') === '1';
+        $alphaPenaltyEnabled = Setting::get('attendance_alpha_penalty_enabled', '1') === '1';
 
         $monthStart = Carbon::parse($month . '-01')->startOfMonth();
         $monthEnd = Carbon::parse($month . '-01')->endOfMonth();
+        $todayDate = Carbon::today()->format('Y-m-d');
+        $cutoffTime = Setting::get('attendance_checkout_deadline_time', '23:30');
 
-        // Ambil data absensi terlambat yang belum disinkronkan
-        $lateAttendances = Attendance::with('employee')
+        // Ambil seluruh data absensi reguler, absensi khusus, jadwal kerja, dan karyawan dalam periode
+        $allMonthAtts = Attendance::with('employee.area')
             ->whereBetween('date', [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
-            ->where('status', 'late')
-            ->where('late_minutes', '>', 0)
             ->get();
 
-        if ($lateAttendances->isEmpty()) {
-            return back()->with('info', "Tidak ada catatan keterlambatan untuk periode {$month}.");
-        }
+        $allSpecialAtts = SpecialAttendance::with(['employee', 'team'])
+            ->whereBetween('date', [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
+            ->get();
 
-        $grouped = $lateAttendances->groupBy('employee_id');
-        $syncedCount = 0;
+        $allWorkSchedules = WorkSchedule::whereBetween('date', [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
+            ->where('status', 'work')
+            ->get();
 
-        DB::transaction(function () use ($grouped, $penaltyPerMinute, $fixedPenalty, $month, $monthEnd, &$syncedCount) {
-            foreach ($grouped as $employeeId => $atts) {
-                $employee = $atts->first()->employee;
-                if (!$employee || !$employee->email) {
-                    continue;
-                }
+        $employees = Employee::with('area')
+            ->where(function ($q) {
+                $q->where('status', '!=', 'resigned')->orWhereNull('status');
+            })
+            ->get();
 
-                // Cari User yang memiliki email sama dengan employee
-                $user = User::where('email', $employee->email)->first();
-                if (!$user) {
-                    continue;
-                }
+        $syncedDeductionsCount = 0;
+        $syncedRewardsCount = 0;
 
-                $totalMinutes = $atts->sum('late_minutes');
-                $lateCount = $atts->count();
+        DB::transaction(function () use (
+            $employees, $allMonthAtts, $allSpecialAtts, $allWorkSchedules,
+            $month, $monthStart, $monthEnd, $todayDate, $cutoffTime,
+            $latePenaltyMode, $penaltyPerMinute, $fixedPenalty, $missingOutAmount, $earlyLeaveAmount, $alphaAmount,
+            $latePenaltyEnabled, $missingOutPenaltyEnabled, $earlyLeavePenaltyEnabled, $alphaPenaltyEnabled,
+            &$syncedDeductionsCount, &$syncedRewardsCount
+        ) {
+            $performance = [];
 
-                // Hitung total nominal potongan
-                $totalDeductionAmount = ($totalMinutes * $penaltyPerMinute) + ($lateCount * $fixedPenalty);
+            foreach ($employees as $employee) {
+                if (!$employee->email) continue;
+                $linkedUser = User::where('email', $employee->email)->first();
+                if (!$linkedUser) continue;
 
-                if ($totalDeductionAmount > 0) {
-                    $desc = "Potongan Terlambat Absensi Periode {$month} ({$lateCount}x telat, total {$totalMinutes} menit)";
-                    
-                    Deduction::updateOrCreate(
-                        [
-                            'user_id' => $user->id,
-                            'type' => 'auto',
-                            'description' => $desc,
-                        ],
-                        [
-                            'amount' => $totalDeductionAmount,
-                            'deduction_date' => $monthEnd->format('Y-m-d'),
-                            'status' => 'pending',
-                        ]
-                    );
+                $empAtts = $allMonthAtts->where('employee_id', $employee->id);
+                $empSpecialAtts = $allSpecialAtts->where('employee_id', $employee->id);
 
-                    // Tandai absensi telah disinkronkan
-                    Attendance::whereIn('id', $atts->pluck('id'))->update(['is_synced_to_payroll' => true]);
-                    $syncedCount++;
-                }
-            }
+                // --- 1. POTONGAN KETERLAMBATAN REGULER ---
+                $lateCount = 0;
+                $totalLateMinutes = 0;
+                if ($latePenaltyEnabled) {
+                    $lateRegularAtts = $empAtts->where('status', 'late')->where('late_minutes', '>', 0);
+                    $lateCount = $lateRegularAtts->count();
+                    $totalLateMinutes = (int) $lateRegularAtts->sum('late_minutes');
 
-            // PROSES REWARD ABSEN TERBAIK JIKA DIAKTIFKAN
-            if (Setting::get('attendance_reward_enabled', '1') === '1') {
-                $allMonthAtts = Attendance::with('employee')
-                    ->whereBetween('date', [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
-                    ->get()
-                    ->groupBy('employee_id');
+                    $lateDeductionAmount = ($latePenaltyMode === 'per_menit')
+                        ? ($totalLateMinutes * $penaltyPerMinute)
+                        : ($lateCount * $fixedPenalty);
 
-                // Hitung Skor & Disiplin: Hadir banyak, late_minutes paling kecil
-                $performance = [];
-                foreach ($allMonthAtts as $empId => $atts) {
-                    $emp = $atts->first()->employee;
-                    if (!$emp || !$emp->email) continue;
-                    $usr = User::where('email', $emp->email)->first();
-                    if (!$usr) continue;
-
-                    $presents = $atts->whereNotNull('clock_in')->count();
-                    $lates = $atts->where('status', 'late')->count();
-                    $lateMins = $atts->sum('late_minutes');
-
-                    if ($presents > 0) {
-                        $performance[] = [
-                            'user' => $usr,
-                            'employee' => $emp,
-                            'area_id' => $emp->area_id,
-                            'presents' => $presents,
-                            'late_minutes' => $lateMins,
-                            'score' => ($presents * 100) - ($lateMins * 2),
-                        ];
+                    if ($lateDeductionAmount > 0) {
+                        $desc = "Potongan Terlambat Absensi Periode {$month} ({$lateCount}x telat, total {$totalLateMinutes} menit)";
+                        Deduction::updateOrCreate(
+                            [
+                                'user_id' => $linkedUser->id,
+                                'reference_id' => "ATT_LATE_{$employee->id}_{$month}",
+                            ],
+                            [
+                                'type' => 'auto',
+                                'description' => $desc,
+                                'amount' => $lateDeductionAmount,
+                                'deduction_date' => $monthEnd->format('Y-m-d'),
+                                'status' => 'pending',
+                            ]
+                        );
+                        $syncedDeductionsCount++;
                     }
                 }
 
-                // Reward Per Cabang
+                // --- 2. POTONGAN LUPA ABSEN PULANG (MISSING CLOCK-OUT) ---
+                $missingOutCount = 0;
+                if ($missingOutPenaltyEnabled) {
+                    $missingOutAtts = $empAtts->filter(function ($att) use ($todayDate, $cutoffTime) {
+                        $attDateStr = is_string($att->date) ? substr($att->date, 0, 10) : $att->date->format('Y-m-d');
+                        if (empty($att->clock_in) || !empty($att->clock_out)) return false;
+                        if ($attDateStr < $todayDate) return true;
+                        if ($attDateStr === $todayDate && Carbon::now()->greaterThan(Carbon::parse($attDateStr . ' ' . $cutoffTime))) return true;
+                        return false;
+                    });
+                    $missingOutCount = $missingOutAtts->count();
+                    $missingOutDeduction = $missingOutCount * $missingOutAmount;
+
+                    if ($missingOutDeduction > 0) {
+                        $desc = "Potongan Lupa Absen Pulang Periode {$month} ({$missingOutCount}x tanpa clock-out)";
+                        Deduction::updateOrCreate(
+                            [
+                                'user_id' => $linkedUser->id,
+                                'reference_id' => "ATT_NO_OUT_{$employee->id}_{$month}",
+                            ],
+                            [
+                                'type' => 'auto',
+                                'description' => $desc,
+                                'amount' => $missingOutDeduction,
+                                'deduction_date' => $monthEnd->format('Y-m-d'),
+                                'status' => 'pending',
+                            ]
+                        );
+                        $syncedDeductionsCount++;
+                    }
+                }
+
+                // --- 3. POTONGAN PULANG CEPAT (EARLY LEAVE) ---
+                $earlyCount = 0;
+                if ($earlyLeavePenaltyEnabled) {
+                    $earlyAtts = $empAtts->filter(function ($att) {
+                        $earlyMins = (int) ($att->early_leave_minutes ?? 0);
+                        if ($earlyMins > 0) return true;
+                        return str_contains(strtolower($att->notes ?? ''), 'pulang lebih awal');
+                    });
+                    $earlyCount = $earlyAtts->count();
+                    $earlyDeduction = $earlyCount * $earlyLeaveAmount;
+
+                    if ($earlyDeduction > 0) {
+                        $desc = "Potongan Pulang Cepat Periode {$month} ({$earlyCount}x pulang sebelum waktu)";
+                        Deduction::updateOrCreate(
+                            [
+                                'user_id' => $linkedUser->id,
+                                'reference_id' => "ATT_EARLY_{$employee->id}_{$month}",
+                            ],
+                            [
+                                'type' => 'auto',
+                                'description' => $desc,
+                                'amount' => $earlyDeduction,
+                                'deduction_date' => $monthEnd->format('Y-m-d'),
+                                'status' => 'pending',
+                            ]
+                        );
+                        $syncedDeductionsCount++;
+                    }
+                }
+
+                // --- 4. POTONGAN ALPHA / MANGKIR JADWAL KERJA ---
+                $alphaCount = 0;
+                if ($alphaPenaltyEnabled) {
+                    $scheduledDates = $allWorkSchedules->where('employee_id', $employee->id)
+                        ->pluck('date')
+                        ->map(fn($d) => is_string($d) ? substr($d, 0, 10) : $d->format('Y-m-d'))
+                        ->unique()
+                        ->filter(fn($d) => $d <= $todayDate);
+
+                    $regularAttendedDates = $empAtts->whereNotNull('clock_in')
+                        ->pluck('date')
+                        ->map(fn($d) => is_string($d) ? substr($d, 0, 10) : $d->format('Y-m-d'))
+                        ->unique();
+
+                    $specialAttendedDates = $empSpecialAtts->whereNotNull('clock_in')
+                        ->pluck('date')
+                        ->map(fn($d) => is_string($d) ? substr($d, 0, 10) : $d->format('Y-m-d'))
+                        ->unique();
+
+                    $alphaDates = $scheduledDates->diff($regularAttendedDates)->diff($specialAttendedDates);
+                    $alphaCount = $alphaDates->count();
+                    $alphaDeduction = $alphaCount * $alphaAmount;
+
+                    if ($alphaDeduction > 0) {
+                        $desc = "Potongan Alpha / Mangkir Jadwal Kerja Periode {$month} ({$alphaCount} hari tidak hadir)";
+                        Deduction::updateOrCreate(
+                            [
+                                'user_id' => $linkedUser->id,
+                                'reference_id' => "ATT_ALPHA_{$employee->id}_{$month}",
+                            ],
+                            [
+                                'type' => 'auto',
+                                'description' => $desc,
+                                'amount' => $alphaDeduction,
+                                'deduction_date' => $monthEnd->format('Y-m-d'),
+                                'status' => 'pending',
+                            ]
+                        );
+                        $syncedDeductionsCount++;
+                    }
+                }
+
+                // --- 5. POTONGAN TIM KHUSUS (JIKA ANGGOTA TIM KHUSUS) ---
+                if ($empSpecialAtts->isNotEmpty()) {
+                    $byTeam = $empSpecialAtts->groupBy('special_team_id');
+                    foreach ($byTeam as $teamId => $teamAtts) {
+                        $team = $teamAtts->first()->team;
+                        $sLates = $teamAtts->where('status', 'late')->count();
+                        $sNoOuts = $teamAtts->whereNotNull('clock_in')->whereNull('clock_out')->count();
+                        $sLateFine = $sLates * (float) ($team?->late_deduction_amount ?? 10000);
+                        $sNoOutFine = $sNoOuts * (float) ($team?->no_out_deduction_amount ?? 10000);
+                        $totalSpecialFine = $sLateFine + $sNoOutFine;
+
+                        if ($totalSpecialFine > 0) {
+                            $teamName = $team?->name ?? 'Tim Khusus';
+                            $desc = "Potongan Absen {$teamName} Periode {$month} ({$sLates}x telat, {$sNoOuts}x tanpa absen pulang)";
+                            Deduction::updateOrCreate(
+                                [
+                                    'user_id' => $linkedUser->id,
+                                    'reference_id' => "SPECIAL_DEDUCT_{$teamId}_{$employee->id}_{$month}",
+                                ],
+                                [
+                                    'type' => 'auto',
+                                    'description' => $desc,
+                                    'amount' => $totalSpecialFine,
+                                    'deduction_date' => $monthEnd->format('Y-m-d'),
+                                    'status' => 'pending',
+                                ]
+                            );
+                            $syncedDeductionsCount++;
+                        }
+                    }
+                }
+
+                // Tandai absensi sudah disinkronkan ke payroll
+                if ($empAtts->isNotEmpty()) {
+                    Attendance::whereIn('id', $empAtts->pluck('id'))->update(['is_synced_to_payroll' => true]);
+                }
+                if ($empSpecialAtts->isNotEmpty()) {
+                    SpecialAttendance::whereIn('id', $empSpecialAtts->pluck('id'))->update(['is_synced_to_payroll' => true]);
+                }
+
+                // Hitung performa untuk evaluasi Reward
+                $totalPresents = $empAtts->whereNotNull('clock_in')->count() + $empSpecialAtts->whereNotNull('clock_in')->count();
+                $totalLateMins = $totalLateMinutes + (int) $empSpecialAtts->sum('late_minutes');
+
+                if ($totalPresents > 0) {
+                    $performanceScore = ($totalPresents * 100) - ($totalLateMins * 2) - ($missingOutCount * 15) - ($alphaCount * 50);
+                    $performance[] = [
+                        'user' => $linkedUser,
+                        'employee' => $employee,
+                        'area_id' => $employee->area_id,
+                        'presents' => $totalPresents,
+                        'late_minutes' => $totalLateMins,
+                        'score' => $performanceScore,
+                    ];
+                }
+            }
+
+            // --- 6. PROSES REWARD ABSEN TERBAIK OTOMATIS ---
+            if (Setting::get('attendance_reward_enabled', '1') === '1' && !empty($performance)) {
+                // A. Reward Per Cabang (Top 3 per Cabang)
                 if (Setting::get('attendance_reward_branch_enabled', '1') === '1') {
                     $byArea = collect($performance)->groupBy('area_id');
                     $branchNominals = [
@@ -701,6 +978,7 @@ class AttendanceController extends Controller
                     ];
 
                     foreach ($byArea as $areaId => $areaPerformers) {
+                        if (!$areaId) continue;
                         $sorted = $areaPerformers->sortByDesc('score')->values();
                         for ($rank = 1; $rank <= min(3, $sorted->count()); $rank++) {
                             $item = $sorted[$rank - 1];
@@ -709,21 +987,23 @@ class AttendanceController extends Controller
                                 Incentive::updateOrCreate(
                                     [
                                         'user_id' => $item['user']->id,
-                                        'type' => 'auto',
-                                        'description' => "Reward Absen Terbaik (Juara {$rank} Cabang) Periode {$month}",
+                                        'reference_id' => "REWARD_BRANCH_{$areaId}_{$rank}_{$month}",
                                     ],
                                     [
+                                        'type' => 'auto',
+                                        'description' => "Reward Absen Terbaik (Juara {$rank} Cabang) Periode {$month}",
                                         'amount' => $nominal,
                                         'incentive_date' => $monthEnd->format('Y-m-d'),
                                         'status' => 'pending',
                                     ]
                                 );
+                                $syncedRewardsCount++;
                             }
                         }
                     }
                 }
 
-                // Reward Global (Top 3 Perusahaan)
+                // B. Reward Global Seluruh Perusahaan (Top 3)
                 if (Setting::get('attendance_reward_global_enabled', '1') === '1') {
                     $globalSorted = collect($performance)->sortByDesc('score')->values();
                     $globalNominals = [
@@ -739,20 +1019,22 @@ class AttendanceController extends Controller
                             Incentive::updateOrCreate(
                                 [
                                     'user_id' => $item['user']->id,
-                                    'type' => 'auto',
-                                    'description' => "Reward Absen Terbaik (Juara {$rank} Global) Periode {$month}",
+                                    'reference_id' => "REWARD_GLOBAL_{$rank}_{$month}",
                                 ],
                                 [
+                                    'type' => 'auto',
+                                    'description' => "Reward Absen Terbaik (Juara {$rank} Global) Periode {$month}",
                                     'amount' => $nominal,
                                     'incentive_date' => $monthEnd->format('Y-m-d'),
                                     'status' => 'pending',
                                 ]
                             );
+                            $syncedRewardsCount++;
                         }
                     }
                 }
 
-                // Reward Maintenance (Top 3 Global)
+                // C. Reward Divisi Maintenance / Lapangan (Top 3)
                 if (Setting::get('attendance_reward_maintenance_enabled', '1') === '1') {
                     $maintNominals = [
                         1 => (float) Setting::get('attendance_reward_maint_1', 200000),
@@ -764,7 +1046,7 @@ class AttendanceController extends Controller
                         $emp = $item['employee'];
                         $pos = strtolower($emp->position ?? '');
                         $type = strtolower($emp->employee_type ?? '');
-                        $isSpecial = str_contains($pos, 'khusus') || str_contains($pos, 'special') || str_contains($pos, 'serbu') || str_contains($type, 'khusus') || (method_exists($emp, 'specialTeamMembers') && $emp->specialTeamMembers && $emp->specialTeamMembers->isNotEmpty());
+                        $isSpecial = str_contains($pos, 'khusus') || str_contains($pos, 'special') || str_contains($pos, 'serbu') || str_contains($type, 'khusus');
                         if ($isSpecial) return false;
                         return str_contains($pos, 'maint') || str_contains($pos, 'teknisi') || str_contains($pos, 'field');
                     })->sortByDesc('score')->values();
@@ -776,20 +1058,22 @@ class AttendanceController extends Controller
                             Incentive::updateOrCreate(
                                 [
                                     'user_id' => $item['user']->id,
-                                    'type' => 'auto',
-                                    'description' => "Reward Absen Maintenance (Juara {$rank} Global) Periode {$month}",
+                                    'reference_id' => "REWARD_MAINT_{$rank}_{$month}",
                                 ],
                                 [
+                                    'type' => 'auto',
+                                    'description' => "Reward Absen Maintenance (Juara {$rank} Global) Periode {$month}",
                                     'amount' => $nominal,
                                     'incentive_date' => $monthEnd->format('Y-m-d'),
                                     'status' => 'pending',
                                 ]
                             );
+                            $syncedRewardsCount++;
                         }
                     }
                 }
 
-                // Reward Tim Khusus (Top 3 per Grup)
+                // D. Reward Tim Khusus (Top 3 per Grup)
                 if (Setting::get('attendance_reward_special_team_enabled', '1') === '1') {
                     $specialNominals = [
                         1 => (float) Setting::get('attendance_reward_special_1', 200000),
@@ -814,15 +1098,17 @@ class AttendanceController extends Controller
                                 Incentive::updateOrCreate(
                                     [
                                         'user_id' => $item['user']->id,
-                                        'type' => 'auto',
-                                        'description' => "Reward Tim Khusus (Juara {$rank} - {$groupName}) Periode {$month}",
+                                        'reference_id' => "REWARD_SPECIAL_{$groupName}_{$rank}_{$month}",
                                     ],
                                     [
+                                        'type' => 'auto',
+                                        'description' => "Reward Tim Khusus (Juara {$rank} - {$groupName}) Periode {$month}",
                                         'amount' => $nominal,
                                         'incentive_date' => $monthEnd->format('Y-m-d'),
                                         'status' => 'pending',
                                     ]
                                 );
+                                $syncedRewardsCount++;
                             }
                         }
                     }
@@ -830,7 +1116,7 @@ class AttendanceController extends Controller
             }
         });
 
-        return back()->with('success', "Berhasil menyinkronkan data potongan & reward absen terbaik ke modul Penggajian (Payroll)!");
+        return back()->with('success', "Berhasil menyinkronkan data presensi & jadwal kerja ke Penggajian untuk periode {$month}: {$syncedDeductionsCount} potongan otomatis & {$syncedRewardsCount} reward insentif!");
     }
 
     /**
@@ -882,6 +1168,21 @@ class AttendanceController extends Controller
         Storage::disk('public')->put($filePath, $decoded);
 
         return $filePath;
+    }
+
+    /**
+     * Hitung Jarak dalam Meter Menggunakan Rumus Haversine
+     */
+    protected function calculateDistanceMeters(float $lat1, float $lon1, float $lat2, float $lon2): int
+    {
+        $earthRadius = 6371000; // Radius bumi dalam meter
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+        $a = sin($dLat / 2) * sin($dLat / 2) +
+             cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+             sin($dLon / 2) * sin($dLon / 2);
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+        return (int) round($earthRadius * $c);
     }
 
     /**

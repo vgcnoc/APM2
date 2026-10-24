@@ -411,6 +411,17 @@ class SpecialAttendanceController extends Controller
             return back()->with('error', 'Anda belum melakukan absensi masuk hari ini.');
         }
 
+        if ($attendance->clock_out) {
+            return back()->with('error', 'Anda sudah melakukan absensi pulang hari ini.');
+        }
+
+        // Batas Waktu Terakhir Absen Pulang Tim Khusus
+        $deadlineTime = Setting::get('attendance_special_deadline_time', Setting::get('attendance_checkout_deadline_time', '23:30'));
+        $deadlineCarbon = Carbon::parse($today . ' ' . $deadlineTime);
+        if ($now->greaterThan($deadlineCarbon)) {
+            return back()->with('error', "Batas waktu terakhir absen pulang Tim Khusus telah berakhir pada pukul {$deadlineTime} WIB. Absensi dikunci otomatis (Lupa Absen Pulang). Silakan hubungi Admin / Koordinator Tim.");
+        }
+
         // Evaluasi Pulang Awal
         $scheduledEndTime = Carbon::parse($today . ' ' . $team->end_time);
         $earlyMinutes = 0;

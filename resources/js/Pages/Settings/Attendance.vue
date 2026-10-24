@@ -5,12 +5,14 @@
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 class="text-2xl font-black text-slate-900 tracking-tight">
-                        {{ activeTab === 'rewards' ? 'Reward Absen Terbaik' : 'Potongan Absensi Reguler (Staf)' }}
+                        {{ activeTab === 'rules' ? 'Peraturan Semua Jenis Absen & Jam Pulang' : (activeTab === 'deductions' ? 'Potongan Absensi Reguler (Staf)' : 'Reward Absen Terbaik') }}
                     </h1>
                     <p class="text-xs text-slate-500 font-medium mt-1">
-                        {{ activeTab === 'rewards'
-                            ? 'Karyawan terbaik peringkat 1-3 per cabang mendapat reward cabang. Juara 1 tiap cabang otomatis masuk nominasi global — Top 3 global mendapat reward tambahan.'
-                            : 'Atur nominal potongan gaji otomatis untuk setiap pelanggaran absensi karyawan berbasis shift'
+                        {{ activeTab === 'rules'
+                            ? 'Konfigurasi lengkap batas waktu terakhir absen pulang, durasi minimal kerja, serta regulasi presensi Reguler, Tim Khusus, dan Tugas Luar.'
+                            : (activeTab === 'deductions'
+                                ? 'Atur nominal potongan gaji otomatis untuk setiap pelanggaran absensi karyawan berbasis shift'
+                                : 'Karyawan terbaik peringkat 1-3 per cabang mendapat reward cabang. Juara 1 tiap cabang otomatis masuk nominasi global — Top 3 global mendapat reward tambahan.')
                         }}
                     </p>
                 </div>
@@ -36,20 +38,20 @@
                 </div>
             </div>
 
-            <!-- TAB NAVIGATOR: REWARD ABSEN TERBAIK vs POTONGAN ABSENSI -->
-            <div class="flex items-center gap-2 border-b border-slate-200/80 pb-3">
+            <!-- TAB NAVIGATOR: PERATURAN ABSEN vs REWARD vs POTONGAN -->
+            <div class="flex items-center gap-2 border-b border-slate-200/80 pb-3 overflow-x-auto">
                 <button
                     type="button"
-                    @click="activeTab = 'rewards'"
+                    @click="activeTab = 'rules'"
                     :class="[
-                        activeTab === 'rewards'
+                        activeTab === 'rules'
                             ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
                             : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200/80 hover:bg-slate-50',
-                        'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2'
+                        'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0'
                     ]"
                 >
-                    <span>🏆</span>
-                    <span>Reward Absen Terbaik</span>
+                    <span>📋</span>
+                    <span>Peraturan Semua Jenis Absen & Jam Pulang</span>
                 </button>
 
                 <button
@@ -59,15 +61,576 @@
                         activeTab === 'deductions'
                             ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
                             : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200/80 hover:bg-slate-50',
-                        'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2'
+                        'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0'
                     ]"
                 >
                     <span>💳</span>
                     <span>Potongan Absensi & Cron</span>
                 </button>
+
+                <button
+                    type="button"
+                    @click="activeTab = 'rewards'"
+                    :class="[
+                        activeTab === 'rewards'
+                            ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
+                            : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200/80 hover:bg-slate-50',
+                        'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0'
+                    ]"
+                >
+                    <span>🏆</span>
+                    <span>Reward Absen Terbaik</span>
+                </button>
             </div>
 
             <form @submit.prevent="submit" class="space-y-6">
+                <!-- ============================================================== -->
+                <!-- SECTION 0: PERATURAN SEMUA JENIS ABSEN & JAM PULANG             -->
+                <!-- ============================================================== -->
+                <div v-show="activeTab === 'rules'" class="space-y-6">
+                    <!-- HERO GUIDE BANNER: JAWABAN CERDAS KAPAN TERAKHIR BISA ABSEN PULANG -->
+                    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-blue-950 p-6 sm:p-8 text-white shadow-xl border border-blue-500/20">
+                        <div class="absolute -right-16 -top-16 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                        <div class="absolute -left-16 -bottom-16 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                        <div class="relative z-10 space-y-5">
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-xs font-semibold">
+                                    <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                    <span>PANDUAN & REGULASI RESMI PRESENSI APM2</span>
+                                </div>
+                                <div class="text-[11px] text-slate-400 font-mono">
+                                    Status Auto-Lock:
+                                    <span :class="form.attendance_checkout_auto_lock ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'">
+                                        {{ form.attendance_checkout_auto_lock ? 'AKTIF (Terkunci Otomatis)' : 'NONAKTIF' }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h2 class="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2.5">
+                                    <span>🕒</span>
+                                    <span>Kapan Terakhir Karyawan Bisa Absen Pulang?</span>
+                                </h2>
+                                <p class="text-xs sm:text-sm text-slate-300 mt-1.5 max-w-3xl leading-relaxed">
+                                    Sistem absensi menerapkan regulasi presensi presisi untuk memastikan kedisiplinan dan perhitungan payroll yang akurat. Berikut adalah batas waktu dan ketentuan absen pulang:
+                                </p>
+                            </div>
+
+                            <!-- 4 KEY METRICS PILLS -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+                                <!-- Cut-off Terakhir -->
+                                <div class="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4 space-y-1">
+                                    <div class="text-[11px] text-blue-200 font-semibold flex items-center gap-1.5">
+                                        <span>⏰</span>
+                                        <span>Jam Cut-Off Terakhir</span>
+                                    </div>
+                                    <div class="text-2xl font-black text-amber-300 font-mono">
+                                        {{ form.attendance_checkout_deadline_time || '23:30' }} <span class="text-xs font-normal text-slate-300">WIB</span>
+                                    </div>
+                                    <div class="text-[10px] text-slate-300">
+                                        {{ form.attendance_checkout_deadline_mode === 'shift_relative' ? `Maks +${form.attendance_checkout_deadline_hours} Jam pasca shift` : 'Sebelum cron cut-off harian' }}
+                                    </div>
+                                </div>
+
+                                <!-- Durasi Minimal Kerja -->
+                                <div class="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4 space-y-1">
+                                    <div class="text-[11px] text-blue-200 font-semibold flex items-center gap-1.5">
+                                        <span>⏳</span>
+                                        <span>Durasi Kerja Minimal</span>
+                                    </div>
+                                    <div class="text-2xl font-black text-emerald-300 font-mono">
+                                        {{ form.attendance_checkout_min_work_hours || 4 }} <span class="text-xs font-normal text-slate-300">Jam</span>
+                                    </div>
+                                    <div class="text-[10px] text-slate-300">
+                                        Sejak jam clock-in masuk
+                                    </div>
+                                </div>
+
+                                <!-- Toleransi Pulang Cepat -->
+                                <div class="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4 space-y-1">
+                                    <div class="text-[11px] text-blue-200 font-semibold flex items-center gap-1.5">
+                                        <span>⏱️</span>
+                                        <span>Toleransi Pulang Cepat</span>
+                                    </div>
+                                    <div class="text-2xl font-black text-sky-300 font-mono">
+                                        {{ form.attendance_checkout_early_tolerance || 15 }} <span class="text-xs font-normal text-slate-300">Menit</span>
+                                    </div>
+                                    <div class="text-[10px] text-slate-300">
+                                        Sebelum shift usai tanpa denda
+                                    </div>
+                                </div>
+
+                                <!-- Status Melewati Batas -->
+                                <div class="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4 space-y-1">
+                                    <div class="text-[11px] text-blue-200 font-semibold flex items-center gap-1.5">
+                                        <span>🚫</span>
+                                        <span>Jika Melewati Batas</span>
+                                    </div>
+                                    <div class="text-lg font-black text-rose-300 truncate">
+                                        Lupa Absen Pulang
+                                    </div>
+                                    <div class="text-[10px] text-slate-300">
+                                        Denda Rp {{ Number(form.attendance_missing_out_amount || 10000).toLocaleString('id-ID') }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- TIMELINE VISUAL ALUR ABSENSI -->
+                            <div class="bg-black/25 rounded-2xl p-4 border border-white/10 space-y-2">
+                                <div class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                                    <span>🧭</span>
+                                    <span>Kronologi & Alur Siklus Absensi Kerja Harian:</span>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-5 gap-2 text-xs">
+                                    <div class="p-2.5 rounded-xl bg-white/5 border border-white/5">
+                                        <div class="font-bold text-blue-300 text-[11px]">1. Absen Masuk</div>
+                                        <div class="text-[10px] text-slate-300 mt-0.5">Sesuai shift kerja (toleransi telat {{ form.attendance_late_tolerance }} mnt).</div>
+                                    </div>
+                                    <div class="p-2.5 rounded-xl bg-white/5 border border-white/5">
+                                        <div class="font-bold text-emerald-300 text-[11px]">2. Durasi Min. Kerja</div>
+                                        <div class="text-[10px] text-slate-300 mt-0.5">Wajib kerja min. {{ form.attendance_checkout_min_work_hours }} jam sebelum tombol pulang aktif.</div>
+                                    </div>
+                                    <div class="p-2.5 rounded-xl bg-white/5 border border-white/5">
+                                        <div class="font-bold text-sky-300 text-[11px]">3. Selesai Shift</div>
+                                        <div class="text-[10px] text-slate-300 mt-0.5">Boleh pulang s/d {{ form.attendance_checkout_early_tolerance }} mnt lebih awal tanpa denda.</div>
+                                    </div>
+                                    <div class="p-2.5 rounded-xl bg-white/5 border border-white/5">
+                                        <div class="font-bold text-amber-300 text-[11px]">4. Batas Pulang</div>
+                                        <div class="text-[10px] text-slate-300 mt-0.5">Maksimal pukul {{ form.attendance_checkout_deadline_time }} WIB hari yang sama.</div>
+                                    </div>
+                                    <div class="p-2.5 rounded-xl bg-white/5 border border-white/5">
+                                        <div class="font-bold text-rose-300 text-[11px]">5. Lewat Batas</div>
+                                        <div class="text-[10px] text-slate-300 mt-0.5">Terkunci otomatis, potong gaji Lupa Absen Pulang.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CARD 1: PENGATURAN BATAS WAKTU PULANG & AUTO-LOCK -->
+                    <div class="bg-white rounded-2xl border border-blue-300/90 p-5 sm:p-6 shadow-2xs space-y-5 hover:border-blue-400 transition-colors">
+                        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                            <div>
+                                <div class="text-sm font-bold text-blue-900 flex items-center gap-2">
+                                    <span class="text-base text-blue-600">🕒</span>
+                                    <span>Aturan Batas Terakhir Absen Pulang (Clock-Out Cut-Off & Auto-Lock)</span>
+                                </div>
+                                <p class="text-xs text-slate-500 mt-0.5">
+                                    Atur jam maksimal karyawan dapat melakukan clock-out sebelum tombol terkunci otomatis
+                                </p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" v-model="form.attendance_checkout_auto_lock" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                                    Mode Perhitungan Batas Pulang
+                                </label>
+                                <select
+                                    v-model="form.attendance_checkout_deadline_mode"
+                                    class="w-full text-xs rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
+                                >
+                                    <option value="before_cron">Sebelum Jam Cut-Off Malam (Rekomendasi - Tetap)</option>
+                                    <option value="shift_relative">Berdasarkan Shift (+N Jam Setelah Shift Selesai)</option>
+                                    <option value="fixed_time">Jam Khusus Tertentu</option>
+                                </select>
+                                <p class="text-[11px] text-slate-400 mt-1">
+                                    {{ form.attendance_checkout_deadline_mode === 'before_cron'
+                                        ? 'Karyawan bebas absen pulang kapan pun setelah shift hingga jam cut-off malam'
+                                        : (form.attendance_checkout_deadline_mode === 'shift_relative'
+                                            ? 'Batas pulang dihitung dinamis dari jam akhir shift masing-masing karyawan'
+                                            : 'Batas pulang dipatok pada jam tepat di bawah ini') }}
+                                </p>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                                    Jam Cut-Off Terakhir Absen Pulang (WIB)
+                                </label>
+                                <input
+                                    type="time"
+                                    v-model="form.attendance_checkout_deadline_time"
+                                    class="w-full text-xs rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 font-mono font-semibold"
+                                />
+                                <p class="text-[11px] text-slate-400 mt-1">
+                                    Standar default: <strong class="text-slate-700">23:30 WIB</strong>. Lewat jam ini tombol absen pulang terkunci.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                                    Maksimal Jam Pasca Shift Usai (Jam)
+                                </label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="12"
+                                    v-model="form.attendance_checkout_deadline_hours"
+                                    :disabled="form.attendance_checkout_deadline_mode !== 'shift_relative'"
+                                    class="w-full text-xs rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 disabled:bg-slate-100 disabled:text-slate-400"
+                                />
+                                <p class="text-[11px] text-slate-400 mt-1">
+                                    Hanya berlaku jika mode shift dipilih (contoh: 4 jam setelah shift).
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2 border-t border-slate-100">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                                    Durasi Kerja Minimal Sebelum Diizinkan Pulang (Jam)
+                                </label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="12"
+                                    v-model="form.attendance_checkout_min_work_hours"
+                                    class="w-full text-xs rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
+                                    placeholder="4"
+                                />
+                                <p class="text-[11px] text-slate-400 mt-1">
+                                    Mencegah karyawan absen masuk lalu langsung absen pulang. Default: <strong class="text-slate-700">4 jam</strong>.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                                    Toleransi Pulang Awal (Menit)
+                                </label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="120"
+                                    v-model="form.attendance_checkout_early_tolerance"
+                                    class="w-full text-xs rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
+                                    placeholder="15"
+                                />
+                                <p class="text-[11px] text-slate-400 mt-1">
+                                    Pulang lebih cepat di bawah batas ini tidak dikenakan denda potongan. Default: <strong class="text-slate-700">15 menit</strong>.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CARD 2: PERATURAN PRESENSI REGULER (STAF / WFO / SHIFT) -->
+                    <div class="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 shadow-2xs space-y-5 hover:border-slate-300 transition-colors">
+                        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                            <div>
+                                <div class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                                    <span class="text-base text-blue-600">🏢</span>
+                                    <span>Peraturan Presensi Reguler (Staf Kantor & Karyawan Shift / WFO)</span>
+                                </div>
+                                <p class="text-xs text-slate-500 mt-0.5">
+                                    Presensi standar karyawan kantor berbasis master shift, geofencing lokasi, dan kamera live
+                                </p>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-bold">
+                                Menu: /attendances
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- Toggle Selfie -->
+                            <div class="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between">
+                                <div>
+                                    <div class="text-xs font-bold text-slate-800">Wajib Foto Wajah (Selfie)</div>
+                                    <div class="text-[10px] text-slate-500">Live camera anti upload galeri</div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" v-model="form.attendance_regular_require_photo" class="sr-only peer">
+                                    <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+
+                            <!-- Toggle GPS -->
+                            <div class="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between">
+                                <div>
+                                    <div class="text-xs font-bold text-slate-800">Wajib Titik GPS Live</div>
+                                    <div class="text-[10px] text-slate-500">Akurasi koordinat satelit</div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" v-model="form.attendance_regular_require_gps" class="sr-only peer">
+                                    <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+
+                            <!-- Toggle Geofencing Strict -->
+                            <div class="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between">
+                                <div>
+                                    <div class="text-xs font-bold text-slate-800">Kunci Radius Kantor</div>
+                                    <div class="text-[10px] text-slate-500">Geofencing kantor cabang</div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" v-model="form.attendance_regular_strict_radius" class="sr-only peer">
+                                    <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 pt-2 border-t border-slate-100">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                                    Radius Default Kantor (Meter)
+                                </label>
+                                <input
+                                    type="number"
+                                    min="10"
+                                    max="5000"
+                                    v-model="form.attendance_regular_default_radius"
+                                    class="w-full text-xs rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
+                                    placeholder="200"
+                                />
+                                <p class="text-[11px] text-slate-400 mt-1">Radius standar bila cabang belum diset.</p>
+                            </div>
+
+                            <!-- Toggle WFH -->
+                            <div class="p-3 rounded-xl border border-slate-200/80 flex items-center justify-between">
+                                <div>
+                                    <div class="text-xs font-bold text-slate-800">Izinkan WFH</div>
+                                    <div class="text-[10px] text-slate-500">Bekerja dari rumah</div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" v-model="form.attendance_regular_allow_wfh" class="sr-only peer">
+                                    <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+
+                            <!-- Toggle Field Duty in Reguler -->
+                            <div class="p-3 rounded-xl border border-slate-200/80 flex items-center justify-between">
+                                <div>
+                                    <div class="text-xs font-bold text-slate-800">Izinkan Dinas Luar</div>
+                                    <div class="text-[10px] text-slate-500">Tugas keluar kantor</div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" v-model="form.attendance_regular_allow_field" class="sr-only peer">
+                                    <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+
+                            <!-- Toggle Overtime -->
+                            <div class="p-3 rounded-xl border border-slate-200/80 flex items-center justify-between">
+                                <div>
+                                    <div class="text-xs font-bold text-slate-800">Izinkan Lembur</div>
+                                    <div class="text-[10px] text-slate-500">Overtime kerja shift</div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" v-model="form.attendance_regular_allow_overtime" class="sr-only peer">
+                                    <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CARD 3: PERATURAN PRESENSI TIM KHUSUS (MOBILE & LAPANGAN) -->
+                    <div class="bg-white rounded-2xl border border-purple-300/90 p-5 sm:p-6 shadow-2xs space-y-5 hover:border-purple-400 transition-colors">
+                        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                            <div>
+                                <div class="text-sm font-bold text-purple-900 flex items-center gap-2">
+                                    <span class="text-base text-purple-600">⚡</span>
+                                    <span>Peraturan Presensi Tim Khusus (Operasional Lapangan, Proyek, & Serbu)</span>
+                                </div>
+                                <p class="text-xs text-slate-500 mt-0.5">
+                                    Presensi untuk tim lapangan fleksibel yang mobile tanpa batasan radius kantor tertentu
+                                </p>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 border border-purple-200 text-[11px] font-bold">
+                                Menu: /absen-khusus
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                                    Jam Mulai Standar
+                                </label>
+                                <input
+                                    type="time"
+                                    v-model="form.attendance_special_default_start"
+                                    class="w-full text-xs rounded-xl border-slate-200 focus:border-purple-500 focus:ring-purple-500/20 font-mono font-semibold"
+                                />
+                                <p class="text-[11px] text-slate-400 mt-1">Default: 08:30 WIB</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                                    Jam Selesai Standar
+                                </label>
+                                <input
+                                    type="time"
+                                    v-model="form.attendance_special_default_end"
+                                    class="w-full text-xs rounded-xl border-slate-200 focus:border-purple-500 focus:ring-purple-500/20 font-mono font-semibold"
+                                />
+                                <p class="text-[11px] text-slate-400 mt-1">Default: 18:00 WIB</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                                    Toleransi Telat (Menit)
+                                </label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="120"
+                                    v-model="form.attendance_special_default_tolerance"
+                                    class="w-full text-xs rounded-xl border-slate-200 focus:border-purple-500 focus:ring-purple-500/20"
+                                    placeholder="15"
+                                />
+                                <p class="text-[11px] text-slate-400 mt-1">Default: 15 Menit</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                                    Batas Terakhir Pulang Tim Khusus
+                                </label>
+                                <input
+                                    type="time"
+                                    v-model="form.attendance_special_deadline_time"
+                                    class="w-full text-xs rounded-xl border-slate-200 focus:border-purple-500 focus:ring-purple-500/20 font-mono font-semibold"
+                                />
+                                <p class="text-[11px] text-slate-400 mt-1">Default: 23:30 WIB</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 pt-2 border-t border-slate-100">
+                            <!-- Toggle Bebas Radius -->
+                            <div class="p-3 rounded-xl border border-purple-200/80 bg-purple-50/40 flex items-center justify-between">
+                                <div>
+                                    <div class="text-xs font-bold text-purple-900">Bebas Radius Kantor</div>
+                                    <div class="text-[10px] text-slate-500">Mobile area tanpa batas GPS radius</div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" v-model="form.attendance_special_without_radius" class="sr-only peer">
+                                    <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                                </label>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Denda Telat Tim Khusus (Rp)</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    v-model="form.attendance_special_late_deduction"
+                                    class="w-full text-xs rounded-xl border-slate-200 focus:border-purple-500 focus:ring-purple-500/20"
+                                />
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Denda Lupa Pulang (Rp)</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    v-model="form.attendance_special_missing_out_deduction"
+                                    class="w-full text-xs rounded-xl border-slate-200 focus:border-purple-500 focus:ring-purple-500/20"
+                                />
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">Denda Alpha (Rp)</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    v-model="form.attendance_special_alpha_deduction"
+                                    class="w-full text-xs rounded-xl border-slate-200 focus:border-purple-500 focus:ring-purple-500/20"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CARD 4: PERATURAN PRESENSI TUGAS LUAR (FIELD DUTIES / TEKNISI) -->
+                    <div class="bg-white rounded-2xl border border-emerald-300/90 p-5 sm:p-6 shadow-2xs space-y-5 hover:border-emerald-400 transition-colors">
+                        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                            <div>
+                                <div class="text-sm font-bold text-emerald-900 flex items-center gap-2">
+                                    <span class="text-base text-emerald-600">🚗</span>
+                                    <span>Peraturan Presensi Tugas Luar (Dinas Luar / Field Duties Teknisi)</span>
+                                </div>
+                                <p class="text-xs text-slate-500 mt-0.5">
+                                    Pemberian izin dan penggantian absensi bagi teknisi lapangan atau staf dengan surat penugasan
+                                </p>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
+                                Modul: Field Duties
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                                    Mode Penggantian Presensi Default
+                                </label>
+                                <select
+                                    v-model="form.attendance_field_default_mode"
+                                    class="w-full text-xs rounded-xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500/20"
+                                >
+                                    <option value="replace_both">Gantikan Absen Masuk & Pulang Sekaligus (Rekomendasi)</option>
+                                    <option value="replace_in">Hanya Gantikan Absen Masuk (Wajib Pulang Manual)</option>
+                                    <option value="replace_out">Hanya Gantikan Absen Pulang (Wajib Masuk Manual)</option>
+                                </select>
+                                <p class="text-[11px] text-slate-400 mt-1">
+                                    Saat surat tugas luar diverifikasi/disetujui, kehadiran karyawan otomatis tercatat hadir.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                                    Batas Terakhir Penyelesaian Tugas Luar (WIB)
+                                </label>
+                                <input
+                                    type="time"
+                                    v-model="form.attendance_field_deadline_time"
+                                    class="w-full text-xs rounded-xl border-slate-200 focus:border-emerald-500 focus:ring-emerald-500/20 font-mono font-semibold"
+                                />
+                                <p class="text-[11px] text-slate-400 mt-1">
+                                    Batas waktu pelaporan dan upload bukti hasil pekerjaan dinas luar. Default: <strong class="text-slate-700">22:00 WIB</strong>.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-slate-100">
+                            <!-- Toggle Foto Bukti -->
+                            <div class="p-3.5 rounded-xl border border-emerald-200/80 bg-emerald-50/40 flex items-center justify-between">
+                                <div>
+                                    <div class="text-xs font-bold text-emerald-950">Wajib Foto Bukti Kerja</div>
+                                    <div class="text-[10px] text-slate-500">Unggah foto dokumentasi lokasi</div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" v-model="form.attendance_field_require_photo" class="sr-only peer">
+                                    <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                                </label>
+                            </div>
+
+                            <!-- Toggle GPS -->
+                            <div class="p-3.5 rounded-xl border border-emerald-200/80 bg-emerald-50/40 flex items-center justify-between">
+                                <div>
+                                    <div class="text-xs font-bold text-emerald-950">Wajib Koordinat GPS Lapangan</div>
+                                    <div class="text-[10px] text-slate-500">Pinpoint lokasi kerja riil</div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" v-model="form.attendance_field_require_gps" class="sr-only peer">
+                                    <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                                </label>
+                            </div>
+
+                            <!-- Toggle Auto Sync On-Duty -->
+                            <div class="p-3.5 rounded-xl border border-emerald-200/80 bg-emerald-50/40 flex items-center justify-between">
+                                <div>
+                                    <div class="text-xs font-bold text-emerald-950">Auto-Sync Status ON-DUTY</div>
+                                    <div class="text-[10px] text-slate-500">Sinkronkan ke status teknisi aktif</div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" v-model="form.attendance_field_auto_sync" class="sr-only peer">
+                                    <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- ============================================================== -->
                 <!-- SECTION 1: REWARD ABSEN TERBAIK (LENGKAP SEMUA KATEGORI)       -->
                 <!-- ============================================================== -->
@@ -982,10 +1545,44 @@ const props = defineProps({
     settings: Object,
 });
 
-const activeTab = ref('rewards'); // Default tab reward absen terbaik
+const activeTab = ref('rules'); // Default tab peraturan semua jenis absen & jam pulang
 
 const form = useForm({
-    // Potongan Absensi
+    // PERATURAN SEMUA JENIS ABSEN & BATAS TERAKHIR PULANG
+    attendance_checkout_deadline_mode: props.settings?.attendance_checkout_deadline_mode ?? 'before_cron',
+    attendance_checkout_deadline_time: props.settings?.attendance_checkout_deadline_time ?? '23:30',
+    attendance_checkout_deadline_hours: props.settings?.attendance_checkout_deadline_hours ?? 4,
+    attendance_checkout_min_work_hours: props.settings?.attendance_checkout_min_work_hours ?? 4,
+    attendance_checkout_early_tolerance: props.settings?.attendance_checkout_early_tolerance ?? 15,
+    attendance_checkout_auto_lock: props.settings?.attendance_checkout_auto_lock ?? true,
+
+    // Reguler (Staf & Shift Kantor / WFO)
+    attendance_regular_require_photo: props.settings?.attendance_regular_require_photo ?? true,
+    attendance_regular_require_gps: props.settings?.attendance_regular_require_gps ?? true,
+    attendance_regular_strict_radius: props.settings?.attendance_regular_strict_radius ?? true,
+    attendance_regular_default_radius: props.settings?.attendance_regular_default_radius ?? 200,
+    attendance_regular_allow_wfh: props.settings?.attendance_regular_allow_wfh ?? false,
+    attendance_regular_allow_field: props.settings?.attendance_regular_allow_field ?? true,
+    attendance_regular_allow_overtime: props.settings?.attendance_regular_allow_overtime ?? true,
+
+    // Tim Khusus (Mobile / Proyek / Lapangan)
+    attendance_special_default_start: props.settings?.attendance_special_default_start ?? '08:30',
+    attendance_special_default_end: props.settings?.attendance_special_default_end ?? '18:00',
+    attendance_special_default_tolerance: props.settings?.attendance_special_default_tolerance ?? 15,
+    attendance_special_deadline_time: props.settings?.attendance_special_deadline_time ?? '23:30',
+    attendance_special_without_radius: props.settings?.attendance_special_without_radius ?? true,
+    attendance_special_late_deduction: props.settings?.attendance_special_late_deduction ?? 10000,
+    attendance_special_missing_out_deduction: props.settings?.attendance_special_missing_out_deduction ?? 10000,
+    attendance_special_alpha_deduction: props.settings?.attendance_special_alpha_deduction ?? 35000,
+
+    // Tugas Luar (Field Duties / Teknisi)
+    attendance_field_default_mode: props.settings?.attendance_field_default_mode ?? 'replace_both',
+    attendance_field_require_photo: props.settings?.attendance_field_require_photo ?? true,
+    attendance_field_require_gps: props.settings?.attendance_field_require_gps ?? true,
+    attendance_field_auto_sync: props.settings?.attendance_field_auto_sync ?? true,
+    attendance_field_deadline_time: props.settings?.attendance_field_deadline_time ?? '22:00',
+
+    // Potongan Absensi Reguler (Staf)
     attendance_late_enabled: props.settings?.attendance_late_enabled ?? true,
     attendance_late_amount: props.settings?.attendance_late_amount ?? 10000,
     attendance_late_mode: props.settings?.attendance_late_mode ?? 'Per Kejadian',

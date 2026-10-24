@@ -145,6 +145,9 @@
         <!-- ═══ Presensi Reguler Staf Widget ═══ -->
         <DashboardAttendanceWidget :attendance-data="attendanceData" class="mb-6" />
 
+        <!-- ═══ Pencarian Cepat Pelanggan & Foto Rumah (Tampil untuk Semua User) ═══ -->
+        <CustomerSearchWidget class="mb-6" :initial-area-id="selectedAreaId" />
+
         <!-- ═══ Realtime Live Monitoring Widget ═══ -->
         <div v-can="'dashboard_card_realtime'" class="mb-6">
             <RealtimeWidget
@@ -560,6 +563,7 @@ import { router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DashboardAttendanceWidget from '@/Components/Attendance/DashboardAttendanceWidget.vue';
 import RealtimeWidget from '@/Components/Dashboard/RealtimeWidget.vue';
+import CustomerSearchWidget from '@/Components/Dashboard/CustomerSearchWidget.vue';
 
 const props = defineProps({
     realtimeStats: { type: Object, default: () => ({}) },

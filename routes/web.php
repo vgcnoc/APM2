@@ -83,6 +83,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/realtime', [DashboardController::class, 'realtime'])->name('dashboard.realtime');
     Route::get('/dashboard/realtime-api', [DashboardController::class, 'realtimeApi'])->name('dashboard.realtime-api');
+    Route::get('/dashboard/search-customer', [DashboardController::class, 'searchCustomer'])->name('dashboard.search-customer');
 
     // Client Area (Reseller)
     Route::middleware(['role:reseller|customer'])->prefix('client-area')->name('client-area.')->group(function () {
@@ -331,6 +332,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('attendances/clock-out', [\App\Http\Controllers\AttendanceController::class, 'clockOut'])->name('attendances.clock-out');
     Route::post('attendances/quick-assign-shift', [\App\Http\Controllers\AttendanceController::class, 'quickAssignShift'])->name('attendances.quick-assign-shift');
     Route::post('attendances/update-location', [\App\Http\Controllers\AttendanceController::class, 'updateAreaLocation'])->name('attendances.update-location');
+    Route::post('attendances/sync-payroll', [\App\Http\Controllers\AttendanceController::class, 'syncToPayroll'])->name('attendances.sync-payroll');
 
     // Absen Terbaik (Papan Peringkat Kedisiplinan & Penghargaan Juara Top 3)
     Route::get('absen-terbaik', [\App\Http\Controllers\BestAttendanceController::class, 'index'])->name('best-attendances.index');

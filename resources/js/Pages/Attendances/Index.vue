@@ -354,13 +354,22 @@
                                     </div>
                                     <div v-if="attendanceType === 'wfo'" class="flex items-center justify-between">
                                         <span>Jarak ke Kantor Cabang:</span>
-                                        <span class="font-bold" :class="isWithinRadius ? 'text-emerald-600' : 'text-amber-600'">
+                                        <span class="font-bold" :class="isWithinRadius ? 'text-emerald-600' : 'text-rose-600'">
                                             {{ formatDistance(distanceToOffice) }}
                                             ({{ isWithinRadius ? 'Dalam Radius' : 'Luar Radius' }})
                                         </span>
                                     </div>
                                     <div v-else class="text-indigo-600 font-semibold text-[11px]">
                                         ✓ Mode Dinas Luar: Radius kantor tidak diwajibkan.
+                                    </div>
+
+                                    <!-- Warning box jika di luar radius area -->
+                                    <div v-if="attendanceType === 'wfo' && !isWithinRadius && !bypassRadiusMode" class="mt-2 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-[11px] leading-relaxed">
+                                        <div class="font-bold flex items-center gap-1 text-rose-900 mb-0.5">
+                                            <span>📍</span>
+                                            <span>Di Luar Radius Kantor Area</span>
+                                        </div>
+                                        Jarak Anda saat ini <strong>{{ formatDistance(distanceToOffice) }}</strong> dari titik kantor <strong>{{ officeLocation?.name || 'Area' }}</strong> (Batas toleransi radius: {{ officeLocation?.radius_meters || 200 }}m). Presensi regular WFO wajib berada di dalam radius area ini.
                                     </div>
                                 </div>
 
@@ -441,6 +450,7 @@
                                         </svg>
                                         <span v-if="isSubmitting">Memproses Presensi...</span>
                                         <span v-else-if="!capturedPhoto">Ambil Foto Selfie Dulu</span>
+                                        <span v-else-if="isOutOfRadius">❌ Di Luar Radius Area ({{ formatDistance(distanceToOffice) }})</span>
                                         <span v-else>📷 Absen Masuk Sekarang</span>
                                     </button>
                                 </div>
@@ -463,6 +473,7 @@
                                         </svg>
                                         <span v-if="isSubmitting">Memproses Presensi Pulang...</span>
                                         <span v-else-if="!capturedPhoto">Ambil Foto Selfie Dulu</span>
+                                        <span v-else-if="isOutOfRadius">❌ Di Luar Radius Area ({{ formatDistance(distanceToOffice) }})</span>
                                         <span v-else>📷 Absen Pulang Sekarang</span>
                                     </button>
                                 </div>
@@ -975,8 +986,21 @@
                     </div>
 
                     <div class="space-y-3 text-xs">
-                        <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-800">
-                            Sistem akan menghitung keterlambatan setiap karyawan dan membuat potongan otomatis (Deduction) di modul Penggajian (Payroll).
+                        <div class="p-3.5 bg-blue-50 border border-blue-200 rounded-2xl text-blue-900 space-y-1.5 leading-relaxed">
+                            <div class="font-bold flex items-center gap-1.5 text-blue-950">
+                                <span>⚡</span>
+                                <span>Sinkronisasi Otomatis Gaji (Payroll)</span>
+                            </div>
+                            <p class="text-[11px] text-blue-800">
+                                Sistem secara otomatis mencocokkan jadwal kerja dengan absensi dan menyinkronkan:
+                            </p>
+                            <ul class="text-[11px] text-blue-700 list-disc list-inside space-y-0.5">
+                                <li>Potongan Keterlambatan (Reguler & Tim Khusus)</li>
+                                <li>Potongan Lupa Absen Pulang (Missing Clock-out)</li>
+                                <li>Potongan Pulang Cepat (Early Leave)</li>
+                                <li>Potongan Alpha / Mangkir Jadwal Kerja</li>
+                                <li>Reward Otomatis Top 3 (Cabang, Global, Maintenance, Tim Khusus)</li>
+                            </ul>
                         </div>
 
                         <div class="space-y-1">
@@ -1423,15 +1447,24 @@ const initMap = async () => {
 // Submitting state & validation
 const isSubmitting = ref(false);
 
+const isOutOfRadius = computed(() => {
+    if (attendanceType.value !== 'wfo') return false;
+    if (!props.officeLocation?.latitude || !props.officeLocation?.longitude) return false;
+    if (!userCoordinates.value) return false;
+    return !isWithinRadius.value && !bypassRadiusMode.value;
+});
+
 const canSubmitClockIn = computed(() => {
     if (!capturedPhoto.value) return false;
     if (props.todayAttendance?.clock_in) return false;
+    if (isOutOfRadius.value) return false;
     return true;
 });
 
 const canSubmitClockOut = computed(() => {
     if (!capturedPhoto.value) return false;
     if (!props.todayAttendance?.clock_in || props.todayAttendance?.clock_out) return false;
+    if (isOutOfRadius.value) return false;
     return true;
 });
 
