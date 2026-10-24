@@ -560,7 +560,27 @@ class DashboardController extends Controller
                     ->where('date', $today)
                     ->first();
 
-                $shiftToday = $todaySchedule?->shift ?: $currentEmployee->shift;
+                $isDayOff = false;
+                $dayOffReason = null;
+
+                if ($todaySchedule) {
+                    if ($todaySchedule->status === 'off' || empty($todaySchedule->shift_id)) {
+                        $isDayOff = true;
+                        $dayOffReason = $todaySchedule->notes ?: 'Jadwal Libur Rutin (Day Off)';
+                        $shiftToday = null;
+                    } else {
+                        $shiftToday = $todaySchedule->shift ?: $currentEmployee->shift;
+                        $dayOffReason = $todaySchedule->notes;
+                    }
+                } else {
+                    if ($now->isSunday()) {
+                        $isDayOff = true;
+                        $dayOffReason = 'Hari Libur Mingguan (Minggu)';
+                        $shiftToday = null;
+                    } else {
+                        $shiftToday = $currentEmployee->shift;
+                    }
+                }
 
                 $todayAttendance = Attendance::with('shift')
                     ->where('employee_id', $currentEmployee->id)
@@ -581,7 +601,23 @@ class DashboardController extends Controller
             }
         }
 
-        $allShifts = Shift::where('is_active', true)->orderBy('start_time')->get(['id', 'name', 'start_time', 'end_time']);
+        $allShifts = Shift::where('is_active', true)
+            ->orderBy('start_time')
+            ->get()
+            ->map(function ($s) {
+                $start = substr($s->start_time ?? '', 0, 5);
+                $end = substr($s->end_time ?? '', 0, 5);
+                return [
+                    'id'                => $s->id,
+                    'name'              => $s->name,
+                    'start_time'        => $start,
+                    'end_time'          => $end,
+                    'formatted_time'    => "{$start} - {$end} WIB",
+                    'tolerance_minutes' => (int) ($s->tolerance_minutes ?? 15),
+                    'color'             => $s->color ?? 'blue',
+                    'duration_text'     => $s->duration_text ?? null,
+                ];
+            });
 
         $allEmployees = [];
         if ($user && in_array($user->role, ['superadmin', 'admin', 'hrd'])) {
@@ -631,8 +667,25 @@ class DashboardController extends Controller
             'currentEmployee' => $currentEmployee,
             'allEmployees' => $allEmployees,
             'allShifts' => $allShifts,
-            'todaySchedule' => $todaySchedule,
-            'shiftToday' => $shiftToday,
+            'todaySchedule' => $todaySchedule ? [
+                'id'       => $todaySchedule->id,
+                'status'   => $todaySchedule->status,
+                'notes'    => $todaySchedule->notes,
+                'shift_id' => $todaySchedule->shift_id,
+                'is_off'   => $isDayOff,
+            ] : null,
+            'shiftToday' => $shiftToday ? [
+                'id'                => $shiftToday->id,
+                'name'              => $shiftToday->name,
+                'start_time'        => substr($shiftToday->start_time ?? '08:00', 0, 5),
+                'end_time'          => substr($shiftToday->end_time ?? '17:00', 0, 5),
+                'formatted_time'    => $shiftToday->formatted_time ?? (substr($shiftToday->start_time ?? '08:00', 0, 5) . ' - ' . substr($shiftToday->end_time ?? '17:00', 0, 5) . ' WIB'),
+                'tolerance_minutes' => (int) ($shiftToday->tolerance_minutes ?? 15),
+                'color'             => $shiftToday->color ?? 'blue',
+                'duration_text'     => $shiftToday->duration_text ?? null,
+            ] : null,
+            'isDayOff' => $isDayOff ?? false,
+            'dayOffReason' => $dayOffReason,
             'todayAttendance' => $todayAttendance,
             'officeLocation' => $officeLocation,
             'attendanceSummary' => [

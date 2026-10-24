@@ -532,21 +532,45 @@ class AttendanceController extends Controller
     {
         $request->validate([
             'employee_id' => 'required|exists:employees,id',
-            'shift_id' => 'required|exists:shifts,id',
+            'shift_id'    => 'nullable',
+            'status'      => 'nullable|string', // 'work' or 'off'
+            'notes'       => 'nullable|string|max:255',
+            'date'        => 'nullable|date_format:Y-m-d',
         ]);
 
-        $today = Carbon::today()->format('Y-m-d');
-        $shift = Shift::findOrFail($request->shift_id);
+        $date = $request->date ?: Carbon::today()->format('Y-m-d');
+        $shiftId = $request->shift_id;
+        $isOff = $request->status === 'off' || $shiftId === 'OFF' || empty($shiftId);
+
+        if ($isOff) {
+            $notes = $request->notes ?: 'Jadwal Libur (OFF)';
+            WorkSchedule::updateOrCreate(
+                [
+                    'employee_id' => $request->employee_id,
+                    'date'        => $date,
+                ],
+                [
+                    'shift_id' => null,
+                    'status'   => 'off',
+                    'notes'    => $notes,
+                ]
+            );
+
+            return back()->with('success', "Jadwal berhasil diubah menjadi Libur (OFF): {$notes}");
+        }
+
+        $shift = Shift::findOrFail($shiftId);
+        $notes = $request->notes ?: ("Shift " . $shift->name);
 
         WorkSchedule::updateOrCreate(
             [
                 'employee_id' => $request->employee_id,
-                'date' => $today,
+                'date'        => $date,
             ],
             [
                 'shift_id' => $shift->id,
-                'status' => 'work',
-                'notes' => 'Ditetapkan melalui menu absensi cepat',
+                'status'   => 'work',
+                'notes'    => $notes,
             ]
         );
 

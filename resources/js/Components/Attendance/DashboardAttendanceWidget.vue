@@ -22,25 +22,29 @@
                     {{ attendanceData?.todayDateStr || todayDateDisplay }}
                 </span>
 
-                <!-- Shift / Jam Kerja Badge -->
-                <div v-if="isSpecialTeam" class="hidden sm:flex items-center gap-1.5 ml-2">
-                    <span class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-purple-500/20 text-purple-200 border border-purple-500/30 flex items-center gap-1">
+                <!-- Shift / Jam Kerja & Keterangan Libur Badge -->
+                <div v-if="isSpecialTeam" class="flex items-center gap-1.5 ml-0 sm:ml-2">
+                    <span class="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-purple-500/20 text-purple-200 border border-purple-500/30 flex items-center gap-1 shadow-2xs">
                         <span>⏱️</span>
                         <span>Jam Kerja: {{ formatSpecialTeamTime(specialTeam) }} (Tanpa Radius)</span>
                     </span>
                 </div>
-                <div v-else class="hidden sm:flex items-center gap-1.5 ml-2">
-                    <span
-                        v-if="shiftToday"
-                        class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center gap-1"
-                    >
-                        <span>⏱️</span>
-                        <span>{{ shiftToday.name }} ({{ formatShiftTime(shiftToday) }})</span>
+                <div v-else-if="isDayOff" class="flex items-center gap-1.5 ml-0 sm:ml-2">
+                    <span class="px-2.5 py-0.5 rounded-md text-[11px] font-black bg-rose-500/25 text-rose-300 border border-rose-500/40 flex items-center gap-1.5 shadow-2xs">
+                        <span>🏖️</span>
+                        <span>LIBUR (OFF)</span>
+                        <span v-if="dayOffReason" class="font-normal opacity-90 text-[10px] hidden md:inline">({{ dayOffReason }})</span>
                     </span>
-                    <span
-                        v-else
-                        class="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1"
-                    >
+                </div>
+                <div v-else-if="shiftToday" class="flex items-center gap-1.5 ml-0 sm:ml-2">
+                    <span class="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center gap-1.5 shadow-2xs">
+                        <span>⏱️</span>
+                        <span>{{ shiftToday.name }} ({{ formatShiftTime(shiftToday) }} WIB)</span>
+                        <span class="text-[10px] text-emerald-400 font-bold hidden md:inline">• Hari Kerja</span>
+                    </span>
+                </div>
+                <div v-else class="flex items-center gap-1.5 ml-0 sm:ml-2">
+                    <span class="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
                         <span>⚠️</span>
                         <span>Belum Ada Shift Resmi</span>
                     </span>
@@ -57,6 +61,18 @@
                         {{ currentTimeStr || '--:--:--' }}
                     </span>
                 </div>
+
+                <!-- Tombol Atur Shift / Libur Cepat untuk Admin/HRD -->
+                <button
+                    v-if="can('attendances_manage_shifts') || can('work_schedules_manage')"
+                    type="button"
+                    @click="openShiftModal"
+                    class="hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-blue-300 border border-slate-700/80 transition cursor-pointer active:scale-95 shadow-2xs"
+                    title="Ubah Shift Kerja atau Tetapkan Libur Hari Ini"
+                >
+                    <span>⚙️</span>
+                    <span>Atur Shift / Libur</span>
+                </button>
 
                 <!-- Link ke Halaman Absensi Lengkap -->
                 <Link
@@ -120,6 +136,99 @@
                                 {{ emp.name }} — {{ emp.position || 'Staf' }} {{ emp.is_special_team ? `[⭐ ${emp.special_team_name || 'Tim Khusus'}]` : '' }}
                             </option>
                         </select>
+                    </div>
+                </div>
+
+                <!-- ═══ BLOK INFORMASI SHIFT, JAM KERJA & KETERANGAN LIBUR ═══ -->
+                <div class="p-3.5 rounded-2xl border bg-slate-50/90 dark:bg-slate-800/60 border-slate-200/90 dark:border-slate-700/70 shadow-2xs space-y-2">
+                    <!-- Baris Atas: Shift & Jam Kerja + Badge Status -->
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <div
+                                class="w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 shadow-2xs"
+                                :class="isDayOff
+                                    ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-200'
+                                    : (isSpecialTeam
+                                        ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border border-purple-200'
+                                        : 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-200')"
+                            >
+                                {{ isDayOff ? '🏖️' : (isSpecialTeam ? '⚡' : '⏱️') }}
+                            </div>
+                            <div class="min-w-0">
+                                <div class="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">
+                                    Shift & Jam Kerja
+                                </div>
+                                <div class="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+                                    <span class="truncate">
+                                        {{ isSpecialTeam ? specialTeam?.name : (isDayOff ? 'Hari Libur (OFF)' : (shiftToday?.name || 'Shift 1-Kolektor')) }}
+                                    </span>
+                                    <span
+                                        v-if="!isDayOff"
+                                        class="px-2 py-0.5 rounded-md text-[11px] font-mono font-bold bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/80 shadow-2xs"
+                                    >
+                                        {{ isSpecialTeam ? formatSpecialTeamTime(specialTeam) : (shiftToday ? formatShiftTime(shiftToday) : '08:35 - 17:10') }} WIB
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Status Badge (Libur vs Hari Kerja) -->
+                        <div class="shrink-0">
+                            <span
+                                v-if="isDayOff"
+                                class="px-2.5 py-1 rounded-full text-[10px] font-black bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 flex items-center gap-1 shadow-2xs"
+                            >
+                                <span>🏖️</span>
+                                <span>LIBUR (OFF)</span>
+                            </span>
+                            <span
+                                v-else-if="isSpecialTeam"
+                                class="px-2.5 py-1 rounded-full text-[10px] font-black bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 flex items-center gap-1 shadow-2xs"
+                            >
+                                <span>⚡</span>
+                                <span>TIM KHUSUS</span>
+                            </span>
+                            <span
+                                v-else
+                                class="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1 shadow-2xs"
+                            >
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <span>HARI KERJA</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Baris Bawah: Keterangan Libur / Detail Jam Kerja & Tombol Ganti -->
+                    <div class="pt-2 border-t border-slate-200/70 dark:border-slate-700/70 flex items-center justify-between text-xs gap-2">
+                        <div class="flex items-center gap-1.5 truncate text-[11px]">
+                            <span class="text-slate-400 dark:text-slate-500 font-bold shrink-0">Keterangan:</span>
+                            <span
+                                v-if="isDayOff"
+                                class="text-rose-600 dark:text-rose-400 font-bold truncate"
+                                :title="dayOffReason || 'Jadwal Libur Rutin Mingguan / Day Off'"
+                            >
+                                {{ dayOffReason || 'Jadwal Libur Rutin Mingguan / Day Off' }}
+                            </span>
+                            <span
+                                v-else
+                                class="text-slate-600 dark:text-slate-300 truncate"
+                            >
+                                Toleransi: <strong class="text-slate-800 dark:text-white font-mono">{{ shiftToday?.tolerance_minutes || 15 }}m</strong>
+                                <span class="text-slate-300 dark:text-slate-600 mx-1">•</span>
+                                Batas Masuk: <strong class="text-slate-800 dark:text-white font-mono">{{ maxClockInTime }} WIB</strong>
+                            </span>
+                        </div>
+
+                        <!-- Tombol Ubah Shift / Libur -->
+                        <button
+                            type="button"
+                            @click="openShiftModal"
+                            class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold text-blue-600 dark:text-blue-400 bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950/60 border border-slate-200 dark:border-slate-700 hover:border-blue-300 transition shrink-0 flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95"
+                            title="Atur Shift Kerja atau Tetapkan Libur Hari Ini"
+                        >
+                            <span>⚙️</span>
+                            <span>Atur Shift / Libur</span>
+                        </button>
                     </div>
                 </div>
 
@@ -245,7 +354,9 @@
                         :class="[
                             isSpecialTeam
                                 ? 'bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-700 hover:to-indigo-700 shadow-purple-500/25'
-                                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-blue-500/25',
+                                : (isDayOff
+                                    ? 'bg-gradient-to-r from-slate-700 to-slate-900 hover:from-slate-800 hover:to-black shadow-slate-500/25'
+                                    : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-blue-500/25'),
                             'w-full py-3.5 px-4 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2.5 shadow-lg active:scale-95 transition-all cursor-pointer'
                         ]"
                     >
@@ -253,10 +364,14 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
-                        <span>{{ isSpecialTeam ? 'Absen Masuk Tim Khusus' : 'Absen Masuk Sekarang' }}</span>
+                        <span>{{ isSpecialTeam ? 'Absen Masuk Tim Khusus' : (isDayOff ? 'Absen Masuk (Piket Libur)' : 'Absen Masuk Sekarang') }}</span>
                     </button>
                     <p class="text-[11px] text-center text-slate-400 font-medium">
-                        {{ isSpecialTeam ? 'Verifikasi Wajah (Bebas Radius Kantor)' : 'Verifikasi Kamera Selfie & GPS' }}
+                        {{ isSpecialTeam
+                            ? 'Verifikasi Wajah (Bebas Radius Kantor)'
+                            : (isDayOff
+                                ? 'Hari ini libur terjadwal. Absen jika bertugas lembur/piket.'
+                                : 'Verifikasi Kamera Selfie & GPS') }}
                     </p>
                 </template>
 
@@ -342,6 +457,33 @@
                     >
                         ✕
                     </button>
+                </div>
+
+                <!-- Ringkasan Shift, Jam Kerja & Keterangan Hari Ini di Modal -->
+                <div class="p-3 rounded-2xl border bg-slate-50 dark:bg-slate-800/80 border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between text-xs gap-2">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <span class="text-base shrink-0">{{ isDayOff ? '🏖️' : '⏱️' }}</span>
+                        <div class="min-w-0 truncate">
+                            <span class="font-extrabold text-slate-800 dark:text-slate-200">
+                                {{ isSpecialTeam ? specialTeam?.name : (isDayOff ? 'Hari Libur (OFF)' : (shiftToday?.name || 'Shift Standar')) }}
+                            </span>
+                            <span v-if="!isDayOff" class="text-blue-600 dark:text-blue-400 font-mono text-[11px] font-bold ml-1">
+                                ({{ isSpecialTeam ? formatSpecialTeamTime(specialTeam) : (shiftToday ? formatShiftTime(shiftToday) : '08:00 - 17:00') }} WIB)
+                            </span>
+                        </div>
+                    </div>
+                    <span
+                        v-if="isDayOff"
+                        class="px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-100 text-rose-700 border border-rose-200 shrink-0"
+                    >
+                        {{ dayOffReason || 'Piket / Lembur Libur' }}
+                    </span>
+                    <span
+                        v-else
+                        class="text-[11px] text-slate-500 dark:text-slate-400 shrink-0"
+                    >
+                        Toleransi: <strong class="text-slate-800 dark:text-white">{{ shiftToday?.tolerance_minutes || 15 }}m</strong>
+                    </span>
                 </div>
 
                 <!-- Penjelasan Tim Khusus vs Pilihan WFO/Dinas Reguler -->
@@ -600,6 +742,147 @@
 
         <!-- Hidden Canvas for Watermark Processing -->
         <canvas ref="canvasRef" class="hidden"></canvas>
+
+        <!-- ============================================================== -->
+        <!-- MODAL INTERAKTIF: UBAH SHIFT & ATUR KETERANGAN LIBUR           -->
+        <!-- ============================================================== -->
+        <div v-if="showShiftModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs transition-opacity">
+            <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-100 dark:border-slate-800">
+                <!-- Header -->
+                <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/60 flex items-center justify-center text-lg">
+                            ⚙️
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-black text-slate-900 dark:text-white">Atur Shift & Keterangan Libur</h4>
+                            <p class="text-[11px] text-slate-400 font-medium">{{ currentEmployee?.name }} • Hari Ini</p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        @click="showShiftModal = false"
+                        class="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-sm font-bold transition"
+                    >
+                        ✕
+                    </button>
+                </div>
+
+                <!-- Form Mode: Hari Kerja vs Hari Libur -->
+                <div class="space-y-3.5">
+                    <!-- Switch Mode Kerja vs Libur -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <button
+                            type="button"
+                            @click="shiftFormMode = 'work'"
+                            :class="[
+                                shiftFormMode === 'work'
+                                    ? 'bg-blue-50 dark:bg-blue-950/50 border-blue-500 text-blue-700 dark:text-blue-300 ring-2 ring-blue-500/20 font-bold'
+                                    : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400',
+                                'p-3 rounded-2xl border text-left text-xs transition flex items-center gap-2.5 cursor-pointer'
+                            ]"
+                        >
+                            <span class="text-lg">💼</span>
+                            <div>
+                                <div class="font-extrabold text-xs">Hari Kerja</div>
+                                <div class="text-[10px] opacity-75">Tentukan Shift & Jam</div>
+                            </div>
+                        </button>
+
+                        <button
+                            type="button"
+                            @click="shiftFormMode = 'off'"
+                            :class="[
+                                shiftFormMode === 'off'
+                                    ? 'bg-rose-50 dark:bg-rose-950/50 border-rose-500 text-rose-700 dark:text-rose-300 ring-2 ring-rose-500/20 font-bold'
+                                    : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400',
+                                'p-3 rounded-2xl border text-left text-xs transition flex items-center gap-2.5 cursor-pointer'
+                            ]"
+                        >
+                            <span class="text-lg">🏖️</span>
+                            <div>
+                                <div class="font-extrabold text-xs">Hari Libur (OFF)</div>
+                                <div class="text-[10px] opacity-75">Set Keterangan Libur</div>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Mode Work: Dropdown Shift -->
+                    <div v-if="shiftFormMode === 'work'" class="space-y-2">
+                        <label class="text-xs font-bold text-slate-700 dark:text-slate-300">Pilih Shift & Jam Kerja:</label>
+                        <select
+                            v-model="targetShiftId"
+                            class="w-full text-xs font-bold rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 py-2.5 px-3 focus:ring-blue-500 cursor-pointer"
+                        >
+                            <option v-for="s in allShifts" :key="s.id" :value="s.id">
+                                ⏱️ {{ s.name }} ({{ s.start_time }} - {{ s.end_time }} WIB)
+                            </option>
+                        </select>
+                        <p class="text-[11px] text-slate-400">
+                            Pilih shift resmi yang berlaku untuk staf ini hari ini.
+                        </p>
+                    </div>
+
+                    <!-- Mode Off / Libur: Pilihan Keterangan Libur -->
+                    <div v-else class="space-y-2.5">
+                        <label class="text-xs font-bold text-slate-700 dark:text-slate-300">Keterangan Libur:</label>
+                        <div class="grid grid-cols-2 gap-1.5">
+                            <button
+                                v-for="opt in holidayPresetOptions"
+                                :key="opt"
+                                type="button"
+                                @click="targetHolidayNotes = opt"
+                                :class="[
+                                    targetHolidayNotes === opt
+                                        ? 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700 font-bold'
+                                        : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100',
+                                    'px-2.5 py-1.5 rounded-xl border text-[11px] text-left transition cursor-pointer'
+                                ]"
+                            >
+                                {{ opt }}
+                            </button>
+                        </div>
+                        <input
+                            type="text"
+                            v-model="targetHolidayNotes"
+                            placeholder="Ketik keterangan libur lain (misal: Libur Khusus / Cuti)"
+                            class="w-full text-xs rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 py-2 px-3 focus:ring-rose-500"
+                        />
+                    </div>
+
+                    <!-- Catatan Tambahan (Opsional) saat Mode Work -->
+                    <div v-if="shiftFormMode === 'work'" class="space-y-1">
+                        <label class="text-xs font-bold text-slate-700 dark:text-slate-300">Catatan Jadwal (Opsional):</label>
+                        <input
+                            type="text"
+                            v-model="targetHolidayNotes"
+                            placeholder="Contoh: Shift Pengganti / Tugas Khusus"
+                            class="w-full text-xs rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 py-2 px-3 focus:ring-blue-500"
+                        />
+                    </div>
+                </div>
+
+                <!-- Footer Modal -->
+                <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                    <button
+                        type="button"
+                        @click="showShiftModal = false"
+                        class="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                    >
+                        Batal
+                    </button>
+                    <button
+                        type="button"
+                        @click="saveShiftSetting"
+                        :disabled="isSavingShift"
+                        class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition flex items-center gap-1.5 shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
+                    >
+                        <span v-if="isSavingShift" class="animate-spin">⏳</span>
+                        <span>Simpan Jadwal Hari Ini</span>
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -623,11 +906,79 @@ const isSpecialTeam = computed(() => Boolean(props.attendanceData?.isSpecialTeam
 const specialTeam = computed(() => props.attendanceData?.specialTeam || null);
 const specialTeamMember = computed(() => props.attendanceData?.specialTeamMember || null);
 const shiftToday = computed(() => props.attendanceData?.shiftToday || null);
+const isDayOff = computed(() => Boolean(props.attendanceData?.isDayOff));
+const dayOffReason = computed(() => props.attendanceData?.dayOffReason || '');
+const todaySchedule = computed(() => props.attendanceData?.todaySchedule || null);
 const todayAttendance = computed(() => props.attendanceData?.todayAttendance || null);
 const officeLocation = computed(() => props.attendanceData?.officeLocation || null);
 const allEmployees = computed(() => props.attendanceData?.allEmployees || []);
 const allShifts = computed(() => props.attendanceData?.allShifts || []);
 const attendanceSummary = computed(() => props.attendanceData?.attendanceSummary || null);
+
+// State Modal Ubah Shift & Keterangan Libur
+const showShiftModal = ref(false);
+const shiftFormMode = ref('work'); // 'work' or 'off'
+const targetShiftId = ref(null);
+const targetHolidayNotes = ref('');
+const isSavingShift = ref(false);
+
+const holidayPresetOptions = [
+    'Libur Rutin Mingguan',
+    'Libur Nasional',
+    'Cuti Tahunan',
+    'Libur Pengganti',
+    'Izin Tidak Masuk',
+];
+
+const openShiftModal = () => {
+    if (isDayOff.value) {
+        shiftFormMode.value = 'off';
+        targetHolidayNotes.value = dayOffReason.value || 'Libur Rutin Mingguan';
+        targetShiftId.value = allShifts.value?.[0]?.id || null;
+    } else {
+        shiftFormMode.value = 'work';
+        targetShiftId.value = shiftToday.value?.id || allShifts.value?.[0]?.id || null;
+        targetHolidayNotes.value = dayOffReason.value || '';
+    }
+    showShiftModal.value = true;
+};
+
+const saveShiftSetting = () => {
+    if (!currentEmployee.value) return;
+    isSavingShift.value = true;
+    router.post(
+        '/attendances/quick-assign-shift',
+        {
+            employee_id: currentEmployee.value.id,
+            shift_id: shiftFormMode.value === 'off' ? 'OFF' : targetShiftId.value,
+            status: shiftFormMode.value === 'off' ? 'off' : 'work',
+            notes: targetHolidayNotes.value,
+        },
+        {
+            preserveScroll: true,
+            onFinish: () => {
+                isSavingShift.value = false;
+                showShiftModal.value = false;
+            },
+        }
+    );
+};
+
+const maxClockInTime = computed(() => {
+    if (!shiftToday.value?.start_time) return '08:45';
+    try {
+        const parts = shiftToday.value.start_time.split(':');
+        const h = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10);
+        const tol = shiftToday.value.tolerance_minutes || 15;
+        const totalMin = h * 60 + m + tol;
+        const maxH = String(Math.floor(totalMin / 60) % 24).padStart(2, '0');
+        const maxM = String(totalMin % 60).padStart(2, '0');
+        return `${maxH}:${maxM}`;
+    } catch (e) {
+        return '08:45';
+    }
+});
 
 // Clock state
 const currentTimeStr = ref('');
@@ -698,6 +1049,20 @@ const statusBannerConfig = computed(() => {
                     ? `Bertugas Aktif: ${specialTeam.value?.name || 'Tim Khusus'}`
                     : 'Sedang Bertugas Aktif'),
             subtitle: `Tercatat masuk pada ${todayAttendance.value.clock_in} WIB`,
+        };
+    }
+    // Jika hari ini LIBUR (OFF) dan belum absen
+    if (isDayOff.value) {
+        return {
+            bgColor: 'bg-rose-50/70',
+            borderColor: 'border-rose-200',
+            iconBg: 'bg-rose-100 text-rose-700',
+            icon: '🏖️',
+            textColor: 'text-rose-900',
+            title: 'Hari Ini Libur Terjadwal (Day Off)',
+            subtitle: dayOffReason.value
+                ? `Keterangan: ${dayOffReason.value}. Anda tidak diwajibkan melakukan absensi.`
+                : 'Jadwal Libur Rutin Mingguan. Anda tidak diwajibkan melakukan absensi.',
         };
     }
     return {
