@@ -4,10 +4,11 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 import AppLogo from '@/Components/AppLogo.vue';
 
-defineProps({
+const props = defineProps({
     status: {
         type: String,
     },
+    portal: String,
 });
 
 const form = useForm({
@@ -19,6 +20,7 @@ const form = useForm({
 const showPassword = ref(false);
 
 const submit = () => {
+    form.transform(data => ({ ...data, portal: currentTab.value }));
     form.post('/login', {
         onFinish: () => form.reset('password'),
     });
@@ -56,7 +58,7 @@ onUnmounted(() => {
 });
 
 // ── Role Segment Switcher ──
-const currentTab = ref('staff'); // 'staff' | 'reseller' | 'affiliate' | 'customer'
+const currentTab = ref(['staff', 'reseller', 'affiliate', 'customer'].includes(props.portal) ? props.portal : 'staff');
 
 const tabs = [
     {
@@ -117,8 +119,8 @@ const tabConfig = computed(() => {
                 btnText: 'Masuk Portal Afiliasi',
                 desc: 'Pantau komisi booking, pasif income & penarikan saldo affiliate.',
                 emailPlaceholder: 'affiliate@domain.com / email terdaftar',
-                emailLabel: 'Email Mitra Afiliasi',
-                hint: 'Akses khusus agen sales & marketing affiliate.',
+                emailLabel: 'Email Karyawan / Mitra Afiliasi',
+                hint: 'Semua karyawan dapat masuk dengan akun yang sama, termasuk jabatan selain sales.',
                 portalAccent: 'amber',
             };
         case 'customer':

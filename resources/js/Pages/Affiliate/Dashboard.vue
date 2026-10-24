@@ -1,5 +1,5 @@
 <template>
-    <AppLayout title="Portal Mitra Afiliasi & Sales">
+    <AffiliateLayout title="Dashboard Sales Afiliasi">
         <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 font-sans">
             <!-- Header Banner -->
             <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl mb-8 relative overflow-hidden">
@@ -18,6 +18,13 @@
                         <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">
                             Halo, {{ profile.name }}!
                         </h1>
+                        <div class="mt-4 flex flex-wrap items-center gap-3">
+                            <div>
+                                <span class="text-[11px] uppercase tracking-wider text-indigo-200 block">Nomor / Kode Afiliasi Saya</span>
+                                <span class="text-xl sm:text-2xl font-mono font-extrabold tracking-wide">{{ profile.referral_code }}</span>
+                            </div>
+                            <button type="button" @click="copyToClipboard(profile.referral_code, 'Nomor afiliasi berhasil disalin.')" class="px-3 py-2 rounded-xl bg-white/15 border border-white/25 hover:bg-white/25 text-xs font-semibold">Salin Nomor</button>
+                        </div>
                         <p class="text-slate-300 text-xs sm:text-sm mt-1 max-w-xl">
                             Selamat datang di portal kemitraan sales &amp; afiliasi. Pantau perolehan komisi booking, pasif income bulanan, dan perkembangan tim downline Anda.
                         </p>
@@ -41,13 +48,14 @@
                             </span>
                         </div>
                         <div v-if="is_employee">
-                            <a
-                                href="/insentif-potongan"
+                            <button
+                                type="button"
+                                @click="activeTab = 'commissions'"
                                 class="w-full sm:w-auto px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
                             >
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                                 <span>Histori Insentif Gaji</span>
-                            </a>
+                            </button>
                         </div>
                         <button
                             v-else
@@ -59,6 +67,27 @@
                             <span>Tarik Saldo</span>
                         </button>
                     </div>
+                </div>
+            </div>
+
+            <p v-if="copyMessage" role="status" class="mb-5 px-4 py-3 text-sm text-indigo-800 bg-indigo-50 border border-indigo-100 rounded-xl">{{ copyMessage }}</p>
+
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="p-5 rounded-2xl border border-indigo-100 bg-indigo-50">
+                    <p class="text-xs font-semibold text-indigo-600">Booking Menunggu Proses</p>
+                    <p class="text-2xl font-extrabold text-indigo-950 mt-2">{{ kpi.pending_bookings }}</p>
+                </div>
+                <div class="p-5 rounded-2xl border border-emerald-100 bg-emerald-50">
+                    <p class="text-xs font-semibold text-emerald-700">Pelanggan Aktif Saya</p>
+                    <p class="text-2xl font-extrabold text-emerald-950 mt-2">{{ kpi.active_customers }}</p>
+                </div>
+                <div class="p-5 rounded-2xl border border-slate-200 bg-white">
+                    <p class="text-xs font-semibold text-slate-500">Akumulasi Komisi Booking</p>
+                    <p class="text-lg font-extrabold text-slate-900 mt-2">{{ formatRupiah(kpi.booking_commissions) }}</p>
+                </div>
+                <div class="p-5 rounded-2xl border border-slate-200 bg-white">
+                    <p class="text-xs font-semibold text-slate-500">Komisi Bulanan &amp; Downline</p>
+                    <p class="text-lg font-extrabold text-slate-900 mt-2">{{ formatRupiah(kpi.recurring_commissions) }}</p>
                 </div>
             </div>
 
@@ -172,7 +201,7 @@
                 <!-- Total Pelanggan Aktif -->
                 <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
                     <div>
-                        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Pelanggan Saya</span>
+                        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Total Booking Saya</span>
                         <span class="text-xl font-extrabold text-slate-800 mt-0.5 block">
                             {{ kpi.total_customers }} Pelanggan
                         </span>
@@ -199,9 +228,9 @@
                 <!-- Total Telah Dicairkan -->
                 <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
                     <div>
-                        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Total Dicairkan</span>
+                        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider block">{{ is_employee ? 'Insentif Menunggu Payroll' : 'Total Dicairkan' }}</span>
                         <span class="text-xl font-extrabold text-slate-800 mt-0.5 block">
-                            {{ formatRupiah(profile.total_withdrawn) }}
+                            {{ formatRupiah(is_employee ? pending_payroll_incentives : profile.total_withdrawn) }}
                         </span>
                     </div>
                     <div class="w-11 h-11 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-xl">
@@ -216,10 +245,10 @@
                 <div class="bg-gradient-to-br from-indigo-50 to-white p-6 rounded-3xl border border-indigo-100 shadow-sm">
                     <div class="flex items-center gap-2 mb-2">
                         <span class="text-lg">🎯</span>
-                        <h3 class="text-sm font-bold text-slate-900">Link Rekomendasi Pelanggan Internet</h3>
+                        <h3 class="text-sm font-bold text-slate-900">Kode Rekomendasi Booking Pelanggan</h3>
                     </div>
                     <p class="text-xs text-slate-600 mb-4 leading-relaxed">
-                        Bagikan link atau kode ini ke calon pelanggan yang ingin pasang WiFi. Setiap pelanggan yang mendaftar dan aktif, Anda berhak mendapatkan <strong>Komisi Booking {{ formatRupiah(settings.affiliate_commission_booking) }}</strong> + <strong>Pasif Income {{ formatRupiah(settings.affiliate_commission_monthly) }}/bulan</strong>.
+                        Bagikan kode afiliasi Anda ke calon pelanggan, lalu daftarkan melalui menu Booking Baru. Komisi mengikuti ketentuan yang berlaku: <strong>Booking {{ formatRupiah(settings.affiliate_commission_booking) }}</strong> dan <strong>bulanan {{ formatRupiah(settings.affiliate_commission_monthly) }}/pelanggan</strong>.
                     </p>
 
                     <div class="flex items-center gap-2 mb-3">
@@ -240,14 +269,6 @@
                     </div>
 
                     <div class="flex flex-wrap items-center gap-2">
-                        <button
-                            type="button"
-                            @click="copyToClipboard(profile.referral_link_customer, 'Link Registrasi Pelanggan berhasil disalin!')"
-                            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
-                        >
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
-                            Salin Link Promo
-                        </button>
                         <a
                             :href="generateWaCustomerShareUrl()"
                             target="_blank"
@@ -328,7 +349,7 @@
                             <p class="text-xs text-slate-500">Pelanggan yang Anda daftarkan langsung secara resmi.</p>
                         </div>
                         <a
-                            href="/customers/create"
+                            href="/affiliate/booking/create"
                             class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
                         >
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
@@ -374,7 +395,7 @@
                         </div>
                         <div>
                             <a
-                                href="/customers/create"
+                                href="/affiliate/booking/create"
                                 class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
                             >
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
@@ -386,6 +407,15 @@
 
                 <!-- Tab Content: Jaringan & Tim Downline -->
                 <div v-if="activeTab === 'downlines'" class="p-6 space-y-6">
+                    <div class="p-4 rounded-2xl border border-indigo-100 bg-indigo-50 flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <p class="text-xs text-indigo-600 font-semibold">Afiliasi Saya</p>
+                            <p class="font-bold text-slate-900">{{ profile.name }}</p>
+                            <p class="text-sm font-mono text-indigo-700">{{ profile.referral_code }}</p>
+                        </div>
+                        <button type="button" @click="copyToClipboard(profile.referral_code)" class="px-3 py-2 bg-white border border-indigo-200 rounded-xl text-xs font-semibold text-indigo-700">Salin Nomor</button>
+                        <p class="w-full text-xs text-slate-600">Daftar ini hanya menampilkan afiliasi Anda serta downline tingkat 1 dan 2 yang terhubung dengan Anda.</p>
+                    </div>
                     <!-- Visual Multi-Tier Diagram Banner -->
                     <div class="bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 p-6 rounded-3xl text-white shadow-md relative overflow-hidden border border-indigo-500/20">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
@@ -584,6 +614,14 @@
                         <span class="text-4xl block mb-2">💳</span>
                         <p class="font-medium text-slate-700">Belum Ada Transaksi Komisi</p>
                         <p class="text-xs text-slate-400 mt-1">Komisi otomatis masuk setiap kali pelanggan Anda mendaftar atau melunasi invoice.</p>
+                    </div>
+                    <div v-if="commissions.last_page > 1" class="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+                        <span>{{ commissions.from }}–{{ commissions.to }} dari {{ commissions.total }} transaksi</span>
+                        <div class="flex items-center gap-3">
+                            <Link v-if="commissions.prev_page_url" :href="commissions.prev_page_url" preserve-scroll class="px-3 py-2 border border-slate-200 rounded-lg text-indigo-600">Sebelumnya</Link>
+                            <span>Halaman {{ commissions.current_page }} / {{ commissions.last_page }}</span>
+                            <Link v-if="commissions.next_page_url" :href="commissions.next_page_url" preserve-scroll class="px-3 py-2 border border-slate-200 rounded-lg text-indigo-600">Berikutnya</Link>
+                        </div>
                     </div>
                 </div>
 
@@ -819,13 +857,13 @@
                 </form>
             </div>
         </div>
-    </AppLayout>
+    </AffiliateLayout>
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { useForm } from '@inertiajs/vue3';
-import AppLayout from '@/Layouts/AppLayout.vue';
+import { ref, watch } from 'vue';
+import { Link, useForm } from '@inertiajs/vue3';
+import AffiliateLayout from '@/Layouts/AffiliateLayout.vue';
 
 const props = defineProps({
     profile: Object,
@@ -839,9 +877,12 @@ const props = defineProps({
     is_employee: Boolean,
     pending_payroll_incentives: Number,
     payout_info: Object,
+    tab: String,
 });
 
-const activeTab = ref('customers');
+const activeTab = ref(props.tab || 'customers');
+watch(() => props.tab, tab => { activeTab.value = tab || 'customers'; });
+const copyMessage = ref('');
 const showWithdrawModal = ref(false);
 
 const bankOptions = [
@@ -878,14 +919,32 @@ const formatRupiah = (val) => {
     }).format(val || 0);
 };
 
-const copyToClipboard = (text, alertMsg) => {
-    navigator.clipboard.writeText(text);
-    alert(alertMsg || 'Berhasil disalin ke clipboard!');
+const copyToClipboard = async (text, alertMsg) => {
+    try {
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(text);
+        } else {
+            const input = document.createElement('textarea');
+            input.value = text;
+            input.style.position = 'fixed';
+            input.style.opacity = '0';
+            document.body.appendChild(input);
+            try {
+                input.select();
+                if (!document.execCommand('copy')) throw new Error('copy');
+            } finally {
+                input.remove();
+            }
+        }
+        copyMessage.value = alertMsg || 'Nomor afiliasi berhasil disalin.';
+    } catch {
+        copyMessage.value = 'Nomor belum berhasil disalin. Silakan pilih dan salin teks secara manual.';
+    }
 };
 
 const generateWaCustomerShareUrl = () => {
     const text = encodeURIComponent(
-        `Halo! Mau pasang internet WiFi rumah unlimited, cepat dan stabil tanpa FUP? 🚀\n\nYuk daftar langsung melalui link rekomendasi saya:\n${props.profile.referral_link_customer}\n\nAtau gunakan kode promo referal: ${props.profile.referral_code}\nProses pemasangan cepat & dibantu sampai aktif!`
+        `Halo! Ingin pasang internet WiFi rumah? Hubungi saya untuk informasi paket dan booking pemasangan.\n\nKode afiliasi saya: ${props.profile.referral_code}\nSaya bantu proses booking sampai pemasangan.`
     );
     return `https://wa.me/?text=${text}`;
 };

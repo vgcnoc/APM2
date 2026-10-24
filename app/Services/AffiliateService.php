@@ -9,11 +9,34 @@ use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Setting;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class AffiliateService
 {
+    public static function canAccessPortal(?User $user): bool
+    {
+        if (!$user || !$user->is_active) {
+            return false;
+        }
+
+        return in_array(strtolower(trim((string) $user->role)), ['sales', 'affiliate'], true)
+            || self::isInternalEmployee($user)
+            || $user->employee()->exists()
+            || $user->hasAnyRole(['sales', 'affiliate', 'admin', 'super admin'])
+            || $user->can('menu_affiliate_portal')
+            || $user->can('menu_marketing_affiliates');
+    }
+
+    public static function usesAffiliatePortal(Request $request): bool
+    {
+        return $request->user() && (
+            $request->session()->get('login_portal') === 'affiliate'
+            || in_array(strtolower(trim((string) $request->user()->role)), ['sales', 'affiliate'], true)
+        );
+    }
+
     /**
      * Ambil pengaturan komisi sales & afiliasi bertingkat.
      */

@@ -1,5 +1,5 @@
 <template>
-    <AppLayout title="Tambah Pelanggan Baru" subtitle="Pendaftaran pelanggan ISP baru (Booking)">
+    <component :is="affiliatePortal ? AffiliateLayout : AppLayout" title="Tambah Pelanggan Baru" subtitle="Pendaftaran pelanggan ISP baru (Booking)">
         <div class="max-w-3xl mx-auto py-8">
             <!-- Modal Card Replica -->
             <div class="bg-white rounded-2xl shadow-xl overflow-hidden animate-fade-in-up">
@@ -17,7 +17,7 @@
                             <p class="text-xs sm:text-sm text-gray-500 mt-1">Masukkan data master pelanggan baru ke dalam sistem.</p>
                         </div>
                     </div>
-                    <Link href="/customers/booking" class="p-1 sm:p-2 text-gray-500 hover:text-gray-600 transition-colors">
+                    <Link :href="affiliatePortal ? '/affiliate/dashboard' : '/customers/booking'" class="p-1 sm:p-2 text-gray-500 hover:text-gray-600 transition-colors">
                         <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </Link>
                 </div>
@@ -90,7 +90,7 @@
                                     <select v-if="!isNewArea" v-model="form.area" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" @change="checkNewArea" required>
                                         <option value="">-- Pilih Area --</option>
                                         <option v-for="area in areas" :key="area" :value="area">{{ area }}</option>
-                                        <option value="new">+ Tambah Area Baru...</option>
+                                        <option v-if="!affiliatePortal" value="new">+ Tambah Area Baru...</option>
                                     </select>
                                     <div v-else class="flex gap-2">
                                         <input v-model="form.area" type="text" class="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="Ketik area baru..." required />
@@ -153,7 +153,7 @@
                                             <span class="hidden sm:inline">Auto GPS</span>
                                             <span class="sm:hidden">Ambil GPS Otomatis</span>
                                         </button>
-                                        <a v-if="form.latitude && form.longitude" :href="`/network-radar?lat=${form.latitude}&lng=${form.longitude}`" target="_blank" class="w-full sm:w-auto px-4 py-2.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-lg text-sm font-semibold hover:bg-indigo-100 transition-colors flex justify-center items-center gap-2 shadow-sm shrink-0">
+                                        <a v-if="!affiliatePortal && form.latitude && form.longitude" :href="`/network-radar?lat=${form.latitude}&lng=${form.longitude}`" target="_blank" class="w-full sm:w-auto px-4 py-2.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-lg text-sm font-semibold hover:bg-indigo-100 transition-colors flex justify-center items-center gap-2 shadow-sm shrink-0">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
                                             <span class="hidden sm:inline">Radar ODP</span>
                                             <span class="sm:hidden">Cek ODP Terdekat</span>
@@ -174,8 +174,8 @@
                                     <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Tipe Pendaftaran / Layanan <span class="text-red-500">*</span></label>
                                     <select v-model="registration_type" class="w-full px-4 py-2.5 bg-indigo-50 border border-indigo-200 rounded-lg text-sm text-indigo-900 font-bold focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
                                         <option value="customer">🌐 Pelanggan Internet Biasa</option>
-                                        <option value="both">🌐+🎟️ Pelanggan Internet + Reseller Voucher</option>
-                                        <option value="reseller">🎟️ Khusus Reseller Voucher (Tanpa Internet)</option>
+                                        <option v-if="!affiliatePortal" value="both">🌐+🎟️ Pelanggan Internet + Reseller Voucher</option>
+                                        <option v-if="!affiliatePortal" value="reseller">🎟️ Khusus Reseller Voucher (Tanpa Internet)</option>
                                     </select>
                                 </div>
                                 
@@ -292,7 +292,7 @@
                     
                     <!-- Footer Actions -->
                     <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex flex-col-reverse sm:flex-row justify-end gap-3 rounded-b-2xl">
-                        <Link href="/customers/booking" class="w-full sm:w-auto text-center px-5 py-2.5 border border-gray-300 rounded-lg text-sm font-bold text-gray-600 bg-white hover:bg-gray-50 transition-colors shadow-sm">
+                        <Link :href="affiliatePortal ? '/affiliate/dashboard' : '/customers/booking'" class="w-full sm:w-auto text-center px-5 py-2.5 border border-gray-300 rounded-lg text-sm font-bold text-gray-600 bg-white hover:bg-gray-50 transition-colors shadow-sm">
                             Batal
                         </Link>
                         <button type="submit" :disabled="form.processing" class="w-full sm:w-auto justify-center px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-bold transition-all flex items-center gap-2 shadow-sm hover:shadow focus:ring-4 focus:ring-indigo-100">
@@ -321,12 +321,13 @@
                 </div>
             </div>
         </Teleport>
-    </AppLayout>
+    </component>
 </template>
 
 <script setup>
 import { Link, useForm, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import AffiliateLayout from '@/Layouts/AffiliateLayout.vue';
 import { watch, ref, onMounted, computed } from 'vue';
 import Swal from 'sweetalert2';
 
@@ -334,6 +335,7 @@ const props = defineProps({
     packages: Array,
     sales: Array,
     areas: Array,
+    affiliatePortal: Boolean,
     area_villages: {
         type: Object,
         default: () => ({}),
@@ -358,6 +360,7 @@ const isAdmin = computed(() => {
 });
 
 const canChangeSales = computed(() => {
+    if (props.affiliatePortal) return false;
     const user = page.props.auth?.user;
     if (!user) return false;
     if (isAdmin.value) return true;
@@ -372,6 +375,7 @@ const canChangeSales = computed(() => {
 });
 
 const isAffiliateAccount = computed(() => {
+    if (props.affiliatePortal) return true;
     const user = page.props.auth?.user;
     if (!user) return false;
     const r = String(user.role || '').toLowerCase();
@@ -396,14 +400,8 @@ const suggestedVillages = computed(() => {
     return [];
 });
 
-watch(isAffiliateAccount, (val) => {
-    if (val && (form.service_status === 'gratis' || form.service_status === 'free_home')) {
-        form.service_status = 'berbayar';
-    }
-}, { immediate: true });
-
 onMounted(() => {
-    if (!props.areas || props.areas.length === 0) {
+    if (!props.affiliatePortal && (!props.areas || props.areas.length === 0)) {
         isNewArea.value = true;
     }
     
@@ -480,6 +478,12 @@ const form = useForm({
     billing_day: null,
 });
 
+watch(isAffiliateAccount, (val) => {
+    if (val && (form.service_status === 'gratis' || form.service_status === 'free_home')) {
+        form.service_status = 'berbayar';
+    }
+}, { immediate: true });
+
 watch(() => form.service_status, (newStatus) => {
     if (newStatus === 'gratis') {
         form.base_amount = 0;
@@ -548,7 +552,7 @@ function submit() {
     form.transform((data) => ({
         ...data,
         address: addressParts || '-',
-    })).post('/customers', {
+    })).post(props.affiliatePortal ? '/affiliate/booking' : '/customers', {
         onSuccess: () => {
             // Sukses diarahkan oleh controller
         },

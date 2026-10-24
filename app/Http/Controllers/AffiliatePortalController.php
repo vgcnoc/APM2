@@ -22,10 +22,8 @@ class AffiliatePortalController extends Controller
             return redirect()->route('login');
         }
 
-        // Cek hak akses: hanya admin, user dengan izin marketing afiliasi, atau role sales/affiliate
-        $hasAccess = (method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super admin')))
-            || in_array(strtolower($user->role ?? ''), ['admin', 'sales', 'affiliate'])
-            || (method_exists($user, 'can') && ($user->can('menu_marketing_affiliates') || $user->can('menu_affiliate_portal')));
+        // Karyawan dari semua jabatan dapat menggunakan portal pribadi ini.
+        $hasAccess = AffiliateService::canAccessPortal($user);
 
         if (!$hasAccess) {
             return redirect()->route('dashboard')->with('error', 'Anda tidak memiliki hak akses ke Portal Afiliasi.');
@@ -33,15 +31,24 @@ class AffiliatePortalController extends Controller
 
         $profile = AffiliateService::ensureAffiliateProfile($user);
 
+        $commissionTotals = AffiliateCommission::where('affiliate_id', $user->id)
+            ->whereIn('status', ['pending', 'approved', 'paid', 'payroll'])
+            ->selectRaw("COALESCE(SUM(CASE WHEN type IN ('clawback_booking', 'clawback_survey') THEN -ABS(amount) ELSE amount END), 0) AS total")
+            ->selectRaw("COALESCE(SUM(CASE WHEN type = 'booking' THEN amount ELSE 0 END), 0) AS booking")
+            ->selectRaw("COALESCE(SUM(CASE WHEN type IN ('monthly_direct', 'upline_tier_1', 'upline_tier_2') THEN amount ELSE 0 END), 0) AS recurring")
+            ->first();
+        $customerCommissions = AffiliateCommission::where('affiliate_id', $user->id)
+            ->whereIn('status', ['pending', 'approved', 'paid', 'payroll'])
+            ->selectRaw("customer_id, SUM(CASE WHEN type IN ('clawback_booking', 'clawback_survey') THEN -ABS(amount) ELSE amount END) AS total")
+            ->groupBy('customer_id')->pluck('total', 'customer_id');
+
         // Pelanggan yang diajak
         $customers = $profile->customers()
             ->with(['package', 'areaModel'])
             ->latest('registration_date')
             ->get()
-            ->map(function ($cust) use ($user) {
-                $totalCommissions = AffiliateCommission::where('affiliate_id', $user->id)
-                    ->where('customer_id', $cust->id)
-                    ->sum('amount');
+            ->map(function ($cust) use ($customerCommissions) {
+                $totalCommissions = $customerCommissions->get($cust->id, 0);
 
                 return [
                     'id' => $cust->id,
@@ -57,10 +64,13 @@ class AffiliatePortalController extends Controller
 
         // Downlines Level 1 (Diajak Langsung)
         $downlinesL1 = AffiliateProfile::where('upline_id', $user->id)
+            ->where('user_id', '!=', $user->id)
+            ->whereHas('user')
             ->with('user')
+            ->withCount('customers')
             ->get()
             ->map(function ($dl) {
-                $custCount = $dl->customers()->count();
+                $custCount = $dl->customers_count;
                 return [
                     'id' => $dl->id,
                     'user_id' => $dl->user_id,
@@ -68,7 +78,6 @@ class AffiliatePortalController extends Controller
                     'whatsapp' => $dl->whatsapp ?? $dl->user?->phone,
                     'referral_code' => $dl->referral_code,
                     'total_customers' => $custCount,
-                    'total_earned' => (float) $dl->total_earned,
                     'joined_at' => $dl->created_at->format('d M Y'),
                 ];
             });
@@ -78,7 +87,11 @@ class AffiliatePortalController extends Controller
         $downlinesL2 = [];
         if (!empty($l1UserIds)) {
             $downlinesL2 = AffiliateProfile::whereIn('upline_id', $l1UserIds)
+                ->where('user_id', '!=', $user->id)
+                ->whereNotIn('user_id', $l1UserIds)
+                ->whereHas('user')
                 ->with(['user', 'upline'])
+                ->withCount('customers')
                 ->get()
                 ->map(function ($dl) {
                     return [
@@ -87,7 +100,7 @@ class AffiliatePortalController extends Controller
                         'whatsapp' => $dl->whatsapp ?? $dl->user?->phone,
                         'upline_name' => $dl->upline?->name ?? '-',
                         'referral_code' => $dl->referral_code,
-                        'total_customers' => $dl->customers()->count(),
+                        'total_customers' => $dl->customers_count,
                         'joined_at' => $dl->created_at->format('d M Y'),
                     ];
                 });
@@ -97,7 +110,8 @@ class AffiliatePortalController extends Controller
         $commissions = AffiliateCommission::where('affiliate_id', $user->id)
             ->with(['customer', 'sourceUser'])
             ->latest('id')
-            ->paginate(15)
+            ->paginate(15, ['*'], 'commissions_page')
+            ->appends(['tab' => 'commissions'])
             ->through(function ($c) {
                 return [
                     'id' => $c->id,
@@ -164,19 +178,21 @@ class AffiliatePortalController extends Controller
         $appUrl = config('app.url', url('/'));
 
         return Inertia::render('Affiliate/Dashboard', [
+            'tab' => in_array($request->query('tab'), ['customers', 'downlines', 'commissions', 'withdrawals', 'bank'], true)
+                ? $request->query('tab') : 'customers',
             'is_employee' => $isEmployee,
             'pending_payroll_incentives' => $pendingPayrollIncentives,
             'payout_info' => $payoutInfo,
             'profile' => [
                 'id' => $profile->id,
+                'user_id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'phone' => $user->phone,
                 'referral_code' => $profile->referral_code,
-                'referral_link_customer' => $appUrl . '/register-customer?ref=' . $profile->referral_code,
                 'referral_link_affiliate' => $appUrl . '/register-affiliate?ref=' . $profile->referral_code,
                 'balance' => (float) $profile->balance,
-                'total_earned' => (float) $profile->total_earned,
+                'total_earned' => (float) $commissionTotals->total,
                 'total_withdrawn' => (float) $profile->total_withdrawn,
                 'bank_name' => $profile->bank_name,
                 'bank_account_number' => $profile->bank_account_number,
@@ -187,7 +203,11 @@ class AffiliatePortalController extends Controller
             ],
             'kpi' => [
                 'balance' => (float) $profile->balance,
-                'total_earned' => (float) $profile->total_earned,
+                'total_earned' => (float) $commissionTotals->total,
+                'booking_commissions' => (float) $commissionTotals->booking,
+                'recurring_commissions' => (float) $commissionTotals->recurring,
+                'pending_bookings' => $customers->where('status', 'booking')->count(),
+                'active_customers' => $customers->where('status', 'active')->count(),
                 'total_customers' => $customers->count(),
                 'total_downlines' => count($downlinesL1) + count($downlinesL2),
                 'downlines_l1_count' => count($downlinesL1),
@@ -209,9 +229,7 @@ class AffiliatePortalController extends Controller
      public function updateBank(Request $request)
      {
          $user = Auth::user();
-         $hasAccess = (method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super admin')))
-             || in_array(strtolower($user->role ?? ''), ['admin', 'sales', 'affiliate'])
-             || (method_exists($user, 'can') && ($user->can('menu_marketing_affiliates') || $user->can('menu_affiliate_portal')));
+         $hasAccess = AffiliateService::canAccessPortal($user);
 
          if (!$hasAccess) {
              return back()->with('error', 'Anda tidak memiliki hak akses.');
@@ -236,9 +254,7 @@ class AffiliatePortalController extends Controller
      public function withdraw(Request $request)
      {
          $user = Auth::user();
-         $hasAccess = (method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super admin')))
-             || in_array(strtolower($user->role ?? ''), ['admin', 'sales', 'affiliate'])
-             || (method_exists($user, 'can') && ($user->can('menu_marketing_affiliates') || $user->can('menu_affiliate_portal')));
+         $hasAccess = AffiliateService::canAccessPortal($user);
 
          if (!$hasAccess) {
              return back()->with('error', 'Anda tidak memiliki hak akses.');

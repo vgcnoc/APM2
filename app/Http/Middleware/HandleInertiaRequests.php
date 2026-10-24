@@ -56,6 +56,7 @@ class HandleInertiaRequests extends Middleware
                             'name' => $request->user()->name,
                             'email' => $request->user()->email,
                             'role' => $request->user()->role,
+                            'affiliate_portal' => \App\Services\AffiliateService::usesAffiliatePortal($request),
                             'roles' => $request->user()->getRoleNames()->values()->toArray(),
                             'permissions' => $request->user()->getAllPermissions()->pluck('name')->values()->toArray(),
                             'area_id' => $request->user()->area_id,
@@ -71,7 +72,8 @@ class HandleInertiaRequests extends Middleware
                     })() : null,
                 ];
             },
-            'officers' => \App\Models\User::where('is_on_duty', true)->get(['id', 'name', 'phone', 'role']),
+            'officers' => fn () => \App\Services\AffiliateService::usesAffiliatePortal($request)
+                ? [] : \App\Models\User::where('is_on_duty', true)->get(['id', 'name', 'phone', 'role']),
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),

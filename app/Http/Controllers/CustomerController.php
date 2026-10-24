@@ -1467,10 +1467,17 @@ class CustomerController extends Controller
      */
     public function create(): Response
     {
-        $areas = DataScopeService::getScopedAreaNames(request()->user(), 'customers_all');
+        $isAffiliatePortal = request()->routeIs('affiliate.booking.*');
+        if ($isAffiliatePortal) {
+            abort_unless(\App\Services\AffiliateService::ensureAffiliateProfile(auth()->user())->status === 'active', 403, 'Profil afiliasi Anda belum aktif.');
+        }
+        $areas = $isAffiliatePortal
+            ? \App\Models\Area::orderBy('name')->pluck('name')->all()
+            : DataScopeService::getScopedAreaNames(request()->user(), 'customers_all');
         
         $sales = User::where('is_active', true)
             ->whereNotIn('role', ['customer'])
+            ->when($isAffiliatePortal, fn ($query) => $query->whereKey(auth()->id()))
             ->with(['employee:id,email,phone,name,position'])
             ->orderBy('name')
             ->get(['id', 'name', 'email', 'phone', 'role'])
@@ -1488,7 +1495,7 @@ class CustomerController extends Controller
 
         // Kumpulkan desa yang pernah di-input saat booking per area untuk saran autocomplete
         $areaVillagesMap = [];
-        foreach (\App\Models\Area::all() as $a) {
+        foreach (\App\Models\Area::whereIn('name', $areas)->when($isAffiliatePortal, fn ($query) => $query->whereRaw('1 = 0'))->get() as $a) {
             $vList = collect();
             $custAddrs = Customer::where(function($q) use ($a) {
                 $q->where('area_id', $a->id)->orWhere('area', $a->name);
@@ -1514,7 +1521,7 @@ class CustomerController extends Controller
             'cs', 'admin cs', 'manager', 'noc', 'kepala teknisi', 'teknisi', 'maintenance', 'dispatcher', 'finance', 'hrd'
         ]) || ($user && method_exists($user, 'hasRole') && $user->hasRole('admin'));
 
-        $isAffiliate = !$isInternalStaff && ($userRole === 'affiliate' || $userRole === 'reseller');
+        $isAffiliate = $isAffiliatePortal || (!$isInternalStaff && ($userRole === 'affiliate' || $userRole === 'reseller'));
 
         return Inertia::render('Customers/Create', [
             'packages' => InternetPackage::active()->get(),
@@ -1522,6 +1529,7 @@ class CustomerController extends Controller
             'areas' => $areas,
             'area_villages' => $areaVillagesMap,
             'isAffiliate' => $isAffiliate,
+            'affiliatePortal' => $isAffiliatePortal,
         ]);
     }
 
@@ -1530,8 +1538,24 @@ class CustomerController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        if (!auth()->user()->can('customers_booking_create')) {
+        $isAffiliatePortal = $request->routeIs('affiliate.booking.store');
+        if (!$isAffiliatePortal && !auth()->user()->can('customers_booking_create')) {
             abort(403, 'Anda tidak memiliki hak akses untuk membuat booking.');
+        }
+
+        if ($isAffiliatePortal) {
+            $profile = \App\Services\AffiliateService::ensureAffiliateProfile($request->user());
+            abort_unless($profile->status === 'active', 403, 'Profil afiliasi Anda belum aktif.');
+            $request->merge([
+                'sales_id' => $request->user()->id,
+                'referral_code' => $profile->referral_code,
+                'service_status' => 'berbayar',
+                'is_reseller' => false,
+            ]);
+            $request->validate([
+                'area' => ['required', 'string', 'exists:areas,name'],
+                'package_id' => ['required', 'exists:internet_packages,id'],
+            ]);
         }
 
         $validated = $request->validate([
@@ -1628,7 +1652,7 @@ class CustomerController extends Controller
             \App\Models\AuditLog::createLog('Create Booking', $customer, null, 'booking', 'Membuat booking baru');
         });
 
-        return redirect()->route('customers.booking')
+        return redirect()->route($isAffiliatePortal ? 'affiliate.dashboard' : 'customers.booking')
             ->with('success', 'Data booking pelanggan berhasil ditambahkan.');
     }
 
