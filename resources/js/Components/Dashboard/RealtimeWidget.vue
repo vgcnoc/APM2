@@ -276,7 +276,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import axios from 'axios';
 
@@ -309,6 +309,9 @@ const props = defineProps({
 });
 
 const currentStats = ref({ ...props.stats });
+watch(() => props.stats, (newVal) => {
+    if (newVal) currentStats.value = { ...newVal };
+}, { deep: true });
 const isLoading = ref(false);
 const activeModal = ref(null);
 let pollTimer = null;
