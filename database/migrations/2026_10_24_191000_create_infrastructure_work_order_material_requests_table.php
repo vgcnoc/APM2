@@ -11,23 +11,28 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (!Schema::hasTable('infrastructure_work_order_material_requests')) {
-            Schema::create('infrastructure_work_order_material_requests', function (Blueprint $table) {
-                $table->id();
-                $table->foreignId('work_order_id')->constrained('infrastructure_work_orders')->cascadeOnDelete();
-                $table->string('item_name');
-                $table->foreignId('material_id')->nullable()->constrained('materials')->nullOnDelete();
-                $table->foreignId('requested_by')->constrained('users')->cascadeOnDelete();
-                $table->decimal('quantity', 10, 2);
-                $table->string('unit')->default('pcs');
-                $table->text('notes')->nullable();
-                $table->string('status')->default('pending'); // pending, approved, rejected
-                $table->foreignId('reviewed_by')->nullable()->constrained('users')->nullOnDelete();
-                $table->timestamp('reviewed_at')->nullable();
-                $table->text('rejection_reason')->nullable();
-                $table->timestamps();
-            });
-        }
+        Schema::dropIfExists('infrastructure_work_order_material_requests');
+
+        Schema::create('infrastructure_work_order_material_requests', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('work_order_id');
+            $table->string('item_name');
+            $table->unsignedBigInteger('material_id')->nullable();
+            $table->unsignedBigInteger('requested_by');
+            $table->decimal('quantity', 10, 2);
+            $table->string('unit')->default('pcs');
+            $table->text('notes')->nullable();
+            $table->string('status')->default('pending'); // pending, approved, rejected
+            $table->unsignedBigInteger('reviewed_by')->nullable();
+            $table->timestamp('reviewed_at')->nullable();
+            $table->text('rejection_reason')->nullable();
+            $table->timestamps();
+
+            $table->foreign('work_order_id', 'fk_infra_womr_wo')->references('id')->on('infrastructure_work_orders')->cascadeOnDelete();
+            $table->foreign('material_id', 'fk_infra_womr_mat')->references('id')->on('materials')->nullOnDelete();
+            $table->foreign('requested_by', 'fk_infra_womr_req')->references('id')->on('users')->cascadeOnDelete();
+            $table->foreign('reviewed_by', 'fk_infra_womr_rev')->references('id')->on('users')->nullOnDelete();
+        });
     }
 
     /**
