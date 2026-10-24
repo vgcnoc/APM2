@@ -894,7 +894,7 @@ class CustomerController extends Controller
 
         return Inertia::render('Customers/Survey', [
             'customers' => $customers,
-            'availableOdps' => Odp::active()->with(['odc.olt', 'ports'])->get(),
+            'availableOdps' => Odp::active()->with(['odc.olt', 'odc.area', 'area', 'ports'])->get(),
             'technicians' => $technicians,
             'areas' => $areas,
             'stats' => $stats,
@@ -3782,6 +3782,9 @@ class CustomerController extends Controller
 
         if (!empty($validated['odp_id'])) {
             $odp = Odp::findOrFail($validated['odp_id']);
+            if ($odp->area_id !== $customer->area_id) {
+                return back()->withErrors(['odp_id' => 'ODP tidak sesuai dengan Area/Wilayah pelanggan.']);
+            }
             
             if ($survey->odp_id != $validated['odp_id'] || $survey->port_number != $validated['port_number']) {
                 $pendingCount = \App\Models\Customer::whereIn('status', ['survey', 'installing'])

@@ -541,17 +541,28 @@
                             <select v-model="reportForm.odp_id" :required="reportForm.feasibility === 'feasible'" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500">
                                 <option value="">-- Pilih ODP --</option>
                                 <template v-if="sortedOdps.length === 0">
-                                    <option value="" disabled>Tidak ada ODP di area ini</option>
+                                    <option value="" disabled>⚠️ Tidak ada ODP di area {{ activeCustomer?.area || 'ini' }}</option>
                                 </template>
                                 <template v-else>
                                     <option v-for="odp in sortedOdps" :key="odp.id" :value="odp.id" :disabled="(odp.total_ports - odp.used_ports) <= 0">
                                         {{ odp.name }} 
-                                        {{ odp.distance !== undefined && odp.distance < 9999999 ? `(${Math.round(odp.distance)}m)` : `(${odp.odc?.name})` }} 
+                                        {{ odp.distance !== undefined && odp.distance < 9999999 ? `(${Math.round(odp.distance)}m)` : `(${odp.odc?.name || 'ODC'})` }} 
                                         - {{ (odp.total_ports - odp.used_ports) <= 0 ? 'FULL' : `Sisa ${Math.max(0, odp.total_ports - odp.used_ports)} Port` }}
                                     </option>
                                 </template>
                             </select>
-                            <p v-if="nearestOdpMsg" :class="nearestOdpMsg.includes('⚠️') ? 'text-yellow-400' : 'text-emerald-400'" class="mt-1 text-[10px]">{{ nearestOdpMsg }}</p>
+                            
+                            <!-- Alert jika tidak ada ODP di area pelanggan -->
+                            <div v-if="sortedOdps.length === 0" class="mt-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
+                                <svg class="w-4 h-4 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                <div>
+                                    <p class="font-bold text-amber-900">Belum Ada ODP di Area {{ activeCustomer?.area || 'Pelanggan' }}:</p>
+                                    <p class="text-[11px] text-amber-800/90 mt-0.5 leading-relaxed">
+                                        Tidak ada unit ODP yang terdaftar di area ini. ODP dari wilayah lain (seperti BC 3) <b>tidak ditampilkan</b> agar tidak terjadi salah penarikan jalur fiber optik. Silakan daftarkan ODP untuk area ini terlebih dahulu, atau pilih <b>Unfeasible (Tidak Layak)</b> jika jaringan belum tersedia.
+                                    </p>
+                                </div>
+                            </div>
+                            <p v-if="nearestOdpMsg" :class="nearestOdpMsg.includes('⚠️') ? 'text-yellow-600' : 'text-emerald-600'" class="mt-1 text-[10px]">{{ nearestOdpMsg }}</p>
                         </div>
                         
                         <div v-if="reportForm.odp_id">
@@ -1122,6 +1133,12 @@ function findNearestOdp() {
     isFindingOdp.value = true;
     nearestOdpMsg.value = '';
     
+    if (sortedOdps.value.length === 0) {
+        nearestOdpMsg.value = `⚠️ Tidak ada ODP terdaftar di area ${activeCustomer.value?.area || 'pelanggan ini'}.`;
+        isFindingOdp.value = false;
+        return;
+    }
+
     if (!navigator.geolocation) {
         alert("Geolocation tidak didukung oleh browser Anda");
         isFindingOdp.value = false;
@@ -1133,7 +1150,7 @@ function findNearestOdp() {
             const userLat = position.coords.latitude;
             const userLon = position.coords.longitude;
             
-            // Calculate distance for filtered ODPs
+            // Calculate distance for filtered ODPs in the same area
             const odpsWithDistance = sortedOdps.value.map(odp => {
                 let distance = 9999999;
                 if (odp.latitude && odp.longitude) {
@@ -1156,9 +1173,9 @@ function findNearestOdp() {
                     reportForm.distance_meters = Math.round(nearest.distance);
                 }
                 
-                nearestOdpMsg.value = `📍 ODP Terdekat: ${nearest.name} berjarak ${Math.round(nearest.distance)} meter.`;
+                nearestOdpMsg.value = `📍 ODP Terdekat di Area ${activeCustomer.value?.area || ''}: ${nearest.name} berjarak ${Math.round(nearest.distance)} meter.`;
             } else {
-                nearestOdpMsg.value = `⚠️ Tidak ada ODP dalam radius 5km.`;
+                nearestOdpMsg.value = `⚠️ Tidak ada ODP terdekat dalam radius 5km di area ini.`;
             }
             
             isFindingOdp.value = false;
@@ -1190,14 +1207,27 @@ function openReportModal(customer) {
     activeCustomer.value = customer;
     reportForm.reset();
     
-    // Filter ODPs based on customer's area
+    // Filter ODPs strictly based on customer's area
     const customerAreaId = customer.area_id;
+    const customerAreaName = (customer.area || customer.area_model?.name || '').toLowerCase().trim();
+
     const filteredOdps = (props.availableOdps || []).filter(odp => {
-        if (!customerAreaId) return true; // Allow all ODPs if customer has no area assigned yet
-        return Number(odp.area_id) === Number(customerAreaId);
+        if (!customerAreaId && !customerAreaName) return false;
+
+        const odpAreaId = odp.area_id ?? odp.odc?.area_id;
+        const odpAreaName = (odp.area?.name || odp.area_name || odp.odc?.area?.name || '').toLowerCase().trim();
+
+        if (customerAreaId && odpAreaId && Number(odpAreaId) === Number(customerAreaId)) {
+            return true;
+        }
+        if (customerAreaName && odpAreaName && odpAreaName === customerAreaName) {
+            return true;
+        }
+        return false;
     });
         
-    sortedOdps.value = filteredOdps.length > 0 ? [...filteredOdps] : [...(props.availableOdps || [])];
+    // STRICT: Only show ODPs belonging to the customer's area. Do NOT fallback to other areas!
+    sortedOdps.value = filteredOdps;
     nearestOdpMsg.value = '';
     
     // Auto-select surveyor if already scheduled
@@ -1225,16 +1255,35 @@ function openEditReportModal(customer) {
     activeCustomer.value = customer;
     reportForm.reset();
     
-    // Filter ODPs
+    // Filter ODPs strictly based on customer's area (or keep current ODP if already assigned)
     const customerAreaId = customer.area_id;
+    const customerAreaName = (customer.area || customer.area_model?.name || '').toLowerCase().trim();
+    const survey = customer.surveys && customer.surveys.length > 0 ? customer.surveys[0] : null;
+    const existingOdpId = survey?.odp_id;
+
     const filteredOdps = (props.availableOdps || []).filter(odp => {
-        if (!customerAreaId) return true;
-        return Number(odp.area_id) === Number(customerAreaId);
+        // Keep currently selected ODP if already saved on this survey
+        if (existingOdpId && Number(odp.id) === Number(existingOdpId)) {
+            return true;
+        }
+        if (!customerAreaId && !customerAreaName) return false;
+
+        const odpAreaId = odp.area_id ?? odp.odc?.area_id;
+        const odpAreaName = (odp.area?.name || odp.area_name || odp.odc?.area?.name || '').toLowerCase().trim();
+
+        if (customerAreaId && odpAreaId && Number(odpAreaId) === Number(customerAreaId)) {
+            return true;
+        }
+        if (customerAreaName && odpAreaName && odpAreaName === customerAreaName) {
+            return true;
+        }
+        return false;
     });
-    sortedOdps.value = filteredOdps.length > 0 ? [...filteredOdps] : [...(props.availableOdps || [])];
+
+    // STRICT: Only show ODPs belonging to customer's area
+    sortedOdps.value = filteredOdps;
     nearestOdpMsg.value = '';
 
-    const survey = customer.surveys && customer.surveys.length > 0 ? customer.surveys[0] : null;
     if (survey) {
         reportForm.surveyor_id = survey.surveyor_id;
         reportForm.odp_id = survey.odp_id || '';
