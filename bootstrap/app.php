@@ -18,8 +18,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
         ]);
         $middleware->web(append: [
+            \App\Http\Middleware\NormalizeCoordinates::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
+        ]);
+        $middleware->api(append: [
+            \App\Http\Middleware\NormalizeCoordinates::class,
         ]);
         $middleware->validateCsrfTokens(except: [
             'payment-gateway/callback',

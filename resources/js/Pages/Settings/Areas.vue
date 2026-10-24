@@ -278,12 +278,15 @@
                                 <input 
                                     v-model="form.latitude" 
                                     type="text" 
+                                    @paste="handleCoordPaste"
+                                    @input="onCoordInput('latitude')"
                                     class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 focus:bg-white transition-all" 
                                     placeholder="Latitude (-6.123456)" 
                                 />
                                 <input 
                                     v-model="form.longitude" 
                                     type="text" 
+                                    @input="onCoordInput('longitude')"
                                     class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 focus:bg-white transition-all" 
                                     placeholder="Longitude (106.123456)" 
                                 />
@@ -299,7 +302,7 @@
                                     <span>GPS</span>
                                 </button>
                             </div>
-                            <p v-if="form.errors.latitude || form.errors.longitude" class="text-rose-500 text-xs mt-1 font-semibold">Koordinat tidak valid</p>
+                            <p v-if="form.errors.latitude || form.errors.longitude" class="text-rose-500 text-xs mt-1 font-semibold">{{ form.errors.latitude || form.errors.longitude }}</p>
                         </div>
 
                         <!-- Radius Cakupan (Meter) -->
@@ -474,7 +477,43 @@ function closeModal() {
     setTimeout(() => form.reset(), 300);
 }
 
+function handleCoordPaste(e) {
+    const text = (e.clipboardData || window.clipboardData)?.getData('text');
+    if (!text) return;
+    const trimmed = text.trim();
+    // Match pair coordinate: "-6.9587311, 106.7747203" or "-6,9587311, 106,7747203" or space-separated
+    const match = trimmed.match(/^(-?\d+(?:[.,]\d+)?)\s*[,/ ]\s*(-?\d+(?:[.,]\d+)?)$/);
+    if (match) {
+        e.preventDefault();
+        form.latitude = match[1].replace(',', '.');
+        form.longitude = match[2].replace(',', '.');
+        form.clearErrors('latitude', 'longitude');
+    }
+}
+
+function onCoordInput(field) {
+    if (form.errors[field]) {
+        form.clearErrors(field);
+    }
+}
+
 function submit() {
+    // Auto-sanitize coordinates (convert commas to dots and trim)
+    if (form.latitude !== null && form.latitude !== undefined) {
+        let latStr = String(form.latitude).trim();
+        const pairMatch = latStr.match(/^(-?\d+(?:[.,]\d+)?)\s*[,/ ]\s*(-?\d+(?:[.,]\d+)?)$/);
+        if (pairMatch && !form.longitude) {
+            form.latitude = pairMatch[1].replace(',', '.');
+            form.longitude = pairMatch[2].replace(',', '.');
+        } else {
+            form.latitude = latStr === '' ? null : latStr.replace(',', '.');
+        }
+    }
+    if (form.longitude !== null && form.longitude !== undefined) {
+        let lngStr = String(form.longitude).trim();
+        form.longitude = lngStr === '' ? null : lngStr.replace(',', '.');
+    }
+
     const url = isEditing.value 
         ? route('areas.update.post', editId.value)
         : route('areas.store');
