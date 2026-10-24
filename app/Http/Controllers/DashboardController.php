@@ -825,6 +825,7 @@ class DashboardController extends Controller
         string $search = ''
     ): array {
         $user = $user ?? auth()->user();
+        Carbon::setLocale('id');
 
         $canViewAllAreas = $user && (
             $user->hasRole('admin') || 
