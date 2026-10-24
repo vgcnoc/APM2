@@ -1,9 +1,9 @@
 <template>
-    <div class="flex min-h-screen bg-gray-50 dark:bg-gray-950 font-sans text-gray-900 dark:text-gray-100 transition-colors duration-200">
+    <div class="apm-shell flex min-h-screen bg-gray-50 dark:bg-gray-950 font-sans text-gray-900 dark:text-gray-100 transition-colors duration-200">
         <div v-show="mobileMenuOpen" class="fixed inset-0 bg-gray-900/50 z-40 lg:hidden transition-opacity" @click="mobileMenuOpen = false"></div>
         <aside
             :class="[
-                'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-[2px_0_24px_rgba(0,0,0,0.03)] dark:shadow-[2px_0_24px_rgba(0,0,0,0.4)] transition-all duration-300 print:hidden',
+                'apm-sidebar fixed inset-y-0 left-0 z-50 flex flex-col border-r border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-[2px_0_24px_rgba(0,0,0,0.03)] dark:shadow-[2px_0_24px_rgba(0,0,0,0.4)] transition-all duration-300 print:hidden',
                 mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
                 sidebarOpen ? 'w-64' : 'w-20 lg:w-20 w-64'
             ]"
@@ -410,7 +410,7 @@
             :class="['flex-1 transition-all duration-300 min-w-0 flex flex-col print:m-0 print:p-0 print:ml-0', sidebarOpen ? 'lg:ml-64' : 'lg:ml-20']"
         >
             <!-- Top Bar -->
-            <header class="sticky top-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-4 shadow-sm dark:shadow-gray-950/40 flex items-center justify-between gap-4 print:hidden transition-colors duration-200">
+            <header class="apm-topbar sticky top-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-4 shadow-sm dark:shadow-gray-950/40 flex items-center justify-between gap-4 print:hidden transition-colors duration-200">
                 <div class="flex items-center gap-3 min-w-0">
                     <button @click="mobileMenuOpen = true" class="lg:hidden p-2 -ml-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -424,24 +424,7 @@
                 </div>
                     <div class="flex items-center gap-3 sm:gap-4">
                         <!-- Theme Toggle Button (Dark / Light Mode) -->
-                        <button 
-                            type="button" 
-                            @click="toggleTheme" 
-                            class="relative p-2 rounded-xl border transition-all duration-200 cursor-pointer flex items-center justify-center group"
-                            :class="isDarkMode 
-                                ? 'bg-gray-800 border-gray-700 text-amber-400 hover:bg-gray-700 shadow-sm' 
-                                : 'bg-gray-50 border-gray-200 text-slate-600 hover:bg-gray-100 shadow-sm'"
-                            :title="isDarkMode ? 'Beralih ke Mode Terang (Light Mode)' : 'Beralih ke Mode Gelap (Dark Mode)'"
-                        >
-                            <!-- Sun icon when dark -->
-                            <svg v-if="isDarkMode" class="w-5 h-5 text-amber-400 transition-transform duration-300 group-hover:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                            </svg>
-                            <!-- Moon icon when light -->
-                            <svg v-else class="w-5 h-5 text-slate-600 transition-transform duration-300 group-hover:-rotate-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                            </svg>
-                        </button>
+                        <ThemeToggle />
 
                         <!-- On Duty Toggle -->
                         <div v-if="$page.props.auth?.user?.role !== 'customer'" class="hidden sm:flex items-center gap-2">
@@ -449,7 +432,7 @@
                                 {{ $page.props.auth?.user?.is_on_duty ? 'ON DUTY' : 'OFF DUTY' }}
                             </span>
                             <Link href="/profile/toggle-duty" method="post" as="button" class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none" :class="$page.props.auth?.user?.is_on_duty ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'" title="Toggle On Duty">
-                                <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform" :class="$page.props.auth?.user?.is_on_duty ? 'translate-x-6' : 'translate-x-1'"></span>
+                                <span class="apm-switch-thumb inline-block h-4 w-4 transform rounded-full bg-white transition-transform" :class="$page.props.auth?.user?.is_on_duty ? 'translate-x-6' : 'translate-x-1'"></span>
                             </Link>
                         </div>
                         <!-- Notification Bell -->
@@ -497,6 +480,8 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import AppLogo from '@/Components/AppLogo.vue';
+import ThemeToggle from '@/Components/ThemeToggle.vue';
+import { useTheme } from '@/Composables/useTheme';
 import { usePermission } from '@/Composables/usePermission';
 import { useSidebarState } from '@/Composables/useSidebarState';
 
@@ -523,32 +508,7 @@ const searchInputRef = ref(null);
 const searchQuery = ref('');
 
 // Baca tema langsung dari <html> agar ikon tidak berkedip saat render pertama
-const isDarkMode = ref(typeof document !== 'undefined' && document.documentElement.classList.contains('dark'));
-
-const toggleTheme = () => {
-    isDarkMode.value = !isDarkMode.value;
-    if (isDarkMode.value) {
-        document.documentElement.classList.add('dark');
-        localStorage.setItem('apm_theme', 'dark');
-    } else {
-        document.documentElement.classList.remove('dark');
-        localStorage.setItem('apm_theme', 'light');
-    }
-};
-
-const initTheme = () => {
-    if (typeof window === 'undefined') return;
-    try {
-        const saved = localStorage.getItem('apm_theme');
-        if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            isDarkMode.value = true;
-            document.documentElement.classList.add('dark');
-        } else {
-            isDarkMode.value = false;
-            document.documentElement.classList.remove('dark');
-        }
-    } catch (e) {}
-};
+const { isDarkMode, toggleTheme, initTheme } = useTheme();
 
 // Collapsed Category Groups (LocalStorage Persisted)
 const loadCollapsedGroups = () => {

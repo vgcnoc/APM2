@@ -1,7 +1,7 @@
 <template>
-    <div class="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
+    <div class="apm-shell min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
         <!-- Top Navbar -->
-        <nav class="bg-white shadow-xs border-b border-slate-200 sticky top-0 z-50">
+        <nav class="apm-topbar bg-white shadow-xs border-b border-slate-200 sticky top-0 z-50">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between h-16">
                     <div class="flex items-center gap-3 sm:gap-6">
@@ -48,6 +48,7 @@
 
                     <!-- Right Controls -->
                     <div class="flex items-center gap-3">
+                        <ThemeToggle />
                         <!-- Admin Return Button (jika yang login adalah staf/admin) -->
                         <Link
                             v-if="isStaff"
@@ -157,6 +158,7 @@
 import { ref, computed } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import AppLogo from '@/Components/AppLogo.vue';
+import ThemeToggle from '@/Components/ThemeToggle.vue';
 
 const page = usePage();
 const showUserMenu = ref(false);

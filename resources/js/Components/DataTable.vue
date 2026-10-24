@@ -90,7 +90,7 @@
                         :class="[
                             'px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200',
                             link.active
-                                ? 'bg-blue-600 text-gray-900 shadow-sm'
+                                ? 'bg-blue-600 text-white shadow-sm'
                                 : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                         ]"
                         v-html="link.label"

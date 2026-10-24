@@ -1,7 +1,7 @@
 <template>
-    <div class="min-h-screen bg-gray-50/70 dark:bg-gray-950 transition-colors">
+    <div class="apm-shell min-h-screen bg-gray-50/70 dark:bg-gray-950 transition-colors">
         <!-- Top Navbar -->
-        <nav class="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-xs border-b border-gray-100 dark:border-gray-800/90 sticky top-0 z-50 transition-colors">
+        <nav class="apm-topbar bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-xs border-b border-gray-100 dark:border-gray-800/90 sticky top-0 z-50 transition-colors">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between items-center h-16">
                     <!-- Sisi Kiri: Hamburger Mobile & Logo -->
@@ -177,22 +177,7 @@
                     <!-- Theme Toggle & User Menu Profile -->
                     <div class="flex items-center gap-2 sm:gap-3 shrink-0 relative">
                         <!-- Dark / Light Theme Toggle -->
-                        <button 
-                            type="button" 
-                            @click="toggleTheme" 
-                            class="p-2 rounded-xl border transition-all duration-200 cursor-pointer flex items-center justify-center group"
-                            :class="isDarkMode 
-                                ? 'bg-gray-800 border-gray-700 text-amber-400 hover:bg-gray-700 shadow-sm' 
-                                : 'bg-gray-50 border-gray-200 text-slate-600 hover:bg-gray-100 shadow-2xs'"
-                            :title="isDarkMode ? 'Beralih ke Mode Terang (Light Mode)' : 'Beralih ke Mode Gelap (Dark Mode)'"
-                        >
-                            <svg v-if="isDarkMode" class="w-4 h-4 text-amber-400 transition-transform duration-300 group-hover:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                            </svg>
-                            <svg v-else class="w-4 h-4 text-slate-600 transition-transform duration-300 group-hover:-rotate-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                            </svg>
-                        </button>
+                        <ThemeToggle />
 
                         <!-- User Profile Dropdown -->
                         <div class="relative" ref="userDropdownRef">
@@ -357,6 +342,8 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import AppLogo from '@/Components/AppLogo.vue';
+import ThemeToggle from '@/Components/ThemeToggle.vue';
+import { initTheme } from '@/Composables/useTheme';
 
 const page = usePage();
 
@@ -364,7 +351,6 @@ const showUserMenu = ref(false);
 const showMobileMenu = ref(false);
 const showVoucherDropdown = ref(false);
 const mobileVoucherOpen = ref(true);
-const isDarkMode = ref(false);
 
 const voucherDropdownRef = ref(null);
 const userDropdownRef = ref(null);
@@ -397,21 +383,9 @@ const handleClickOutside = (event) => {
     }
 };
 
-const toggleTheme = () => {
-    isDarkMode.value = !isDarkMode.value;
-    if (isDarkMode.value) {
-        document.documentElement.classList.add('dark');
-        localStorage.setItem('apm_theme', 'dark');
-    } else {
-        document.documentElement.classList.remove('dark');
-        localStorage.setItem('apm_theme', 'light');
-    }
-};
-
 onMounted(() => {
     if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem('apm_theme');
-        isDarkMode.value = saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        initTheme();
         document.addEventListener('click', handleClickOutside);
     }
 });

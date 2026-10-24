@@ -20,7 +20,7 @@
                 <!-- Lightning Icon -->
                 <path d="M22 14V7L13 18H20V25L29 14H22Z" fill="white" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                 <!-- Text: Dynamic App/Company Name -->
-                <text x="52" y="24" :fill="isWhiteLogo ? '#FFFFFF' : '#111827'" font-family="system-ui, sans-serif" font-size="17" font-weight="800">{{ displayName }}</text>
+                <text class="apm-brand-name" x="52" y="24" :fill="isWhiteLogo ? '#FFFFFF' : '#111827'" font-family="system-ui, sans-serif" font-size="17" font-weight="800">{{ displayName }}</text>
                 <text v-if="displayName !== ''" x="52" y="38" :fill="isWhiteLogo ? '#94A3B8' : 'currentColor'" font-family="system-ui, sans-serif" font-size="10" font-weight="700" letter-spacing="0.1em">OFFICIAL PORTAL</text>
             </svg>
             

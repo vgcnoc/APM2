@@ -1,6 +1,8 @@
 import { createApp, h } from 'vue';
 import { createInertiaApp, router } from '@inertiajs/vue3';
 import '../css/app.css';
+import '../css/dark.css';
+import { applyTheme } from './Composables/useTheme';
 
 // Cegah modal popup 419 | PAGE EXPIRED dan refresh otomatis saat session/CSRF habis
 router.on('invalid', (event) => {
@@ -23,17 +25,6 @@ const applyDeviceScale = (componentName) => {
     }
 };
 
-const applyTheme = () => {
-    if (typeof document === 'undefined') return;
-    try {
-        const theme = localStorage.getItem('apm_theme');
-        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-    } catch (e) {}
-};
 applyTheme();
 
 router.on('navigate', (event) => {

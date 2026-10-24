@@ -458,7 +458,7 @@
                                 </div>
 
                                 <!-- WhatsApp Chat Bubble -->
-                                <div class="bg-[#dcf8c6] text-slate-900 rounded-2xl rounded-tl-none p-3.5 shadow-sm text-xs space-y-2 relative max-w-[92%] leading-relaxed">
+                                <div class="bg-emerald-100 text-slate-900 rounded-2xl rounded-tl-none p-3.5 shadow-sm text-xs space-y-2 relative max-w-[92%] leading-relaxed">
                                     <!-- Image Preview if available -->
                                     <div v-if="campaignForm.media_url" class="rounded-xl overflow-hidden mb-2 max-h-40 bg-slate-200">
                                         <img :src="campaignForm.media_url" alt="Attachment" class="w-full h-full object-cover" />
