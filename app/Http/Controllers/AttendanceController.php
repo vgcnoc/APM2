@@ -530,6 +530,11 @@ class AttendanceController extends Controller
      */
     public function quickAssignShift(Request $request)
     {
+        $user = auth()->user();
+        if ($user && !$user->hasRole('admin') && !$user->can('attendance_btn_set_shift_holiday') && !$user->can('work_schedules_manage')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengubah shift atau menetapkan hari libur.');
+        }
+
         $request->validate([
             'employee_id' => 'required|exists:employees,id',
             'shift_id'    => 'nullable',

@@ -64,7 +64,7 @@
 
                 <!-- Tombol Atur Shift / Libur Cepat untuk Admin/HRD -->
                 <button
-                    v-if="can('attendances_manage_shifts') || can('work_schedules_manage')"
+                    v-if="can('attendance_btn_set_shift_holiday') || can('attendances_manage_shifts') || can('work_schedules_manage')"
                     type="button"
                     @click="openShiftModal"
                     class="hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-blue-300 border border-slate-700/80 transition cursor-pointer active:scale-95 shadow-2xs"
@@ -221,6 +221,7 @@
 
                         <!-- Tombol Ubah Shift / Libur -->
                         <button
+                            v-if="can('attendance_btn_set_shift_holiday') || can('attendances_manage_shifts') || can('work_schedules_manage')"
                             type="button"
                             @click="openShiftModal"
                             class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold text-blue-600 dark:text-blue-400 bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950/60 border border-slate-200 dark:border-slate-700 hover:border-blue-300 transition shrink-0 flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95"
@@ -931,6 +932,7 @@ const holidayPresetOptions = [
 ];
 
 const openShiftModal = () => {
+    if (!can('attendance_btn_set_shift_holiday') && !can('attendances_manage_shifts') && !can('work_schedules_manage')) return;
     if (isDayOff.value) {
         shiftFormMode.value = 'off';
         targetHolidayNotes.value = dayOffReason.value || 'Libur Rutin Mingguan';
@@ -944,6 +946,7 @@ const openShiftModal = () => {
 };
 
 const saveShiftSetting = () => {
+    if (!can('attendance_btn_set_shift_holiday') && !can('attendances_manage_shifts') && !can('work_schedules_manage')) return;
     if (!currentEmployee.value) return;
     isSavingShift.value = true;
     router.post(
