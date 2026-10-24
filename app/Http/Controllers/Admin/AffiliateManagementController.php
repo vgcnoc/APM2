@@ -46,7 +46,9 @@ class AffiliateManagementController extends Controller
                 $tab = 'settings';
             }
         }
-        $search = $request->query('search', '');
+        $search = trim((string) $request->query('search', ''));
+        $perPage = (int) $request->query('per_page', 15);
+        $perPage = in_array($perPage, [15, 30, 50, 100], true) ? $perPage : 15;
 
         // 1. Settings
         $settings = AffiliateService::getSettings();
@@ -67,12 +69,14 @@ class AffiliateManagementController extends Controller
                   ->orWhere('whatsapp', 'like', "%{$search}%")
                   ->orWhereHas('user', function ($uq) use ($search) {
                       $uq->where('name', 'like', "%{$search}%")
-                         ->orWhere('email', 'like', "%{$search}%");
+                         ->orWhere('email', 'like', "%{$search}%")
+                         ->orWhere('phone', 'like', "%{$search}%");
                   });
             });
         }
         $affiliates = $affiliatesQuery->latest('id')
-            ->paginate(15)
+            ->paginate($perPage, ['*'], 'affiliates_page')
+            ->withQueryString()
             ->through(function ($aff) {
                 return [
                     'id' => $aff->id,
@@ -106,7 +110,8 @@ class AffiliateManagementController extends Controller
             });
         }
         $commissions = $commissionsQuery->latest('id')
-            ->paginate(20)
+            ->paginate(20, ['*'], 'commissions_page')
+            ->withQueryString()
             ->through(function ($c) {
                 return [
                     'id' => $c->id,
@@ -130,7 +135,8 @@ class AffiliateManagementController extends Controller
             });
         }
         $withdrawals = $withdrawalsQuery->latest('id')
-            ->paginate(15)
+            ->paginate(15, ['*'], 'withdrawals_page')
+            ->withQueryString()
             ->through(function ($w) {
                 $unpaidCount = 0;
                 $unpaidAmount = 0;
@@ -343,7 +349,7 @@ class AffiliateManagementController extends Controller
             'kpi' => $kpi,
             'tree_data' => $networkTrees,
             'tree_kpi' => $treeKpi,
-            'filters' => $request->only(['tab', 'search']),
+            'filters' => $request->only(['tab', 'search', 'per_page']),
         ]);
     }
 

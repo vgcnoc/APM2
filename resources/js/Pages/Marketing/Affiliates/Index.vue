@@ -1145,12 +1145,21 @@
                                 v-model="searchQuery"
                                 @keyup.enter="handleSearch"
                                 type="text"
-                                placeholder="Cari nama, email, kode referral..."
-                                class="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                placeholder="Cari nama, email, nomor, kode..."
+                                class="w-full pl-9 pr-16 py-2 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
                             />
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                                 🔍
                             </div>
+                            <button
+                                v-if="searchQuery"
+                                type="button"
+                                @click="clearSearch"
+                                class="absolute inset-y-0 right-1 px-2 text-[11px] font-bold text-slate-400 hover:text-rose-600"
+                                aria-label="Hapus pencarian"
+                            >
+                                ✕
+                            </button>
                         </div>
 
                         <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
@@ -1184,8 +1193,9 @@
                         </div>
                     </div>
 
-                    <div v-if="affiliates.data && affiliates.data.length > 0" class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-slate-100 text-xs">
+                    <div v-if="affiliates.data && affiliates.data.length > 0" class="border border-slate-100 rounded-2xl overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-slate-100 text-xs">
                             <thead class="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider text-left">
                                 <tr>
                                     <th class="px-4 py-3">Nama Agen</th>
@@ -1269,10 +1279,36 @@
                                     </td>
                                 </tr>
                             </tbody>
-                        </table>
+                            </table>
+                        </div>
+                        <div v-if="affiliates.links?.length > 3" class="px-4 py-3 border-t border-slate-100 bg-slate-50/70 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                            <span class="text-slate-600">
+                                Menampilkan <b class="text-slate-900">{{ affiliates.from || 0 }}</b>–<b class="text-slate-900">{{ affiliates.to || 0 }}</b> dari <b class="text-slate-900">{{ affiliates.total || 0 }}</b> agen
+                            </span>
+                            <div class="flex items-center gap-2">
+                                <label class="flex items-center gap-1.5 text-slate-500 whitespace-nowrap">
+                                    <span>Baris</span>
+                                    <select v-model="perPage" @change="changePerPage" class="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <option v-for="size in perPageOptions" :key="size" :value="size">{{ size }}</option>
+                                    </select>
+                                </label>
+                                <div class="flex gap-1 overflow-x-auto max-w-full">
+                                    <button
+                                        v-for="(link, i) in affiliates.links"
+                                        :key="i"
+                                        type="button"
+                                        :disabled="!link.url"
+                                        @click="visitPage(link.url)"
+                                        class="min-w-8 px-2.5 py-1 rounded-lg border transition-colors"
+                                        :class="[link.active ? 'bg-indigo-600 border-indigo-600 text-white font-bold shadow-sm' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100', !link.url ? 'opacity-40 cursor-not-allowed' : '']"
+                                        v-html="link.label"
+                                    ></button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div v-else class="text-center py-12 text-slate-400">
-                        Belum ada agen afiliasi terdaftar.
+                    <div v-else class="text-center py-12 text-slate-400 border border-dashed border-slate-200 rounded-2xl">
+                        {{ searchQuery ? 'Data agen yang sesuai pencarian tidak ditemukan.' : 'Belum ada agen afiliasi terdaftar.' }}
                     </div>
                 </div>
 
@@ -2258,7 +2294,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { router, useForm, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Swal from 'sweetalert2';
@@ -2307,6 +2343,9 @@ onMounted(() => {
     }
 });
 const searchQuery = ref(props.filters?.search || '');
+const perPage = ref(Number(props.filters?.per_page) || 15);
+const perPageOptions = [15, 30, 50, 100];
+let searchTimer = null;
 const diagramActiveFilter = ref('all');
 
 // Tree Diagram State
@@ -2450,7 +2489,11 @@ const formatRupiah = (val) => {
 
 const switchTab = (tabId) => {
     currentTab.value = tabId;
-    router.get(route('admin.affiliates.index'), { tab: tabId }, {
+    router.get(route('admin.affiliates.index'), {
+        tab: tabId,
+        search: searchQuery.value.trim(),
+        per_page: perPage.value,
+    }, {
         preserveState: true,
         preserveScroll: true,
         replace: true,
@@ -2458,12 +2501,47 @@ const switchTab = (tabId) => {
 };
 
 const handleSearch = () => {
-    router.get(route('admin.affiliates.index'), { tab: currentTab.value, search: searchQuery.value }, {
+    if (searchTimer) {
+        clearTimeout(searchTimer);
+        searchTimer = null;
+    }
+
+    router.get(route('admin.affiliates.index'), {
+        tab: currentTab.value,
+        search: searchQuery.value.trim(),
+        per_page: perPage.value,
+    }, {
         preserveState: true,
         preserveScroll: true,
         replace: true,
     });
 };
+
+const clearSearch = () => {
+    searchQuery.value = '';
+};
+
+const changePerPage = () => {
+    handleSearch();
+};
+
+const visitPage = (url) => {
+    if (!url) return;
+    router.visit(url, {
+        preserveState: true,
+        preserveScroll: true,
+    });
+};
+
+watch(searchQuery, (value, previousValue) => {
+    if (value === previousValue) return;
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(handleSearch, 350);
+});
+
+onBeforeUnmount(() => {
+    if (searchTimer) clearTimeout(searchTimer);
+});
 
 const submitSettings = () => {
     settingsForm.post(route('admin.affiliates.settings'), {
