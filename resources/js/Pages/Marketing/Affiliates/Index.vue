@@ -791,13 +791,26 @@
                                                 </span>
                                             </td>
                                             <td class="px-4 py-3 text-center">
-                                                <button
-                                                    type="button"
-                                                    @click="openMemberModal(m, m.level_label)"
-                                                    class="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg text-[11px] transition-colors"
-                                                >
-                                                    Detail
-                                                </button>
+                                                <div class="flex items-center justify-center gap-1.5">
+                                                    <button
+                                                        type="button"
+                                                        @click="openMemberModal(m, m.level_label)"
+                                                        class="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg text-[11px] transition-colors shadow-2xs"
+                                                        title="Lihat detail data member"
+                                                    >
+                                                        Detail
+                                                    </button>
+                                                    <button
+                                                        v-can="'affiliate_btn_delete'"
+                                                        type="button"
+                                                        @click="confirmDeleteMember(m)"
+                                                        class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-lg text-[11px] transition-colors border border-rose-200/80 shadow-2xs flex items-center gap-1"
+                                                        :title="m.is_employee ? 'Hapus Akun Karyawan dari Afiliasi' : 'Hapus Member Afiliasi'"
+                                                    >
+                                                        <span>🗑️</span>
+                                                        <span>Hapus</span>
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                         <tr v-if="flatMemberList.length === 0">
@@ -1242,6 +1255,16 @@
                                             >
                                                 {{ a.status === 'active' ? 'Suspend' : 'Aktifkan' }}
                                             </button>
+                                            <button
+                                                v-can="'affiliate_btn_delete'"
+                                                type="button"
+                                                @click="confirmDeleteMember(a)"
+                                                class="px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors border bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 flex items-center gap-1 shadow-2xs"
+                                                :title="a.is_employee ? 'Hapus Akun Karyawan dari Afiliasi' : 'Hapus Agen Afiliasi'"
+                                            >
+                                                <span>🗑️</span>
+                                                <span>Hapus</span>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -1683,7 +1706,18 @@
                 </div>
 
                 <!-- Modal Footer -->
-                <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+                <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2">
+                    <button
+                        v-if="selectedMemberModal"
+                        v-can="'affiliate_btn_delete'"
+                        type="button"
+                        @click="confirmDeleteMember(selectedMemberModal); showMemberModal = false"
+                        class="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5"
+                    >
+                        <span>🗑️</span>
+                        <span>{{ selectedMemberModal.is_employee ? 'Hapus Akun Karyawan dari Afiliasi' : 'Hapus Member' }}</span>
+                    </button>
+                    <div v-else></div>
                     <button
                         type="button"
                         @click="showMemberModal = false"
@@ -2443,6 +2477,51 @@ const toggleAffiliateStatus = (affiliate) => {
             preserveScroll: true,
         });
     }
+};
+
+const confirmDeleteMember = (member) => {
+    if (!member) return;
+    const isEmp = !!member.is_employee;
+    const title = isEmp ? 'Hapus Akun Karyawan dari Afiliasi?' : 'Hapus Akun Agen Afiliasi?';
+    const textHtml = isEmp
+        ? `Akun karyawan <b>${member.name}</b> (${member.referral_code || ''}) akan dikeluarkan dari sistem &amp; pohon jaringan afiliasi.<br><br><span class="text-xs text-slate-500">🔒 Akun login, profil user, dan data kepegawaian (HRD/Payroll) <b>tetap aman dan tidak terhapus</b>.</span>`
+        : `Akun agen mitra <b>${member.name}</b> (${member.referral_code || ''}) akan dihapus dari sistem afiliasi.`;
+
+    Swal.fire({
+        title: title,
+        html: textHtml,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: isEmp ? 'Ya, Hapus dari Afiliasi' : 'Ya, Hapus Akun',
+        cancelButtonText: 'Batal',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.delete(route('admin.affiliates.destroy', member.id || member.user_id), {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil Dihapus',
+                        text: isEmp ? `Akun karyawan ${member.name} berhasil dihapus dari afiliasi.` : `Akun ${member.name} berhasil dihapus.`,
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3500,
+                    });
+                },
+                onError: (err) => {
+                    const msg = Object.values(err).flat().join('\n') || 'Gagal menghapus akun afiliasi.';
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: msg,
+                    });
+                },
+            });
+        }
+    });
 };
 
 const openApproveModal = (w) => {

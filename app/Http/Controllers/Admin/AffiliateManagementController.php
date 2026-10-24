@@ -426,6 +426,62 @@ class AffiliateManagementController extends Controller
     }
 
     /**
+     * Hapus profil afiliasi (Akun Karyawan atau Mitra Luar) dari sistem & jaringan afiliasi.
+     */
+    public function destroy(Request $request, $id)
+    {
+        $affiliate = AffiliateProfile::find($id);
+        if (!$affiliate) {
+            $affiliate = AffiliateProfile::where('user_id', $id)->first();
+        }
+
+        if (!$affiliate) {
+            return back()->with('error', 'Data profil afiliasi tidak ditemukan.');
+        }
+
+        $user = Auth::user();
+        $isAdmin = $user && ($user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin');
+        if (!$isAdmin && !$user->can('affiliate_btn_delete')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus akun afiliasi ini.');
+        }
+
+        $affiliateUser = $affiliate->user;
+        $userName = $affiliateUser?->name ?? 'Member';
+        $referralCode = $affiliate->referral_code;
+        $isEmployee = AffiliateService::isInternalEmployee($affiliateUser);
+
+        DB::transaction(function () use ($affiliate, $affiliateUser, $isEmployee, $request) {
+            // 1. Relinking downline langsung ke upline di atasnya (agar hierarki tidak terputus)
+            AffiliateProfile::where('upline_id', $affiliate->user_id)->update([
+                'upline_id' => $affiliate->upline_id,
+            ]);
+
+            // 2. Putuskan referral_code pada pelanggan terkait
+            Customer::where('referral_code', $affiliate->referral_code)->update([
+                'referral_code' => null,
+            ]);
+
+            // 3. Hapus profil afiliasi
+            $affiliate->delete();
+
+            // 4. Jika bukan karyawan, memiliki role 'affiliate' murni, dan tidak memiliki invoice
+            if (!$isEmployee && $affiliateUser && $affiliateUser->role === 'affiliate' && $request->boolean('delete_user')) {
+                $hasInvoices = DB::table('invoices')->where('user_id', $affiliateUser->id)->exists();
+                $hasPayments = DB::table('payments')->where('user_id', $affiliateUser->id)->exists();
+                if (!$hasInvoices && !$hasPayments) {
+                    $affiliateUser->delete();
+                }
+            }
+        });
+
+        $msg = $isEmployee
+            ? "Akun Karyawan {$userName} ({$referralCode}) berhasil dihapus dari jaringan afiliasi. Akun login dan data kepegawaian tetap aman."
+            : "Akun agen afiliasi {$userName} ({$referralCode}) berhasil dihapus.";
+
+        return back()->with('success', $msg);
+    }
+
+    /**
      * Daftarkan agen afiliasi / downline baru secara manual dari Admin.
      */
     public function storeAffiliate(Request $request)
