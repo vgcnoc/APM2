@@ -354,6 +354,12 @@ class InfrastructureWorkOrderService
     ): void {
         DB::transaction(function () use ($workOrder, $reportData, $photos, $opticalChecks, $reconciliations) {
             // Upload Foto-foto Bukti Lapangan
+            $photoOdp = $workOrder->photo_odp;
+            if (!empty($photos['photo_odp'])) {
+                $dir = $workOrder->type === 'odc_deployment' ? 'infrastructure/odc' : 'infrastructure/odp';
+                $photoOdp = $photos['photo_odp']->store($dir, 'public');
+            }
+
             $photoPole = $workOrder->photo_pole;
             if (!empty($photos['photo_pole'])) {
                 $photoPole = $photos['photo_pole']->store('infrastructure/poles', 'public');
@@ -384,12 +390,18 @@ class InfrastructureWorkOrderService
                 'cable_meter_start' => $meterStart,
                 'cable_meter_end' => $meterEnd,
                 'cable_length_used' => $cableLength,
+                'photo_odp' => $photoOdp,
                 'photo_pole' => $photoPole,
                 'photo_splicing' => $photoSplicing,
                 'photo_opm' => $photoOpm,
                 'notes' => $reportData['notes'] ?? $workOrder->notes,
                 'status' => 'under_review',
             ]);
+
+            // Auto-update ke data ODC / ODP jika foto ODP / ODC terpasang
+            if ($photoOdp) {
+                self::syncPhotoToMaster($workOrder, $photoOdp);
+            }
 
             // Simpan Uji Redaman Optik (OPM)
             if (!empty($opticalChecks)) {
@@ -448,7 +460,7 @@ class InfrastructureWorkOrderService
 
             $lat = $workOrder->actual_latitude ?: $workOrder->planned_latitude;
             $lng = $workOrder->actual_longitude ?: $workOrder->planned_longitude;
-            $photo = $workOrder->photo_pole ?: $workOrder->photo_splicing;
+            $photo = $workOrder->photo_odp ?: ($workOrder->photo_pole ?: $workOrder->photo_splicing);
 
             if ($workOrder->type === 'odc_deployment') {
                 // 1. Buat Record ODC Baru
@@ -544,5 +556,29 @@ class InfrastructureWorkOrderService
             'status' => 'rejected',
             'rejection_reason' => $reason,
         ]);
+    }
+
+    /**
+     * Sinkronkan foto fisik ODP / ODC langsung ke Master Database ODP/ODC dan Peta GIS.
+     */
+    public static function syncPhotoToMaster(InfrastructureWorkOrder $workOrder, string $photoPath): void
+    {
+        if ($workOrder->type === 'odc_deployment') {
+            if ($workOrder->created_odc_id) {
+                Odc::where('id', $workOrder->created_odc_id)->update(['photo' => $photoPath]);
+            } else {
+                Odc::where('name', $workOrder->target_name)
+                    ->where('area_id', $workOrder->area_id)
+                    ->update(['photo' => $photoPath]);
+            }
+        } else {
+            if ($workOrder->created_odp_id) {
+                Odp::where('id', $workOrder->created_odp_id)->update(['photo' => $photoPath]);
+            } else {
+                Odp::where('name', $workOrder->target_name)
+                    ->where('area_id', $workOrder->area_id)
+                    ->update(['photo' => $photoPath]);
+            }
+        }
     }
 }

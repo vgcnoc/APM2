@@ -63,6 +63,12 @@ const formatDate = (dateStr) => {
         year: 'numeric'
     });
 };
+
+const deleteWo = (wo) => {
+    if (confirm(`Apakah Anda yakin ingin menghapus Work Order ${wo.wo_number} (${wo.target_name})? Semua data rekonsiliasi dan QC akan dihapus.`)) {
+        router.delete(route('infrastructure.work-orders.destroy', wo.id));
+    }
+};
 </script>
 
 <template>
@@ -82,6 +88,7 @@ const formatDate = (dateStr) => {
 
                 <div class="flex items-center gap-2">
                     <Link
+                        v-can="'infrastructure_work_orders_create'"
                         :href="route('infrastructure.work-orders.create')"
                         class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2"
                     >
@@ -91,7 +98,7 @@ const formatDate = (dateStr) => {
             </div>
 
             <!-- KPI Summary Cards -->
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
+            <div v-can="'infra_wo_card_stats'" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
                 <!-- Total -->
                 <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-xs">
                     <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Total WO</span>
@@ -132,7 +139,7 @@ const formatDate = (dateStr) => {
             <!-- Filter & Table Card -->
             <div class="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
                 <!-- Filter Bar -->
-                <div class="p-4 sm:p-5 border-b border-slate-100 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-slate-50/40">
+                <div v-can="'infra_wo_filter'" class="p-4 sm:p-5 border-b border-slate-100 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-slate-50/40">
                     <div class="relative flex-1">
                         <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-sm">🔍</span>
                         <input
@@ -291,6 +298,15 @@ const formatDate = (dateStr) => {
                                         >
                                             Detail &rarr;
                                         </Link>
+                                        <button
+                                            v-can="'infrastructure_work_orders_delete'"
+                                            type="button"
+                                            @click="deleteWo(wo)"
+                                            class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-200 cursor-pointer"
+                                            title="Hapus Work Order"
+                                        >
+                                            🗑️
+                                        </button>
                                     </div>
                                 </td>
                             </tr>

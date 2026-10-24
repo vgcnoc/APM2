@@ -287,6 +287,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{workOrder}/material-requests/{materialRequest}/reject', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'rejectMaterialRequest'])->name('material-requests.reject');
         Route::post('/{workOrder}/approve', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'approve'])->name('approve');
         Route::post('/{workOrder}/reject', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'reject'])->name('reject');
+        Route::post('/{workOrder}/upload-photo', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'uploadPhoto'])->name('upload-photo');
+        Route::delete('/{workOrder}', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'destroy'])->name('destroy');
     });
 
     Route::post('onts/bulk-destroy', [OntController::class, 'bulkDestroy'])->name('onts.bulk-destroy');

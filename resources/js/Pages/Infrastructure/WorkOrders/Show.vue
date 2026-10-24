@@ -136,6 +136,7 @@ const reportForm = useForm({
     cable_meter_start: props.workOrder.cable_meter_start || 0,
     cable_meter_end: props.workOrder.cable_meter_end || 0,
     cable_length_used: props.workOrder.cable_length_used || 0,
+    photo_odp: null,
     photo_pole: null,
     photo_splicing: null,
     photo_opm: null,
@@ -222,6 +223,21 @@ const approveMaterialDispatch = () => {
 
 const startWork = () => {
     router.post(route('infrastructure.work-orders.start-work', props.workOrder.id));
+};
+
+const isUploadingPhoto = ref(false);
+const onQuickPhotoUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    isUploadingPhoto.value = true;
+    const formData = new FormData();
+    formData.append('photo_odp', file);
+    router.post(route('infrastructure.work-orders.upload-photo', props.workOrder.id), formData, {
+        preserveScroll: true,
+        onFinish: () => {
+            isUploadingPhoto.value = false;
+        }
+    });
 };
 
 const submitFieldReport = () => {
@@ -360,6 +376,7 @@ const formatDate = (dateStr) => {
                     <div class="flex flex-wrap items-center gap-2">
                         <!-- Cetak Surat Jalan -->
                         <a
+                            v-can="'infra_wo_btn_print_sj'"
                             :href="route('infrastructure.work-orders.print-surat-jalan', workOrder.id)"
                             target="_blank"
                             class="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
@@ -370,6 +387,7 @@ const formatDate = (dateStr) => {
                         <!-- Action: Request Tambahan Material Lapangan (Teknisi / Admin) -->
                         <button
                             v-if="workOrder.status !== 'completed'"
+                            v-can="'infrastructure_work_orders_request_material'"
                             type="button"
                             @click="showMaterialRequestModal = true"
                             class="px-4 py-2 bg-amber-500/90 hover:bg-amber-400 text-slate-900 font-bold text-xs rounded-xl shadow-lg transition-all flex items-center gap-1.5 cursor-pointer"
@@ -377,9 +395,10 @@ const formatDate = (dateStr) => {
                             <span>📢 + Request Material</span>
                         </button>
 
-                        <!-- Action: Gudang Approve Material -->
+                        <!-- Action: Gudang / Ka. Teknisi / Maintenance Approve Material -->
                         <button
                             v-if="workOrder.status === 'pending_material'"
+                            v-can="'infrastructure_work_orders_dispatch'"
                             type="button"
                             @click="approveMaterialDispatch"
                             class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold text-xs rounded-xl shadow-lg transition-all flex items-center gap-1.5"
@@ -390,6 +409,7 @@ const formatDate = (dateStr) => {
                         <!-- Action: Teknisi Start Work -->
                         <button
                             v-if="workOrder.status === 'material_ready'"
+                            v-can="'infrastructure_work_orders_start'"
                             type="button"
                             @click="startWork"
                             class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg transition-all flex items-center gap-1.5"
@@ -400,6 +420,7 @@ const formatDate = (dateStr) => {
                         <!-- Action: Teknisi Submit Report -->
                         <button
                             v-if="workOrder.status === 'in_progress' || workOrder.status === 'rejected'"
+                            v-can="'infrastructure_work_orders_report'"
                             type="button"
                             @click="showReportModal = true"
                             class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg transition-all flex items-center gap-1.5"
@@ -407,9 +428,10 @@ const formatDate = (dateStr) => {
                             <span>📋 Input Laporan &amp; QC Redaman</span>
                         </button>
 
-                        <!-- Action: NOC Review Approve / Reject -->
+                        <!-- Action: NOC / Ka. Teknisi Review Approve / Reject -->
                         <div v-if="workOrder.status === 'under_review'" class="flex items-center gap-2">
                             <button
+                                v-can="'infrastructure_work_orders_approve'"
                                 type="button"
                                 @click="approveCommissioning"
                                 class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg transition-all flex items-center gap-1.5"
@@ -418,6 +440,7 @@ const formatDate = (dateStr) => {
                             </button>
 
                             <button
+                                v-can="'infrastructure_work_orders_reject'"
                                 type="button"
                                 @click="showRejectModal = true"
                                 class="px-3 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl transition-all"
@@ -692,7 +715,7 @@ const formatDate = (dateStr) => {
                                 </div>
 
                                 <!-- Action Approval untuk Admin / Gudang / Ka. Teknisi jika status Pending -->
-                                <div v-if="mr.status === 'pending'" class="flex items-center gap-2 shrink-0">
+                                <div v-if="mr.status === 'pending'" v-can="'infrastructure_work_orders_review_material'" class="flex items-center gap-2 shrink-0">
                                     <button
                                         type="button"
                                         @click="openReviewModal(mr)"
@@ -752,38 +775,90 @@ const formatDate = (dateStr) => {
 
                 <!-- ════ TAB 4: FOTO BUKTI LAPANGAN ════ -->
                 <div v-if="activeTab === 'photos'" class="p-6">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <!-- Foto Fisik ODP / ODC (Auto Sync ke Master Data) -->
+                        <div class="bg-indigo-50/60 p-4 rounded-2xl border-2 border-indigo-200/90 flex flex-col justify-between shadow-xs">
+                            <div>
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <span class="text-xs font-bold text-indigo-950 uppercase flex items-center gap-1">
+                                        <span>📷</span> Foto Fisik {{ workOrder.type === 'odc_deployment' ? 'ODC' : 'ODP' }}
+                                    </span>
+                                    <span class="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                        Auto GIS
+                                    </span>
+                                </div>
+                                <p class="text-[10px] text-indigo-700/80 mb-2">
+                                    Otomatis mengisi foto data {{ workOrder.type === 'odc_deployment' ? 'ODC' : 'ODP' }} di master &amp; peta GIS.
+                                </p>
+                            </div>
+
+                            <div v-if="workOrder.photo_odp" class="aspect-video rounded-xl overflow-hidden border bg-black relative group my-2">
+                                <img :src="'/storage/' + workOrder.photo_odp" class="w-full h-full object-cover" />
+                                <div v-can="'infrastructure_work_orders_upload_photo'" class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <label class="px-3 py-1.5 bg-white text-slate-900 rounded-xl text-xs font-bold cursor-pointer hover:bg-slate-100 shadow transition-all">
+                                        🔄 Ganti Foto
+                                        <input type="file" @change="onQuickPhotoUpload" accept="image/*" class="hidden" />
+                                    </label>
+                                </div>
+                            </div>
+                            <div v-else class="aspect-video rounded-xl border-2 border-dashed border-indigo-200 bg-white/70 flex flex-col items-center justify-center p-3 text-center my-2">
+                                <span class="text-2xl mb-1">📷</span>
+                                <span class="text-[11px] font-bold text-slate-600 mb-2">Belum ada foto fisik {{ workOrder.type === 'odc_deployment' ? 'ODC' : 'ODP' }}</span>
+                                <label v-can="'infrastructure_work_orders_upload_photo'" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-all shadow-xs">
+                                    <span>+ Upload Foto Sekarang</span>
+                                    <input type="file" @change="onQuickPhotoUpload" accept="image/*" class="hidden" />
+                                </label>
+                            </div>
+
+                            <div class="text-[10px] text-slate-400 text-right mt-1">
+                                <span v-if="workOrder.photo_odp" class="text-emerald-600 font-bold">✓ Tersinkronisasi ke Master</span>
+                                <span v-else class="text-amber-600 font-medium">Bisa diunggah saat pengerjaan</span>
+                            </div>
+                        </div>
+
                         <!-- Foto Tiang -->
-                        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
-                            <span class="text-xs font-bold text-slate-700 uppercase block mb-2">📸 Foto Box Terpasang di Tiang</span>
-                            <div v-if="workOrder.photo_pole" class="aspect-video rounded-xl overflow-hidden border bg-black">
+                        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 flex flex-col justify-between">
+                            <div>
+                                <span class="text-xs font-bold text-slate-700 uppercase block mb-2">📸 Foto Box Terpasang di Tiang</span>
+                                <p class="text-[10px] text-slate-400 mb-2">Bukti box terpasang rapi pada tiang.</p>
+                            </div>
+                            <div v-if="workOrder.photo_pole" class="aspect-video rounded-xl overflow-hidden border bg-black my-2">
                                 <img :src="'/storage/' + workOrder.photo_pole" class="w-full h-full object-cover" />
                             </div>
-                            <div v-else class="aspect-video rounded-xl border border-dashed border-slate-300 flex items-center justify-center text-xs text-slate-400">
+                            <div v-else class="aspect-video rounded-xl border border-dashed border-slate-300 flex items-center justify-center text-xs text-slate-400 my-2">
                                 Belum ada foto tiang
                             </div>
+                            <span class="text-[10px] text-slate-400 text-right mt-1">Dokumentasi Lapangan</span>
                         </div>
 
                         <!-- Foto Splicing -->
-                        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
-                            <span class="text-xs font-bold text-slate-700 uppercase block mb-2">📸 Foto Tray Splicing Fiber</span>
-                            <div v-if="workOrder.photo_splicing" class="aspect-video rounded-xl overflow-hidden border bg-black">
+                        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 flex flex-col justify-between">
+                            <div>
+                                <span class="text-xs font-bold text-slate-700 uppercase block mb-2">📸 Foto Tray Splicing Fiber</span>
+                                <p class="text-[10px] text-slate-400 mb-2">Bukti kerapian susunan core &amp; cassette.</p>
+                            </div>
+                            <div v-if="workOrder.photo_splicing" class="aspect-video rounded-xl overflow-hidden border bg-black my-2">
                                 <img :src="'/storage/' + workOrder.photo_splicing" class="w-full h-full object-cover" />
                             </div>
-                            <div v-else class="aspect-video rounded-xl border border-dashed border-slate-300 flex items-center justify-center text-xs text-slate-400">
+                            <div v-else class="aspect-video rounded-xl border border-dashed border-slate-300 flex items-center justify-center text-xs text-slate-400 my-2">
                                 Belum ada foto splicing
                             </div>
+                            <span class="text-[10px] text-slate-400 text-right mt-1">QC Splicer</span>
                         </div>
 
                         <!-- Foto OPM -->
-                        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
-                            <span class="text-xs font-bold text-slate-700 uppercase block mb-2">📸 Foto Layar Display OPM</span>
-                            <div v-if="workOrder.photo_opm" class="aspect-video rounded-xl overflow-hidden border bg-black">
+                        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 flex flex-col justify-between">
+                            <div>
+                                <span class="text-xs font-bold text-slate-700 uppercase block mb-2">📸 Foto Layar Display OPM</span>
+                                <p class="text-[10px] text-slate-400 mb-2">Bukti nilai redaman optik terkalibrasi.</p>
+                            </div>
+                            <div v-if="workOrder.photo_opm" class="aspect-video rounded-xl overflow-hidden border bg-black my-2">
                                 <img :src="'/storage/' + workOrder.photo_opm" class="w-full h-full object-cover" />
                             </div>
-                            <div v-else class="aspect-video rounded-xl border border-dashed border-slate-300 flex items-center justify-center text-xs text-slate-400">
+                            <div v-else class="aspect-video rounded-xl border border-dashed border-slate-300 flex items-center justify-center text-xs text-slate-400 my-2">
                                 Belum ada foto OPM
                             </div>
+                            <span class="text-[10px] text-slate-400 text-right mt-1">QC Redaman</span>
                         </div>
                     </div>
                 </div>
@@ -854,17 +929,25 @@ const formatDate = (dateStr) => {
                         <!-- Upload Foto -->
                         <div class="space-y-3">
                             <span class="text-xs font-bold text-slate-700 uppercase block">Unggah Foto Bukti Lapangan</span>
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                                <div>
-                                    <label class="block text-[10px] text-slate-500 mb-1">Foto Tiang</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                                <div class="p-2.5 rounded-xl bg-indigo-50/80 border border-indigo-200">
+                                    <label class="block text-[11px] font-bold text-indigo-950 mb-0.5">📸 Foto Fisik ODP / ODC *</label>
+                                    <span class="text-[10px] text-indigo-600 block mb-1.5 font-medium">Auto isi data master &amp; GIS</span>
+                                    <input type="file" @change="e => reportForm.photo_odp = e.target.files[0]" accept="image/*" class="w-full text-xs" />
+                                </div>
+                                <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                                    <label class="block text-[11px] font-bold text-slate-700 mb-0.5">📸 Foto Tiang</label>
+                                    <span class="text-[10px] text-slate-500 block mb-1.5">Box terpasang di tiang</span>
                                     <input type="file" @change="e => reportForm.photo_pole = e.target.files[0]" accept="image/*" class="w-full text-xs" />
                                 </div>
-                                <div>
-                                    <label class="block text-[10px] text-slate-500 mb-1">Foto Splicing Tray</label>
+                                <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                                    <label class="block text-[11px] font-bold text-slate-700 mb-0.5">📸 Foto Splicing Tray</label>
+                                    <span class="text-[10px] text-slate-500 block mb-1.5">Core &amp; tray rapi</span>
                                     <input type="file" @change="e => reportForm.photo_splicing = e.target.files[0]" accept="image/*" class="w-full text-xs" />
                                 </div>
-                                <div>
-                                    <label class="block text-[10px] text-slate-500 mb-1">Foto Layar OPM</label>
+                                <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                                    <label class="block text-[11px] font-bold text-slate-700 mb-0.5">📸 Foto Layar OPM</label>
+                                    <span class="text-[10px] text-slate-500 block mb-1.5">Display nilai dBm</span>
                                     <input type="file" @change="e => reportForm.photo_opm = e.target.files[0]" accept="image/*" class="w-full text-xs" />
                                 </div>
                             </div>

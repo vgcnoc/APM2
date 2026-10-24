@@ -101,7 +101,7 @@ class InfrastructureWorkOrderController extends Controller
             'workOrders' => $workOrders,
             'kpi' => $kpi,
             'areas' => DataScopeService::getScopedAreas(Auth::user(), 'infrastructure_work_orders'),
-            'technicians' => User::whereIn('role', ['teknisi', 'admin', 'noc'])->orderBy('name')->get(['id', 'name']),
+            'technicians' => User::whereIn('role', ['teknisi', 'maintenance', 'kepala teknisi', 'noc', 'admin'])->orderBy('name')->get(['id', 'name']),
             'filters' => $request->only(['search', 'type', 'device_type', 'status', 'area_id', 'technician_id']),
         ]);
     }
@@ -111,6 +111,10 @@ class InfrastructureWorkOrderController extends Controller
      */
     public function create(): Response
     {
+        if (!Auth::user()->can('infrastructure_work_orders_create') && !Auth::user()->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk membuat penugasan pembangunan ODC/ODP.');
+        }
+
         $materials = Material::where(function ($q) {
                 $q->where('is_active', true)->orWhereNull('is_active');
             })
@@ -135,7 +139,7 @@ class InfrastructureWorkOrderController extends Controller
             'areas' => DataScopeService::getScopedAreas($user, 'infrastructure_work_orders'),
             'olts' => $oltQuery->get(['id', 'name', 'area_id', 'total_pon_ports', 'pon_vlans']),
             'odcs' => $odcQuery->get(['id', 'name', 'area_id', 'capacity', 'olt_id', 'pon_port', 'splitter_ratio']),
-            'technicians' => User::whereIn('role', ['teknisi', 'admin', 'noc'])->orderBy('name')->get(['id', 'name']),
+            'technicians' => User::whereIn('role', ['teknisi', 'maintenance', 'kepala teknisi', 'noc', 'admin'])->orderBy('name')->get(['id', 'name']),
             'materials' => $materials,
             'materialTransactions' => $materialTransactions,
         ]);
@@ -170,6 +174,10 @@ class InfrastructureWorkOrderController extends Controller
      */
     public function store(Request $request)
     {
+        if (!Auth::user()->can('infrastructure_work_orders_create') && !Auth::user()->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk membuat penugasan pembangunan ODC/ODP.');
+        }
+
         // Normalisasi input string kosong menjadi null
         foreach (['odc_id', 'olt_id', 'pon_port', 'odc_splitter_port', 'planned_latitude', 'planned_longitude', 'location', 'start_point', 'end_point', 'cable_pull', 'notes', 'splitter_ratio', 'core_capacity'] as $f) {
             if ($request->has($f) && ($request->$f === '' || $request->$f === 'null' || $request->$f === null)) {
@@ -190,7 +198,7 @@ class InfrastructureWorkOrderController extends Controller
             if (!empty($request->technician_id)) {
                 $request->merge(['technician_ids' => [(int) $request->technician_id]]);
             } else {
-                $firstTech = User::whereIn('role', ['teknisi', 'admin', 'noc'])->value('id') ?? Auth::id();
+                $firstTech = User::whereIn('role', ['teknisi', 'maintenance', 'kepala teknisi', 'admin', 'noc'])->value('id') ?? Auth::id();
                 $request->merge([
                     'technician_ids' => [$firstTech],
                     'technician_id' => $firstTech,
@@ -286,10 +294,14 @@ class InfrastructureWorkOrderController extends Controller
     }
 
     /**
-     * Gudang: Konfirmasi Pengeluaran Material & Cetak Surat Jalan.
+     * Gudang / Ka. Teknisi / Maintenance: Konfirmasi Pengeluaran Material & Cetak Surat Jalan.
      */
     public function approveMaterial(InfrastructureWorkOrder $workOrder)
     {
+        if (!Auth::user()->can('infrastructure_work_orders_dispatch') && !Auth::user()->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menyetujui pengeluaran material.');
+        }
+
         try {
             InfrastructureWorkOrderService::approveMaterialDispatch($workOrder, Auth::user());
             return back()->with('success', "Material untuk {$workOrder->wo_number} telah disetujui & stok gudang telah dialokasikan!");
@@ -303,6 +315,10 @@ class InfrastructureWorkOrderController extends Controller
      */
     public function startWork(InfrastructureWorkOrder $workOrder)
     {
+        if (!Auth::user()->can('infrastructure_work_orders_start') && !Auth::user()->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk memulai pengerjaan lapangan.');
+        }
+
         $workOrder->update(['status' => 'in_progress']);
         return back()->with('success', "Status pengerjaan diubah menjadi: Sedang Dikerjakan.");
     }
@@ -312,6 +328,10 @@ class InfrastructureWorkOrderController extends Controller
      */
     public function submitReport(Request $request, InfrastructureWorkOrder $workOrder)
     {
+        if (!Auth::user()->can('infrastructure_work_orders_report') && !Auth::user()->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengirim laporan pengerjaan lapangan.');
+        }
+
         $validated = $request->validate([
             'actual_latitude' => 'nullable|numeric|between:-90,90',
             'actual_longitude' => 'nullable|numeric|between:-180,180',
@@ -320,6 +340,7 @@ class InfrastructureWorkOrderController extends Controller
             'cable_meter_start' => 'nullable|integer|min:0',
             'cable_meter_end' => 'nullable|integer|min:0',
             'cable_length_used' => 'nullable|integer|min:0',
+            'photo_odp' => 'nullable|image|max:10240',
             'photo_pole' => 'nullable|image|max:5120',
             'photo_splicing' => 'nullable|image|max:5120',
             'photo_opm' => 'nullable|image|max:5120',
@@ -334,6 +355,9 @@ class InfrastructureWorkOrderController extends Controller
         ]);
 
         $photos = [];
+        if ($request->hasFile('photo_odp')) {
+            $photos['photo_odp'] = $request->file('photo_odp');
+        }
         if ($request->hasFile('photo_pole')) {
             $photos['photo_pole'] = $request->file('photo_pole');
         }
@@ -353,17 +377,21 @@ class InfrastructureWorkOrderController extends Controller
                 $validated['reconciliations'] ?? []
             );
 
-            return back()->with('success', "Laporan pengerjaan {$workOrder->wo_number} berhasil dikirim! Menunggu verifikasi & komisioning NOC.");
+            return back()->with('success', "Laporan pengerjaan {$workOrder->wo_number} berhasil dikirim! Foto ODP/ODC otomatis diperbarui & menunggu verifikasi NOC.");
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
     }
 
     /**
-     * NOC: Setujui Pengerjaan & Komisioning Otomatis ke Master Database & GIS.
+     * NOC / Ka. Teknisi: Setujui Pengerjaan & Komisioning Otomatis ke Master Database & GIS.
      */
     public function approve(InfrastructureWorkOrder $workOrder)
     {
+        if (!Auth::user()->can('infrastructure_work_orders_approve') && !Auth::user()->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menyetujui komisioning ke GIS.');
+        }
+
         try {
             InfrastructureWorkOrderService::approveAndCommission($workOrder, Auth::user());
             return back()->with('success', "Pengerjaan {$workOrder->wo_number} berhasil disetujui! Perangkat {$workOrder->target_name} telah aktif di master data & peta GIS.");
@@ -373,10 +401,14 @@ class InfrastructureWorkOrderController extends Controller
     }
 
     /**
-     * NOC: Tolak / Minta Revisi.
+     * NOC / Ka. Teknisi: Tolak / Minta Revisi.
      */
     public function reject(Request $request, InfrastructureWorkOrder $workOrder)
     {
+        if (!Auth::user()->can('infrastructure_work_orders_reject') && !Auth::user()->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk meminta revisi pengerjaan.');
+        }
+
         $validated = $request->validate([
             'reason' => 'required|string|max:500',
         ]);
@@ -391,6 +423,10 @@ class InfrastructureWorkOrderController extends Controller
      */
     public function requestMaterial(Request $request, InfrastructureWorkOrder $workOrder)
     {
+        if (!Auth::user()->can('infrastructure_work_orders_request_material') && !Auth::user()->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengajukan permintaan tambahan material.');
+        }
+
         if ($request->has('items') && is_array($request->items)) {
             $validated = $request->validate([
                 'items' => 'required|array|min:1',
@@ -462,6 +498,10 @@ class InfrastructureWorkOrderController extends Controller
      */
     public function approveMaterialRequest(Request $request, InfrastructureWorkOrder $workOrder, InfrastructureWorkOrderMaterialRequest $materialRequest)
     {
+        if (!Auth::user()->can('infrastructure_work_orders_review_material') && !Auth::user()->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menyetujui permintaan tambahan material.');
+        }
+
         if ($materialRequest->status !== 'pending') {
             return redirect()->back()->with('error', 'Permintaan material ini sudah diproses sebelumnya.');
         }
@@ -569,6 +609,10 @@ class InfrastructureWorkOrderController extends Controller
      */
     public function rejectMaterialRequest(Request $request, InfrastructureWorkOrder $workOrder, InfrastructureWorkOrderMaterialRequest $materialRequest)
     {
+        if (!Auth::user()->can('infrastructure_work_orders_review_material') && !Auth::user()->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menolak permintaan tambahan material.');
+        }
+
         $validated = $request->validate([
             'reason' => 'required|string|max:500',
         ]);
@@ -581,5 +625,47 @@ class InfrastructureWorkOrderController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Permintaan tambahan material telah ditolak.');
+    }
+
+    /**
+     * Upload / Perbarui Foto Fisik ODP / ODC Langsung dan Sinkronkan ke Master Data GIS.
+     */
+    public function uploadPhoto(Request $request, InfrastructureWorkOrder $workOrder)
+    {
+        if (!Auth::user()->can('infrastructure_work_orders_upload_photo') && !Auth::user()->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengunggah foto perangkat.');
+        }
+
+        $request->validate([
+            'photo_odp' => 'required|image|mimes:jpeg,png,jpg,webp|max:10240',
+        ]);
+
+        $dir = $workOrder->type === 'odc_deployment' ? 'infrastructure/odc' : 'infrastructure/odp';
+        $path = $request->file('photo_odp')->store($dir, 'public');
+
+        $workOrder->update(['photo_odp' => $path]);
+        InfrastructureWorkOrderService::syncPhotoToMaster($workOrder, $path);
+
+        return back()->with('success', 'Foto perangkat ODC/ODP berhasil diperbarui dan otomatis disinkronkan ke master data & GIS!');
+    }
+
+    /**
+     * Hapus Work Order Rollout.
+     */
+    public function destroy(InfrastructureWorkOrder $workOrder)
+    {
+        if (!Auth::user()->can('infrastructure_work_orders_delete') && !Auth::user()->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus Work Order.');
+        }
+
+        DB::transaction(function () use ($workOrder) {
+            $workOrder->opticalChecks()->delete();
+            $workOrder->materials()->delete();
+            $workOrder->materialRequests()->delete();
+            $workOrder->technicians()->detach();
+            $workOrder->delete();
+        });
+
+        return redirect()->route('infrastructure.work-orders.index')->with('success', 'Work Order berhasil dihapus.');
     }
 }

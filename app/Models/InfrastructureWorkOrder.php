@@ -43,6 +43,7 @@ class InfrastructureWorkOrder extends Model
         'photo_pole',
         'photo_splicing',
         'photo_opm',
+        'photo_odp',
         'notes',
         'rejection_reason',
         'approved_by',
