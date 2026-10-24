@@ -20,13 +20,14 @@ class EmployeeController extends Controller
         $scopeLevel = \App\Services\DataScopeService::getScopeLevel($user, 'hr_employees');
         
         if ($request->filled('search')) {
-            $search = strtolower($request->search);
+            $search = trim($request->search);
             $query->where(function($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('iak_number', 'like', "%{$search}%")
                   ->orWhere('position', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%");
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhereHas('area', fn($aq) => $aq->where('name', 'like', "%{$search}%"));
             });
         }
 
@@ -136,7 +137,7 @@ class EmployeeController extends Controller
                 'all' => $totalAll,
             ],
             'scopeLevel' => $scopeLevel,
-            'filters' => $request->only(['search', 'area_id', 'employee_type', 'tenure', 'sort', 'status'])
+            'filters' => array_filter($request->only(['search', 'area_id', 'employee_type', 'tenure', 'sort', 'status']), fn($v) => !is_null($v) && $v !== '')
         ]);
     }
 

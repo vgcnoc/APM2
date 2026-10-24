@@ -138,13 +138,32 @@
                         <input 
                             type="text" 
                             v-model="search" 
+                            @input="debouncedApplyFilters"
+                            @keyup.enter="applyFiltersNow"
                             placeholder="Cari nama, posisi, email, telepon, No IAK..." 
-                            class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-sm"
-                            @keyup.enter="applyFilters"
+                            class="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-sm bg-white font-medium text-gray-800 placeholder-gray-400"
                         >
-                        <svg class="w-5 h-5 text-gray-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                        </svg>
+                        <button 
+                            type="button"
+                            @click="applyFiltersNow"
+                            class="absolute left-3 top-2.5 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer"
+                            title="Cari"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                        </button>
+                        <button 
+                            v-if="search" 
+                            @click="clearSearch" 
+                            type="button" 
+                            class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-700 transition-colors cursor-pointer p-0.5 rounded-full hover:bg-gray-100"
+                            title="Hapus pencarian"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
                     </div>
 
                     <!-- Actions -->
@@ -206,8 +225,8 @@
                         <span class="text-gray-500 font-semibold uppercase text-[10px] tracking-wider">⏱️ Masa Kerja:</span>
                         <select 
                             v-model="filterTenure" 
-                            @change="applyFilters" 
-                            class="rounded-xl border-gray-200 text-xs py-1.5 px-3 focus:border-blue-500 bg-gray-50 font-medium"
+                            @change="applyFiltersNow" 
+                            class="rounded-xl border-gray-200 text-xs py-1.5 px-3 focus:border-blue-500 bg-gray-50 font-medium text-gray-800"
                         >
                             <option value="">Semua Masa Kerja</option>
                             <option value="senior">⭐ Senior (> 3 Tahun)</option>
@@ -223,8 +242,8 @@
                         <span class="text-gray-500 font-semibold uppercase text-[10px] tracking-wider">Tipe:</span>
                         <select 
                             v-model="filterType" 
-                            @change="applyFilters" 
-                            class="rounded-xl border-gray-200 text-xs py-1.5 px-3 focus:border-blue-500 bg-gray-50 font-medium"
+                            @change="applyFiltersNow" 
+                            class="rounded-xl border-gray-200 text-xs py-1.5 px-3 focus:border-blue-500 bg-gray-50 font-medium text-gray-800"
                         >
                             <option value="">Semua Tipe</option>
                             <option value="Tetap">Tetap</option>
@@ -239,8 +258,8 @@
                         <span class="text-gray-500 font-semibold uppercase text-[10px] tracking-wider">Area:</span>
                         <select 
                             v-model="filterArea" 
-                            @change="applyFilters" 
-                            class="rounded-xl border-gray-200 text-xs py-1.5 px-3 focus:border-blue-500 bg-gray-50 font-medium"
+                            @change="applyFiltersNow" 
+                            class="rounded-xl border-gray-200 text-xs py-1.5 px-3 focus:border-blue-500 bg-gray-50 font-medium text-gray-800"
                         >
                             <option value="">Semua Area</option>
                             <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
@@ -252,8 +271,8 @@
                         <span class="text-gray-500 font-semibold uppercase text-[10px] tracking-wider">Urutkan:</span>
                         <select 
                             v-model="sortBy" 
-                            @change="applyFilters" 
-                            class="rounded-xl border-gray-200 text-xs py-1.5 px-3 focus:border-blue-500 bg-gray-50 font-medium"
+                            @change="applyFiltersNow" 
+                            class="rounded-xl border-gray-200 text-xs py-1.5 px-3 focus:border-blue-500 bg-gray-50 font-medium text-gray-800"
                         >
                             <option value="">Terbaru Ditambahkan</option>
                             <option value="senior">⏱️ Paling Lama Bekerja (Senior)</option>
@@ -1240,7 +1259,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { router, useForm, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { usePermission } from '@/Composables/usePermission';
@@ -1269,7 +1288,7 @@ const statusFilter = ref(props.filters?.status || 'active');
 
 const setStatusFilter = (val) => {
     statusFilter.value = val;
-    applyFilters();
+    applyFiltersNow();
 };
 
 const showModal = ref(false);
@@ -1531,26 +1550,66 @@ const hasActiveFilter = computed(() => {
     return !!(search.value || filterArea.value || filterType.value || filterTenure.value || sortBy.value || (statusFilter.value && statusFilter.value !== 'active'));
 });
 
-const applyFilters = () => {
-    router.get('/employees', {
-        search: search.value || undefined,
-        area_id: filterArea.value || undefined,
-        employee_type: filterType.value || undefined,
-        tenure: filterTenure.value || undefined,
-        sort: sortBy.value || undefined,
-        status: statusFilter.value !== 'active' ? statusFilter.value : undefined,
-    }, { preserveState: true, preserveScroll: true });
+let debounceTimer = null;
+
+const applyFilters = (options = {}) => {
+    const params = {};
+    const trimmed = (search.value || '').trim();
+    if (trimmed) params.search = trimmed;
+    if (filterArea.value) params.area_id = filterArea.value;
+    if (filterType.value) params.employee_type = filterType.value;
+    if (filterTenure.value) params.tenure = filterTenure.value;
+    if (sortBy.value) params.sort = sortBy.value;
+    if (statusFilter.value && statusFilter.value !== 'active') params.status = statusFilter.value;
+
+    if (!options.keepPage) {
+        params.page = 1;
+    }
+
+    router.get('/employees', params, { 
+        preserveState: true, 
+        preserveScroll: true,
+        replace: true,
+    });
+};
+
+const debouncedApplyFilters = () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+        applyFilters();
+    }, 350);
+};
+
+const applyFiltersNow = () => {
+    clearTimeout(debounceTimer);
+    applyFilters();
+};
+
+const clearSearch = () => {
+    clearTimeout(debounceTimer);
+    search.value = '';
+    applyFilters();
 };
 
 const resetFilters = () => {
+    clearTimeout(debounceTimer);
     search.value = '';
     filterArea.value = '';
     filterType.value = '';
     filterTenure.value = '';
     sortBy.value = '';
     statusFilter.value = 'active';
-    router.get('/employees', {}, { preserveState: true, preserveScroll: true });
+    router.get('/employees', {}, { preserveState: true, preserveScroll: true, replace: true });
 };
+
+watch(() => props.filters, (newFilters) => {
+    search.value = newFilters?.search || '';
+    filterArea.value = newFilters?.area_id || '';
+    filterType.value = newFilters?.employee_type || '';
+    filterTenure.value = newFilters?.tenure || '';
+    sortBy.value = newFilters?.sort || '';
+    statusFilter.value = newFilters?.status || 'active';
+}, { deep: true });
 
 // ── Kalkulasi Lama Bekerja (Masa Kerja) ─────────────────────────
 const calculateTenure = (joinDateStr, endDateStr = null) => {
