@@ -123,4 +123,9 @@ class InfrastructureWorkOrder extends Model
     {
         return $this->hasMany(InfrastructureWorkOrderOpticalCheck::class, 'work_order_id');
     }
+
+    public function materialRequests(): HasMany
+    {
+        return $this->hasMany(InfrastructureWorkOrderMaterialRequest::class, 'work_order_id');
+    }
 }

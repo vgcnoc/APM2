@@ -282,6 +282,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{workOrder}/approve-material', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'approveMaterial'])->name('approve-material');
         Route::post('/{workOrder}/start-work', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'startWork'])->name('start-work');
         Route::post('/{workOrder}/submit-report', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'submitReport'])->name('submit-report');
+        Route::post('/{workOrder}/request-material', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'requestMaterial'])->name('request-material');
+        Route::post('/{workOrder}/material-requests/{materialRequest}/approve', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'approveMaterialRequest'])->name('material-requests.approve');
+        Route::post('/{workOrder}/material-requests/{materialRequest}/reject', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'rejectMaterialRequest'])->name('material-requests.reject');
         Route::post('/{workOrder}/approve', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'approve'])->name('approve');
         Route::post('/{workOrder}/reject', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'reject'])->name('reject');
     });

@@ -1,16 +1,131 @@
 <script setup>
 import { Head, Link, useForm, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, computed, watch } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
     workOrder: Object,
+    materials: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const activeTab = ref('details'); // 'details' | 'materials' | 'optical' | 'photos'
 const showReportModal = ref(false);
 const showRejectModal = ref(false);
 const rejectReason = ref('');
+
+// Permintaan Tambahan Material Lapangan (Request Material)
+const showMaterialRequestModal = ref(false);
+const materialRequestForm = useForm({
+    items: [
+        { item_name: '', material_id: null, quantity: 1, unit: 'meter' }
+    ],
+    notes: '',
+});
+
+const addRequestItem = () => {
+    materialRequestForm.items.push({ item_name: '', material_id: null, quantity: 1, unit: 'pcs' });
+};
+
+const removeRequestItem = (idx) => {
+    if (materialRequestForm.items.length > 1) {
+        materialRequestForm.items.splice(idx, 1);
+    }
+};
+
+const onMaterialSelect = (item) => {
+    if (item.material_id) {
+        const found = props.materials.find(m => m.id === item.material_id);
+        if (found) {
+            item.item_name = found.name;
+            item.unit = found.unit || 'pcs';
+        }
+    }
+};
+
+const submitMaterialRequest = () => {
+    const validItems = materialRequestForm.items.filter(i => (i.item_name && i.item_name.trim()) || i.material_id);
+    if (validItems.length === 0) {
+        alert('Silakan tuliskan atau pilih minimal 1 material yang dibutuhkan.');
+        return;
+    }
+    if (!materialRequestForm.notes || !materialRequestForm.notes.trim()) {
+        alert('Mohon tuliskan alasan / kondisi kebutuhan di lapangan.');
+        return;
+    }
+
+    materialRequestForm.items = validItems.map(i => ({
+        item_name: i.item_name ? i.item_name.trim() : '',
+        material_id: i.material_id,
+        quantity: parseFloat(i.quantity) || 1,
+        unit: i.unit || 'pcs',
+    }));
+
+    materialRequestForm.post(route('infrastructure.work-orders.request-material', props.workOrder.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            materialRequestForm.reset();
+            materialRequestForm.items = [{ item_name: '', material_id: null, quantity: 1, unit: 'meter' }];
+            materialRequestForm.notes = '';
+            showMaterialRequestModal.value = false;
+        }
+    });
+};
+
+// Review & Approval Material Tambahan (Ka. Teknisi / Gudang / Admin)
+const showReviewMaterialModal = ref(false);
+const selectedReviewRequest = ref(null);
+const reviewForm = useForm({
+    material_id: '',
+    quantity: '',
+    notes: '',
+    rejection_reason: '',
+});
+
+const openReviewModal = (mr) => {
+    selectedReviewRequest.value = mr;
+    reviewForm.material_id = mr.material_id || (props.materials[0]?.id || '');
+    reviewForm.quantity = mr.quantity;
+    reviewForm.notes = '';
+    reviewForm.rejection_reason = '';
+    showReviewMaterialModal.value = true;
+};
+
+const approveReviewRequest = () => {
+    if (!selectedReviewRequest.value) return;
+    if (!reviewForm.material_id) {
+        alert('Silakan pilih material dari stok gudang.');
+        return;
+    }
+    reviewForm.post(route('infrastructure.work-orders.material-requests.approve', [props.workOrder.id, selectedReviewRequest.value.id]), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showReviewMaterialModal.value = false;
+            selectedReviewRequest.value = null;
+        }
+    });
+};
+
+const rejectReviewRequest = () => {
+    if (!selectedReviewRequest.value) return;
+    if (!reviewForm.rejection_reason || !reviewForm.rejection_reason.trim()) {
+        alert('Silakan masukkan alasan penolakan.');
+        return;
+    }
+    reviewForm.post(route('infrastructure.work-orders.material-requests.reject', [props.workOrder.id, selectedReviewRequest.value.id]), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showReviewMaterialModal.value = false;
+            selectedReviewRequest.value = null;
+        }
+    });
+};
+
+const pendingMaterialRequests = computed(() => {
+    return (props.workOrder.material_requests || []).filter(r => r.status === 'pending');
+});
 
 // Form Pelaporan Lapangan Teknisi
 const reportForm = useForm({
@@ -36,6 +151,22 @@ const reportForm = useForm({
         unit: m.unit,
     })),
 });
+
+// Sinkronisasi daftar rekonsiliasi jika ada material tambahan yang baru disetujui
+watch(() => props.workOrder.materials, (newMats) => {
+    if (newMats) {
+        reportForm.reconciliations = newMats.map(m => {
+            const existing = reportForm.reconciliations.find(r => r.id === m.id);
+            return {
+                id: m.id,
+                name: m.material?.name || 'Material',
+                requested_qty: m.requested_qty,
+                used_qty: existing ? existing.used_qty : (m.used_qty ?? m.requested_qty),
+                unit: m.unit,
+            };
+        });
+    }
+}, { deep: true });
 
 const isReportLocating = ref(false);
 const getReportLocation = () => {
@@ -160,6 +291,20 @@ const formatDate = (dateStr) => {
                 <button type="button" @click="$page.props.flash.error = null" class="text-rose-500 hover:text-rose-800 text-sm font-black">&times;</button>
             </div>
 
+            <!-- Alert Permintaan Material Tambahan Menunggu Review -->
+            <div v-if="pendingMaterialRequests.length > 0" class="mb-4 p-4 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white flex items-center justify-between shadow-lg animate-fade-in-up">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl animate-bounce">📦</span>
+                    <div>
+                        <p class="font-black text-sm">Ada {{ pendingMaterialRequests.length }} Permintaan Tambahan Material Lapangan!</p>
+                        <p class="text-xs text-amber-100">Teknisi mengajukan kebutuhan material tambahan untuk melanjutkan pekerjaan.</p>
+                    </div>
+                </div>
+                <button type="button" @click="activeTab = 'materials'" class="px-4 py-2 bg-white text-amber-900 rounded-xl font-bold text-xs shadow-sm hover:bg-amber-50 transition-all cursor-pointer shrink-0">
+                    Buka Tab Material &rarr;
+                </button>
+            </div>
+
             <!-- Banner Header -->
             <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl mb-8 relative overflow-hidden">
                 <div class="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -221,6 +366,16 @@ const formatDate = (dateStr) => {
                         >
                             <span>📄 Cetak Surat Jalan</span>
                         </a>
+
+                        <!-- Action: Request Tambahan Material Lapangan (Teknisi / Admin) -->
+                        <button
+                            v-if="workOrder.status !== 'completed'"
+                            type="button"
+                            @click="showMaterialRequestModal = true"
+                            class="px-4 py-2 bg-amber-500/90 hover:bg-amber-400 text-slate-900 font-bold text-xs rounded-xl shadow-lg transition-all flex items-center gap-1.5 cursor-pointer"
+                        >
+                            <span>📢 + Request Material</span>
+                        </button>
 
                         <!-- Action: Gudang Approve Material -->
                         <button
@@ -463,6 +618,92 @@ const formatDate = (dateStr) => {
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- Daftar Permintaan Tambahan Material Lapangan (Request Material) -->
+                    <div class="mt-8 pt-6 border-t border-slate-200/80">
+                        <div class="flex items-center justify-between flex-wrap gap-2 mb-4">
+                            <div>
+                                <h4 class="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                                    <span>📢</span> Permintaan Tambahan Material Lapangan ({{ workOrder.material_requests?.length || 0 }})
+                                </h4>
+                                <p class="text-[11px] text-slate-500 mt-0.5">
+                                    Pengajuan kebutuhan darurat dari teknisi lapangan saat pelaksanaan penarikan / splicing ODC &amp; ODP.
+                                </p>
+                            </div>
+                            <button
+                                v-if="workOrder.status !== 'completed'"
+                                type="button"
+                                @click="showMaterialRequestModal = true"
+                                class="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                            >
+                                <span>+ Request Tambahan Baru</span>
+                            </button>
+                        </div>
+
+                        <div v-if="!workOrder.material_requests || workOrder.material_requests.length === 0" class="p-6 text-center bg-slate-50 rounded-2xl border border-slate-200/60 text-slate-400 text-xs">
+                            Belum ada permintaan tambahan material lapangan untuk penugasan ini.
+                        </div>
+
+                        <div v-else class="space-y-3">
+                            <div
+                                v-for="mr in workOrder.material_requests"
+                                :key="'mr-' + mr.id"
+                                class="p-4 rounded-2xl border transition-all text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs"
+                                :class="{
+                                    'bg-amber-50/70 border-amber-300': mr.status === 'pending',
+                                    'bg-emerald-50/70 border-emerald-300': mr.status === 'approved',
+                                    'bg-rose-50/70 border-rose-300': mr.status === 'rejected',
+                                }"
+                            >
+                                <div class="space-y-1">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <span class="font-bold text-slate-900 text-sm">
+                                            📦 {{ mr.item_name || mr.material?.name || 'Material' }}
+                                        </span>
+                                        <span class="px-2 py-0.5 rounded-lg bg-white border border-slate-200 font-mono font-black text-amber-700">
+                                            {{ mr.quantity }} {{ mr.unit }}
+                                        </span>
+                                        <span
+                                            class="px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase"
+                                            :class="{
+                                                'bg-amber-100 text-amber-800 border-amber-300 animate-pulse': mr.status === 'pending',
+                                                'bg-emerald-100 text-emerald-800 border-emerald-300': mr.status === 'approved',
+                                                'bg-rose-100 text-rose-800 border-rose-300': mr.status === 'rejected',
+                                            }"
+                                        >
+                                            {{ mr.status === 'pending' ? '⏳ Menunggu Persetujuan' : (mr.status === 'approved' ? '✓ Disetujui & Masuk Bekal' : '✕ Ditolak') }}
+                                        </span>
+                                    </div>
+                                    <p class="text-slate-600">
+                                        <b>Alasan / Kondisi Lapangan:</b> "{{ mr.notes || '-' }}"
+                                    </p>
+                                    <div class="text-[11px] text-slate-400 flex items-center gap-2 flex-wrap">
+                                        <span>Diajukan oleh: <b>{{ mr.requester?.name || 'Teknisi' }}</b></span>
+                                        <span>&bull;</span>
+                                        <span>{{ formatDate(mr.created_at) }}</span>
+                                        <template v-if="mr.reviewer">
+                                            <span>&bull;</span>
+                                            <span>Direview oleh: <b>{{ mr.reviewer?.name }}</b></span>
+                                        </template>
+                                    </div>
+                                    <div v-if="mr.rejection_reason && mr.status === 'rejected'" class="text-rose-700 font-semibold text-[11px]">
+                                        Alasan Penolakan: {{ mr.rejection_reason }}
+                                    </div>
+                                </div>
+
+                                <!-- Action Approval untuk Admin / Gudang / Ka. Teknisi jika status Pending -->
+                                <div v-if="mr.status === 'pending'" class="flex items-center gap-2 shrink-0">
+                                    <button
+                                        type="button"
+                                        @click="openReviewModal(mr)"
+                                        class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer flex items-center gap-1"
+                                    >
+                                        <span>✓ Review &amp; Setujui</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- ════ TAB 3: UJI REDAMAN OPTIK (OPM) ════ -->
@@ -642,7 +883,24 @@ const formatDate = (dateStr) => {
 
                         <!-- Rekonsiliasi Material (Berapa yang terpakai) -->
                         <div class="space-y-2">
-                            <span class="text-xs font-bold text-slate-700 uppercase block">Rekonsiliasi Material Terpakai vs Retur</span>
+                            <div class="flex items-center justify-between flex-wrap gap-2">
+                                <span class="text-xs font-bold text-slate-700 uppercase block">
+                                    Rekonsiliasi Material Terpakai vs Retur
+                                </span>
+                                <button
+                                    type="button"
+                                    @click="showMaterialRequestModal = true"
+                                    class="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold shadow-xs transition-all flex items-center gap-1 cursor-pointer"
+                                >
+                                    <span>📢 + Request Tambahan Material</span>
+                                </button>
+                            </div>
+
+                            <div v-if="pendingMaterialRequests.length > 0" class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center justify-between">
+                                <span>⏳ Terdapat <b>{{ pendingMaterialRequests.length }} permintaan material</b> sedang menunggu persetujuan Ka. Teknisi / Gudang.</span>
+                                <span class="font-bold text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full">Menunggu</span>
+                            </div>
+
                             <div class="space-y-2 text-xs">
                                 <div v-for="mat in reportForm.reconciliations" :key="mat.id" class="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl">
                                     <span class="font-semibold text-slate-800">{{ mat.name }} (Diambil: {{ mat.requested_qty }} {{ mat.unit }})</span>
@@ -674,6 +932,227 @@ const formatDate = (dateStr) => {
                     <div class="flex justify-end gap-2 pt-2">
                         <button type="button" @click="showRejectModal = false" class="px-4 py-2 bg-slate-100 rounded-xl text-xs font-bold">Batal</button>
                         <button type="button" @click="submitRejection" class="px-4 py-2 bg-rose-600 text-white rounded-xl text-xs font-bold">Kirim Revisi</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODAL: REQUEST TAMBAHAN MATERIAL LAPANGAN -->
+            <div v-if="showMaterialRequestModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+                <div class="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 max-h-[90vh] overflow-y-auto space-y-5 animate-fade-in-up">
+                    <div class="flex items-center justify-between border-b pb-3">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900 flex items-center gap-1.5">
+                                <span>📢</span> Request Tambahan Material Lapangan
+                            </h3>
+                            <p class="text-[11px] text-slate-500 mt-0.5">Penugasan {{ workOrder.wo_number }} &bull; {{ workOrder.target_name }}</p>
+                        </div>
+                        <button type="button" @click="showMaterialRequestModal = false" class="text-slate-400 hover:text-slate-600 font-bold text-xl">&times;</button>
+                    </div>
+
+                    <form @submit.prevent="submitMaterialRequest" class="space-y-4">
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between">
+                                <label class="block text-xs font-bold text-slate-700 uppercase">
+                                    Daftar Material yang Dibutuhkan *
+                                </label>
+                                <button
+                                    type="button"
+                                    @click="addRequestItem"
+                                    class="text-indigo-600 hover:text-indigo-800 font-bold text-xs flex items-center gap-1 cursor-pointer"
+                                >
+                                    <span>+ Tambah Baris</span>
+                                </button>
+                            </div>
+
+                            <div v-for="(item, idx) in materialRequestForm.items" :key="'req-row-' + idx" class="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-[10px] font-bold text-slate-500 uppercase">Baris #{{ idx + 1 }}</span>
+                                    <button
+                                        v-if="materialRequestForm.items.length > 1"
+                                        type="button"
+                                        @click="removeRequestItem(idx)"
+                                        class="text-rose-500 hover:text-rose-700 text-xs font-bold cursor-pointer"
+                                    >
+                                        ✕ Hapus
+                                    </button>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                                    <!-- Pilih Material dari Gudang atau Ketik Manual -->
+                                    <div class="sm:col-span-6">
+                                        <label class="block text-[10px] text-slate-500 mb-0.5">Pilih dari Master / Ketik</label>
+                                        <select
+                                            v-model="item.material_id"
+                                            @change="onMaterialSelect(item)"
+                                            class="w-full text-xs rounded-xl border-slate-300 py-1.5 px-2 bg-white"
+                                        >
+                                            <option :value="null">-- Ketik Nama Manual --</option>
+                                            <option v-for="m in materials" :key="m.id" :value="m.id">
+                                                {{ m.name }} (Stok: {{ m.stock }} {{ m.unit }})
+                                            </option>
+                                        </select>
+                                    </div>
+
+                                    <div class="sm:col-span-6">
+                                        <label class="block text-[10px] text-slate-500 mb-0.5">Nama Barang *</label>
+                                        <input
+                                            type="text"
+                                            v-model="item.item_name"
+                                            placeholder="Cth: Dropcore 50m / Klem Tiang"
+                                            class="w-full text-xs rounded-xl border-slate-300 py-1.5 px-2"
+                                            required
+                                        />
+                                    </div>
+
+                                    <div class="sm:col-span-6">
+                                        <label class="block text-[10px] text-slate-500 mb-0.5">Jumlah (Qty) *</label>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0.01"
+                                            v-model.number="item.quantity"
+                                            class="w-full text-xs font-bold text-center rounded-xl border-slate-300 py-1.5 px-2"
+                                            required
+                                        />
+                                    </div>
+
+                                    <div class="sm:col-span-6">
+                                        <label class="block text-[10px] text-slate-500 mb-0.5">Satuan *</label>
+                                        <select v-model="item.unit" class="w-full text-xs rounded-xl border-slate-300 py-1.5 px-2 bg-white">
+                                            <option value="meter">meter</option>
+                                            <option value="pcs">pcs</option>
+                                            <option value="rol">rol</option>
+                                            <option value="set">set</option>
+                                            <option value="unit">unit</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Alasan Kebutuhan -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">
+                                Alasan / Kondisi Lapangan *
+                            </label>
+                            <textarea
+                                v-model="materialRequestForm.notes"
+                                rows="2"
+                                placeholder="Contoh: Kabel kurang 40 meter karena tiang harus memutar melewati persimpangan jalan..."
+                                class="w-full text-xs rounded-xl border-slate-300 p-2.5"
+                                required
+                            ></textarea>
+                        </div>
+
+                        <div class="flex justify-end gap-2 pt-3 border-t">
+                            <button type="button" @click="showMaterialRequestModal = false" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer">
+                                Batal
+                            </button>
+                            <button type="submit" :disabled="materialRequestForm.processing" class="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-md transition-all cursor-pointer disabled:opacity-50">
+                                Kirim Permintaan Tambahan &rarr;
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- MODAL: REVIEW & PERSETUJUAN MATERIAL TAMBAHAN (Ka. Teknisi / Gudang / Admin) -->
+            <div v-if="showReviewMaterialModal && selectedReviewRequest" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+                <div class="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 space-y-4 animate-fade-in-up">
+                    <div class="flex items-center justify-between border-b pb-3">
+                        <h3 class="text-base font-bold text-slate-900 flex items-center gap-1.5">
+                            <span>📦</span> Review Permintaan Tambahan Material
+                        </h3>
+                        <button type="button" @click="showReviewMaterialModal = false" class="text-slate-400 hover:text-slate-600 font-bold text-xl">&times;</button>
+                    </div>
+
+                    <div class="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-xs space-y-1">
+                        <p class="font-bold text-amber-900">
+                            Kebutuhan Teknisi: {{ selectedReviewRequest.item_name }} ({{ selectedReviewRequest.quantity }} {{ selectedReviewRequest.unit }})
+                        </p>
+                        <p class="text-slate-600">
+                            <b>Alasan:</b> "{{ selectedReviewRequest.notes }}"
+                        </p>
+                        <p class="text-[10px] text-slate-400">
+                            Diajukan oleh: <b>{{ selectedReviewRequest.requester?.name || 'Teknisi' }}</b> &bull; {{ formatDate(selectedReviewRequest.created_at) }}
+                        </p>
+                    </div>
+
+                    <!-- Pilih Material Gudang & Qty Disetujui -->
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">
+                                Pilih Material dari Stok Gudang *
+                            </label>
+                            <select
+                                v-model="reviewForm.material_id"
+                                class="w-full text-xs rounded-xl border-slate-300 py-2 px-3 bg-white font-medium"
+                                required
+                            >
+                                <option value="" disabled>-- Pilih Material Gudang --</option>
+                                <option v-for="m in materials" :key="m.id" :value="m.id">
+                                    {{ m.name }} — Stok: {{ m.stock }} {{ m.unit }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">
+                                Jumlah yang Disetujui *
+                            </label>
+                            <div class="flex items-center gap-2">
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0.01"
+                                    v-model.number="reviewForm.quantity"
+                                    class="w-32 text-xs font-bold rounded-xl border-slate-300 py-1.5 px-3 text-center"
+                                    required
+                                />
+                                <span class="text-xs text-slate-500 font-bold">{{ selectedReviewRequest.unit }}</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">
+                                Alasan Penolakan (Hanya jika ingin menolak)
+                            </label>
+                            <input
+                                type="text"
+                                v-model="reviewForm.rejection_reason"
+                                placeholder="Tulis alasan jika menolak permintaan..."
+                                class="w-full text-xs rounded-xl border-slate-300 py-1.5 px-3"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-4 border-t gap-2">
+                        <button
+                            type="button"
+                            @click="rejectReviewRequest"
+                            :disabled="reviewForm.processing"
+                            class="px-4 py-2 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-xl text-xs font-bold transition-all border border-rose-200 cursor-pointer disabled:opacity-50"
+                        >
+                            ✕ Tolak Permintaan
+                        </button>
+
+                        <div class="flex gap-2">
+                            <button
+                                type="button"
+                                @click="showReviewMaterialModal = false"
+                                class="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="button"
+                                @click="approveReviewRequest"
+                                :disabled="reviewForm.processing"
+                                class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1"
+                            >
+                                <span>✓ Setujui &amp; Potong Stok</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

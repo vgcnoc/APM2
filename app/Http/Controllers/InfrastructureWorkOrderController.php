@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Area;
 use App\Models\InfrastructureWorkOrder;
+use App\Models\InfrastructureWorkOrderMaterial;
+use App\Models\InfrastructureWorkOrderMaterialRequest;
 use App\Models\Material;
 use App\Models\MaterialTransaction;
+use App\Models\MaterialTransactionItem;
 use App\Models\MaterialStock;
 use App\Models\Odc;
 use App\Models\Olt;
@@ -14,6 +17,7 @@ use App\Services\InfrastructureWorkOrderService;
 use App\Services\DataScopeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -254,10 +258,18 @@ class InfrastructureWorkOrderController extends Controller
             'opticalChecks',
             'createdOdc',
             'createdOdp',
+            'materialRequests.material',
+            'materialRequests.requester',
+            'materialRequests.reviewer',
         ]);
+
+        $materials = Material::select('id', 'name', 'unit', 'stock', 'category')
+            ->orderBy('name')
+            ->get();
 
         return Inertia::render('Infrastructure/WorkOrders/Show', [
             'workOrder' => $workOrder,
+            'materials' => $materials,
         ]);
     }
 
@@ -372,5 +384,202 @@ class InfrastructureWorkOrderController extends Controller
         InfrastructureWorkOrderService::rejectWorkOrder($workOrder, $validated['reason'], Auth::user());
 
         return back()->with('success', "Penugasan {$workOrder->wo_number} telah dikembalikan untuk revisi teknisi.");
+    }
+
+    /**
+     * Teknisi Lapangan: Ajukan Permintaan Tambahan Material (Single / Multi Items).
+     */
+    public function requestMaterial(Request $request, InfrastructureWorkOrder $workOrder)
+    {
+        if ($request->has('items') && is_array($request->items)) {
+            $validated = $request->validate([
+                'items' => 'required|array|min:1',
+                'items.*.item_name' => 'required|string|max:255',
+                'items.*.material_id' => 'nullable|exists:materials,id',
+                'items.*.quantity' => 'required|numeric|min:0.01',
+                'items.*.unit' => 'required|string|max:50',
+                'notes' => 'required|string|max:500',
+            ]);
+
+            $createdNames = [];
+            foreach ($validated['items'] as $item) {
+                $itemName = trim($item['item_name'] ?? '');
+                $materialId = $item['material_id'] ?? null;
+                if ($materialId && !$itemName) {
+                    $mat = Material::find($materialId);
+                    $itemName = $mat?->name;
+                }
+                if (!$itemName) continue;
+
+                InfrastructureWorkOrderMaterialRequest::create([
+                    'work_order_id' => $workOrder->id,
+                    'item_name' => $itemName,
+                    'material_id' => $materialId,
+                    'requested_by' => Auth::id(),
+                    'quantity' => $item['quantity'],
+                    'unit' => $item['unit'],
+                    'notes' => $validated['notes'],
+                    'status' => 'pending',
+                ]);
+
+                $createdNames[] = $item['quantity'] . ' ' . $item['unit'] . ' (' . $itemName . ')';
+            }
+
+            return redirect()->back()->with('success', count($createdNames) . ' item permintaan tambahan material berhasil diajukan.');
+        }
+
+        $validated = $request->validate([
+            'item_name' => 'required_without:material_id|nullable|string|max:255',
+            'material_id' => 'nullable|exists:materials,id',
+            'quantity' => 'required|numeric|min:0.01',
+            'unit' => 'required|string|max:50',
+            'notes' => 'required|string|max:500',
+        ]);
+
+        $materialId = $validated['material_id'] ?? null;
+        $itemName = $validated['item_name'] ?? null;
+        if ($materialId && !$itemName) {
+            $mat = Material::find($materialId);
+            $itemName = $mat?->name;
+        }
+
+        InfrastructureWorkOrderMaterialRequest::create([
+            'work_order_id' => $workOrder->id,
+            'item_name' => trim($itemName ?: 'Material Tambahan'),
+            'material_id' => $materialId,
+            'requested_by' => Auth::id(),
+            'quantity' => $validated['quantity'],
+            'unit' => $validated['unit'],
+            'notes' => $validated['notes'],
+            'status' => 'pending',
+        ]);
+
+        return redirect()->back()->with('success', 'Permintaan tambahan material berhasil diajukan ke Gudang / Ka. Teknisi.');
+    }
+
+    /**
+     * Ka. Teknisi / Gudang / Admin: Setujui Permintaan Tambahan Material.
+     */
+    public function approveMaterialRequest(Request $request, InfrastructureWorkOrder $workOrder, InfrastructureWorkOrderMaterialRequest $materialRequest)
+    {
+        if ($materialRequest->status !== 'pending') {
+            return redirect()->back()->with('error', 'Permintaan material ini sudah diproses sebelumnya.');
+        }
+
+        $validated = $request->validate([
+            'material_id' => 'required|exists:materials,id',
+            'quantity' => 'nullable|numeric|min:0.01',
+            'notes' => 'nullable|string',
+        ]);
+
+        DB::transaction(function () use ($workOrder, $materialRequest, $validated) {
+            $material = Material::findOrFail($validated['material_id']);
+            $qty = !empty($validated['quantity']) ? (float) $validated['quantity'] : (float) $materialRequest->quantity;
+            $areaId = $workOrder->area_id;
+
+            $matStock = null;
+            if ($areaId) {
+                $matStock = MaterialStock::where('material_id', $material->id)
+                    ->where('area_id', $areaId)
+                    ->first();
+            }
+
+            $stockBefore = $matStock ? (float) $matStock->stock : (float) $material->stock;
+            $stockAfter = max(0, $stockBefore - $qty);
+
+            // 1. Catat Transaksi Pengeluaran Barang Outbound
+            $outTrans = MaterialTransaction::create([
+                'transaction_number' => 'OUT-WO-REQ-' . date('YmdHis') . rand(10, 99),
+                'type' => 'out',
+                'status' => 'approved',
+                'date' => now()->toDateString(),
+                'technician_name' => $materialRequest->requester?->name ?: Auth::user()->name,
+                'purpose' => "Tambahan Material Rollout {$workOrder->target_name} ({$workOrder->wo_number})",
+                'source_type' => 'rollout_odc_odp',
+                'source_id' => $workOrder->id,
+                'source_reference' => $workOrder->wo_number,
+                'area_id' => $areaId,
+                'user_id' => Auth::id(),
+                'notes' => "Disetujui Ka. Teknisi: {$material->name} ({$qty} {$material->unit}). Kebutuhan teknisi: {$materialRequest->item_name} - {$materialRequest->notes}",
+                'total_cost' => 0,
+            ]);
+
+            $unitPrice = (float) ($material->price_per_unit ?? 0);
+            $cost = $qty * $unitPrice;
+
+            MaterialTransactionItem::create([
+                'material_transaction_id' => $outTrans->id,
+                'material_id' => $material->id,
+                'quantity' => $qty,
+                'unit' => $material->unit ?? 'pcs',
+                'price_per_unit' => $unitPrice,
+                'total_price' => $cost,
+                'stock_before' => $stockBefore,
+                'stock_after' => $stockAfter,
+                'condition' => 'Layak Pakai',
+            ]);
+
+            $outTrans->update(['total_cost' => $cost]);
+
+            // 2. Potong stok area & master
+            if ($matStock) {
+                $matStock->decrement('stock', $qty);
+            }
+            $material->decrement('stock', $qty);
+
+            // 3. Tambahkan ke daftar material Work Order (taken) agar langsung muncul di rekonsiliasi teknisi
+            $existingWoMat = InfrastructureWorkOrderMaterial::where('work_order_id', $workOrder->id)
+                ->where('material_id', $material->id)
+                ->first();
+
+            if ($existingWoMat) {
+                $existingWoMat->increment('requested_qty', $qty);
+                $existingWoMat->increment('used_qty', $qty);
+                $existingWoMat->update([
+                    'status' => 'taken',
+                    'notes' => ($existingWoMat->notes ? $existingWoMat->notes . '; ' : '') . "Tambahan {$qty} {$material->unit} disetujui",
+                ]);
+            } else {
+                InfrastructureWorkOrderMaterial::create([
+                    'work_order_id' => $workOrder->id,
+                    'material_id' => $material->id,
+                    'requested_qty' => $qty,
+                    'used_qty' => $qty,
+                    'returned_qty' => 0,
+                    'unit' => $material->unit ?? 'pcs',
+                    'status' => 'taken',
+                    'notes' => "Material tambahan disetujui (Permintaan: {$materialRequest->item_name})",
+                ]);
+            }
+
+            // 4. Update status permintaan material
+            $materialRequest->update([
+                'status' => 'approved',
+                'material_id' => $material->id,
+                'reviewed_by' => Auth::id(),
+                'reviewed_at' => now(),
+            ]);
+        });
+
+        return redirect()->back()->with('success', 'Permintaan tambahan material berhasil disetujui dan stok telah dialokasikan.');
+    }
+
+    /**
+     * Ka. Teknisi / Gudang / Admin: Tolak Permintaan Tambahan Material.
+     */
+    public function rejectMaterialRequest(Request $request, InfrastructureWorkOrder $workOrder, InfrastructureWorkOrderMaterialRequest $materialRequest)
+    {
+        $validated = $request->validate([
+            'reason' => 'required|string|max:500',
+        ]);
+
+        $materialRequest->update([
+            'status' => 'rejected',
+            'reviewed_by' => Auth::id(),
+            'reviewed_at' => now(),
+            'rejection_reason' => $validated['reason'],
+        ]);
+
+        return redirect()->back()->with('success', 'Permintaan tambahan material telah ditolak.');
     }
 }
