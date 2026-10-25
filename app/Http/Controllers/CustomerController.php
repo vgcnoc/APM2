@@ -1597,8 +1597,18 @@ class CustomerController extends Controller
             'email.email' => 'Format penulisan email tidak valid.',
         ]);
 
-        if (empty($validated['sales_id'])) {
-            $validated['sales_id'] = auth()->id();
+        $user = auth()->user();
+        $userRole = strtolower(trim($user?->role ?? ''));
+        $isSuperAdmin = in_array($userRole, ['admin', 'super admin', 'superadmin', 'super-admin']) 
+            || ($user && method_exists($user, 'hasRole') && ($user->hasRole('super admin') || $user->hasRole('admin')))
+            || ($user && $user->id === 1);
+
+        if (!$isSuperAdmin) {
+            // Selain Super Admin: Terkunci otomatis atas nama akun staf yang sedang login
+            $validated['sales_id'] = $user?->id;
+        } else {
+            // Untuk Super Admin: Jika memilih tanpa sales/referral, biarkan NULL murni
+            $validated['sales_id'] = !empty($validated['sales_id']) ? $validated['sales_id'] : null;
         }
 
         if ($request->hasFile('identity_photo')) {
@@ -1934,8 +1944,16 @@ class CustomerController extends Controller
             $validated['tax_uso'] = 0;
         }
 
-        if (!auth()->user()->hasRole('admin') && !auth()->user()->can('customers_booking_edit') && !auth()->user()->can('customers_all_edit')) {
+        $user = auth()->user();
+        $userRole = strtolower(trim($user?->role ?? ''));
+        $isSuperAdmin = in_array($userRole, ['admin', 'super admin', 'superadmin', 'super-admin']) 
+            || ($user && method_exists($user, 'hasRole') && ($user->hasRole('super admin') || $user->hasRole('admin')))
+            || ($user && $user->id === 1);
+
+        if (!$isSuperAdmin) {
             unset($validated['sales_id']);
+        } else {
+            $validated['sales_id'] = !empty($validated['sales_id']) ? $validated['sales_id'] : null;
         }
 
         if ($request->hasFile('identity_photo')) {
@@ -2883,6 +2901,18 @@ class CustomerController extends Controller
             'email.unique' => 'Email ini sudah terdaftar pada pelanggan lain. Silakan gunakan email berbeda.',
             'email.email' => 'Format penulisan email tidak valid.',
         ]);
+
+        $user = auth()->user();
+        $userRole = strtolower(trim($user?->role ?? ''));
+        $isSuperAdmin = in_array($userRole, ['admin', 'super admin', 'superadmin', 'super-admin']) 
+            || ($user && method_exists($user, 'hasRole') && ($user->hasRole('super admin') || $user->hasRole('admin')))
+            || ($user && $user->id === 1);
+
+        if (!$isSuperAdmin) {
+            unset($validated['sales_id']);
+        } else {
+            $validated['sales_id'] = !empty($validated['sales_id']) ? $validated['sales_id'] : null;
+        }
 
         if (!empty($validated['area_id'])) {
             $area = \App\Models\Area::find($validated['area_id']);

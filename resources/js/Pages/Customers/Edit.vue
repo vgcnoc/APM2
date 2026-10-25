@@ -297,12 +297,27 @@
                                 
                                 <div>
                                     <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Petugas Sales / Karyawan Referral</label>
-                                    <select v-model="form.sales_id" :disabled="!canChangeSales" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed">
-                                        <option value="">-- Tanpa Sales / Referral --</option>
-                                        <option v-for="person in sales" :key="person.id" :value="person.id">
-                                            {{ person.display_name || person.name }}
-                                        </option>
-                                    </select>
+                                    <div v-if="canChangeSales">
+                                        <select v-model="form.sales_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all">
+                                            <option value="">-- Tanpa Sales / Referral --</option>
+                                            <option v-for="person in sales" :key="person.id" :value="person.id">
+                                                {{ person.display_name || person.name }}
+                                            </option>
+                                        </select>
+                                    </div>
+                                    <div v-else class="relative">
+                                        <input 
+                                            type="text" 
+                                            :value="currentSalesName" 
+                                            readonly 
+                                            disabled 
+                                            class="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 cursor-not-allowed select-none" 
+                                            title="Hanya Super Admin yang dapat mengubah Petugas Sales/Referral"
+                                        />
+                                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-xs text-gray-400 font-medium">
+                                            🔒 Terkunci
+                                        </span>
+                                    </div>
                                 </div>
 
                                 <div class="md:col-span-2 pt-2 border-t border-gray-100">
@@ -459,25 +474,24 @@ const page = usePage();
 const isAdmin = computed(() => {
     const user = page.props.auth?.user;
     if (!user) return false;
-    if (user.role === 'admin' || user.role === 'super-admin' || user.role === 'Super Admin') return true;
+    const r = String(user.role || '').toLowerCase().trim();
+    if (['admin', 'super admin', 'superadmin', 'super-admin'].includes(r) || user.id === 1) return true;
     let roles = [];
-    if (Array.isArray(user.roles)) roles = user.roles;
-    else if (user.roles) roles = Object.values(user.roles);
-    return roles.includes('admin') || roles.includes('super-admin') || roles.includes('Super Admin');
+    if (Array.isArray(user.roles)) roles = user.roles.map(x => String(typeof x === 'string' ? x : x.name).toLowerCase().trim());
+    else if (user.roles) roles = Object.values(user.roles).map(x => String(typeof x === 'string' ? x : x.name).toLowerCase().trim());
+    return roles.includes('admin') || roles.includes('super admin') || roles.includes('superadmin') || roles.includes('super-admin');
 });
 
+// Hanya Super Admin yang dapat mengubah Petugas Sales/Referral
 const canChangeSales = computed(() => {
-    const user = page.props.auth?.user;
-    if (!user) return false;
-    if (isAdmin.value) return true;
-    
-    // External purely affiliate accounts cannot change referrer
-    const r = String(user.role || '').toLowerCase();
-    if (r === 'affiliate' || r === 'reseller') {
-        return false;
-    }
-    
-    return true;
+    return isAdmin.value;
+});
+
+const currentSalesName = computed(() => {
+    const sId = form.sales_id || props.customer?.sales_id;
+    if (!sId) return '-- Tanpa Sales / Referral --';
+    const found = props.sales?.find(s => s.id === sId);
+    return found ? (found.display_name || found.name) : (props.customer?.sales?.name || `Sales #${sId}`);
 });
 
 const isAffiliateAccount = computed(() => {

@@ -283,12 +283,27 @@
                                 
                                 <div>
                                     <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Petugas Sales / Karyawan Referral</label>
-                                    <select v-model="form.sales_id" :disabled="!canChangeSales" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed">
-                                        <option value="">-- Tanpa Sales / Referral --</option>
-                                        <option v-for="person in sales" :key="person.id" :value="person.id">
-                                            {{ person.display_name || person.name }}
-                                        </option>
-                                    </select>
+                                    <div v-if="canChangeSales">
+                                        <select v-model="form.sales_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+                                            <option value="">-- Tanpa Sales / Referral --</option>
+                                            <option v-for="person in sales" :key="person.id" :value="person.id">
+                                                {{ person.display_name || person.name }}
+                                            </option>
+                                        </select>
+                                    </div>
+                                    <div v-else class="relative">
+                                        <input 
+                                            type="text" 
+                                            :value="currentSalesName" 
+                                            readonly 
+                                            disabled 
+                                            class="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 cursor-not-allowed select-none" 
+                                            title="Terkunci atas nama akun Anda sendiri"
+                                        />
+                                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-xs text-gray-400 font-medium">
+                                            🔒 Terkunci (Akun Anda)
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -356,27 +371,26 @@ const page = usePage();
 const isAdmin = computed(() => {
     const user = page.props.auth?.user;
     if (!user) return false;
-    const r = String(user.role || '').toLowerCase();
-    if (['admin', 'super admin', 'superadmin', 'super-admin'].includes(r)) return true;
+    const r = String(user.role || '').toLowerCase().trim();
+    if (['admin', 'super admin', 'superadmin', 'super-admin'].includes(r) || user.id === 1) return true;
     let roles = [];
-    if (Array.isArray(user.roles)) roles = user.roles.map(x => String(typeof x === 'string' ? x : x.name).toLowerCase());
-    else if (user.roles) roles = Object.values(user.roles).map(x => String(typeof x === 'string' ? x : x.name).toLowerCase());
+    if (Array.isArray(user.roles)) roles = user.roles.map(x => String(typeof x === 'string' ? x : x.name).toLowerCase().trim());
+    else if (user.roles) roles = Object.values(user.roles).map(x => String(typeof x === 'string' ? x : x.name).toLowerCase().trim());
     return roles.includes('admin') || roles.includes('super admin') || roles.includes('superadmin') || roles.includes('super-admin');
 });
 
+// Hanya Super Admin yang dapat memilih / mengubah Petugas Sales/Referral
 const canChangeSales = computed(() => {
     if (props.affiliatePortal) return false;
+    return isAdmin.value;
+});
+
+const currentSalesName = computed(() => {
     const user = page.props.auth?.user;
-    if (!user) return false;
-    if (isAdmin.value) return true;
-    
-    // External purely affiliate accounts cannot change referrer
-    const r = String(user.role || '').toLowerCase();
-    if (r === 'affiliate' || r === 'reseller') {
-        return false;
-    }
-    
-    return true;
+    if (!user) return '-';
+    const sId = form.sales_id || user.id;
+    const found = props.sales?.find(s => s.id === sId);
+    return found ? (found.display_name || found.name) : user.name;
 });
 
 const isAffiliateAccount = computed(() => {
@@ -410,10 +424,14 @@ onMounted(() => {
         isNewArea.value = true;
     }
     
-    // Auto-select sales if current user is in the sales list
-    const user = page.props.auth.user;
-    if (user && props.sales.some(s => s.id === user.id)) {
+    // Penentuan Petugas Sales / Referral:
+    // Selain Super Admin: Terkunci otomatis ke akun sendiri
+    // Super Admin: Default ke kosong (-- Tanpa Sales / Referral --) agar tidak otomatis membebani Super Admin
+    const user = page.props.auth?.user;
+    if (!isAdmin.value && user) {
         form.sales_id = user.id;
+    } else if (isAdmin.value) {
+        form.sales_id = '';
     }
 
     // Auto default ke gratis atau free_home jika dibuka dari menu terkait (?service_status=...)

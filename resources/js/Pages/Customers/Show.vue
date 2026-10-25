@@ -1725,10 +1725,25 @@
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Sales / Referal</label>
-                                    <select v-model="bookingForm.sales_id" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                                        <option value="">-- Tanpa Sales / Mandiri --</option>
-                                        <option v-for="s in salesUsers" :key="s.id" :value="s.id">{{ s.name }} ({{ s.job_position || s.role || 'Sales' }})</option>
-                                    </select>
+                                    <div v-if="isSuperAdmin">
+                                        <select v-model="bookingForm.sales_id" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="">-- Tanpa Sales / Mandiri --</option>
+                                            <option v-for="s in salesUsers" :key="s.id" :value="s.id">{{ s.name }} ({{ s.job_position || s.role || 'Sales' }})</option>
+                                        </select>
+                                    </div>
+                                    <div v-else class="relative">
+                                        <input 
+                                            type="text" 
+                                            :value="customer.sales?.name ? (customer.sales.name + (customer.sales.job_position || customer.sales.role ? ` (${customer.sales.job_position || customer.sales.role})` : '')) : '-- Tanpa Sales / Mandiri --'" 
+                                            readonly 
+                                            disabled 
+                                            class="w-full text-sm bg-gray-100 border border-gray-200 rounded-lg px-3 py-2 font-medium text-gray-700 cursor-not-allowed select-none"
+                                            title="Hanya Super Admin yang dapat mengubah Petugas Sales/Referral"
+                                        />
+                                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-xs text-gray-400 font-medium">
+                                            🔒 Terkunci
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -2667,6 +2682,17 @@ const hasPermission = (permission) => {
         return false;
     }
 };
+
+const isSuperAdmin = computed(() => {
+    const user = page.props.auth?.user;
+    if (!user) return false;
+    const r = String(user.role || '').toLowerCase().trim();
+    if (['admin', 'super admin', 'superadmin', 'super-admin'].includes(r) || user.id === 1) return true;
+    let roles = [];
+    if (Array.isArray(user.roles)) roles = user.roles.map(x => String(typeof x === 'string' ? x : x.name).toLowerCase().trim());
+    else if (user.roles) roles = Object.values(user.roles).map(x => String(typeof x === 'string' ? x : x.name).toLowerCase().trim());
+    return roles.includes('admin') || roles.includes('super admin') || roles.includes('superadmin') || roles.includes('super-admin');
+});
 
 const props = defineProps({
     customer: Object,
