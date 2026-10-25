@@ -83,10 +83,39 @@ class AuthController extends Controller
 
             // 3. Portal Pelanggan
             if ($portal === 'customer') {
-                $canAccessCustomer = in_array($userRole, ['customer', 'admin', 'superadmin', 'super admin', 'super-admin'], true)
-                    || (method_exists($user, 'hasRole') && ($user->hasRole('customer') || $user->hasRole('admin') || $user->hasRole('super admin')))
-                    || \App\Models\Customer::where('user_id', $user->id)->orWhere('email', $user->email)->exists()
-                    || \App\Models\Reseller::where('user_id', $user->id)->whereNotNull('customer_id')->exists();
+                $customer = \App\Models\Customer::where('user_id', $user->id)
+                    ->orWhere('email', $user->email)
+                    ->first();
+                if (!$customer) {
+                    $reseller = \App\Models\Reseller::where('user_id', $user->id)->first();
+                    if ($reseller && $reseller->customer_id) {
+                        $customer = \App\Models\Customer::find($reseller->customer_id);
+                    }
+                }
+
+                $isStaff = in_array($userRole, ['admin', 'superadmin', 'super admin', 'super-admin'], true)
+                    || (method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super admin')));
+
+                $isReseller = ($userRole === 'reseller')
+                    || (method_exists($user, 'hasRole') && $user->hasRole('reseller'))
+                    || \App\Models\Reseller::where('user_id', $user->id)->exists();
+
+                // OPSI A: Jika akun adalah Reseller murni (tidak berlangganan paket internet rumah), tolak login di portal pelanggan
+                if (!$isStaff && $isReseller && (!$customer || !$customer->package_id)) {
+                    Auth::logout();
+                    $request->session()->invalidate();
+                    $request->session()->regenerateToken();
+
+                    return back()->withErrors([
+                        'email' => 'Akun Anda terdaftar sebagai Mitra Reseller/Biller (tanpa langganan paket internet rumah). Silakan login melalui menu Mitra Biller.'
+                    ])->onlyInput('email');
+                }
+
+                $canAccessCustomer = $isStaff
+                    || ($customer && $customer->package_id)
+                    || in_array($userRole, ['customer'], true)
+                    || (method_exists($user, 'hasRole') && $user->hasRole('customer'))
+                    || \App\Models\Customer::where('user_id', $user->id)->orWhere('email', $user->email)->exists();
 
                 if (!$canAccessCustomer) {
                     Auth::logout();

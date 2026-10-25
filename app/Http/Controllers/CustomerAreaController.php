@@ -72,8 +72,9 @@ class CustomerAreaController extends Controller
         $user = auth()->user();
         $customer = $this->getCustomer();
 
-        // Hanya jika user TIDAK memiliki data langganan pelanggan, tetapi memiliki akun reseller, alihkan ke portal reseller
-        if (!$customer && !$this->isStaffUser($user) && ($user->role === 'reseller' || Reseller::where('user_id', $user->id)->exists())) {
+        // OPSI A: Jika user adalah Mitra Reseller murni (tanpa paket langganan internet rumah), alihkan ke portal reseller
+        $isReseller = ($user->role === 'reseller' || Reseller::where('user_id', $user->id)->exists());
+        if (!$this->isStaffUser($user) && $isReseller && (!$customer || !$customer->package_id)) {
             return redirect()->route('client-area.dashboard');
         }
 
@@ -121,7 +122,9 @@ class CustomerAreaController extends Controller
         $user = auth()->user();
         $customer = $this->getCustomer();
 
-        if (!$customer && !$this->isStaffUser($user) && ($user->role === 'reseller' || Reseller::where('user_id', $user->id)->exists())) {
+        // OPSI A: Jika user adalah Mitra Reseller murni (tanpa paket langganan internet rumah), alihkan ke billing reseller
+        $isReseller = ($user->role === 'reseller' || Reseller::where('user_id', $user->id)->exists());
+        if (!$this->isStaffUser($user) && $isReseller && (!$customer || !$customer->package_id)) {
             return redirect()->route('client-area.billing');
         }
 
@@ -152,11 +155,11 @@ class CustomerAreaController extends Controller
         $user = auth()->user();
         $customer = $this->getCustomer();
 
-        if (!$customer && !$this->isStaffUser($user) && ($user->role === 'reseller' || Reseller::where('user_id', $user->id)->exists())) {
+        // OPSI A: Jika user adalah Mitra Reseller murni (tanpa paket langganan internet rumah), alihkan ke portal reseller
+        $isReseller = ($user->role === 'reseller' || Reseller::where('user_id', $user->id)->exists());
+        if (!$this->isStaffUser($user) && $isReseller && (!$customer || !$customer->package_id)) {
             return redirect()->route('client-area.dashboard');
         }
-
-        $customer = $this->getCustomer();
 
         if (!$customer) {
             if ($this->isStaffUser($user)) {
