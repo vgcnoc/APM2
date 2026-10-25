@@ -484,20 +484,6 @@ import ClientAreaLayout from '@/Layouts/ClientAreaLayout.vue';
 import Swal from 'sweetalert2';
 
 const page = usePage();
-const layoutComponent = computed(() => {
-    return page.props.auth?.user?.role === 'reseller' || page.props.auth?.user?.role === 'customer' 
-        ? ClientAreaLayout 
-        : AppLayout;
-});
-
-const can = (permission) => {
-    const user = page.props.auth?.user;
-    if (!user) return false;
-    const role = (user.role || '').toLowerCase();
-    if (['admin', 'super admin', 'superadmin'].includes(role)) return true;
-    const perms = Array.isArray(user.permissions) ? user.permissions : Object.values(user.permissions || {});
-    return perms.includes(permission);
-};
 
 const props = defineProps({
     tab: { type: String, default: 'online' },
@@ -508,7 +494,26 @@ const props = defineProps({
     resellers: { type: Array, default: () => [] },
     areas: { type: Array, default: () => [] },
     filters: { type: Object, default: () => ({}) },
+    isResellerPortal: { type: Boolean, default: false },
 });
+
+const isClientArea = computed(() => {
+    return page.props.auth?.user?.role === 'reseller' 
+        || page.props.auth?.user?.role === 'customer' 
+        || page.props.auth?.user?.login_portal === 'reseller'
+        || Boolean(props.isResellerPortal);
+});
+
+const layoutComponent = computed(() => isClientArea.value ? ClientAreaLayout : AppLayout);
+
+const can = (permission) => {
+    const user = page.props.auth?.user;
+    if (!user) return false;
+    const role = (user.role || '').toLowerCase();
+    if (['admin', 'super admin', 'superadmin'].includes(role)) return true;
+    const perms = Array.isArray(user.permissions) ? user.permissions : Object.values(user.permissions || {});
+    return perms.includes(permission);
+};
 
 const activeTab = ref(props.tab || props.filters?.tab || 'online');
 const search = ref(props.filters?.search || '');

@@ -41,7 +41,7 @@ class HandleInertiaRequests extends Middleware
                                     'has_package' => !empty($customer->package_id),
                                 ];
                             }
-                        } elseif ($request->user()->role === 'reseller') {
+                        } elseif ($request->user()->role === 'reseller' || $request->session()->get('login_portal') === 'reseller') {
                             $reseller = \App\Models\Reseller::where('user_id', $request->user()->id)->first();
                             if ($reseller) {
                                 $customerData = [
@@ -56,6 +56,7 @@ class HandleInertiaRequests extends Middleware
                             'name' => $request->user()->name,
                             'email' => $request->user()->email,
                             'role' => $request->user()->role,
+                            'login_portal' => $request->session()->get('login_portal'),
                             'affiliate_portal' => \App\Services\AffiliateService::usesAffiliatePortal($request),
                             'roles' => $request->user()->getRoleNames()->values()->toArray(),
                             'permissions' => $request->user()->getAllPermissions()->pluck('name')->values()->toArray(),

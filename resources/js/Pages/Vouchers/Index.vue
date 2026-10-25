@@ -465,7 +465,7 @@
                                 <select v-model="singleForm.voucher_profile_id" class="w-full border-gray-300 rounded-xl text-sm focus:ring-indigo-500 focus:border-indigo-500 transition-all" required>
                                     <option value="" disabled>-- Pilih Profil Paket --</option>
                                     <option v-for="prof in sellableProfiles" :key="prof.id" :value="prof.id">
-                                        {{ prof.name }} • Durasi: {{ prof.duration || '-' }} • {{ isReseller ? 'Harga Reseller: Rp' + Number((prof.fee_reseller && prof.fee_reseller > 0) ? prof.fee_reseller : prof.price).toLocaleString('id-ID') : 'Tarif: Rp' + Number(prof.price).toLocaleString('id-ID') }}
+                                        {{ prof.name }} • Durasi: {{ prof.duration || '-' }} • {{ isReseller ? 'Harga Reseller: Rp' + Number(getProfileResellerCost(prof)).toLocaleString('id-ID') : 'Tarif: Rp' + Number(prof.price).toLocaleString('id-ID') }}
                                     </option>
                                 </select>
                             </div>
@@ -699,7 +699,7 @@
                                 <select v-model="bulkForm.voucher_profile_id" class="w-full border-gray-300 rounded-xl text-sm focus:ring-indigo-500 focus:border-indigo-500" required>
                                     <option value="" disabled>-- Pilih Profil --</option>
                                     <option v-for="prof in sellableProfiles" :key="prof.id" :value="prof.id">
-                                        {{ prof.name }} ({{ isReseller ? 'Harga Reseller: Rp' + Number((prof.fee_reseller && prof.fee_reseller > 0) ? prof.fee_reseller : prof.price).toLocaleString('id-ID') : 'Rp' + Number(prof.price).toLocaleString('id-ID') }})
+                                        {{ prof.name }} ({{ isReseller ? 'Harga Reseller: Rp' + Number(getProfileResellerCost(prof)).toLocaleString('id-ID') : 'Rp' + Number(prof.price).toLocaleString('id-ID') }})
                                     </option>
                                 </select>
                             </div>
@@ -871,17 +871,13 @@ import { usePermission } from '@/Composables/usePermission';
 
 const page = usePage();
 const { can, hasRole } = usePermission();
-const layoutComponent = computed(() => {
-    return page.props.auth?.user?.role === 'reseller' || page.props.auth?.user?.role === 'customer' 
-        ? ClientAreaLayout 
-        : AppLayout;
-});
 
 const props = defineProps({
     vouchers: Object,
     profiles: Array,
     resellers: Array,
     currentReseller: Object,
+    isResellerPortal: Boolean,
     filters: Object,
     onlineUsernames: Array,
     usageStats: Object,
@@ -889,13 +885,29 @@ const props = defineProps({
     stats: Object,
 });
 
+const isClientArea = computed(() => {
+    return page.props.auth?.user?.role === 'reseller' 
+        || page.props.auth?.user?.role === 'customer' 
+        || page.props.auth?.user?.login_portal === 'reseller'
+        || Boolean(props.isResellerPortal);
+});
+
+const layoutComponent = computed(() => isClientArea.value ? ClientAreaLayout : AppLayout);
+
 const isReseller = computed(() => {
-    return page.props.auth?.user?.role === 'reseller' || !!props.currentReseller;
+    return isClientArea.value || page.props.auth?.user?.role === 'reseller' || !!props.currentReseller;
 });
 
 const sellableProfiles = computed(() => {
     return (props.profiles || []).filter(p => !p.is_customer_free);
 });
+
+const getProfileResellerCost = (prof) => {
+    if (!prof) return 0;
+    const sellPrice = Number(prof.price || 0);
+    const margin = Number(prof.fee_reseller || 0);
+    return Math.max(0, sellPrice - margin);
+};
 
 const formatSeconds = (seconds) => {
     if (!seconds) return '0 mnt';
@@ -999,11 +1011,10 @@ function generateRandomPassword() {
 // Helpers Info Profil
 function getSelectedProfilePrice(profileId) {
     if (!profileId) return '0';
-    const prof = props.profiles.find(p => p.id === profileId);
+    const prof = (props.profiles || []).find(p => p.id === profileId);
     if (!prof) return '0';
     if (isReseller.value) {
-        const cost = (prof.fee_reseller && prof.fee_reseller > 0) ? prof.fee_reseller : prof.price;
-        return Number(cost).toLocaleString('id-ID');
+        return Number(getProfileResellerCost(prof)).toLocaleString('id-ID');
     }
     return Number(prof.price).toLocaleString('id-ID');
 }

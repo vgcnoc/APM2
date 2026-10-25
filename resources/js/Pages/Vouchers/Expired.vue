@@ -152,17 +152,22 @@ import DataTable from '@/Components/DataTable.vue';
 import Swal from 'sweetalert2';
 
 const page = usePage();
-const layoutComponent = computed(() => {
-    return page.props.auth?.user?.role === 'reseller' || page.props.auth?.user?.role === 'customer' 
-        ? ClientAreaLayout 
-        : AppLayout;
-});
 
 const props = defineProps({
     expiredUsers: { type: Array, default: () => [] },
     profiles: { type: Array, default: () => [] },
     resellers: { type: Array, default: () => [] },
+    isResellerPortal: { type: Boolean, default: false },
 });
+
+const isClientArea = computed(() => {
+    return page.props.auth?.user?.role === 'reseller' 
+        || page.props.auth?.user?.role === 'customer' 
+        || page.props.auth?.user?.login_portal === 'reseller'
+        || Boolean(props.isResellerPortal);
+});
+
+const layoutComponent = computed(() => isClientArea.value ? ClientAreaLayout : AppLayout);
 
 const columns = [
     { key: 'index', label: '#' },

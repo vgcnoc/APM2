@@ -344,16 +344,25 @@ class VoucherController extends Controller
         $vouchers = $query->latest('vouchers.id')->paginate(20)->withQueryString();
         $user = auth()->user();
         $isAdminLike = $user && ($user->isAdmin() || in_array(strtolower($user->role ?? ''), ['admin', 'super admin', 'superadmin', 'demo']));
+        $isResellerPortal = $user && (strtolower($user->role ?? '') === 'reseller' || session('login_portal') === 'reseller');
 
-        if ($isAdminLike) {
+        if ($isAdminLike && session('login_portal') !== 'reseller') {
             $profiles = VoucherProfile::all();
         } else {
-            $profiles = $user->voucherProfiles()->get();
+            $profiles = $user ? $user->voucherProfiles()->get() : collect();
             if ($profiles->isEmpty()) {
                 $profiles = VoucherProfile::where('is_customer_free', false)->get();
             }
         }
         
+        $currentReseller = null;
+        if ($isResellerPortal && $user) {
+            $currentReseller = $this->getOrCreateReseller($user);
+            if ($currentReseller) {
+                $currentReseller->load('customer');
+            }
+        }
+
         $resellers = \App\Models\Reseller::with('customer.areaModel')->get();
         $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
 
@@ -421,6 +430,8 @@ class VoucherController extends Controller
             'vouchers' => $vouchers,
             'profiles' => $profiles,
             'resellers' => $resellers,
+            'currentReseller' => $currentReseller,
+            'isResellerPortal' => $isResellerPortal,
             'areas' => $areas,
             'stats' => $stats,
             'filters' => [
@@ -479,6 +490,9 @@ class VoucherController extends Controller
         // 0. Otomatis cek dan sinkronkan status voucher yang durasinya habis menjadi expired
         self::checkAndExpireVouchers();
 
+        $user = auth()->user();
+        $isResellerPortal = $user && (strtolower($user->role ?? '') === 'reseller' || session('login_portal') === 'reseller');
+
         $tab = $request->input('tab', 'online');
         $search = $request->input('search');
         $profileId = $request->input('profile_id');
@@ -486,7 +500,14 @@ class VoucherController extends Controller
         $areaId = $request->input('area_id');
 
         // Master dropdown filters
-        $profiles = VoucherProfile::orderBy('name')->get(['id', 'name', 'duration', 'price']);
+        if ($isResellerPortal && $user) {
+            $profiles = $user->voucherProfiles()->where('is_customer_free', false)->get(['id', 'name', 'duration', 'price']);
+            if ($profiles->isEmpty()) {
+                $profiles = VoucherProfile::where('is_customer_free', false)->orderBy('name')->get(['id', 'name', 'duration', 'price']);
+            }
+        } else {
+            $profiles = VoucherProfile::orderBy('name')->get(['id', 'name', 'duration', 'price']);
+        }
         $resellers = \App\Models\Reseller::with('customer.areaModel')->get();
         $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
 
@@ -748,6 +769,7 @@ class VoucherController extends Controller
                 'reseller_id' => $resellerId ?: '',
                 'area_id' => $areaId ?: '',
             ],
+            'isResellerPortal' => $isResellerPortal,
         ]);
     }
 
@@ -758,26 +780,95 @@ class VoucherController extends Controller
 
     public function expired(Request $request)
     {
-        $vQuery = Voucher::with(['profile', 'reseller.customer'])
+        // 0. Otomatis cek dan sinkronkan status voucher yang durasinya habis menjadi expired
+        self::checkAndExpireVouchers();
+
+        $user = auth()->user();
+        $isResellerPortal = $user && (strtolower($user->role ?? '') === 'reseller' || session('login_portal') === 'reseller');
+
+        $vQuery = Voucher::with(['profile', 'reseller.customer.areaModel', 'customer.areaModel'])
             ->where('status', 'expired');
         $this->applyResellerFilter($vQuery);
-        $vouchers = $vQuery->get();
+        $vouchers = $vQuery->latest('vouchers.id')->get();
 
-        $rows = $vouchers->map(function ($v) {
+        $usernames = $vouchers->pluck('username')->filter()->unique()->toArray();
+        $accts = !empty($usernames) 
+            ? \App\Models\Radius\RadAcct::whereIn('username', $usernames)->get()->groupBy('username')
+            : collect();
+
+        $rows = $vouchers->map(function ($v) use ($accts) {
+            $resellerCust = $v->reseller?->customer;
+            $areaName = $resellerCust?->areaModel?->name ?? ($resellerCust?->area ?: ($v->customer?->areaModel?->name ?? ($v->customer?->area ?: '')));
+            $userAccts = $accts->get($v->username);
+            $totalTime = $userAccts ? (int) $userAccts->sum('acctsessiontime') : 0;
+            $firstLogin = $userAccts ? $userAccts->min('acctstarttime') : null;
+            $expiredAt = $v->used_at ?: ($userAccts ? $userAccts->max('acctstoptime') : null);
+
             return [
                 'id' => $v->id,
                 'code' => $v->code,
                 'username' => $v->username,
-                'profile' => $v->profile?->name,
-                'reseller' => $v->reseller?->customer?->name ?? 'Admin',
+                'password' => $v->password,
+                'profile' => $v->profile?->name ?? 'Hotspot Profile',
+                'duration' => $v->profile?->duration ?? '',
+                'reseller' => $resellerCust?->name ?? 'Kantor / System',
+                'area' => $areaName,
+                'is_free' => (bool) $v->is_free,
+                'first_login' => $firstLogin ? \Carbon\Carbon::parse($firstLogin)->toIso8601String() : null,
+                'expired_at' => $expiredAt ? \Carbon\Carbon::parse($expiredAt)->toIso8601String() : null,
                 'used_at' => $v->used_at ? $v->used_at->toIso8601String() : null,
-                'is_active' => $v->is_active,
+                'total_time' => $totalTime,
+                'is_active' => (bool) $v->is_active,
             ];
         });
 
+        if ($isResellerPortal && $user) {
+            $profiles = $user->voucherProfiles()->where('is_customer_free', false)->get(['id', 'name']);
+            if ($profiles->isEmpty()) {
+                $profiles = VoucherProfile::where('is_customer_free', false)->orderBy('name')->get(['id', 'name']);
+            }
+        } else {
+            $profiles = VoucherProfile::orderBy('name')->get(['id', 'name']);
+        }
+
+        $resellers = \App\Models\Reseller::with('customer.areaModel')->get();
+
         return Inertia::render('Vouchers/Expired', [
-            'expiredUsers' => $rows->values()
+            'expiredUsers' => $rows->values(),
+            'profiles' => $profiles,
+            'resellers' => $resellers,
+            'isResellerPortal' => $isResellerPortal,
         ]);
+    }
+
+    /**
+     * Dapatkan data reseller atau inisialisasi otomatis untuk admin / role reseller.
+     */
+    private function getOrCreateReseller($user)
+    {
+        if (!$user) return null;
+
+        $reseller = \App\Models\Reseller::where('user_id', $user->id)->first();
+        if (!$reseller) {
+            $userRole = strtolower(trim((string) $user->role));
+            $isAdminLike = in_array($userRole, ['admin', 'superadmin', 'super admin', 'super-admin']) 
+                || (method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super admin')));
+            $isResellerRole = in_array($userRole, ['reseller']) 
+                || (method_exists($user, 'hasRole') && $user->hasRole('reseller'))
+                || session('login_portal') === 'reseller';
+
+            if ($isAdminLike || $isResellerRole) {
+                $reseller = \App\Models\Reseller::firstOrCreate(
+                    ['user_id' => $user->id],
+                    [
+                        'customer_id' => $user->customer?->id ?? null,
+                        'balance' => $isAdminLike ? 5000000 : 0,
+                        'is_active' => true,
+                    ]
+                );
+            }
+        }
+        return $reseller;
     }
 
     private function applyResellerFilter($query)
@@ -787,27 +878,21 @@ class VoucherController extends Controller
             return;
         }
 
-        // Admin dan role manajerial / demo tidak difilter
         $isAdminLike = $user->isAdmin()
             || in_array(strtolower($user->role ?? ''), ['admin', 'super admin', 'superadmin', 'demo', 'management', 'keuangan'])
             || (method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super admin') || $user->hasRole('superadmin')));
 
-        if ($isAdminLike) {
+        // Admin di panel utama (bukan portal reseller) melihat semua voucher
+        if ($isAdminLike && session('login_portal') !== 'reseller') {
             return;
         }
 
-        // Cek apakah user adalah akun reseller
-        $isReseller = (strtolower($user->role ?? '') === 'reseller')
-            || (method_exists($user, 'hasRole') && $user->hasRole('reseller'));
-
-        $reseller = \App\Models\Reseller::where('user_id', $user->id)->first();
-
-        if ($isReseller || $reseller) {
-            if ($reseller) {
-                $query->where('vouchers.reseller_id', $reseller->id);
-            } else {
-                $query->where('vouchers.id', -1);
-            }
+        // Jika portal reseller atau role reseller, filter hanya voucher miliknya
+        $reseller = $this->getOrCreateReseller($user);
+        if ($reseller) {
+            $query->where('vouchers.reseller_id', $reseller->id);
+        } else {
+            $query->where('vouchers.id', -1);
         }
     }
 
@@ -857,14 +942,23 @@ class VoucherController extends Controller
                 $password = trim($validated['password']);
             }
 
-            $reseller = null;
-            if (!empty($validated['reseller_id']) && !$isFree) {
-                $reseller = Reseller::find($validated['reseller_id']);
-                $costPerVoucher = max(0, (float)$profile->price - (float)($profile->fee_reseller ?? 0));
-                if ($reseller && $reseller->balance < $costPerVoucher) {
-                    return redirect()->back()->withErrors(['reseller_id' => 'Saldo reseller tidak mencukupi (Butuh Rp ' . number_format($costPerVoucher, 0, ',', '.') . ').'])->withInput();
+            $targetResellerId = $validated['reseller_id'] ?? null;
+            if (!$targetResellerId && (strtolower($user->role ?? '') === 'reseller' || session('login_portal') === 'reseller')) {
+                $autoReseller = $this->getOrCreateReseller($user);
+                if ($autoReseller) {
+                    $targetResellerId = $autoReseller->id;
                 }
-                if ($reseller) {
+            }
+
+            $reseller = null;
+            $resellerPayment = $request->input('reseller_payment', 'balance');
+            if (!empty($targetResellerId) && !$isFree) {
+                $reseller = Reseller::find($targetResellerId);
+                $costPerVoucher = max(0, (float)$profile->price - (float)($profile->fee_reseller ?? 0));
+                if ($reseller && $resellerPayment === 'balance') {
+                    if ($reseller->balance < $costPerVoucher) {
+                        return redirect()->back()->withErrors(['reseller_id' => 'Saldo reseller tidak mencukupi (Butuh Rp ' . number_format($costPerVoucher, 0, ',', '.') . ', Saldo: Rp ' . number_format($reseller->balance, 0, ',', '.') . ').'])->withInput();
+                    }
                     $reseller->balance -= $costPerVoucher;
                     $reseller->save();
                     \App\Models\ResellerTransaction::create([
@@ -879,7 +973,7 @@ class VoucherController extends Controller
 
             $voucher = Voucher::create([
                 'voucher_profile_id' => $profile->id,
-                'reseller_id' => !empty($validated['reseller_id']) ? $validated['reseller_id'] : null,
+                'reseller_id' => !empty($targetResellerId) ? $targetResellerId : null,
                 'customer_id' => !empty($validated['customer_id']) ? $validated['customer_id'] : null,
                 'code' => $username,
                 'username' => $username,
@@ -887,7 +981,7 @@ class VoucherController extends Controller
                 'status' => 'available',
                 'is_active' => true,
                 'is_free' => $isFree,
-                'payment_method' => $isFree ? 'free' : (!empty($validated['reseller_id']) ? 'balance' : 'system'),
+                'payment_method' => $isFree ? 'free' : (!empty($targetResellerId) ? ($resellerPayment === 'cash' ? 'cash' : 'balance') : 'system'),
             ]);
 
             try {
@@ -921,17 +1015,26 @@ class VoucherController extends Controller
             $isFree = true;
         }
 
+        $targetResellerId = $validated['reseller_id'] ?? null;
+        if (!$targetResellerId && (strtolower($user->role ?? '') === 'reseller' || session('login_portal') === 'reseller')) {
+            $autoReseller = $this->getOrCreateReseller($user);
+            if ($autoReseller) {
+                $targetResellerId = $autoReseller->id;
+            }
+        }
+
         $reseller = null;
-        if (!empty($validated['reseller_id']) && !$isFree) {
-            $reseller = Reseller::find($validated['reseller_id']);
+        $resellerPayment = $request->input('reseller_payment', 'balance');
+        if (!empty($targetResellerId) && !$isFree) {
+            $reseller = Reseller::find($targetResellerId);
             $costPerVoucher = max(0, (float)$profile->price - (float)($profile->fee_reseller ?? 0));
             $totalPrice = $costPerVoucher * $validated['amount'];
 
-            if ($reseller && $reseller->balance < $totalPrice) {
-                return redirect()->back()->withErrors(['reseller_id' => 'Saldo reseller tidak mencukupi (Butuh Rp ' . number_format($totalPrice, 0, ',', '.') . ', Saldo: Rp ' . number_format($reseller->balance, 0, ',', '.') . ').'])->withInput();
-            }
+            if ($reseller && $resellerPayment === 'balance') {
+                if ($reseller->balance < $totalPrice) {
+                    return redirect()->back()->withErrors(['reseller_id' => 'Saldo reseller tidak mencukupi (Butuh Rp ' . number_format($totalPrice, 0, ',', '.') . ', Saldo: Rp ' . number_format($reseller->balance, 0, ',', '.') . ').'])->withInput();
+                }
 
-            if ($reseller) {
                 $reseller->balance -= $totalPrice;
                 $reseller->save();
 
@@ -978,7 +1081,7 @@ class VoucherController extends Controller
 
             $vouchers[] = [
                 'voucher_profile_id' => $profile->id,
-                'reseller_id' => !empty($validated['reseller_id']) ? $validated['reseller_id'] : null,
+                'reseller_id' => !empty($targetResellerId) ? $targetResellerId : null,
                 'customer_id' => !empty($validated['customer_id']) ? $validated['customer_id'] : null,
                 'code' => $code,
                 'username' => $username,
@@ -986,7 +1089,7 @@ class VoucherController extends Controller
                 'status' => 'available',
                 'is_active' => true,
                 'is_free' => $isFree,
-                'payment_method' => $isFree ? 'free' : (!empty($validated['reseller_id']) ? 'balance' : 'system'),
+                'payment_method' => $isFree ? 'free' : (!empty($targetResellerId) ? ($resellerPayment === 'cash' ? 'cash' : 'balance') : 'system'),
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
@@ -1054,12 +1157,24 @@ class VoucherController extends Controller
 
     public function destroy(Voucher $voucher)
     {
+        $user = auth()->user();
+        $isAdminLike = $user && ($user->isAdmin() || in_array(strtolower($user->role ?? ''), ['admin', 'super admin', 'superadmin', 'demo']));
+        if (!$isAdminLike && $voucher->reseller?->user_id !== $user?->id) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus voucher ini.');
+        }
+
         $voucher->delete();
         return redirect()->back()->with('success', 'Voucher berhasil dihapus.');
     }
 
     public function toggleStatus(Voucher $voucher)
     {
+        $user = auth()->user();
+        $isAdminLike = $user && ($user->isAdmin() || in_array(strtolower($user->role ?? ''), ['admin', 'super admin', 'superadmin', 'demo']));
+        if (!$isAdminLike && $voucher->reseller?->user_id !== $user?->id) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengubah status voucher ini.');
+        }
+
         $voucher->is_active = !$voucher->is_active;
         $voucher->save(); // This triggers Radius sync via VoucherObserver
 
@@ -1079,9 +1194,15 @@ class VoucherController extends Controller
             'ids.*' => 'exists:vouchers,id',
         ]);
         
-        $vouchersToDelete = Voucher::whereIn('id', $validated['ids'])->get();
+        $query = Voucher::whereIn('id', $validated['ids']);
+        $this->applyResellerFilter($query);
+        $vouchersToDelete = $query->get();
         
-        Voucher::whereIn('id', $validated['ids'])->delete();
+        if ($vouchersToDelete->isEmpty()) {
+            return redirect()->back()->withErrors(['message' => 'Tidak ada voucher yang dapat dihapus.']);
+        }
+
+        Voucher::whereIn('id', $vouchersToDelete->pluck('id'))->delete();
         
         // Hapus dari RADIUS secara eksplisit
         $radius = app(RadiusService::class);
@@ -1089,7 +1210,7 @@ class VoucherController extends Controller
             $radius->removeUser($v->username);
         }
         
-        return redirect()->back()->with('success', count($validated['ids']) . ' Voucher berhasil dihapus.');
+        return redirect()->back()->with('success', count($vouchersToDelete) . ' Voucher berhasil dihapus.');
     }
 
     public function print(Request $request)
