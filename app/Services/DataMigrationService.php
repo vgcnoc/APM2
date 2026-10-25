@@ -18,6 +18,11 @@ use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Employee;
 use App\Models\AuditLog;
+use App\Models\Material;
+use App\Models\MaterialStock;
+use App\Models\MaterialTransaction;
+use App\Models\MaterialTransactionItem;
+use App\Models\CustomerInstalledMaterial;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -685,7 +690,7 @@ class DataMigrationService
                     'tgl_survey' => ['label' => 'Tanggal Realisasi Survey (DD/MM/YYYY)', 'required' => false, 'db' => 'survey_date'],
                     'nama_odp' => ['label' => 'Nama ODP Terpilih / Terpasang', 'required' => false, 'db' => 'odp_name'],
                     'nomor_port_odp' => ['label' => 'Nomor Port ODP (1..N)', 'required' => false, 'db' => 'port_number'],
-                    'jarak_tarikan_meter' => ['label' => 'Jarak Tarikan Kabel (Meter, misal: 50)', 'required' => false, 'db' => 'distance_meters'],
+                    'jarak_tarikan_meter' => ['label' => 'Jarak Tarikan Kabel (Meter, misal: 50 - Auto isi Jarak Survey & Material Kabel Frecon)', 'required' => false, 'db' => 'distance_meters'],
                     'kelayakan_survey' => ['label' => 'Kelayakan Survey (layak / feasible / tidak_layak / not_feasible)', 'required' => false, 'db' => 'feasibility'],
                     'catatan_survey' => ['label' => 'Catatan Hasil Laporan Survey', 'required' => false, 'db' => 'survey_notes'],
 
@@ -697,16 +702,16 @@ class DataMigrationService
                     'catatan_jadwal_pasang' => ['label' => 'Catatan Penugasan Pemasangan', 'required' => false, 'db' => 'installation_schedule_notes'],
 
                     // ── 5. LAPORAN INSTALASI & PERANGKAT ONT ───────────────
-                    'sn_ont' => ['label' => 'Serial Number Modem ONT (ZTEG..., HWTC..., dll)', 'required' => false, 'db' => 'serial_number'],
+                    'sn_ont' => ['label' => 'Serial Number Modem ONT (ZTEG..., HWTC... - Auto masuk Data ONT & Alokasi Perangkat)', 'required' => false, 'db' => 'serial_number'],
                     'mac_ont' => ['label' => 'MAC Address Modem ONT (XX:XX:XX:XX:XX:XX)', 'required' => false, 'db' => 'mac_address'],
                     'merk_ont' => ['label' => 'Merk Modem (ZTE / Huawei / Fiberhome)', 'required' => false, 'db' => 'brand'],
                     'tipe_model' => ['label' => 'Tipe Model Modem (F609 / HG8546M, dll)', 'required' => false, 'db' => 'model'],
                     'redaman_rx' => ['label' => 'Redaman Optik Rx (dBm, misal: -20.50)', 'required' => false, 'db' => 'rx_power'],
                     'jam_mulai_pasang' => ['label' => 'Jam Pasang Mulai (HH:MM)', 'required' => false, 'db' => 'start_time'],
                     'jam_selesai_pasang' => ['label' => 'Jam Pasang Selesai (HH:MM)', 'required' => false, 'db' => 'end_time'],
-                    'ip_login_ont' => ['label' => 'IP Address Login ONT (misal: 192.168.1.1)', 'required' => false, 'db' => 'ip_login'],
-                    'user_login_ont' => ['label' => 'Username Login ONT (default: admin)', 'required' => false, 'db' => 'login_user'],
-                    'pass_login_ont' => ['label' => 'Password Login ONT (default: admin)', 'required' => false, 'db' => 'login_password'],
+                    'ip_login_ont' => ['label' => 'IP Address Login ONT (misal: 192.168.1.1 - Auto masuk Data ONT)', 'required' => false, 'db' => 'ip_login'],
+                    'user_login_ont' => ['label' => 'Username Login ONT (default: admin - Auto masuk Data ONT)', 'required' => false, 'db' => 'login_user'],
+                    'pass_login_ont' => ['label' => 'Password Login ONT (default: admin - Auto masuk Data ONT)', 'required' => false, 'db' => 'login_password'],
                     'free_hotspot' => ['label' => 'Hotspot Gratis ONT (ya / tidak)', 'required' => false, 'db' => 'free_hotspot'],
                     'user_hotspot' => ['label' => 'Username Hotspot ONT (Opsional)', 'required' => false, 'db' => 'hotspot_user'],
                     'pass_hotspot' => ['label' => 'Password Hotspot ONT (Opsional)', 'required' => false, 'db' => 'hotspot_password'],
@@ -720,8 +725,8 @@ class DataMigrationService
                     'status_pelanggan' => ['label' => 'Status Pelanggan (active / booking / survey / installing / suspended / terminated)', 'required' => true, 'db' => 'status'],
                     'tgl_registrasi' => ['label' => 'Tanggal Registrasi (DD/MM/YYYY)', 'required' => false, 'db' => 'registration_date'],
                     'tgl_aktivasi' => ['label' => 'Tanggal Aktivasi Layanan (DD/MM/YYYY)', 'required' => false, 'db' => 'activation_date'],
-                    'username_pppoe' => ['label' => 'Username Akun PPPoE', 'required' => false, 'db' => 'pppoe_user'],
-                    'password_pppoe' => ['label' => 'Password Akun PPPoE', 'required' => false, 'db' => 'pppoe_password'],
+                    'username_pppoe' => ['label' => 'Username Akun PPPoE (Auto masuk Data ONT & Pelanggan)', 'required' => false, 'db' => 'pppoe_user'],
+                    'password_pppoe' => ['label' => 'Password Akun PPPoE (Auto masuk Data ONT & Pelanggan)', 'required' => false, 'db' => 'pppoe_password'],
                     'vlan_id' => ['label' => 'VLAN ID PPPoE (Opsional)', 'required' => false, 'db' => 'vlan_id'],
                     'mode_akses' => ['label' => 'Mode Akses (PPPOE / STATIC / DHCP / VOUCHER / BRIDGE)', 'required' => false, 'db' => 'access_mode'],
                 ],
@@ -1851,9 +1856,9 @@ class DataMigrationService
         }
 
         // Optional ONT & ODP linkage dengan Pemecahan Slash & Normalisasi Cerdas
-        $rawOdpName = trim((string)($row['nama_odp'] ?? $row['odp'] ?? ''));
-        $snOnt = trim((string)($row['sn_ont'] ?? $row['serial_number'] ?? ''));
-        $portNumber = !empty($row['nomor_port_odp']) ? (int)$row['nomor_port_odp'] : (!empty($row['nomor_port']) ? (int)$row['nomor_port'] : null);
+        $rawOdpName = trim((string)($row['nama_odp'] ?? $row['odp'] ?? $row['nama_odp_terpasang'] ?? $row['odp_terpasang'] ?? $row['odp_name'] ?? ''));
+        $snOnt = trim((string)($row['sn_ont'] ?? $row['serial_number'] ?? $row['sn'] ?? $row['no_seri_ont'] ?? $row['sn_modem'] ?? ''));
+        $portNumber = !empty($row['nomor_port_odp']) ? (int)$row['nomor_port_odp'] : (!empty($row['nomor_port']) ? (int)$row['nomor_port'] : (!empty($row['port_odp']) ? (int)$row['port_odp'] : (!empty($row['port']) ? (int)$row['port'] : null)));
         $odpId = null;
         $odpName = $rawOdpName;
 
@@ -1900,10 +1905,18 @@ class DataMigrationService
 
         // ── 3. LAPORAN SURVEY FIELDS ────────────────────────────────
         $surveyDate = self::parseFlexibleDate($row['tgl_survey'] ?? $row['tanggal_survey'] ?? null);
-        $distanceMeters = !empty($row['jarak_tarikan_meter']) ? (float)$row['jarak_tarikan_meter'] : (!empty($row['jarak_meter']) ? (float)$row['jarak_meter'] : (!empty($row['jarak']) ? (float)$row['jarak'] : 50.0));
+        $distanceMeters = !empty($row['jarak_tarikan_meter']) ? (float)$row['jarak_tarikan_meter'] : (!empty($row['jarak_kabel']) ? (float)$row['jarak_kabel'] : (!empty($row['panjang_kabel']) ? (float)$row['panjang_kabel'] : (!empty($row['tarikan_kabel']) ? (float)$row['tarikan_kabel'] : (!empty($row['jarak_meter']) ? (float)$row['jarak_meter'] : (!empty($row['jarak']) ? (float)$row['jarak'] : 0.0)))));
         $rawFeasibility = strtolower(trim((string)($row['kelayakan_survey'] ?? $row['kelayakan'] ?? $row['feasibility'] ?? 'feasible')));
         $feasibility = in_array($rawFeasibility, ['tidak_layak', 'not_feasible', 'unfeasible']) ? 'not_feasible' : 'feasible';
         $surveyNotes = trim((string)($row['catatan_survey'] ?? $row['survey_notes'] ?? ''));
+
+        // Info notifikasi cerdas untuk migrasi
+        if (!empty($snOnt)) {
+            $infos[] = "Perangkat ONT SN '{$snOnt}' terdeteksi; otomatis sinkron ke Menu Data ONT, Detail Pelanggan & Alokasi Perangkat.";
+        }
+        if ($distanceMeters > 0) {
+            $infos[] = "Tarikan kabel {$distanceMeters}m terdeteksi; otomatis mengisi Jarak Survey, Material Kabel Frecon & Transaksi Gudang.";
+        }
 
         // ── 4. JADWAL PASANG FIELDS ─────────────────────────────────
         $installScheduleDate = self::parseFlexibleDate($row['tgl_jadwal_pasang'] ?? $row['jadwal_pasang'] ?? $row['tgl_pasang_jadwal'] ?? null);
@@ -1923,9 +1936,11 @@ class DataMigrationService
         // ── 5. ONT DEVICE EXTRA FIELDS ──────────────────────────────
         $startTime = trim((string)($row['jam_mulai_pasang'] ?? $row['jam_pasang_mulai'] ?? $row['start_time'] ?? '09:00'));
         $endTime = trim((string)($row['jam_selesai_pasang'] ?? $row['jam_pasang_selesai'] ?? $row['end_time'] ?? '11:00'));
-        $ipLogin = trim((string)($row['ip_login_ont'] ?? $row['ip_ont'] ?? $row['ip_login'] ?? '192.168.1.1'));
-        $userLogin = trim((string)($row['user_login_ont'] ?? $row['user_ont'] ?? $row['login_user'] ?? 'admin'));
-        $passLogin = trim((string)($row['pass_login_ont'] ?? $row['pass_ont'] ?? $row['login_password'] ?? 'admin'));
+        $ipLogin = trim((string)($row['ip_login_ont'] ?? $row['ip_ont'] ?? $row['ip_login'] ?? $row['ip_address_ont'] ?? '192.168.1.1'));
+        $userLogin = trim((string)($row['user_login_ont'] ?? $row['user_ont'] ?? $row['login_user'] ?? $row['username_ont'] ?? $row['user_login'] ?? 'admin'));
+        $passLogin = trim((string)($row['pass_login_ont'] ?? $row['pass_ont'] ?? $row['login_password'] ?? $row['password_ont'] ?? $row['pass_login'] ?? 'admin'));
+        $pppoeUser = trim((string)($row['username_pppoe'] ?? $row['pppoe_user'] ?? $row['user_pppoe'] ?? $row['akun_pppoe'] ?? ''));
+        $pppoePass = trim((string)($row['password_pppoe'] ?? $row['pppoe_password'] ?? $row['pass_pppoe'] ?? ''));
         $freeHotspot = in_array(strtolower(trim((string)($row['free_hotspot'] ?? $row['hotspot_gratis'] ?? ''))), ['1', 'true', 'ya', 'yes']);
         $userHotspot = trim((string)($row['user_hotspot'] ?? $row['hotspot_user'] ?? ''));
         $passHotspot = trim((string)($row['pass_hotspot'] ?? $row['hotspot_password'] ?? ''));
@@ -1961,8 +1976,8 @@ class DataMigrationService
             'merk_ont' => $row['merk_ont'] ?? $row['brand'] ?? 'ZTE',
             'tipe_model' => $row['tipe_model'] ?? $row['model'] ?? 'F609',
             'redaman_rx' => self::parseRxPower($row['redaman_rx'] ?? null, -20.0),
-            'username_pppoe' => $row['username_pppoe'] ?? $row['pppoe_user'] ?? null,
-            'password_pppoe' => $row['password_pppoe'] ?? $row['pppoe_password'] ?? null,
+            'username_pppoe' => $pppoeUser ?: null,
+            'password_pppoe' => $pppoePass ?: null,
             'vlan_id' => $row['vlan_id'] ?? null,
             'mode_akses' => $row['mode_akses'] ?? ($serviceStatus === 'free_home' ? 'VOUCHER' : 'PPPOE'),
             'tgl_jadwal_survey' => $surveyScheduleDate,
@@ -2382,7 +2397,10 @@ class DataMigrationService
             $targetCust = $customer;
         }
 
-        // Auto-connect ONT & ODP if provided in Customer row
+        // ── A. Resolve ODP & Port Fisik ─────────────────────────────
+        $odp = null;
+        $portToUse = null;
+        $odpPort = null;
         if (!empty($odpId) && $targetCust) {
             $odp = Odp::find($odpId);
             if ($odp) {
@@ -2391,59 +2409,192 @@ class DataMigrationService
                     $targetCust->update(['area_id' => $odp->area_id]);
                 }
 
-                if (!empty($data['sn_ont'])) {
-                    $portToUse = !empty($data['port_number']) && (int)$data['port_number'] > 0 ? (int)$data['port_number'] : null;
-                    if (!$portToUse) {
-                        $firstAvail = OdpPort::where('odp_id', $odp->id)->where('status', 'available')->orderBy('port_number')->first();
-                        $portToUse = $firstAvail ? $firstAvail->port_number : 1;
-                    }
-
-                    $odpPort = OdpPort::updateOrCreate(
-                        ['odp_id' => $odp->id, 'port_number' => $portToUse],
-                        ['status' => 'used']
-                    );
-
-                    $ontSn = trim((string)$data['sn_ont']);
-                    $ontMac = self::sanitizeMacAddress($data['mac_ont'] ?? null);
-                    $ontRx = self::parseRxPower($data['redaman_rx'] ?? null, -20.0);
-
-                    $ont = Ont::where('serial_number', $ontSn)->first();
-                    $ontPayload = [
-                        'customer_id' => $targetCust->id,
-                        'serial_number' => $ontSn,
-                        'mac_address' => $ontMac,
-                        'brand' => substr(trim($data['merk_ont'] ?? 'ZTE'), 0, 100),
-                        'model' => substr(trim($data['tipe_model'] ?? 'F609'), 0, 100),
-                        'odp_id' => $odp->id,
-                        'odp_port_id' => $odpPort?->id,
-                        'port_number' => $portToUse,
-                        'area_id' => $areaId ?: $odp->area_id,
-                        'rx_power' => $ontRx,
-                        'pppoe_user' => !empty($data['username_pppoe']) ? substr(trim((string)$data['username_pppoe']), 0, 100) : null,
-                        'pppoe_password' => !empty($data['password_pppoe']) ? substr(trim((string)$data['password_pppoe']), 0, 100) : null,
-                        'vlan_id' => !empty($data['vlan_id']) ? substr(trim((string)$data['vlan_id']), 0, 50) : null,
-                        'access_mode' => $data['mode_akses'] ?? ($data['service_status'] === 'free_home' ? 'VOUCHER' : 'PPPOE'),
-                        'ip_login' => !empty($data['ip_login_ont']) ? $data['ip_login_ont'] : '192.168.1.1',
-                        'login_user' => !empty($data['user_login_ont']) ? $data['user_login_ont'] : 'admin',
-                        'login_password' => !empty($data['pass_login_ont']) ? $data['pass_login_ont'] : 'admin',
-                        'start_time' => !empty($data['jam_mulai_pasang']) ? $data['jam_mulai_pasang'] : '09:00',
-                        'end_time' => !empty($data['jam_selesai_pasang']) ? $data['jam_selesai_pasang'] : '11:00',
-                        'free_hotspot' => (bool)($data['free_hotspot'] ?? false),
-                        'hotspot_user' => !empty($data['user_hotspot']) ? substr(trim((string)$data['user_hotspot']), 0, 100) : null,
-                        'hotspot_password' => !empty($data['pass_hotspot']) ? substr(trim((string)$data['pass_hotspot']), 0, 100) : null,
-                        'status' => in_array($targetCust->status, ['terminated', 'canceled']) ? 'inactive' : 'active',
-                    ];
-
-                    if ($ont) {
-                        $ont->update($ontPayload);
-                    } else {
-                        Ont::create($ontPayload);
-                    }
+                $portToUse = !empty($data['port_number']) && (int)$data['port_number'] > 0 ? (int)$data['port_number'] : null;
+                if (!$portToUse) {
+                    $firstAvail = OdpPort::where('odp_id', $odp->id)->where('status', 'available')->orderBy('port_number')->first();
+                    $portToUse = $firstAvail ? $firstAvail->port_number : 1;
                 }
+
+                $odpPort = OdpPort::updateOrCreate(
+                    ['odp_id' => $odp->id, 'port_number' => $portToUse],
+                    ['status' => in_array($targetCust->status, ['terminated', 'canceled']) ? 'available' : 'used']
+                );
             }
         }
 
-        // Auto-generate / sync complete lifecycle audit trail (Survey Schedule, Survey Report, Installation Schedule)
+        // ── B. Sinkronisasi Perangkat Modem ONT ke Menu Data ONT & Customer ──
+        $hasOntData = !empty($data['sn_ont']) || !empty($data['username_pppoe']) || !empty($data['user_login_ont']) || !empty($data['mac_ont']) || !empty($data['merk_ont']);
+        $ontSn = !empty($data['sn_ont']) ? trim((string)$data['sn_ont']) : ($hasOntData ? ('ONT-' . ($targetCust->customer_code ?: $targetCust->id)) : null);
+        $ontMac = self::sanitizeMacAddress($data['mac_ont'] ?? null);
+        $ontRx = self::parseRxPower($data['redaman_rx'] ?? null, -20.0);
+        $ontBrand = substr(trim($data['merk_ont'] ?? 'ZTE'), 0, 100);
+        $ontModel = substr(trim($data['tipe_model'] ?? 'F609'), 0, 100);
+        $ont = null;
+
+        if ($hasOntData && $targetCust) {
+            $ont = Ont::where('serial_number', $ontSn)->orWhere('customer_id', $targetCust->id)->first();
+            $ontPayload = [
+                'customer_id' => $targetCust->id,
+                'serial_number' => $ontSn,
+                'mac_address' => $ontMac ?: ($ont?->mac_address),
+                'brand' => $ontBrand ?: ($ont?->brand ?: 'ZTE'),
+                'model' => $ontModel ?: ($ont?->model ?: 'F609'),
+                'odp_id' => $odp ? $odp->id : ($ont?->odp_id),
+                'odp_port_id' => $odpPort ? $odpPort->id : ($ont?->odp_port_id),
+                'port_number' => $portToUse ?: ($ont?->port_number),
+                'area_id' => $areaId ?: ($odp ? $odp->area_id : ($targetCust->area_id ?: $ont?->area_id)),
+                'rx_power' => $ontRx,
+                'initial_rx_power' => $ontRx,
+                'pppoe_user' => !empty($data['username_pppoe']) ? substr(trim((string)$data['username_pppoe']), 0, 100) : ($ont?->pppoe_user),
+                'pppoe_password' => !empty($data['password_pppoe']) ? substr(trim((string)$data['password_pppoe']), 0, 100) : ($ont?->pppoe_password),
+                'vlan_id' => !empty($data['vlan_id']) ? substr(trim((string)$data['vlan_id']), 0, 50) : ($ont?->vlan_id),
+                'access_mode' => $data['mode_akses'] ?? ($data['service_status'] === 'free_home' ? 'VOUCHER' : ($ont?->access_mode ?: 'PPPOE')),
+                'ip_login' => !empty($data['ip_login_ont']) ? $data['ip_login_ont'] : ($ont?->ip_login ?: '192.168.1.1'),
+                'login_user' => !empty($data['user_login_ont']) ? $data['user_login_ont'] : ($ont?->login_user ?: 'admin'),
+                'login_password' => !empty($data['pass_login_ont']) ? $data['pass_login_ont'] : ($ont?->login_password ?: 'admin'),
+                'start_time' => !empty($data['jam_mulai_pasang']) ? $data['jam_mulai_pasang'] : ($ont?->start_time ?: '09:00'),
+                'end_time' => !empty($data['jam_selesai_pasang']) ? $data['jam_selesai_pasang'] : ($ont?->end_time ?: '11:00'),
+                'free_hotspot' => (bool)($data['free_hotspot'] ?? ($ont?->free_hotspot ?? false)),
+                'hotspot_user' => !empty($data['user_hotspot']) ? substr(trim((string)$data['user_hotspot']), 0, 100) : ($ont?->hotspot_user),
+                'hotspot_password' => !empty($data['pass_hotspot']) ? substr(trim((string)$data['pass_hotspot']), 0, 100) : ($ont?->hotspot_password),
+                'status' => in_array($targetCust->status, ['terminated', 'canceled']) ? 'inactive' : 'active',
+            ];
+
+            if ($ont) {
+                $ont->update($ontPayload);
+            } else {
+                $ont = Ont::create($ontPayload);
+            }
+        }
+
+        // ── C. Auto-detect Material Freecon / Dropcore & Cable Distance ───
+        $cableDistance = !empty($data['jarak_tarikan_meter']) ? (float)$data['jarak_tarikan_meter'] : 0.0;
+        if ($cableDistance <= 0 && in_array($targetCust->status, ['installing', 'active', 'terminated'])) {
+            $cableDistance = 50.0; // Standar awal tarikan kabel FTTH
+        }
+
+        $freeconMaterial = Material::where(function ($q) {
+            $q->where('name', 'like', '%frecon%')
+              ->orWhere('name', 'like', '%freecon%')
+              ->orWhere('name', 'like', '%precon%')
+              ->orWhere('name', 'like', '%dropcore%')
+              ->orWhere('name', 'like', '%kabel drop%');
+        })->first();
+
+        if (!$freeconMaterial) {
+            $freeconMaterial = Material::where('category', 'like', '%frecon%')
+                ->orWhere('category', 'like', '%kabel%')
+                ->first();
+        }
+
+        if (!$freeconMaterial) {
+            $freeconMaterial = Material::firstOrCreate(
+                ['name' => 'Kabel Dropcore / Frecon 1 Core'],
+                [
+                    'category' => 'Kabel Drop / Frecon',
+                    'unit' => 'meter',
+                    'stock' => 0,
+                    'price_per_unit' => 1500,
+                    'selling_price' => 2000,
+                    'meter_per_roll' => 1000,
+                    'is_active' => true,
+                ]
+            );
+        }
+
+        $cableItemName = $freeconMaterial ? $freeconMaterial->name : 'Kabel Dropcore / Frecon 1 Core';
+
+        // ── D. Auto-fill Material Terpasang Pelanggan (CustomerInstalledMaterial) ───
+        if ($targetCust) {
+            $instDate = $targetCust->activation_date ?: ($targetCust->registration_date ?: now());
+
+            if ($cableDistance > 0) {
+                CustomerInstalledMaterial::updateOrCreate(
+                    [
+                        'customer_id' => $targetCust->id,
+                        'item_name' => $cableItemName,
+                    ],
+                    [
+                        'material_id' => $freeconMaterial?->id,
+                        'quantity' => $cableDistance,
+                        'unit' => 'meter',
+                        'installed_at' => $instDate,
+                        'installation_source' => 'migration',
+                        'status' => 'installed',
+                        'notes' => "Kabel tarikan migrasi ({$cableDistance} meter)" . (!empty($data['odp_name']) ? " dari ODP {$data['odp_name']}" : ''),
+                    ]
+                );
+            }
+
+            if (!empty($ontSn)) {
+                $ontDeviceName = "ONT {$ontBrand} {$ontModel}";
+                $ontMat = Material::where(function($q) use ($ontBrand) {
+                    $q->where('category', 'like', '%ont%')
+                      ->orWhere('category', 'like', '%modem%')
+                      ->orWhere('name', 'like', "%{$ontBrand}%");
+                })->first();
+
+                CustomerInstalledMaterial::updateOrCreate(
+                    [
+                        'customer_id' => $targetCust->id,
+                        'serial_number' => $ontSn,
+                    ],
+                    [
+                        'material_id' => $ontMat?->id,
+                        'item_name' => $ontDeviceName,
+                        'quantity' => 1,
+                        'unit' => 'unit',
+                        'installed_at' => $instDate,
+                        'installation_source' => 'migration',
+                        'status' => 'installed',
+                        'notes' => "Modem ONT aktif pelanggan (SN: {$ontSn}) dari migrasi sistem",
+                    ]
+                );
+            }
+        }
+
+        // ── E. Auto-fill MaterialTransaction & Item (Menu Gudang & Riwayat Alokasi Material) ───
+        if ($cableDistance > 0 && $targetCust) {
+            $transNumber = 'OUT-MIG-' . ($targetCust->customer_code ?: 'CUS-' . $targetCust->id);
+            $matTrans = MaterialTransaction::updateOrCreate(
+                ['transaction_number' => $transNumber],
+                [
+                    'type' => 'out',
+                    'status' => 'approved',
+                    'date' => $targetCust->activation_date ? $targetCust->activation_date->format('Y-m-d') : now()->toDateString(),
+                    'technician_name' => !empty($data['sales_name']) ? $data['sales_name'] : 'Teknisi Migrasi',
+                    'purpose' => "Pemakaian Material Tarikan Kabel Migrasi Pelanggan {$targetCust->name}",
+                    'source_type' => 'instalasi',
+                    'source_id' => $targetCust->id,
+                    'source_reference' => $targetCust->customer_code,
+                    'user_id' => $salesId ?: 1,
+                    'customer_id' => $targetCust->id,
+                    'area_id' => $targetCust->area_id,
+                    'notes' => "Material migrasi terpasang:\n- {$cableItemName}: {$cableDistance} meter" . (!empty($ontSn) ? "\n- ONT: {$ontBrand} {$ontModel} (SN: {$ontSn})" : ""),
+                    'total_cost' => ($freeconMaterial ? (float)$freeconMaterial->price_per_unit : 0) * $cableDistance,
+                ]
+            );
+
+            if ($freeconMaterial) {
+                MaterialTransactionItem::updateOrCreate(
+                    [
+                        'material_transaction_id' => $matTrans->id,
+                        'material_id' => $freeconMaterial->id,
+                    ],
+                    [
+                        'quantity' => $cableDistance,
+                        'unit' => 'meter',
+                        'price_per_unit' => $freeconMaterial->price_per_unit ?? 0,
+                        'total_price' => ($freeconMaterial->price_per_unit ?? 0) * $cableDistance,
+                        'stock_before' => $freeconMaterial->stock ?? 0,
+                        'stock_after' => $freeconMaterial->stock ?? 0,
+                        'condition' => 'Terpasang/Digunakan',
+                    ]
+                );
+            }
+        }
+
+        // ── F. Auto-generate / sync complete lifecycle audit trail (Survey Schedule, Survey Report, Installation Schedule) ───
         if ($targetCust) {
             $regDate = $targetCust->registration_date ? $targetCust->registration_date->format('Y-m-d') : ($targetCust->created_at ? $targetCust->created_at->format('Y-m-d') : date('Y-m-d'));
             $actDate = $targetCust->activation_date ? $targetCust->activation_date->format('Y-m-d') : $regDate;
@@ -2487,10 +2638,10 @@ class DataMigrationService
                     'port_number' => $portToUse ?? 1,
                     'surveyor_id' => $surveyTechId,
                     'feasibility' => !empty($data['kelayakan_survey']) ? $data['kelayakan_survey'] : 'feasible',
-                    'distance_meters' => !empty($data['jarak_tarikan_meter']) ? $data['jarak_tarikan_meter'] : 50,
+                    'distance_meters' => $cableDistance,
                     'signal_loss' => $ontRx ?? -20.0,
                     'survey_date' => !empty($data['tgl_survey']) ? $data['tgl_survey'] : $regDate,
-                    'notes' => !empty($data['catatan_survey']) ? $data['catatan_survey'] : 'Survey historis migrasi sistem',
+                    'notes' => !empty($data['catatan_survey']) ? $data['catatan_survey'] : ("Survey historis migrasi sistem (Tarikan kabel: {$cableDistance} m dari ODP " . ($data['odp_name'] ?? '-') . ")"),
                 ];
                 if ($survey) {
                     $survey->update($surveyPayload);
@@ -2499,9 +2650,22 @@ class DataMigrationService
                 }
             }
 
-            // 3. Jadwal Pasang (TechnicianSchedule type 'installation')
+            // 3. Jadwal Pasang (TechnicianSchedule type 'installation') - Auto-render ke Card "Riwayat Alokasi Material & ONT"
             if (!empty($data['tgl_jadwal_pasang']) || in_array($targetCust->status, ['installing', 'active', 'terminated'])) {
                 $installSched = TechnicianSchedule::where('customer_id', $targetCust->id)->where('type', 'installation')->first();
+                
+                $schedNotes = [];
+                if (!empty($ontSn)) {
+                    $schedNotes[] = "ONT: {$ontBrand} {$ontModel} (SN: {$ontSn})";
+                }
+                if ($cableDistance > 0 && $freeconMaterial) {
+                    $schedNotes[] = "Material: {$freeconMaterial->name} ({$cableDistance} meter)";
+                }
+                if (!empty($data['catatan_jadwal_pasang'])) {
+                    $schedNotes[] = "Catatan: " . $data['catatan_jadwal_pasang'];
+                }
+                $installNotesText = count($schedNotes) > 0 ? implode("\n", $schedNotes) : 'Jadwal pasang historis migrasi sistem';
+
                 $installSchedPayload = [
                     'customer_id' => $targetCust->id,
                     'technician_id' => $installTechId,
@@ -2509,7 +2673,7 @@ class DataMigrationService
                     'scheduled_time' => $installSchedTime,
                     'type' => 'installation',
                     'status' => $installSchedStatus,
-                    'notes' => !empty($data['catatan_jadwal_pasang']) ? $data['catatan_jadwal_pasang'] : 'Jadwal pasang historis migrasi sistem',
+                    'notes' => $installNotesText,
                 ];
                 if ($installSched) {
                     $installSched->update($installSchedPayload);
@@ -2844,6 +3008,36 @@ class DataMigrationService
             'activation_date' => $data['activation_date'],
             'is_audited' => $data['is_audited'],
         ]);
+
+        // Auto-register ONT in CustomerInstalledMaterial
+        if (!empty($sn) && !empty($data['customer_id'])) {
+            $brand = trim($data['brand'] ?? 'ONT');
+            $model = trim($data['model'] ?? 'Modem');
+            $ontDeviceName = "ONT {$brand} {$model}";
+
+            $ontMat = Material::where(function($q) use ($brand) {
+                $q->where('category', 'like', '%ont%')
+                  ->orWhere('category', 'like', '%modem%')
+                  ->orWhere('name', 'like', "%{$brand}%");
+            })->first();
+
+            CustomerInstalledMaterial::updateOrCreate(
+                [
+                    'customer_id' => $data['customer_id'],
+                    'serial_number' => $sn,
+                ],
+                [
+                    'material_id' => $ontMat?->id,
+                    'item_name' => $ontDeviceName,
+                    'quantity' => 1,
+                    'unit' => 'unit',
+                    'installed_at' => $data['activation_date'] ?? now(),
+                    'installation_source' => 'migration',
+                    'status' => 'installed',
+                    'notes' => "Modem ONT aktif pelanggan (SN: {$sn}) dari migrasi instalasi",
+                ]
+            );
+        }
 
         return 'inserted';
     }
