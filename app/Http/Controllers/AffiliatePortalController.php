@@ -178,8 +178,8 @@ class AffiliatePortalController extends Controller
         $appUrl = config('app.url', url('/'));
 
         return Inertia::render('Affiliate/Dashboard', [
-            'tab' => in_array($request->query('tab'), ['customers', 'downlines', 'commissions', 'withdrawals', 'bank'], true)
-                ? $request->query('tab') : 'customers',
+            'tab' => in_array($request->query('tab'), ['overview', 'customers', 'downlines', 'commissions', 'withdrawals', 'bank'], true)
+                ? $request->query('tab') : 'overview',
             'is_employee' => $isEmployee,
             'pending_payroll_incentives' => $pendingPayrollIncentives,
             'payout_info' => $payoutInfo,

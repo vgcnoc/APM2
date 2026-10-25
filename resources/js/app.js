@@ -3,6 +3,7 @@ import { createInertiaApp, router } from '@inertiajs/vue3';
 import '../css/app.css';
 import '../css/dark.css';
 import { applyTheme } from './Composables/useTheme';
+import { applyDeviceScale } from './Composables/deviceScale';
 
 // Cegah modal popup 419 | PAGE EXPIRED dan refresh otomatis saat session/CSRF habis
 router.on('invalid', (event) => {
@@ -12,26 +13,14 @@ router.on('invalid', (event) => {
     }
 });
 
-// Atur skala tampilan: default aplikasi 80%, halaman login & auth mengikuti layar perangkat (100% responsive)
-const applyDeviceScale = (componentName) => {
-    if (typeof document === 'undefined') return;
-    const isAuth = (componentName || '').startsWith('Auth/');
-    if (isAuth) {
-        document.body.classList.add('auth-device-scale');
-        document.body.style.zoom = '100%';
-    } else {
-        document.body.classList.remove('auth-device-scale');
-        document.body.style.zoom = '80%';
-    }
-};
-
+// Portal sales dan auth mengikuti ukuran perangkat; modul operasional tetap pada skala semula.
 applyTheme();
 
 router.on('navigate', (event) => {
     if (event.detail?.page?.props) {
         window.__pageProps = event.detail.page.props;
     }
-    applyDeviceScale(event.detail?.page?.component);
+    applyDeviceScale(event.detail?.page?.component, event.detail?.page?.props);
     applyTheme();
 });
 
@@ -39,7 +28,7 @@ router.on('success', (event) => {
     if (event.detail?.page?.props) {
         window.__pageProps = event.detail.page.props;
     }
-    applyDeviceScale(event.detail?.page?.component);
+    applyDeviceScale(event.detail?.page?.component, event.detail?.page?.props);
     applyTheme();
 });
 
@@ -54,7 +43,7 @@ createInertiaApp({
     },
     setup({ el, App, props, plugin }) {
         window.__pageProps = props.initialPage.props;
-        applyDeviceScale(props.initialPage.component);
+        applyDeviceScale(props.initialPage.component, props.initialPage.props);
         const app = createApp({ render: () => h(App, props) });
         app.config.globalProperties.route = window.route;
 

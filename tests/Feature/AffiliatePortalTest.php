@@ -176,6 +176,20 @@ class AffiliatePortalTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_sales_sidebar_sections_can_be_opened_directly_and_unknown_tabs_fall_back_to_overview(): void
+    {
+        $owner = $this->user('sales');
+        $this->profile($owner);
+        $this->actingAs($owner)->get('/affiliate/dashboard')->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('Affiliate/Dashboard')->where('tab', 'overview'));
+
+        foreach (['overview', 'customers', 'downlines', 'commissions', 'withdrawals', 'bank', 'invalid'] as $tab) {
+            $this->get('/affiliate/dashboard?tab='.$tab)->assertOk()
+                ->assertInertia(fn (Assert $page) => $page->where('tab', $tab === 'invalid' ? 'overview' : $tab)
+                    ->where('profile.user_id', $owner->id));
+        }
+    }
+
     public function test_dashboard_contains_only_own_bookings_commissions_and_two_downline_levels(): void
     {
         $owner = $this->user('sales');

@@ -1,98 +1,14 @@
 <template>
-    <AffiliateLayout title="Dashboard Sales Afiliasi">
-        <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 font-sans">
-            <!-- Header Banner -->
-            <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl mb-8 relative overflow-hidden">
-                <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
-                <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div>
-                        <div v-if="is_employee" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-400/30 text-purple-200 text-xs font-semibold mb-2">
-                            <span>💼</span>
-                            <span>Akun Karyawan Internal &bull; Fee Booking &amp; Pasif Masuk ke Insentif Slip Gaji</span>
-                        </div>
-                        <div v-else class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-indigo-300 text-xs font-semibold mb-2">
-                            <span>⭐</span>
-                            <span>Akun Kemitraan Afiliasi Resmi</span>
-                        </div>
-                        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">
-                            Halo, {{ profile.name }}!
-                        </h1>
-                        <div class="mt-4 flex flex-wrap items-center gap-3">
-                            <div>
-                                <span class="text-[11px] uppercase tracking-wider text-indigo-200 block">Nomor / Kode Afiliasi Saya</span>
-                                <span class="text-xl sm:text-2xl font-mono font-extrabold tracking-wide">{{ profile.referral_code }}</span>
-                            </div>
-                            <button type="button" @click="copyToClipboard(profile.referral_code, 'Nomor afiliasi berhasil disalin.')" class="px-3 py-2 rounded-xl bg-white/15 border border-white/25 hover:bg-white/25 text-xs font-semibold">Salin Nomor</button>
-                        </div>
-                        <p class="text-slate-300 text-xs sm:text-sm mt-1 max-w-xl">
-                            Selamat datang di portal kemitraan sales &amp; afiliasi. Pantau perolehan komisi booking, pasif income bulanan, dan perkembangan tim downline Anda.
-                        </p>
-                        <div v-if="profile.upline_name" class="mt-2 text-xs text-indigo-300 flex items-center gap-1">
-                            <span>Sponsor Upline:</span>
-                            <span class="font-bold text-white">{{ profile.upline_name }}</span>
-                        </div>
-                    </div>
-
-                    <!-- Saldo & Tarik Dana Action -->
-                    <div class="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-5">
-                        <div>
-                            <span class="text-xs text-indigo-200 block">
-                                {{ is_employee ? 'Estimasi Insentif Siap Dicairkan' : 'Saldo Komisi Siap Tarik' }}
-                            </span>
-                            <span class="text-2xl sm:text-3xl font-extrabold text-white">
-                                {{ formatRupiah(is_employee ? (pending_payroll_incentives || 0) : profile.balance) }}
-                            </span>
-                            <span v-if="is_employee" class="text-[11px] text-purple-200 block mt-0.5">
-                                Cair bulanan via Slip Gaji (Payroll)
-                            </span>
-                        </div>
-                        <div v-if="is_employee">
-                            <button
-                                type="button"
-                                @click="activeTab = 'commissions'"
-                                class="w-full sm:w-auto px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
-                            >
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                                <span>Histori Insentif Gaji</span>
-                            </button>
-                        </div>
-                        <button
-                            v-else
-                            type="button"
-                            @click="openWithdrawModal"
-                            class="w-full sm:w-auto px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
-                        >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                            <span>Tarik Saldo</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <p v-if="copyMessage" role="status" class="mb-5 px-4 py-3 text-sm text-indigo-800 bg-indigo-50 border border-indigo-100 rounded-xl">{{ copyMessage }}</p>
-
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <div class="p-5 rounded-2xl border border-indigo-100 bg-indigo-50">
-                    <p class="text-xs font-semibold text-indigo-600">Booking Menunggu Proses</p>
-                    <p class="text-2xl font-extrabold text-indigo-950 mt-2">{{ kpi.pending_bookings }}</p>
-                </div>
-                <div class="p-5 rounded-2xl border border-emerald-100 bg-emerald-50">
-                    <p class="text-xs font-semibold text-emerald-700">Pelanggan Aktif Saya</p>
-                    <p class="text-2xl font-extrabold text-emerald-950 mt-2">{{ kpi.active_customers }}</p>
-                </div>
-                <div class="p-5 rounded-2xl border border-slate-200 bg-white">
-                    <p class="text-xs font-semibold text-slate-500">Akumulasi Komisi Booking</p>
-                    <p class="text-lg font-extrabold text-slate-900 mt-2">{{ formatRupiah(kpi.booking_commissions) }}</p>
-                </div>
-                <div class="p-5 rounded-2xl border border-slate-200 bg-white">
-                    <p class="text-xs font-semibold text-slate-500">Komisi Bulanan &amp; Downline</p>
-                    <p class="text-lg font-extrabold text-slate-900 mt-2">{{ formatRupiah(kpi.recurring_commissions) }}</p>
-                </div>
-            </div>
+    <AffiliateLayout :title="currentSection.label" :section="activeTab">
+        <div class="sales-dashboard">
+            <p v-if="copyMessage" role="status" class="sales-copy-message">{{ copyMessage }}</p>
+            <AffiliateOverview v-if="activeTab === 'overview'" :profile="profile" :kpi="kpi" :settings="settings" :customers="customers"
+                :is-employee="is_employee" :pending-payroll="pending_payroll_incentives" :customer-share-url="generateWaCustomerShareUrl()" :affiliate-share-url="generateWaAffiliateShareUrl()"
+                @copy="copyToClipboard" @withdraw="openWithdrawModal" />
+            <div v-else class="sales-detail-intro"><p>RUANG KERJA PRIBADI</p><h1>{{ currentSection.label }}</h1><span>{{ sectionDescriptions[activeTab] }}</span></div>
 
             <!-- Notice & Alert: Jadwal Pencairan per Tanggal 15 & Pelanggan Belum Bayar (Khusus Mitra Luar) -->
-            <div v-if="!is_employee" class="mb-8 space-y-4">
+            <div v-if="!is_employee && ['overview', 'withdrawals'].includes(activeTab)" class="mb-8 space-y-4">
                 <!-- Alert 1: Ada Pelanggan Belum Bayar (Fee Tidak Dapat Dicairkan) -->
                 <div
                     v-if="payout_info?.has_unpaid_customers"
@@ -183,163 +99,7 @@
                 </div>
             </div>
 
-            <!-- KPI Cards -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                <!-- Total Earned -->
-                <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
-                    <div>
-                        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Total Pendapatan</span>
-                        <span class="text-xl font-extrabold text-emerald-600 mt-0.5 block">
-                            {{ formatRupiah(profile.total_earned) }}
-                        </span>
-                    </div>
-                    <div class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
-                        💰
-                    </div>
-                </div>
-
-                <!-- Total Pelanggan Aktif -->
-                <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
-                    <div>
-                        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Total Booking Saya</span>
-                        <span class="text-xl font-extrabold text-slate-800 mt-0.5 block">
-                            {{ kpi.total_customers }} Pelanggan
-                        </span>
-                    </div>
-                    <div class="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl">
-                        👥
-                    </div>
-                </div>
-
-                <!-- Jaringan Downline -->
-                <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
-                    <div>
-                        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Jaringan Tim Mitra</span>
-                        <span class="text-xl font-extrabold text-purple-700 mt-0.5 block">
-                            {{ kpi.total_downlines }} Mitra
-                        </span>
-                        <span class="text-[10px] text-slate-400">L1: {{ kpi.downlines_l1_count }} &bull; L2: {{ kpi.downlines_l2_count }}</span>
-                    </div>
-                    <div class="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl">
-                        🚀
-                    </div>
-                </div>
-
-                <!-- Total Telah Dicairkan -->
-                <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
-                    <div>
-                        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider block">{{ is_employee ? 'Insentif Menunggu Payroll' : 'Total Dicairkan' }}</span>
-                        <span class="text-xl font-extrabold text-slate-800 mt-0.5 block">
-                            {{ formatRupiah(is_employee ? pending_payroll_incentives : profile.total_withdrawn) }}
-                        </span>
-                    </div>
-                    <div class="w-11 h-11 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-xl">
-                        🏦
-                    </div>
-                </div>
-            </div>
-
-            <!-- Smart Link & Share Referral Section -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                <!-- Box 1: Link Ajak Pelanggan Pasang Internet -->
-                <div class="bg-gradient-to-br from-indigo-50 to-white p-6 rounded-3xl border border-indigo-100 shadow-sm">
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="text-lg">🎯</span>
-                        <h3 class="text-sm font-bold text-slate-900">Kode Rekomendasi Booking Pelanggan</h3>
-                    </div>
-                    <p class="text-xs text-slate-600 mb-4 leading-relaxed">
-                        Bagikan kode afiliasi Anda ke calon pelanggan, lalu daftarkan melalui menu Booking Baru. Komisi mengikuti ketentuan yang berlaku: <strong>Booking {{ formatRupiah(settings.affiliate_commission_booking) }}</strong> dan <strong>bulanan {{ formatRupiah(settings.affiliate_commission_monthly) }}/pelanggan</strong>.
-                    </p>
-
-                    <div class="flex items-center gap-2 mb-3">
-                        <input
-                            type="text"
-                            readonly
-                            :value="profile.referral_code"
-                            class="px-3 py-2 bg-white border border-indigo-200 rounded-xl text-xs font-mono font-bold text-indigo-700 w-32 text-center"
-                        />
-                        <button
-                            type="button"
-                            @click="copyToClipboard(profile.referral_code, 'Kode Referral berhasil disalin!')"
-                            class="px-3 py-2 bg-white hover:bg-slate-50 border border-indigo-200 text-indigo-700 text-xs font-semibold rounded-xl shadow-2xs transition-colors flex items-center gap-1"
-                        >
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                            Salin Kode
-                        </button>
-                    </div>
-
-                    <div class="flex flex-wrap items-center gap-2">
-                        <a
-                            :href="generateWaCustomerShareUrl()"
-                            target="_blank"
-                            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
-                        >
-                            <span>Share WhatsApp</span>
-                            <span>&rarr;</span>
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Box 2: Link Ajak Rekan Mitra Afiliasi -->
-                <div class="bg-gradient-to-br from-purple-50 to-white p-6 rounded-3xl border border-purple-100 shadow-sm">
-                    <div class="flex items-center gap-2 mb-2">
-                        <span class="text-lg">🤝</span>
-                        <h3 class="text-sm font-bold text-slate-900">Link Rekrut Tim / Downline Afiliasi</h3>
-                    </div>
-                    <p class="text-xs text-slate-600 mb-4 leading-relaxed">
-                        Ajak teman atau rekan bergabung menjadi sesama mitra marketing. Anda otomatis menjadi Upline mereka dan menikmati <strong>Komisi Pasif {{ formatRupiah(settings.affiliate_commission_upline_1) }}/bulan (Tier 1)</strong> &amp; <strong>{{ formatRupiah(settings.affiliate_commission_upline_2) }}/bulan (Tier 2)</strong>!
-                    </p>
-
-                    <div class="flex items-center gap-2 mb-3">
-                        <input
-                            type="text"
-                            readonly
-                            :value="profile.referral_link_affiliate"
-                            class="px-3 py-2 bg-white border border-purple-200 rounded-xl text-xs font-mono text-purple-700 flex-1 truncate"
-                        />
-                    </div>
-
-                    <div class="flex flex-wrap items-center gap-2">
-                        <button
-                            type="button"
-                            @click="copyToClipboard(profile.referral_link_affiliate, 'Link Pendaftaran Mitra Afiliasi berhasil disalin!')"
-                            class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
-                        >
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                            Salin Link Ajak Rekan
-                        </button>
-                        <a
-                            :href="generateWaAffiliateShareUrl()"
-                            target="_blank"
-                            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
-                        >
-                            <span>Share ke Grup WA</span>
-                            <span>&rarr;</span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Main Tab Navigation -->
-            <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden mb-8">
-                <div class="p-4 border-b border-slate-100 flex items-center gap-2 overflow-x-auto">
-                    <button
-                        v-for="t in [
-                            { id: 'customers', label: 'Pelanggan Saya (' + customers.length + ')', icon: '👥' },
-                            { id: 'downlines', label: 'Jaringan Tim (' + kpi.total_downlines + ')', icon: '🚀' },
-                            { id: 'commissions', label: 'Riwayat Komisi', icon: '💰' },
-                            { id: 'withdrawals', label: 'Pencairan Dana (' + withdrawals.length + ')', icon: '🏦' },
-                            { id: 'bank', label: 'Rekening Bank / E-Wallet', icon: '💳' },
-                        ]"
-                        :key="t.id"
-                        @click="activeTab = t.id"
-                        class="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap flex items-center gap-1.5"
-                        :class="activeTab === t.id ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'"
-                    >
-                        <span>{{ t.icon }}</span>
-                        <span>{{ t.label }}</span>
-                    </button>
-                </div>
+            <div v-if="activeTab !== 'overview'" class="sales-detail bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden mb-8">
 
                 <!-- Tab Content: Pelanggan Saya -->
                 <div v-if="activeTab === 'customers'" class="p-6">
@@ -632,7 +392,7 @@
                             <h4 class="text-xs font-bold uppercase tracking-wider text-slate-800">Riwayat Penarikan Dana</h4>
                             <p class="text-xs text-slate-500">Pencairan diproses langsung ke rekening bank / e-wallet Anda.</p>
                         </div>
-                        <button
+                        <button v-if="!is_employee"
                             type="button"
                             @click="openWithdrawModal"
                             class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
@@ -684,18 +444,20 @@
                     <div v-else class="text-center py-12 text-slate-400">
                         <span class="text-4xl block mb-2">💸</span>
                         <p class="font-medium text-slate-700">Belum Ada Pengajuan Penarikan</p>
-                        <p class="text-xs text-slate-400 mt-1">Saldo yang mencukupi minimal penarikan dapat dicairkan kapan saja.</p>
+                            <p class="text-xs text-slate-400 mt-1">{{ is_employee ? 'Insentif karyawan disalurkan melalui slip gaji.' : 'Pengajuan mengikuti jadwal pencairan dan ketentuan saldo minimum.' }}</p>
                     </div>
                 </div>
 
                 <!-- Tab Content: Rekening Bank / E-Wallet -->
                 <div v-if="activeTab === 'bank'" class="p-6 max-w-lg">
+                    <div v-if="Object.keys(bankForm.errors).length" role="alert" class="sales-form-errors"><p v-for="(error, key) in bankForm.errors" :key="key">{{ error }}</p></div>
                     <form @submit.prevent="submitBankUpdate" class="space-y-4">
                         <div>
-                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                            <label for="affiliate-bank" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
                                 Bank / E-Wallet
                             </label>
                             <select
+                                id="affiliate-bank"
                                 v-model="bankForm.bank_name"
                                 required
                                 class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -705,10 +467,11 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                            <label for="affiliate-account-number" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
                                 Nomor Rekening / Nomor HP E-Wallet
                             </label>
                             <input
+                                id="affiliate-account-number"
                                 v-model="bankForm.bank_account_number"
                                 type="text"
                                 required
@@ -717,10 +480,11 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                            <label for="affiliate-account-holder" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
                                 Nama Pemilik Rekening
                             </label>
                             <input
+                                id="affiliate-account-holder"
                                 v-model="bankForm.bank_account_holder"
                                 type="text"
                                 required
@@ -729,10 +493,11 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                            <label for="affiliate-whatsapp" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
                                 Nomor WhatsApp Konfirmasi
                             </label>
                             <input
+                                id="affiliate-whatsapp"
                                 v-model="bankForm.whatsapp"
                                 type="text"
                                 class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -754,18 +519,15 @@
         </div>
 
         <!-- ── Modal Tarik Dana ── -->
-        <div
-            v-if="showWithdrawModal"
-            class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
-            @click.self="showWithdrawModal = false"
-        >
-            <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-100 p-6 sm:p-7">
+        <Dialog :open="showWithdrawModal" class="sales-withdraw-dialog affiliate-workspace" @close="closeWithdrawModal">
+            <div class="sales-withdraw-backdrop" aria-hidden="true"></div>
+            <div class="sales-withdraw-viewport">
+            <DialogPanel class="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-slate-100 p-6 sm:p-7">
                 <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-                    <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
-                        <span>💸</span>
+                    <DialogTitle as="h3" class="text-base font-bold text-slate-900 flex items-center gap-2">
                         <span>Tarik Saldo Komisi</span>
-                    </h3>
-                    <button type="button" @click="showWithdrawModal = false" class="text-slate-400 hover:text-slate-600">
+                    </DialogTitle>
+                    <button type="button" aria-label="Tutup pencairan" :disabled="withdrawForm.processing" @click="closeWithdrawModal" class="text-slate-400 hover:text-slate-600">
                         ✕
                     </button>
                 </div>
@@ -807,12 +569,14 @@
                     </p>
                 </div>
 
+                <div v-if="Object.keys(withdrawForm.errors).length" role="alert" class="sales-form-errors"><p v-for="(error, key) in withdrawForm.errors" :key="key">{{ error }}</p></div>
                 <form @submit.prevent="submitWithdrawal" class="space-y-4">
                     <div>
-                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                        <label for="affiliate-withdraw-amount" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
                             Nominal Penarikan (Rp)
                         </label>
                         <input
+                            id="affiliate-withdraw-amount"
                             v-model="withdrawForm.amount"
                             type="number"
                             :min="settings.affiliate_min_withdraw"
@@ -826,10 +590,11 @@
                     </div>
 
                     <div>
-                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                        <label for="affiliate-withdraw-notes" class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
                             Catatan Tambahan (Opsional)
                         </label>
                         <textarea
+                            id="affiliate-withdraw-notes"
                             v-model="withdrawForm.notes"
                             rows="2"
                             :disabled="payout_info?.has_unpaid_customers || !payout_info?.is_payout_open"
@@ -841,7 +606,8 @@
                     <div class="pt-2 flex justify-end gap-2">
                         <button
                             type="button"
-                            @click="showWithdrawModal = false"
+                            :disabled="withdrawForm.processing"
+                            @click="closeWithdrawModal"
                             class="px-4 py-2 border border-slate-300 text-slate-700 font-semibold text-xs rounded-xl hover:bg-slate-50 transition-colors"
                         >
                             Batal
@@ -855,15 +621,19 @@
                         </button>
                     </div>
                 </form>
+            </DialogPanel>
             </div>
-        </div>
+        </Dialog>
     </AffiliateLayout>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { Link, useForm } from '@inertiajs/vue3';
+import { Dialog, DialogPanel, DialogTitle } from '@headlessui/vue';
 import AffiliateLayout from '@/Layouts/AffiliateLayout.vue';
+import AffiliateOverview from '@/Components/AffiliateOverview.vue';
+import { affiliateSections, affiliateSection } from '@/Composables/affiliateNavigation';
 
 const props = defineProps({
     profile: Object,
@@ -880,8 +650,15 @@ const props = defineProps({
     tab: String,
 });
 
-const activeTab = ref(props.tab || 'customers');
-watch(() => props.tab, tab => { activeTab.value = tab || 'customers'; });
+const activeTab = computed(() => affiliateSection('/affiliate/dashboard', props.tab));
+const currentSection = computed(() => affiliateSections.find(item => item.id === activeTab.value));
+const sectionDescriptions = {
+    customers: 'Daftar booking dan pelanggan yang Anda daftarkan langsung.',
+    downlines: 'Nomor afiliasi Anda dan jaringan downline tingkat 1 dan 2.',
+    commissions: 'Rincian komisi booking, bulanan, dan jaringan afiliasi Anda.',
+    withdrawals: 'Pantau pengajuan dan status pencairan saldo komisi.',
+    bank: 'Kelola rekening tujuan pencairan dan nomor konfirmasi Anda.',
+};
 const copyMessage = ref('');
 const showWithdrawModal = ref(false);
 
@@ -957,9 +734,14 @@ const generateWaAffiliateShareUrl = () => {
 };
 
 const openWithdrawModal = () => {
+    withdrawForm.clearErrors();
     withdrawForm.amount = props.profile.balance >= props.settings.affiliate_min_withdraw ? props.profile.balance : '';
     withdrawForm.notes = '';
     showWithdrawModal.value = true;
+};
+
+const closeWithdrawModal = () => {
+    if (!withdrawForm.processing) showWithdrawModal.value = false;
 };
 
 const submitWithdrawal = () => {
@@ -978,3 +760,28 @@ const submitBankUpdate = () => {
     });
 };
 </script>
+
+<style scoped>
+.sales-dashboard { min-width: 0; }
+.sales-copy-message { margin-bottom: 20px; padding: 13px 16px; border: 1px solid #72b5a440; border-radius: 10px; background: #72b5a40b; color: var(--sales-accent); font-size: 12px; }
+.sales-detail-intro { margin-bottom: 26px; }
+.sales-detail-intro > p { color: var(--sales-muted); font-size: 9px; letter-spacing: .14em; font-weight: 600; }
+.sales-detail-intro h1 { color: var(--sales-text); font-size: 25px; font-weight: 650; letter-spacing: -.035em; margin: 10px 0; }
+.sales-detail-intro > span { color: var(--sales-muted); font-size: 12px; line-height: 1.8; }
+.sales-detail { min-width: 0; }
+.sales-detail table { min-width: 680px; }
+.sales-detail th { font-size: 10px; font-weight: 600; letter-spacing: .035em; padding-top: 14px; padding-bottom: 14px; }
+.sales-detail td { padding-top: 17px; padding-bottom: 17px; }
+.sales-detail > div > .flex.items-center.justify-between { flex-wrap: wrap; gap: 16px; }
+.sales-detail :is(a, button)[class*="bg-indigo-600"] { background: #316da8; color: #fff; }
+.sales-form-errors { border: 1px solid #db8b9c55; color: #c25e75; background: #db8b9c0b; padding: 12px 15px; border-radius: 10px; font-size: 12px; line-height: 1.8; margin-bottom: 20px; }
+html.dark .sales-form-errors { color: #eea9b9; }
+.sales-withdraw-dialog { position: fixed; inset: 0; z-index: 70; background: transparent; min-height: 0; }
+.sales-withdraw-backdrop { position: fixed; inset: 0; background: #030a16b3; backdrop-filter: blur(6px); }
+.sales-withdraw-viewport { position: fixed; inset: 0; padding: 24px 16px; overflow-y: auto; display: flex; align-items: center; justify-content: center; }
+.sales-withdraw-viewport > div { margin: auto; flex-shrink: 0; }
+@media (max-width: 600px) {
+    .sales-detail > .p-6 { padding: 20px 16px; }
+    .sales-detail-intro h1 { font-size: 23px; }
+}
+</style>
