@@ -62,6 +62,44 @@
                 </div>
             </div>
 
+            <!-- ── Active Filter Bar (Jika Ada Filter Aktif) ──────────── -->
+            <div v-if="hasActiveFilter" class="bg-indigo-50/70 border border-indigo-200/80 rounded-2xl p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs shadow-xs animate-fade-in">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="font-extrabold text-indigo-950 flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                        Filter Aktif:
+                    </span>
+                    <span v-if="selectedAreaName" class="px-2.5 py-1 bg-white border border-indigo-200 rounded-lg text-indigo-800 font-bold shadow-xs flex items-center gap-1">
+                        📍 Area: {{ selectedAreaName }}
+                    </span>
+                    <span v-if="selectedOltName" class="px-2.5 py-1 bg-white border border-indigo-200 rounded-lg text-indigo-800 font-bold shadow-xs flex items-center gap-1">
+                        ⚡ OLT: {{ selectedOltName }}
+                    </span>
+                    <span v-if="searchQuery" class="px-2.5 py-1 bg-white border border-indigo-200 rounded-lg text-indigo-800 font-bold shadow-xs flex items-center gap-1">
+                        🔍 "{{ searchQuery }}"
+                    </span>
+                    <span v-if="selectedStatus !== 'all'" class="px-2.5 py-1 bg-white border border-indigo-200 rounded-lg text-indigo-800 font-bold shadow-xs flex items-center gap-1">
+                        🏷️ {{ getStatusLabel(selectedStatus) }}
+                    </span>
+                    <span v-if="selectedFeasibility !== 'all'" class="px-2.5 py-1 bg-white border border-indigo-200 rounded-lg text-indigo-800 font-bold shadow-xs flex items-center gap-1">
+                        🎯 {{ selectedFeasibility === 'can_open' ? (currentTab === 'odc' ? 'Bisa Buka ODP' : 'Bisa Pasang Baru') : (currentTab === 'odc' ? 'Slot ODC Penuh' : 'ODP Penuh') }}
+                    </span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="text-slate-500 font-medium">
+                        Card &amp; statistik otomatis mengikuti filter
+                    </span>
+                    <button
+                        type="button"
+                        @click="resetFilters"
+                        class="px-3 py-1 bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border border-rose-200 rounded-lg font-bold shadow-xs transition cursor-pointer flex items-center gap-1"
+                    >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        <span>Reset Filter</span>
+                    </button>
+                </div>
+            </div>
+
             <!-- ── Global KPI Cards ──────────────────────────────────── -->
             <div v-if="can('network_capacity_card_stats')" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <!-- Card 1: Slot Buka ODP di ODC -->
@@ -152,10 +190,15 @@
                         </span>
                     </div>
                     <div class="text-2xl font-black text-white">
-                        {{ kpi.available_odc_slots > 0 ? 'Bisa Buka ODP' : 'ODC Penuh' }}
+                        {{ kpi.available_odc_slots > 0 ? 'Bisa Buka ODP' : (kpi.total_odc > 0 ? 'ODC Penuh' : 'Tidak Ada Data') }}
                     </div>
                     <p class="text-[11px] text-indigo-200 mt-1 leading-relaxed">
-                        {{ kpi.available_odc_slots }} slot penarikan ODP baru siap digunakan di seluruh ODC aktif.
+                        <template v-if="kpi.total_odc > 0">
+                            {{ kpi.available_odc_slots }} slot penarikan ODP baru siap digunakan {{ hasActiveFilter ? 'pada filter ini' : 'di seluruh ODC aktif' }}.
+                        </template>
+                        <template v-else>
+                            Tidak ada infrastruktur ODC yang cocok dengan filter yang dipilih.
+                        </template>
                     </p>
                     <div class="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-[11px]">
                         <span class="text-indigo-300">Total ODC: <b>{{ kpi.total_odc }}</b></span>
@@ -892,7 +935,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { usePermission } from '@/Composables/usePermission';
@@ -918,6 +961,41 @@ const selectedArea = ref(props.filters.area_id || '');
 const selectedOlt = ref(props.filters.olt_id || '');
 const selectedStatus = ref(props.filters.status || 'all');
 const selectedFeasibility = ref(props.filters.feasibility || 'all');
+
+watch(() => props.filters, (newFilters) => {
+    if (newFilters) {
+        searchQuery.value = newFilters.search || '';
+        selectedArea.value = newFilters.area_id || '';
+        selectedOlt.value = newFilters.olt_id || '';
+        selectedStatus.value = newFilters.status || 'all';
+        selectedFeasibility.value = newFilters.feasibility || 'all';
+        if (newFilters.tab) {
+            currentTab.value = newFilters.tab;
+        }
+    }
+}, { deep: true });
+
+const selectedAreaName = computed(() => {
+    if (!selectedArea.value) return '';
+    const a = props.filter_options.areas?.find(item => String(item.id) === String(selectedArea.value));
+    return a ? a.name : '';
+});
+
+const selectedOltName = computed(() => {
+    if (!selectedOlt.value) return '';
+    const o = props.filter_options.olts?.find(item => String(item.id) === String(selectedOlt.value));
+    return o ? o.name : '';
+});
+
+function getStatusLabel(status) {
+    const labels = {
+        empty: 'Masih Kosong (0%)',
+        available: 'Ada Slot',
+        critical: 'Kritis (≤ 2 port)',
+        full: 'Penuh (0 Slot)',
+    };
+    return labels[status] || status;
+}
 
 let searchTimeout = null;
 
