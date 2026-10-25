@@ -714,21 +714,33 @@ class Customer extends Model
             Log::warning('[Customer::purgeConnectedData] Error handling vouchers: ' . $e->getMessage());
         }
 
-        // 5. Tangani Pembayaran & Bukti Transfer, lalu Invoices
+        // 5. Tangani Pembayaran & Bukti Transfer, Insentif, lalu Invoices (Termasuk Kasbon Reseller)
         try {
+            $invoices = Invoice::where('customer_id', $this->id)->get();
+            foreach ($invoices as $inv) {
+                foreach ($inv->payments as $payment) {
+                    \App\Models\Incentive::where('reference_id', 'payment_' . $payment->id)->delete();
+                    try {
+                        if ($payment->proof_image && Storage::disk('public')->exists($payment->proof_image)) {
+                            Storage::disk('public')->delete($payment->proof_image);
+                        }
+                    } catch (\Throwable $e) {}
+                    $payment->delete();
+                }
+            }
+
             $payments = Payment::where('customer_id', $this->id)->get();
             foreach ($payments as $payment) {
+                \App\Models\Incentive::where('reference_id', 'payment_' . $payment->id)->delete();
                 try {
                     if ($payment->proof_image && Storage::disk('public')->exists($payment->proof_image)) {
                         Storage::disk('public')->delete($payment->proof_image);
                     }
-                } catch (\Throwable $e) {
-                    // ignore
-                }
+                } catch (\Throwable $e) {}
                 $payment->delete();
             }
 
-            $invoiceIds = Invoice::where('customer_id', $this->id)->pluck('id');
+            $invoiceIds = $invoices->pluck('id');
             if ($invoiceIds->isNotEmpty()) {
                 AffiliateCommission::whereIn('invoice_id', $invoiceIds)->delete();
             }
@@ -851,18 +863,17 @@ class Customer extends Model
             Log::warning('[Customer::purgeConnectedData] Error handling material transactions: ' . $e->getMessage());
         }
 
-        // 12. Tangani Data Reseller jika ada
+        // 12. Tangani Data Reseller & Seluruh Keuangan Reseller jika ada
         try {
-            $reseller = Reseller::where('customer_id', $this->id)->first();
-            if ($reseller) {
-                $resellerUserId = $reseller->user_id;
-                $reseller->delete();
-                if ($resellerUserId && ($resUser = User::find($resellerUserId))) {
-                    if ($resUser->hasRole('reseller') || $resUser->role === 'reseller') {
-                        $resUser->delete();
-                    }
-                }
+            $resellers = Reseller::where('customer_id', $this->id)->get();
+            foreach ($resellers as $reseller) {
+                $reseller->delete(); // Otomatis memicu Reseller::deleting hook
             }
+
+            // Cleanup ekstra cerdas: pastikan tidak ada mutasi saldo, request saldo, kasbon, atau voucher nyangkut
+            ResellerTransaction::whereHas('reseller', fn($r) => $r->where('customer_id', $this->id))->delete();
+            ResellerBalanceRequest::whereHas('reseller', fn($r) => $r->where('customer_id', $this->id))->delete();
+            Voucher::where('customer_id', $this->id)->orWhereHas('reseller', fn($r) => $r->where('customer_id', $this->id))->delete();
         } catch (\Throwable $e) {
             Log::warning('[Customer::purgeConnectedData] Error handling reseller: ' . $e->getMessage());
         }

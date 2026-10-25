@@ -92,15 +92,17 @@ class ResellerController extends Controller
      */
     public function destroy(Reseller $reseller)
     {
-        // Only removes the reseller profile, not the customer
-        $customer = $reseller->customer;
-        $reseller->delete();
-        
-        if ($customer) {
-            $customer->update(['is_reseller' => false]);
-        }
+        DB::beginTransaction();
+        try {
+            $name = $reseller->customer?->name ?? $reseller->user?->name ?? ('Reseller #' . $reseller->id);
+            $reseller->delete(); // Otomatis memicu Reseller::deleting -> purgeConnectedData()
 
-        return redirect()->back()->with('success', 'Akses Reseller berhasil dicabut.');
+            DB::commit();
+            return redirect()->back()->with('success', "Akses dan seluruh data keuangan/billing Reseller {$name} berhasil dihapus bersih.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal menghapus data reseller: ' . $e->getMessage());
+        }
     }
 
     /**

@@ -60,6 +60,7 @@ class FinancialReportController extends Controller
             
         $piutangReseller = Invoice::where('is_reseller_balance', true)
             ->whereIn('status', ['unpaid', 'partial'])
+            ->whereHas('customer', fn($c) => $c->where('is_reseller', true))
             ->get()
             ->sum(function($inv) {
                 $paid = $inv->payments()->where('status', 'verified')->sum('amount');

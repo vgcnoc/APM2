@@ -19,12 +19,15 @@ class ResellerReportController extends Controller
         // 2. Total Pemasukan (Uang Kasbon yang sudah Lunas/Diterima & Tunai)
         $totalPemasukan = Payment::where('status', 'verified')
             ->whereHas('invoice', function ($q) {
-                $q->where('is_reseller_balance', true);
+                $q->where('is_reseller_balance', true)
+                  ->whereHas('customer', fn($c) => $c->where('is_reseller', true));
             })->sum('amount');
 
         // 3. Total Piutang (Kasbon yang belum dibayar / belum divalidasi)
         // Cara hitung: (Total Amount Invoice Kasbon) - (Total Verified Payments)
-        $invoices = Invoice::where('is_reseller_balance', true)->get();
+        $invoices = Invoice::where('is_reseller_balance', true)
+            ->whereHas('customer', fn($c) => $c->where('is_reseller', true))
+            ->get();
         $totalKasbon = $invoices->sum('amount');
         $totalPiutang = $totalKasbon - $totalPemasukan;
 
@@ -52,7 +55,8 @@ class ResellerReportController extends Controller
         });
 
         // 5. Riwayat Transaksi Mutasi Reseller Terakhir
-        $recentTransactions = \App\Models\ResellerTransaction::with(['reseller.customer'])
+        $recentTransactions = \App\Models\ResellerTransaction::whereHas('reseller')
+            ->with(['reseller.customer'])
             ->latest()
             ->take(15)
             ->get();

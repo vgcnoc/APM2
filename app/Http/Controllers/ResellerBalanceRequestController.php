@@ -18,7 +18,8 @@ class ResellerBalanceRequestController extends Controller
         $tab = $request->input('tab', 'transactions');
 
         // 1. Transactions Query (Mutasi Saldo)
-        $txQuery = ResellerTransaction::with(['reseller.customer', 'reseller.user'])
+        $txQuery = ResellerTransaction::whereHas('reseller')
+            ->with(['reseller.customer', 'reseller.user'])
             ->latest('id');
 
         if ($request->filled('reseller_id')) {
@@ -56,7 +57,8 @@ class ResellerBalanceRequestController extends Controller
         $transactions = $txQuery->paginate(15, ['*'], 'tx_page')->withQueryString();
 
         // 2. Requests Query (Permintaan Saldo / Topup)
-        $reqQuery = ResellerBalanceRequest::with(['reseller.customer', 'reseller.user', 'approver'])
+        $reqQuery = ResellerBalanceRequest::whereHas('reseller')
+            ->with(['reseller.customer', 'reseller.user', 'approver'])
             ->latest('id');
 
         if ($request->filled('reseller_id')) {
@@ -104,10 +106,10 @@ class ResellerBalanceRequestController extends Controller
         // 4. KPI Stats
         $stats = [
             'total_saldo_beredar' => (float)Reseller::sum('balance'),
-            'total_credit' => (float)ResellerTransaction::where('type', 'credit')->sum('amount'),
-            'total_debit' => (float)ResellerTransaction::where('type', 'debit')->sum('amount'),
-            'pending_requests_count' => ResellerBalanceRequest::where('status', 'pending')->count(),
-            'pending_requests_amount' => (float)ResellerBalanceRequest::where('status', 'pending')->sum('amount'),
+            'total_credit' => (float)ResellerTransaction::whereHas('reseller')->where('type', 'credit')->sum('amount'),
+            'total_debit' => (float)ResellerTransaction::whereHas('reseller')->where('type', 'debit')->sum('amount'),
+            'pending_requests_count' => ResellerBalanceRequest::whereHas('reseller')->where('status', 'pending')->count(),
+            'pending_requests_amount' => (float)ResellerBalanceRequest::whereHas('reseller')->where('status', 'pending')->sum('amount'),
         ];
 
         return Inertia::render('ResellerRequests/Index', [

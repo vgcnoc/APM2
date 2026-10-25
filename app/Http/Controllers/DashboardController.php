@@ -217,6 +217,7 @@ class DashboardController extends Controller
 
         // ── Reseller Voucher Belum Bayar ────────────────────
         $resellerUnpaidInvoices = (clone $invoiceBase)->where('is_reseller_balance', true)
+            ->whereHas('customer', fn($c) => $c->where('is_reseller', true))
             ->whereIn('status', ['unpaid', 'partial', 'overdue'])
             ->with(['payments' => function ($q) {
                 $q->where('status', 'verified');
