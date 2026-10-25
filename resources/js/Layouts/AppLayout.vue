@@ -127,7 +127,6 @@
                         <!-- Group Header (Accordion Toggle) -->
                         <div v-if="sidebarOpen" class="pt-2 pb-1.5 px-2">
                             <button
-                                v-if="grp.label !== 'MENU UTAMA'"
                                 type="button"
                                 @click="toggleGroup(grp.label)"
                                 class="w-full flex items-center justify-between group/grp text-left cursor-pointer select-none"
@@ -152,15 +151,6 @@
                                     </svg>
                                 </div>
                             </button>
-                            <div v-else class="w-full flex items-center justify-between text-left select-none" aria-label="Menu utama">
-                                <div class="flex items-center gap-2 min-w-0">
-                                    <span :class="['group-badge', themeMap[grp.theme]?.badge || 'group-badge--blue']">
-                                        <span class="group-badge__dot"></span>
-                                        {{ grp.label }}
-                                    </span>
-                                </div>
-                                <span class="text-[10px] font-bold text-slate-400 dark:text-slate-500">{{ grp.items.length }}</span>
-                            </div>
                         </div>
                         <div v-else class="my-2 border-t mx-3" :class="themeCollapsedDividers[grp.theme] || 'border-slate-200/60 dark:border-slate-800'"></div>
 
@@ -572,9 +562,6 @@ const toggleGroup = (groupLabel) => {
 
 const isGroupCollapsed = (grp) => {
     if (isSearching.value) return false;
-    // Navigasi dasar harus selalu mudah dijangkau dan tidak ikut tersimpan
-    // sebagai accordion pada localStorage.
-    if (grp.label === 'MENU UTAMA') return false;
     // Don't collapse if an item in the group is active
     const hasActiveItem = grp.items.some(item => {
         if (item.type === 'link') return item.active(page.url);
@@ -583,7 +570,9 @@ const isGroupCollapsed = (grp) => {
         }
         return false;
     });
-    if (hasActiveItem) return false;
+    // Dashboard berada di Menu Utama. Berbeda dari kategori aktif lain,
+    // pengguna tetap boleh melipat Menu Utama saat berada di Dashboard.
+    if (hasActiveItem && grp.label !== 'MENU UTAMA') return false;
     return collapsedGroups.value.includes(grp.label);
 };
 
