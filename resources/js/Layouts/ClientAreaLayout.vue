@@ -221,6 +221,16 @@
                                     </div>
                                 </div>
                                 <Link 
+                                    v-if="['admin', 'superadmin', 'super admin', 'super-admin'].includes(String($page.props.auth?.user?.role || '').toLowerCase())"
+                                    href="/" 
+                                    class="w-full text-left flex items-center gap-2 px-4 py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                                    </svg>
+                                    <span>Panel Admin ISP</span>
+                                </Link>
+                                <Link 
                                     href="/logout" 
                                     method="post" 
                                     as="button" 
@@ -329,6 +339,19 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zM10 8.5a.5.5 0 11-1 0 .5.5 0 011 0zm5 5a.5.5 0 11-1 0 .5.5 0 011 0z"/>
                         </svg>
                         <span>Tagihan & Kasbon</span>
+                    </Link>
+
+                    <!-- Link to Admin Panel for Admin / Superadmin -->
+                    <Link 
+                        v-if="['admin', 'superadmin', 'super admin', 'super-admin'].includes(String($page.props.auth?.user?.role || '').toLowerCase())"
+                        href="/" 
+                        @click="showMobileMenu = false"
+                        class="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-blue-600 dark:text-blue-400 bg-blue-50/70 dark:bg-blue-950/40"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                        </svg>
+                        <span>Kembali ke Panel Admin ISP</span>
                     </Link>
                 </div>
             </div>

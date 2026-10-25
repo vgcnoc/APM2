@@ -22,7 +22,8 @@ class RoleMiddleware
         }
 
         // Admin dan Superadmin memiliki hak akses penuh (bypass)
-        if (in_array($user->role, ['admin', 'superadmin']) || (method_exists($user, 'hasRole') && $user->hasRole('admin'))) {
+        $userRole = strtolower(trim((string) $user->role));
+        if (in_array($userRole, ['admin', 'superadmin', 'super admin', 'super-admin']) || (method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super admin') || $user->hasRole('superadmin')))) {
             return $next($request);
         }
 

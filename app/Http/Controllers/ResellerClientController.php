@@ -23,12 +23,13 @@ class ResellerClientController extends Controller
 
         $reseller = \App\Models\Reseller::where('user_id', $user->id)->first();
         if (!$reseller) {
-            if (in_array($user->role, ['admin', 'superadmin', 'reseller']) || (method_exists($user, 'hasRole') && $user->hasRole('admin'))) {
+            $userRole = strtolower(trim((string) $user->role));
+            if (in_array($userRole, ['admin', 'superadmin', 'super admin', 'super-admin', 'reseller']) || (method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super admin') || $user->hasRole('reseller')))) {
                 $reseller = \App\Models\Reseller::firstOrCreate(
                     ['user_id' => $user->id],
                     [
                         'customer_id' => $user->customer?->id ?? null,
-                        'balance' => in_array($user->role, ['admin', 'superadmin']) ? 5000000 : 0,
+                        'balance' => in_array($userRole, ['admin', 'superadmin', 'super admin', 'super-admin']) ? 5000000 : 0,
                         'is_active' => true,
                     ]
                 );

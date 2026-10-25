@@ -36,23 +36,91 @@ class AuthController extends Controller
             $request->session()->regenerate();
 
             $user = $request->user();
-            if (!$user->is_active || ($request->input('portal') === 'affiliate' && !AffiliateService::canAccessPortal($user))) {
+            if (!$user->is_active) {
                 Auth::logout();
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
 
-                return back()->withErrors(['email' => 'Akun tidak aktif atau tidak memiliki akses Afiliasi. Gunakan akun karyawan, sales, atau mitra afiliasi yang aktif.'])->onlyInput('email');
+                return back()->withErrors(['email' => 'Akun Anda berstatus non-aktif. Silakan hubungi administrator.'])->onlyInput('email');
             }
 
-            $isAffiliate = $request->input('portal') === 'affiliate'
-                || in_array(strtolower(trim((string) $user->role)), ['sales', 'affiliate'], true);
-            $request->session()->put('login_portal', $isAffiliate ? 'affiliate' : 'staff');
+            $userRole = strtolower(trim((string) $user->role));
+            $portal = $request->input('portal');
 
-            if ($isAffiliate) {
+            // 1. Portal Afiliasi & Sales
+            if ($portal === 'affiliate') {
+                if (!AffiliateService::canAccessPortal($user)) {
+                    Auth::logout();
+                    $request->session()->invalidate();
+                    $request->session()->regenerateToken();
+
+                    return back()->withErrors(['email' => 'Akun tidak aktif atau tidak memiliki akses Afiliasi. Gunakan akun karyawan, sales, atau mitra afiliasi yang aktif.'])->onlyInput('email');
+                }
+
+                $request->session()->put('login_portal', 'affiliate');
                 $request->session()->forget('url.intended');
                 return redirect()->route('affiliate.dashboard');
             }
 
+            // 2. Portal Mitra Biller & Reseller
+            if ($portal === 'reseller') {
+                $canAccessReseller = in_array($userRole, ['reseller', 'admin', 'superadmin', 'super admin', 'super-admin'], true)
+                    || (method_exists($user, 'hasRole') && ($user->hasRole('reseller') || $user->hasRole('admin') || $user->hasRole('super admin')))
+                    || \App\Models\Reseller::where('user_id', $user->id)->exists();
+
+                if (!$canAccessReseller) {
+                    Auth::logout();
+                    $request->session()->invalidate();
+                    $request->session()->regenerateToken();
+
+                    return back()->withErrors(['email' => 'Akun tidak memiliki hak akses sebagai Mitra Biller / Reseller. Silakan daftar atau gunakan akun mitra yang valid.'])->onlyInput('email');
+                }
+
+                $request->session()->put('login_portal', 'reseller');
+                $request->session()->forget('url.intended');
+                return redirect()->route('client-area.dashboard');
+            }
+
+            // 3. Portal Pelanggan
+            if ($portal === 'customer') {
+                $canAccessCustomer = in_array($userRole, ['customer', 'admin', 'superadmin', 'super admin', 'super-admin'], true)
+                    || (method_exists($user, 'hasRole') && ($user->hasRole('customer') || $user->hasRole('admin') || $user->hasRole('super admin')))
+                    || \App\Models\Customer::where('user_id', $user->id)->orWhere('email', $user->email)->exists();
+
+                if (!$canAccessCustomer) {
+                    Auth::logout();
+                    $request->session()->invalidate();
+                    $request->session()->regenerateToken();
+
+                    return back()->withErrors(['email' => 'Akun tidak terdaftar sebagai Pelanggan. Gunakan email pelanggan yang terdaftar pada sistem.'])->onlyInput('email');
+                }
+
+                $request->session()->put('login_portal', 'customer');
+                $request->session()->forget('url.intended');
+                return redirect()->route('customer-area.dashboard');
+            }
+
+            // 4. Portal default / Staf & Tim
+            // Jika akun khusus (reseller / sales / customer) login dari portal staf, alihkan ke portal mereka
+            if (in_array($userRole, ['sales', 'affiliate'], true)) {
+                $request->session()->put('login_portal', 'affiliate');
+                $request->session()->forget('url.intended');
+                return redirect()->route('affiliate.dashboard');
+            }
+
+            if ($userRole === 'reseller') {
+                $request->session()->put('login_portal', 'reseller');
+                $request->session()->forget('url.intended');
+                return redirect()->route('client-area.dashboard');
+            }
+
+            if ($userRole === 'customer') {
+                $request->session()->put('login_portal', 'customer');
+                $request->session()->forget('url.intended');
+                return redirect()->route('customer-area.dashboard');
+            }
+
+            $request->session()->put('login_portal', 'staff');
             return redirect()->intended(route('dashboard', absolute: false));
         }
 
