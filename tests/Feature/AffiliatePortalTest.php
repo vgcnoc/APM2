@@ -135,6 +135,78 @@ class AffiliatePortalTest extends TestCase
         ]);
     }
 
+    private function registrationPayload(array $overrides = []): array
+    {
+        return array_replace([
+            'name' => 'Mitra Baru', 'email' => 'mitra-baru@example.test', 'phone' => '081234567890',
+            'password' => 'registration-test-password', 'password_confirmation' => 'registration-test-password',
+            'bank_name' => 'BCA', 'bank_account_number' => '0012345678', 'bank_account_holder' => 'Mitra Baru',
+        ], $overrides);
+    }
+
+    public function test_registration_requires_a_referral_and_rejects_unknown_codes_without_creating_an_account(): void
+    {
+        foreach ([null, '', '   ', 'AFF-NOT-REGISTERED', ['AFF-INVALID']] as $code) {
+            $this->post('/register-affiliate', $this->registrationPayload(['referral_code' => $code]))
+                ->assertSessionHasErrors('referral_code');
+
+            $this->assertDatabaseMissing('users', ['email' => 'mitra-baru@example.test']);
+            $this->assertDatabaseCount('affiliate_profiles', 0);
+            $this->assertGuest();
+        }
+    }
+
+    public function test_registration_rejects_suspended_inactive_and_orphan_sponsors(): void
+    {
+        $suspended = $this->profile($this->user('affiliate'));
+        $suspended->update(['status' => 'suspended']);
+        $inactive = $this->profile($this->user('sales', false));
+        $orphan = $this->profile($this->user('affiliate'));
+        DB::table('users')->where('id', $orphan->user_id)->delete();
+
+        foreach ([$suspended, $inactive, $orphan] as $profile) {
+            $this->post('/register-affiliate', $this->registrationPayload(['referral_code' => $profile->referral_code]))
+                ->assertSessionHasErrors('referral_code');
+            $this->assertDatabaseMissing('users', ['email' => 'mitra-baru@example.test']);
+            $this->assertGuest();
+        }
+    }
+
+    public function test_registration_with_a_valid_referral_links_the_sponsor_and_opens_the_affiliate_portal(): void
+    {
+        $sponsor = $this->user('sales');
+        $profile = $this->profile($sponsor);
+        $this->post('/register-affiliate', $this->registrationPayload([
+            'referral_code' => '  '.strtolower($profile->referral_code).'  ',
+        ]))->assertSessionHasNoErrors()->assertRedirect(route('affiliate.dashboard'))
+            ->assertSessionHas('login_portal', 'affiliate');
+
+        $newUser = User::where('email', 'mitra-baru@example.test')->firstOrFail();
+        $this->assertAuthenticatedAs($newUser);
+        $this->assertSame('affiliate', $newUser->role);
+        $this->assertTrue(Hash::check('registration-test-password', $newUser->password));
+        $this->assertDatabaseHas('affiliate_profiles', [
+            'user_id' => $newUser->id, 'upline_id' => $sponsor->id,
+            'bank_name' => 'BCA', 'bank_account_number' => '0012345678', 'bank_account_holder' => 'Mitra Baru',
+        ]);
+    }
+
+    public function test_referral_links_only_show_an_active_registered_sponsor(): void
+    {
+        $sponsor = $this->user('sales');
+        $profile = $this->profile($sponsor);
+        $this->get('/register-affiliate?ref='.strtolower($profile->referral_code))->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('Auth/RegisterAffiliate')
+                ->where('initialRef', $profile->referral_code)->where('upline.code', $profile->referral_code)
+                ->where('upline.name', $sponsor->name));
+
+        $profile->update(['status' => 'suspended']);
+        $this->get('/register-affiliate?ref='.$profile->referral_code)->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('upline', null));
+        $this->get('/register-affiliate?ref=UNKNOWN-CODE')->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('upline', null));
+    }
+
     public function test_non_sales_employee_can_choose_affiliate_login_without_changing_job(): void
     {
         $user = $this->user('custom-warehouse');

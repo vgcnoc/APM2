@@ -6,15 +6,23 @@ use App\Http\Controllers\Controller;
 use App\Models\AffiliateProfile;
 use App\Models\User;
 use App\Services\AffiliateService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
 
 class RegisterAffiliateController extends Controller
 {
+    private function eligibleSponsors(): Builder
+    {
+        return AffiliateProfile::where('status', 'active')
+            ->whereHas('user', fn (Builder $query) => $query->where('is_active', true));
+    }
+
     /**
      * Tampilkan formulir pendaftaran mitra marketing / afiliasi (Publik).
      */
@@ -27,10 +35,10 @@ class RegisterAffiliateController extends Controller
             }
         }
 
-        $refCode = trim($request->query('ref', ''));
+        $refCode = strtoupper(trim((string) $request->query('ref', '')));
         $upline = null;
         if ($refCode) {
-            $uplineProfile = AffiliateProfile::where('referral_code', $refCode)->with('user')->first();
+            $uplineProfile = $this->eligibleSponsors()->where('referral_code', $refCode)->with('user')->first();
             if ($uplineProfile && $uplineProfile->user) {
                 $upline = [
                     'code' => $uplineProfile->referral_code,
@@ -58,12 +66,23 @@ class RegisterAffiliateController extends Controller
      */
     public function store(Request $request)
     {
+        if (is_string($request->input('referral_code'))) {
+            $request->merge(['referral_code' => strtoupper(trim($request->input('referral_code')))]);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email',
             'phone' => 'required|string|max:25',
             'password' => 'required|string|min:6|confirmed',
-            'referral_code' => 'nullable|string|max:50',
+            'referral_code' => [
+                'bail', 'required', 'string', 'max:50',
+                function ($attribute, $value, $fail) {
+                    if (!$this->eligibleSponsors()->where('referral_code', $value)->exists()) {
+                        $fail('Kode referral tidak terdaftar atau pengajak sudah tidak aktif. Periksa kembali kode dari pengajak Anda.');
+                    }
+                },
+            ],
             'bank_name' => 'required|string|max:50',
             'bank_account_number' => 'required|string|max:50',
             'bank_account_holder' => 'required|string|max:100',
@@ -77,22 +96,24 @@ class RegisterAffiliateController extends Controller
             'password.required' => 'Password wajib diisi.',
             'password.min' => 'Password minimal terdiri dari 6 karakter.',
             'password.confirmed' => 'Konfirmasi password tidak cocok.',
+            'referral_code.required' => 'Kode referral pengajak wajib diisi. Minta kode yang terdaftar kepada pengajak Anda.',
             'bank_name.required' => 'Pilih bank atau e-wallet untuk pencairan komisi Anda.',
             'bank_account_number.required' => 'Nomor rekening atau nomor e-wallet wajib diisi.',
             'bank_account_holder.required' => 'Nama pemilik rekening wajib diisi.',
         ]);
 
-        $uplineId = null;
-        if (!empty($validated['referral_code'])) {
-            $uplineProfile = AffiliateProfile::where('referral_code', trim($validated['referral_code']))->first();
-            if ($uplineProfile) {
-                $uplineId = $uplineProfile->user_id;
-            }
-        }
-
         $user = null;
 
-        DB::transaction(function () use ($validated, $uplineId, &$user) {
+        DB::transaction(function () use ($validated, &$user) {
+            $uplineProfile = $this->eligibleSponsors()->where('referral_code', $validated['referral_code'])
+                ->lockForUpdate()->first();
+
+            if (!$uplineProfile) {
+                throw ValidationException::withMessages([
+                    'referral_code' => 'Kode referral pengajak sudah tidak tersedia. Minta kode referral yang aktif.',
+                ]);
+            }
+
             // 1. Buat Akun User
             $user = User::create([
                 'name' => $validated['name'],
@@ -112,7 +133,7 @@ class RegisterAffiliateController extends Controller
             }
 
             // 2. Buat Profil Afiliasi & Unique Referral Code
-            AffiliateService::ensureAffiliateProfile($user, $uplineId, [
+            AffiliateService::ensureAffiliateProfile($user, $uplineProfile->user_id, [
                 'whatsapp' => $validated['phone'],
                 'address' => $validated['address'] ?? null,
                 'bank_name' => $validated['bank_name'],
@@ -123,6 +144,8 @@ class RegisterAffiliateController extends Controller
 
         // Login otomatis
         Auth::login($user);
+        $request->session()->regenerate();
+        $request->session()->put('login_portal', 'affiliate');
 
         return redirect()->route('affiliate.dashboard')->with('success', 'Selamat bergabung sebagai Mitra Afiliasi Resmi! Bagikan link referral Anda untuk mulai menghasilkan komisi.');
     }
