@@ -200,7 +200,7 @@
                                 <div v-else-if="item.type === 'dropdown'" class="relative">
                                     <button
                                         type="button"
-                                        @click="handleToggleDropdown(item)"
+                                        @click.stop="handleToggleDropdown(item)"
                                         :aria-label="item.label"
                                         :aria-expanded="isDropdownOpen(item)"
                                         :data-active="item.active($page.url)"
@@ -258,7 +258,7 @@
                                     <!-- Submenu Tree Guide (When Dropdown Open) -->
                                     <div
                                         v-show="sidebarOpen && isDropdownOpen(item)"
-                                        class="mt-1 ml-6 pl-2.5 border-l-2 border-slate-200/80 dark:border-slate-800 space-y-0.5 animate-slide-in"
+                                        class="mt-1 ml-6 pl-2.5 border-l-2 border-slate-200/80 dark:border-slate-800 space-y-0.5"
                                     >
                                         <template v-for="(child, childIndex) in item.children" :key="childIndex">
                                             <Link
@@ -574,19 +574,14 @@ const isGroupCollapsed = (grp) => {
     return collapsedGroups.value.includes(grp.label);
 };
 
-// Dropdown State Helper: Supports both string item.label and legacy integer index
+// Dropdown State Helper: label adalah kunci yang tidak berubah saat urutan menu
+// berubah akibat pembaruan aplikasi atau perbedaan hak akses pengguna.
 const isDropdownOpen = (item) => {
-    return openDropdowns.value.includes(item.label) || openDropdowns.value.includes(item._index);
+    return openDropdowns.value.includes(item.label);
 };
 
 const handleToggleDropdown = (item) => {
-    if (openDropdowns.value.includes(item.label)) {
-        toggleDropdown(item.label);
-    } else if (openDropdowns.value.includes(item._index)) {
-        toggleDropdown(item._index);
-    } else {
-        toggleDropdown(item.label);
-    }
+    toggleDropdown(item.label);
 };
 
 // Collapsed Sidebar Flyout Handling
@@ -1261,9 +1256,8 @@ const searchResults = computed(() => {
 
 // Buka dropdown yang sesuai URL aktif SEBELUM render pertama,
 // sehingga tinggi sidebar sudah final saat posisi scroll dipulihkan.
-filteredMenuItems.value.forEach((item, index) => {
+filteredMenuItems.value.forEach((item) => {
     if (item.type === 'dropdown' && item.active(page.url)) {
-        ensureDropdownOpen(index);
         ensureDropdownOpen(item.label);
     }
 });

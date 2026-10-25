@@ -24,7 +24,13 @@ const readJson = (key, fallback) => {
 const isBrowser = typeof window !== 'undefined';
 
 const sidebarOpen = ref(isBrowser ? readJson('sidebarOpen', true) !== false : true);
-const openDropdowns = ref(isBrowser ? (Array.isArray(readJson('sidebarOpenDropdowns', [])) ? readJson('sidebarOpenDropdowns', []) : []) : []);
+// Gunakan label menu sebagai kunci yang stabil. Implementasi sebelumnya juga
+// menyimpan indeks item; indeks tersebut berubah saat hak akses atau susunan
+// menu berubah sehingga submenu dapat terbuka/tertutup pada item yang salah.
+const savedDropdowns = isBrowser ? readJson('sidebarOpenDropdowns', []) : [];
+const openDropdowns = ref(Array.isArray(savedDropdowns)
+    ? [...new Set(savedDropdowns.filter((item) => typeof item === 'string' && item.trim() !== ''))]
+    : []);
 const scrollTop = { value: isBrowser ? (parseInt(localStorage.getItem('sidebarScrollPos'), 10) || 0) : 0 };
 
 const persist = (key, value) => {
@@ -39,18 +45,18 @@ export function useSidebarState() {
         persist('sidebarOpen', sidebarOpen.value);
     };
 
-    const toggleDropdown = (index) => {
-        if (openDropdowns.value.includes(index)) {
-            openDropdowns.value = openDropdowns.value.filter(i => i !== index);
+    const toggleDropdown = (key) => {
+        if (openDropdowns.value.includes(key)) {
+            openDropdowns.value = openDropdowns.value.filter(item => item !== key);
         } else {
-            openDropdowns.value = [...openDropdowns.value, index];
+            openDropdowns.value = [...openDropdowns.value, key];
         }
         persist('sidebarOpenDropdowns', openDropdowns.value);
     };
 
-    const ensureDropdownOpen = (index) => {
-        if (!openDropdowns.value.includes(index)) {
-            openDropdowns.value = [...openDropdowns.value, index];
+    const ensureDropdownOpen = (key) => {
+        if (!openDropdowns.value.includes(key)) {
+            openDropdowns.value = [...openDropdowns.value, key];
             persist('sidebarOpenDropdowns', openDropdowns.value);
         }
     };

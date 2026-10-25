@@ -114,6 +114,8 @@
     html.dark .workspace-ui .workspace-brand img { filter: brightness(0) invert(1); }
     .workspace-ui .apm-sidebar nav { padding: 8px 12px 20px; scrollbar-width: thin; }
     .workspace-ui .apm-sidebar nav :is(a, button) { font-size: 12px; line-height: 1.5; }
+    /* Respons tap langsung pada tombol accordion submenu, khususnya perangkat sentuh. */
+    .workspace-ui .apm-sidebar nav button { touch-action: manipulation; }
     .workspace-ui .apm-sidebar nav :is(a, button)[class*="px-3"] { padding-top: 10px; padding-bottom: 10px; }
     .workspace-ui .apm-sidebar nav :is(a, button)[class*="bg-gradient-to-r"],
     .workspace-ui .apm-sidebar nav [aria-current="page"],
