@@ -14,7 +14,7 @@ router.on('invalid', (event) => {
     }
 });
 
-// Skala native perangkat; tema workspace terisolasi dari portal sales dan auth.
+// Workspace 90%; portal sales dan auth tetap mengikuti skala native perangkat.
 applyTheme();
 
 router.on('navigate', (event) => {

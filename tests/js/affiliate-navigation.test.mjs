@@ -22,7 +22,7 @@ test('overview is the default and unknown or operational tabs cannot become acti
     assert.equal(affiliateSection('/affiliate/booking/create', 'overview'), 'booking');
 });
 
-test('native scale stays consistent and workspace styling is removed on entry to sales or auth', () => {
+test('workspace uses 90% scale while sales and auth retain native scale and isolated styling', () => {
     const classes = new Set();
     globalThis.document = { body: { classList: { toggle: (key, on) => on ? classes.add(key) : classes.delete(key) }, style: {} } };
     applyDeviceScale('Auth/Login');
@@ -37,13 +37,15 @@ test('native scale stays consistent and workspace styling is removed on entry to
     assert.equal(document.body.style.zoom, '100%');
     assert.equal(classes.has('workspace-ui-page'), false);
     applyDeviceScale('Customers/Create', { affiliatePortal: false });
-    assert.equal(document.body.style.zoom, '100%');
+    assert.equal(document.body.style.zoom, '90%');
     assert.equal(classes.has('workspace-ui-page'), true);
     applyDeviceScale('Affiliate/Dashboard');
     assert.equal(classes.has('workspace-ui-page'), false);
     applyDeviceScale('Dashboard');
+    assert.equal(document.body.style.zoom, '90%');
     assert.equal(classes.has('workspace-ui-page'), true);
     applyDeviceScale('Auth/Login');
+    assert.equal(document.body.style.zoom, '100%');
     assert.equal(classes.has('workspace-ui-page'), false);
     delete globalThis.document;
     assert.doesNotThrow(() => applyDeviceScale('Affiliate/Dashboard'));

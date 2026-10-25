@@ -4,5 +4,5 @@ export function applyDeviceScale(componentName = '', pageProps = {}) {
     const isSalesPortal = componentName.startsWith('Affiliate/') || pageProps.affiliatePortal === true;
     document.body.classList.toggle('auth-device-scale', isAuth);
     document.body.classList.toggle('workspace-ui-page', !isAuth && !isSalesPortal);
-    document.body.style.zoom = '100%';
+    document.body.style.zoom = isAuth || isSalesPortal ? '100%' : '90%';
 }
