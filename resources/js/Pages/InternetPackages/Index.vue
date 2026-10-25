@@ -590,6 +590,15 @@
                                         </div>
                                     </div>
 
+                                    <div class="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4">
+                                        <label class="block text-xs font-bold text-indigo-900 mb-1.5">Biaya Pasang Baru <span class="text-red-500">*</span></label>
+                                        <p class="text-[10px] text-indigo-700 mb-2">Diisi sekali di Master Data. Nominal akan otomatis digunakan saat booking pelanggan memilih paket ini.</p>
+                                        <div class="relative max-w-sm">
+                                            <span class="absolute left-3 top-2.5 text-sm font-bold text-indigo-400">Rp</span>
+                                            <input v-model="form.installation_fee" type="number" min="0" class="input-text border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500 pl-10 font-bold" required>
+                                        </div>
+                                    </div>
+
                                     <hr class="border-gray-100">
 
                                     <div class="grid grid-cols-1 gap-4 bg-cyan-50/40 p-4 rounded-xl border border-cyan-100 mt-5">
@@ -732,6 +741,10 @@
                     <div class="flex justify-between pt-2">
                         <span class="text-sm font-bold text-gray-700">Harga Jual</span>
                         <span class="text-sm font-black text-gray-900">Rp {{ formatPrice(currentActivePrice) }}</span>
+                    </div>
+                    <div class="flex justify-between border-b pb-2">
+                        <span class="text-sm text-gray-500">Biaya Pasang Baru</span>
+                        <span class="text-sm font-bold text-indigo-700">Rp {{ formatPrice(form.installation_fee) }}</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-sm font-bold text-gray-700">Margin Pusat</span>
@@ -925,7 +938,7 @@
                             <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             <span>Skema Harga & Margin Finansial</span>
                         </h4>
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
                             <div class="bg-white p-2.5 rounded-lg border border-slate-200/60">
                                 <div class="text-[10px] text-slate-400 font-medium">Harga Normal</div>
                                 <div class="text-sm font-black text-slate-900 mt-0.5">Rp {{ formatPrice(selectedViewPackage.price) }}</div>
@@ -937,6 +950,11 @@
                                     {{ selectedViewPackage.is_promo ? `Rp ${formatPrice(selectedViewPackage.promo_price)}` : 'Tidak Ada' }}
                                 </div>
                                 <div class="text-[9px] text-slate-400">{{ selectedViewPackage.is_promo ? 'Harga Berlaku' : 'Reguler' }}</div>
+                            </div>
+                            <div class="bg-white p-2.5 rounded-lg border border-slate-200/60">
+                                <div class="text-[10px] text-slate-400 font-medium">Biaya Pasang</div>
+                                <div class="text-sm font-black text-indigo-600 mt-0.5">Rp {{ formatPrice(selectedViewPackage.installation_fee || 0) }}</div>
+                                <div class="text-[9px] text-slate-400">Saat booking baru</div>
                             </div>
                             <div class="bg-white p-2.5 rounded-lg border border-slate-200/60">
                                 <div class="text-[10px] text-slate-400 font-medium">Fee Reseller</div>
@@ -1285,6 +1303,7 @@ const form = useForm({
     color: '#4f46e5',
     description: '',
     price: '',
+    installation_fee: 0,
     is_promo: false,
     promo_price: '',
     fee_reseller: 0,

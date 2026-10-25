@@ -10,7 +10,7 @@ class InternetPackage extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'name', 'speed_mbps', 'price', 'access_mode', 'description', 'is_active',
+        'name', 'speed_mbps', 'price', 'installation_fee', 'access_mode', 'description', 'is_active',
         'color', 'is_promo', 'promo_price', 'is_mikrotik_group_custom', 'mikrotik_group',
         'is_mikrotik_address_list_custom', 'mikrotik_address_list', 'shared_device',
         'rate_limit', 'active_period', 'active_period_unit', 'fee_admin', 'fee_reseller', 'fee_partner'
@@ -21,6 +21,7 @@ class InternetPackage extends Model
         return [
             'speed_mbps' => 'integer',
             'price' => 'integer',
+            'installation_fee' => 'integer',
             'is_active' => 'boolean',
             'is_promo' => 'boolean',
             'promo_price' => 'integer',
@@ -42,6 +43,14 @@ class InternetPackage extends Model
     public function getFormattedPriceAttribute(): string
     {
         return 'Rp ' . number_format($this->price, 0, ',', '.');
+    }
+
+    /** Harga yang berlaku saat paket dipilih untuk pelanggan baru. */
+    public function getCurrentPriceAttribute(): int
+    {
+        return (int) ($this->is_promo && $this->promo_price !== null
+            ? $this->promo_price
+            : $this->price);
     }
 
     public function getSpeedAttribute(): ?string

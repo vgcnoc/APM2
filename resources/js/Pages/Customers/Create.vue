@@ -191,9 +191,10 @@
                                         <select v-model="form.package_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" :required="form.service_status !== 'free_home'">
                                             <option value="">-- Pilih Paket Langganan --</option>
                                             <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">
-                                                {{ pkg.name }} - Rp {{ Number(pkg.price).toLocaleString('id-ID') }}
+                                                {{ pkg.name }} - Rp {{ formatCurrency(packageMonthlyTariff(pkg)) }}/bulan
                                             </option>
                                         </select>
+                                        <p class="mt-1.5 text-[10px] text-slate-500">Hanya paket aktif yang disediakan di Master Data yang dapat dipilih.</p>
                                     </div>
                                     <div :class="form.service_status === 'free_home' ? 'md:col-span-2' : ''">
                                         <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Status Layanan <span class="text-red-500">*</span></label>
@@ -250,24 +251,28 @@
                                 <div>
                                     <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2 flex items-center justify-between">
                                         <span>Tarif Bulanan (Rp) <span class="text-red-500">*</span></span>
-                                        <span v-if="form.service_status === 'gratis' && !isAffiliateAccount" class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">Otomatis Rp 0 (Gratis)</span>
+                                        <span v-if="form.service_status === 'berbayar'" class="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded">Otomatis dari Master Data</span>
+                                        <span v-else-if="form.service_status === 'gratis' && !isAffiliateAccount" class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">Otomatis Rp 0 (Gratis)</span>
                                         <span v-else-if="form.service_status === 'free_home' && !isAffiliateAccount" class="text-[10px] text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded">Otomatis Rp 0 (Free Home)</span>
                                     </label>
                                     <div class="relative">
                                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                             <span class="text-gray-500 text-sm font-semibold">Rp</span>
                                         </div>
-                                        <input v-model="form.base_amount" type="number" :disabled="(form.service_status === 'gratis' || form.service_status === 'free_home') && !isAffiliateAccount" class="w-full pl-11 pr-4 py-2.5 border rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:border-transparent transition-all font-mono font-medium disabled:bg-gray-100 disabled:text-gray-600 disabled:font-bold disabled:border-gray-200 disabled:cursor-not-allowed" :class="form.service_status === 'gratis' ? 'focus:ring-emerald-500' : (form.service_status === 'free_home' ? 'focus:ring-amber-500' : 'bg-gray-50 border-gray-200 focus:ring-indigo-500')" required />
+                                        <input v-model="form.base_amount" type="number" readonly aria-readonly="true" class="w-full pl-11 pr-4 py-2.5 border rounded-lg text-sm text-gray-600 bg-gray-100 border-gray-200 font-mono font-bold cursor-not-allowed" required />
                                     </div>
                                 </div>
                                 
                                 <div>
-                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Biaya Pasang Baru (Rp)</label>
+                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2 flex items-center justify-between">
+                                        <span>Biaya Pasang Baru (Rp)</span>
+                                        <span class="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded">Otomatis dari Master Data</span>
+                                    </label>
                                     <div class="relative">
                                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                             <span class="text-gray-500 text-sm font-semibold">Rp</span>
                                         </div>
-                                        <input v-model="form.installation_fee" type="number" class="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all font-mono font-medium" />
+                                        <input v-model="form.installation_fee" type="number" readonly aria-readonly="true" class="w-full pl-11 pr-4 py-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-600 font-mono font-bold cursor-not-allowed" />
                                     </div>
                                 </div>
 
@@ -468,7 +473,7 @@ const form = useForm({
     identity_photo: null,
     latitude: '',
     longitude: '',
-    base_amount: 150000,
+    base_amount: 0,
     registration_date: new Date().toISOString().split('T')[0],
     installation_fee: 0,
     sales_id: '',
@@ -487,16 +492,13 @@ watch(isAffiliateAccount, (val) => {
 watch(() => form.service_status, (newStatus) => {
     if (newStatus === 'gratis') {
         form.base_amount = 0;
+        form.installation_fee = 0;
     } else if (newStatus === 'free_home') {
         form.package_id = '';
         form.base_amount = 0;
+        form.installation_fee = 0;
     } else {
-        const pkg = props.packages.find(p => p.id === form.package_id);
-        if (pkg) {
-            form.base_amount = pkg.price;
-        } else if (Number(form.base_amount) === 0) {
-            form.base_amount = 150000;
-        }
+        applyPackagePricing();
     }
 });
 
@@ -504,12 +506,10 @@ watch(() => form.package_id, (newId) => {
     if (registration_type.value === 'reseller') return;
     if (form.service_status === 'gratis' || form.service_status === 'free_home') {
         form.base_amount = 0;
+        form.installation_fee = 0;
         return;
     }
-    const pkg = props.packages.find(p => p.id === newId);
-    if (pkg) {
-        form.base_amount = pkg.price;
-    }
+    applyPackagePricing(newId);
 });
 
 watch(registration_type, (type) => {
@@ -517,12 +517,27 @@ watch(registration_type, (type) => {
         form.is_reseller = true;
         form.package_id = '';
         form.base_amount = 0;
+        form.installation_fee = 0;
     } else if (type === 'both') {
         form.is_reseller = true;
     } else {
         form.is_reseller = false;
     }
 });
+
+function packageMonthlyTariff(pkg) {
+    return Number(pkg?.current_price ?? (pkg?.is_promo && pkg?.promo_price != null ? pkg.promo_price : pkg?.price) ?? 0);
+}
+
+function formatCurrency(value) {
+    return Number(value || 0).toLocaleString('id-ID');
+}
+
+function applyPackagePricing(packageId = form.package_id) {
+    const pkg = props.packages.find(p => String(p.id) === String(packageId));
+    form.base_amount = pkg ? packageMonthlyTariff(pkg) : 0;
+    form.installation_fee = pkg ? Number(pkg.installation_fee || 0) : 0;
+}
 
 function getLocation() {
     if (navigator.geolocation) {

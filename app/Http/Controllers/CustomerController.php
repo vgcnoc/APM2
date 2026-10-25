@@ -1577,9 +1577,12 @@ class CustomerController extends Controller
             'identity_photo' => 'nullable|image|max:5120', // Max 5MB
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
-            'package_id' => 'nullable|exists:internet_packages,id',
+            'package_id' => [
+                'nullable',
+                Rule::exists('internet_packages', 'id')->where(fn ($query) => $query->where('is_active', true)),
+            ],
             'notes' => 'nullable|string',
-            'base_amount' => 'required|numeric|min:0',
+            'base_amount' => 'nullable|numeric|min:0',
             'registration_date' => 'required|date',
             'installation_fee' => 'nullable|numeric|min:0',
             'sales_id' => 'nullable|exists:users,id',
@@ -1625,9 +1628,33 @@ class CustomerController extends Controller
         $serviceStatus = $validated['service_status'] ?? 'berbayar';
         if ($serviceStatus === 'gratis') {
             $validated['base_amount'] = 0;
+            $validated['installation_fee'] = 0;
         } elseif ($serviceStatus === 'free_home') {
             $validated['base_amount'] = 0;
+            $validated['installation_fee'] = 0;
             $validated['package_id'] = null;
+        } else {
+            $package = !empty($validated['package_id'])
+                ? InternetPackage::active()->find($validated['package_id'])
+                : null;
+
+            // Reseller voucher murni tidak memakai paket internet. Semua booking
+            // internet wajib memilih paket aktif dari Master Data.
+            if (!$package && empty($validated['is_reseller'])) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'package_id' => 'Pilih paket langganan aktif dari Master Data.',
+                ]);
+            }
+
+            if ($package) {
+                // Jangan percaya nominal dari browser; tarif dan biaya pasang selalu
+                // mengikuti paket yang disediakan administrator di Master Data.
+                $validated['base_amount'] = $package->current_price;
+                $validated['installation_fee'] = $package->installation_fee;
+            } else {
+                $validated['base_amount'] = 0;
+                $validated['installation_fee'] = 0;
+            }
         }
 
         $validated['status'] = 'booking'; // Ensure it goes to booking

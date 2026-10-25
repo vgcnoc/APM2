@@ -67,6 +67,9 @@ class AffiliatePortalTest extends TestCase
             $table->id();
             $table->string('name');
             $table->integer('price');
+            $table->integer('installation_fee')->default(0);
+            $table->boolean('is_promo')->default(false);
+            $table->integer('promo_price')->nullable();
             $table->boolean('is_active')->default(true);
         });
         Schema::create('customers', function (Blueprint $table) {
@@ -236,6 +239,30 @@ class AffiliatePortalTest extends TestCase
             'name' => 'Personal booking', 'sales_id' => $owner->id, 'status' => 'booking',
             'service_status' => 'berbayar', 'is_reseller' => false,
             'referral_code' => AffiliateProfile::where('user_id', $owner->id)->value('referral_code'),
+        ]);
+    }
+
+    public function test_booking_uses_master_package_tariff_and_installation_fee(): void
+    {
+        $owner = $this->user('sales');
+        $this->profile($owner);
+        DB::table('areas')->insert(['id' => 1, 'name' => 'Service Area']);
+        $packageId = DB::table('internet_packages')->insertGetId([
+            'name' => 'Master 25 Mbps', 'price' => 200000, 'is_promo' => true,
+            'promo_price' => 175000, 'installation_fee' => 250000, 'is_active' => true,
+        ]);
+
+        $this->actingAs($owner)->withSession(['login_portal' => 'affiliate'])
+            ->post('/affiliate/booking', [
+                'name' => 'Tarif Master', 'phone' => '08123450000', 'address' => 'Alamat pengujian',
+                'area' => 'Service Area', 'package_id' => $packageId,
+                'base_amount' => 1, 'installation_fee' => 1,
+                'registration_date' => '2026-10-25',
+            ])->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('customers', [
+            'name' => 'Tarif Master', 'package_id' => $packageId,
+            'base_amount' => 175000, 'installation_fee' => 250000,
         ]);
     }
 
