@@ -472,12 +472,12 @@
             </div>
 
             <!-- Page Content -->
-            <div class="p-4 sm:p-6 lg:p-8 flex-1 w-full max-w-full overflow-hidden print:p-0 print:overflow-visible">
+            <div :class="[fullBleed ? 'p-0 flex-1 w-full max-w-full flex flex-col overflow-hidden' : 'p-4 sm:p-6 lg:p-8 flex-1 w-full max-w-full overflow-hidden print:p-0 print:overflow-visible']">
                 <slot />
             </div>
 
             <!-- Application Footer -->
-            <footer class="mt-auto py-3.5 px-4 sm:px-6 lg:px-8 border-t border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md text-xs text-slate-500 dark:text-slate-400 print:hidden transition-colors">
+            <footer v-if="!fullBleed" class="mt-auto py-3.5 px-4 sm:px-6 lg:px-8 border-t border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md text-xs text-slate-500 dark:text-slate-400 print:hidden transition-colors">
                 <div class="flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
                     <p class="font-medium">
                         Copyright {{ new Date().getFullYear() }} &copy; <span class="font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">VIRUZS</span> - Smart Billing, Smarter Business.
@@ -509,6 +509,7 @@ import { useSidebarState } from '@/Composables/useSidebarState';
 defineProps({
     title: { type: String, default: 'Dashboard' },
     subtitle: { type: String, default: '' },
+    fullBleed: { type: Boolean, default: false },
 });
 
 const page = usePage();

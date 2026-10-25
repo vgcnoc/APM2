@@ -1,11 +1,14 @@
 <template>
-    <AppLayout title="GIS Map Jaringan & Rute" subtitle="Peta Cerdas Pelanggan, ODC, ODP, Area & Routing Turn-by-Turn">
+    <AppLayout title="GIS Map Jaringan & Rute" subtitle="Peta Cerdas Pelanggan, ODC, ODP, Area & Routing Turn-by-Turn" :full-bleed="true">
         <div class="relative w-full h-[calc(100vh-68px)] overflow-hidden bg-slate-900 select-none">
             
             <!-- ═══ 1. TOP FLOATING CONTROL BAR ═══ -->
             <div class="absolute top-3 left-3 right-3 z-[1000] flex flex-wrap items-center justify-between gap-2 pointer-events-none">
-                <!-- Search & Quick Navigation Bar -->
-                <div class="relative pointer-events-auto w-full sm:w-80 md:w-96 shadow-xl rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/80 transition-all">
+                <!-- Search & Quick Navigation Bar (Hidden when Routing Drawer is open) -->
+                <div
+                    v-if="!isRoutingActive"
+                    class="relative pointer-events-auto w-full sm:w-80 md:w-96 shadow-xl rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/80 transition-all"
+                >
                     <div class="flex items-center px-3.5 py-2">
                         <svg class="w-4 h-4 text-indigo-500 mr-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -348,7 +351,7 @@
                             </div>
                         </div>
                         <button
-                            @click="isRoutingActive = false"
+                            @click="closeRoutingDrawer"
                             class="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
                         >
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -823,10 +826,12 @@ let L = null;
 // Layer Groups
 let tileLayer = null;
 let clusterGroup = null;
+let odpClusterGroup = null;
 let odcLayerGroup = null;
 let odpLayerGroup = null;
 let customerLayerGroup = null;
 let areaLayerGroup = null;
+let areaBadgeLayerGroup = null;
 let fiberLinesLayerGroup = null;
 let routeLayerGroup = null;
 let rulerLayerGroup = null;
@@ -1154,25 +1159,56 @@ onMounted(async () => {
 
     // Initialize Layer Groups
     odcLayerGroup = L.layerGroup().addTo(map);
-    odpLayerGroup = L.layerGroup().addTo(map);
+    odpLayerGroup = L.layerGroup();
     customerLayerGroup = L.layerGroup();
     areaLayerGroup = L.layerGroup().addTo(map);
+    areaBadgeLayerGroup = L.layerGroup().addTo(map);
     fiberLinesLayerGroup = L.layerGroup().addTo(map);
     routeLayerGroup = L.layerGroup().addTo(map);
     rulerLayerGroup = L.layerGroup().addTo(map);
 
+    // Customer Cluster Group
     clusterGroup = L.markerClusterGroup({
         showCoverageOnHover: false,
-        maxClusterRadius: 30,
+        maxClusterRadius: 50,
         spiderfyOnMaxZoom: true,
-        disableClusteringAtZoom: 15,
+        disableClusteringAtZoom: 16,
         spiderfyDistanceMultiplier: 1.5,
     });
     map.addLayer(clusterGroup);
 
-    // 5. Map Click Event Handlers (for Picking or Ruler)
+    // ODP Cluster Group (Clustering ODP pins at lower zooms to avoid clutter)
+    odpClusterGroup = L.markerClusterGroup({
+        showCoverageOnHover: false,
+        maxClusterRadius: 40,
+        spiderfyOnMaxZoom: true,
+        disableClusteringAtZoom: 14,
+        spiderfyDistanceMultiplier: 1.4,
+        iconCreateFunction: (cluster) => {
+            const count = cluster.getChildCount();
+            return L.divIcon({
+                html: `
+                    <div class="relative group cursor-pointer" style="width: 32px; height: 32px;">
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-600 border-2 border-white shadow-lg flex items-center justify-center text-white font-black text-xs transform hover:scale-110 transition-transform">
+                            ${count}
+                        </div>
+                    </div>
+                `,
+                className: 'custom-odp-cluster',
+                iconSize: [32, 32],
+                iconAnchor: [16, 16],
+            });
+        }
+    });
+    map.addLayer(odpClusterGroup);
+
+    // 5. Map Click & Zoom Event Handlers
     map.on('click', (e) => {
         handleMapClick(e.latlng.lat, e.latlng.lng);
+    });
+
+    map.on('zoomend', () => {
+        updateAreaBadgesVisibility();
     });
 
     // 6. Draw All Layers
@@ -1180,16 +1216,38 @@ onMounted(async () => {
     toggleAreasLayer();
     toggleFiberLines();
 
-    // 7. Auto fit bounds to visible assets or auto locate
+    // 7. Auto fit bounds to visible assets (Priority to infrastructure to prevent outlier coordinates skew)
     if (!props.initialFocus || !props.initialFocus.lat) {
-        const allPoints = [];
-        props.odcs.forEach(o => { if (o.latitude && o.longitude) allPoints.push([parseFloat(o.latitude), parseFloat(o.longitude)]); });
-        props.odps.forEach(o => { if (o.latitude && o.longitude) allPoints.push([parseFloat(o.latitude), parseFloat(o.longitude)]); });
-        props.customers.forEach(c => { if (c.latitude && c.longitude) allPoints.push([parseFloat(c.latitude), parseFloat(c.longitude)]); });
+        const infraPoints = [];
+        props.odcs.forEach(o => { if (o.latitude && o.longitude) infraPoints.push([parseFloat(o.latitude), parseFloat(o.longitude)]); });
+        props.odps.forEach(o => { if (o.latitude && o.longitude) infraPoints.push([parseFloat(o.latitude), parseFloat(o.longitude)]); });
 
-        if (allPoints.length > 0) {
-            const bounds = L.latLngBounds(allPoints);
+        if (infraPoints.length > 0) {
+            const infraBounds = L.latLngBounds(infraPoints);
+            const infraCenter = infraBounds.getCenter();
+
+            // Include customers within 30km from infrastructure center to filter out rogue/test outlier coordinates
+            const validPoints = [...infraPoints];
+            props.customers.forEach(c => {
+                if (c.latitude && c.longitude) {
+                    const cLat = parseFloat(c.latitude);
+                    const cLng = parseFloat(c.longitude);
+                    const dist = calculateDistanceMeters(infraCenter.lat, infraCenter.lng, cLat, cLng);
+                    if (dist <= 30000) {
+                        validPoints.push([cLat, cLng]);
+                    }
+                }
+            });
+
+            const bounds = L.latLngBounds(validPoints);
             map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+        } else if (props.customers.length > 0) {
+            const custPoints = props.customers.filter(c => c.latitude && c.longitude).map(c => [parseFloat(c.latitude), parseFloat(c.longitude)]);
+            if (custPoints.length > 0) {
+                map.fitBounds(L.latLngBounds(custPoints), { padding: [50, 50], maxZoom: 15 });
+            } else {
+                locateMe(false);
+            }
         } else {
             locateMe(false);
         }
@@ -1305,10 +1363,19 @@ const refreshMarkers = () => {
     if (!map || !L || !clusterGroup) return;
 
     clusterGroup.clearLayers();
+    if (odpClusterGroup) odpClusterGroup.clearLayers();
     odcLayerGroup.clearLayers();
     odpLayerGroup.clearLayers();
     customerLayerGroup.clearLayers();
     customerMarkers.clear();
+
+    // Mapping koordinat ODC untuk cek tumpukan dengan ODP
+    const odcCoords = [];
+    props.odcs.forEach(odc => {
+        if (odc.latitude && odc.longitude) {
+            odcCoords.push([parseFloat(odc.latitude), parseFloat(odc.longitude)]);
+        }
+    });
 
     // Mapping koordinat ODP untuk cek tumpukan titik dengan pelanggan
     const odpCoordsMap = new Map();
@@ -1318,7 +1385,7 @@ const refreshMarkers = () => {
         }
     });
 
-    // 1. Plot ODCs (Infrastruktur Utama - Tidak digabung dalam cluster pelanggan)
+    // 1. Plot ODCs (Infrastruktur Utama - Core distribution)
     if (layers.value.odcs) {
         props.odcs.forEach(odc => {
             if (selectedAreaFilter.value !== 'all' && odc.area_id != selectedAreaFilter.value) return;
@@ -1326,6 +1393,7 @@ const refreshMarkers = () => {
             const marker = L.marker([parseFloat(odc.latitude), parseFloat(odc.longitude)], {
                 icon: createOdcIcon(odc.capacity, odc.odps_count),
                 title: odc.name,
+                zIndexOffset: 100, // Menjamin ODC selalu berada di atas ODP
             });
 
             marker.bindPopup(`
@@ -1361,14 +1429,26 @@ const refreshMarkers = () => {
         });
     }
 
-    // 2. Plot ODPs (Titik Distribusi Tiang - Selalu tampil jelas dengan status port)
+    // 2. Plot ODPs (Titik Distribusi Tiang - Mendukung clustering agar tidak bertumpuk di zoom jauh)
     if (layers.value.odps) {
         props.odps.forEach(odp => {
             if (selectedAreaFilter.value !== 'all' && odp.area_id != selectedAreaFilter.value) return;
 
-            const marker = L.marker([parseFloat(odp.latitude), parseFloat(odp.longitude)], {
+            let oLat = parseFloat(odp.latitude);
+            let oLng = parseFloat(odp.longitude);
+
+            // Jitter / offset (~15m) jika koordinat ODP persis menempel pada titik ODC
+            odcCoords.forEach(([odcLat, odcLng]) => {
+                if (Math.abs(oLat - odcLat) < 0.00008 && Math.abs(oLng - odcLng) < 0.00008) {
+                    oLat += 0.00018;
+                    oLng += 0.00018;
+                }
+            });
+
+            const marker = L.marker([oLat, oLng], {
                 icon: createOdpIcon(odp.used_ports, odp.total_ports),
                 title: odp.name,
+                zIndexOffset: 50,
             });
 
             const availPorts = Math.max(0, (odp.total_ports || 8) - (odp.used_ports || 0));
@@ -1404,7 +1484,11 @@ const refreshMarkers = () => {
                 </div>
             `);
 
-            odpLayerGroup.addLayer(marker);
+            if (layers.value.cluster && odpClusterGroup) {
+                odpClusterGroup.addLayer(marker);
+            } else {
+                odpLayerGroup.addLayer(marker);
+            }
         });
     }
 
@@ -1419,7 +1503,7 @@ const refreshMarkers = () => {
             // Jitter / offset (~10 meter) jika titik pelanggan persis sama dengan titik ODP-nya
             if (cust.odp_id && odpCoordsMap.has(cust.odp_id)) {
                 const odpCoords = odpCoordsMap.get(cust.odp_id);
-                if (Math.abs(cLat - odpCoords[0]) < 0.00002 && Math.abs(cLng - odpCoords[1]) < 0.00002) {
+                if (Math.abs(cLat - odpCoords[0]) < 0.00003 && Math.abs(cLng - odpCoords[1]) < 0.00003) {
                     cLat += 0.00010;
                     cLng += 0.00010;
                 }
@@ -1448,8 +1532,15 @@ const refreshMarkers = () => {
     }
 
     if (layers.value.odps) {
-        if (!map.hasLayer(odpLayerGroup)) map.addLayer(odpLayerGroup);
+        if (layers.value.cluster) {
+            if (odpClusterGroup && !map.hasLayer(odpClusterGroup)) map.addLayer(odpClusterGroup);
+            if (map.hasLayer(odpLayerGroup)) map.removeLayer(odpLayerGroup);
+        } else {
+            if (odpClusterGroup && map.hasLayer(odpClusterGroup)) map.removeLayer(odpClusterGroup);
+            if (!map.hasLayer(odpLayerGroup)) map.addLayer(odpLayerGroup);
+        }
     } else {
+        if (odpClusterGroup && map.hasLayer(odpClusterGroup)) map.removeLayer(odpClusterGroup);
         if (map.hasLayer(odpLayerGroup)) map.removeLayer(odpLayerGroup);
     }
 
@@ -1512,10 +1603,21 @@ const customerPopup = cust => {
             `;
 };
 
+// Update visibilitas badge wilayah berdasarkan level zoom (Hanya tampil saat zoom >= 13 agar tidak menumpuk saat zoom jauh)
+const updateAreaBadgesVisibility = () => {
+    if (!map || !areaBadgeLayerGroup) return;
+    if (layers.value.areas && map.getZoom() >= 13) {
+        if (!map.hasLayer(areaBadgeLayerGroup)) map.addLayer(areaBadgeLayerGroup);
+    } else {
+        if (map.hasLayer(areaBadgeLayerGroup)) map.removeLayer(areaBadgeLayerGroup);
+    }
+};
+
 // ═══ AREA GEOFENCE & BOUNDARIES ═══
 const toggleAreasLayer = () => {
-    if (!map || !L || !areaLayerGroup) return;
+    if (!map || !L || !areaLayerGroup || !areaBadgeLayerGroup) return;
     areaLayerGroup.clearLayers();
+    areaBadgeLayerGroup.clearLayers();
 
     if (!layers.value.areas) return;
 
@@ -1530,29 +1632,44 @@ const toggleAreasLayer = () => {
             radius: radius,
             color: '#8b5cf6',
             fillColor: '#8b5cf6',
-            fillOpacity: 0.04,
+            fillOpacity: 0.05,
             weight: 1.5,
             dashArray: '5, 5',
         });
 
-        // Centroid Badge Marker
-        const areaBadge = L.marker([parseFloat(area.latitude), parseFloat(area.longitude)], {
+        circle.bindTooltip(`📍 Wilayah: <b>${area.name}</b>`, {
+            sticky: true,
+            className: 'area-circle-tooltip',
+        });
+
+        // Centroid Badge Marker (Dengan anti-tumpukan offset jika ada area dengan koordinat identik)
+        let bLat = parseFloat(area.latitude);
+        let bLng = parseFloat(area.longitude);
+        const duplicateIndex = props.areas.findIndex(other => other.id !== area.id && other.latitude && Math.abs(parseFloat(other.latitude) - bLat) < 0.001 && Math.abs(parseFloat(other.longitude) - bLng) < 0.001);
+        if (duplicateIndex !== -1 && area.id > props.areas[duplicateIndex].id) {
+            bLat += 0.0018; // offset ~200m agar badge tidak menutupi nama area lain
+            bLng += 0.0018;
+        }
+
+        const areaBadge = L.marker([bLat, bLng], {
             icon: L.divIcon({
                 className: 'area-centroid-badge',
                 html: `
-                    <div class="px-2.5 py-1 bg-white/90 backdrop-blur-xs border border-purple-300 rounded-full shadow-md text-center transform -translate-x-1/2 -translate-y-1/2">
-                        <span class="text-[10px] font-bold text-purple-900">📍 ${area.name}</span>
+                    <div class="px-2.5 py-0.5 bg-slate-900/85 backdrop-blur-md border border-purple-400/60 rounded-full shadow-lg text-center transform -translate-x-1/2 -translate-y-1/2 pointer-events-none whitespace-nowrap">
+                        <span class="text-[10px] font-bold text-purple-200">📍 ${area.name}</span>
                     </div>
                 `,
-                iconSize: [120, 24],
-                iconAnchor: [60, 12],
+                iconSize: [100, 22],
+                iconAnchor: [50, 11],
             }),
             interactive: false,
         });
 
         areaLayerGroup.addLayer(circle);
-        areaLayerGroup.addLayer(areaBadge);
+        areaBadgeLayerGroup.addLayer(areaBadge);
     });
+
+    updateAreaBadgesVisibility();
 };
 
 // ═══ FIBER TOPOLOGY LINES (ODC -> ODP -> Pelanggan) ═══
@@ -1695,6 +1812,20 @@ const toggleRoutingDrawer = () => {
     if (isRoutingActive.value && !routeOrigin.value.lat && myLocation.value) {
         routeOrigin.value = { lat: myLocation.value.lat, lng: myLocation.value.lng, name: 'Lokasi Saya' };
     }
+    nextTick(() => {
+        setTimeout(() => {
+            if (map) map.invalidateSize();
+        }, 320);
+    });
+};
+
+const closeRoutingDrawer = () => {
+    isRoutingActive.value = false;
+    nextTick(() => {
+        setTimeout(() => {
+            if (map) map.invalidateSize();
+        }, 320);
+    });
 };
 
 const setOriginToCurrentLocation = () => {
@@ -1930,5 +2061,27 @@ const toggleFullScreen = () => {
 
 .leaflet-container {
     font-family: inherit !important;
+}
+
+/* Custom Area Circle Tooltip */
+.area-circle-tooltip {
+    background: rgba(15, 23, 42, 0.88) !important;
+    backdrop-filter: blur(8px) !important;
+    border: 1px solid rgba(168, 85, 247, 0.5) !important;
+    color: #f3e8ff !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    border-radius: 9999px !important;
+    padding: 3px 10px !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3) !important;
+}
+.area-circle-tooltip::before {
+    border-top-color: rgba(15, 23, 42, 0.88) !important;
+}
+
+/* Custom ODP Cluster */
+.custom-odp-cluster {
+    background: transparent !important;
+    border: none !important;
 }
 </style>
