@@ -7,6 +7,7 @@ use App\Models\AffiliateProfile;
 use App\Models\AffiliateWithdrawal;
 use App\Services\AffiliateService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
@@ -147,12 +148,7 @@ class AffiliatePortalController extends Controller
         $settings = AffiliateService::getSettings();
         $isEmployee = AffiliateService::isInternalEmployee($user);
         $pendingPayrollIncentives = $isEmployee
-            ? (float) \App\Models\Incentive::where('user_id', $user->id)
-                ->where('status', 'pending')
-                ->where(function($q) {
-                    $q->where('reference_id', 'like', 'booking_cust_%')
-                      ->orWhere('reference_id', 'like', 'aff_%');
-                })->sum('amount')
+            ? $this->pendingAffiliatePayrollIncentives($user->id)
             : 0;
 
         $unpaidCustomers = AffiliateService::getUnpaidCustomersForAffiliate($user);
@@ -221,6 +217,35 @@ class AffiliatePortalController extends Controller
             'withdrawals' => $withdrawals,
             'settings' => $settings,
         ]);
+    }
+
+    /**
+     * Jumlahkan insentif afiliasi yang masih memiliki sumber transaksi.
+     *
+     * Data booking lama dapat menjadi orphan ketika pelanggan dihapus. Jangan
+     * tampilkan lagi sebagai hak bayar di portal sales karena tidak ada booking
+     * yang dapat diverifikasi. Komisi berbasis invoice (aff_*) tetap dihitung
+     * karena dapat mencakup komisi upline yang tidak memiliki customer langsung.
+     */
+    private function pendingAffiliatePayrollIncentives(int $userId): float
+    {
+        return (float) \App\Models\Incentive::query()
+            ->where('user_id', $userId)
+            ->where('status', 'pending')
+            ->where(function ($references) {
+                $references
+                    ->where(function ($booking) {
+                        $booking->where('reference_id', 'like', 'booking_cust_%')
+                            ->whereExists(function ($customers) {
+                                $customers->select(DB::raw(1))
+                                    ->from('customers')
+                                    ->whereRaw('customers.id = substr(incentives.reference_id, 14)')
+                                    ->whereColumn('customers.sales_id', 'incentives.user_id');
+                            });
+                    })
+                    ->orWhere('reference_id', 'like', 'aff_%');
+            })
+            ->sum('amount');
     }
 
     /**

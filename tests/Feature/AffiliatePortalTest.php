@@ -272,6 +272,32 @@ class AffiliatePortalTest extends TestCase
                 ->where('commissions.prev_page_url', fn ($url) => str_contains($url, 'tab=commissions')));
     }
 
+    public function test_pending_payroll_excludes_orphan_or_reassigned_booking_incentives(): void
+    {
+        $owner = $this->user('sales');
+        $other = $this->user('sales');
+        $this->profile($owner);
+
+        $ownedCustomer = DB::table('customers')->insertGetId([
+            'name' => 'Booking valid', 'sales_id' => $owner->id, 'status' => 'active',
+        ]);
+        $otherCustomer = DB::table('customers')->insertGetId([
+            'name' => 'Booking milik akun lain', 'sales_id' => $other->id, 'status' => 'active',
+        ]);
+
+        DB::table('incentives')->insert([
+            ['user_id' => $owner->id, 'status' => 'pending', 'reference_id' => 'booking_cust_'.$ownedCustomer, 'amount' => 35000],
+            ['user_id' => $owner->id, 'status' => 'pending', 'reference_id' => 'booking_cust_'.$otherCustomer, 'amount' => 35000],
+            ['user_id' => $owner->id, 'status' => 'pending', 'reference_id' => 'booking_cust_999999', 'amount' => 3185000],
+            ['user_id' => $owner->id, 'status' => 'pending', 'reference_id' => 'aff_monthly_inv_123', 'amount' => 5000],
+        ]);
+
+        $this->actingAs($owner)->get('/affiliate/dashboard')->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('pending_payroll_incentives', 40000)
+                ->where('kpi.pending_payroll_incentives', 40000));
+    }
+
     public function test_shared_portal_props_do_not_expose_staff_directory(): void
     {
         $owner = $this->user('sales');
