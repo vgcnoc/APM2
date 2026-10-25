@@ -51,7 +51,9 @@ class CustomerConnectionService
             if (!$candidates) {
                 foreach ($credentials as $username) {
                     $address = $latest->get($username)?->nasipaddress;
-                    $candidates = array_merge($candidates, $addressToNas[$address] ?? []);
+                    if (is_string($address)) {
+                        $candidates = array_merge($candidates, $addressToNas[$address] ?? []);
+                    }
                 }
                 $candidates = array_unique($candidates);
             }
