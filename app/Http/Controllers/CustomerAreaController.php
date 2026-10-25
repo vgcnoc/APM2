@@ -70,11 +70,12 @@ class CustomerAreaController extends Controller
     public function dashboard()
     {
         $user = auth()->user();
-        if (!$this->isStaffUser($user) && ($user->role === 'reseller' || Reseller::where('user_id', $user->id)->exists())) {
+        $customer = $this->getCustomer();
+
+        // Hanya jika user TIDAK memiliki data langganan pelanggan, tetapi memiliki akun reseller, alihkan ke portal reseller
+        if (!$customer && !$this->isStaffUser($user) && ($user->role === 'reseller' || Reseller::where('user_id', $user->id)->exists())) {
             return redirect()->route('client-area.dashboard');
         }
-
-        $customer = $this->getCustomer();
 
         if (!$customer) {
             if ($this->isStaffUser($user)) {
@@ -103,21 +104,26 @@ class CustomerAreaController extends Controller
         // Load relasi paket, ONT, dan area pelanggan
         $customer->load(['package', 'ont', 'areaModel']);
 
+        $isReseller = ($user->role === 'reseller')
+            || (method_exists($user, 'hasRole') && $user->hasRole('reseller'))
+            || Reseller::where('user_id', $user->id)->exists();
+
         return Inertia::render('CustomerArea/Dashboard', [
             'customer' => $customer,
             'latestInvoice' => $latestInvoice,
-            'recentTickets' => $recentTickets
+            'recentTickets' => $recentTickets,
+            'isReseller' => $isReseller,
         ]);
     }
 
     public function billing()
     {
         $user = auth()->user();
-        if (!$this->isStaffUser($user) && ($user->role === 'reseller' || Reseller::where('user_id', $user->id)->exists())) {
+        $customer = $this->getCustomer();
+
+        if (!$customer && !$this->isStaffUser($user) && ($user->role === 'reseller' || Reseller::where('user_id', $user->id)->exists())) {
             return redirect()->route('client-area.billing');
         }
-
-        $customer = $this->getCustomer();
 
         if (!$customer) {
             if ($this->isStaffUser($user)) {
@@ -144,7 +150,9 @@ class CustomerAreaController extends Controller
     public function tickets()
     {
         $user = auth()->user();
-        if (!$this->isStaffUser($user) && ($user->reseller || Reseller::where('user_id', $user->id)->exists())) {
+        $customer = $this->getCustomer();
+
+        if (!$customer && !$this->isStaffUser($user) && ($user->role === 'reseller' || Reseller::where('user_id', $user->id)->exists())) {
             return redirect()->route('client-area.dashboard');
         }
 

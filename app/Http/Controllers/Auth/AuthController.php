@@ -85,7 +85,8 @@ class AuthController extends Controller
             if ($portal === 'customer') {
                 $canAccessCustomer = in_array($userRole, ['customer', 'admin', 'superadmin', 'super admin', 'super-admin'], true)
                     || (method_exists($user, 'hasRole') && ($user->hasRole('customer') || $user->hasRole('admin') || $user->hasRole('super admin')))
-                    || \App\Models\Customer::where('user_id', $user->id)->orWhere('email', $user->email)->exists();
+                    || \App\Models\Customer::where('user_id', $user->id)->orWhere('email', $user->email)->exists()
+                    || \App\Models\Reseller::where('user_id', $user->id)->whereNotNull('customer_id')->exists();
 
                 if (!$canAccessCustomer) {
                     Auth::logout();
