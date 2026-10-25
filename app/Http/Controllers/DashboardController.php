@@ -1082,7 +1082,13 @@ class DashboardController extends Controller
             ->whereNotNull('package_id')
             ->with(['areaModel', 'ont.odp', 'package']);
         $applyAreaScope($custBase);
-        $rawCustomers = $custBase->get();
+        // Monitoring realtime hanya untuk layanan yang masih berjalan atau
+        // sedang diisolir. Pelanggan booking, survey, instalasi, terminated,
+        // maupun canceled adalah arsip proses layanan dan tidak boleh tampil
+        // sebagai koneksi DOWN.
+        $rawCustomers = (clone $custBase)
+            ->whereIn('status', ['active', 'suspended'])
+            ->get();
 
         $pppoeItems = [];
         $pppoeOnlineCount = 0;
