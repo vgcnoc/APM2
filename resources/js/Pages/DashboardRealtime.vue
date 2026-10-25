@@ -718,7 +718,7 @@
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                         <tr
-                            v-for="item in filteredConnectionFeed"
+                            v-for="item in paginatedConnectionFeed"
                             :key="`${item.service_type}-${item.id}`"
                             class="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
                         >
@@ -836,6 +836,84 @@
                         </tr>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- ── Paginasi 10 (Pagination Controls) ── -->
+            <div
+                v-if="feedTotalItems > 0"
+                class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+            >
+                <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+                    <span>
+                        Menampilkan
+                        <strong class="text-slate-800 dark:text-slate-200">{{ feedStartIndex + 1 }}</strong>
+                        -
+                        <strong class="text-slate-800 dark:text-slate-200">{{ feedEndIndex }}</strong>
+                        dari
+                        <strong class="text-slate-800 dark:text-slate-200">{{ feedTotalItems }}</strong>
+                        sesi
+                    </span>
+                    <span class="text-slate-300 dark:text-slate-700">|</span>
+                    <div class="flex items-center gap-1.5">
+                        <label for="feedPerPageSelect" class="text-[11px] text-slate-400">Baris:</label>
+                        <select
+                            id="feedPerPageSelect"
+                            v-model.number="feedPerPage"
+                            @change="feedCurrentPage = 1"
+                            class="text-xs py-1 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:ring-purple-500 focus:border-purple-500 cursor-pointer font-bold"
+                        >
+                            <option :value="10">10 / hal</option>
+                            <option :value="25">25 / hal</option>
+                            <option :value="50">50 / hal</option>
+                            <option :value="100">100 / hal</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-1 self-center sm:self-auto flex-wrap">
+                    <!-- Prev Button -->
+                    <button
+                        @click="goToFeedPage(feedCurrentPage - 1)"
+                        :disabled="feedCurrentPage <= 1"
+                        type="button"
+                        class="px-3 py-1.5 rounded-lg border text-xs font-bold transition flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                        :class="feedCurrentPage <= 1 ? 'border-slate-200 dark:border-slate-800 text-slate-400' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-2xs active:scale-95'"
+                    >
+                        <span>‹</span>
+                        <span>Sebelumnya</span>
+                    </button>
+
+                    <!-- Page Numbers -->
+                    <template v-for="(p, idx) in visibleFeedPages" :key="idx">
+                        <span
+                            v-if="p === '...'"
+                            class="px-2 py-1 text-slate-400 select-none text-xs font-bold"
+                        >
+                            ...
+                        </span>
+                        <button
+                            v-else
+                            @click="goToFeedPage(p)"
+                            type="button"
+                            class="min-w-[32px] h-8 px-2 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center"
+                            :class="feedCurrentPage === p ? 'bg-purple-600 text-white shadow-sm shadow-purple-500/20' : 'border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/60'"
+                        >
+                            {{ p }}
+                        </button>
+                    </template>
+
+                    <!-- Next Button -->
+                    <button
+                        @click="goToFeedPage(feedCurrentPage + 1)"
+                        :disabled="feedCurrentPage >= feedTotalPages"
+                        type="button"
+                        class="px-3 py-1.5 rounded-lg border text-xs font-bold transition flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                        :class="feedCurrentPage >= feedTotalPages ? 'border-slate-200 dark:border-slate-800 text-slate-400' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-2xs active:scale-95'"
+                    >
+                        <span>Selanjutnya</span>
+                        <span>›</span>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -1125,7 +1203,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import Swal from 'sweetalert2';
@@ -1361,6 +1439,68 @@ const filteredConnectionFeed = computed(() => {
     }
 
     return list;
+});
+
+// Pagination State for Connection Feed (Paginasi 10)
+const feedCurrentPage = ref(1);
+const feedPerPage = ref(10); // default 10 per page
+
+// Reset page to 1 when filters or search keyword change
+watch([tableFilterStatus, searchKeyword], () => {
+    feedCurrentPage.value = 1;
+});
+
+const feedTotalItems = computed(() => filteredConnectionFeed.value.length);
+const feedTotalPages = computed(() => Math.max(1, Math.ceil(feedTotalItems.value / feedPerPage.value)));
+
+// Auto-adjust page if current page exceeds total pages
+watch(feedTotalPages, (newTotal) => {
+    if (feedCurrentPage.value > newTotal) {
+        feedCurrentPage.value = newTotal;
+    }
+});
+
+const feedStartIndex = computed(() => (feedCurrentPage.value - 1) * feedPerPage.value);
+const feedEndIndex = computed(() => Math.min(feedStartIndex.value + feedPerPage.value, feedTotalItems.value));
+
+const paginatedConnectionFeed = computed(() => {
+    return filteredConnectionFeed.value.slice(feedStartIndex.value, feedStartIndex.value + feedPerPage.value);
+});
+
+const goToFeedPage = (page) => {
+    if (page >= 1 && page <= feedTotalPages.value) {
+        feedCurrentPage.value = page;
+    }
+};
+
+// Calculate visible page numbers for pagination buttons
+const visibleFeedPages = computed(() => {
+    const total = feedTotalPages.value;
+    const current = feedCurrentPage.value;
+    const delta = 2;
+    const range = [];
+    const rangeWithDots = [];
+    let l;
+
+    for (let i = 1; i <= total; i++) {
+        if (i === 1 || i === total || (i >= current - delta && i <= current + delta)) {
+            range.push(i);
+        }
+    }
+
+    for (let i of range) {
+        if (l) {
+            if (i - l === 2) {
+                rangeWithDots.push(l + 1);
+            } else if (i - l !== 1) {
+                rangeWithDots.push('...');
+            }
+        }
+        rangeWithDots.push(i);
+        l = i;
+    }
+
+    return rangeWithDots;
 });
 
 // Methods
