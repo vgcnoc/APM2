@@ -84,6 +84,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard/realtime', [DashboardController::class, 'realtime'])->name('dashboard.realtime');
     Route::get('/dashboard/realtime-api', [DashboardController::class, 'realtimeApi'])->name('dashboard.realtime-api');
     Route::get('/dashboard/search-customer', [DashboardController::class, 'searchCustomer'])->name('dashboard.search-customer');
+    Route::post('/dashboard/vouchers/delete-expired', [DashboardController::class, 'deleteExpiredVouchers'])->name('dashboard.vouchers.delete-expired');
+    Route::post('/dashboard/vouchers/{voucher}/delete', [DashboardController::class, 'deleteSingleVoucher'])->name('dashboard.vouchers.delete-single');
+
 
     // Client Area (Reseller)
     Route::middleware(['role:reseller|customer'])->prefix('client-area')->name('client-area.')->group(function () {
@@ -495,7 +498,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ── Progress Harian Operasional (PGS, PGK, PGJ, CBP, Instalasi, Survey & Teknisi) ──
-    Route::middleware(['permission:menu_operational_progress|menu_monitoring_teknisi|menu_pgk|menu_pgs|menu_cbp'])->group(function () {
+    Route::middleware(['permission:menu_operational_progress'])->group(function () {
         Route::get('/operational/daily-progress', [\App\Http\Controllers\OperationalDailyProgressController::class, 'index'])->name('operational.daily-progress.index');
         Route::post('/operational/daily-progress/send-wa', [\App\Http\Controllers\OperationalDailyProgressController::class, 'sendWa'])->name('operational.daily-progress.send-wa');
     });

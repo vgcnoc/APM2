@@ -1182,10 +1182,39 @@ class DashboardController extends Controller
         $voucherCountToday = 0;
         $voucherBreakdown = [];
         $recentVouchers = [];
+        $expiredVoucherCount = 0;
+        $expiredVouchersList = [];
 
         try {
             if (class_exists(Voucher::class)) {
-                $voucherAvailableCount = Voucher::where('status', 'unused')->count();
+                // Auto sinkronkan status voucher yang durasinya telah habis menjadi expired
+                try {
+                    \App\Http\Controllers\VoucherController::checkAndExpireVouchers();
+                } catch (\Throwable $e) {}
+
+                $voucherAvailableCount = Voucher::where('status', 'available')->count();
+                $expiredVoucherCount = Voucher::where('status', 'expired')->count();
+
+                $expiredVouchersList = Voucher::with(['profile', 'reseller.customer', 'reseller.user', 'customer.areaModel'])
+                    ->where('status', 'expired')
+                    ->orderByDesc('updated_at')
+                    ->limit(50)
+                    ->get()
+                    ->map(fn($v) => [
+                        'id'              => $v->id,
+                        'code'            => $v->code,
+                        'username'        => $v->username ?: $v->code,
+                        'profile_name'    => $v->profile?->name ?? 'Hotspot Reguler',
+                        'duration'        => $v->profile?->duration ?? '-',
+                        'price'           => (float) ($v->profile?->price ?? 0),
+                        'price_formatted' => 'Rp ' . number_format($v->profile?->price ?? 0, 0, ',', '.'),
+                        'reseller_name'   => $v->reseller?->customer?->name ?? $v->reseller?->user?->name ?? $v->reseller?->name ?? 'Admin / Langsung',
+                        'area_name'       => $v->customer?->areaModel?->name ?? 'Hotspot Area',
+                        'is_free'         => (bool) ($v->is_free ?? false),
+                        'used_at'         => $v->used_at ? Carbon::parse($v->used_at)->timezone('Asia/Jakarta')->translatedFormat('d M Y, H:i') . ' WIB' : '-',
+                        'expired_at'      => Carbon::parse($v->updated_at)->timezone('Asia/Jakarta')->translatedFormat('d M Y, H:i:s') . ' WIB',
+                        'time_ago'        => Carbon::parse($v->updated_at)->diffForHumans(),
+                    ]);
 
                 // Voucher yang digunakan / terjual hari ini
                 $todayUsedVouchers = Voucher::with(['profile', 'reseller.user'])
@@ -1226,12 +1255,16 @@ class DashboardController extends Controller
                     if ($isVOnline) {
                         $vStatus = 'up';
                         $hotspotOnlineCount++;
+                    } elseif ($v->status === 'expired') {
+                        $vStatus = 'expired';
+                        $hotspotDownCount++;
                     } else {
                         $vStatus = 'down';
                         $hotspotDownCount++;
                     }
 
                     $usedTime = $v->used_at ? Carbon::parse($v->used_at) : Carbon::parse($v->updated_at);
+                    $disconnectCause = $vStatus === 'up' ? 'Sesi Aktif' : ($vStatus === 'expired' ? 'Masa Aktif Habis (Expired)' : 'Masa Aktif Selesai / Offline');
                     $hotspotItems[] = [
                         'id'               => $v->id,
                         'service_type'     => 'hotspot',
@@ -1247,7 +1280,7 @@ class DashboardController extends Controller
                         'exact_timestamp'  => $usedTime->toIso8601String(),
                         'full_time'        => $usedTime->timezone('Asia/Jakarta')->translatedFormat('d M Y, H:i:s') . ' WIB',
                         'time_ago'         => $usedTime->diffForHumans(),
-                        'disconnect_cause' => $vStatus === 'up' ? 'Sesi Aktif' : 'Masa Aktif Selesai / Expired',
+                        'disconnect_cause' => $disconnectCause,
                         'package_name'     => $v->profile?->name ?? 'Hotspot Reguler',
                         'price'            => (float) ($v->profile?->price ?? 0),
                         'price_formatted'  => 'Rp ' . number_format($v->profile?->price ?? 0, 0, ',', '.'),
@@ -1442,13 +1475,15 @@ class DashboardController extends Controller
             'capacity_source'    => $capacity['source'],
             'capacity_cpu_load'  => $capacity['cpu_load'],
             'capacity_devices'   => $capacity['devices'],
-            'online_voucher'     => $hotspotOnlineCount,
-            'online_billing'     => $pppoeOnlineCount,
-            'pending_count'      => (clone $custBase)->whereIn('status', ['booking', 'survey', 'installing', 'menunggu_aktivasi'])->count(),
-            'unpaid_count'       => $unpaidCount,
-            'isolir_count'       => $isolirCount,
-            'unpaid_customers'   => $unpaidCustomers,
-            'isolir_customers'   => $isolirCustomers,
+            'online_voucher'        => $hotspotOnlineCount,
+            'online_billing'        => $pppoeOnlineCount,
+            'pending_count'         => (clone $custBase)->whereIn('status', ['booking', 'survey', 'installing', 'menunggu_aktivasi'])->count(),
+            'expired_voucher_count' => $expiredVoucherCount,
+            'expired_vouchers'      => $expiredVouchersList,
+            'unpaid_count'          => $unpaidCount,
+            'isolir_count'          => $isolirCount,
+            'unpaid_customers'      => $unpaidCustomers,
+            'isolir_customers'      => $isolirCustomers,
 
             // Trafik Internet Lengkap (100% Real)
             'traffic' => [
@@ -1479,6 +1514,7 @@ class DashboardController extends Controller
             'hotspot' => [
                 'online'      => $hotspotOnlineCount,
                 'down'        => $hotspotDownCount,
+                'expired'     => $expiredVoucherCount,
                 'available'   => $voucherAvailableCount,
                 'total'       => $hotspotTotal,
                 'uptime_rate' => $hotspotUptimeRate,
@@ -1517,5 +1553,84 @@ class DashboardController extends Controller
             'last_updated'      => now()->timezone('Asia/Jakarta')->format('H:i:s'),
             'last_updated_full' => now()->timezone('Asia/Jakarta')->translatedFormat('d M Y, H:i:s') . ' WIB',
         ];
+    }
+
+    /**
+     * Hapus satu atau banyak/semua voucher expired sekaligus dan bersihkan dari FreeRADIUS
+     */
+    public function deleteExpiredVouchers(Request $request)
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+        }
+
+        $ids = $request->input('ids'); // array ID voucher yang dipilih, atau kosong/null untuk hapus SEMUA expired
+        $query = Voucher::where('status', 'expired');
+
+        if (is_array($ids) && count($ids) > 0) {
+            $query->whereIn('id', $ids);
+        }
+
+        $vouchersToDelete = $query->get();
+        $count = $vouchersToDelete->count();
+
+        if ($count === 0) {
+            return response()->json([
+                'success' => true,
+                'deleted_count' => 0,
+                'message' => 'Tidak ada voucher expired yang ditemukan untuk dihapus.',
+            ]);
+        }
+
+        // Hapus dari database
+        Voucher::whereIn('id', $vouchersToDelete->pluck('id'))->delete();
+
+        // Bersihkan dari FreeRADIUS
+        try {
+            $radius = app(\App\Services\RadiusService::class);
+            if ($radius && $radius->enabled()) {
+                foreach ($vouchersToDelete as $v) {
+                    $u = $v->username ?: $v->code;
+                    $radius->removeUser($u);
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[DashboardController] Error membersihkan FreeRADIUS: ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'success' => true,
+            'deleted_count' => $count,
+            'message' => "Berhasil menghapus {$count} voucher expired.",
+        ]);
+    }
+
+    /**
+     * Hapus satuan voucher expired dari dashboard realtime
+     */
+    public function deleteSingleVoucher(Voucher $voucher)
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+        }
+
+        $code = $voucher->code;
+        $username = $voucher->username ?: $voucher->code;
+
+        $voucher->delete();
+
+        try {
+            $radius = app(\App\Services\RadiusService::class);
+            if ($radius && $radius->enabled()) {
+                $radius->removeUser($username);
+            }
+        } catch (\Throwable $e) {}
+
+        return response()->json([
+            'success' => true,
+            'message' => "Voucher {$code} berhasil dihapus permanen.",
+        ]);
     }
 }

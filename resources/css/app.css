@@ -81,13 +81,17 @@ h1, h2, h3, h4, h5, h6 {
     @apply bg-gray-300 rounded-full border-2 border-transparent bg-clip-padding hover:bg-gray-400 transition-colors;
 }
 
-/* ── Clean Corporate Effect ─────────────────────────── */
+/* ── Clean Corporate Effect with Frosted Depth ─────────────────────────── */
 .glass {
-    @apply bg-white border border-gray-200 shadow-sm dark:bg-gray-900 dark:border-gray-800;
+    @apply bg-white/95 border border-slate-200/90 shadow-sm dark:bg-gray-900/95 dark:border-gray-800;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 }
 
 .glass-card {
-    @apply bg-white border border-gray-200 rounded-2xl shadow-sm dark:bg-gray-900 dark:border-gray-800;
+    @apply bg-white/95 border border-slate-200/90 rounded-2xl shadow-sm dark:bg-gray-900/95 dark:border-gray-800;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 }
 
 /* ── Status Badge Variants ──────────────────────────────────── */
@@ -648,6 +652,148 @@ html.dark .modal-content,
 html.dark [role="dialog"] {
     background-color: #130d29 !important;
     border-color: rgba(168, 85, 247, 0.25) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   MODERN APPLICATION BACKGROUND PATTERNS & AMBIENT MESH SYSTEM
+   Menghilangkan latar polos putih dan menggantinya dengan tekstur
+   modern: tech dot matrix, blueprint grid, aurora mesh, cyber circuit.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 1. Base Shell Structure */
+.apm-shell {
+    position: relative;
+    min-height: 100vh;
+    transition: background-color 0.25s ease, background-image 0.25s ease;
+}
+
+/* ── CORAK 1: TECH MATRIX DOTS (Default / Rekomendasi) ──
+   Titik grid matrix presisi tinggi dipadu ambient glow indigo & cyan */
+html:not([data-bg-pattern]) .apm-shell,
+html[data-bg-pattern="dots"] .apm-shell {
+    background-color: #f8fafc !important;
+    background-image:
+        radial-gradient(1200px 700px at 10% -5%, rgba(99, 102, 241, 0.08), transparent 60%),
+        radial-gradient(1000px 600px at 90% -5%, rgba(14, 165, 233, 0.08), transparent 55%),
+        radial-gradient(1200px 800px at 50% 100%, rgba(139, 92, 246, 0.05), transparent 65%),
+        radial-gradient(rgba(100, 116, 139, 0.28) 1.25px, transparent 1.25px) !important;
+    background-size: 100% 100%, 100% 100%, 100% 100%, 24px 24px !important;
+    background-position: 0 0, 0 0, 0 0, 0 0 !important;
+    background-attachment: fixed !important;
+}
+
+html.dark:not([data-bg-pattern]) .apm-shell,
+html.dark[data-bg-pattern="dots"] .apm-shell {
+    background-color: #0b0718 !important;
+    background-image:
+        radial-gradient(1200px 700px at 10% -5%, rgba(99, 102, 241, 0.18), transparent 60%),
+        radial-gradient(1000px 600px at 90% -5%, rgba(14, 165, 233, 0.15), transparent 55%),
+        radial-gradient(1200px 800px at 50% 100%, rgba(168, 85, 247, 0.12), transparent 65%),
+        radial-gradient(rgba(148, 163, 184, 0.14) 1.25px, transparent 1.25px) !important;
+    background-size: 100% 100%, 100% 100%, 100% 100%, 24px 24px !important;
+    background-position: 0 0, 0 0, 0 0, 0 0 !important;
+    background-attachment: fixed !important;
+}
+
+/* ── CORAK 2: BLUEPRINT ENGINEERING GRID ──
+   Garis arsitektur cartesian / NOC server room network grid */
+html[data-bg-pattern="grid"] .apm-shell {
+    background-color: #f8fafc !important;
+    background-image:
+        radial-gradient(1200px 700px at 50% -10%, rgba(59, 130, 246, 0.09), transparent 65%),
+        linear-gradient(to right, rgba(148, 163, 184, 0.16) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(148, 163, 184, 0.16) 1px, transparent 1px) !important;
+    background-size: 100% 100%, 32px 32px, 32px 32px !important;
+    background-position: center top, 0 0, 0 0 !important;
+    background-attachment: fixed !important;
+}
+
+html.dark[data-bg-pattern="grid"] .apm-shell {
+    background-color: #0b0718 !important;
+    background-image:
+        radial-gradient(1200px 700px at 50% -10%, rgba(99, 102, 241, 0.2), transparent 65%),
+        linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px) !important;
+    background-size: 100% 100%, 32px 32px, 32px 32px !important;
+    background-position: center top, 0 0, 0 0 !important;
+    background-attachment: fixed !important;
+}
+
+/* ── CORAK 3: AURORA GLOW MESH ──
+   Gradien ambient lembut organik kaya warna (Indigo, Sky, Rose, Mint) */
+html[data-bg-pattern="mesh"] .apm-shell {
+    background-color: #f8fafc !important;
+    background-image:
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.13) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(56, 189, 248, 0.13) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(244, 63, 94, 0.08) 0px, transparent 50%),
+        radial-gradient(at 0% 100%, rgba(16, 185, 129, 0.08) 0px, transparent 50%),
+        radial-gradient(at 50% 50%, rgba(168, 85, 247, 0.07) 0px, transparent 50%) !important;
+    background-size: 100% 100% !important;
+    background-attachment: fixed !important;
+}
+
+html.dark[data-bg-pattern="mesh"] .apm-shell {
+    background-color: #0b0718 !important;
+    background-image:
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.24) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(14, 165, 233, 0.22) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(244, 63, 94, 0.15) 0px, transparent 50%),
+        radial-gradient(at 0% 100%, rgba(16, 185, 129, 0.13) 0px, transparent 50%),
+        radial-gradient(at 50% 50%, rgba(168, 85, 247, 0.16) 0px, transparent 50%) !important;
+    background-size: 100% 100% !important;
+    background-attachment: fixed !important;
+}
+
+/* ── CORAK 4: CYBER CIRCUIT & ISOMETRIC ──
+   Struktur heksagonal/diagonal sirkuit fiber optik */
+html[data-bg-pattern="circuit"] .apm-shell {
+    background-color: #f8fafc !important;
+    background-image:
+        radial-gradient(1200px 700px at 15% -5%, rgba(99, 102, 241, 0.09), transparent 60%),
+        radial-gradient(1000px 600px at 85% -5%, rgba(14, 165, 233, 0.09), transparent 55%),
+        linear-gradient(135deg, rgba(148, 163, 184, 0.11) 25%, transparent 25%),
+        linear-gradient(225deg, rgba(148, 163, 184, 0.11) 25%, transparent 25%),
+        linear-gradient(45deg, rgba(148, 163, 184, 0.11) 25%, transparent 25%),
+        linear-gradient(315deg, rgba(148, 163, 184, 0.11) 25%, transparent 25%) !important;
+    background-position: 0 0, 0 0, 16px 0, 16px 0, 0 0, 0 0 !important;
+    background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px, 32px 32px, 32px 32px !important;
+    background-attachment: fixed !important;
+}
+
+html.dark[data-bg-pattern="circuit"] .apm-shell {
+    background-color: #0b0718 !important;
+    background-image:
+        radial-gradient(1200px 700px at 15% -5%, rgba(99, 102, 241, 0.2), transparent 60%),
+        radial-gradient(1000px 600px at 85% -5%, rgba(14, 165, 233, 0.16), transparent 55%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.035) 25%, transparent 25%),
+        linear-gradient(225deg, rgba(255, 255, 255, 0.035) 25%, transparent 25%),
+        linear-gradient(45deg, rgba(255, 255, 255, 0.035) 25%, transparent 25%),
+        linear-gradient(315deg, rgba(255, 255, 255, 0.035) 25%, transparent 25%) !important;
+    background-position: 0 0, 0 0, 16px 0, 16px 0, 0 0, 0 0 !important;
+    background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px, 32px 32px, 32px 32px !important;
+    background-attachment: fixed !important;
+}
+
+/* ── CORAK 5: POLOS MINIMALIS ──
+   Opsi latar solid standar */
+html[data-bg-pattern="clean"] .apm-shell {
+    background-color: #f8fafc !important;
+    background-image: none !important;
+}
+
+html.dark[data-bg-pattern="clean"] .apm-shell {
+    background-color: #0b0718 !important;
+    background-image: none !important;
+}
+
+/* Print override: Bersihkan motif agar tinta hemat & bersih saat dicetak */
+@media print {
+    html[data-bg-pattern] .apm-shell,
+    .apm-shell {
+        background: white !important;
+        background-image: none !important;
+    }
 }
 
 

@@ -24,9 +24,8 @@
     }
 
     html.dark .apm-shell {
-        background: var(--apm-canvas) !important;
+        background-color: var(--apm-canvas) !important;
         color: var(--apm-text);
-        background-image: radial-gradient(ellipse at 75% 0, rgba(56, 109, 187, .045), transparent 48%) !important;
     }
 
     html.dark .apm-sidebar {

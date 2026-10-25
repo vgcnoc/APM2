@@ -24,7 +24,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-    <!-- Dark Mode Init Script (Anti-FOUC) -->
+    <!-- Dark Mode & Background Pattern Init Script (Anti-FOUC) -->
     <script>
         (function() {
             try {
@@ -34,6 +34,8 @@
                 } else {
                     document.documentElement.classList.remove('dark');
                 }
+                var pattern = localStorage.getItem('apm_bg_pattern') || 'dots';
+                document.documentElement.setAttribute('data-bg-pattern', pattern);
             } catch (e) {}
         })();
     </script>

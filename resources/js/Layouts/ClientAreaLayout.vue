@@ -1,5 +1,5 @@
 <template>
-    <div class="apm-shell min-h-screen bg-gray-50/70 dark:bg-gray-950 transition-colors">
+    <div class="apm-shell min-h-screen flex flex-col transition-colors">
         <!-- Top Navbar -->
         <nav class="apm-topbar bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-xs border-b border-gray-100 dark:border-gray-800/90 sticky top-0 z-50 transition-colors">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -174,8 +174,11 @@
                         </Link>
                     </div>
 
-                    <!-- Theme Toggle & User Menu Profile -->
-                    <div class="flex items-center gap-2 sm:gap-3 shrink-0 relative">
+                    <!-- Pattern & Theme Toggles & User Menu Profile -->
+                    <div class="flex items-center gap-2 sm:gap-2.5 shrink-0 relative">
+                        <!-- Corak Background Picker -->
+                        <PatternPicker />
+
                         <!-- Dark / Light Theme Toggle -->
                         <ThemeToggle />
 
@@ -332,9 +335,19 @@
         </nav>
 
         <!-- Main Content Slot -->
-        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 flex-1 w-full">
             <slot />
         </main>
+
+        <!-- Footer -->
+        <footer class="mt-auto py-3.5 px-4 sm:px-6 lg:px-8 border-t border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md text-xs text-slate-500 dark:text-slate-400 print:hidden transition-colors">
+            <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
+                <p class="font-medium">
+                    Copyright {{ new Date().getFullYear() }} &copy; <span class="font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">VIRUZS</span> - Smart Billing, Smarter Business.
+                </p>
+                <p class="text-[11px] text-slate-400 dark:text-slate-500">Portal Mitra &amp; Reseller</p>
+            </div>
+        </footer>
     </div>
 </template>
 
@@ -343,6 +356,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import AppLogo from '@/Components/AppLogo.vue';
 import ThemeToggle from '@/Components/ThemeToggle.vue';
+import PatternPicker from '@/Components/PatternPicker.vue';
 import { initTheme } from '@/Composables/useTheme';
 
 const page = usePage();

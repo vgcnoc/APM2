@@ -88,9 +88,22 @@
                             {{ formatNumber(currentStats.online_voucher) }}<span class="text-slate-400 font-semibold text-lg">/{{ formatNumber(currentStats.online_billing) }}</span>
                         </p>
                     </div>
-                    <span class="px-3 py-1 rounded-full text-xs font-black bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 border border-purple-200/60 dark:border-purple-800/50 shadow-2xs">
-                        {{ formatNumber(currentStats.pending_count) }} Pending
-                    </span>
+                    <div class="flex items-center gap-2">
+                        <span class="px-2.5 py-1 rounded-full text-xs font-black bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 border border-purple-200/60 dark:border-purple-800/50 shadow-2xs">
+                            {{ formatNumber(currentStats.pending_count) }} Pending
+                        </span>
+
+                        <!-- Tombol Action Expired Voucher -->
+                        <button
+                            @click="openModal('expired')"
+                            type="button"
+                            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black text-white bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 shadow-sm shadow-rose-500/20 active:scale-95 transition-all cursor-pointer"
+                            title="Kelola & Hapus Voucher Expired"
+                        >
+                            <span>🗑️</span>
+                            <span>{{ formatNumber(currentStats.expired_voucher_count) }} Expired</span>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Dual Striped Bar: Green (Voucher) + Cyan (Billing) -->
@@ -189,20 +202,20 @@
             </div>
         </div>
 
-        <!-- ═══ MODAL DETAIL & QUICK BLAST ═══ -->
+        <!-- ═══ MODAL DETAIL & QUICK BLAST / EXPIRED ═══ -->
         <div v-if="activeModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
             <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
                 <!-- Modal Header -->
                 <div class="px-6 py-4 flex items-center justify-between border-b border-slate-100 dark:border-slate-800"
-                    :class="activeModal === 'unpaid' ? 'bg-amber-500/10' : 'bg-rose-500/10'">
+                    :class="activeModal === 'unpaid' ? 'bg-amber-500/10' : (activeModal === 'expired' ? 'bg-rose-500/10' : 'bg-red-500/10')">
                     <div class="flex items-center gap-3">
-                        <span class="text-2xl">{{ activeModal === 'unpaid' ? '📢' : '🚨' }}</span>
+                        <span class="text-2xl">{{ activeModal === 'unpaid' ? '📢' : (activeModal === 'expired' ? '🎟️' : '🚨') }}</span>
                         <div>
                             <h4 class="text-base font-black text-slate-900 dark:text-white">
-                                {{ activeModal === 'unpaid' ? 'Pelanggan Unpaid (Belum Bayar)' : 'Pelanggan Status Isolir' }}
+                                {{ activeModal === 'unpaid' ? 'Pelanggan Unpaid (Belum Bayar)' : (activeModal === 'expired' ? 'Voucher Hotspot Expired' : 'Pelanggan Status Isolir') }}
                             </h4>
                             <p class="text-xs text-slate-500">
-                                Total {{ activeModal === 'unpaid' ? currentStats.unpaid_count : currentStats.isolir_count }} pelanggan tercatat
+                                {{ activeModal === 'unpaid' ? `Total ${formatNumber(currentStats.unpaid_count)} invoice belum bayar` : (activeModal === 'expired' ? `Total ${formatNumber(currentStats.expired_voucher_count)} voucher kedaluwarsa` : `Total ${formatNumber(currentStats.isolir_count)} pelanggan tercatat`) }}
                             </p>
                         </div>
                     </div>
@@ -211,8 +224,9 @@
                     </button>
                 </div>
 
-                <!-- Modal Body: Customer List -->
-                <div class="p-6 max-h-[360px] overflow-y-auto space-y-2.5">
+                <!-- Modal Body: Customer / Voucher List -->
+                <div class="p-6 max-h-[380px] overflow-y-auto space-y-2.5">
+                    <!-- 1. Modal Unpaid Invoices -->
                     <template v-if="activeModal === 'unpaid'">
                         <div v-for="item in currentStats.unpaid_customers" :key="item.id"
                             class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60">
@@ -230,6 +244,89 @@
                         </div>
                     </template>
 
+                    <!-- 2. Modal Expired Vouchers (Bisa Dihapus Satuan & Massal) -->
+                    <template v-else-if="activeModal === 'expired'">
+                        <!-- Toolbar: Search & Hapus Semua -->
+                        <div class="flex items-center gap-2 mb-3">
+                            <div class="relative flex-1">
+                                <input
+                                    v-model="expiredSearch"
+                                    type="text"
+                                    placeholder="Cari kode/profil/reseller..."
+                                    class="w-full text-xs rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 py-2 pl-3 pr-7 focus:ring-rose-500 focus:border-rose-500"
+                                />
+                                <button
+                                    v-if="expiredSearch"
+                                    @click="expiredSearch = ''"
+                                    type="button"
+                                    class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                            <button
+                                v-if="(currentStats.expired_vouchers?.length || 0) > 0"
+                                @click="deleteAllExpiredVouchers"
+                                :disabled="isBulkDeleting"
+                                type="button"
+                                class="px-3 py-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-sm shadow-rose-500/20 active:scale-95 disabled:opacity-50 shrink-0"
+                                title="Hapus semua voucher expired dari database & FreeRADIUS"
+                            >
+                                <svg v-if="isBulkDeleting" class="w-3.5 h-3.5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                <span v-else>🗑️</span>
+                                <span>Hapus Semua</span>
+                            </button>
+                        </div>
+
+                        <!-- Daftar Voucher Expired -->
+                        <div
+                            v-for="item in filteredExpiredVouchers"
+                            :key="item.id"
+                            class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 gap-3"
+                        >
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="text-xs font-mono font-black text-slate-900 dark:text-white bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded">
+                                        {{ item.code }}
+                                    </span>
+                                    <span v-if="item.is_free" class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60">
+                                        🎁 Gratis
+                                    </span>
+                                    <span v-else class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400 border border-blue-200/60 font-mono">
+                                        {{ item.price_formatted }}
+                                    </span>
+                                    <span class="text-[10px] text-slate-500 font-semibold truncate">
+                                        {{ item.profile_name }}
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-2 text-[10px] text-slate-400 mt-1 flex-wrap">
+                                    <span>👤 {{ item.reseller_name }}</span>
+                                    <span>·</span>
+                                    <span class="text-rose-500 dark:text-rose-400 font-medium">⏱️ Habis: {{ item.expired_at }}</span>
+                                </div>
+                            </div>
+
+                            <button
+                                @click="deleteSingleExpiredVoucher(item)"
+                                :disabled="deletingId === item.id"
+                                type="button"
+                                class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-xs active:scale-95 disabled:opacity-50 shrink-0"
+                                title="Hapus voucher ini"
+                            >
+                                <svg v-if="deletingId === item.id" class="w-3.5 h-3.5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                <span v-else>🗑️</span>
+                                <span>Hapus</span>
+                            </button>
+                        </div>
+
+                        <div v-if="!filteredExpiredVouchers.length" class="text-center py-8 text-xs text-slate-400">
+                            <div class="text-3xl mb-2">🎉</div>
+                            <p class="font-bold text-slate-600 dark:text-slate-300">Tidak ada voucher expired</p>
+                            <p class="text-[11px] mt-0.5">Semua voucher aktif atau telah dibersihkan.</p>
+                        </div>
+                    </template>
+
+                    <!-- 3. Modal Isolir Customers -->
                     <template v-else>
                         <div v-for="item in currentStats.isolir_customers" :key="item.id"
                             class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60">
@@ -263,6 +360,13 @@
                         <span>Buka Menu Invoice →</span>
                     </Link>
                     <Link
+                        v-else-if="activeModal === 'expired'"
+                        href="/vouchers/expired"
+                        class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 transition flex items-center gap-1.5 shadow-sm"
+                    >
+                        <span>Buka Menu Voucher Expired →</span>
+                    </Link>
+                    <Link
                         v-else
                         href="/customers/isolir"
                         class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 transition flex items-center gap-1.5 shadow-sm"
@@ -279,6 +383,7 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import axios from 'axios';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     stats: {
@@ -292,6 +397,8 @@ const props = defineProps({
             online_voucher: 0,
             online_billing: 0,
             pending_count: 0,
+            expired_voucher_count: 0,
+            expired_vouchers: [],
             unpaid_count: 0,
             isolir_count: 0,
             unpaid_customers: [],
@@ -314,7 +421,23 @@ watch(() => props.stats, (newVal) => {
 }, { deep: true });
 const isLoading = ref(false);
 const activeModal = ref(null);
+const expiredSearch = ref('');
+const deletingId = ref(null);
+const isBulkDeleting = ref(false);
 let pollTimer = null;
+
+const filteredExpiredVouchers = computed(() => {
+    let list = currentStats.value.expired_vouchers || [];
+    if (!expiredSearch.value) return list;
+    const q = expiredSearch.value.toLowerCase();
+    return list.filter((v) =>
+        (v.code && v.code.toLowerCase().includes(q)) ||
+        (v.username && v.username.toLowerCase().includes(q)) ||
+        (v.profile_name && v.profile_name.toLowerCase().includes(q)) ||
+        (v.reseller_name && v.reseller_name.toLowerCase().includes(q)) ||
+        (v.area_name && v.area_name.toLowerCase().includes(q))
+    );
+});
 
 const formatNumber = (num) => {
     if (num === null || num === undefined) return '0';
@@ -325,6 +448,7 @@ const formatCurrency = (amount) => {
     if (!amount) return '0';
     return Number(amount).toLocaleString('id-ID');
 };
+
 
 // Row 1: Real Online %
 const realOnlinePercent = computed(() => {
@@ -403,6 +527,93 @@ const isolirPercent = computed(() => {
 const openModal = (type) => {
     activeModal.value = type;
 };
+
+const deleteSingleExpiredVoucher = async (item) => {
+    const result = await Swal.fire({
+        title: `Hapus Voucher ${item.code}?`,
+        text: 'Voucher akan dihapus permanen dari sistem & FreeRADIUS.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Hapus!',
+        cancelButtonText: 'Batal',
+    });
+
+    if (!result.isConfirmed) return;
+
+    deletingId.value = item.id;
+    try {
+        const res = await axios.post(`/dashboard/vouchers/${item.id}/delete`);
+        if (res.data?.success) {
+            // Hapus dari list lokal langsung
+            if (currentStats.value.expired_vouchers) {
+                currentStats.value.expired_vouchers = currentStats.value.expired_vouchers.filter((v) => v.id !== item.id);
+            }
+            if (currentStats.value.expired_voucher_count > 0) {
+                currentStats.value.expired_voucher_count--;
+            }
+            Swal.fire({
+                title: 'Berhasil!',
+                text: res.data.message || `Voucher ${item.code} berhasil dihapus.`,
+                icon: 'success',
+                timer: 1500,
+                showConfirmButton: false,
+            });
+        }
+    } catch (e) {
+        console.error('Delete error:', e);
+        Swal.fire({
+            title: 'Gagal',
+            text: e.response?.data?.message || 'Gagal menghapus voucher.',
+            icon: 'error',
+        });
+    } finally {
+        deletingId.value = null;
+    }
+};
+
+const deleteAllExpiredVouchers = async () => {
+    const count = currentStats.value.expired_voucher_count || currentStats.value.expired_vouchers?.length || 0;
+    const result = await Swal.fire({
+        title: `Hapus SEMUA (${count}) Voucher Expired?`,
+        text: 'Seluruh voucher yang telah habis masa aktifnya akan dibersihkan permanen dari database & FreeRADIUS.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: `Ya, Hapus Semua (${count})!`,
+        cancelButtonText: 'Batal',
+    });
+
+    if (!result.isConfirmed) return;
+
+    isBulkDeleting.value = true;
+    try {
+        const res = await axios.post('/dashboard/vouchers/delete-expired');
+        if (res.data?.success) {
+            currentStats.value.expired_vouchers = [];
+            currentStats.value.expired_voucher_count = 0;
+            Swal.fire({
+                title: 'Dibersihkan!',
+                text: res.data.message || 'Semua voucher expired berhasil dihapus.',
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false,
+            });
+        }
+    } catch (e) {
+        console.error('Bulk delete error:', e);
+        Swal.fire({
+            title: 'Gagal',
+            text: e.response?.data?.message || 'Gagal menghapus voucher expired massal.',
+            icon: 'error',
+        });
+    } finally {
+        isBulkDeleting.value = false;
+    }
+};
+
 
 const refreshData = async () => {
     isLoading.value = true;

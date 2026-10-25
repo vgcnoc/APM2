@@ -1,5 +1,5 @@
 <template>
-    <div class="apm-shell flex min-h-screen bg-gray-50 dark:bg-gray-950 font-sans text-gray-900 dark:text-gray-100 transition-colors duration-200">
+    <div class="apm-shell flex min-h-screen font-sans text-gray-900 dark:text-gray-100 transition-colors duration-200">
         <div v-show="mobileMenuOpen" class="fixed inset-0 bg-gray-900/50 z-40 lg:hidden transition-opacity" @click="mobileMenuOpen = false"></div>
         <aside
             :class="[
@@ -422,7 +422,10 @@
                         <p v-if="subtitle" class="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 mt-0.5 truncate">{{ subtitle }}</p>
                     </div>
                 </div>
-                    <div class="flex items-center gap-3 sm:gap-4">
+                    <div class="flex items-center gap-2 sm:gap-3">
+                        <!-- Corak Background Picker -->
+                        <PatternPicker />
+
                         <!-- Theme Toggle Button (Dark / Light Mode) -->
                         <ThemeToggle />
 
@@ -472,6 +475,23 @@
             <div class="p-4 sm:p-6 lg:p-8 flex-1 w-full max-w-full overflow-hidden print:p-0 print:overflow-visible">
                 <slot />
             </div>
+
+            <!-- Application Footer -->
+            <footer class="mt-auto py-3.5 px-4 sm:px-6 lg:px-8 border-t border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md text-xs text-slate-500 dark:text-slate-400 print:hidden transition-colors">
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
+                    <p class="font-medium">
+                        Copyright {{ new Date().getFullYear() }} &copy; <span class="font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">VIRUZS</span> - Smart Billing, Smarter Business.
+                    </p>
+                    <div class="flex items-center gap-3 text-[11px] text-slate-400 dark:text-slate-500">
+                        <span>v2.0</span>
+                        <span>·</span>
+                        <span class="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            Sistem Aktif
+                        </span>
+                    </div>
+                </div>
+            </footer>
         </main>
     </div>
 </template>
@@ -481,6 +501,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import AppLogo from '@/Components/AppLogo.vue';
 import ThemeToggle from '@/Components/ThemeToggle.vue';
+import PatternPicker from '@/Components/PatternPicker.vue';
 import { useTheme } from '@/Composables/useTheme';
 import { usePermission } from '@/Composables/usePermission';
 import { useSidebarState } from '@/Composables/useSidebarState';
@@ -813,7 +834,7 @@ const menuItems = [
         label: 'Progress Harian Operasional',
         theme: 'rose',
         active: (url) => (url || '').startsWith('/operational/daily-progress'),
-        permission: ['menu_operational_progress', 'menu_monitoring_teknisi', 'menu_pgk', 'menu_pgs', 'menu_cbp'],
+        permission: 'menu_operational_progress',
     },
     {
         type: 'link',

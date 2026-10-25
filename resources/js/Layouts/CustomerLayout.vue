@@ -1,5 +1,5 @@
 <template>
-    <div class="apm-shell min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
+    <div class="apm-shell min-h-screen text-slate-900 flex flex-col font-sans">
         <!-- Top Navbar -->
         <nav class="apm-topbar bg-white shadow-xs border-b border-slate-200 sticky top-0 z-50">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -47,7 +47,8 @@
                     </div>
 
                     <!-- Right Controls -->
-                    <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2 sm:gap-2.5">
+                        <PatternPicker />
                         <ThemeToggle />
                         <!-- Admin Return Button (jika yang login adalah staf/admin) -->
                         <Link
@@ -141,10 +142,12 @@
         </main>
 
         <!-- Footer -->
-        <footer class="border-t border-slate-200/80 bg-white py-4 mt-auto">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
-                <p>&copy; {{ new Date().getFullYear() }} Portal Layanan Internet Pelanggan Resmi.</p>
-                <div class="flex items-center gap-4">
+        <footer class="mt-auto py-3.5 px-4 sm:px-6 lg:px-8 border-t border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md text-xs text-slate-500 dark:text-slate-400 print:hidden transition-colors">
+            <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 dark:text-slate-400 gap-2">
+                <p class="font-medium">
+                    Copyright {{ new Date().getFullYear() }} &copy; <span class="font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">VIRUZS</span> - Smart Billing, Smarter Business.
+                </p>
+                <div class="flex items-center gap-4 text-xs">
                     <Link href="/my/dashboard" class="hover:text-indigo-600 transition-colors">Beranda</Link>
                     <Link href="/my/billing" class="hover:text-indigo-600 transition-colors">Tagihan</Link>
                     <Link href="/my/tickets" class="hover:text-indigo-600 transition-colors">Bantuan</Link>
@@ -159,6 +162,7 @@ import { ref, computed } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import AppLogo from '@/Components/AppLogo.vue';
 import ThemeToggle from '@/Components/ThemeToggle.vue';
+import PatternPicker from '@/Components/PatternPicker.vue';
 
 const page = usePage();
 const showUserMenu = ref(false);

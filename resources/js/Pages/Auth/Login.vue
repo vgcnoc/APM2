@@ -175,8 +175,7 @@ onUnmounted(() => {
         </main>
 
         <footer class="access-footer">
-            <span>&copy; {{ new Date().getFullYear() }} {{ brandName }}.</span>
-            <span>Billing & layanan dalam satu genggaman.</span>
+            <span>Copyright {{ new Date().getFullYear() }} &copy; <strong class="font-extrabold text-slate-800 dark:text-slate-100">VIRUZS</strong> - Smart Billing, Smarter Business.</span>
         </footer>
     </div>
 

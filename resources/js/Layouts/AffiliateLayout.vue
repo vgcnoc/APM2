@@ -5,6 +5,7 @@ import { Dialog, DialogPanel, DialogTitle } from '@headlessui/vue';
 import { Bars3Icon, ChevronRightIcon, PlusIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 import AffiliateSidebar from '@/Components/AffiliateSidebar.vue';
 import ThemeToggle from '@/Components/ThemeToggle.vue';
+import PatternPicker from '@/Components/PatternPicker.vue';
 import { affiliateSections, affiliateSection } from '@/Composables/affiliateNavigation';
 
 const props = defineProps({ title: String, subtitle: String, section: String });
@@ -32,13 +33,20 @@ onUnmounted(() => desktopMedia?.removeEventListener('change', closeMenuOnDesktop
                     <button type="button" class="sales-menu-toggle sales-icon-button" aria-label="Buka menu Sales" aria-controls="sales-mobile-menu" :aria-expanded="mobileMenu" @click="mobileMenu = true"><Bars3Icon /></button>
                     <span class="breadcrumb-root">Portal Sales</span><ChevronRightIcon class="breadcrumb-chevron" /><strong>{{ currentLabel }}</strong>
                 </div>
-                <div class="sales-topbar-actions"><ThemeToggle /><Link v-if="currentSection !== 'booking'" href="/affiliate/booking/create" class="sales-booking-button"><PlusIcon /><span>Booking Baru</span></Link></div>
+                <div class="sales-topbar-actions">
+                    <PatternPicker />
+                    <ThemeToggle />
+                    <Link v-if="currentSection !== 'booking'" href="/affiliate/booking/create" class="sales-booking-button"><PlusIcon /><span>Booking Baru</span></Link>
+                </div>
             </header>
             <main id="sales-main-content" class="sales-main-content">
                 <div v-if="page.props.flash?.success || page.props.flash?.error" role="status" class="sales-flash" :class="page.props.flash.error ? 'is-error' : 'is-success'">{{ page.props.flash.error || page.props.flash.success }}</div>
                 <slot />
             </main>
-            <footer class="sales-page-footer"><span>{{ page.props.company_name || page.props.app_name || 'ISP Manager' }} <span aria-hidden="true">/</span> Sales &amp; Affiliate</span><span>Ruang kerja untuk terus bertumbuh.</span></footer>
+            <footer class="sales-page-footer">
+                <span>Copyright {{ new Date().getFullYear() }} &copy; <strong class="font-extrabold text-slate-800 dark:text-slate-100">VIRUZS</strong> - Smart Billing, Smarter Business.</span>
+                <span>{{ page.props.company_name || page.props.app_name || 'ISP Manager' }} <span aria-hidden="true">/</span> Sales &amp; Affiliate</span>
+            </footer>
         </div>
 
         <Dialog :open="mobileMenu" class="sales-mobile-dialog affiliate-workspace" @close="mobileMenu = false">

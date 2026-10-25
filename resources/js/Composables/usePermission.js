@@ -73,6 +73,7 @@ export function usePermission() {
         user: getUser,
         hasRole,
         can,
+        hasPermission: can,
         canAny,
         canAll,
         hasArea,
