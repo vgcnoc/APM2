@@ -104,54 +104,70 @@
                             <div v-if="form.errors.billing_type" class="mt-1 text-sm text-red-600">{{ form.errors.billing_type }}</div>
 
                             <!-- Opsi Prorata saat Pascabayar -->
-                            <div v-if="form.billing_type === 'pascabayar'" class="bg-indigo-50/50 rounded-xl p-5 border border-indigo-100 space-y-4">
-                                <div class="flex items-start justify-between gap-4 pb-3 border-b border-indigo-100">
-                                    <div>
-                                        <h4 class="text-sm font-bold text-indigo-900 flex items-center gap-2">
-                                            <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                            Prorata Tagihan Pertama (Pascabayar)
-                                        </h4>
-                                        <p class="text-xs text-indigo-700 mt-1">
-                                            Aktifkan prorata otomatis untuk tagihan pertama pelanggan baru. Pengaturan ini <strong>hanya berlaku 1 kali</strong> saat bulan aktivasi, bulan berikutnya otomatis normal pascabayar.
+                            <div v-if="form.billing_type === 'pascabayar'" class="space-y-4">
+                                <!-- Mode Anniversary: Flat 1 Bulan Penuh -->
+                                <div v-if="form.billing_cycle === 'anniversary'" class="bg-purple-50/70 rounded-xl p-4 border border-purple-200 flex items-start gap-3">
+                                    <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center shrink-0 mt-0.5">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    </div>
+                                    <div class="text-xs">
+                                        <span class="font-bold text-purple-900 block">Siklus Sesuai Tanggal Aktivasi (Anniversary Billing)</span>
+                                        <p class="text-purple-700 mt-1 leading-relaxed">
+                                            Pada mode Anniversary, tagihan pelanggan berjalan <strong>1 bulan penuh (flat)</strong> terhitung sejak tanggal aktivasi tanpa pemotongan prorata kalender. Tagihan rutin berikutnya otomatis terbit di tanggal yang sama setiap bulan.
                                         </p>
                                     </div>
-                                    <label class="relative inline-flex items-center cursor-pointer shrink-0">
-                                        <input type="checkbox" v-model="form.prorata_first_month" class="sr-only peer">
-                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                                    </label>
                                 </div>
 
-                                <div v-if="form.prorata_first_month" class="space-y-3">
-                                    <label class="block text-xs font-bold text-indigo-900">Pilih Rumusan Prorata:</label>
-                                    <label class="flex items-start p-3 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-indigo-300 transition-colors" :class="form.prorata_formula === 'exact_days' ? 'border-indigo-500 ring-1 ring-indigo-500' : ''">
-                                        <div class="flex items-center h-5">
-                                            <input type="radio" v-model="form.prorata_formula" value="exact_days" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 focus:ring-indigo-500">
+                                <!-- Mode Kalender: Pilihan Prorata Tagihan Pertama -->
+                                <div v-else class="bg-indigo-50/50 rounded-xl p-5 border border-indigo-100 space-y-4">
+                                    <div class="flex items-start justify-between gap-4 pb-3 border-b border-indigo-100">
+                                        <div>
+                                            <h4 class="text-sm font-bold text-indigo-900 flex items-center gap-2">
+                                                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                Prorata Tagihan Pertama (Kalender Serentak)
+                                            </h4>
+                                            <p class="text-xs text-indigo-700 mt-1">
+                                                Aktifkan prorata otomatis untuk tagihan pertama pelanggan baru. Pengaturan ini <strong>hanya berlaku 1 kali</strong> saat bulan aktivasi, bulan berikutnya otomatis normal pascabayar serentak.
+                                            </p>
                                         </div>
-                                        <div class="ml-3 text-sm">
-                                            <span class="font-bold text-gray-900 block">Sangat Akurat (Bulan Berjalan) <span class="ml-2 text-[10px] font-medium bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Disarankan</span></span>
-                                            <span class="text-gray-500 text-xs mt-0.5 block">Harga / Total Hari di Bulan Ini x Hari Pemakaian (Adil untuk pelanggan)</span>
-                                        </div>
-                                    </label>
-                                    
-                                    <label class="flex items-start p-3 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-indigo-300 transition-colors" :class="form.prorata_formula === 'fixed_30' ? 'border-indigo-500 ring-1 ring-indigo-500' : ''">
-                                        <div class="flex items-center h-5">
-                                            <input type="radio" v-model="form.prorata_formula" value="fixed_30" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 focus:ring-indigo-500">
-                                        </div>
-                                        <div class="ml-3 text-sm">
-                                            <span class="font-bold text-gray-900 block">Konstan 30 Hari</span>
-                                            <span class="text-gray-500 text-xs mt-0.5 block">Harga / 30 x Hari Pemakaian (Bulan apapun dianggap rata 30 hari)</span>
-                                        </div>
-                                    </label>
+                                        <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                                            <input type="checkbox" v-model="form.prorata_first_month" class="sr-only peer">
+                                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                                        </label>
+                                    </div>
 
-                                    <label class="flex items-start p-3 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-indigo-300 transition-colors" :class="form.prorata_formula === 'mid_month' ? 'border-indigo-500 ring-1 ring-indigo-500' : ''">
-                                        <div class="flex items-center h-5">
-                                            <input type="radio" v-model="form.prorata_formula" value="mid_month" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 focus:ring-indigo-500">
-                                        </div>
-                                        <div class="ml-3 text-sm">
-                                            <span class="font-bold text-gray-900 block">Paruh Bulan (Cut-Off Tengah)</span>
-                                            <span class="text-gray-500 text-xs mt-0.5 block">Aktivasi sebelum pertengahan siklus = Bayar Penuh. Lewat pertengahan = Diskon 50%</span>
-                                        </div>
-                                    </label>
+                                    <div v-if="form.prorata_first_month" class="space-y-3">
+                                        <label class="block text-xs font-bold text-indigo-900">Pilih Rumusan Prorata:</label>
+                                        <label class="flex items-start p-3 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-indigo-300 transition-colors" :class="form.prorata_formula === 'exact_days' ? 'border-indigo-500 ring-1 ring-indigo-500' : ''">
+                                            <div class="flex items-center h-5">
+                                                <input type="radio" v-model="form.prorata_formula" value="exact_days" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 focus:ring-indigo-500">
+                                            </div>
+                                            <div class="ml-3 text-sm">
+                                                <span class="font-bold text-gray-900 block">Sangat Akurat (Bulan Berjalan) <span class="ml-2 text-[10px] font-medium bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Disarankan</span></span>
+                                                <span class="text-gray-500 text-xs mt-0.5 block">Harga / Total Hari di Bulan Ini x Hari Pemakaian (Adil untuk pelanggan)</span>
+                                            </div>
+                                        </label>
+                                        
+                                        <label class="flex items-start p-3 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-indigo-300 transition-colors" :class="form.prorata_formula === 'fixed_30' ? 'border-indigo-500 ring-1 ring-indigo-500' : ''">
+                                            <div class="flex items-center h-5">
+                                                <input type="radio" v-model="form.prorata_formula" value="fixed_30" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 focus:ring-indigo-500">
+                                            </div>
+                                            <div class="ml-3 text-sm">
+                                                <span class="font-bold text-gray-900 block">Konstan 30 Hari</span>
+                                                <span class="text-gray-500 text-xs mt-0.5 block">Harga / 30 x Hari Pemakaian (Bulan apapun dianggap rata 30 hari)</span>
+                                            </div>
+                                        </label>
+
+                                        <label class="flex items-start p-3 bg-white border border-gray-200 rounded-lg cursor-pointer hover:border-indigo-300 transition-colors" :class="form.prorata_formula === 'mid_month' ? 'border-indigo-500 ring-1 ring-indigo-500' : ''">
+                                            <div class="flex items-center h-5">
+                                                <input type="radio" v-model="form.prorata_formula" value="mid_month" class="w-4 h-4 text-indigo-600 bg-gray-100 border-gray-300 focus:ring-indigo-500">
+                                            </div>
+                                            <div class="ml-3 text-sm">
+                                                <span class="font-bold text-gray-900 block">Paruh Bulan (Cut-Off Tengah)</span>
+                                                <span class="text-gray-500 text-xs mt-0.5 block">Aktivasi sebelum pertengahan siklus = Bayar Penuh. Lewat pertengahan = Diskon 50%</span>
+                                            </div>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
 
@@ -661,8 +677,8 @@
                             <div>
                                 <h3 class="font-bold text-base text-white flex items-center gap-2">
                                     Simulasi AI
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase shadow-sm" :class="form.billing_type === 'pascabayar' ? (form.prorata_first_month ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30' : 'bg-amber-500/20 text-amber-300 border border-amber-400/30') : 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/30'">
-                                        {{ form.billing_type === 'pascabayar' ? (form.prorata_first_month ? 'Pascabayar (Prorata)' : 'Pascabayar (Normal)') : 'Prabayar (Prepaid)' }}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase shadow-sm" :class="form.billing_type === 'pascabayar' ? (form.billing_cycle === 'anniversary' ? 'bg-purple-500/20 text-purple-300 border border-purple-400/30' : (form.prorata_first_month ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30' : 'bg-amber-500/20 text-amber-300 border border-amber-400/30')) : 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/30'">
+                                        {{ form.billing_type === 'pascabayar' ? (form.billing_cycle === 'anniversary' ? 'Pascabayar (Anniversary - Penuh)' : (form.prorata_first_month ? 'Pascabayar (Prorata Kalender)' : 'Pascabayar (Normal)')) : 'Prabayar (Prepaid)' }}
                                     </span>
                                 </h3>
                                 <p class="text-[11px] text-indigo-200 mt-0.5">Kalkulasi cerdas live sesuai pengaturan</p>
@@ -728,7 +744,7 @@
                             </div>
                             <p class="text-sm font-semibold pl-4 text-white">{{ nextRoutineBillingDateFormatted }}</p>
                             <p class="text-[10px] text-indigo-300 pl-4 mt-0.5">
-                                {{ form.billing_type === 'prabayar' ? 'Pelanggan prabayar membayar invoice saat aktivasi sebelum layanan aktif' : 'Sistem otomatis generate invoice pelanggan tiap bulannya' }}
+                                {{ form.billing_type === 'prabayar' ? 'Pelanggan prabayar membayar invoice saat aktivasi sebelum layanan aktif' : (form.billing_cycle === 'anniversary' ? 'Tagihan otomatis terbit di tanggal yang sama tiap bulan (Anniversary)' : 'Sistem otomatis generate invoice pelanggan tiap bulannya') }}
                             </p>
                         </div>
 
@@ -744,12 +760,12 @@
                     </div>
 
                     <!-- Hasil Perhitungan Tagihan Pertama (Simulasi) -->
-                    <!-- Skenario 1: Pascabayar + Prorata Aktif -->
-                    <div v-if="form.billing_type === 'pascabayar' && form.prorata_first_month" class="bg-gradient-to-b from-indigo-900/60 to-indigo-950/80 border border-indigo-500/40 rounded-xl p-4 space-y-3">
+                    <!-- Skenario 1: Pascabayar + Kalender Serentak + Prorata Aktif -->
+                    <div v-if="form.billing_type === 'pascabayar' && form.billing_cycle === 'calendar' && form.prorata_first_month" class="bg-gradient-to-b from-indigo-900/60 to-indigo-950/80 border border-indigo-500/40 rounded-xl p-4 space-y-3">
                         <div class="flex items-center justify-between pb-2 border-b border-indigo-700/50">
                             <div class="flex items-center gap-2">
                                 <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                                <h4 class="text-xs font-bold text-emerald-300 uppercase tracking-wide">Rincian Prorata Tagihan Pertama</h4>
+                                <h4 class="text-xs font-bold text-emerald-300 uppercase tracking-wide">Rincian Prorata Kalender</h4>
                             </div>
                             <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold">1x di Bulan Pertama</span>
                         </div>
@@ -764,7 +780,7 @@
                                 <span class="font-semibold text-white">{{ simActivationDateFormatted }}</span>
                             </div>
                             <div class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
-                                <span class="text-indigo-300">Siklus Penagihan ({{ simCycleDays }} Hari):</span>
+                                <span class="text-indigo-300">Siklus Kalender ({{ simCycleDays }} Hari):</span>
                                 <span class="font-semibold text-white">s/d {{ prevIssueDateFormatted }}</span>
                             </div>
                             <div class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
@@ -793,12 +809,50 @@
                                 <span v-else> Sangat Akurat (Bulan Berjalan) &mdash; ({{ formatCurrency(simPrice) }} ÷ {{ simCycleDays }} hr) × {{ simDaysUsed }} hr</span>
                             </p>
                             <p class="text-[9px] text-indigo-400 italic">
-                                * Bulan ke-2 dan seterusnya tagihan otomatis normal {{ formatCurrency(simGrandTotalNormal) }}.
+                                * Bulan ke-2 dan seterusnya tagihan otomatis normal {{ formatCurrency(simGrandTotalNormal) }} per tanggal kalender serentak.
                             </p>
                         </div>
                     </div>
 
-                    <!-- Skenario 2: Pascabayar + Prorata Non-Aktif -->
+                    <!-- Skenario 2: Pascabayar + Sesuai Tanggal Aktivasi (Anniversary Billing) -->
+                    <div v-else-if="form.billing_type === 'pascabayar' && form.billing_cycle === 'anniversary'" class="bg-gradient-to-b from-purple-900/40 to-indigo-950/80 border border-purple-500/40 rounded-xl p-4 space-y-3">
+                        <div class="flex items-center justify-between pb-2 border-b border-purple-700/40">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                <h4 class="text-xs font-bold text-purple-300 uppercase tracking-wide">Siklus Anniversary (1 Bulan Penuh)</h4>
+                            </div>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-bold">Tanpa Prorata</span>
+                        </div>
+                        
+                        <div class="space-y-2 text-xs text-indigo-100">
+                            <div class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
+                                <span class="text-indigo-300">Biaya Paket (1 Bulan):</span>
+                                <span class="font-semibold text-white">{{ formatCurrency(simPrice) }}</span>
+                            </div>
+                            <div class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
+                                <span class="text-indigo-300">Tanggal Aktivasi:</span>
+                                <span class="font-semibold text-white">{{ simActivationDateFormatted }}</span>
+                            </div>
+                            <div class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
+                                <span class="text-indigo-300">Periode Berjalan:</span>
+                                <span class="font-medium text-white">{{ simActivationDateFormatted }} s/d {{ prabayarEndDateFormatted }}</span>
+                            </div>
+                            <div v-if="simTaxRate > 0" class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
+                                <span class="text-indigo-300">PPN ({{ simTaxRate }}%):</span>
+                                <span class="font-medium text-purple-300">+ {{ formatCurrency(simTaxNormal) }}</span>
+                            </div>
+                            <div class="flex justify-between items-baseline pt-1">
+                                <span class="text-xs font-bold text-white">Total Tagihan Pertama:</span>
+                                <span class="font-extrabold text-xl text-purple-400">{{ formatCurrency(simGrandTotalNormal) }}</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-purple-950/40 p-2.5 rounded-lg border border-purple-800/40 text-[10px] text-purple-200">
+                            Tagihan dihitung flat 1 bulan penuh terhitung sejak tanggal aktivasi. Tagihan rutin bulan berikutnya otomatis terbit pada <strong>{{ nextRoutineBillingDateFormatted }}</strong>.
+                        </div>
+                    </div>
+
+                    <!-- Skenario 3: Pascabayar Kalender + Prorata Non-Aktif -->
                     <div v-else-if="form.billing_type === 'pascabayar' && !form.prorata_first_month" class="bg-gradient-to-b from-amber-900/40 to-indigo-950/80 border border-amber-500/40 rounded-xl p-4 space-y-3">
                         <div class="flex items-center justify-between pb-2 border-b border-amber-700/40">
                             <div class="flex items-center gap-2">
@@ -828,7 +882,7 @@
                         </div>
                     </div>
 
-                    <!-- Skenario 3: Prabayar (Prepaid) -->
+                    <!-- Skenario 4: Prabayar (Prepaid) -->
                     <div v-else class="bg-gradient-to-b from-cyan-900/40 to-indigo-950/80 border border-cyan-500/40 rounded-xl p-4 space-y-3">
                         <div class="flex items-center justify-between pb-2 border-b border-cyan-700/40">
                             <div class="flex items-center gap-2">
@@ -1108,6 +1162,7 @@ function saveSection(sectionKey, sectionLabel) {
     let payload = { _section: sectionLabel };
 
     if (sectionKey === 'billing_type') {
+        payload.billing_cycle = form.billing_cycle;
         payload.billing_type = form.billing_type;
         payload.prorata_formula = form.prorata_formula;
         payload.prorata_first_month = form.prorata_first_month;
@@ -1280,6 +1335,10 @@ const nextRoutineBillingDateObj = computed(() => {
         return new Date(act.getFullYear(), act.getMonth(), act.getDate());
     }
 
+    if (form.billing_cycle === 'anniversary') {
+        return new Date(act.getFullYear(), act.getMonth() + 1, act.getDate());
+    }
+
     if (act.getDate() >= issueDay) {
         return new Date(act.getFullYear(), act.getMonth() + 1, issueDay);
     } else {
@@ -1291,6 +1350,9 @@ const nextRoutineBillingDateFormatted = computed(() => {
     const d = nextRoutineBillingDateObj.value;
     if (form.billing_type === 'prabayar') {
         return `Tgl ${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()} (Saat Aktivasi)`;
+    }
+    if (form.billing_cycle === 'anniversary') {
+        return `Tgl ${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()} (Siklus 1 Bulan)`;
     }
     return `Tgl ${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()}`;
 });
@@ -1330,6 +1392,12 @@ const simDaysUsed = computed(() => {
 const simSubtotal = computed(() => {
     const base = Math.round(Number(simPrice.value) || 0);
     if (base <= 0) return 0;
+
+    // Mode Anniversary, Prabayar, atau tanpa Prorata: Bayar 1 bulan penuh (flat)
+    if (form.billing_type === 'prabayar' || form.billing_cycle === 'anniversary' || !form.prorata_first_month) {
+        return base;
+    }
+
     const days = Math.round(simDaysUsed.value);
     const totalDays = Math.round(simCycleDays.value);
 
