@@ -291,7 +291,7 @@
                                             </option>
                                         </select>
                                     </div>
-                                    <div v-else class="relative">
+                                    <div v-else>
                                         <input 
                                             type="text" 
                                             :value="currentSalesName" 
@@ -300,9 +300,10 @@
                                             class="w-full px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 cursor-not-allowed select-none" 
                                             title="Terkunci atas nama akun Anda sendiri"
                                         />
-                                        <span class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-xs text-gray-400 font-medium">
-                                            🔒 Terkunci (Akun Anda)
-                                        </span>
+                                        <p class="mt-1.5 flex items-center gap-1.5 text-[10px] font-medium text-gray-500">
+                                            <span aria-hidden="true">🔒</span>
+                                            <span>Petugas dikunci ke akun Anda.</span>
+                                        </p>
                                     </div>
                                 </div>
                             </div>
