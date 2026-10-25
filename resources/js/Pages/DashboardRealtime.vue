@@ -267,11 +267,14 @@
                                     >
                                         ● LIVE RADIUS
                                     </span>
+                                    <span v-else-if="trafficStats.source_type === 'mixed'" class="text-[9px] font-extrabold text-teal-500">
+                                        ● API + RADIUS
+                                    </span>
                                     <span
                                         v-else
                                         class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200/60"
                                     >
-                                        ● STANDBY (0 Mbps)
+                                        ● DATA BELUM TERSEDIA
                                     </span>
                                 </h3>
                                 <p class="text-[11px] text-slate-400 font-medium">Throughput live bandwidth download (Rx) & upload (Tx)</p>
@@ -280,7 +283,7 @@
 
                         <div class="text-right">
                             <span class="text-xs font-mono font-black text-slate-900 dark:text-white">
-                                {{ trafficStats.total_mbps }} <span class="text-[10px] text-slate-400 font-normal">Mbps</span>
+                                {{ metric(trafficStats.total_mbps) }} <span class="text-[10px] text-slate-400 font-normal">Mbps</span>
                             </span>
                             <p class="text-[10px] text-slate-400">Total Throughput</p>
                         </div>
@@ -295,9 +298,9 @@
                                 <span class="w-2 h-2 rounded-full" :class="trafficStats.download_mbps > 0 ? 'bg-emerald-500 animate-ping' : 'bg-slate-400'"></span>
                             </div>
                             <p class="text-lg font-black text-emerald-700 dark:text-emerald-300 font-mono">
-                                {{ trafficStats.download_mbps }} <span class="text-[10px] font-bold">Mbps</span>
+                                {{ metric(trafficStats.download_mbps) }} <span class="text-[10px] font-bold">Mbps</span>
                             </p>
-                            <p class="text-[10px] text-emerald-600/80 mt-0.5">{{ trafficStats.download_gb_today }} GB Hari Ini</p>
+                            <p class="text-[10px] text-emerald-600/80 mt-0.5">{{ metric(trafficStats.download_gb_today) }} GB RADIUS teramati</p>
                         </div>
 
                         <!-- 2. Upload (Tx) -->
@@ -307,16 +310,16 @@
                                 <span class="w-2 h-2 rounded-full" :class="trafficStats.upload_mbps > 0 ? 'bg-sky-500' : 'bg-slate-400'"></span>
                             </div>
                             <p class="text-lg font-black text-sky-700 dark:text-sky-300 font-mono">
-                                {{ trafficStats.upload_mbps }} <span class="text-[10px] font-bold">Mbps</span>
+                                {{ metric(trafficStats.upload_mbps) }} <span class="text-[10px] font-bold">Mbps</span>
                             </p>
-                            <p class="text-[10px] text-sky-600/80 mt-0.5">{{ trafficStats.upload_gb_today }} GB Hari Ini</p>
+                            <p class="text-[10px] text-sky-600/80 mt-0.5">{{ metric(trafficStats.upload_gb_today) }} GB RADIUS teramati</p>
                         </div>
 
                         <!-- 3. Peak Bandwidth -->
                         <div class="p-3 rounded-xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/40">
                             <p class="text-xs font-bold text-purple-600 dark:text-purple-400 mb-1">⚡ Puncak Trafik</p>
                             <p class="text-lg font-black text-purple-700 dark:text-purple-300 font-mono">
-                                {{ trafficStats.peak_mbps_today }} <span class="text-[10px] font-bold">Mbps</span>
+                                {{ metric(trafficStats.peak_mbps_today) }} <span class="text-[10px] font-bold">Mbps</span>
                             </p>
                             <p class="text-[10px] text-purple-600/80 mt-0.5">Puncak Terukur Hari Ini</p>
                         </div>
@@ -325,9 +328,9 @@
                         <div class="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40">
                             <p class="text-xs font-bold text-amber-600 dark:text-amber-400 mb-1">📦 Total Transfer</p>
                             <p class="text-lg font-black text-amber-700 dark:text-amber-300 font-mono">
-                                {{ trafficStats.total_gb_today }} <span class="text-[10px] font-bold">GB</span>
+                                {{ metric(trafficStats.total_gb_today) }} <span class="text-[10px] font-bold">GB</span>
                             </p>
-                            <p class="text-[10px] text-amber-600/80 mt-0.5">Akumulasi Kuota Hari Ini</p>
+                            <p class="text-[10px] text-amber-600/80 mt-0.5">{{ dailyUsageLabel }}</p>
                         </div>
                     </div>
 
@@ -342,11 +345,11 @@
                                     <span class="w-2.5 h-1 rounded-full bg-sky-500"></span> Tx (Upload)
                                 </span>
                             </div>
-                            <span>12 Titik Interval Terakhir</span>
+                            <span>{{ trafficHistory.length }} sampel terukur terakhir</span>
                         </div>
 
                         <!-- SVG Curve -->
-                        <div class="h-28 w-full relative">
+                        <div v-if="trafficHistory.length" class="h-28 w-full relative">
                             <svg class="w-full h-full overflow-visible" viewBox="0 0 500 100" preserveAspectRatio="none">
                                 <defs>
                                     <linearGradient id="rxGrad" x1="0" y1="0" x2="0" y2="1">
@@ -376,6 +379,9 @@
                                 <circle :cx="latestX" :cy="latestRxY" r="4" fill="#10b981" stroke="#ffffff" stroke-width="2" class="animate-pulse" />
                             </svg>
                         </div>
+                        <div v-else class="h-28 flex items-center justify-center text-center text-xs text-slate-500">
+                            Belum ada sampel trafik. Periksa koneksi VPN/API router dan pembaruan accounting RADIUS.
+                        </div>
 
                         <!-- Time Axis Labels -->
                         <div class="flex items-center justify-between text-[9px] font-mono text-slate-400 mt-1">
@@ -393,8 +399,8 @@
                         class="inline-flex items-center gap-1.5 text-[11px] font-bold"
                         :class="trafficStats.source_type === 'routeros' ? 'text-emerald-600 dark:text-emerald-400' : (trafficStats.source_type === 'radius' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400')"
                     >
-                        <span class="w-1.5 h-1.5 rounded-full" :class="trafficStats.source_type !== 'standby' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'"></span>
-                        {{ trafficStats.source_label || 'Standby (0 Mbps)' }}
+                        <span class="w-1.5 h-1.5 rounded-full" :class="trafficStats.data_available ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'"></span>
+                        {{ trafficStats.source_label || 'Data belum tersedia' }}
                     </span>
                 </div>
             </div>
@@ -1227,17 +1233,23 @@ const currentAreaName = computed(() => {
 });
 
 const trafficStats = computed(() => stats.value.traffic || {
-    download_mbps: 0,
-    upload_mbps: 0,
-    total_mbps: 0,
-    peak_mbps_today: 0,
-    download_gb_today: 0,
-    upload_gb_today: 0,
-    total_gb_today: 0,
+    download_mbps: null,
+    upload_mbps: null,
+    total_mbps: null,
+    peak_mbps_today: null,
+    download_gb_today: null,
+    upload_gb_today: null,
+    total_gb_today: null,
+    source_type: 'unavailable',
+    data_available: false,
     history: [],
 });
 
 const trafficHistory = computed(() => trafficStats.value.history || []);
+const metric = (value) => value === null || value === undefined ? '—' : value;
+const dailyUsageLabel = computed(() => trafficStats.value.daily_usage_status === 'partial'
+    ? 'RADIUS hari ini · parsial sejak observasi'
+    : trafficStats.value.daily_usage_status === 'recorded' ? 'RADIUS teramati hari ini' : 'Volume RADIUS belum tersedia');
 
 const pppoeStats = computed(() => stats.value.pppoe || {
     online: 0,
@@ -1282,11 +1294,11 @@ const voucherSalesStats = computed(() => stats.value.voucher_sales || {
 // SVG Chart Calculations
 const rxLinePoints = computed(() => {
     const list = trafficHistory.value;
-    if (!list.length) return '0,100 500,100';
+    if (!list.length) return '';
     const maxVal = Math.max(50, ...list.map((d) => Math.max(d.rx, d.tx))) * 1.15;
     return list
         .map((d, idx) => {
-            const x = (idx / (list.length - 1)) * 500;
+            const x = list.length === 1 ? 500 : (idx / (list.length - 1)) * 500;
             const y = 95 - (d.rx / maxVal) * 85;
             return `${x},${y}`;
         })
@@ -1295,16 +1307,16 @@ const rxLinePoints = computed(() => {
 
 const rxAreaPoints = computed(() => {
     const line = rxLinePoints.value;
-    return `0,100 ${line} 500,100`;
+    return trafficHistory.value.length < 2 ? '' : `0,100 ${line} 500,100`;
 });
 
 const txLinePoints = computed(() => {
     const list = trafficHistory.value;
-    if (!list.length) return '0,100 500,100';
+    if (!list.length) return '';
     const maxVal = Math.max(50, ...list.map((d) => Math.max(d.rx, d.tx))) * 1.15;
     return list
         .map((d, idx) => {
-            const x = (idx / (list.length - 1)) * 500;
+            const x = list.length === 1 ? 500 : (idx / (list.length - 1)) * 500;
             const y = 95 - (d.tx / maxVal) * 85;
             return `${x},${y}`;
         })
@@ -1313,7 +1325,7 @@ const txLinePoints = computed(() => {
 
 const txAreaPoints = computed(() => {
     const line = txLinePoints.value;
-    return `0,100 ${line} 500,100`;
+    return trafficHistory.value.length < 2 ? '' : `0,100 ${line} 500,100`;
 });
 
 const latestX = computed(() => 500);

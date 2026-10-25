@@ -379,11 +379,6 @@ class RadiusService
             ->orWhere('vpn_ip', $session->nasipaddress)
             ->first();
 
-        // Fallback jika nasname adalah wildcard 0.0.0.0/0
-        if (!$nas) {
-            $nas = Nas::where('nasname', '0.0.0.0/0')->first() ?: Nas::first();
-        }
-
         if (!$nas) {
             Log::warning("[RADIUS] NAS {$session->nasipaddress} tidak terdaftar, tidak bisa disconnect {$session->username}");
             return false;

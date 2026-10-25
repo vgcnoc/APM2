@@ -26,6 +26,7 @@ use App\Models\Radius\RadAcct;
 use App\Models\Radius\Nas;
 use App\Models\User;
 use App\Services\RouterTrafficService;
+use App\Services\RouterCapacityService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -757,7 +758,8 @@ class DashboardController extends Controller
         $availableNas = [];
         try {
             if (class_exists(Nas::class)) {
-                $availableNas = Nas::orderBy('shortname')->get(['id', 'shortname', 'nasname', 'type']);
+                $allowedNasIds = app(RouterCapacityService::class)->nasIdsForScope($selectedAreaId, $canViewAllAreas, $userAccessibleAreaIds);
+                $availableNas = Nas::when($allowedNasIds !== null, fn ($q) => $q->whereIn('id', $allowedNasIds))->orderBy('shortname')->get(['id', 'shortname', 'nasname', 'type']);
             }
         } catch (\Throwable $e) {}
 
@@ -1033,43 +1035,34 @@ class DashboardController extends Controller
         // Scope filter helper untuk tabel dengan kolom area_id
         $applyAreaScope = function ($query, $tablePrefix = '') use ($areaId, $canViewAllAreas, $userAccessibleAreaIds) {
             $col = $tablePrefix ? "{$tablePrefix}.area_id" : 'area_id';
+            if (!$canViewAllAreas) $query->whereIn($col, $userAccessibleAreaIds);
             if (is_numeric($areaId)) {
                 $query->where($col, (int) $areaId);
-            } elseif (!$canViewAllAreas && count($userAccessibleAreaIds) > 0) {
-                $query->whereIn($col, $userAccessibleAreaIds);
             }
             return $query;
         };
 
         // ── 0. Pengukuran Trafik Jaringan Internet 100% Real (RouterOS API / RADIUS) ──
         $trafficService = app(RouterTrafficService::class);
-        $realTraffic = $trafficService->getRealTraffic($nasId);
+        $allowedNasIds = app(RouterCapacityService::class)->nasIdsForScope($areaId, $canViewAllAreas, $userAccessibleAreaIds);
+        $realTraffic = $trafficService->getRealTraffic($nasId, $allowedNasIds);
 
         // ── 1. Ambil Sesi RADIUS Online & Disconnect Terakhir ───────────────────────
         $onlineSessions = collect();
         $lastDisconnects = collect();
-        $targetNasIp = null;
-
-        if (is_numeric($nasId) && class_exists(Nas::class)) {
-            $nasObj = Nas::find((int) $nasId);
-            if ($nasObj) {
-                $targetNasIp = $nasObj->nasname;
-            }
-        }
+        $scopedNas = Nas::when($allowedNasIds !== null, fn ($q) => $q->whereIn('id', $allowedNasIds))
+            ->when(is_numeric($nasId), fn ($q) => $q->where('id', (int) $nasId))
+            ->when(!is_numeric($nasId) && !in_array($nasId, [null, '', 'all'], true), fn ($q) => $q->whereRaw('1 = 0'))->get();
+        $nasAddresses = $scopedNas->flatMap(fn ($nas) => $nas->accountingAddresses())->unique()->values()->all();
 
         try {
             if (class_exists(RadAcct::class)) {
-                $radQuery = RadAcct::online();
-                if ($targetNasIp) {
-                    $radQuery->where('nasipaddress', $targetNasIp);
-                }
+                $radQuery = RadAcct::online()->fresh()->whereIn('nasipaddress', $nasAddresses);
                 $onlineSessions = $radQuery->get()->keyBy('username');
 
                 // Sesi disconnect terakhir per username
                 $lastDisconnectQuery = RadAcct::whereNotNull('acctstoptime');
-                if ($targetNasIp) {
-                    $lastDisconnectQuery->where('nasipaddress', $targetNasIp);
-                }
+                $lastDisconnectQuery->whereIn('nasipaddress', $nasAddresses);
                 $lastDisconnects = $lastDisconnectQuery
                     ->orderByDesc('acctstoptime')
                     ->get(['username', 'acctstoptime', 'callingstationid', 'framedipaddress', 'acctterminatecause', 'acctsessiontime', 'acctinputoctets', 'acctoutputoctets'])
@@ -1340,15 +1333,6 @@ class DashboardController extends Controller
             }
         } catch (\Throwable $e) {}
 
-        // ── 5. Trafik Internet Realtime (100% Real dari RouterTrafficService) ────────
-        $currentRxMbps = (float) ($realTraffic['download_mbps'] ?? 0.0);
-        $currentTxMbps = (float) ($realTraffic['upload_mbps'] ?? 0.0);
-        $peakMbpsToday = (float) ($realTraffic['peak_mbps_today'] ?? 0.0);
-        $downloadGbToday = (float) ($realTraffic['download_gb_today'] ?? 0.0);
-        $uploadGbToday = (float) ($realTraffic['upload_gb_today'] ?? 0.0);
-        $totalGbToday = (float) ($realTraffic['total_gb_today'] ?? 0.0);
-        $trafficHistory = $realTraffic['history'] ?? [];
-
         // ── 6. Deteksi Cerdas Gangguan Massal (Smart Outage Detection) ────────────────
         $downClusters = [];
         $outageDetected = false;
@@ -1415,11 +1399,7 @@ class DashboardController extends Controller
 
         // ── 8. Unpaid & Isolir Billing ──────────────────────────────────────────────
         $invoiceBase = Invoice::query()->whereIn('status', ['unpaid', 'partially_paid', 'pending']);
-        if (is_numeric($areaId)) {
-            $invoiceBase->whereHas('customer', fn($q) => $q->where('area_id', (int) $areaId));
-        } elseif (!$canViewAllAreas && count($userAccessibleAreaIds) > 0) {
-            $invoiceBase->whereHas('customer', fn($q) => $q->whereIn('area_id', $userAccessibleAreaIds));
-        }
+        $invoiceBase->whereHas('customer', fn ($q) => $applyAreaScope($q));
         $unpaidCount = (clone $invoiceBase)->count();
 
         $unpaidCustomers = (clone $invoiceBase)
@@ -1486,19 +1466,8 @@ class DashboardController extends Controller
             'isolir_customers'      => $isolirCustomers,
 
             // Trafik Internet Lengkap (100% Real)
-            'traffic' => [
-                'download_mbps'    => $currentRxMbps,
-                'upload_mbps'      => $currentTxMbps,
-                'total_mbps'       => round($currentRxMbps + $currentTxMbps, 1),
-                'peak_mbps_today'  => $peakMbpsToday,
-                'download_gb_today'=> $downloadGbToday,
-                'upload_gb_today'  => $uploadGbToday,
-                'total_gb_today'   => $totalGbToday,
-                'history'          => $trafficHistory,
-                'source_type'      => $realTraffic['source_type'] ?? 'standby',
-                'source_label'     => $realTraffic['source_label'] ?? 'Standby (0 Mbps)',
-                'router_online'    => (bool) ($realTraffic['router_online'] ?? false),
-            ],
+            // Preserve unavailable/null and coverage metadata all the way to the UI.
+            'traffic' => $realTraffic,
 
             // PPPoE Stats & Items
             'pppoe' => [

@@ -23,7 +23,10 @@ return [
     'radclient' => env('RADIUS_RADCLIENT_BIN', '/usr/bin/radclient'),
 
     // Perintah untuk restart FreeRADIUS setelah NAS berubah (butuh sudoers untuk www-data)
-    'restart_command' => env('RADIUS_RESTART_COMMAND', 'sudo /usr/bin/systemctl restart freeradius'),
+    'restart_command' => env('RADIUS_RESTART_COMMAND', 'sudo -n /usr/bin/systemctl restart freeradius'),
+    'check_command' => env('RADIUS_CHECK_COMMAND', 'sudo -n /usr/sbin/freeradius -C -l stdout'),
+    'status_command' => env('RADIUS_STATUS_COMMAND', '/usr/bin/systemctl is-active freeradius'),
+    'nas_auto_apply' => env('RADIUS_NAS_AUTO_APPLY', true),
 
     // Interval (detik) NAS mengirim Accounting Interim-Update (traffic & uptime real-time)
     'interim_interval' => (int) env('RADIUS_INTERIM_INTERVAL', 60),

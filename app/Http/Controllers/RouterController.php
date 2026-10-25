@@ -4,6 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Router;
 use App\Models\User;
+use App\Services\NasManagementService;
+use App\Services\NasConfigurationService;
+use App\Services\RouterConnectionService;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -36,7 +40,8 @@ class RouterController extends Controller
             'routers' => $routers,
             'users' => $users,
             'areas' => $areas,
-            'filters' => $request->only(['search', 'area_id'])
+            'filters' => $request->only(['search', 'area_id']),
+            'vpnEnabled' => (bool) config('radius.vpn.enabled'),
         ]);
     }
 
@@ -46,8 +51,9 @@ class RouterController extends Controller
             'name' => 'required|string|max:255',
             'area_id' => 'nullable',
             'new_area_name' => 'nullable|string|max:255',
-            'api_port' => 'nullable|integer',
-            'winbox_port' => 'nullable|integer',
+            'api_port' => 'nullable|integer|between:1,65535',
+            'winbox_port' => 'nullable|integer|between:1,65535',
+            'nasname' => config('radius.vpn.enabled') ? 'nullable' : 'required|ip',
             'pic_id' => 'nullable|exists:users,id',
         ]);
 
@@ -64,22 +70,21 @@ class RouterController extends Controller
         }
         unset($validated['new_area_name']);
 
-        $router = Router::create($validated);
-
-        // Auto-create NAS entry
-        $nas = \App\Models\Radius\Nas::create([
-            'nasname' => '0.0.0.0/0',
-            'shortname' => $router->name,
+        $nas = app(NasManagementService::class)->create([
+            'nasname' => $validated['nasname'] ?? null,
+            'shortname' => Str::substr($validated['name'], 0, 32),
             'type' => 'mikrotik',
-            'secret' => substr(str_shuffle('0123456789abcdefghijklmnopqrstuvwxyz'), 0, 10),
-        ]);
-        $router->update(['nas_id' => $nas->id]);
-
-        if (config('radius.vpn.enabled')) {
-            app(\App\Services\VpnAccountService::class)->ensureAccount($nas);
+            'secret' => Str::random(32),
+        ], (bool) config('radius.vpn.enabled'));
+        unset($validated['nasname']);
+        try {
+            Router::create([...$validated, 'nas_id' => $nas->id]);
+        } catch (\Throwable $e) {
+            app(NasManagementService::class)->delete($nas);
+            throw $e;
         }
-
-        return redirect()->route('routers.index')->with('success', 'Router & NAS berhasil ditambahkan.');
+        $state = app(NasConfigurationService::class)->afterMutation();
+        return redirect()->route('routers.index')->with($state['success'] ? 'success' : 'error', 'Router & NAS tersimpan dengan IP '.$nas->nasname.'. '.$state['message']);
     }
 
     public function update(Request $request, Router $router)
@@ -88,8 +93,8 @@ class RouterController extends Controller
             'name' => 'required|string|max:255',
             'area_id' => 'nullable',
             'new_area_name' => 'nullable|string|max:255',
-            'api_port' => 'nullable|integer',
-            'winbox_port' => 'nullable|integer',
+            'api_port' => 'nullable|integer|between:1,65535',
+            'winbox_port' => 'nullable|integer|between:1,65535',
             'pic_id' => 'nullable|exists:users,id',
         ]);
 
@@ -106,43 +111,28 @@ class RouterController extends Controller
         }
         unset($validated['new_area_name']);
 
-        $router->update($validated);
-        
-        if ($router->nas_id) {
-            \App\Models\Radius\Nas::where('id', $router->nas_id)->update(['shortname' => $router->name]);
+        if ($router->nas) {
+            app(NasManagementService::class)->update($router->nas, ['shortname' => Str::substr($validated['name'], 0, 32)]);
         }
+        $router->update($validated);
 
-        return redirect()->route('routers.index')->with('success', 'Router berhasil diupdate.');
+        $state = app(NasConfigurationService::class)->afterMutation();
+        return redirect()->route('routers.index')->with($state['success'] ? 'success' : 'error', 'Router diperbarui. '.$state['message']);
     }
 
     public function destroy(Router $router)
     {
-        if ($router->nas_id) {
-            \App\Models\Radius\Nas::where('id', $router->nas_id)->delete();
-        }
+        $nas = $router->nas;
         $router->delete();
-        return redirect()->route('routers.index')->with('success', 'Router & NAS berhasil dihapus.');
+        if ($nas && !Router::where('nas_id', $nas->id)->exists()) app(NasManagementService::class)->delete($nas);
+        $state = app(NasConfigurationService::class)->afterMutation();
+        return redirect()->route('routers.index')->with($state['success'] ? 'success' : 'error', 'Router dihapus. '.$state['message']);
     }
 
     public function ping(Router $router)
     {
-        $ip = $router->nas ? $router->nas->vpn_ip : null;
-        if (!$ip) {
-            $ip = $router->nas && $router->nas->nasname !== '0.0.0.0/0' ? $router->nas->nasname : null;
-        }
-
-        if (!$ip) {
-            return response()->json(['status' => 'offline']);
-        }
-
-        $port = $router->api_port ?: 8728;
-        
-        $fp = @fsockopen($ip, $port, $errno, $errstr, 2);
-        if ($fp) {
-            fclose($fp);
-            return response()->json(['status' => 'online']);
-        }
-
-        return response()->json(['status' => 'offline']);
+        return response()->json($router->nas
+            ? app(RouterConnectionService::class)->probe($router->nas, (int) ($router->api_port ?: 8728))
+            : ['status' => 'offline', 'message' => 'Router belum memiliki NAS.']);
     }
 }

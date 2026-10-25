@@ -75,6 +75,7 @@
                                         <svg class="animate-spin h-3 w-3 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                         Memeriksa...
                                     </span>
+                                    <p v-if="connectionDetails[router.id]?.message" class="mt-1 text-[11px] text-gray-500 max-w-52">{{ connectionDetails[router.id].message }}</p>
                                 </td>
                                 <td class="px-6 py-4 text-sm text-right">
                                     <button @click="openEditModal(router)" class="text-indigo-600 hover:text-indigo-900 font-medium mr-3">Edit</button>
@@ -131,6 +132,9 @@
                                 <div>
                                     <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Nama Router <span class="text-red-500">*Req</span></label>
                                     <input v-model="form.name" type="text" class="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 uppercase" placeholder="Gunakan HURUF BESAR" required />
+                                    <p v-if="vpnEnabled && !isEditing" class="text-xs text-indigo-600 mt-2">NAS akan mendapat IP VPN unik otomatis, bukan 0.0.0.0/0.</p>
+                                    <div v-if="!vpnEnabled && !isEditing" class="mt-3"><label class="block text-xs font-semibold mb-2">IP sumber NAS</label><input v-model="form.nasname" required placeholder="Contoh 192.168.1.1" class="w-full rounded-lg border-gray-200 text-sm" /></div>
+                                    <p v-if="form.errors.nasname" class="text-xs text-red-600 mt-1">{{ form.errors.nasname }}</p>
                                     <p v-if="form.errors.name" class="text-red-500 text-xs mt-1">{{ form.errors.name }}</p>
                                 </div>
 
@@ -236,7 +240,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import axios from 'axios';
 import AppLayout from '@/Layouts/AppLayout.vue';
@@ -246,6 +250,7 @@ const props = defineProps({
     users: Array,
     areas: Array,
     filters: Object,
+    vpnEnabled: Boolean,
 });
 
 const isModalOpen = ref(false);
@@ -261,6 +266,7 @@ const form = useForm({
     api_port: '',
     winbox_port: '',
     pic_id: null,
+    nasname: '',
 });
 
 function toggleCustomArea() {
@@ -326,6 +332,7 @@ function deleteRouter(id) {
 }
 
 const connectionStatuses = ref({});
+const connectionDetails = ref({});
 
 function checkConnections() {
     if (!props.routers?.data) return;
@@ -334,6 +341,7 @@ function checkConnections() {
         axios.get(`/routers/${r.id}/ping`)
             .then(res => {
                 connectionStatuses.value[r.id] = res.data.status;
+                connectionDetails.value[r.id] = res.data;
             })
             .catch(() => {
                 connectionStatuses.value[r.id] = 'offline';
@@ -344,4 +352,5 @@ function checkConnections() {
 onMounted(() => {
     checkConnections();
 });
+watch(() => props.routers?.data, checkConnections);
 </script>

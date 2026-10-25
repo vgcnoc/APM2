@@ -719,6 +719,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('routers/{router}/ping', [\App\Http\Controllers\RouterController::class, 'ping'])->name('routers.ping');
 
         Route::prefix('radius')->name('radius.')->group(function () {
+            Route::post('nas/apply', [\App\Http\Controllers\Radius\NasController::class, 'apply'])->name('nas.apply');
             Route::resource('nas', \App\Http\Controllers\Radius\NasController::class)->except(['create', 'show', 'edit']);
             Route::post('nas/{nas}/update', [\App\Http\Controllers\Radius\NasController::class, 'update'])->name('nas.update.post');
             Route::post('nas/{nas}/delete', [\App\Http\Controllers\Radius\NasController::class, 'destroy'])->name('nas.destroy.post');

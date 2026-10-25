@@ -28,6 +28,16 @@ class RadAcct extends RadiusModel
         return $query->whereNull('acctstoptime');
     }
 
+    public static function freshnessSeconds(): int
+    {
+        return max(180, (int) config('radius.interim_interval', 60) * 3);
+    }
+
+    public function scopeFresh($query)
+    {
+        return $query->where('acctupdatetime', '>=', now()->subSeconds(self::freshnessSeconds()));
+    }
+
     /**
      * Durasi sesi "real-time".
      * acctsessiontime hanya diperbarui saat NAS mengirim Interim-Update,

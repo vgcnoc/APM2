@@ -1,6 +1,10 @@
 <template>
     <AppLayout title="Mikrotik (NAS)">
         <div class="p-6 max-w-6xl mx-auto space-y-6">
+            <div class="p-4 rounded-xl border flex flex-wrap items-center justify-between gap-3" :class="configuration?.pending ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-emerald-50 border-emerald-200 text-emerald-900'">
+                <div><p class="text-sm font-semibold">{{ configuration?.pending ? 'Konfigurasi NAS belum diterapkan' : 'Konfigurasi NAS sudah diterapkan' }}</p><p class="text-xs mt-1">Satu router menggunakan satu IP sumber RADIUS. IP VPN dialokasikan otomatis, tanpa wildcard.</p></div>
+                <button v-if="configuration?.enabled" type="button" @click="applyConfiguration" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-semibold">Validasi &amp; Terapkan NAS</button>
+            </div>
             
             <!-- Warning Header -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden text-gray-900">
@@ -73,14 +77,18 @@
 
             <!-- Management Table (Data Router) -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-8">
-                <div class="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+                <div class="px-6 py-5 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between">
                     <h3 class="font-bold text-gray-900 text-lg">Daftar Router (NAS) Terdaftar</h3>
+                    <form @submit.prevent="searchNas" class="flex gap-2">
+                        <input v-model="search" type="search" aria-label="Cari NAS" placeholder="Cari nama atau IP NAS…" class="rounded-lg border-gray-200 text-sm" />
+                        <button class="rounded-lg bg-indigo-600 text-white px-3 text-xs font-semibold">Cari</button>
+                    </form>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-gray-50 border-b border-gray-100">
-                                <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">IP / Hostname</th>
+                                <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">IP sumber NAS</th>
                                 <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Nama</th>
                                 <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Tipe</th>
                                 <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Secret</th>
@@ -97,7 +105,7 @@
                                 <td class="px-6 py-4 text-sm text-gray-600">{{ n.shortname || '-' }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-600">{{ n.type || '-' }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-600 font-mono text-xs">
-                                    <span class="bg-gray-100 px-2 py-1 rounded select-all">{{ n.secret }}</span>
+                                    <span class="bg-gray-100 px-2 py-1 rounded">••••••••</span>
                                 </td>
                                 <td class="px-6 py-4 text-sm font-medium">
                                     <span v-if="connectionStatuses[n.id] === 'online'" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
@@ -110,6 +118,7 @@
                                         <svg class="animate-spin h-3 w-3 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                         Memeriksa...
                                     </span>
+                                    <p v-if="connectionDetails[n.id]?.message" class="mt-1 text-[11px] max-w-52 text-gray-500">{{ connectionDetails[n.id].message }}</p>
                                 </td>
                                 <td class="px-6 py-4 text-sm text-right flex gap-3 justify-end">
                                     <button @click="openEditModal(n)" class="text-indigo-600 hover:text-indigo-900 font-medium">Edit</button>
@@ -123,6 +132,14 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-500">
+                    <span>{{ nas.from || 0 }}–{{ nas.to || 0 }} dari {{ nas.total || 0 }} NAS</span>
+                    <div class="flex gap-2">
+                        <Link v-if="nas.prev_page_url" :href="nas.prev_page_url" preserve-state class="rounded border border-gray-200 px-3 py-2">Sebelumnya</Link>
+                        <span class="px-3 py-2">{{ nas.current_page }} / {{ nas.last_page }}</span>
+                        <Link v-if="nas.next_page_url" :href="nas.next_page_url" preserve-state class="rounded border border-gray-200 px-3 py-2">Berikutnya</Link>
+                    </div>
                 </div>
             </div>
         </div>
@@ -141,12 +158,13 @@
                     <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto bg-gray-50/30">
                         <!-- Helper Text -->
                         <div class="bg-blue-50 text-blue-800 p-3 rounded-lg text-xs mb-4">
-                            Biarkan kolom <b>IP Address</b> terisi <b>0.0.0.0/0</b> jika Anda tidak memiliki IP Publik Statis di Mikrotik Anda.
+                            Pilih VPN untuk mendapatkan IP tunnel unik otomatis. Koneksi langsung wajib memakai IP sumber router yang spesifik. Wildcard <b>0.0.0.0/0</b> tidak diperbolehkan.
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">IP Address / Hostname (nasname)</label>
-                            <input v-model="form.nasname" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="192.168.1.1 atau 0.0.0.0/0" required />
+                            <label v-if="!isEditing && vpn?.enabled" class="flex items-center gap-2 mb-3 text-sm text-gray-700"><input type="checkbox" v-model="form.use_vpn" class="rounded" /> Gunakan VPN billing (IP NAS otomatis)</label>
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">IP sumber NAS (nasname)</label>
+                            <input v-model="form.nasname" type="text" :readonly="form.use_vpn" :required="!form.use_vpn" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500" :placeholder="form.use_vpn ? 'Dialokasikan otomatis dari pool VPN' : 'IP sumber router, contoh 192.168.1.1'" />
                             <p v-if="form.errors.nasname" class="text-red-500 text-xs mt-1">{{ form.errors.nasname }}</p>
                         </div>
                         
@@ -172,6 +190,11 @@
                             </div>
                             <p v-if="form.errors.secret" class="text-red-500 text-xs mt-1">{{ form.errors.secret }}</p>
                         </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Port CoA / Disconnect</label>
+                            <input v-model="form.coa_port" type="number" min="1" max="65535" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm" />
+                            <p v-if="form.errors.coa_port" class="text-red-500 text-xs mt-1">{{ form.errors.coa_port }}</p>
+                        </div>
                     </div>
                     
                     <div class="bg-white p-6 border-t border-gray-100 flex justify-end">
@@ -189,8 +212,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useForm, router } from '@inertiajs/vue3';
+import { ref, onMounted, watch } from 'vue';
+import { useForm, router, Link } from '@inertiajs/vue3';
 import axios from 'axios';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
@@ -201,21 +224,29 @@ const props = defineProps({
     vpn: Object,
     clientPool: Object,
     isolirUrl: String,
+    configuration: Object,
+    createdNasId: Number,
 });
 
 const isModalOpen = ref(false);
 const isEditing = ref(false);
 const editId = ref(null);
+const search = ref(props.filters?.search || '');
+function searchNas() {
+    router.get('/radius/nas', { search: search.value || undefined }, { preserveState: true, replace: true });
+}
 
 const selectedOs = ref('v7');
 const selectedNasId = ref('');
 const generatedScript = ref('');
 
 const form = useForm({
-    nasname: '0.0.0.0/0',
+    nasname: '',
+    use_vpn: Boolean(props.vpn?.enabled),
     shortname: '',
     type: 'mikrotik',
     ports: null,
+    coa_port: 3799,
     secret: '',
     server: null,
     community: null,
@@ -223,7 +254,9 @@ const form = useForm({
 });
 
 function generateRandomSecret() {
-    form.secret = Math.random().toString(36).substring(2, 12);
+    const bytes = new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+    form.secret = Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('');
 }
 
 // Escape teks script RouterOS agar aman dimasukkan ke dalam string "..." (on-event scheduler)
@@ -249,13 +282,16 @@ function generateScript() {
     const vpnOn = props.vpn?.enabled && nasItem.vpn_user && nasItem.vpn_ip;
     // RADIUS & isolir diakses lewat IP tunnel jika VPN aktif, jika tidak lewat IP publik
     const radiusIp = vpnOn ? props.vpn.gateway : publicIp;
+    const radiusHostMask = radiusIp.includes(':') ? 128 : 32;
     const endpoints = (props.vpn?.endpoints?.length ? props.vpn.endpoints : [publicIp]);
     const pool = props.clientPool || { name: 'APM2POOL', network: '10.200.192.0/20', local_address: '10.200.192.1', ranges: '10.200.192.2-10.200.207.254' };
     const isolirUrl = props.isolirUrl || 'isolir.apm2.com';
-    const secret = nasItem.secret;
+    const secret = rosEscape(nasItem.secret || '');
     const name = (nasItem.shortname || 'APM2-ROUTER').replace(/"/g, '');
-    const apiUser = nasItem.api_user || 'APM2API';
-    const apiPass = nasItem.api_password || '';
+    const apiUser = rosEscape(nasItem.api_user || 'APM2API');
+    const apiPass = rosEscape(nasItem.api_password || '');
+    const apiPort = nasItem.api_port || 8728;
+    const coaPort = nasItem.coa_port || 3799;
     const profiles = [
         { name: 'APM2RADIUS', cookie: '1w', refresh: '1m', keepalive: '2m' },
         { name: 'APM2RADIUS-Short', cookie: '1w', refresh: '1m', keepalive: '2m' },
@@ -272,13 +308,13 @@ function generateScript() {
 
     L.push(`### 1. USER API (UNTUK BILLING APM2: CEK PING, ONLINE USER, TROUBLESHOOT) ###`);
     L.push(`/user rem [find comment~"APM2"];`);
-    L.push(`/user add name="${apiUser}" password="${apiPass}" group=write comment="USER FOR APM2 BILLING API (DON'T CHANGE IT)";`);
-    L.push(`/ip service set api disabled=no port=8728;`);
+    L.push(`/user add name="${apiUser}" password="${apiPass}" group=read address=${radiusIp}/${radiusHostMask} comment="USER FOR APM2 BILLING API (DON'T CHANGE IT)";`);
+    L.push(`/ip service set api disabled=no port=${apiPort};`);
     L.push(``);
 
     L.push(`### 2. RADIUS ###`);
-    L.push(`/ppp aaa set use-radius=yes accounting=yes interim-update=5m;`);
-    L.push(`/radius incoming set accept=yes port=3799;`);
+    L.push(`/ppp aaa set use-radius=yes accounting=yes interim-update=1m;`);
+    L.push(`/radius incoming set accept=yes port=${coaPort};`);
     L.push(`/radius rem [find comment~"APM2RADIUS"];`);
     L.push(`/radius add address=${radiusIp}${vpnOn ? ` src-address=${nasItem.vpn_ip}` : ''} comment="APM2RADIUS" authentication-port=1812 accounting-port=1813 secret="${secret}" service=ppp,hotspot timeout=3s;`);
     L.push(``);
@@ -367,7 +403,7 @@ function generateScript() {
     L.push(`#############################################################`);
     L.push(`# DATA UNTUK MENU "DATA ROUTER" APM2:`);
     L.push(`#   Host API      : ${vpnOn ? nasItem.vpn_ip + ' (IP VPN)' : '(IP publik router)'}`);
-    L.push(`#   Port API      : 8728`);
+    L.push(`#   Port API      : ${apiPort}`);
     L.push(`#   Username API  : ${apiUser}`);
     L.push(`#   Password API  : ${apiPass}`);
 
@@ -398,7 +434,8 @@ function openCreateModal() {
     isEditing.value = false;
     editId.value = null;
     form.reset();
-    form.nasname = '0.0.0.0/0'; // default to allow any IP securely
+    form.nasname = '';
+    form.use_vpn = Boolean(props.vpn?.enabled);
     form.type = 'mikrotik';
     generateRandomSecret();
     form.clearErrors();
@@ -408,7 +445,9 @@ function openCreateModal() {
 function openEditModal(n) {
     isEditing.value = true;
     editId.value = n.id;
-    form.nasname = n.nasname;
+    form.nasname = n.vpn_ip || n.nasname;
+    form.use_vpn = Boolean(n.vpn_ip);
+    form.coa_port = n.coa_port || 3799;
     form.shortname = n.shortname || '';
     form.type = n.type || 'mikrotik';
     form.ports = n.ports;
@@ -434,11 +473,10 @@ function submit() {
         form.post('/radius/nas', {
             onSuccess: (page) => {
                 closeModal();
-                // Select the newly added router (assuming it's the latest in list)
-                // Need to reload slightly delayed to catch the new ID, or just rely on reactivity
+                // Select the exact ID returned by the server, never guess from ordering.
                 setTimeout(() => {
                     const list = page.props.nas.data || [];
-                    const newNas = list.reduce((a, b) => (!a || b.id > a.id ? b : a), null);
+                    const newNas = list.find(n => n.id === page.props.createdNasId);
                     if (newNas) {
                         selectedNasId.value = newNas.id;
                         generateScript();
@@ -472,6 +510,7 @@ onMounted(() => {
 });
 
 const connectionStatuses = ref({});
+const connectionDetails = ref({});
 
 function checkConnections() {
     if (!props.nas || !props.nas.data) return;
@@ -480,10 +519,20 @@ function checkConnections() {
         axios.get(`/radius/nas/${n.id}/ping`)
             .then(res => {
                 connectionStatuses.value[n.id] = res.data.status;
+                connectionDetails.value[n.id] = res.data;
             })
             .catch(() => {
                 connectionStatuses.value[n.id] = 'offline';
             });
     });
 }
+
+function applyConfiguration() {
+    if (confirm('Validasi dan terapkan konfigurasi NAS? FreeRADIUS dapat dimuat ulang singkat untuk menerapkan daftar router terbaru.')) router.post('/radius/nas/apply', {}, { preserveScroll: true });
+}
+watch(() => props.nas?.data, () => {
+    if (!props.nas?.data?.some(n => n.id === selectedNasId.value)) selectedNasId.value = props.nas?.data?.[0]?.id || '';
+    generateScript();
+    checkConnections();
+});
 </script>

@@ -95,10 +95,11 @@ class RouterCapacityService
      */
     public function nasIdsForScope($areaId, bool $canViewAllAreas, array $accessibleAreaIds): ?array
     {
+        if (!$canViewAllAreas && is_numeric($areaId) && !in_array((int) $areaId, array_map('intval', $accessibleAreaIds), true)) return [];
         if (is_numeric($areaId)) {
             return Router::where('area_id', (int) $areaId)->whereNotNull('nas_id')->pluck('nas_id')->all();
         }
-        if (!$canViewAllAreas && count($accessibleAreaIds) > 0) {
+        if (!$canViewAllAreas) {
             return Router::whereIn('area_id', $accessibleAreaIds)->whereNotNull('nas_id')->pluck('nas_id')->all();
         }
         return null;
@@ -137,7 +138,7 @@ class RouterCapacityService
     private function readRouterResource(Nas $nas): array
     {
         $name = $nas->shortname ?: $nas->nasname;
-        $host = $nas->vpn_ip ?: ($nas->nasname !== '0.0.0.0/0' ? $nas->nasname : null);
+        $host = $nas->apiHost();
         $port = (int) (Router::where('nas_id', $nas->id)->value('api_port') ?: 8728);
 
         $base = [

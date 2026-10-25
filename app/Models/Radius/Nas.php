@@ -11,6 +11,19 @@ class Nas extends RadiusModel
 
     protected $hidden = [];
 
+    public function accountingAddresses(): array
+    {
+        return array_values(array_unique(array_filter([
+            \App\Support\NasAddress::ip($this->nasname),
+            \App\Support\NasAddress::ip($this->vpn_ip),
+        ])));
+    }
+
+    public function apiHost(): ?string
+    {
+        return \App\Support\NasAddress::ip($this->vpn_ip) ?: \App\Support\NasAddress::ip($this->nasname);
+    }
+
     protected function casts(): array
     {
         return [

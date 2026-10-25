@@ -9,352 +9,169 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
 
-/**
- * Service untuk mengukur Trafik Jaringan Internet 100% REAL / ASLI.
- * 
- * Hirarki Pengukuran:
- * 1. LIVE MIKROTIK (RouterOS API): Query live bytes/traffic monitor langsung dari router gateway/WAN.
- * 2. LIVE RADIUS ACCOUNTING (Interim-Update Delta): Menghitung laju transfer bit/detik dari sesi aktif FreeRADIUS.
- * 3. STANDBY / IDLE: Jika tidak ada router tersambung dan 0 sesi aktif, menampilkan angka asli 0.0 Mbps (tanpa data palsu).
- */
 class RouterTrafficService
 {
-    /**
-     * Ambil statistik trafik internet yang 100% REAL dan akurat.
-     *
-     * @param int|string|null $nasId
-     * @return array
-     */
-    public function getRealTraffic($nasId = null): array
+    /** Null allowed IDs means unrestricted; an empty list deliberately means no NAS. */
+    public function getRealTraffic($nasId = null, ?array $allowedNasIds = null): array
     {
-        $todayStr = today()->toDateString();
+        $query = Nas::orderBy('id');
+        if ($allowedNasIds !== null) $query->whereIn('id', $allowedNasIds);
+        if (is_numeric($nasId)) $query->where('id', (int) $nasId);
+        elseif (!in_array($nasId, [null, '', 'all'], true)) $query->whereRaw('1 = 0');
+        $nases = $query->get();
         $now = now()->timezone('Asia/Jakarta');
-
-        // ── 1. Coba baca langsung dari Router MikroTik (RouterOS API) ─────────────
-        $routerResult = $this->readFromMikrotik($nasId);
-
-        $rxMbps = 0.0;
-        $txMbps = 0.0;
-        $sourceType = 'standby'; // 'routeros', 'radius', 'standby'
-        $sourceLabel = 'Standby (0 Mbps)';
-        $routerOnline = false;
-        $activePppUsers = [];
-        $activeHotspotUsers = [];
-
-        if ($routerResult !== null && $routerResult['status'] === 'online') {
-            $rxMbps = (float) $routerResult['rx_mbps'];
-            $txMbps = (float) $routerResult['tx_mbps'];
-            $sourceType = 'routeros';
-            $sourceLabel = 'Live MikroTik API (' . ($routerResult['interface'] ?? 'WAN') . ')';
-            $routerOnline = true;
-            $activePppUsers = $routerResult['ppp_active'] ?? [];
-            $activeHotspotUsers = $routerResult['hotspot_active'] ?? [];
-        } else {
-            // ── 2. Fallback Pengukuran Akurat dari Sesi FreeRADIUS (Delta Bytes) ───
-            $radiusResult = $this->readFromRadiusAccounting($nasId);
-            if ($radiusResult !== null && $radiusResult['active_sessions'] > 0) {
-                $rxMbps = (float) $radiusResult['rx_mbps'];
-                $txMbps = (float) $radiusResult['tx_mbps'];
-                $sourceType = 'radius';
-                $sourceLabel = "Live RADIUS Sesi ({$radiusResult['active_sessions']} aktif)";
-            } else {
-                // ── 3. Benar-benar tidak ada trafik / router offline (REAL 0 Mbps) ─
-                $rxMbps = 0.0;
-                $txMbps = 0.0;
-                $sourceType = 'standby';
-                $sourceLabel = 'Standby (Tidak ada trafik mengalir)';
+        $scope = hash('sha256', json_encode([$nasId, $allowedNasIds, $nases->pluck('id')->all()]));
+        $rx = 0.0; $tx = 0.0; $sources = []; $measured = []; $online = []; $ppp = []; $hotspot = [];
+        $download = 0.0; $upload = 0.0; $observed = false; $partialUsage = false;
+        foreach ($nases as $nas) {
+            $api = $this->probeRouter($nas);
+            if (($api['status'] ?? '') === 'online') $online[] = $nas->id;
+            $ppp = array_merge($ppp, $api['ppp_active'] ?? []);
+            $hotspot = array_merge($hotspot, $api['hotspot_active'] ?? []);
+            $rate = !empty($api['traffic_available']) ? $api : $this->accountingRate($nas);
+            if ($rate && isset($rate['rx_mbps'], $rate['tx_mbps'])) {
+                $rx += $rate['rx_mbps']; $tx += $rate['tx_mbps'];
+                $sources[] = !empty($api['traffic_available']) ? 'routeros' : 'radius';
+                $measured[] = $nas->id;
             }
+            $usage = $this->observedDailyUsage($nas);
+            $download += $usage['download_bytes']; $upload += $usage['upload_bytes'];
+            $observed = $observed || $usage['observed'];
+            $partialUsage = $partialUsage || $usage['partial'];
         }
-
-        $totalMbps = round($rxMbps + $txMbps, 2);
-
-        // ── 4. Akumulasi Kuota Transfer Data Hari Ini (Asli dari Tabel RadAcct) ──
-        $bytesToday = $this->calculateRealBytesToday($nasId);
-        $downloadGbToday = round($bytesToday['download_bytes'] / (1024 * 1024 * 1024), 2);
-        $uploadGbToday = round($bytesToday['upload_bytes'] / (1024 * 1024 * 1024), 2);
-        $totalGbToday = round(($bytesToday['download_bytes'] + $bytesToday['upload_bytes']) / (1024 * 1024 * 1024), 2);
-
-        // ── 5. Puncak Trafik Hari Ini (Real Peak Observed) ──────────────────────
-        $peakCacheKey = "real_traffic_peak_{$todayStr}";
-        $currentPeak = (float) Cache::get($peakCacheKey, 0.0);
-        if ($totalMbps > $currentPeak) {
-            $currentPeak = $totalMbps;
-            Cache::put($peakCacheKey, $currentPeak, now()->endOfDay());
+        $available = count($measured) > 0;
+        $complete = $available && count($measured) === $nases->count();
+        $types = array_unique($sources);
+        $type = !$available ? 'unavailable' : (count($types) > 1 ? 'mixed' : reset($types));
+        $label = ['routeros' => 'Terukur melalui API MikroTik', 'radius' => 'Terukur dari interval accounting RADIUS', 'mixed' => 'Terukur melalui API + RADIUS', 'unavailable' => 'Data tidak tersedia; periksa VPN/API dan accounting'][$type];
+        if ($available && !$complete) $label .= ' (sebagian router)';
+        $total = $available ? round($rx + $tx, 2) : null;
+        $peakKey = 'traffic:v3:peak:'.$now->toDateString().':'.$scope;
+        $historyKey = 'traffic:v3:history:'.$now->toDateString().':'.$scope;
+        $peak = Cache::get($peakKey);
+        if ($available) {
+            $peak = max((float) ($peak ?? 0), $total);
+            Cache::put($peakKey, $peak, $now->copy()->endOfDay());
         }
-
-        // ── 6. Histori Titik Grafik 12 Interval (100% Data Aktual) ─────────────
-        $historyCacheKey = "real_traffic_history_{$todayStr}";
-        $history = Cache::get($historyCacheKey, []);
-
-        $lastPoint = end($history);
-        $shouldAppend = true;
-        if ($lastPoint && isset($lastPoint['timestamp'])) {
-            // Perbarui setiap minimal 30 detik
-            if ($now->timestamp - $lastPoint['timestamp'] < 30) {
-                $shouldAppend = false;
-            }
+        $history = Cache::get($historyKey, []);
+        $last = end($history);
+        // No synthetic zero points: only append a sample that was actually measured.
+        if ($available && (!$last || $now->timestamp - $last['timestamp'] >= 30)) {
+            $history[] = ['time' => $now->format('H:i'), 'timestamp' => $now->timestamp, 'rx' => round($rx, 2), 'tx' => round($tx, 2), 'partial' => !$complete];
+            $history = array_slice($history, -12);
+            Cache::put($historyKey, $history, $now->copy()->endOfDay());
         }
-
-        if ($shouldAppend) {
-            $history[] = [
-                'time'      => $now->format('H:i'),
-                'timestamp' => $now->timestamp,
-                'rx'        => round($rxMbps, 1),
-                'tx'        => round($txMbps, 1),
-            ];
-
-            // Pertahankan maksimal 12 titik terakhir
-            if (count($history) > 12) {
-                $history = array_slice($history, -12);
-            }
-            Cache::put($historyCacheKey, $history, now()->endOfDay());
-        }
-
-        // Jika histori masih kurang dari 12 titik, lengkapi titik awal dengan nilai 0.0
-        $formattedHistory = [];
-        $pointsNeeded = 12 - count($history);
-        for ($i = $pointsNeeded; $i > 0; $i--) {
-            $t = $now->copy()->subMinutes($i * 5);
-            $formattedHistory[] = [
-                'time' => $t->format('H:i'),
-                'rx'   => 0.0,
-                'tx'   => 0.0,
-            ];
-        }
-        foreach ($history as $h) {
-            $formattedHistory[] = [
-                'time' => $h['time'],
-                'rx'   => (float) $h['rx'],
-                'tx'   => (float) $h['tx'],
-            ];
-        }
-
         return [
-            'download_mbps'     => round($rxMbps, 1),
-            'upload_mbps'       => round($txMbps, 1),
-            'total_mbps'        => round($totalMbps, 1),
-            'peak_mbps_today'   => round($currentPeak, 1),
-            'download_gb_today' => $downloadGbToday,
-            'upload_gb_today'   => $uploadGbToday,
-            'total_gb_today'    => $totalGbToday,
-            'history'           => $formattedHistory,
-            'source_type'       => $sourceType,
-            'source_label'      => $sourceLabel,
-            'router_online'     => $routerOnline,
-            'active_ppp_users'  => $activePppUsers,
-            'active_hotspot_users' => $activeHotspotUsers,
+            'download_mbps' => $available ? round($rx, 2) : null, 'upload_mbps' => $available ? round($tx, 2) : null, 'total_mbps' => $total,
+            'peak_mbps_today' => $peak, 'download_gb_today' => $observed ? round($download / 1073741824, 3) : null,
+            'upload_gb_today' => $observed ? round($upload / 1073741824, 3) : null, 'total_gb_today' => $observed ? round(($download + $upload) / 1073741824, 3) : null,
+            'daily_usage_status' => !$observed ? 'unavailable' : ($partialUsage ? 'partial' : 'recorded'),
+            'history' => $history, 'source_type' => $type, 'source_label' => $label,
+            'data_available' => $available, 'coverage' => $complete ? 'complete' : ($available ? 'partial' : 'unavailable'),
+            'measured_nas_ids' => $measured, 'online_nas_ids' => $online, 'selected_nas_count' => $nases->count(),
+            'router_online' => count($online) > 0, 'active_ppp_users' => array_values(array_unique($ppp)), 'active_hotspot_users' => array_values(array_unique($hotspot)),
         ];
     }
 
-    /**
-     * Membaca statistik antarmuka live langsung dari MikroTik RouterOS API.
-     */
-    private function readFromMikrotik($nasId = null): ?array
+    protected function probeRouter(Nas $nas): array
     {
-        try {
-            $query = Nas::query();
-            if (is_numeric($nasId)) {
-                $query->where('id', (int) $nasId);
-            }
-            $nasList = $query->get();
-
-            foreach ($nasList as $nas) {
-                $host = $nas->vpn_ip ?: ($nas->nasname !== '0.0.0.0/0' ? $nas->nasname : null);
-                $port = (int) (Router::where('nas_id', $nas->id)->value('api_port') ?: 8728);
-                $user = $nas->api_user;
-                $pass = (string) $nas->api_password;
-
-                if (!$host || !$user) {
-                    continue;
-                }
-
-                $cacheKey = "router_traffic_live_{$nas->id}";
-                $cached = Cache::get($cacheKey);
-                if ($cached && isset($cached['status']) && $cached['status'] === 'online' && (time() - ($cached['time'] ?? 0) < 5)) {
-                    return $cached;
-                }
-
-                $client = new RouterOsApiClient();
+        $port = (int) (Router::where('nas_id', $nas->id)->value('api_port') ?: 8728);
+        $key = hash('sha256', implode('|', [$nas->id, $nas->apiHost(), $port, $nas->api_user, $nas->api_password]));
+        return Cache::remember('traffic:v3:api:'.$key, 10, function () use ($nas, $port) {
+            $result = ['status' => 'offline', 'traffic_available' => false, 'ppp_active' => [], 'hotspot_active' => []];
+            if (!$nas->apiHost() || !$nas->api_user || !$nas->api_password) return $result;
+            $client = app(RouterOsApiClient::class);
+            try {
+                $client->connect($nas->apiHost(), $port, $nas->api_user, (string) $nas->api_password, 1.0);
+                $interfaces = $client->command('/interface/print', ['.proplist' => 'name,running,type'])['rows'];
+                $result['status'] = 'online';
+                $running = array_values(array_filter($interfaces, fn ($i) => ($i['running'] ?? 'false') === 'true'));
+                $target = null;
                 try {
-                    // Timeout cepat 1.0 detik agar tidak memperlambat respon dashboard bila router mati
-                    $client->connect($host, $port, $user, $pass, 1.0);
-
-                    // 1. Ambil daftar interface untuk mencari interface WAN utama
-                    $interfaces = $client->command('/interface/print')['rows'] ?? [];
-                    $targetIf = null;
-                    $totalRxBps = 0;
-                    $totalTxBps = 0;
-
-                    // Prioritaskan interface bernama wan, ether1, sfp, internet, atau pppoe-out
-                    foreach ($interfaces as $if) {
-                        $nameLower = strtolower($if['name'] ?? '');
-                        if (str_contains($nameLower, 'wan') || str_contains($nameLower, 'internet') || str_contains($nameLower, 'pppoe-out')) {
-                            $targetIf = $if['name'];
-                            break;
-                        }
-                    }
-
-                    if (!$targetIf && count($interfaces) > 0) {
-                        $targetIf = $interfaces[0]['name'] ?? 'ether1';
-                    }
-
-                    // 2. Baca monitor-traffic pada target interface
-                    if ($targetIf) {
-                        try {
-                            $trafficReply = $client->command('/interface/monitor-traffic', [
-                                'interface' => $targetIf,
-                                'once'      => '',
-                            ]);
-                            $tRow = $trafficReply['rows'][0] ?? [];
-                            $totalRxBps = (float) ($tRow['rx-bits-per-second'] ?? 0);
-                            $totalTxBps = (float) ($tRow['tx-bits-per-second'] ?? 0);
-                        } catch (Throwable $e) {}
-                    }
-
-                    // 3. Ambil daftar user PPPoE aktif langsung dari Router
-                    $activePpp = [];
+                    $members = $client->command('/interface/list/member/print', ['?list' => 'WAN', '.proplist' => 'interface'])['rows'];
+                    $wan = array_column($members, 'interface');
+                    $candidates = array_values(array_filter($running, fn ($i) => in_array($i['name'], $wan, true)));
+                    if (count($candidates) === 1) $target = $candidates[0]['name'];
+                } catch (Throwable $e) {}
+                if (!$target) {
                     try {
-                        $pppRows = $client->command('/ppp/active/print')['rows'] ?? [];
-                        foreach ($pppRows as $p) {
-                            if (!empty($p['name'])) {
-                                $activePpp[] = $p['name'];
-                            }
+                        $routes = $client->command('/ip/route/print', ['?dst-address' => '0.0.0.0/0', '?active' => 'true', '.proplist' => 'gateway,immediate-gw'])['rows'];
+                        $names = [];
+                        foreach ($routes as $route) {
+                            $gateway = $route['immediate-gw'] ?? $route['gateway'] ?? '';
+                            $names[] = str_contains($gateway, '%') ? substr($gateway, strrpos($gateway, '%') + 1) : $gateway;
+                        }
+                        $candidates = array_values(array_filter($running, fn ($i) => in_array($i['name'], $names, true)));
+                        if (count($candidates) === 1) $target = $candidates[0]['name'];
+                    } catch (Throwable $e) {}
+                }
+                if (!$target) {
+                    $candidates = array_values(array_filter($running, fn ($i) => preg_match('/wan|internet|pppoe-out/i', $i['name'])));
+                    if (count($candidates) === 1) $target = $candidates[0]['name'];
+                }
+                if ($target) {
+                    try {
+                        $row = $client->command('/interface/monitor-traffic', ['interface' => $target, 'once' => ''])['rows'][0] ?? [];
+                        if (isset($row['rx-bits-per-second'], $row['tx-bits-per-second'])) {
+                            $result += ['rx_mbps' => (float) $row['rx-bits-per-second'] / 1000000, 'tx_mbps' => (float) $row['tx-bits-per-second'] / 1000000, 'interface' => $target];
+                            $result['traffic_available'] = true;
                         }
                     } catch (Throwable $e) {}
-
-                    // 4. Ambil daftar user Hotspot aktif langsung dari Router
-                    $activeHotspot = [];
-                    try {
-                        $hsRows = $client->command('/ip/hotspot/active/print')['rows'] ?? [];
-                        foreach ($hsRows as $h) {
-                            if (!empty($h['user'])) {
-                                $activeHotspot[] = $h['user'];
-                            }
-                        }
-                    } catch (Throwable $e) {}
-
-                    $client->close();
-
-                    $res = [
-                        'status'         => 'online',
-                        'time'           => time(),
-                        'interface'      => $targetIf,
-                        'rx_mbps'        => round($totalRxBps / 1_000_000, 2),
-                        'tx_mbps'        => round($totalTxBps / 1_000_000, 2),
-                        'ppp_active'     => $activePpp,
-                        'hotspot_active' => $activeHotspot,
-                    ];
-
-                    Cache::put($cacheKey, $res, 10);
-                    return $res;
-                } catch (Throwable $e) {
-                    $client->close();
-                    continue;
                 }
-            }
-        } catch (Throwable $e) {}
-
-        return null;
+                try { $result['ppp_active'] = array_values(array_filter(array_column($client->command('/ppp/active/print', ['.proplist' => 'name'])['rows'], 'name'))); } catch (Throwable $e) {}
+                try { $result['hotspot_active'] = array_values(array_filter(array_column($client->command('/ip/hotspot/active/print', ['.proplist' => 'user'])['rows'], 'user'))); } catch (Throwable $e) {}
+            } catch (Throwable $e) { /* Explicit unavailable state, not a fabricated zero measurement. */ }
+            finally { $client->close(); }
+            return $result;
+        });
     }
 
-    /**
-     * Menghitung laju transfer dari data akunting FreeRADIUS (delta bytes riil per detik).
-     */
-    private function readFromRadiusAccounting($nasId = null): ?array
+    protected function accountingRate(Nas $nas): ?array
     {
         try {
-            if (!class_exists(RadAcct::class)) {
-                return null;
-            }
-
-            $onlineQuery = RadAcct::online();
-            if (is_numeric($nasId)) {
-                $nasObj = Nas::find((int) $nasId);
-                if ($nasObj) {
-                    $onlineQuery->where('nasipaddress', $nasObj->nasname);
+            $rows = RadAcct::online()->fresh()->whereIn('nasipaddress', $nas->accountingAddresses())->get(['radacctid','acctupdatetime','acctinputoctets','acctoutputoctets']);
+            $key = 'traffic:v3:accounting:'.$nas->id;
+            $previous = Cache::get($key, []); $next = []; $rx = 0.0; $tx = 0.0; $measured = false;
+            foreach ($rows as $row) {
+                $sample = ['time' => $row->acctupdatetime->timestamp, 'in' => (float) $row->acctinputoctets, 'out' => (float) $row->acctoutputoctets, 'rx' => null, 'tx' => null];
+                $old = $previous[$row->radacctid] ?? null;
+                if ($old && $sample['time'] > $old['time'] && $sample['in'] >= $old['in'] && $sample['out'] >= $old['out']) {
+                    $elapsed = $sample['time'] - $old['time'];
+                    $sample['rx'] = ($sample['out'] - $old['out']) * 8 / $elapsed / 1000000;
+                    $sample['tx'] = ($sample['in'] - $old['in']) * 8 / $elapsed / 1000000;
+                } elseif ($old && $sample['time'] === $old['time'] && $sample['in'] === $old['in'] && $sample['out'] === $old['out']) {
+                    $sample['rx'] = $old['rx']; $sample['tx'] = $old['tx'];
                 }
+                if ($sample['rx'] !== null) { $rx += $sample['rx']; $tx += $sample['tx']; $measured = true; }
+                $next[$row->radacctid] = $sample;
             }
-
-            $activeCount = (clone $onlineQuery)->count();
-            if ($activeCount === 0) {
-                return ['active_sessions' => 0, 'rx_mbps' => 0.0, 'tx_mbps' => 0.0];
-            }
-
-            $currentBytes = (clone $onlineQuery)
-                ->selectRaw('COALESCE(SUM(acctinputoctets), 0) as total_in, COALESCE(SUM(acctoutputoctets), 0) as total_out')
-                ->first();
-
-            $totalIn = (float) ($currentBytes->total_in ?? 0);
-            $totalOut = (float) ($currentBytes->total_out ?? 0);
-            $nowTime = microtime(true);
-
-            $snapshotKey = "radius_traffic_meter_snapshot_" . ($nasId ?: 'all');
-            $prevSnapshot = Cache::get($snapshotKey);
-
-            $rxMbps = 0.0;
-            $txMbps = 0.0;
-
-            if ($prevSnapshot && isset($prevSnapshot['time']) && $nowTime > $prevSnapshot['time']) {
-                $elapsedSec = max(0.5, $nowTime - $prevSnapshot['time']);
-                $deltaIn = max(0, $totalIn - $prevSnapshot['total_in']);
-                $deltaOut = max(0, $totalOut - $prevSnapshot['total_out']);
-
-                // acctoutputoctets = download oleh pelanggan (Rx jaringan)
-                // acctinputoctets = upload oleh pelanggan (Tx jaringan)
-                $rxMbps = round(($deltaOut * 8) / ($elapsedSec * 1_000_000), 2);
-                $txMbps = round(($deltaIn * 8) / ($elapsedSec * 1_000_000), 2);
-            }
-
-            Cache::put($snapshotKey, [
-                'time'      => $nowTime,
-                'total_in'  => $totalIn,
-                'total_out' => $totalOut,
-            ], 60);
-
-            return [
-                'active_sessions' => $activeCount,
-                'rx_mbps'         => $rxMbps,
-                'tx_mbps'         => $txMbps,
-            ];
-        } catch (Throwable $e) {
-            return null;
-        }
+            Cache::put($key, $next, max(900, RadAcct::freshnessSeconds() * 2));
+            return $measured ? ['rx_mbps' => $rx, 'tx_mbps' => $tx] : null;
+        } catch (Throwable $e) { return null; }
     }
 
-    /**
-     * Menghitung total byte download & upload yang benar-benar tercatat HARI INI di database FreeRADIUS.
-     */
-    private function calculateRealBytesToday($nasId = null): array
+    /** Cumulative session counters cannot reconstruct midnight history. Explicitly mark that gap. */
+    protected function observedDailyUsage(Nas $nas): array
     {
-        $dlBytes = 0.0;
-        $ulBytes = 0.0;
-
+        $empty = ['download_bytes' => 0, 'upload_bytes' => 0, 'observed' => false, 'partial' => false];
         try {
-            if (class_exists(RadAcct::class)) {
-                $q = RadAcct::query()->where(function ($sub) {
-                    $sub->whereDate('acctstarttime', today())
-                        ->orWhereDate('acctstoptime', today())
-                        ->orWhereNull('acctstoptime');
-                });
-
-                if (is_numeric($nasId)) {
-                    $nasObj = Nas::find((int) $nasId);
-                    if ($nasObj) {
-                        $q->where('nasipaddress', $nasObj->nasname);
-                    }
-                }
-
-                $res = $q->selectRaw('COALESCE(SUM(acctinputoctets), 0) as ul, COALESCE(SUM(acctoutputoctets), 0) as dl')->first();
-                if ($res) {
-                    $ulBytes = (float) $res->ul;
-                    $dlBytes = (float) $res->dl;
-                }
+            $today = now()->timezone('Asia/Jakarta');
+            $start = $today->copy()->startOfDay()->setTimezone(config('app.timezone', 'UTC'));
+            $rows = RadAcct::whereIn('nasipaddress', $nas->accountingAddresses())->where(fn ($q) => $q->where('acctstarttime', '>=', $start)->orWhere('acctstoptime', '>=', $start)->orWhere('acctupdatetime', '>=', $start))->get();
+            $key = 'traffic:v3:daily:'.$today->toDateString().':'.$nas->id;
+            $state = Cache::get($key, []);
+            foreach ($rows as $row) {
+                $currentIn = (float) $row->acctinputoctets; $currentOut = (float) $row->acctoutputoctets;
+                $startedToday = $row->acctstarttime && $row->acctstarttime->gte($start);
+                $entry = $state[$row->radacctid] ?? ['baseline_in' => $startedToday ? 0 : $currentIn, 'baseline_out' => $startedToday ? 0 : $currentOut, 'partial' => !$startedToday];
+                $entry['in'] = max(0, $currentIn - $entry['baseline_in']);
+                $entry['out'] = max(0, $currentOut - $entry['baseline_out']);
+                $state[$row->radacctid] = $entry;
             }
-        } catch (Throwable $e) {}
-
-        return [
-            'download_bytes' => $dlBytes,
-            'upload_bytes'   => $ulBytes,
-        ];
+            Cache::put($key, $state, $today->copy()->addDays(2)->endOfDay());
+            $in = array_sum(array_column($state, 'in')); $out = array_sum(array_column($state, 'out'));
+            $partial = count(array_filter($state, fn ($entry) => $entry['partial'])) > 0;
+            return ['download_bytes' => $out, 'upload_bytes' => $in, 'observed' => count($state) > 0 && (!$partial || $in + $out > 0), 'partial' => $partial];
+        } catch (Throwable $e) { return $empty; }
     }
 }

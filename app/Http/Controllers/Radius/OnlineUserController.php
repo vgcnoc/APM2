@@ -17,14 +17,14 @@ class OnlineUserController extends Controller
      */
     public function index(Request $request): Response
     {
-        $query = RadAcct::online(); // Scope online di RadAcct = acctstoptime is null
+        $query = RadAcct::online()->fresh();
 
         $onlineUsers = $query
             ->when($request->search, fn ($q, $s) =>
-                $q->where('username', 'like', "%{$s}%")
+                $q->where(fn ($q) => $q->where('username', 'like', "%{$s}%")
                   ->orWhere('framedipaddress', 'like', "%{$s}%")
                   ->orWhere('callingstationid', 'like', "%{$s}%")
-                  ->orWhere('nasipaddress', 'like', "%{$s}%")
+                  ->orWhere('nasipaddress', 'like', "%{$s}%"))
             )
             ->orderByDesc('acctstarttime')
             ->paginate(15)

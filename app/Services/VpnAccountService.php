@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
- * Mengelola akun VPN L2TP per router (NAS) dan menyinkronkan
+ * Mengelola akun VPN per router (NAS) dan menyinkronkan
  * /etc/ppp/chap-secrets di server. pppd membaca chap-secrets setiap kali
  * ada autentikasi, jadi tidak perlu restart xl2tpd.
  *
@@ -24,34 +24,31 @@ class VpnAccountService
      */
     public function ensureAccount(Nas $nas): Nas
     {
-        $dirty = false;
+        $this->prepareAccount($nas);
+        if ($nas->isDirty()) $nas->save();
+        $this->sync();
+        return $nas;
+    }
+
+    /** Prepare only; callers hold the NAS configuration lock before allocating/saving. */
+    public function prepareAccount(Nas $nas): Nas
+    {
 
         if (!$nas->vpn_user) {
             $nas->vpn_user = 'apm2-' . Str::lower(Str::random(8));
-            $dirty = true;
         }
         if (!$nas->vpn_password) {
             $nas->vpn_password = Str::random(16);
-            $dirty = true;
         }
         if (!$nas->vpn_ip) {
             $nas->vpn_ip = $this->nextFreeIp();
-            $dirty = true;
         }
         if (!$nas->api_user) {
             $nas->api_user = 'APM2' . Str::upper(Str::random(6));
-            $dirty = true;
         }
         if (!$nas->api_password) {
             $nas->api_password = Str::random(20);
-            $dirty = true;
         }
-
-        if ($dirty) {
-            $nas->save();
-        }
-
-        $this->sync();
 
         return $nas;
     }
@@ -74,9 +71,13 @@ class VpnAccountService
     {
         $start = ip2long(config('radius.vpn.pool_start'));
         $end = ip2long(config('radius.vpn.pool_end'));
+        if ($start === false || $end === false || $end < $start || $end - $start > 65535) {
+            throw new \RuntimeException('Konfigurasi pool IP VPN tidak valid.');
+        }
 
-        $used = Nas::whereNotNull('vpn_ip')->pluck('vpn_ip')
-            ->map(fn ($ip) => ip2long($ip))
+        $used = Nas::pluck('vpn_ip')->merge(Nas::pluck('nasname'))->filter()
+            ->map(fn ($ip) => ip2long(\App\Support\NasAddress::ip($ip) ?? ''))
+            ->filter(fn ($ip) => $ip !== false)
             ->flip();
 
         for ($i = $start; $i <= $end; $i++) {
@@ -112,13 +113,28 @@ class VpnAccountService
         $lines[] = self::MARK_END;
         $block = implode("\n", $lines);
 
-        $content = (string) file_get_contents($path);
+        $handle = fopen($path, 'r+');
+        if (!$handle || !flock($handle, LOCK_EX)) {
+            if (is_resource($handle)) fclose($handle);
+            return false;
+        }
+        $content = (string) stream_get_contents($handle);
         $pattern = '/' . preg_quote(self::MARK_BEGIN, '/') . '.*?' . preg_quote(self::MARK_END, '/') . '/s';
 
         $content = preg_match($pattern, $content)
-            ? preg_replace($pattern, $block, $content)
+            ? preg_replace_callback($pattern, fn () => $block, $content)
             : rtrim($content) . "\n\n" . $block . "\n";
 
-        return file_put_contents($path, $content, LOCK_EX) !== false;
+        try {
+            rewind($handle);
+            $written = fwrite($handle, $content);
+            if ($written !== strlen($content)) return false;
+            ftruncate($handle, $written);
+            fflush($handle);
+            return true;
+        } finally {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+        }
     }
 }

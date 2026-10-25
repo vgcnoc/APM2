@@ -15,7 +15,8 @@ class RouterOsApiClient
 
     public function connect(string $host, int $port, string $user, string $password, float $timeout = 1.5): void
     {
-        $socket = @stream_socket_client("tcp://{$host}:{$port}", $errno, $errstr, $timeout);
+        $address = str_contains($host, ':') ? '['.$host.']' : $host;
+        $socket = @stream_socket_client("tcp://{$address}:{$port}", $errno, $errstr, $timeout);
         if (!$socket) {
             throw new RuntimeException("Router tidak dapat dihubungi ({$errstr})");
         }
@@ -41,7 +42,7 @@ class RouterOsApiClient
     {
         $words = [$path];
         foreach ($params as $key => $value) {
-            $words[] = "={$key}={$value}";
+            $words[] = str_starts_with($key, '?') ? "{$key}={$value}" : "={$key}={$value}";
         }
         $this->writeSentence($words);
 
