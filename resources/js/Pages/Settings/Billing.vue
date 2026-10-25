@@ -571,77 +571,40 @@
                                 </a>
                             </div>
 
-                            <!-- Pilihan 4 Template -->
+                            <!-- Pilihan 10 Template Invoice Bermotif & Elegan -->
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <!-- 1. Modern Clean -->
-                                <label class="relative flex flex-col p-4 rounded-xl border cursor-pointer transition-all hover:shadow-md" :class="form.invoice_template === 'modern' ? 'border-indigo-600 bg-indigo-50/20 ring-2 ring-indigo-500' : 'border-gray-200 bg-white hover:border-gray-300'">
+                                <label
+                                    v-for="tpl in invoiceTemplates"
+                                    :key="tpl.id"
+                                    class="relative flex flex-col p-4 rounded-xl border cursor-pointer transition-all hover:shadow-md"
+                                    :class="form.invoice_template === tpl.id ? 'border-indigo-600 bg-indigo-50/20 ring-2 ring-indigo-500 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300'"
+                                >
                                     <div class="flex items-start justify-between">
                                         <div class="flex items-center gap-2">
-                                            <span class="text-lg">🌟</span>
-                                            <span class="font-bold text-sm text-gray-900">Modern Clean</span>
+                                            <span class="text-xl">{{ tpl.icon }}</span>
+                                            <span class="font-bold text-sm text-gray-900">{{ tpl.name }}</span>
                                         </div>
-                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Rekomendasi</span>
+                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="tpl.badgeClass">
+                                            {{ tpl.badge }}
+                                        </span>
                                     </div>
-                                    <p class="text-xs text-gray-500 mt-2 leading-relaxed">
-                                        Header gradien biru elegan, card info pelanggan rapi, tabel biaya terstruktur, dan kartu rekening transfer jelas. Sangat cocok untuk kirim via WhatsApp PDF & Cetak A4.
+                                    <p class="text-xs text-gray-500 mt-2 leading-relaxed flex-1">
+                                        {{ tpl.desc }}
                                     </p>
                                     <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-400">
-                                        <span>Ukuran: Kertas A4 / Surat</span>
-                                        <input type="radio" value="modern" v-model="form.invoice_template" class="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500">
-                                    </div>
-                                </label>
-
-                                <!-- 2. Classic Corporate -->
-                                <label class="relative flex flex-col p-4 rounded-xl border cursor-pointer transition-all hover:shadow-md" :class="form.invoice_template === 'classic' ? 'border-indigo-600 bg-indigo-50/20 ring-2 ring-indigo-500' : 'border-gray-200 bg-white hover:border-gray-300'">
-                                    <div class="flex items-start justify-between">
                                         <div class="flex items-center gap-2">
-                                            <span class="text-lg">🏛️</span>
-                                            <span class="font-bold text-sm text-gray-900">Classic Corporate</span>
+                                            <span>{{ tpl.tag }}</span>
+                                            <a
+                                                :href="'/settings/invoice-template/preview?template=' + tpl.id"
+                                                target="_blank"
+                                                @click.stop
+                                                class="text-indigo-600 hover:text-indigo-800 font-bold underline text-[11px] inline-flex items-center gap-0.5 cursor-pointer"
+                                                title="Buka pratinjau invoice dengan template ini"
+                                            >
+                                                Pratinjau ↗
+                                            </a>
                                         </div>
-                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">Formal</span>
-                                    </div>
-                                    <p class="text-xs text-gray-500 mt-2 leading-relaxed">
-                                        Format surat resmi perusahaan dengan kop surat garis ganda, rincian perpajakan (PPN/DPP) lengkap, serta kolom tanda tangan basah & stempel resmi.
-                                    </p>
-                                    <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-400">
-                                        <span>Cocok: Instansi & Bisnis B2B</span>
-                                        <input type="radio" value="classic" v-model="form.invoice_template" class="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500">
-                                    </div>
-                                </label>
-
-                                <!-- 3. Struk Thermal POS -->
-                                <label class="relative flex flex-col p-4 rounded-xl border cursor-pointer transition-all hover:shadow-md" :class="form.invoice_template === 'thermal' ? 'border-indigo-600 bg-indigo-50/20 ring-2 ring-indigo-500' : 'border-gray-200 bg-white hover:border-gray-300'">
-                                    <div class="flex items-start justify-between">
-                                        <div class="flex items-center gap-2">
-                                            <span class="text-lg">🧾</span>
-                                            <span class="font-bold text-sm text-gray-900">Struk Thermal (POS)</span>
-                                        </div>
-                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Hemat Kertas</span>
-                                    </div>
-                                    <p class="text-xs text-gray-500 mt-2 leading-relaxed">
-                                        Format struk monospaced ringkas khusus printer kasir atau printer mini bluetooth (58mm / 80mm). Praktis untuk penagih lapangan & loket kasir biller.
-                                    </p>
-                                    <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-400">
-                                        <span>Ukuran: 58mm / 80mm Thermal</span>
-                                        <input type="radio" value="thermal" v-model="form.invoice_template" class="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500">
-                                    </div>
-                                </label>
-
-                                <!-- 4. Elegant Minimalist -->
-                                <label class="relative flex flex-col p-4 rounded-xl border cursor-pointer transition-all hover:shadow-md" :class="form.invoice_template === 'minimalist' ? 'border-indigo-600 bg-indigo-50/20 ring-2 ring-indigo-500' : 'border-gray-200 bg-white hover:border-gray-300'">
-                                    <div class="flex items-start justify-between">
-                                        <div class="flex items-center gap-2">
-                                            <span class="text-lg">🎨</span>
-                                            <span class="font-bold text-sm text-gray-900">Elegant Minimalist</span>
-                                        </div>
-                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">Modern ISP</span>
-                                    </div>
-                                    <p class="text-xs text-gray-500 mt-2 leading-relaxed">
-                                        Desain monokromatik kontras tinggi dengan kartu sisa tagihan beraksen hitam gelap modern. Tampilan bersih, tipografi tajam, dan hemat tinta cetak.
-                                    </p>
-                                    <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-400">
-                                        <span>Gaya: Monokrom & Tech ISP</span>
-                                        <input type="radio" value="minimalist" v-model="form.invoice_template" class="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500">
+                                        <input type="radio" :value="tpl.id" v-model="form.invoice_template" class="w-4 h-4 text-indigo-600 border-gray-300 focus:ring-indigo-500">
                                     </div>
                                 </label>
                             </div>
@@ -978,8 +941,100 @@ watch(() => props.pg_private_key, (val) => { form.pg_private_key = val || ''; })
 watch(() => props.pg_callback_token, (val) => { form.pg_callback_token = val || ''; });
 watch(() => props.tax_ppn, (val) => { form.tax_ppn = val !== undefined ? val : 0; });
 watch(() => props.tax_bhp, (val) => { form.tax_bhp = val !== undefined ? val : 0; });
-watch(() => props.tax_uso, (val) => { form.tax_uso = val !== undefined ? val : 0; });
 watch(() => props.invoice_template, (val) => { if (val) form.invoice_template = val; });
+
+const invoiceTemplates = [
+    {
+        id: 'modern',
+        name: 'Modern Clean',
+        icon: '🌟',
+        badge: 'Standar Populer',
+        badgeClass: 'bg-indigo-100 text-indigo-700',
+        desc: 'Header gradien biru elegan, card info pelanggan rapi, tabel biaya terstruktur, dan kartu rekening transfer jelas. Paling fleksibel untuk kirim via WhatsApp PDF & Cetak A4.',
+        tag: 'Ukuran: A4 / WhatsApp PDF',
+    },
+    {
+        id: 'geometric_mesh',
+        name: 'Futuristic Fiber Mesh',
+        icon: '⚡',
+        badge: 'Motif Heksagonal',
+        badgeClass: 'bg-sky-100 text-sky-700 border border-sky-200',
+        desc: 'Header gelap kosmik bermotif jaring heksagonal serat optik (fiber mesh), aksen neon cyan cyber, telemetry card, dan stempel verifikasi NOC high-speed.',
+        tag: 'Gaya: Motif Serat Fiber',
+    },
+    {
+        id: 'luxury_gold',
+        name: 'Royal Gold & Carbon',
+        icon: '👑',
+        badge: 'Motif Karbon VIP',
+        badgeClass: 'bg-amber-100 text-amber-800 border border-amber-200',
+        desc: 'Tampilan ultra premium bermotif tenun serat karbon (carbon-fiber weave), garis ganda emas sampanye (metallic gold), tipografi klasik berkelas, dan segel resmi VIP.',
+        tag: 'Gaya: Enterprise & VIP',
+    },
+    {
+        id: 'cyber_circuit',
+        name: 'Cyber NOC Circuit',
+        icon: '🌐',
+        badge: 'Motif PCB Emerald',
+        badgeClass: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+        desc: 'Tema Network Operations Center (NOC) dengan motif jalur sirkuit PCB hijau neon, tipografi terminal monospaced, dan hash enkripsi digital verification.',
+        tag: 'Gaya: Tech NOC Terminal',
+    },
+    {
+        id: 'corporate_wave',
+        name: 'Guilloche Security Wave',
+        icon: '🌊',
+        badge: 'Motif Gelombang Sekuritas',
+        badgeClass: 'bg-teal-100 text-teal-800 border border-teal-200',
+        desc: 'Format tagihan perbankan resmi dengan motif pola gelombang harmonik guilloche sekuritas, ornamen sertifikat anti-pemalsuan, dan watermark resmi.',
+        tag: 'Gaya: Banknote Security',
+    },
+    {
+        id: 'aurora_flow',
+        name: 'Dynamic Aurora Flow',
+        icon: '✨',
+        badge: 'Motif Gradasi Prisma',
+        badgeClass: 'bg-purple-100 text-purple-700 border border-purple-200',
+        desc: 'Gradasi dinamis aurora violet-cyan modern dengan lengkungan wave kontur prisma, kartu membulat modern glassmorphism, dan tampilan ramah pengguna.',
+        tag: 'Gaya: Vibrant Modern Tech',
+    },
+    {
+        id: 'retro_kraft',
+        name: 'Vintage Postal Kraft',
+        icon: '📜',
+        badge: 'Motif Perangko Klasik',
+        badgeClass: 'bg-yellow-100 text-yellow-800 border border-yellow-200',
+        desc: 'Sentuhan kertas kraft vintage bertekstur titik halus dengan cap pos (postmark) stempel perangko tinta merah klasik, garis buku kas ganda, dan font mesin ketik.',
+        tag: 'Gaya: Retro & Authentic Ledger',
+    },
+    {
+        id: 'classic',
+        name: 'Classic Corporate',
+        icon: '🏛️',
+        badge: 'Formal Surat',
+        badgeClass: 'bg-slate-100 text-slate-700',
+        desc: 'Format surat resmi perusahaan dengan kop surat garis ganda, rincian perpajakan (PPN/DPP) lengkap, serta kolom tanda tangan basah & stempel resmi.',
+        tag: 'Cocok: Instansi & Bisnis B2B',
+    },
+    {
+        id: 'minimalist',
+        name: 'Elegant Minimalist',
+        icon: '🎨',
+        badge: 'Modern Tech',
+        badgeClass: 'bg-purple-100 text-purple-700',
+        desc: 'Desain monokromatik kontras tinggi dengan kartu sisa tagihan beraksen hitam gelap modern. Tampilan bersih, tipografi tajam, dan hemat tinta cetak.',
+        tag: 'Gaya: Monokrom & Tech ISP',
+    },
+    {
+        id: 'thermal',
+        name: 'Struk Thermal (POS)',
+        icon: '🧾',
+        badge: 'Hemat Kertas',
+        badgeClass: 'bg-blue-100 text-blue-700',
+        desc: 'Format struk monospaced ringkas khusus printer kasir atau printer mini bluetooth (58mm / 80mm). Praktis untuk penagih lapangan & loket kasir biller.',
+        tag: 'Ukuran: 58mm / 80mm Thermal',
+    },
+];
 
 const savingSection = ref(null);
 const savedSection = ref(null);

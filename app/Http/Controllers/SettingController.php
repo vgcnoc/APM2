@@ -536,7 +536,7 @@ class SettingController extends Controller
             'tax_ppn' => 'nullable|numeric|min:0|max:100',
             'tax_bhp' => 'nullable|numeric|min:0|max:100',
             'tax_uso' => 'nullable|numeric|min:0|max:100',
-            'invoice_template' => 'nullable|string|in:modern,classic,thermal,minimalist',
+            'invoice_template' => 'nullable|string|in:modern,classic,thermal,minimalist,geometric_mesh,luxury_gold,cyber_circuit,corporate_wave,retro_kraft,aurora_flow',
         ]);
 
         if ($request->has('billing_cycle')) {
