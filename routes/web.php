@@ -256,6 +256,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Smart GIS Network & Customer Map with Routing
     Route::get('network-map', [\App\Http\Controllers\NetworkMapController::class, 'index'])->name('network-map.index');
+    Route::get('network-map/connections', [\App\Http\Controllers\NetworkMapController::class, 'connections'])->name('network-map.connections');
     Route::post('network-map/route', [\App\Http\Controllers\NetworkMapController::class, 'calculateRoute'])->name('network-map.route');
     Route::post('network-map/nearby-odps', [\App\Http\Controllers\NetworkMapController::class, 'findNearbyOdps'])->name('network-map.nearby-odps');
 

@@ -8,17 +8,44 @@ use App\Models\Odc;
 use App\Models\Odp;
 use App\Models\Customer;
 use App\Models\Area;
+use App\Models\User;
+use App\Services\CustomerConnectionService;
+use App\Services\DataScopeService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class NetworkMapController extends Controller
 {
+    private function authorizeMap(User $user): void
+    {
+        abort_unless(in_array($user->role, ['admin', 'super admin', 'superadmin', 'super-admin'], true)
+            || $user->hasAnyRole(['admin', 'super admin']) || $user->can('menu_network_map'), 403);
+    }
+
+    private function mapCustomers(User $user): Builder
+    {
+        return DataScopeService::applyCustomerScope(Customer::query(), $user)
+            ->whereNotNull('latitude')->whereNotNull('longitude')
+            ->where('latitude', '!=', 0)->where('longitude', '!=', 0);
+    }
+
+    public function connections(Request $request, CustomerConnectionService $connections)
+    {
+        $this->authorizeMap($request->user());
+        $customers = $this->mapCustomers($request->user())->select('id', 'area_id')
+            ->with('ont:id,customer_id,pppoe_user,hotspot_user')->get();
+
+        return response()->json($connections->snapshot($customers))->header('Cache-Control', 'private, no-store');
+    }
+
     /**
      * Tampilan Utama Smart GIS Network & Customer Map
      */
     public function index(Request $request)
     {
         $user = $request->user() ?: auth()->user();
+        $this->authorizeMap($user);
 
         // 1. Data ODC
         $odcQuery = Odc::select('id', 'name', 'latitude', 'longitude', 'location as address', 'capacity', 'status', 'area_id')
@@ -33,7 +60,7 @@ class NetworkMapController extends Controller
             ->withCount('onts as customer_count');
 
         // 3. Data Pelanggan
-        $customerQuery = Customer::select('id', 'name', 'customer_code', 'phone', 'latitude', 'longitude', 'address', 'is_reseller', 'status', 'service_status', 'area_id', 'package_id')
+        $customerQuery = $this->mapCustomers($user)->select('id', 'name', 'customer_code', 'phone', 'latitude', 'longitude', 'address', 'is_reseller', 'status', 'service_status', 'area_id', 'package_id')
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->with(['package:id,name,speed_mbps', 'areaModel:id,name', 'ont.odp:id,name,odc_id']);
@@ -43,8 +70,6 @@ class NetworkMapController extends Controller
             ->orderBy('name');
 
         if ($user && !$user->hasRole('admin') && !$user->hasRole('super admin') && $user->role !== 'admin' && $user->role !== 'super admin') {
-            \App\Services\DataScopeService::applyCustomerScope($customerQuery, $user);
-
             // Wilayah relevan untuk user (wilayah kerja tugas + wilayah pelanggan yang ditugaskan)
             $accessibleAreas = (array)$user->getAccessibleAreaIds();
             $customerAreaIds = (clone $customerQuery)->pluck('area_id')->filter()->unique()->toArray();

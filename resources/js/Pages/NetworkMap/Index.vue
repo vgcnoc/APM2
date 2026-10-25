@@ -262,19 +262,19 @@
                     </div>
 
                     <!-- Legend & Quick Status Toggle -->
-                    <div class="mt-2 flex items-center justify-between text-[11px] text-slate-300">
-                        <div class="flex items-center gap-3">
+                    <div class="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-300">
+                        <div class="flex flex-wrap items-center gap-3">
                             <span class="flex items-center gap-1.5">
                                 <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]"></span>
-                                <span>Online</span>
+                                <span>Online {{ connectionCounts.online }}</span>
                             </span>
                             <span class="flex items-center gap-1.5">
                                 <span class="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]"></span>
-                                <span>Offline</span>
+                                <span>Offline {{ connectionCounts.offline }}</span>
                             </span>
                             <span class="flex items-center gap-1.5">
-                                <span class="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_8px_#f59e0b]"></span>
-                                <span>Isolir</span>
+                                <span class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+                                <span>Belum diketahui {{ connectionCounts.unknown }}</span>
                             </span>
                         </div>
                         <button
@@ -283,6 +283,10 @@
                         >
                             Panduan Simbol
                         </button>
+                    </div>
+                    <div class="mt-2 pt-2 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-400" aria-live="polite">
+                        <span>{{ connectionError || (isRefreshingConnections ? 'Memeriksa koneksi…' : connectionUpdatedAt ? `Diperbarui ${connectionUpdatedAt} · otomatis 30 detik` : 'Menunggu data koneksi') }}</span>
+                        <button type="button" @click="refreshConnections" :disabled="isRefreshingConnections" class="text-indigo-300 hover:text-white disabled:opacity-50">Perbarui</button>
                     </div>
                 </div>
             </div>
@@ -727,16 +731,24 @@
                         <div class="flex items-center gap-3">
                             <span class="w-5 h-5 rounded-full bg-emerald-500 border-2 border-white shadow-xs shrink-0"></span>
                             <div>
-                                <p class="font-semibold text-slate-800">Pelanggan Aktif / Online</p>
-                                <p class="text-slate-500 text-[11px]">Layanan internet aktif normal.</p>
+                                <p class="font-semibold text-slate-800">Pelanggan Online (Denyut Hijau)</p>
+                                <p class="text-slate-500 text-[11px]">Sesi PPPoE/Hotspot aktif pada NAS terkait, dari API atau accounting RADIUS terbaru.</p>
                             </div>
                         </div>
 
                         <div class="flex items-center gap-3">
                             <span class="w-5 h-5 rounded-full bg-rose-500 border-2 border-white shadow-xs shrink-0"></span>
                             <div>
-                                <p class="font-semibold text-slate-800">Pelanggan Offline / Loss</p>
-                                <p class="text-slate-500 text-[11px]">Modem ONT mati atau optik terputus.</p>
+                                <p class="font-semibold text-slate-800">Pelanggan Offline (Denyut Merah)</p>
+                                <p class="text-slate-500 text-[11px]">API berhasil dibaca tetapi sesi pelanggan tidak ditemukan. Penyebab putus perlu diperiksa terpisah.</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <span class="w-5 h-5 rounded-full bg-slate-400 border-2 border-white shadow-xs shrink-0"></span>
+                            <div>
+                                <p class="font-semibold text-slate-800">Status Belum Diketahui (Abu-abu)</p>
+                                <p class="text-slate-500 text-[11px]">API tidak terjangkau, data kedaluwarsa, atau username/NAS belum dipetakan. Status langganan ditampilkan terpisah.</p>
                             </div>
                         </div>
 
@@ -777,6 +789,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { connectionPresentation } from '@/Utils/networkConnectionStatus';
 
 // ═══ PROPS DARI BACKEND ═══
 const props = defineProps({
@@ -818,6 +831,63 @@ let fiberLinesLayerGroup = null;
 let routeLayerGroup = null;
 let rulerLayerGroup = null;
 let userLocationMarker = null;
+const customerMarkers = new Map();
+let resizeObserver = null;
+let connectionTimer = null;
+let expiryTimer = null;
+let connectionRequest = null;
+let disposed = false;
+const connectionRows = ref({});
+const connectionClock = ref(Date.now());
+const isRefreshingConnections = ref(false);
+const connectionUpdatedAt = ref('');
+const connectionError = ref('');
+const customerConnection = customer => connectionPresentation(connectionRows.value[customer.id], connectionClock.value);
+const connectionCounts = computed(() => {
+    const counts = { online: 0, offline: 0, unknown: 0 };
+    props.customers.forEach(customer => {
+        if (selectedAreaFilter.value === 'all' || customer.area_id == selectedAreaFilter.value) counts[customerConnection(customer).status]++;
+    });
+    return counts;
+});
+
+const updateConnectionMarkers = () => {
+    connectionClock.value = Date.now();
+    customerMarkers.forEach(({ marker, customer, status }) => {
+        const current = customerConnection(customer);
+        if (status !== current.status) {
+            marker.setIcon(createCustomerIcon(current.status));
+            customerMarkers.set(customer.id, { marker, customer, status: current.status });
+        }
+        if (marker.isPopupOpen()) marker.setPopupContent(() => customerPopup(customer));
+    });
+};
+
+const refreshConnections = async () => {
+    if (disposed || document.hidden || isRefreshingConnections.value) return;
+    isRefreshingConnections.value = true;
+    const request = new AbortController();
+    connectionRequest = request;
+    try {
+        const { data } = await axios.get('/network-map/connections', { signal: request.signal, timeout: 25000 });
+        if (disposed) return;
+        if (!Array.isArray(data.customers)) throw new Error('Invalid connection snapshot');
+        connectionRows.value = Object.fromEntries(data.customers.map(row => [row.id, row]));
+        connectionUpdatedAt.value = new Date(data.generated_at).toLocaleTimeString('id-ID');
+        connectionError.value = '';
+        updateConnectionMarkers();
+    } catch (error) {
+        if (!axios.isCancel(error) && !disposed) {
+            connectionError.value = 'Pembaruan gagal · mencoba kembali otomatis';
+            updateConnectionMarkers();
+        }
+    } finally {
+        if (connectionRequest === request) { isRefreshingConnections.value = false; connectionRequest = null; }
+    }
+};
+const onConnectionVisibility = () => {
+    if (!document.hidden) { updateConnectionMarkers(); refreshConnections(); }
+};
 
 // UI Panels
 const openPanel = ref(null); // 'basemap' | 'layers' | null
@@ -1050,6 +1120,7 @@ onMounted(async () => {
     await import('leaflet.markercluster/dist/MarkerCluster.css');
     await import('leaflet.markercluster/dist/MarkerCluster.Default.css');
     await import('leaflet.markercluster');
+    if (disposed) return;
 
     // 3. Determine Initial Map Center
     let defaultLat = -6.998482;
@@ -1125,13 +1196,24 @@ onMounted(async () => {
     }
 
     // Auto Invalidate Size
-    const resizeObserver = new ResizeObserver(() => {
+    resizeObserver = new ResizeObserver(() => {
         if (map) requestAnimationFrame(() => map.invalidateSize());
     });
     if (mapContainer.value) resizeObserver.observe(mapContainer.value);
+    refreshConnections();
+    connectionTimer = setInterval(refreshConnections, 30000);
+    expiryTimer = setInterval(updateConnectionMarkers, 5000);
+    document.addEventListener('visibilitychange', onConnectionVisibility);
 });
 
 onUnmounted(() => {
+    disposed = true;
+    connectionRequest?.abort();
+    clearInterval(connectionTimer);
+    clearInterval(expiryTimer);
+    resizeObserver?.disconnect();
+    document.removeEventListener('visibilitychange', onConnectionVisibility);
+    customerMarkers.clear();
     delete window.networkMapSetRouteDest;
     delete window.networkMapSetRouteOrigin;
     delete window.networkMapFindNearbyOdp;
@@ -1211,26 +1293,10 @@ const createOdpIcon = (used, total) => {
 };
 
 const createCustomerIcon = (status) => {
-    let bg = '#10b981'; // online
-    if (status === 'offline' || status === 'loss') bg = '#f43f5e';
-    else if (status === 'isolir' || status === 'suspend') bg = '#f59e0b';
-    else if (status === 'booking') bg = '#a855f7';
-
     return L.divIcon({
         className: 'custom-customer-marker',
-        html: `
-            <div style="
-                width: 13px;
-                height: 13px;
-                border-radius: 50%;
-                background-color: ${bg};
-                border: 2px solid #ffffff;
-                box-shadow: 0 1px 4px rgba(0,0,0,0.4);
-            "></div>
-        `,
-        iconSize: [13, 13],
-        iconAnchor: [6.5, 6.5],
-        popupAnchor: [0, -8],
+        html: `<span class="gis-connection-dot gis-connection-${status}"><span></span></span>`,
+        iconSize: [24, 24], iconAnchor: [12, 12], popupAnchor: [0, -12],
     });
 };
 
@@ -1242,6 +1308,7 @@ const refreshMarkers = () => {
     odcLayerGroup.clearLayers();
     odpLayerGroup.clearLayers();
     customerLayerGroup.clearLayers();
+    customerMarkers.clear();
 
     // Mapping koordinat ODP untuk cek tumpukan titik dengan pelanggan
     const odpCoordsMap = new Map();
@@ -1359,44 +1426,11 @@ const refreshMarkers = () => {
             }
 
             const marker = L.marker([cLat, cLng], {
-                icon: createCustomerIcon(cust.status),
+                icon: createCustomerIcon(customerConnection(cust).status),
                 title: cust.name,
             });
-
-            marker.bindPopup(`
-                <div class="p-1 font-sans text-xs min-w-[220px]">
-                    <div class="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-100">
-                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${cust.status === 'offline' ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'} uppercase">
-                            ${cust.status || 'Active'}
-                        </span>
-                        <span class="text-[10px] text-slate-400 font-mono">${cust.customer_code}</span>
-                    </div>
-                    <h4 class="font-bold text-slate-900 text-sm mb-0.5">${cust.name}</h4>
-                    <p class="text-[11px] text-slate-500 mb-2">${cust.address || 'Alamat pelanggan'}</p>
-                    <div class="bg-slate-50 p-2 rounded-lg border border-slate-100 text-[11px] space-y-1 mb-2.5">
-                        <div class="flex justify-between text-slate-600">
-                            <span>Paket:</span>
-                            <span class="font-bold text-indigo-600">${cust.package_name || 'Standard'} (${cust.package_speed || '-'})</span>
-                        </div>
-                        <div class="flex justify-between text-slate-600">
-                            <span>ODP Terhubung:</span>
-                            <span class="font-medium text-slate-800">${cust.odp_name || 'Belum Terpasang'}</span>
-                        </div>
-                        <div class="flex justify-between text-slate-600">
-                            <span>Wilayah:</span>
-                            <span class="text-slate-700">${cust.area_name || 'Umum'}</span>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-1.5 pt-1">
-                        <button onclick="window.networkMapSetRouteDest(${cLat}, ${cLng}, '${cust.name}')" class="py-1 px-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[11px] font-semibold text-center transition-colors">
-                            🚗 Buat Rute
-                        </button>
-                        <button onclick="window.networkMapFindNearbyOdp(${cLat}, ${cLng}, '${cust.name}')" class="py-1 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-semibold text-center transition-colors">
-                            🎯 ODP Terdekat
-                        </button>
-                    </div>
-                </div>
-            `);
+            marker.bindPopup(() => customerPopup(cust), { autoPanPaddingTopLeft: [12, 80], autoPanPaddingBottomRight: [12, 150] });
+            customerMarkers.set(cust.id, { marker, customer: cust, status: customerConnection(cust).status });
 
             if (layers.value.cluster) {
                 clusterGroup.addLayer(marker);
@@ -1431,6 +1465,51 @@ const refreshMarkers = () => {
         if (map.hasLayer(clusterGroup)) map.removeLayer(clusterGroup);
         if (map.hasLayer(customerLayerGroup)) map.removeLayer(customerLayerGroup);
     }
+};
+
+const escapePopup = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+const customerPopup = cust => {
+    const connection = customerConnection(cust);
+    const cLat = Number(cust.latitude);
+    const cLng = Number(cust.longitude);
+    const routeName = escapePopup(JSON.stringify(String(cust.name)));
+    return `
+                <div class="p-1 font-sans text-xs min-w-[220px]">
+                    <div class="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-100">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${connection.badge} uppercase">
+                            ${connection.label}
+                        </span>
+                        <span class="text-[10px] text-slate-400 font-mono">${escapePopup(cust.customer_code)}</span>
+                    </div>
+                    <h4 class="font-bold text-slate-900 text-sm mb-0.5">${escapePopup(cust.name)}</h4>
+                    <p class="text-[11px] text-slate-500 mb-2">${escapePopup(cust.address || 'Alamat pelanggan')}</p>
+                    <p class="text-[10px] text-slate-500 mb-1">${escapePopup(connection.message)}</p>
+                    <p class="text-[10px] text-slate-500 mb-2">Sumber: ${connection.source} · Diperiksa: ${escapePopup(connection.checkedAt)}</p>
+                    <div class="bg-slate-50 p-2 rounded-lg border border-slate-100 text-[11px] space-y-1 mb-2.5">
+                        <div class="flex justify-between text-slate-600">
+                            <span>Paket:</span>
+                            <span class="font-bold text-indigo-600">${escapePopup(cust.package_name || 'Standard')} (${escapePopup(cust.package_speed || '-')})</span>
+                        </div>
+                        <div class="flex justify-between text-slate-600">
+                            <span>ODP Terhubung:</span>
+                            <span class="font-medium text-slate-800">${escapePopup(cust.odp_name || 'Belum Terpasang')}</span>
+                        </div>
+                        <div class="flex justify-between text-slate-600">
+                            <span>Wilayah:</span>
+                            <span class="text-slate-700">${escapePopup(cust.area_name || 'Umum')}</span>
+                        </div>
+                        <div class="flex justify-between text-slate-600"><span>Status langganan:</span><span>${escapePopup(cust.status || '—')}</span></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-1.5 pt-1">
+                        <button onclick="window.networkMapSetRouteDest(${cLat}, ${cLng}, ${routeName})" class="py-1 px-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[11px] font-semibold text-center transition-colors">
+                            🚗 Buat Rute
+                        </button>
+                        <button onclick="window.networkMapFindNearbyOdp(${cLat}, ${cLng}, ${routeName})" class="py-1 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-semibold text-center transition-colors">
+                            🎯 ODP Terdekat
+                        </button>
+                    </div>
+                </div>
+            `;
 };
 
 // ═══ AREA GEOFENCE & BOUNDARIES ═══
@@ -1829,6 +1908,13 @@ const toggleFullScreen = () => {
 </script>
 
 <style>
+.gis-connection-dot { --gis-dot: #94a3b8; position: relative; display: grid; place-items: center; width: 24px; height: 24px; color: var(--gis-dot); }
+.gis-connection-online { --gis-dot: #10b981; }
+.gis-connection-offline { --gis-dot: #f43f5e; }
+.gis-connection-dot > span { display: block; width: 13px; height: 13px; border: 2px solid #fff; border-radius: 50%; background: var(--gis-dot); box-shadow: 0 1px 5px #0007; position: relative; }
+.gis-connection-online::before, .gis-connection-offline::before { content: ''; position: absolute; width: 16px; height: 16px; border: 2px solid var(--gis-dot); background: var(--gis-dot); opacity: .35; border-radius: 50%; animation: gis-connection-pulse 2s ease-out infinite; pointer-events: none; }
+@keyframes gis-connection-pulse { from { transform: scale(.6); opacity: .55; } to { transform: scale(1.8); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .gis-connection-dot::before { animation: none; opacity: .2; } }
 /* Leaflet Popup Styling */
 .leaflet-popup-content-wrapper {
     border-radius: 1rem !important;
