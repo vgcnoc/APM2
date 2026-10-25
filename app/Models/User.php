@@ -168,7 +168,8 @@ class User extends Authenticatable
 
     public function voucherProfiles()
     {
-        return $this->belongsToMany(VoucherProfile::class, 'reseller_voucher_profiles', 'user_id', 'voucher_profile_id');
+        return $this->belongsToMany(VoucherProfile::class, 'reseller_voucher_profiles', 'user_id', 'voucher_profile_id')
+            ->select('voucher_profiles.*');
     }
 
     // ── Helpers ────────────────────────────────────────────────

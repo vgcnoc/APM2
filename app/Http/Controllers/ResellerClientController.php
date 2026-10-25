@@ -58,7 +58,7 @@ class ResellerClientController extends Controller
             ->latest()
             ->paginate(10);
 
-        $profiles = $user->voucherProfiles()->where('is_customer_free', false)->get();
+        $profiles = $user->voucherProfiles()->where('voucher_profiles.is_customer_free', false)->select('voucher_profiles.*')->get();
         if ($profiles->isEmpty()) {
             $profiles = VoucherProfile::where('is_customer_free', false)->get();
         }

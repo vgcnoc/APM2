@@ -349,7 +349,7 @@ class VoucherController extends Controller
         if ($isAdminLike && session('login_portal') !== 'reseller') {
             $profiles = VoucherProfile::all();
         } else {
-            $profiles = $user ? $user->voucherProfiles()->get() : collect();
+            $profiles = $user ? $user->voucherProfiles()->select('voucher_profiles.*')->get() : collect();
             if ($profiles->isEmpty()) {
                 $profiles = VoucherProfile::where('is_customer_free', false)->get();
             }
@@ -501,7 +501,9 @@ class VoucherController extends Controller
 
         // Master dropdown filters
         if ($isResellerPortal && $user) {
-            $profiles = $user->voucherProfiles()->where('is_customer_free', false)->get(['id', 'name', 'duration', 'price']);
+            $profiles = $user->voucherProfiles()->where('voucher_profiles.is_customer_free', false)
+                ->select('voucher_profiles.id', 'voucher_profiles.name', 'voucher_profiles.duration', 'voucher_profiles.price')
+                ->get();
             if ($profiles->isEmpty()) {
                 $profiles = VoucherProfile::where('is_customer_free', false)->orderBy('name')->get(['id', 'name', 'duration', 'price']);
             }
@@ -823,7 +825,9 @@ class VoucherController extends Controller
         });
 
         if ($isResellerPortal && $user) {
-            $profiles = $user->voucherProfiles()->where('is_customer_free', false)->get(['id', 'name']);
+            $profiles = $user->voucherProfiles()->where('voucher_profiles.is_customer_free', false)
+                ->select('voucher_profiles.id', 'voucher_profiles.name')
+                ->get();
             if ($profiles->isEmpty()) {
                 $profiles = VoucherProfile::where('is_customer_free', false)->orderBy('name')->get(['id', 'name']);
             }
