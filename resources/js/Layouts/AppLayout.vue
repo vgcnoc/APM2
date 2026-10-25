@@ -794,8 +794,6 @@ const menuItems = [
             { href: '/customers/canceled', label: '5. Dibatalkan', active: (url) => (url || '').startsWith('/customers/canceled'), permission: 'menu_customers_booking' },
         ]
     },
-    { type: 'link', href: '/internet-packages', icon: 'package', label: 'Paket Internet', theme: 'blue', active: (url) => (url || '').startsWith('/internet-packages'), permission: 'menu_internet_packages' },
-
     // 3. BILLING & KEUANGAN
     { type: 'group', label: 'BILLING & KEUANGAN', theme: 'green' },
     { type: 'link', href: '/invoices', icon: 'document-text', label: 'Invoice Pelanggan', theme: 'green', active: (url) => (url || '').length > 0 && url === '/invoices', permission: 'menu_invoices' },
@@ -1124,9 +1122,10 @@ const menuItems = [
         icon: 'box',
         label: 'Master Data',
         theme: 'violet',
-        active: (url) => ['/settings/areas', '/settings/payroll-categories', '/settings/master-fees', '/settings/expense-categories'].some(path => (url || '').startsWith(path)),
-        permission: ['menu_settings_areas', 'menu_settings_payroll', 'menu_master_fees', 'menu_payroll_categories', 'menu_settings_roles'],
+        active: (url) => ['/internet-packages', '/settings/areas', '/settings/payroll-categories', '/settings/master-fees', '/settings/expense-categories'].some(path => (url || '').startsWith(path)),
+        permission: ['menu_internet_packages', 'menu_settings_areas', 'menu_settings_payroll', 'menu_master_fees', 'menu_payroll_categories', 'menu_settings_roles'],
         children: [
+            { href: '/internet-packages', label: 'Paket Langganan & Tarif', active: (url) => (url || '').startsWith('/internet-packages'), permission: 'menu_internet_packages' },
             { href: '/settings/areas', label: 'Master Area', active: (url) => (url || '').startsWith('/settings/areas'), permission: 'menu_settings_areas' },
             { href: '/settings/expense-categories', label: 'Kategori Pengeluaran', active: (url) => (url || '').startsWith('/settings/expense-categories'), permission: 'menu_settings_areas' },
             { href: '/settings/master-fees', label: 'Master Fee Teknisi/Sales', active: (url) => (url || '').startsWith('/settings/master-fees'), permission: ['menu_master_fees', 'menu_settings_payroll'] },

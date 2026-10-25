@@ -1,10 +1,10 @@
 <template>
-    <AppLayout title="Paket Internet" subtitle="Kelola daftar paket internet dan harga">
+    <AppLayout title="Paket Langganan & Tarif" subtitle="Kelola paket aktif, tarif bulanan, promo, dan biaya pasang baru">
         <!-- HEADER -->
         <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-                <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Paket Internet</h1>
-                <p class="text-xs sm:text-sm text-gray-500 mt-1">Kelola daftar paket internet, konfigurasi profil MikroTik, dan skema harga layanan</p>
+                <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Paket Langganan & Tarif</h1>
+                <p class="text-xs sm:text-sm text-gray-500 mt-1">Atur paket yang tersedia saat booking, tarif bulanan, promo, biaya pasang, dan profil MikroTik</p>
             </div>
             
             <button 
