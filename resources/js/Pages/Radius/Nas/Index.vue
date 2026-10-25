@@ -20,7 +20,7 @@
                     <!-- Catatan -->
                     <div class="text-sm space-y-1">
                         <p class="text-gray-700 mb-2 uppercase font-semibold">Catatan :</p>
-                        <p class="text-red-500">- Pastikan APM2 ada di urutan teratas pada menu Mikrotik-Radius</p>
+                        <p class="text-red-500">- Pastikan VIZBILL ada di urutan teratas pada menu Mikrotik-Radius</p>
                         <p class="text-red-500">- Jika kamu menggunakan <span class="font-bold">Loadbalancing</span>, silahkan routing IP VPS kami ke satu sumber internet saja</p>
                         <p class="text-red-500">- Langsung copy dan Paste Script kami ke terminal mikrotik</p>
                         <p class="text-red-500 font-bold">- JANGAN PASTE SCRIPT YANG SAMA KE LEBIH DARI 1 MIKROTIK</p>
@@ -284,31 +284,32 @@ function generateScript() {
     const radiusIp = vpnOn ? props.vpn.gateway : publicIp;
     const radiusHostMask = radiusIp.includes(':') ? 128 : 32;
     const endpoints = (props.vpn?.endpoints?.length ? props.vpn.endpoints : [publicIp]);
-    const pool = props.clientPool || { name: 'APM2POOL', network: '10.200.192.0/20', local_address: '10.200.192.1', ranges: '10.200.192.2-10.200.207.254' };
+    const pool = props.clientPool || { name: 'VIZBILLPOOL', network: '10.200.192.0/20', local_address: '10.200.192.1', ranges: '10.200.192.2-10.200.207.254' };
     const isolirUrl = props.isolirUrl || 'isolir.apm2.com';
     const secret = rosEscape(nasItem.secret || '');
-    const name = (nasItem.shortname || 'APM2-ROUTER').replace(/"/g, '');
-    const apiUser = rosEscape(nasItem.api_user || 'APM2API');
+    const name = (nasItem.shortname || 'VIZBILL-ROUTER').replace(/"/g, '');
+    const apiUser = rosEscape(nasItem.api_user || 'VIZBILLAPI');
     const apiPass = rosEscape(nasItem.api_password || '');
     const apiPort = nasItem.api_port || 8728;
     const coaPort = nasItem.coa_port || 3799;
     const profiles = [
-        { name: 'APM2RADIUS', cookie: '1w', refresh: '1m', keepalive: '2m' },
-        { name: 'APM2RADIUS-Short', cookie: '1w', refresh: '1m', keepalive: '2m' },
-        { name: 'APM2RADIUS-Long', cookie: '4w2d', refresh: '6d10m', keepalive: '6d' },
+        { name: 'VIZBILLRADIUS', cookie: '1w', refresh: '1m', keepalive: '2m' },
+        { name: 'VIZBILLRADIUS-Short', cookie: '1w', refresh: '1m', keepalive: '2m' },
+        { name: 'VIZBILLRADIUS-Long', cookie: '4w2d', refresh: '6d10m', keepalive: '6d' },
     ];
 
     const L = [];
     L.push(`# COPY PASTE ALL SCRIPTS TO THE NEW MIKROTIK TERMINAL`);
-    L.push(`# APM2 RADIUS - RouterOS ${v6 ? 'v6' : 'v7'} - Router: ${name}`);
+    L.push(`# VIZBILL RADIUS - RouterOS ${v6 ? 'v6' : 'v7'} - Router: ${name}`);
     L.push(`#############################################################`);
     L.push(`/system identity set name="${name}";`);
     L.push(`/ip dns set allow-remote-requests=yes;`);
     L.push(``);
 
-    L.push(`### 1. USER API (UNTUK BILLING APM2: CEK PING, ONLINE USER, TROUBLESHOOT) ###`);
+    L.push(`### 1. USER API (UNTUK BILLING VIZBILL: CEK PING, ONLINE USER, TROUBLESHOOT) ###`);
     L.push(`/user rem [find comment~"APM2"];`);
-    L.push(`/user add name="${apiUser}" password="${apiPass}" group=read address=${radiusIp}/${radiusHostMask} comment="USER FOR APM2 BILLING API (DON'T CHANGE IT)";`);
+    L.push(`/user rem [find comment~"VIZBILL"];`);
+    L.push(`/user add name="${apiUser}" password="${apiPass}" group=read address=${radiusIp}/${radiusHostMask} comment="USER FOR VIZBILL BILLING API (DON'T CHANGE IT)";`);
     L.push(`/ip service set api disabled=no port=${apiPort};`);
     L.push(``);
 
@@ -316,7 +317,8 @@ function generateScript() {
     L.push(`/ppp aaa set use-radius=yes accounting=yes interim-update=1m;`);
     L.push(`/radius incoming set accept=yes port=${coaPort};`);
     L.push(`/radius rem [find comment~"APM2RADIUS"];`);
-    L.push(`/radius add address=${radiusIp}${vpnOn ? ` src-address=${nasItem.vpn_ip}` : ''} comment="APM2RADIUS" authentication-port=1812 accounting-port=1813 secret="${secret}" service=ppp,hotspot timeout=3s;`);
+    L.push(`/radius rem [find comment~"VIZBILLRADIUS"];`);
+    L.push(`/radius add address=${radiusIp}${vpnOn ? ` src-address=${nasItem.vpn_ip}` : ''} comment="VIZBILLRADIUS" authentication-port=1812 accounting-port=1813 secret="${secret}" service=ppp,hotspot timeout=3s;`);
     L.push(``);
 
     L.push(`### 3. IP POOL PELANGGAN ###`);
@@ -325,83 +327,95 @@ function generateScript() {
 
     L.push(`### 4. HOTSPOT PROFILE & USER PROFILE ###`);
     L.push(`/ip hotspot profile set login-by=http-chap,http-pap,cookie,mac-cookie http-cookie-lifetime=4w2d use-radius=yes radius-accounting=yes [find];`);
+    ['APM2RADIUS', 'APM2RADIUS-Short', 'APM2RADIUS-Long'].forEach(p => L.push(`/ip hotspot user profile remove [find name="${p}"];`));
     profiles.forEach(p => L.push(`/ip hotspot user profile remove [find name="${p.name}"];`));
     profiles.forEach(p => L.push(`/ip hotspot user profile add name=${p.name} mac-cookie-timeout=${p.cookie} status-autorefresh=${p.refresh} keepalive-timeout=${p.keepalive} shared-users=unlimited;`));
     L.push(`/ip hotspot user profile set [find default=yes] keepalive-timeout=2m mac-cookie-timeout=1w shared-users=unlimited status-autorefresh=1m;`);
     L.push(``);
 
     L.push(`### 5. PPP PROFILE ###`);
+    ['APM2RADIUS', 'APM2RADIUS-Short', 'APM2RADIUS-Long'].forEach(p => L.push(`/ppp profile remove [find name="${p}"];`));
     profiles.forEach(p => L.push(`/ppp profile remove [find name="${p.name}"];`));
     profiles.forEach(p => L.push(`/ppp profile add name=${p.name} insert-queue-before=first local-address=${pool.local_address} remote-address=${pool.name} only-one=default;`));
     L.push(``);
 
     L.push(`### 6. SISTEM ISOLIR (WEB PROXY REDIRECT) ###`);
     L.push(`/ip firewall address-list rem [find list=APM2BYPASS];`);
-    L.push(`/ip firewall address-list add address=${publicIp} comment="DEFAULT BY APM2 (DONT CHANGE IT)" list=APM2BYPASS;`);
+    L.push(`/ip firewall address-list rem [find list=VIZBILLBYPASS];`);
+    L.push(`/ip firewall address-list add address=${publicIp} comment="DEFAULT BY VIZBILL (DONT CHANGE IT)" list=VIZBILLBYPASS;`);
     L.push(`/ip proxy set enabled=yes port=8097;`);
     L.push(`/ip proxy access rem [find comment~"APM2"];`);
+    L.push(`/ip proxy access rem [find comment~"VIZBILL"];`);
     if (v6) {
-        L.push(`/ip proxy access add action=deny redirect-to="${isolirUrl}" comment="DENY OTHER THAN THE ISOLIR IP THAT GOES TO THE WEB PROXY BY APM2" dst-address=!${publicIp} local-port=8097;`);
+        L.push(`/ip proxy access add action=deny redirect-to="${isolirUrl}" comment="DENY OTHER THAN THE ISOLIR IP THAT GOES TO THE WEB PROXY BY VIZBILL" dst-address=!${publicIp} local-port=8097;`);
     } else {
-        L.push(`/ip proxy access add action=redirect action-data="${isolirUrl}" comment="DENY OTHER THAN THE ISOLIR IP THAT GOES TO THE WEB PROXY BY APM2" dst-address=!${publicIp} local-port=8097;`);
+        L.push(`/ip proxy access add action=redirect action-data="${isolirUrl}" comment="DENY OTHER THAN THE ISOLIR IP THAT GOES TO THE WEB PROXY BY VIZBILL" dst-address=!${publicIp} local-port=8097;`);
     }
     L.push(`/ip firewall nat remove [find comment="APM2ISOLIR"];`);
-    L.push(`/ip firewall nat add action=redirect chain=dstnat comment=APM2ISOLIR dst-address-list=!APM2BYPASS dst-port=80,443 protocol=tcp src-address-list=APM2ISOLIR to-ports=8097;`);
+    L.push(`/ip firewall nat remove [find comment="VIZBILLISOLIR"];`);
+    L.push(`/ip firewall nat add action=redirect chain=dstnat comment=VIZBILLISOLIR dst-address-list=!VIZBILLBYPASS dst-port=80,443 protocol=tcp src-address-list=VIZBILLISOLIR to-ports=8097;`);
     L.push(`/ip firewall filter remove [find comment="APM2ISOLIR"];`);
-    L.push(`/ip firewall filter add action=drop chain=forward comment=APM2ISOLIR dst-address=!${publicIp} dst-port=!53,5353 protocol=udp src-address-list=APM2ISOLIR;`);
-    L.push(`/ip firewall filter add action=drop chain=forward comment=APM2ISOLIR dst-address=!${publicIp} protocol=tcp src-address-list=APM2ISOLIR;`);
+    L.push(`/ip firewall filter remove [find comment="VIZBILLISOLIR"];`);
+    L.push(`/ip firewall filter add action=drop chain=forward comment=VIZBILLISOLIR dst-address=!${publicIp} dst-port=!53,5353 protocol=udp src-address-list=VIZBILLISOLIR;`);
+    L.push(`/ip firewall filter add action=drop chain=forward comment=VIZBILLISOLIR dst-address=!${publicIp} protocol=tcp src-address-list=VIZBILLISOLIR;`);
     L.push(``);
 
     if (vpnOn) {
-        L.push(`### 7. VPN KE SERVER APM2 (CUKUP 1 YANG AKTIF, SISANYA CADANGAN FAILOVER) ###`);
+        L.push(`### 7. VPN KE SERVER VIZBILL (CUKUP 1 YANG AKTIF, SISANYA CADANGAN FAILOVER) ###`);
         L.push(`/system scheduler rem [find name~"apm2failovervpn"];`);
+        L.push(`/system scheduler rem [find name~"vizbillfailovervpn"];`);
         L.push(`/interface l2tp-client remove [find name~"APM2-VPN"];`);
         L.push(`/interface sstp-client remove [find name~"APM2-VPN"];`);
         L.push(`/interface ovpn-client remove [find name~"APM2-VPN"];`);
+        L.push(`/interface l2tp-client remove [find name~"VIZBILL-VPN"];`);
+        L.push(`/interface sstp-client remove [find name~"VIZBILL-VPN"];`);
+        L.push(`/interface ovpn-client remove [find name~"VIZBILL-VPN"];`);
         L.push(`/ppp profile remove [find name="APM2VPN"];`);
-        L.push(`/ppp profile add name=APM2VPN change-tcp-mss=yes only-one=default use-encryption=no comment="DEFAULT BY APM2 (DON'T CHANGE IT)";`);
+        L.push(`/ppp profile remove [find name="VIZBILLVPN"];`);
+        L.push(`/ppp profile add name=VIZBILLVPN change-tcp-mss=yes only-one=default use-encryption=no comment="DEFAULT BY VIZBILL (DON'T CHANGE IT)";`);
         endpoints.forEach((ep, i) => {
-            L.push(`/interface ovpn-client add disabled=${i === 0 ? 'no' : 'yes'} connect-to=${ep} port=1195 name="APM2-VPN-${i + 1}" profile=APM2VPN user="${nasItem.vpn_user}" password="${nasItem.vpn_password}" add-default-route=no cipher=aes256 auth=sha1 certificate=none comment="CUKUP AKTIFKAN 1 SAJA IPADDR : ${nasItem.vpn_ip}";`);
+            L.push(`/interface ovpn-client add disabled=${i === 0 ? 'no' : 'yes'} connect-to=${ep} port=1195 name="VIZBILL-VPN-${i + 1}" profile=VIZBILLVPN user="${nasItem.vpn_user}" password="${nasItem.vpn_password}" add-default-route=no cipher=aes256 auth=sha1 certificate=none comment="CUKUP AKTIFKAN 1 SAJA IPADDR : ${nasItem.vpn_ip}";`);
         });
         L.push(``);
 
         L.push(`### 8. STATIC ROUTE RADIUS LEWAT VPN ###`);
         L.push(`/ip route remove [find comment="STATIC ROUTE BY APM2"];`);
-        L.push(`/ip route add dst-address=${radiusIp}/32 gateway=APM2-VPN-1 comment="STATIC ROUTE BY APM2";`);
+        L.push(`/ip route remove [find comment="STATIC ROUTE BY VIZBILL"];`);
+        L.push(`/ip route add dst-address=${radiusIp}/32 gateway=VIZBILL-VPN-1 comment="STATIC ROUTE BY VIZBILL";`);
         L.push(``);
 
         // Scheduler failover: ping RADIUS via tunnel, jika gagal pindah ke VPN berikutnya
         const failover = [
             `{`,
-            `:global apm2VpnIndex`,
+            `:global vizbillVpnIndex`,
             `:local targetIP "${radiusIp}"`,
             `:local srcIP "${nasItem.vpn_ip}"`,
-            `:local vpnIfaces [/interface find name~"^APM2-VPN-"]`,
+            `:local vpnIfaces [/interface find name~"^VIZBILL-VPN-"]`,
             `:local vpnCount [:len $vpnIfaces]`,
             `:if ($vpnCount > 0) do={`,
-            `  :if ([:typeof $apm2VpnIndex] != "num") do={ :set apm2VpnIndex 0 }`,
+            `  :if ([:typeof $vizbillVpnIndex] != "num") do={ :set vizbillVpnIndex 0 }`,
             `  :local pingResult 0`,
             `  :do { :set pingResult [/ping $targetIP count=5 src-address=$srcIP] } on-error={ :set pingResult 0 }`,
             `  :if ($pingResult = 0) do={`,
-            `    :set apm2VpnIndex (($apm2VpnIndex + 1) % $vpnCount)`,
-            `    :local selectedIface ($vpnIfaces->$apm2VpnIndex)`,
+            `    :set vizbillVpnIndex (($vizbillVpnIndex + 1) % $vpnCount)`,
+            `    :local selectedIface ($vpnIfaces->$vizbillVpnIndex)`,
             `    :local selectedName [/interface get $selectedIface name]`,
             `    :foreach i in=$vpnIfaces do={ /interface set $i disabled=yes }`,
             `    /interface set $selectedIface disabled=no`,
-            `    /ip route set [find comment="STATIC ROUTE BY APM2"] gateway=$selectedName`,
-            `    :log warning ("APM2 VPN FAILOVER -> " . $selectedName)`,
+            `    /ip route set [find comment="STATIC ROUTE BY VIZBILL"] gateway=$selectedName`,
+            `    :log warning ("VIZBILL VPN FAILOVER -> " . $selectedName)`,
             `  }`,
-            `} else={ :log error "NO APM2-VPN INTERFACE FOUND" }`,
+            `} else={ :log error "NO VIZBILL-VPN INTERFACE FOUND" }`,
             `}`,
         ].join('\n');
 
         L.push(`### 9. SCHEDULER FAILOVER VPN (CEK TIAP 10 DETIK) ###`);
-        L.push(`/system scheduler add interval=10s name=apm2failovervpn start-time=startup policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon on-event="${rosEscape(failover)}";`);
+        L.push(`/system scheduler add interval=10s name=vizbillfailovervpn start-time=startup policy=ftp,reboot,read,write,policy,test,password,sniff,sensitive,romon on-event="${rosEscape(failover)}";`);
         L.push(``);
     }
 
     L.push(`#############################################################`);
-    L.push(`# DATA UNTUK MENU "DATA ROUTER" APM2:`);
+    L.push(`# DATA UNTUK MENU "DATA ROUTER" VIZBILL:`);
     L.push(`#   Host API      : ${vpnOn ? nasItem.vpn_ip + ' (IP VPN)' : '(IP publik router)'}`);
     L.push(`#   Port API      : ${apiPort}`);
     L.push(`#   Username API  : ${apiUser}`);

@@ -39,7 +39,7 @@ return [
     */
     'isolir' => [
         'group' => env('RADIUS_ISOLIR_GROUP', 'isolir'),
-        'address_list' => env('RADIUS_ISOLIR_ADDRESS_LIST', 'APM2ISOLIR'),
+        'address_list' => env('RADIUS_ISOLIR_ADDRESS_LIST', 'VIZBILLISOLIR'),
         'rate_limit' => env('RADIUS_ISOLIR_RATE_LIMIT', '512k/512k'),
         'pool' => env('RADIUS_ISOLIR_POOL'), // opsional: Framed-Pool khusus isolir
     ],
@@ -63,7 +63,7 @@ return [
 
     // Pool IP pelanggan default yang dibuat oleh script di router
     'client_pool' => [
-        'name' => 'APM2POOL',
+        'name' => 'VIZBILLPOOL',
         'network' => env('RADIUS_CLIENT_POOL_NETWORK', '10.200.192.0/20'),
         'local_address' => env('RADIUS_CLIENT_POOL_LOCAL', '10.200.192.1'),
         'ranges' => env('RADIUS_CLIENT_POOL_RANGES', '10.200.192.2-10.200.207.254'),
