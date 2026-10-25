@@ -14,7 +14,7 @@ class SyncPermissionsCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'permissions:sync {--fresh : Reset ulang seluruh izin role sesuai preset standar}';
+    protected $signature = 'permissions:sync {--fresh : Reset ulang seluruh izin role sesuai preset standar} {--roles= : Sinkronkan ulang role tertentu ke preset standar (pisahkan koma)}';
 
     /**
      * The console command description.
@@ -62,10 +62,15 @@ class SyncPermissionsCommand extends Command
         // Sinkronisasi preset per role
         $presets = PermissionRegistry::getDefaultRolePresets();
         $isFresh = $this->option('fresh');
+        $targetRoles = [];
+        if ($this->option('roles')) {
+            $targetRoles = array_map('trim', explode(',', strtolower($this->option('roles'))));
+            $this->info("Menyinkronkan ulang role spesifik: " . implode(', ', $targetRoles));
+        }
 
         if ($isFresh) {
             $this->warn('Mereset ulang izin seluruh role ke template standar (--fresh)...');
-        } else {
+        } elseif (empty($targetRoles)) {
             $this->info('Memeriksa role dan mempertahankan konfigurasi hak akses kustom admin...');
         }
 
@@ -75,10 +80,12 @@ class SyncPermissionsCommand extends Command
             $role = Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
             $validPerms = Permission::whereIn('name', $perms)->pluck('name')->toArray();
 
-            if ($isFresh) {
-                // Hanya timpa seluruh izin jika opsi --fresh dipanggil secara sengaja
+            $forceSyncThisRole = in_array(strtolower($roleName), $targetRoles);
+
+            if ($isFresh || $forceSyncThisRole) {
+                // Hanya timpa seluruh izin jika opsi --fresh dipanggil secara sengaja atau role dipilih via --roles
                 $role->syncPermissions($validPerms);
-                $this->line("  ✓ Role '{$roleName}': di-reset ke template standar ({$role->permissions()->count()} izin)");
+                $this->line("  ✓ Role '{$roleName}': disinkronkan ke template standar ({$role->permissions()->count()} izin)");
             } elseif ($role->wasRecentlyCreated || $role->permissions()->count() === 0) {
                 // Role baru yang belum memiliki izin sama sekali: inisialisasi dengan preset awal
                 $role->syncPermissions($validPerms);

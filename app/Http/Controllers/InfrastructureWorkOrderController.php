@@ -101,9 +101,29 @@ class InfrastructureWorkOrderController extends Controller
             'workOrders' => $workOrders,
             'kpi' => $kpi,
             'areas' => DataScopeService::getScopedAreas(Auth::user(), 'infrastructure_work_orders'),
-            'technicians' => User::whereIn('role', ['teknisi', 'maintenance', 'kepala teknisi', 'noc', 'admin'])->orderBy('name')->get(['id', 'name']),
+            'technicians' => $this->getEligibleTechnicians(),
             'filters' => $request->only(['search', 'type', 'device_type', 'status', 'area_id', 'technician_id']),
         ]);
+    }
+
+    /**
+     * Ambil daftar personil teknisi & tim serbu pelaksana rollout.
+     */
+    protected function getEligibleTechnicians()
+    {
+        return User::where(function ($q) {
+            $q->whereIn('role', [
+                'teknisi', 'teknisi tim serbu', 'tim serbu',
+                'maintenance', 'maintenance-1',
+                'kepala teknisi', 'noc', 'admin'
+            ])->orWhereHas('roles', function ($rq) {
+                $rq->whereIn('name', [
+                    'teknisi', 'teknisi tim serbu', 'tim serbu',
+                    'maintenance', 'maintenance-1',
+                    'kepala teknisi', 'noc', 'admin'
+                ]);
+            });
+        })->orderBy('name')->get(['id', 'name']);
     }
 
     /**
@@ -139,7 +159,7 @@ class InfrastructureWorkOrderController extends Controller
             'areas' => DataScopeService::getScopedAreas($user, 'infrastructure_work_orders'),
             'olts' => $oltQuery->get(['id', 'name', 'area_id', 'total_pon_ports', 'pon_vlans']),
             'odcs' => $odcQuery->get(['id', 'name', 'area_id', 'capacity', 'olt_id', 'pon_port', 'splitter_ratio']),
-            'technicians' => User::whereIn('role', ['teknisi', 'maintenance', 'kepala teknisi', 'noc', 'admin'])->orderBy('name')->get(['id', 'name']),
+            'technicians' => $this->getEligibleTechnicians(),
             'materials' => $materials,
             'materialTransactions' => $materialTransactions,
         ]);
@@ -198,7 +218,7 @@ class InfrastructureWorkOrderController extends Controller
             if (!empty($request->technician_id)) {
                 $request->merge(['technician_ids' => [(int) $request->technician_id]]);
             } else {
-                $firstTech = User::whereIn('role', ['teknisi', 'maintenance', 'kepala teknisi', 'admin', 'noc'])->value('id') ?? Auth::id();
+                $firstTech = $this->getEligibleTechnicians()->first()?->id ?? Auth::id();
                 $request->merge([
                     'technician_ids' => [$firstTech],
                     'technician_id' => $firstTech,
@@ -279,6 +299,50 @@ class InfrastructureWorkOrderController extends Controller
             'workOrder' => $workOrder,
             'materials' => $materials,
         ]);
+    }
+
+    /**
+     * Update Informasi & Parameter Penugasan (Penugasan Teknisi, Tanggal, dll).
+     */
+    public function update(Request $request, InfrastructureWorkOrder $workOrder)
+    {
+        if (!Auth::user()->can('infrastructure_work_orders_edit') && !Auth::user()->hasRole('admin')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengedit penugasan pembangunan ODC/ODP.');
+        }
+
+        $validated = $request->validate([
+            'target_name' => 'sometimes|required|string|max:255',
+            'device_type' => 'nullable|string|max:50',
+            'capacity' => 'nullable|integer|min:1',
+            'core_capacity' => 'nullable|integer|min:1',
+            'splitter_ratio' => 'nullable|string|max:50',
+            'location' => 'nullable|string|max:500',
+            'planned_latitude' => 'nullable|numeric|between:-90,90',
+            'planned_longitude' => 'nullable|numeric|between:-180,180',
+            'technician_id' => 'nullable|exists:users,id',
+            'technician_ids' => 'nullable|array',
+            'technician_ids.*' => 'exists:users,id',
+            'scheduled_date' => 'nullable|date',
+            'start_point' => 'nullable|string|max:255',
+            'end_point' => 'nullable|string|max:255',
+            'cable_pull' => 'nullable|string|max:50',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $workOrder->update(collect($validated)->except('technician_ids')->toArray());
+
+        if ($request->has('technician_ids') && is_array($request->technician_ids)) {
+            $syncData = [];
+            $leadId = $validated['technician_id'] ?? $request->technician_ids[0] ?? null;
+            foreach ($request->technician_ids as $tid) {
+                $syncData[$tid] = [
+                    'role' => ((int)$tid === (int)$leadId) ? 'lead_splicer' : 'assistant_technician',
+                ];
+            }
+            $workOrder->technicians()->sync($syncData);
+        }
+
+        return redirect()->back()->with('success', "Penugasan {$workOrder->wo_number} berhasil diperbarui.");
     }
 
     /**
