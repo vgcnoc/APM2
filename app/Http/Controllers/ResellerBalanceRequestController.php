@@ -351,20 +351,31 @@ class ResellerBalanceRequestController extends Controller
         try {
             $reseller = $balanceRequest->reseller;
 
+            // Jika statusnya sudah rejected, hapus record secara permanen
+            if ($balanceRequest->status === 'rejected') {
+                $balanceRequest->delete();
+                DB::commit();
+                return back()->with('success', 'Riwayat permohonan saldo berhasil dihapus.');
+            }
+
             if ($balanceRequest->status === 'approved') {
-                if ($reseller->balance < $balanceRequest->amount) {
+                if ($reseller && $reseller->balance < $balanceRequest->amount) {
                     return back()->with('error', 'Tidak dapat membatalkan: Saldo reseller saat ini (Rp ' . number_format($reseller->balance, 0, ',', '.') . ') lebih kecil dari nominal yang ingin dibatalkan (Rp ' . number_format($balanceRequest->amount, 0, ',', '.') . ').');
                 }
-                $reseller->balance -= $balanceRequest->amount;
-                $reseller->save();
+                if ($reseller) {
+                    $reseller->balance -= $balanceRequest->amount;
+                    $reseller->save();
+                }
             }
 
             // Hapus transaksi mutasi terkait
-            ResellerTransaction::where('reseller_id', $reseller->id)
-                ->where(function($q) use ($balanceRequest) {
-                    $q->where('reference_id', 'TOPUP-' . $balanceRequest->id)
-                      ->orWhere('reference_id', 'REQ-' . $balanceRequest->id);
-                })->delete();
+            if ($reseller) {
+                ResellerTransaction::where('reseller_id', $reseller->id)
+                    ->where(function($q) use ($balanceRequest) {
+                        $q->where('reference_id', 'TOPUP-' . $balanceRequest->id)
+                          ->orWhere('reference_id', 'REQ-' . $balanceRequest->id);
+                    })->delete();
+            }
 
             // Batalkan atau hapus invoice kasbon terkait
             Invoice::where('is_reseller_balance', true)
@@ -388,7 +399,7 @@ class ResellerBalanceRequestController extends Controller
             return back()->with('success', 'Pengisian saldo berhasil dibatalkan dan saldo reseller telah dikembalikan.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Gagal membatalkan pengisian saldo: ' . $e->getMessage());
+            return back()->with('error', 'Gagal memproses permohonan: ' . $e->getMessage());
         }
     }
 
@@ -478,16 +489,20 @@ class ResellerBalanceRequestController extends Controller
     {
         DB::beginTransaction();
         try {
+            $adjustBalance = filter_var($request->input('adjust_balance', true), FILTER_VALIDATE_BOOLEAN);
             $reseller = $transaction->reseller;
-            if ($transaction->type === 'credit') {
-                if ($reseller->balance < $transaction->amount) {
-                    return back()->with('error', 'Tidak dapat membatalkan transaksi kredit: Saldo reseller saat ini (Rp ' . number_format($reseller->balance, 0, ',', '.') . ') lebih kecil dari nominal yang ingin dibatalkan (Rp ' . number_format($transaction->amount, 0, ',', '.') . ').');
+
+            if ($adjustBalance && $reseller) {
+                if ($transaction->type === 'credit') {
+                    if ($reseller->balance < $transaction->amount) {
+                        return back()->with('error', 'Tidak dapat menghapus transaksi kredit: Saldo reseller saat ini (Rp ' . number_format($reseller->balance, 0, ',', '.') . ') lebih kecil dari nominal yang ingin dibatalkan (Rp ' . number_format($transaction->amount, 0, ',', '.') . ').');
+                    }
+                    $reseller->balance -= $transaction->amount;
+                } else {
+                    $reseller->balance += $transaction->amount;
                 }
-                $reseller->balance -= $transaction->amount;
-            } else {
-                $reseller->balance += $transaction->amount;
+                $reseller->save();
             }
-            $reseller->save();
 
             // Jika ada balance request terkait
             if (str_starts_with($transaction->reference_id ?? '', 'TOPUP-') || str_starts_with($transaction->reference_id ?? '', 'REQ-')) {
@@ -514,10 +529,10 @@ class ResellerBalanceRequestController extends Controller
             $transaction->delete();
             DB::commit();
 
-            return back()->with('success', 'Transaksi mutasi berhasil dibatalkan dan saldo reseller telah disesuaikan.');
+            return back()->with('success', 'Transaksi mutasi berhasil dihapus' . ($adjustBalance ? ' dan saldo reseller telah disesuaikan.' : '.'));
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Gagal membatalkan transaksi: ' . $e->getMessage());
+            return back()->with('error', 'Gagal menghapus transaksi: ' . $e->getMessage());
         }
     }
 }

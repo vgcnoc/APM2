@@ -291,24 +291,21 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-xs font-medium">
                                         <div class="flex items-center justify-end gap-1.5">
                                             <button 
-                                                v-if="canCorrect(tx)" 
                                                 @click="openCorrectionForTx(tx)" 
                                                 class="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-2.5 py-1.5 rounded-lg border border-indigo-200 transition font-bold cursor-pointer"
-                                                title="Koreksi nominal saldo jika salah input"
+                                                title="Koreksi nominal transaksi jika salah input"
                                             >
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                                                 <span>Koreksi</span>
                                             </button>
                                             <button 
-                                                v-if="canRollback(tx)" 
-                                                @click="confirmRollback(tx)" 
+                                                @click="confirmDeleteTx(tx)" 
                                                 class="inline-flex items-center gap-1 text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-200 transition font-bold cursor-pointer"
-                                                title="Batalkan mutasi dan kembalikan saldo reseller"
+                                                title="Hapus riwayat mutasi ini dan sesuaikan saldo reseller"
                                             >
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                                <span>Batalkan</span>
+                                                <span>Hapus</span>
                                             </button>
-                                            <span v-if="!canCorrect(tx) && !canRollback(tx)" class="text-gray-400 text-[11px]">-</span>
                                         </div>
                                     </td>
                                 </tr>
@@ -476,10 +473,18 @@
                                         </div>
 
                                         <!-- Status Lainnya (Rejected / Dibatalkan) -->
-                                        <div v-else class="text-xs text-gray-400 font-medium">
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] bg-gray-100 text-gray-500 font-semibold">
+                                        <div v-else class="flex justify-end items-center gap-1.5">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] bg-gray-100 text-gray-500 font-semibold mr-1">
                                                 Dibatalkan
                                             </span>
+                                            <button 
+                                                @click="confirmDeleteReq(req)" 
+                                                class="inline-flex items-center gap-1 text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-2 py-1 rounded-lg border border-rose-200 transition text-xs font-bold cursor-pointer"
+                                                title="Hapus riwayat pengajuan ini"
+                                            >
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                                <span>Hapus</span>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -1061,43 +1066,97 @@ const confirmRollbackReq = (req) => {
     });
 };
 
-// Rollback / Batalkan Mutasi Transaksi
-const canRollback = (tx) => {
-    return !!(tx.reference_id && (
-        tx.reference_id.startsWith('TOPUP-') || 
-        tx.reference_id.startsWith('REQ-') ||
-        tx.reference_id.startsWith('ADJ-')
-    ));
-};
-
-const canCorrect = (tx) => {
-    return !!(tx.reference_id && (
-        tx.reference_id.startsWith('TOPUP-') || 
-        tx.reference_id.startsWith('REQ-') ||
-        tx.reference_id.startsWith('ADJ-')
-    ));
-};
-
-const confirmRollback = (tx) => {
+// Hapus / Batalkan Mutasi Transaksi
+const confirmDeleteTx = (tx) => {
     const resellerName = getResellerName(tx.reseller);
+    const isCredit = tx.type === 'credit';
+    const amountStr = formatRupiah(tx.amount);
+    
     Swal.fire({
-        title: 'Batalkan Transaksi Mutasi?',
-        html: `Apakah Anda yakin ingin membatalkan transaksi mutasi untuk <strong>${resellerName}</strong> sebesar <strong class="text-rose-600">Rp ${formatRupiah(tx.amount)}</strong>?<br><br>Saldo dompet reseller akan disesuaikan kembali (dikurangi jika sebelumnya kredit, atau ditambah jika debit) dan invoice terkait akan dibatalkan.`,
+        title: 'Hapus Transaksi Mutasi?',
+        html: `
+            <div class="text-left text-xs text-gray-600 space-y-3 mt-2">
+                <p>Apakah Anda yakin ingin menghapus data riwayat mutasi untuk <strong>${resellerName}</strong>?</p>
+                <div class="bg-gray-50 p-3 rounded-xl border border-gray-200 text-xs space-y-1">
+                    <div><span class="text-gray-500 font-semibold">Tipe:</span> <span class="font-bold ${isCredit ? 'text-emerald-700' : 'text-rose-700'}">${isCredit ? '➕ Saldo Masuk (Kredit)' : '➖ Saldo Keluar (Debit)'}</span></div>
+                    <div><span class="text-gray-500 font-semibold">Nominal:</span> <span class="font-bold font-mono text-gray-900">Rp ${amountStr}</span></div>
+                    <div class="text-gray-500 italic pt-1 border-t border-gray-200">${tx.description || '-'}</div>
+                </div>
+                <div class="p-3 rounded-xl text-xs ${isCredit ? 'bg-amber-50 text-amber-900 border border-amber-200' : 'bg-emerald-50 text-emerald-900 border border-emerald-200'}">
+                    <label class="flex items-start gap-2.5 cursor-pointer font-medium">
+                        <input type="checkbox" id="swal-adjust-balance" checked class="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4" />
+                        <span>
+                            <strong>Sesuaikan Saldo Reseller Otomatis</strong><br>
+                            <span class="text-[11px] opacity-90">${isCredit 
+                                ? 'Saldo dompet reseller akan ditarik/dikurangi kembali Rp ' + amountStr 
+                                : 'Saldo dompet reseller akan dikembalikan (+ Rp ' + amountStr + ').'}</span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+        `,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#EF4444',
         cancelButtonColor: '#6B7280',
-        confirmButtonText: 'Ya, Batalkan Transaksi',
-        cancelButtonText: 'Kembali'
+        confirmButtonText: 'Ya, Hapus Mutasi',
+        cancelButtonText: 'Batal',
+        preConfirm: () => {
+            const checkbox = document.getElementById('swal-adjust-balance');
+            return {
+                adjust_balance: checkbox ? checkbox.checked : true
+            };
+        }
     }).then((result) => {
         if (result.isConfirmed) {
+            const adjust = result.value?.adjust_balance ?? true;
             router.delete(route('reseller-transactions.destroy', tx.id), {
+                data: { adjust_balance: adjust },
                 preserveScroll: true,
                 onSuccess: () => {
-                    Swal.fire('Dibatalkan!', 'Transaksi mutasi berhasil dibatalkan dan saldo reseller telah disesuaikan.', 'success');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil Dihapus!',
+                        text: 'Data transaksi mutasi telah dihapus' + (adjust ? ' dan saldo reseller telah disesuaikan.' : '.'),
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
                 },
                 onError: (err) => {
-                    Swal.fire('Gagal', err?.error || 'Gagal membatalkan transaksi.', 'error');
+                    const msg = err?.error || Object.values(err || {}).flat().join('<br>') || 'Gagal menghapus transaksi mutasi.';
+                    Swal.fire('Gagal Menghapus', msg, 'error');
+                }
+            });
+        }
+    });
+};
+
+const confirmDeleteReq = (req) => {
+    const resellerName = getResellerName(req.reseller);
+    Swal.fire({
+        title: 'Hapus Riwayat Pengajuan?',
+        html: `Apakah Anda yakin ingin menghapus data riwayat pengajuan saldo untuk <strong>${resellerName}</strong> sebesar <strong class="text-indigo-600">Rp ${formatRupiah(req.amount)}</strong>?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#EF4444',
+        cancelButtonColor: '#6B7280',
+        confirmButtonText: 'Ya, Hapus',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.delete(route('reseller-requests.destroy', req.id), {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Dihapus!',
+                        text: 'Riwayat pengajuan saldo berhasil dihapus.',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                },
+                onError: (err) => {
+                    Swal.fire('Gagal Menghapus', err?.error || 'Gagal menghapus pengajuan saldo.', 'error');
                 }
             });
         }
