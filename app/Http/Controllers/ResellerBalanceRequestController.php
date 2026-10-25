@@ -110,6 +110,8 @@ class ResellerBalanceRequestController extends Controller
             'total_debit' => (float)ResellerTransaction::whereHas('reseller')->where('type', 'debit')->sum('amount'),
             'pending_requests_count' => ResellerBalanceRequest::whereHas('reseller')->where('status', 'pending')->count(),
             'pending_requests_amount' => (float)ResellerBalanceRequest::whereHas('reseller')->where('status', 'pending')->sum('amount'),
+            'total_requests_count' => ResellerBalanceRequest::whereHas('reseller')->count(),
+            'total_requests_amount' => (float)ResellerBalanceRequest::whereHas('reseller')->sum('amount'),
         ];
 
         return Inertia::render('ResellerRequests/Index', [

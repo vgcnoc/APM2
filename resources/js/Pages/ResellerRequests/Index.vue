@@ -48,7 +48,11 @@
                         </div>
                     </div>
                     <div class="text-2xl font-black font-mono text-gray-900">+ Rp {{ formatRupiah(stats.total_credit) }}</div>
-                    <p class="text-[11px] text-gray-400 mt-1">Top Up Kasbon, Tunai &amp; Payment Gateway</p>
+                    <p class="text-[11px] text-gray-400 mt-1">
+                        <span v-if="stats.total_credit > 0">Top Up Kasbon, Tunai &amp; Payment Gateway</span>
+                        <span v-else-if="stats.total_saldo_beredar > 0" class="text-indigo-600 font-medium">Saldo aktif dompet: Rp {{ formatRupiah(stats.total_saldo_beredar) }}</span>
+                        <span v-else>Belum ada mutasi saldo masuk</span>
+                    </p>
                 </div>
 
                 <!-- Total Saldo Terpakai (Debit) -->
@@ -60,7 +64,10 @@
                         </div>
                     </div>
                     <div class="text-2xl font-black font-mono text-gray-900">- Rp {{ formatRupiah(stats.total_debit) }}</div>
-                    <p class="text-[11px] text-gray-400 mt-1">Pembelian Voucher &amp; Bayar Tagihan Loket</p>
+                    <p class="text-[11px] text-gray-400 mt-1">
+                        <span v-if="stats.total_debit > 0">Pembelian Voucher &amp; Bayar Tagihan Loket</span>
+                        <span v-else>Belum ada pemakaian saldo voucher/loket</span>
+                    </p>
                 </div>
 
                 <!-- Permintaan Pending -->
@@ -75,7 +82,17 @@
                         <div class="text-2xl font-black font-mono text-gray-900">{{ stats.pending_requests_count }}</div>
                         <span class="text-xs font-bold text-amber-600">Pengajuan</span>
                     </div>
-                    <p class="text-[11px] text-gray-400 mt-1">Rp {{ formatRupiah(stats.pending_requests_amount) }} menunggu persetujuan</p>
+                    <p class="text-[11px] mt-1" :class="stats.pending_requests_count > 0 ? 'text-amber-600 font-bold' : 'text-gray-400'">
+                        <span v-if="stats.pending_requests_count > 0">
+                            Rp {{ formatRupiah(stats.pending_requests_amount) }} menunggu persetujuan
+                        </span>
+                        <span v-else-if="stats.total_requests_count > 0">
+                            Semua ditindaklanjuti ({{ stats.total_requests_count }} riwayat)
+                        </span>
+                        <span v-else>
+                            Belum ada pengajuan isi saldo
+                        </span>
+                    </p>
                 </div>
             </div>
 
@@ -93,7 +110,7 @@
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                             <span>Mutasi Saldo (Kredit &amp; Debit)</span>
                             <span class="text-[11px] px-2 py-0.5 rounded-full font-black font-mono" :class="activeTab === 'transactions' ? 'bg-indigo-50 text-indigo-600' : 'bg-gray-200/70 text-gray-600'">
-                                {{ transactions.total || 0 }}
+                                {{ transactions.total || 0 }} Mutasi
                             </span>
                         </button>
                         <button 
@@ -107,7 +124,7 @@
                                 {{ stats.pending_requests_count }} Pending
                             </span>
                             <span v-else class="text-[11px] px-2 py-0.5 rounded-full font-black font-mono" :class="activeTab === 'requests' ? 'bg-indigo-50 text-indigo-600' : 'bg-gray-200/70 text-gray-600'">
-                                {{ requests.total || 0 }}
+                                {{ requests.total || 0 }} Riwayat
                             </span>
                         </button>
                     </div>
