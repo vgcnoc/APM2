@@ -567,59 +567,12 @@ class MaterialTransactionController extends Controller
 
         try {
             DB::transaction(function () use ($materialTransaction) {
-                // Restore stock
-                foreach ($materialTransaction->items as $item) {
-                    $material = $item->material;
-                    if ($material) {
-                        $addition = $item->quantity;
-                        if (str_contains(strtolower($material->category), 'kabel') && ($item->unit === 'roll' || $item->unit === 'rol')) {
-                            $addition = $item->quantity * ($material->meter_per_roll > 0 ? $material->meter_per_roll : 1000);
-                        }
-                        if (($material->category === 'Paku Klem' || stripos($material->name, 'klem') !== false) && ($item->unit === 'pack' || $item->unit === 'bungkus')) {
-                            $addition = $item->quantity * ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
-                        }
-                        if ($material->category === 'Isolasi' && ($item->unit === 'pack')) {
-                            $addition = $item->quantity * (($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1) * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50));
-                        }
-                        $material->stock += $addition;
-                        if (str_contains(strtolower($material->category), 'kabel') && $material->meter_per_roll > 0) {
-                            $material->total_rolls = $material->stock / $material->meter_per_roll;
-                        }
-                        if ($material->category === 'Paku Klem' && $material->pcs_per_pack > 0) {
-                            $material->total_packs = $material->stock / $material->pcs_per_pack;
-                        }
-                        if ($material->category === 'Isolasi' && $material->cm_per_pcs > 0) {
-                            $material->total_pieces = $material->stock / $material->cm_per_pcs;
-                        }
-                        $material->save();
-                        
-                        if ($materialTransaction->area_id) {
-                            $materialStock = \App\Models\MaterialStock::firstOrCreate(
-                                ['material_id' => $material->id, 'area_id' => $materialTransaction->area_id],
-                                ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
-                            );
-                            $materialStock->stock += $addition;
-                            
-                            if (str_contains(strtolower($material->category), 'kabel') && $material->meter_per_roll > 0) {
-                                $materialStock->total_rolls = $materialStock->stock / $material->meter_per_roll;
-                            }
-                            if ($material->category === 'Paku Klem' && $material->pcs_per_pack > 0) {
-                                $materialStock->total_packs = $materialStock->stock / $material->pcs_per_pack;
-                            }
-                            if ($material->category === 'Isolasi' && $material->cm_per_pcs > 0) {
-                                $materialStock->total_pieces = $materialStock->stock / $material->cm_per_pcs;
-                            }
-                            $materialStock->save();
-                        }
-                    }
-                }
-                
-                // Delete the transaction (cascade will delete items)
+                // Delete transaction (model deleting event automatically restores stock and cascades customer if linked)
                 $materialTransaction->delete();
             });
 
             return redirect()->route('material-transactions.index')
-                ->with('success', 'Riwayat Order berhasil dihapus dan stok telah dikembalikan.');
+                ->with('success', 'Riwayat Order berhasil dihapus, stok telah dikembalikan ke Gudang, dan data terkait telah disinkronkan.');
         } catch (\Exception $e) {
             return redirect()->route('material-transactions.index')
                 ->with('error', 'Gagal menghapus riwayat order: ' . $e->getMessage());
@@ -635,64 +588,18 @@ class MaterialTransactionController extends Controller
 
         try {
             DB::transaction(function () use ($request) {
-                $transactions = MaterialTransaction::with('items.material')->whereIn('id', $request->ids)->get();
+                $transactions = MaterialTransaction::whereIn('id', $request->ids)->get();
                 
                 foreach ($transactions as $transaction) {
-                    // Restore stock
-                    foreach ($transaction->items as $item) {
-                        $material = $item->material;
-                        if ($material) {
-                            $addition = $item->quantity;
-                            if (str_contains(strtolower($material->category), 'kabel') && ($item->unit === 'roll' || $item->unit === 'rol')) {
-                                $addition = $item->quantity * ($material->meter_per_roll > 0 ? $material->meter_per_roll : 1000);
-                            }
-                            if (($material->category === 'Paku Klem' || stripos($material->name, 'klem') !== false) && ($item->unit === 'pack' || $item->unit === 'bungkus')) {
-                                $addition = $item->quantity * ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
-                            }
-                            if ($material->category === 'Isolasi' && ($item->unit === 'pack')) {
-                                $addition = $item->quantity * (($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1) * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50));
-                            }
-                            $material->stock += $addition;
-                            if (str_contains(strtolower($material->category), 'kabel') && $material->meter_per_roll > 0) {
-                                $material->total_rolls = $material->stock / $material->meter_per_roll;
-                            }
-                            if ($material->category === 'Paku Klem' && $material->pcs_per_pack > 0) {
-                                $material->total_packs = $material->stock / $material->pcs_per_pack;
-                            }
-                            if ($material->category === 'Isolasi' && $material->cm_per_pcs > 0) {
-                                $material->total_pieces = $material->stock / $material->cm_per_pcs;
-                            }
-                            $material->save();
-                            
-                            if ($transaction->area_id) {
-                                $materialStock = \App\Models\MaterialStock::firstOrCreate(
-                                    ['material_id' => $material->id, 'area_id' => $transaction->area_id],
-                                    ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
-                                );
-                                $materialStock->stock += $addition;
-                                
-                                if (str_contains(strtolower($material->category), 'kabel') && $material->meter_per_roll > 0) {
-                                    $materialStock->total_rolls = $materialStock->stock / $material->meter_per_roll;
-                                }
-                                if ($material->category === 'Paku Klem' && $material->pcs_per_pack > 0) {
-                                    $materialStock->total_packs = $materialStock->stock / $material->pcs_per_pack;
-                                }
-                                if ($material->category === 'Isolasi' && $material->cm_per_pcs > 0) {
-                                    $materialStock->total_pieces = $materialStock->stock / $material->cm_per_pcs;
-                                }
-                                $materialStock->save();
-                            }
-                        }
-                    }
-                    
-                    // Delete the transaction
+                    // Delete transaction (model deleting event automatically restores stock and cascades customer if linked)
                     $transaction->delete();
                 }
             });
 
-            return redirect()->back()->with('success', 'Berhasil menghapus ' . count($request->ids) . ' transaksi dan stok telah dikembalikan.');
+            return redirect()->back()->with('success', 'Berhasil menghapus ' . count($request->ids) . ' transaksi, stok telah dikembalikan ke Gudang, dan data terkait telah disinkronkan.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
 }
+

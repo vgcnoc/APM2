@@ -311,4 +311,65 @@ class CustomerMaterialService
             return $dismantle;
         });
     }
+
+    /**
+     * Kembalikan kuantitas material ke gudang / inventaris (Area Stock & Global Stock).
+     */
+    public static function returnMaterialToWarehouse(
+        int|Material $material,
+        float $quantity,
+        ?int $areaId = null,
+        ?string $unit = null
+    ): void {
+        if ($quantity <= 0) {
+            return;
+        }
+
+        $mat = $material instanceof Material ? $material : Material::find($material);
+        if (!$mat) {
+            return;
+        }
+
+        $addition = (float) $quantity;
+        $itemUnit = strtolower((string) ($unit ?? $mat->unit));
+
+        // Konversi jika satuan berupa roll/pack/bungkus
+        if (str_contains(strtolower((string) $mat->category), 'kabel') && in_array($itemUnit, ['roll', 'rol'])) {
+            $meterPerRoll = $mat->meter_per_roll > 0 ? (float) $mat->meter_per_roll : 1000;
+            $addition = $quantity * $meterPerRoll;
+        } elseif (($mat->category === 'Paku Klem' || stripos($mat->name, 'klem') !== false) && in_array($itemUnit, ['pack', 'bungkus'])) {
+            $pcsPerPack = $mat->pcs_per_pack > 0 ? (float) $mat->pcs_per_pack : 1;
+            $addition = $quantity * $pcsPerPack;
+        } elseif ($mat->category === 'Isolasi' && $itemUnit === 'pack') {
+            $cmPerPcs = $mat->cm_per_pcs > 0 ? (float) $mat->cm_per_pcs : 50;
+            $pcsPerPack = $mat->pcs_per_pack > 0 ? (float) $mat->pcs_per_pack : 1;
+            $addition = $quantity * ($cmPerPcs * $pcsPerPack);
+        }
+
+        // 1. Tambah Stok Global Gudang Utama
+        $mat->stock = (float) ($mat->stock ?? 0) + $addition;
+        $mat->save();
+
+        // 2. Tambah Stok Area Gudang jika ada area_id
+        if ($areaId) {
+            $matStock = MaterialStock::firstOrCreate(
+                ['material_id' => $mat->id, 'area_id' => $areaId],
+                ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
+            );
+            $matStock->stock = (float) ($matStock->stock ?? 0) + $addition;
+            if ($mat->meter_per_roll > 0) {
+                $matStock->total_rolls = $matStock->stock / $mat->meter_per_roll;
+            }
+            if ($mat->pcs_per_pack > 0) {
+                $matStock->total_packs = $matStock->stock / $mat->pcs_per_pack;
+            }
+            if ($mat->cm_per_pcs > 0) {
+                $matStock->total_pieces = $matStock->stock / $mat->cm_per_pcs;
+            }
+            $matStock->save();
+        }
+
+        \Illuminate\Support\Facades\Log::info("[CustomerMaterialService] Berhasil mengembalikan {$addition} {$mat->unit} material {$mat->name} (ID: {$mat->id}) ke gudang (Area: {$areaId}).");
+    }
 }
+

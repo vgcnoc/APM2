@@ -288,8 +288,9 @@ class OntController extends Controller
         }
 
         return redirect()->route('onts.index')
-            ->with('success', 'Data ONT berhasil dihapus.');
+            ->with('success', 'Data ONT berhasil dihapus, data pelanggan terkait serta seluruh relasinya telah dihapus, dan unit ONT/material telah dikembalikan ke gudang.');
     }
+
 
     public function bulkDestroy(Request $request): RedirectResponse
     {
@@ -421,8 +422,9 @@ class OntController extends Controller
         });
 
         return redirect()->route('onts.index')
-            ->with('success', "Berhasil menghapus {$count} data ONT.");
+            ->with('success', "Berhasil menghapus {$count} data ONT. Data pelanggan terkait dan relasinya telah dihapus, serta stok ONT/material telah dikembalikan ke gudang.");
     }
+
 
     public function findOnu(Request $request): Response
     {

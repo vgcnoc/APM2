@@ -3298,8 +3298,16 @@ class CustomerController extends Controller
         }
         $customer->update($custUpdates);
 
-        if ($customer->ont) {
-            $customer->ont->update([
+        $ont = $customer->ont ?: \App\Models\Ont::where('customer_id', $customer->id)->first();
+        if (!$ont && !empty($customer->ont_id)) {
+            $ont = \App\Models\Ont::find($customer->ont_id);
+            if ($ont) {
+                $ont->update(['customer_id' => $customer->id]);
+            }
+        }
+
+        if ($ont) {
+            $ont->update([
                 'pppoe_user' => $validated['pppoe_user'],
                 'pppoe_password' => $validated['pppoe_password'],
                 'vlan_mode' => $validated['vlan_mode'],
@@ -3320,6 +3328,7 @@ class CustomerController extends Controller
                 \Illuminate\Support\Facades\Log::warning('[RADIUS] Activation sync error: ' . $e->getMessage());
             }
         }
+
 
         \App\Models\AuditLog::createLog('Edit Konfigurasi Aktivasi', $customer, $customer->status, $customer->status, 'Memperbarui data aktivasi & konfigurasi layanan');
 

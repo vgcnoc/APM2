@@ -102,6 +102,8 @@ class Ont extends Model
         }
     }
 
+    public static bool $isCascadingCustomerDelete = false;
+
     protected static function boot()
     {
         parent::boot();
@@ -159,10 +161,108 @@ class Ont extends Model
                     ]);
                 }
             }
+
+            // Sinkronisasi data edit: Jika kredensial PPPoE/Hotspot diedit di ONT, sinkronkan ke FreeRADIUS & Customer (Requirement 4)
+            if ($ont->customer_id) {
+                try {
+                    $customer = $ont->customer;
+                    if ($customer) {
+                        $radius = app(\App\Services\RadiusService::class);
+                        if ($radius && $radius->enabled()) {
+                            $oldPppoe = $ont->getOriginal('pppoe_user');
+                            if ($oldPppoe && $oldPppoe !== $ont->pppoe_user) {
+                                $radius->guard(function ($rad) use ($oldPppoe) {
+                                    $rad->removeUser($oldPppoe);
+                                    $rad->disconnect($oldPppoe);
+                                });
+                            }
+                            $oldHotspot = $ont->getOriginal('hotspot_user');
+                            if ($oldHotspot && $oldHotspot !== $ont->hotspot_user) {
+                                $radius->guard(function ($rad) use ($oldHotspot) {
+                                    $rad->removeUser($oldHotspot);
+                                    $rad->disconnect($oldHotspot);
+                                });
+                            }
+                            $radius->syncCustomer($customer);
+                        }
+
+                        // Sinkronisasi area_id jika berbeda
+                        if ($ont->wasChanged('area_id') && $ont->area_id && $customer->area_id !== $ont->area_id) {
+                            $customer->update(['area_id' => $ont->area_id]);
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[Ont::saved] Sync error: ' . $e->getMessage());
+                }
+            }
         });
 
         static::deleting(function ($ont) {
-            // 1. Release ODP Port & sinkronisasi counter ODP
+            // 1. Ketika ONT dihapus bukan edit, maka data pelanggan serta yang berhubungan ikut terhapus (Requirement 1)
+            if ($ont->customer_id && !static::$isCascadingCustomerDelete && !\App\Models\Customer::$isPurging) {
+                $customer = \App\Models\Customer::find($ont->customer_id);
+                if ($customer) {
+                    static::$isCascadingCustomerDelete = true;
+                    try {
+                        $customer->delete();
+                    } finally {
+                        static::$isCascadingCustomerDelete = false;
+                    }
+                }
+            }
+
+            // 2. Hapus akun FreeRADIUS PPPoE dan Hotspot jika ada
+            try {
+                $radius = app(\App\Services\RadiusService::class);
+                if ($radius && $radius->enabled()) {
+                    $radius->guard(function ($rad) use ($ont) {
+                        if ($ont->pppoe_user) {
+                            $rad->removeUser($ont->pppoe_user);
+                            $rad->disconnect($ont->pppoe_user);
+                        }
+                        if ($ont->hotspot_user) {
+                            $rad->removeUser($ont->hotspot_user);
+                            $rad->disconnect($ont->hotspot_user);
+                        }
+                    });
+                }
+            } catch (\Throwable $e) {
+                // ignore
+            }
+
+            // 3. Kembalikan unit ONT ke stok Gudang (Requirement 1)
+            try {
+                $matItem = $ont->material_transaction_item_id 
+                    ? \App\Models\MaterialTransactionItem::with('material')->find($ont->material_transaction_item_id)
+                    : null;
+
+                if ($matItem && $matItem->material) {
+                    \App\Services\CustomerMaterialService::returnMaterialToWarehouse(
+                        $matItem->material,
+                        1,
+                        $ont->area_id,
+                        'unit'
+                    );
+                } else {
+                    // Cari material ONT yang sesuai di tabel materials
+                    $mat = \App\Models\Material::where('category', 'like', '%ont%')
+                        ->orWhere('category', 'like', '%modem%')
+                        ->orWhere('name', 'like', "%{$ont->brand}%")
+                        ->first();
+                    if ($mat) {
+                        \App\Services\CustomerMaterialService::returnMaterialToWarehouse(
+                            $mat,
+                            1,
+                            $ont->area_id,
+                            'unit'
+                        );
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[Ont::deleting] Error returning ONT stock to warehouse: ' . $e->getMessage());
+            }
+
+            // 4. Release ODP Port & sinkronisasi counter ODP
             if ($ont->odp_id && $ont->port_number) {
                 \App\Models\OdpPort::where('odp_id', $ont->odp_id)
                     ->where('port_number', $ont->port_number)
@@ -178,15 +278,7 @@ class Ont extends Model
                 }
             }
 
-            // 2. Putuskan hubungan dari Pelanggan jika terpasang
-            if ($ont->customer_id) {
-                $customer = \App\Models\Customer::find($ont->customer_id);
-                if ($customer && $customer->ont_id == $ont->id) {
-                    $customer->update(['ont_id' => null]);
-                }
-            }
-
-            // 3. Update MaterialTransactionItem jika terdaftar dari transaksi material
+            // 5. Update MaterialTransactionItem jika terdaftar dari transaksi material
             if ($ont->material_transaction_item_id) {
                 $remaining = static::where('material_transaction_item_id', $ont->material_transaction_item_id)
                     ->where('id', '!=', $ont->id)
@@ -197,7 +289,7 @@ class Ont extends Model
                 }
             }
 
-            // 4. Hapus file foto terkait dari storage
+            // 6. Hapus file foto terkait dari storage
             $photos = ['photo_odp', 'photo_installation', 'photo_ont', 'photo_customer', 'photo_redaman'];
             foreach ($photos as $p) {
                 try {
@@ -210,6 +302,7 @@ class Ont extends Model
             }
         });
     }
+
 
     // ── Relationships ──────────────────────────────────────────
 

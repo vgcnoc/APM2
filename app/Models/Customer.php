@@ -90,6 +90,9 @@ class Customer extends Model
         'customer_id',
     ];
 
+    public static bool $isPurging = false;
+
+
     /**
      * Alias customer_id attribute returning customer_code for frontend compatibility
      */
@@ -454,7 +457,7 @@ class Customer extends Model
                 }
             }
 
-            // 2. Sinkronisasi Area ke ONT, Jadwal Teknisi, & Survey yang terhubung (aman dari error kolom)
+            // 2. Sinkronisasi Area ke ONT, Jadwal Teknisi, Survey, PGS, & PGK
             if ($customer->wasChanged('area_id')) {
                 try {
                     if ($customer->area_id) {
@@ -472,12 +475,36 @@ class Customer extends Model
                     if (\Illuminate\Support\Facades\Schema::hasColumn('surveys', 'area_id')) {
                         \App\Models\Survey::where('customer_id', $customer->id)->update(['area_id' => $customer->area_id]);
                     }
+                    if (\Illuminate\Support\Facades\Schema::hasTable('pgs_tickets') && \Illuminate\Support\Facades\Schema::hasColumn('pgs_tickets', 'area_id')) {
+                        \App\Models\PgsTicket::where('customer_id', $customer->id)->update(['area_id' => $customer->area_id]);
+                    }
+                    if (\Illuminate\Support\Facades\Schema::hasTable('pgk_tickets') && \Illuminate\Support\Facades\Schema::hasColumn('pgk_tickets', 'area_id')) {
+                        \App\Models\PgkTicket::where('customer_id', $customer->id)->update(['area_id' => $customer->area_id]);
+                    }
                 } catch (\Throwable $e) {
                     \Illuminate\Support\Facades\Log::warning('[Customer::updated] Area sync error: ' . $e->getMessage());
                 }
             }
 
-            // 3. Otomatis buat tiket Cabut Perangkat (CBP) jika status menjadi terminated / berhenti
+            // 3. Sinkronisasi Profil Akun Login Portal Pelanggan jika nama/email/telepon diedit (Requirement 4)
+            if ($customer->wasChanged(['name', 'email', 'phone']) && $customer->user_id) {
+                try {
+                    $user = \App\Models\User::find($customer->user_id);
+                    if ($user) {
+                        $userUpdates = [];
+                        if ($customer->wasChanged('name')) $userUpdates['name'] = $customer->name;
+                        if ($customer->wasChanged('email') && $customer->email) $userUpdates['email'] = $customer->email;
+                        if ($customer->wasChanged('phone') && $customer->phone) $userUpdates['phone'] = $customer->phone;
+                        if (!empty($userUpdates)) {
+                            $user->update($userUpdates);
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[Customer::updated] User portal sync error: ' . $e->getMessage());
+                }
+            }
+
+            // 4. Otomatis buat tiket Cabut Perangkat (CBP) jika status menjadi terminated / berhenti
             if (($customer->wasChanged('status') && $customer->status === 'terminated') ||
                 ($customer->wasChanged('service_status') && $customer->service_status === 'berhenti')) {
                 $hasCbp = \App\Models\CbpRequest::where('customer_id', $customer->id)
@@ -497,7 +524,7 @@ class Customer extends Model
                 }
             }
 
-            // 4. Sinkronisasi RADIUS jika paket atau status layanan berubah
+            // 5. Sinkronisasi RADIUS jika paket atau status layanan berubah
             if ($customer->wasChanged(['package_id', 'service_status', 'status'])) {
                 try {
                     if (class_exists(\App\Services\RadiusService::class)) {
@@ -516,13 +543,18 @@ class Customer extends Model
         });
 
         static::deleting(function (Customer $customer) {
-            $customer->purgeConnectedData();
+            static::$isPurging = true;
+            try {
+                $customer->purgeConnectedData();
+            } finally {
+                static::$isPurging = false;
+            }
         });
     }
 
     /**
      * Hapus seluruh data dan perangkat yang terhubung dengan pelanggan secara cerdas dan bersih:
-     * 1. Kembalikan semua perangkat ONT ke stok gudang (status: in_stock), bersihkan kredensial & foto instalasi
+     * 1. Kembalikan semua perangkat ONT ke stok gudang (status: 'Belum Set/Baru Input'), bersihkan kredensial & foto instalasi
      * 2. Bebaskan port ODP yang sedang digunakan oleh ONT & perbarui status ODP
      * 3. Bebaskan port ODP yang sempat di-reservasi oleh riwayat survey & hapus foto survey dari storage
      * 4. Hapus user & putuskan koneksi aktif di FreeRADIUS (PPPoE, Hotspot Gratis, Voucher)
@@ -533,9 +565,9 @@ class Customer extends Model
      * 9. Hapus tiket penanganan sigap (PGS) beserta material, permintaan material, pivot teknisi & foto dokumentasi
      * 10. Hapus tiket keluhan pelanggan (PGK) beserta material, permintaan material, pivot teknisi & foto dokumentasi
      * 11. Hapus permintaan cabut perangkat (CBP) beserta pivot teknisi & foto
-     * 12. Hapus data reseller & akun pengguna reseller (jika tipe reseller)
-     * 13. Hapus komisi afiliasi & log target market
-     * 14. Hapus permintaan material yang masih terhubung & un-link transaksi material
+     * 12. Kembalikan seluruh material terpasang dan transaksi material pelanggan ke stok gudang (Area & Global)
+     * 13. Hapus data reseller & akun pengguna reseller (jika tipe reseller)
+     * 14. Hapus komisi afiliasi & log target market & komisi insentif
      * 15. Hapus akun login portal pelanggan (User dengan role customer)
      * 16. Hapus foto identitas / KTP dari storage
      * 17. Hapus riwayat log pesan WhatsApp yang ditujukan ke pelanggan ini
@@ -544,7 +576,7 @@ class Customer extends Model
     {
         $radius = app(\App\Services\RadiusService::class);
 
-        // 1 & 2. Tangani semua ONT yang terhubung dengan pelanggan
+        // 1 & 2. Tangani semua ONT yang terhubung: kembalikan ke data ONT status 'Belum Set/Baru Input' (Gudang) (Requirement 3)
         try {
             $onts = Ont::where('customer_id', $this->id)->get();
             foreach ($onts as $ont) {
@@ -603,10 +635,10 @@ class Customer extends Model
                     }
                 }
 
-                // Kembalikan ONT ke status stok gudang (in_stock)
+                // Kembalikan ONT ke status 'Belum Set/Baru Input' dan unassign dari pelanggan & ODP (Requirement 3)
                 $ont->update([
                     'customer_id' => null,
-                    'status' => 'in_stock',
+                    'status' => 'Belum Set/Baru Input', // Status Belum Set (Gudang)
                     'odp_id' => null,
                     'odp_port_id' => null,
                     'port_number' => null,
@@ -616,12 +648,19 @@ class Customer extends Model
                     'pppoe_password' => null,
                     'hotspot_user' => null,
                     'hotspot_password' => null,
+                    'vlan_id' => null,
+                    'hotspot_vlan_id' => null,
+                    'access_mode' => 'PPPOE',
+                    'ip_login' => null,
+                    'login_user' => null,
+                    'login_password' => null,
+                    'free_hotspot' => false,
                     'photo_odp' => null,
                     'photo_installation' => null,
                     'photo_ont' => null,
                     'photo_customer' => null,
                     'photo_redaman' => null,
-                    'description' => 'Dilepas otomatis ke stok gudang karena pelanggan ' . $this->name . ' (' . $this->customer_code . ') dihapus pada ' . now()->format('d/m/Y H:i'),
+                    'description' => 'Kembali ke data ONT dengan status Belum Set (Gudang) karena pelanggan ' . $this->name . ' (' . $this->customer_code . ') dihapus pada ' . now()->format('d/m/Y H:i'),
                 ]);
             }
         } catch (\Throwable $e) {
@@ -687,6 +726,11 @@ class Customer extends Model
                     // ignore
                 }
                 $payment->delete();
+            }
+
+            $invoiceIds = Invoice::where('customer_id', $this->id)->pluck('id');
+            if ($invoiceIds->isNotEmpty()) {
+                AffiliateCommission::whereIn('invoice_id', $invoiceIds)->delete();
             }
             Invoice::where('customer_id', $this->id)->delete();
         } catch (\Throwable $e) {
@@ -765,7 +809,49 @@ class Customer extends Model
             Log::warning('[Customer::purgeConnectedData] Error handling CBP requests: ' . $e->getMessage());
         }
 
-        // 10. Tangani Data Reseller jika ada
+        // 10. Tangani Seluruh Material Terpasang & Kembalikan ke Stok Gudang (Requirement 3)
+        try {
+            $installedMaterials = CustomerInstalledMaterial::where('customer_id', $this->id)->get();
+            foreach ($installedMaterials as $installed) {
+                if ($installed->material_id && (float) $installed->quantity > 0) {
+                    \App\Services\CustomerMaterialService::returnMaterialToWarehouse(
+                        (int) $installed->material_id,
+                        (float) $installed->quantity,
+                        $this->area_id,
+                        $installed->unit
+                    );
+                }
+                $installed->dismantles()->delete();
+                $installed->delete();
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[Customer::purgeConnectedData] Error returning installed materials: ' . $e->getMessage());
+        }
+
+        // 11. Tangani Transaksi Material Pengeluaran (type: out) ke pelanggan ini & kembalikan stok ke gudang
+        try {
+            $transactions = MaterialTransaction::where('customer_id', $this->id)->get();
+            foreach ($transactions as $trx) {
+                if ($trx->type === 'out') {
+                    foreach ($trx->items as $trxItem) {
+                        if ($trxItem->material && (float) $trxItem->quantity > 0) {
+                            \App\Services\CustomerMaterialService::returnMaterialToWarehouse(
+                                $trxItem->material,
+                                (float) $trxItem->quantity,
+                                $this->area_id ?? $trx->area_id,
+                                $trxItem->unit
+                            );
+                        }
+                    }
+                }
+                $trx->update(['customer_id' => null]);
+            }
+            DB::table('material_requests')->where('customer_id', $this->id)->delete();
+        } catch (\Throwable $e) {
+            Log::warning('[Customer::purgeConnectedData] Error handling material transactions: ' . $e->getMessage());
+        }
+
+        // 12. Tangani Data Reseller jika ada
         try {
             $reseller = Reseller::where('customer_id', $this->id)->first();
             if ($reseller) {
@@ -781,23 +867,21 @@ class Customer extends Model
             Log::warning('[Customer::purgeConnectedData] Error handling reseller: ' . $e->getMessage());
         }
 
-        // 11. Tangani Komisi Afiliasi & Target Market
+        // 13. Tangani Komisi Afiliasi, Insentif & Target Market
         try {
             AffiliateCommission::where('customer_id', $this->id)->delete();
             TargetMarketLog::where('customer_id', $this->id)->delete();
+            if (\Illuminate\Support\Facades\Schema::hasTable('incentives')) {
+                DB::table('incentives')
+                    ->where('reference_id', 'like', "customer_{$this->id}%")
+                    ->orWhere('reference_id', 'like', "%_{$this->customer_code}%")
+                    ->delete();
+            }
         } catch (\Throwable $e) {
             Log::warning('[Customer::purgeConnectedData] Error handling affiliate/target market: ' . $e->getMessage());
         }
 
-        // 12. Tangani Permintaan Material & Transaksi Material
-        try {
-            DB::table('material_requests')->where('customer_id', $this->id)->delete();
-            MaterialTransaction::where('customer_id', $this->id)->update(['customer_id' => null]);
-        } catch (\Throwable $e) {
-            Log::warning('[Customer::purgeConnectedData] Error handling material requests/transactions: ' . $e->getMessage());
-        }
-
-        // 13. Tangani Akun Login Portal Pelanggan (User)
+        // 14. Tangani Akun Login Portal Pelanggan (User)
         try {
             if ($this->user_id && ($user = User::find($this->user_id))) {
                 if ($user->hasRole('customer') || $user->role === 'customer') {
@@ -808,7 +892,7 @@ class Customer extends Model
             Log::warning('[Customer::purgeConnectedData] Error deleting customer user: ' . $e->getMessage());
         }
 
-        // 14. Hapus Foto Identitas / KTP Pelanggan dari Storage
+        // 15. Hapus Foto Identitas / KTP Pelanggan dari Storage
         try {
             if ($this->identity_photo && Storage::disk('public')->exists($this->identity_photo)) {
                 Storage::disk('public')->delete($this->identity_photo);
@@ -817,11 +901,12 @@ class Customer extends Model
             Log::warning('[Customer::purgeConnectedData] Error deleting identity photo: ' . $e->getMessage());
         }
 
-        // 15. Hapus Log WhatsApp Terkait Pelanggan
+        // 16. Hapus Log WhatsApp Terkait Pelanggan
         try {
             WaLog::where('recipient_type', 'customer')->where('recipient_id', $this->id)->delete();
         } catch (\Throwable $e) {
             Log::warning('[Customer::purgeConnectedData] Error deleting WaLog: ' . $e->getMessage());
         }
     }
+
 }

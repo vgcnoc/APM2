@@ -29,6 +29,42 @@ class CustomerInstalledMaterial extends Model
         'installed_at' => 'datetime',
     ];
 
+    public static bool $isCascadingDelete = false;
+
+    protected static function booted(): void
+    {
+        static::deleting(function (CustomerInstalledMaterial $item) {
+            // 1. Kembalikan stok material ke gudang
+            if ($item->material_id && (float) $item->quantity > 0) {
+                $areaId = $item->customer?->area_id;
+                \App\Services\CustomerMaterialService::returnMaterialToWarehouse(
+                    (int) $item->material_id,
+                    (float) $item->quantity,
+                    $areaId,
+                    $item->unit
+                );
+            }
+
+            // 2. Hapus riwayat bongkaran terkait
+            try {
+                $item->dismantles()->delete();
+            } catch (\Throwable $e) {}
+
+            // 3. Ketika material dihapus bukan edit, maka data pelanggan serta yang berhubungan ikut terhapus (Requirement 2)
+            if ($item->customer_id && !static::$isCascadingDelete && !\App\Models\Customer::$isPurging) {
+                $customer = \App\Models\Customer::find($item->customer_id);
+                if ($customer) {
+                    static::$isCascadingDelete = true;
+                    try {
+                        $customer->delete();
+                    } finally {
+                        static::$isCascadingDelete = false;
+                    }
+                }
+            }
+        });
+    }
+
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);

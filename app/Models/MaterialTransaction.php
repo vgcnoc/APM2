@@ -40,14 +40,39 @@ class MaterialTransaction extends Model
         'date' => 'date',
     ];
 
+    public static bool $isCascadingCustomerDelete = false;
+
     protected static function booted(): void
     {
         static::deleting(function (MaterialTransaction $transaction) {
+            // 1. Kembalikan stok untuk semua item transaksi ke gudang
             foreach ($transaction->items as $item) {
+                if ($item->material && (float) $item->quantity > 0) {
+                    \App\Services\CustomerMaterialService::returnMaterialToWarehouse(
+                        $item->material,
+                        (float) $item->quantity,
+                        $transaction->area_id,
+                        $item->unit
+                    );
+                }
                 $item->delete();
+            }
+
+            // 2. Ketika transaksi material dihapus bukan edit, maka data pelanggan serta yang berhubungan ikut terhapus (Requirement 2)
+            if ($transaction->customer_id && !static::$isCascadingCustomerDelete && !\App\Models\Customer::$isPurging) {
+                $customer = \App\Models\Customer::find($transaction->customer_id);
+                if ($customer) {
+                    static::$isCascadingCustomerDelete = true;
+                    try {
+                        $customer->delete();
+                    } finally {
+                        static::$isCascadingCustomerDelete = false;
+                    }
+                }
             }
         });
     }
+
 
     public function expense(): BelongsTo
     {
