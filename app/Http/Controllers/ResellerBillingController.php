@@ -454,4 +454,59 @@ class ResellerBillingController extends Controller
             return back()->with('error', 'Gagal membatalkan setoran: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Hapus Tagihan Kasbon Reseller
+     */
+    public function destroy(Request $request, Invoice $invoice)
+    {
+        DB::beginTransaction();
+        try {
+            $adjustBalance = filter_var($request->input('adjust_balance', false), FILTER_VALIDATE_BOOLEAN);
+
+            // 1. Jika ada pembayaran atau cicilan terkait, hapus record dan insentifnya
+            if ($invoice->payments()->exists()) {
+                foreach ($invoice->payments as $payment) {
+                    \App\Models\Incentive::where('reference_id', 'payment_' . $payment->id)->delete();
+                }
+                $invoice->payments()->delete();
+            }
+
+            // 2. Jika dipilih tarik saldo reseller
+            if ($adjustBalance) {
+                $reseller = \App\Models\Reseller::where('customer_id', $invoice->customer_id)->first();
+                if ($reseller) {
+                    if ($reseller->balance < $invoice->amount) {
+                        return back()->with('error', 'Tidak dapat menarik saldo: Saldo reseller saat ini (Rp ' . number_format($reseller->balance, 0, ',', '.') . ') lebih kecil dari nominal kasbon (Rp ' . number_format($invoice->amount, 0, ',', '.') . '). Kurang Rp ' . number_format($invoice->amount - $reseller->balance, 0, ',', '.') . '.');
+                    }
+                    $reseller->balance -= $invoice->amount;
+                    $reseller->save();
+
+                    // Hapus transaksi mutasi kredit terkait kasbon jika ada
+                    if (preg_match('/REQ-(\d+)/', $invoice->notes ?? '', $matches)) {
+                        $reqId = $matches[1];
+                        \App\Models\ResellerTransaction::where('reseller_id', $reseller->id)
+                            ->where(function($q) use ($reqId) {
+                                $q->where('reference_id', 'TOPUP-' . $reqId)
+                                  ->orWhere('reference_id', 'REQ-' . $reqId);
+                            })->delete();
+
+                        \App\Models\ResellerBalanceRequest::where('id', $reqId)->update([
+                            'status' => 'rejected',
+                            'notes' => trim(($invoice->notes ?? '') . ' [Tagihan Kasbon Dihapus]')
+                        ]);
+                    }
+                }
+            }
+
+            $invoiceNumber = $invoice->invoice_number;
+            $invoice->delete();
+
+            DB::commit();
+            return back()->with('success', "Tagihan kasbon #{$invoiceNumber} berhasil dihapus" . ($adjustBalance ? ' dan saldo reseller telah disesuaikan.' : '.'));
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal menghapus tagihan kasbon: ' . $e->getMessage());
+        }
+    }
 }

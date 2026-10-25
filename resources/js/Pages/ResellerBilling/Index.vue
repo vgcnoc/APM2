@@ -475,6 +475,17 @@
                                             <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
                                             <span>Rollback</span>
                                         </button>
+
+                                        <!-- Tombol Hapus Tagihan Kasbon -->
+                                        <button 
+                                            type="button"
+                                            @click="deleteInvoice(inv)" 
+                                            class="inline-flex items-center gap-1 bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-800 px-2.5 py-1.5 rounded-xl border border-rose-200 hover:border-rose-300 text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                                            title="Hapus tagihan kasbon ini"
+                                        >
+                                            <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                            <span>Hapus</span>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -748,6 +759,7 @@ import { ref, reactive, computed } from 'vue';
 import { useForm, Link, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import debounce from 'lodash/debounce';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     invoices: {
@@ -882,6 +894,68 @@ const rollbackInvoice = (inv) => {
             preserveScroll: true,
         });
     }
+};
+
+// ── Delete Invoice Kasbon Action ──
+const deleteInvoice = (inv) => {
+    const customerName = inv.customer?.name || 'Reseller';
+    const amountStr = formatRupiah(inv.amount);
+    
+    Swal.fire({
+        title: 'Hapus Tagihan Kasbon?',
+        html: `
+            <div class="text-left text-xs text-gray-600 space-y-3 mt-2">
+                <p>Apakah Anda yakin ingin menghapus tagihan kasbon <strong>#${inv.invoice_number}</strong>?</p>
+                <div class="bg-gray-50 p-3 rounded-xl border border-gray-200 text-xs space-y-1">
+                    <div><span class="text-gray-500 font-semibold">Reseller:</span> <strong class="text-gray-900">${customerName}</strong></div>
+                    <div><span class="text-gray-500 font-semibold">Total Tagihan:</span> <span class="font-bold font-mono text-gray-900">Rp ${amountStr}</span></div>
+                    <div><span class="text-gray-500 font-semibold">Sisa Tagihan:</span> <span class="font-bold font-mono text-indigo-600">Rp ${formatRupiah(inv.remaining)}</span></div>
+                </div>
+                <div class="p-3 rounded-xl text-xs bg-amber-50 text-amber-900 border border-amber-200">
+                    <label class="flex items-start gap-2.5 cursor-pointer font-medium">
+                        <input type="checkbox" id="swal-adjust-balance-kasbon" class="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4" />
+                        <span>
+                            <strong>Tarik Kembali Saldo Reseller</strong><br>
+                            <span class="text-[11px] opacity-90">Kurangi saldo dompet reseller sebesar Rp ${amountStr} dan batalkan pengisian saldonya (centang jika kasbon dibatalkan total).</span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#EF4444',
+        cancelButtonColor: '#6B7280',
+        confirmButtonText: 'Ya, Hapus Tagihan',
+        cancelButtonText: 'Batal',
+        preConfirm: () => {
+            const checkbox = document.getElementById('swal-adjust-balance-kasbon');
+            return {
+                adjust_balance: checkbox ? checkbox.checked : false
+            };
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const adjust = result.value?.adjust_balance ?? false;
+            router.delete(route('reseller-billing.destroy', inv.id), {
+                data: { adjust_balance: adjust },
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil Dihapus!',
+                        text: `Tagihan kasbon #${inv.invoice_number} berhasil dihapus.` + (adjust ? ' Saldo dompet reseller juga telah disesuaikan.' : ''),
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                },
+                onError: (err) => {
+                    const msg = err?.error || Object.values(err || {}).flat().join('<br>') || 'Gagal menghapus tagihan kasbon.';
+                    Swal.fire('Gagal Menghapus', msg, 'error');
+                }
+            });
+        }
+    });
 };
 
 // ── Janji Bayar State & Handlers ──
