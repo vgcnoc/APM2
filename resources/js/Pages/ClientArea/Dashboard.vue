@@ -610,12 +610,12 @@
 
         <!-- Modal Rincian Tagihan Kasbon Saldo -->
         <Teleport to="body">
-            <div v-if="showKasbonModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4">
-                <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" @click="showKasbonModal = false"></div>
-                <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-fade-in-up">
+            <div v-if="showKasbonModal" class="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" @click="showKasbonModal = false"></div>
+                <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-fade-in-up my-auto z-10">
                     
                     <!-- Header Modal -->
-                    <div class="p-6 border-b border-gray-100 bg-gradient-to-r from-rose-50/70 via-amber-50/50 to-white flex items-center justify-between">
+                    <div class="p-5 sm:p-6 border-b border-gray-100 bg-gradient-to-r from-rose-50/70 via-amber-50/50 to-white flex items-center justify-between shrink-0">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center shadow-md shadow-rose-500/20 shrink-0">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
@@ -631,7 +631,7 @@
                     </div>
 
                     <!-- Body Modal -->
-                    <div class="p-6 overflow-y-auto space-y-4 flex-1">
+                    <div class="p-5 sm:p-6 overflow-y-auto space-y-4 flex-1">
                         <!-- Summary Ringkasan -->
                         <div class="p-4 bg-rose-50/80 rounded-2xl border border-rose-100 flex items-center justify-between">
                             <div>
@@ -699,7 +699,7 @@
                     </div>
 
                     <!-- Footer Modal -->
-                    <div class="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-3">
+                    <div class="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-3 shrink-0">
                         <span class="text-xs text-gray-500">Status kasbon diperbarui secara otomatis.</span>
                         <button @click="showKasbonModal = false" class="px-5 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer">
                             Tutup
@@ -712,12 +712,12 @@
 
         <!-- Modal Top Up Saldo Mandiri Reseller -->
         <Teleport to="body">
-            <div v-if="showTopUpModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4">
-                <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" @click="showTopUpModal = false"></div>
-                <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up">
+            <div v-if="showTopUpModal" class="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" @click="showTopUpModal = false"></div>
+                <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden animate-fade-in-up my-auto z-10">
                     
-                    <!-- Header Modal Top Up -->
-                    <div class="p-6 border-b border-gray-100 bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-white flex items-center justify-between">
+                    <!-- Header Modal Top Up (Always visible at top) -->
+                    <div class="p-5 sm:p-6 border-b border-gray-100 bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-white flex items-center justify-between shrink-0">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
@@ -732,83 +732,87 @@
                         </button>
                     </div>
 
-                    <form @submit.prevent="submitTopUp" class="p-6 space-y-5">
-                        <!-- Saldo Saat Ini -->
-                        <div class="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center justify-between">
-                            <span class="text-xs font-semibold text-gray-500">Saldo Dompet Saat Ini</span>
-                            <span class="text-sm font-black text-gray-900 font-mono">Rp {{ Number(reseller.balance || 0).toLocaleString('id-ID') }}</span>
-                        </div>
-
-                        <!-- Pilihan Nominal Cepat -->
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Pilih Nominal Cepat</label>
-                            <div class="grid grid-cols-3 gap-2">
-                                <button 
-                                    v-for="amt in presetAmounts" 
-                                    :key="amt"
-                                    type="button"
-                                    @click="topUpForm.amount = amt"
-                                    :class="topUpForm.amount == amt ? 'bg-blue-600 text-white border-blue-600 ring-2 ring-blue-500/30' : 'bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'"
-                                    class="py-2.5 px-3 rounded-xl border text-xs font-black transition cursor-pointer text-center"
-                                >
-                                    Rp {{ (amt / 1000).toLocaleString('id-ID') }}k
-                                </button>
+                    <!-- Form with scrollable body and pinned footer -->
+                    <form @submit.prevent="submitTopUp" class="flex flex-col flex-1 overflow-hidden min-h-0">
+                        <!-- Scrollable Body Content -->
+                        <div class="p-5 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto flex-1">
+                            <!-- Saldo Saat Ini -->
+                            <div class="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center justify-between">
+                                <span class="text-xs font-semibold text-gray-500">Saldo Dompet Saat Ini</span>
+                                <span class="text-sm font-black text-gray-900 font-mono">Rp {{ Number(reseller.balance || 0).toLocaleString('id-ID') }}</span>
                             </div>
-                        </div>
 
-                        <!-- Nominal Custom -->
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">Atau Masukkan Nominal Sendiri</label>
-                            <div class="relative rounded-2xl">
-                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500 font-bold text-sm">
-                                    Rp
+                            <!-- Pilihan Nominal Cepat -->
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Pilih Nominal Cepat</label>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <button 
+                                        v-for="amt in presetAmounts" 
+                                        :key="amt"
+                                        type="button"
+                                        @click="topUpForm.amount = amt"
+                                        :class="topUpForm.amount == amt ? 'bg-blue-600 text-white border-blue-600 ring-2 ring-blue-500/30' : 'bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'"
+                                        class="py-2.5 px-3 rounded-xl border text-xs font-black transition cursor-pointer text-center"
+                                    >
+                                        Rp {{ (amt / 1000).toLocaleString('id-ID') }}k
+                                    </button>
                                 </div>
-                                <input 
-                                    v-model.number="topUpForm.amount" 
-                                    type="number" 
-                                    min="10000" 
-                                    max="10000000" 
-                                    step="5000"
-                                    required
-                                    class="w-full bg-gray-50/70 border border-gray-300 text-gray-900 text-base font-extrabold rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white block pl-11 pr-4 py-3 shadow-xs transition" 
-                                    placeholder="50000"
-                                />
                             </div>
-                            <span class="text-[11px] text-gray-400 mt-1 block">Minimal pengisian saldo: Rp 10.000</span>
-                        </div>
 
-                        <!-- Pilihan Saluran Pembayaran -->
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Metode Pembayaran</label>
-                            <div class="grid grid-cols-2 gap-2">
-                                <label 
-                                    v-for="ch in paymentChannels" 
-                                    :key="ch.id"
-                                    :class="topUpForm.channel === ch.id ? 'border-blue-600 bg-blue-50/60 ring-2 ring-blue-500/30' : 'border-gray-200 bg-white hover:border-gray-300'"
-                                    class="p-3 rounded-xl border flex items-center gap-2.5 cursor-pointer transition"
-                                >
-                                    <input 
-                                        type="radio" 
-                                        v-model="topUpForm.channel" 
-                                        :value="ch.id" 
-                                        class="text-blue-600 focus:ring-blue-500 h-4 w-4 border-gray-300"
-                                    />
-                                    <div>
-                                        <div class="text-xs font-bold text-gray-900">{{ ch.name }}</div>
-                                        <div class="text-[10px] text-gray-500">{{ ch.desc }}</div>
+                            <!-- Nominal Custom -->
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">Atau Masukkan Nominal Sendiri</label>
+                                <div class="relative rounded-2xl">
+                                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500 font-bold text-sm">
+                                        Rp
                                     </div>
-                                </label>
+                                    <input 
+                                        v-model.number="topUpForm.amount" 
+                                        type="number" 
+                                        min="10000" 
+                                        max="10000000" 
+                                        step="5000"
+                                        required
+                                        class="w-full bg-gray-50/70 border border-gray-300 text-gray-900 text-base font-extrabold rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white block pl-11 pr-4 py-3 shadow-xs transition" 
+                                        placeholder="50000"
+                                    />
+                                </div>
+                                <span class="text-[11px] text-gray-400 mt-1 block">Minimal pengisian saldo: Rp 10.000</span>
+                            </div>
+
+                            <!-- Pilihan Saluran Pembayaran -->
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Metode Pembayaran</label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <label 
+                                        v-for="ch in paymentChannels" 
+                                        :key="ch.id"
+                                        :class="topUpForm.channel === ch.id ? 'border-blue-600 bg-blue-50/60 ring-2 ring-blue-500/30' : 'border-gray-200 bg-white hover:border-gray-300'"
+                                        class="p-3 rounded-xl border flex items-center gap-2.5 cursor-pointer transition"
+                                    >
+                                        <input 
+                                            type="radio" 
+                                            v-model="topUpForm.channel" 
+                                            :value="ch.id" 
+                                            class="text-blue-600 focus:ring-blue-500 h-4 w-4 border-gray-300"
+                                        />
+                                        <div>
+                                            <div class="text-xs font-bold text-gray-900">{{ ch.name }}</div>
+                                            <div class="text-[10px] text-gray-500">{{ ch.desc }}</div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Info Otomatisasi -->
+                            <div class="p-3 bg-emerald-50/80 border border-emerald-200/70 rounded-xl text-xs text-emerald-800 flex items-start gap-2 leading-relaxed">
+                                <svg class="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <span>Setelah Anda menyelesaikan pembayaran, <strong>saldo dompet akan langsung otomatis bertambah</strong> secara real-time tanpa perlu konfirmasi manual admin.</span>
                             </div>
                         </div>
 
-                        <!-- Info Otomatisasi -->
-                        <div class="p-3 bg-emerald-50/80 border border-emerald-200/70 rounded-xl text-xs text-emerald-800 flex items-start gap-2 leading-relaxed">
-                            <svg class="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            <span>Setelah Anda menyelesaikan pembayaran, <strong>saldo dompet akan langsung otomatis bertambah</strong> secara real-time tanpa perlu konfirmasi manual admin.</span>
-                        </div>
-
-                        <!-- Action Buttons -->
-                        <div class="flex items-center justify-end gap-3 pt-2">
+                        <!-- Action Buttons Footer (Pinned at bottom, always visible) -->
+                        <div class="p-4 sm:p-5 border-t border-gray-100 bg-gray-50/90 flex items-center justify-end gap-3 shrink-0">
                             <button 
                                 type="button" 
                                 @click="showTopUpModal = false" 
