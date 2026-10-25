@@ -48,51 +48,46 @@ class CapacityMonitoringController extends Controller
             $odcBaseQuery->whereIn('area_id', $accessibleAreaIds);
         }
 
-        // Global KPI Computations
-        $allOdps = (clone $odpBaseQuery)->get();
-        $allOdcs = (clone $odcBaseQuery)->get();
+        // Scope Queries: apply area_id, olt_id, odc_id, search to base data
+        $odpScopedQuery = clone $odpBaseQuery;
+        $odcScopedQuery = clone $odcBaseQuery;
 
-        // ODP Stats
-        $odpTotalCount = $allOdps->count();
-        $odpTotalPorts = $allOdps->sum('total_ports');
-        $odpUsedPorts = $allOdps->sum('used_ports');
-        $odpAvailablePorts = max(0, $odpTotalPorts - $odpUsedPorts);
-        $odpUsagePercent = $odpTotalPorts > 0 ? round(($odpUsedPorts / $odpTotalPorts) * 100, 1) : 0;
-
-        $odpEmptyCount = $allOdps->filter(fn($o) => (int)$o->used_ports === 0)->count();
-        $odpAvailableCount = $allOdps->filter(fn($o) => (int)$o->used_ports > 0 && ((int)$o->total_ports - (int)$o->used_ports) > 2)->count();
-        $odpCriticalCount = $allOdps->filter(fn($o) => ((int)$o->total_ports - (int)$o->used_ports) <= 2 && ((int)$o->total_ports - (int)$o->used_ports) > 0 && (int)$o->used_ports > 0)->count();
-        $odpFullCount = $allOdps->filter(fn($o) => (int)$o->used_ports >= (int)$o->total_ports)->count();
-
-        // ODC Stats
-        $odcTotalCount = $allOdcs->count();
-        $odcTotalCapacity = $allOdcs->sum('capacity');
-        $odcUsedSlots = $allOdcs->sum('odps_count');
-        $odcAvailableSlots = max(0, $odcTotalCapacity - $odcUsedSlots);
-        $odcUsagePercent = $odcTotalCapacity > 0 ? round(($odcUsedSlots / $odcTotalCapacity) * 100, 1) : 0;
-
-        $odcEmptyCount = $allOdcs->filter(fn($o) => (int)$o->odps_count === 0)->count();
-        $odcAvailableCount = $allOdcs->filter(fn($o) => (int)$o->odps_count > 0 && ((int)$o->capacity - (int)$o->odps_count) > 1)->count();
-        $odcCriticalCount = $allOdcs->filter(fn($o) => ((int)$o->capacity - (int)$o->odps_count) === 1)->count();
-        $odcFullCount = $allOdcs->filter(fn($o) => (int)$o->odps_count >= (int)$o->capacity)->count();
-
-        // Transform ODPs
-        $odpQuery = clone $odpBaseQuery;
-        if ($areaId) $odpQuery->where('area_id', $areaId);
-        if ($odcId) $odpQuery->where('odc_id', $odcId);
-        if ($oltId) {
-            $odpQuery->whereHas('odc', fn($q) => $q->where('olt_id', $oltId));
+        if ($areaId) {
+            $odpScopedQuery->where('area_id', $areaId);
+            $odcScopedQuery->where('area_id', $areaId);
         }
+
+        if ($oltId) {
+            $odpScopedQuery->whereHas('odc', fn($q) => $q->where('olt_id', $oltId));
+            $odcScopedQuery->where('olt_id', $oltId);
+        }
+
+        if ($odcId) {
+            $odpScopedQuery->where('odc_id', $odcId);
+            $odcScopedQuery->where('id', $odcId);
+        }
+
         if ($search) {
-            $odpQuery->where(function ($q) use ($search) {
+            $odpScopedQuery->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('address', 'like', "%{$search}%")
                   ->orWhereHas('odc', fn($oq) => $oq->where('name', 'like', "%{$search}%"))
                   ->orWhereHas('area', fn($aq) => $aq->where('name', 'like', "%{$search}%"));
             });
+
+            $odcScopedQuery->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('location', 'like', "%{$search}%")
+                  ->orWhereHas('olt', fn($olq) => $olq->where('name', 'like', "%{$search}%"))
+                  ->orWhereHas('area', fn($aq) => $aq->where('name', 'like', "%{$search}%"));
+            });
         }
 
-        $transformedOdps = $odpQuery->get()->map(function ($odp) {
+        $scopedOdps = $odpScopedQuery->get();
+        $scopedOdcs = $odcScopedQuery->get();
+
+        // 1. Transform Scoped ODPs
+        $transformedOdps = $scopedOdps->map(function ($odp) {
             $total = (int) $odp->total_ports;
             $used = (int) $odp->used_ports;
             $available = max(0, $total - $used);
@@ -173,29 +168,19 @@ class CapacityMonitoringController extends Controller
             ];
         });
 
+        // 2. Filter ODPs by status & feasibility
+        $filteredOdps = $transformedOdps;
         if ($statusFilter !== 'all') {
-            $transformedOdps = $transformedOdps->filter(fn($o) => $o['status_category'] === $statusFilter);
+            $filteredOdps = $filteredOdps->filter(fn($o) => $o['status_category'] === $statusFilter);
         }
         if ($feasibilityFilter === 'can_open') {
-            $transformedOdps = $transformedOdps->filter(fn($o) => $o['can_register_customer'] === true);
+            $filteredOdps = $filteredOdps->filter(fn($o) => $o['can_register_customer'] === true);
         } elseif ($feasibilityFilter === 'cannot_open') {
-            $transformedOdps = $transformedOdps->filter(fn($o) => $o['can_register_customer'] === false);
+            $filteredOdps = $filteredOdps->filter(fn($o) => $o['can_register_customer'] === false);
         }
 
-        // Transform ODCs
-        $odcQuery = clone $odcBaseQuery;
-        if ($areaId) $odcQuery->where('area_id', $areaId);
-        if ($oltId) $odcQuery->where('olt_id', $oltId);
-        if ($search) {
-            $odcQuery->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('location', 'like', "%{$search}%")
-                  ->orWhereHas('olt', fn($olq) => $olq->where('name', 'like', "%{$search}%"))
-                  ->orWhereHas('area', fn($aq) => $aq->where('name', 'like', "%{$search}%"));
-            });
-        }
-
-        $transformedOdcs = $odcQuery->get()->map(function ($odc) {
+        // 3. Transform Scoped ODCs
+        $transformedOdcs = $scopedOdcs->map(function ($odc) {
             $capacity = (int) $odc->capacity;
             $odpsCount = (int) $odc->odps_count;
             $availableSlots = max(0, $capacity - $odpsCount);
@@ -270,16 +255,64 @@ class CapacityMonitoringController extends Controller
             ];
         });
 
+        // 4. Filter ODCs by status & feasibility
+        $filteredOdcs = $transformedOdcs;
         if ($statusFilter !== 'all') {
-            $transformedOdcs = $transformedOdcs->filter(fn($o) => $o['status_category'] === $statusFilter);
+            $filteredOdcs = $filteredOdcs->filter(fn($o) => $o['status_category'] === $statusFilter);
         }
         if ($feasibilityFilter === 'can_open') {
-            $transformedOdcs = $transformedOdcs->filter(fn($o) => $o['can_open_odp'] === true);
+            $filteredOdcs = $filteredOdcs->filter(fn($o) => $o['can_open_odp'] === true);
         } elseif ($feasibilityFilter === 'cannot_open') {
-            $transformedOdcs = $transformedOdcs->filter(fn($o) => $o['can_open_odp'] === false);
+            $filteredOdcs = $filteredOdcs->filter(fn($o) => $o['can_open_odp'] === false);
         }
 
-        // Smart Expansion Matrix (Per-Area Analytics)
+        // 5. Smart KPI Dynamic Dataset (mengikuti filter yang aktif)
+        if ($statusFilter !== 'all' || $feasibilityFilter !== 'all') {
+            if ($tab === 'odp') {
+                $kpiOdps = $filteredOdps;
+                $parentOdcIds = $filteredOdps->pluck('parent_odc_id')->filter()->unique();
+                $kpiOdcs = $parentOdcIds->isNotEmpty()
+                    ? $transformedOdcs->whereIn('id', $parentOdcIds)
+                    : $transformedOdcs;
+            } elseif ($tab === 'odc') {
+                $kpiOdcs = $filteredOdcs;
+                $kpiOdcIds = $filteredOdcs->pluck('id')->unique();
+                $kpiOdps = $kpiOdcIds->isNotEmpty()
+                    ? $transformedOdps->whereIn('parent_odc_id', $kpiOdcIds)
+                    : $transformedOdps;
+            } else {
+                $kpiOdps = $filteredOdps;
+                $kpiOdcs = $filteredOdcs;
+            }
+        } else {
+            $kpiOdps = $transformedOdps;
+            $kpiOdcs = $transformedOdcs;
+        }
+
+        // 6. Calculate Dynamic KPI Stats
+        $odpTotalCount = $kpiOdps->count();
+        $odpTotalPorts = (int) $kpiOdps->sum('total_ports');
+        $odpUsedPorts = (int) $kpiOdps->sum('used_ports');
+        $odpAvailablePorts = max(0, $odpTotalPorts - $odpUsedPorts);
+        $odpUsagePercent = $odpTotalPorts > 0 ? round(($odpUsedPorts / $odpTotalPorts) * 100, 1) : 0;
+
+        $odpEmptyCount = $kpiOdps->filter(fn($o) => $o['status_category'] === 'empty')->count();
+        $odpAvailableCount = $kpiOdps->filter(fn($o) => $o['status_category'] === 'available')->count();
+        $odpCriticalCount = $kpiOdps->filter(fn($o) => $o['status_category'] === 'critical')->count();
+        $odpFullCount = $kpiOdps->filter(fn($o) => $o['status_category'] === 'full')->count();
+
+        $odcTotalCount = $kpiOdcs->count();
+        $odcTotalCapacity = (int) $kpiOdcs->sum('capacity');
+        $odcUsedSlots = (int) $kpiOdcs->sum('odps_count');
+        $odcAvailableSlots = max(0, $odcTotalCapacity - $odcUsedSlots);
+        $odcUsagePercent = $odcTotalCapacity > 0 ? round(($odcUsedSlots / $odcTotalCapacity) * 100, 1) : 0;
+
+        $odcEmptyCount = $kpiOdcs->filter(fn($o) => $o['status_category'] === 'empty')->count();
+        $odcAvailableCount = $kpiOdcs->filter(fn($o) => $o['status_category'] === 'available')->count();
+        $odcCriticalCount = $kpiOdcs->filter(fn($o) => $o['status_category'] === 'critical')->count();
+        $odcFullCount = $kpiOdcs->filter(fn($o) => $o['status_category'] === 'full')->count();
+
+        // 7. Smart Expansion Matrix (Per-Area Analytics)
         $areaQuery = Area::query();
         if ($accessibleAreaIds !== null) {
             $areaQuery->whereIn('id', $accessibleAreaIds);
@@ -289,9 +322,9 @@ class CapacityMonitoringController extends Controller
         }
 
         $areas = $areaQuery->orderBy('name')->get();
-        $expansionMatrix = $areas->map(function ($area) use ($allOdcs, $allOdps) {
-            $areaOdcs = $allOdcs->where('area_id', $area->id);
-            $areaOdps = $allOdps->where('area_id', $area->id);
+        $expansionMatrix = $areas->map(function ($area) use ($scopedOdcs, $scopedOdps) {
+            $areaOdcs = $scopedOdcs->where('area_id', $area->id);
+            $areaOdps = $scopedOdps->where('area_id', $area->id);
 
             $odcCount = $areaOdcs->count();
             $odcCap = $areaOdcs->sum('capacity');
@@ -351,7 +384,7 @@ class CapacityMonitoringController extends Controller
             ];
         });
 
-        // Smart Insights Banner
+        // 8. Smart Insights Banner (Disesuaikan dengan Scope / Filter Terpilih)
         $smartInsights = [];
         if ($odpFullCount > 0) {
             $smartInsights[] = [
@@ -363,7 +396,7 @@ class CapacityMonitoringController extends Controller
                 'action_status' => 'full'
             ];
         }
-        if ($odcAvailableSlots > 0) {
+        if ($odcAvailableSlots > 0 && $odcTotalCount > 0) {
             $smartInsights[] = [
                 'type' => 'success',
                 'title' => "Tersedia {$odcAvailableSlots} Slot ODP di {$odcTotalCount} ODC",
@@ -417,18 +450,21 @@ class CapacityMonitoringController extends Controller
                 'odc_critical_count' => $odcCriticalCount,
                 'odc_full_count' => $odcFullCount,
             ],
-            'odps' => $transformedOdps->values(),
-            'odcs' => $transformedOdcs->values(),
+            'odps' => $filteredOdps->values(),
+            'odcs' => $filteredOdcs->values(),
             'expansion_matrix' => $expansionMatrix->values(),
             'smart_insights' => $smartInsights,
             'filter_options' => [
                 'areas' => DataScopeService::getScopedAreas($user, 'network_capacity'),
                 'olts' => Olt::where('status', 'active')
                     ->when($accessibleAreaIds !== null, fn($q) => $q->whereIn('area_id', $accessibleAreaIds))
-                    ->get(['id', 'name']),
+                    ->when($areaId, fn($q) => $q->where('area_id', $areaId))
+                    ->get(['id', 'name', 'area_id']),
                 'odcs' => Odc::where('status', 'active')
                     ->when($accessibleAreaIds !== null, fn($q) => $q->whereIn('area_id', $accessibleAreaIds))
-                    ->get(['id', 'name', 'area_id', 'capacity']),
+                    ->when($areaId, fn($q) => $q->where('area_id', $areaId))
+                    ->when($oltId, fn($q) => $q->where('olt_id', $oltId))
+                    ->get(['id', 'name', 'area_id', 'olt_id', 'capacity']),
             ],
             'filters' => [
                 'tab' => $tab,
