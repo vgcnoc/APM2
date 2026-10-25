@@ -1523,8 +1523,13 @@ class CustomerController extends Controller
 
         $isAffiliate = $isAffiliatePortal || (!$isInternalStaff && ($userRole === 'affiliate' || $userRole === 'reseller'));
 
+        $packagesQuery = InternetPackage::active();
+        if ($isAffiliatePortal) {
+            $packagesQuery->visibleToSales();
+        }
+
         return Inertia::render('Customers/Create', [
-            'packages' => InternetPackage::active()->get(),
+            'packages' => $packagesQuery->get(),
             'sales' => $sales,
             'areas' => $areas,
             'area_villages' => $areaVillagesMap,
@@ -1539,6 +1544,14 @@ class CustomerController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $isAffiliatePortal = $request->routeIs('affiliate.booking.store');
+        $availablePackageRule = Rule::exists('internet_packages', 'id')->where(function ($query) use ($isAffiliatePortal) {
+            $query->where('is_active', true);
+
+            if ($isAffiliatePortal) {
+                $query->where('is_visible_to_sales', true);
+            }
+        });
+
         if (!$isAffiliatePortal && !auth()->user()->can('customers_booking_create')) {
             abort(403, 'Anda tidak memiliki hak akses untuk membuat booking.');
         }
@@ -1554,7 +1567,9 @@ class CustomerController extends Controller
             ]);
             $request->validate([
                 'area' => ['required', 'string', 'exists:areas,name'],
-                'package_id' => ['required', 'exists:internet_packages,id'],
+                'package_id' => ['required', $availablePackageRule],
+            ], [
+                'package_id.exists' => 'Paket ini tidak tersedia untuk Portal Sales.',
             ]);
         }
 
@@ -1579,7 +1594,7 @@ class CustomerController extends Controller
             'longitude' => 'nullable|numeric|between:-180,180',
             'package_id' => [
                 'nullable',
-                Rule::exists('internet_packages', 'id')->where(fn ($query) => $query->where('is_active', true)),
+                $availablePackageRule,
             ],
             'notes' => 'nullable|string',
             'base_amount' => 'nullable|numeric|min:0',
@@ -1644,15 +1659,21 @@ class CustomerController extends Controller
             $validated['installation_fee'] = 0;
             $validated['package_id'] = null;
         } else {
+            $packageQuery = InternetPackage::active();
+            if ($isAffiliatePortal) {
+                $packageQuery->visibleToSales();
+            }
             $package = !empty($validated['package_id'])
-                ? InternetPackage::active()->find($validated['package_id'])
+                ? $packageQuery->find($validated['package_id'])
                 : null;
 
             // Reseller voucher murni tidak memakai paket internet. Semua booking
             // internet wajib memilih paket aktif dari Master Data.
             if (!$package && empty($validated['is_reseller'])) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
-                    'package_id' => 'Pilih paket langganan aktif dari Master Data.',
+                    'package_id' => $isAffiliatePortal
+                        ? 'Pilih paket yang tersedia untuk Portal Sales.'
+                        : 'Pilih paket langganan aktif dari Master Data.',
                 ]);
             }
 

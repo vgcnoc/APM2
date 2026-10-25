@@ -291,7 +291,7 @@
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Type / Limit</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Harga & Margin</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Masa Aktif</th>
-                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status & Portal Sales</th>
                             <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
                         </tr>
                     </thead>
@@ -336,14 +336,22 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span v-if="pkg.is_active" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                    Aktif
-                                </span>
-                                <span v-else class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-50 text-gray-700 border border-gray-200">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
-                                    Nonaktif
-                                </span>
+                                <div class="flex flex-col items-start gap-1.5">
+                                    <span v-if="pkg.is_active" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                        Aktif
+                                    </span>
+                                    <span v-else class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-50 text-gray-700 border border-gray-200">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                                        Nonaktif
+                                    </span>
+                                    <span v-if="pkg.is_visible_to_sales" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                        Portal Sales: Tampil
+                                    </span>
+                                    <span v-else class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-50 text-slate-500 border border-slate-200">
+                                        Portal Sales: Sembunyi
+                                    </span>
+                                </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <div class="flex items-center justify-end gap-2">
@@ -542,6 +550,20 @@
                                             <div class="ml-3">
                                                 <div class="text-xs font-bold text-gray-800">Paket Aktif</div>
                                                 <div class="text-[10px] text-gray-500">Pelanggan bisa berlangganan paket ini.</div>
+                                            </div>
+                                        </label>
+                                    </div>
+
+                                    <div class="sm:col-span-2">
+                                        <label class="flex items-center p-3 border rounded-lg cursor-pointer transition-colors" :class="form.is_visible_to_sales ? 'border-blue-200 bg-blue-50/60' : 'border-slate-200 bg-slate-50/50'">
+                                            <div class="relative">
+                                                <input type="checkbox" v-model="form.is_visible_to_sales" class="sr-only">
+                                                <div class="block w-10 h-6 rounded-full transition-colors" :class="form.is_visible_to_sales ? 'bg-blue-600' : 'bg-gray-300'"></div>
+                                                <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform" :class="form.is_visible_to_sales ? 'transform translate-x-4' : ''"></div>
+                                            </div>
+                                            <div class="ml-3">
+                                                <div class="text-xs font-bold text-gray-800">Tampilkan di Portal Sales</div>
+                                                <div class="text-[10px] text-gray-500">Hanya paket aktif yang dicentang di sini yang dapat dipilih oleh Sales/Afiliasi saat membuat booking.</div>
                                             </div>
                                         </label>
                                     </div>
@@ -1315,7 +1337,8 @@ const form = useForm({
     rate_limit: '',
     active_period: 1,
     active_period_unit: 'Bulan',
-    is_active: true
+    is_active: true,
+    is_visible_to_sales: false,
 });
 
 const currentActivePrice = computed(() => {
@@ -1357,6 +1380,7 @@ const openEditModal = (pkg) => {
     form.is_mikrotik_group_custom = !!pkg.is_mikrotik_group_custom;
     form.is_mikrotik_address_list_custom = !!pkg.is_mikrotik_address_list_custom;
     form.is_active = !!pkg.is_active;
+    form.is_visible_to_sales = !!pkg.is_visible_to_sales;
     
     // Set defaults if null
     if (!form.color) form.color = '#4f46e5';

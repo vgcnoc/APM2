@@ -107,6 +107,7 @@ class InternetPackageController extends Controller
             'access_mode' => 'required|in:pppoe,hotspot,voucher,static_ip,lainnya',
             'description' => 'nullable|string',
             'is_active' => 'boolean',
+            'is_visible_to_sales' => 'boolean',
             'color' => 'required|string|max:50',
             'is_promo' => 'boolean',
             'promo_price' => 'nullable|numeric|min:0',

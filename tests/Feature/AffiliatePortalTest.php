@@ -71,6 +71,7 @@ class AffiliatePortalTest extends TestCase
             $table->boolean('is_promo')->default(false);
             $table->integer('promo_price')->nullable();
             $table->boolean('is_active')->default(true);
+            $table->boolean('is_visible_to_sales')->default(false);
         });
         Schema::create('customers', function (Blueprint $table) {
             $table->id();
@@ -227,7 +228,7 @@ class AffiliatePortalTest extends TestCase
         $owner = $this->user();
         $other = $this->user('sales');
         DB::table('areas')->insert(['id' => 1, 'name' => 'Service Area']);
-        DB::table('internet_packages')->insert(['id' => 1, 'name' => 'Home', 'price' => 150000]);
+        DB::table('internet_packages')->insert(['id' => 1, 'name' => 'Home', 'price' => 150000, 'is_visible_to_sales' => true]);
         $this->actingAs($owner)->withSession(['login_portal' => 'affiliate'])
             ->post('/affiliate/booking', [
                 'name' => 'Personal booking', 'phone' => '08123456789', 'address' => 'Test address',
@@ -249,7 +250,7 @@ class AffiliatePortalTest extends TestCase
         DB::table('areas')->insert(['id' => 1, 'name' => 'Service Area']);
         $packageId = DB::table('internet_packages')->insertGetId([
             'name' => 'Master 25 Mbps', 'price' => 200000, 'is_promo' => true,
-            'promo_price' => 175000, 'installation_fee' => 250000, 'is_active' => true,
+            'promo_price' => 175000, 'installation_fee' => 250000, 'is_active' => true, 'is_visible_to_sales' => true,
         ]);
 
         $this->actingAs($owner)->withSession(['login_portal' => 'affiliate'])
@@ -275,6 +276,41 @@ class AffiliatePortalTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page->component('Customers/Create')
                 ->where('affiliatePortal', true)->has('sales', 1)->where('sales.0.id', $owner->id)
                 ->has('area_villages', 0));
+    }
+
+    public function test_sales_portal_only_exposes_packages_enabled_for_sales(): void
+    {
+        $owner = $this->user('sales');
+        $this->profile($owner);
+        DB::table('internet_packages')->insert([
+            ['id' => 1, 'name' => 'Paket Sales', 'price' => 150000, 'is_active' => true, 'is_visible_to_sales' => true],
+            ['id' => 2, 'name' => 'Paket Internal', 'price' => 200000, 'is_active' => true, 'is_visible_to_sales' => false],
+        ]);
+
+        $this->actingAs($owner)->withSession(['login_portal' => 'affiliate'])
+            ->get('/affiliate/booking/create')->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->has('packages', 1)
+                ->where('packages.0.id', 1)
+                ->where('packages.0.name', 'Paket Sales'));
+    }
+
+    public function test_sales_cannot_submit_an_active_package_hidden_from_sales_portal(): void
+    {
+        $owner = $this->user('sales');
+        $this->profile($owner);
+        DB::table('areas')->insert(['id' => 1, 'name' => 'Service Area']);
+        DB::table('internet_packages')->insert([
+            'id' => 1, 'name' => 'Paket Internal', 'price' => 200000,
+            'is_active' => true, 'is_visible_to_sales' => false,
+        ]);
+
+        $this->actingAs($owner)->withSession(['login_portal' => 'affiliate'])
+            ->post('/affiliate/booking', [
+                'name' => 'Tidak Boleh Tersimpan', 'phone' => '08123456789', 'address' => 'Alamat uji',
+                'area' => 'Service Area', 'package_id' => 1, 'registration_date' => '2026-10-25',
+            ])->assertSessionHasErrors('package_id');
+
+        $this->assertDatabaseMissing('customers', ['name' => 'Tidak Boleh Tersimpan']);
     }
 
     public function test_suspended_profile_cannot_make_new_booking(): void
