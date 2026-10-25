@@ -13,3 +13,9 @@ test('locked sales indicator is rendered below the account name', async () => {
     assert.match(field, /Petugas dikunci ke akun Anda\./);
     assert.doesNotMatch(field, /absolute inset-y-0 right-0/);
 });
+
+test('booking price fields do not repeat the master data automation label', async () => {
+    const source = await readFile(bookingFormPath, 'utf8');
+
+    assert.doesNotMatch(source, /Otomatis dari Master Data/);
+});

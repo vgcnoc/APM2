@@ -251,8 +251,7 @@
                                 <div>
                                     <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2 flex items-center justify-between">
                                         <span>Tarif Bulanan (Rp) <span class="text-red-500">*</span></span>
-                                        <span v-if="form.service_status === 'berbayar'" class="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded">Otomatis dari Master Data</span>
-                                        <span v-else-if="form.service_status === 'gratis' && !isAffiliateAccount" class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">Otomatis Rp 0 (Gratis)</span>
+                                        <span v-if="form.service_status === 'gratis' && !isAffiliateAccount" class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">Otomatis Rp 0 (Gratis)</span>
                                         <span v-else-if="form.service_status === 'free_home' && !isAffiliateAccount" class="text-[10px] text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded">Otomatis Rp 0 (Free Home)</span>
                                     </label>
                                     <div class="relative">
@@ -264,9 +263,8 @@
                                 </div>
                                 
                                 <div>
-                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2 flex items-center justify-between">
+                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">
                                         <span>Biaya Pasang Baru (Rp)</span>
-                                        <span class="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded">Otomatis dari Master Data</span>
                                     </label>
                                     <div class="relative">
                                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
