@@ -425,49 +425,49 @@
 
         <!-- MODAL GENERATE VOUCHER (MODERN DUAL-TAB) -->
         <Teleport to="body">
-            <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4 overflow-y-auto">
-                <div class="relative bg-white border border-gray-200 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-fade-in-up">
+            <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/80 backdrop-blur-sm p-4 overflow-y-auto">
+                <div class="relative bg-[#111327] border border-indigo-900/80 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-fade-in-up text-gray-200">
                     
                     <!-- MODAL HEADER -->
-                    <div class="px-6 py-4 bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 text-white flex justify-between items-center shrink-0">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 text-indigo-300">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>
+                    <div class="px-6 py-4 bg-[#111327] border-b border-indigo-950 flex justify-between items-center shrink-0">
+                        <div class="flex items-center gap-3.5">
+                            <div class="w-11 h-11 rounded-xl bg-[#1e213d] flex items-center justify-center border border-indigo-500/20 text-indigo-300 shadow-sm shrink-0">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>
                             </div>
                             <div>
-                                <h2 class="text-base font-bold tracking-tight text-white flex items-center gap-2">
-                                    Generator Voucher Hotspot
-                                    <span class="px-2 py-0.5 text-[10px] font-semibold bg-indigo-500/30 text-indigo-200 rounded-full border border-indigo-400/30">Mikrotik / RADIUS</span>
-                                </h2>
-                                <p class="text-xs text-indigo-200/80">Buat voucher kustom satuan atau cetak voucher massal otomatis</p>
+                                <div class="flex items-center gap-2">
+                                    <h2 class="text-base font-bold tracking-tight text-white">Generator Voucher Hotspot</h2>
+                                    <span class="px-2.5 py-0.5 text-[10px] font-semibold bg-indigo-500/20 text-indigo-300 rounded-full border border-indigo-400/30">Mikrotik / RADIUS</span>
+                                </div>
+                                <p class="text-xs text-gray-400 mt-0.5">Buat voucher kustom satuan atau cetak voucher massal otomatis</p>
                             </div>
                         </div>
-                        <button @click="closeModal" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white flex items-center justify-center transition-colors">
+                        <button @click="closeModal" class="w-9 h-9 rounded-xl bg-[#1e213d] hover:bg-[#282c50] text-gray-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                     </div>
 
                     <!-- TAB SELECTOR -->
-                    <div class="bg-gray-50 border-b border-gray-200 px-6 pt-3 flex gap-2 shrink-0">
+                    <div class="bg-[#15172e] border-b border-indigo-950 px-6 pt-3 flex gap-2 shrink-0">
                         <button 
                             type="button" 
                             @click="activeTab = 'single'"
-                            :class="activeTab === 'single' ? 'bg-white text-indigo-600 border-indigo-600 shadow-sm font-bold' : 'text-gray-500 hover:text-gray-700 border-transparent font-medium'"
-                            class="px-4 py-2.5 text-xs rounded-t-xl border-b-2 flex items-center gap-2 transition-all"
+                            :class="activeTab === 'single' ? 'bg-[#222649] text-white border-b-2 border-indigo-500 shadow-sm font-bold' : 'text-gray-400 hover:text-gray-200 border-transparent font-medium'"
+                            class="px-4 py-2.5 text-xs rounded-t-xl flex items-center gap-2 transition-all cursor-pointer"
                         >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                            <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                             <span>Single Voucher (Satuan)</span>
-                            <span class="px-1.5 py-0.2 bg-indigo-100 text-indigo-700 text-[10px] rounded-full">Kustom</span>
+                            <span class="px-1.5 py-0.2 bg-indigo-900/60 text-indigo-300 border border-indigo-700/50 text-[10px] rounded-full">Kustom</span>
                         </button>
                         <button 
                             type="button" 
                             @click="activeTab = 'bulk'"
-                            :class="activeTab === 'bulk' ? 'bg-white text-indigo-600 border-indigo-600 shadow-sm font-bold' : 'text-gray-500 hover:text-gray-700 border-transparent font-medium'"
-                            class="px-4 py-2.5 text-xs rounded-t-xl border-b-2 flex items-center gap-2 transition-all"
+                            :class="activeTab === 'bulk' ? 'bg-[#222649] text-white border-b-2 border-indigo-500 shadow-sm font-bold' : 'text-gray-400 hover:text-gray-200 border-transparent font-medium'"
+                            class="px-4 py-2.5 text-xs rounded-t-xl flex items-center gap-2 transition-all cursor-pointer"
                         >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                            <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                             <span>Generate Massal (Batch)</span>
-                            <span class="px-1.5 py-0.2 bg-gray-100 text-gray-600 text-[10px] rounded-full">Otomatis</span>
+                            <span class="px-1.5 py-0.2 bg-gray-800 text-gray-400 text-[10px] rounded-full">Otomatis</span>
                         </button>
                     </div>
 
@@ -490,12 +490,12 @@
                                 </select>
                             </div>
 
-                            <!-- 2. Jenis Voucher (Berbayar vs Gratis) -->
-                            <div>
+                            <!-- 2. Jenis Voucher (Berbayar vs Gratis - Khusus Admin/Kantor) -->
+                            <div v-if="!isReseller">
                                 <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                                     Jenis Tarif Voucher <span class="text-red-500">*</span>
                                 </label>
-                                <div :class="isReseller ? 'grid grid-cols-1' : 'grid grid-cols-2 gap-3'">
+                                <div class="grid grid-cols-2 gap-3">
                                     <label 
                                         :class="singleForm.cost_type === 'paid' ? 'border-indigo-500 bg-indigo-50/50 ring-2 ring-indigo-500/20' : 'border-gray-200 bg-white hover:bg-gray-50'"
                                         class="border rounded-xl p-3 cursor-pointer flex items-center gap-3 transition-all"
@@ -509,9 +509,7 @@
                                         </div>
                                     </label>
 
-                                    <!-- KOTAK MERAH 1: Hilangkan untuk Reseller -->
                                     <label 
-                                        v-if="!isReseller"
                                         :class="singleForm.cost_type === 'free' ? 'border-emerald-500 bg-emerald-50/50 ring-2 ring-emerald-500/20' : 'border-gray-200 bg-white hover:bg-gray-50'"
                                         class="border rounded-xl p-3 cursor-pointer flex items-center gap-3 transition-all"
                                     >
@@ -752,8 +750,8 @@
                                 </select>
                             </div>
                             
-                            <!-- 2. Jenis Biaya Bulk -->
-                            <div :class="isReseller ? 'grid grid-cols-1' : 'grid grid-cols-2 gap-3'">
+                            <!-- 2. Jenis Biaya Bulk (Khusus Admin/Kantor) -->
+                            <div v-if="!isReseller" class="grid grid-cols-2 gap-3">
                                 <label 
                                     :class="bulkForm.cost_type === 'paid' ? 'border-indigo-500 bg-indigo-50/50 ring-2 ring-indigo-500/20' : 'border-gray-200 bg-white hover:bg-gray-50'"
                                     class="border rounded-xl p-2.5 cursor-pointer flex items-center gap-2.5 transition-all text-xs"
@@ -762,7 +760,6 @@
                                     <span class="font-bold text-gray-900">💰 Harus Bayar (Normal)</span>
                                 </label>
                                 <label 
-                                    v-if="!isReseller"
                                     :class="bulkForm.cost_type === 'free' ? 'border-emerald-500 bg-emerald-50/50 ring-2 ring-emerald-500/20' : 'border-gray-200 bg-white hover:bg-gray-50'"
                                     class="border rounded-xl p-2.5 cursor-pointer flex items-center gap-2.5 transition-all text-xs"
                                 >
@@ -873,8 +870,8 @@
                     </div>
 
                     <!-- MODAL FOOTER -->
-                    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-between items-center shrink-0">
-                        <button type="button" @click="closeModal" class="px-4 py-2 border border-gray-300 rounded-xl text-xs font-bold text-gray-700 hover:bg-gray-100 transition-colors">
+                    <div class="px-6 py-4 border-t border-indigo-950 bg-[#111327] flex justify-between items-center shrink-0">
+                        <button type="button" @click="closeModal" class="px-5 py-2.5 rounded-xl border border-indigo-900/80 text-xs font-bold text-gray-300 hover:bg-[#1f2244] hover:text-white transition-colors cursor-pointer">
                             Batal
                         </button>
                         <div class="flex items-center gap-2">
@@ -883,7 +880,7 @@
                                 type="button" 
                                 @click="$el.querySelector('#submitSingleBtn').click()" 
                                 :disabled="singleForm.processing || !singleForm.username || !singleForm.voucher_profile_id" 
-                                class="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-200 hover:shadow-lg transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                class="px-6 py-2.5 bg-gradient-to-r from-[#4f46e5] to-[#6366f1] hover:brightness-110 active:brightness-95 text-white rounded-xl text-xs font-bold shadow-[0_0_20px_rgba(99,102,241,0.5)] transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                             >
                                 <svg v-if="singleForm.processing" class="animate-spin -ml-1 mr-1 h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                 <span>{{ singleForm.processing ? 'Menyimpan...' : 'Buat 1 Voucher' }}</span>
@@ -894,7 +891,7 @@
                                 type="button" 
                                 @click="$el.querySelector('#submitBulkBtn').click()" 
                                 :disabled="bulkForm.processing || !bulkForm.voucher_profile_id" 
-                                class="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-200 hover:shadow-lg transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                class="px-6 py-2.5 bg-gradient-to-r from-[#4f46e5] to-[#6366f1] hover:brightness-110 active:brightness-95 text-white rounded-xl text-xs font-bold shadow-[0_0_20px_rgba(99,102,241,0.5)] transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                             >
                                 <svg v-if="bulkForm.processing" class="animate-spin -ml-1 mr-1 h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                 <span>{{ bulkForm.processing ? 'Generating...' : `Generate ${bulkForm.amount} Voucher` }}</span>
@@ -1064,16 +1061,29 @@ const props = defineProps({
 });
 
 const isClientArea = computed(() => {
-    return page.props.auth?.user?.role === 'reseller' 
-        || page.props.auth?.user?.role === 'customer' 
-        || page.props.auth?.user?.login_portal === 'reseller'
-        || Boolean(props.isResellerPortal);
+    const role = (page.props.auth?.user?.role || '').toLowerCase();
+    const portal = (page.props.auth?.user?.login_portal || '').toLowerCase();
+    const url = typeof window !== 'undefined' ? window.location.pathname : '';
+    return role === 'reseller' 
+        || role === 'biller'
+        || role === 'customer' 
+        || portal === 'reseller'
+        || Boolean(props.isResellerPortal)
+        || Boolean(props.currentReseller)
+        || url.startsWith('/client-area');
 });
 
 const layoutComponent = computed(() => isClientArea.value ? ClientAreaLayout : AppLayout);
 
 const isReseller = computed(() => {
-    return isClientArea.value || page.props.auth?.user?.role === 'reseller' || !!props.currentReseller;
+    const role = (page.props.auth?.user?.role || '').toLowerCase();
+    const portal = (page.props.auth?.user?.login_portal || '').toLowerCase();
+    return isClientArea.value 
+        || role === 'reseller' 
+        || role === 'biller'
+        || portal === 'reseller'
+        || !!props.currentReseller
+        || Boolean(props.isResellerPortal);
 });
 
 const sellableProfiles = computed(() => {

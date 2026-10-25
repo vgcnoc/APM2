@@ -346,19 +346,24 @@ class VoucherController extends Controller
         $vouchers = $query->latest('vouchers.id')->paginate(20)->withQueryString();
         $user = auth()->user();
         $isAdminLike = $user && ($user->isAdmin() || in_array(strtolower($user->role ?? ''), ['admin', 'super admin', 'superadmin', 'demo']));
-        $isResellerPortal = $user && (strtolower($user->role ?? '') === 'reseller' || session('login_portal') === 'reseller');
+        $isResellerPortal = $user && (
+            strtolower($user->role ?? '') === 'reseller' 
+            || strtolower($user->role ?? '') === 'biller' 
+            || session('login_portal') === 'reseller'
+            || ($user->reseller && !$isAdminLike)
+        );
 
         if ($isAdminLike && session('login_portal') !== 'reseller') {
             $profiles = VoucherProfile::all();
         } else {
-            $profiles = $user ? $user->voucherProfiles()->select('voucher_profiles.*')->get() : collect();
+            $profiles = $user ? $user->voucherProfiles()->where('voucher_profiles.is_customer_free', false)->select('voucher_profiles.*')->get() : collect();
             if ($profiles->isEmpty()) {
                 $profiles = VoucherProfile::where('is_customer_free', false)->get();
             }
         }
         
         $currentReseller = null;
-        if ($isResellerPortal && $user) {
+        if (($isResellerPortal || $user?->reseller) && $user) {
             $currentReseller = $this->getOrCreateReseller($user);
             if ($currentReseller) {
                 $currentReseller->load('customer');
@@ -913,6 +918,19 @@ class VoucherController extends Controller
         $isFree = $request->boolean('is_free', false) || $request->input('cost_type') === 'free';
         $user = auth()->user();
 
+        $isAdminLike = $user && ($user->isAdmin() || in_array(strtolower($user->role ?? ''), ['admin', 'super admin', 'superadmin', 'demo']));
+        $isResellerUser = $user && (
+            strtolower($user->role ?? '') === 'reseller'
+            || strtolower($user->role ?? '') === 'biller'
+            || session('login_portal') === 'reseller'
+            || ($user->reseller && !$isAdminLike)
+        );
+
+        // Reseller atau biller tidak boleh membuat voucher gratis sama sekali
+        if ($isResellerUser) {
+            $isFree = false;
+        }
+
         if ($isFree && $user && !$user->isAdmin() && !$user->can('vouchers_free_create') && !$user->can('vouchers_create')) {
             return redirect()->back()->withErrors(['voucher_profile_id' => 'Anda tidak memiliki hak akses untuk mengenerate voucher gratis.'])->withInput();
         }
@@ -933,6 +951,9 @@ class VoucherController extends Controller
             ]);
 
             $profile = VoucherProfile::findOrFail($validated['voucher_profile_id']);
+            if ($isResellerUser && ($profile->price <= 0 || $profile->is_customer_free)) {
+                return redirect()->back()->withErrors(['voucher_profile_id' => 'Paket voucher gratis tidak dapat dijual oleh reseller.'])->withInput();
+            }
             if ($profile->price <= 0 || $profile->is_customer_free) {
                 $isFree = true;
             }
@@ -956,7 +977,7 @@ class VoucherController extends Controller
             }
 
             $targetResellerId = $validated['reseller_id'] ?? null;
-            if (!$targetResellerId && (strtolower($user->role ?? '') === 'reseller' || session('login_portal') === 'reseller')) {
+            if (!$targetResellerId && $isResellerUser) {
                 $autoReseller = $this->getOrCreateReseller($user);
                 if ($autoReseller) {
                     $targetResellerId = $autoReseller->id;
@@ -1026,12 +1047,15 @@ class VoucherController extends Controller
         ]);
 
         $profile = VoucherProfile::findOrFail($validated['voucher_profile_id']);
+        if ($isResellerUser && ($profile->price <= 0 || $profile->is_customer_free)) {
+            return redirect()->back()->withErrors(['voucher_profile_id' => 'Paket voucher gratis tidak dapat dijual oleh reseller.'])->withInput();
+        }
         if ($profile->price <= 0 || $profile->is_customer_free) {
             $isFree = true;
         }
 
         $targetResellerId = $validated['reseller_id'] ?? null;
-        if (!$targetResellerId && (strtolower($user->role ?? '') === 'reseller' || session('login_portal') === 'reseller')) {
+        if (!$targetResellerId && $isResellerUser) {
             $autoReseller = $this->getOrCreateReseller($user);
             if ($autoReseller) {
                 $targetResellerId = $autoReseller->id;

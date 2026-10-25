@@ -142,100 +142,327 @@
             </div>
 
             <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                <!-- Generate Voucher Card -->
+                <!-- Generate Voucher Card (Modern Dual-Tab) -->
                 <div class="xl:col-span-1">
-                    <div class="bg-white rounded-2xl p-6 sm:p-7 shadow-sm border border-gray-200/80 h-full flex flex-col">
-                        <div class="flex items-center gap-3.5 mb-6 pb-5 border-b border-gray-100">
-                            <div class="w-11 h-11 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 border border-indigo-100/80">
+                    <div class="bg-[#111327] rounded-2xl p-5 sm:p-6 shadow-xl border border-indigo-950 flex flex-col h-full text-gray-200">
+                        <!-- Card Header -->
+                        <div class="flex items-center gap-3.5 mb-5 pb-4 border-b border-indigo-900/60">
+                            <div class="w-11 h-11 rounded-xl bg-[#1e213d] flex items-center justify-center text-indigo-300 border border-indigo-500/20 shadow-sm shrink-0">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>
                             </div>
                             <div>
-                                <h2 class="text-lg font-bold text-gray-900 tracking-tight">Generate Voucher</h2>
-                                <p class="text-xs text-gray-500 font-medium">Buat kode voucher pelanggan baru</p>
+                                <div class="flex items-center gap-2">
+                                    <h2 class="text-base font-bold text-white tracking-tight">Generator Voucher Hotspot</h2>
+                                    <span class="px-2 py-0.5 text-[10px] font-semibold bg-indigo-500/20 text-indigo-300 rounded-full border border-indigo-400/30">Mikrotik / RADIUS</span>
+                                </div>
+                                <p class="text-xs text-gray-400 mt-0.5">Buat voucher kustom satuan atau cetak voucher massal otomatis</p>
                             </div>
                         </div>
 
-                        <form @submit.prevent="generateVoucher" class="space-y-5 flex-1 flex flex-col">
-                            <div class="space-y-4 flex-1">
-                                <div>
-                                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1.5">Pilih Paket Voucher</label>
-                                    <div class="relative">
-                                        <select v-model="form.profile_id" class="w-full appearance-none bg-gray-50/70 border border-gray-300 text-gray-900 text-sm font-semibold rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white block p-3.5 pr-10 shadow-sm transition-all cursor-pointer">
-                                            <option value="" disabled>-- Pilih Paket --</option>
-                                            <option v-for="profile in profiles" :key="profile.id" :value="profile.id">
-                                                {{ profile.name }} — Jual: Rp {{ Number(profile.price).toLocaleString('id-ID') }}
-                                            </option>
-                                        </select>
-                                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-gray-400">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                                        </div>
-                                    </div>
-                                    <div v-if="form.errors.profile_id" class="text-rose-600 text-xs font-medium mt-1.5 flex items-center gap-1">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                        {{ form.errors.profile_id }}
+                        <!-- Tab Selector in Card -->
+                        <div class="bg-[#191c36] p-1 rounded-xl flex gap-1 mb-5 border border-indigo-900/60 shrink-0">
+                            <button 
+                                type="button" 
+                                @click="activeGeneratorTab = 'single'"
+                                :class="activeGeneratorTab === 'single' ? 'bg-[#4f46e5] text-white shadow-md font-bold' : 'text-gray-400 hover:text-gray-200 font-medium'"
+                                class="flex-1 py-2 text-xs rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                            >
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                <span>Single (Satuan)</span>
+                                <span class="px-1.5 py-0.2 bg-indigo-900/80 text-indigo-200 text-[9px] rounded-full">Kustom</span>
+                            </button>
+                            <button 
+                                type="button" 
+                                @click="activeGeneratorTab = 'bulk'"
+                                :class="activeGeneratorTab === 'bulk' ? 'bg-[#4f46e5] text-white shadow-md font-bold' : 'text-gray-400 hover:text-gray-200 font-medium'"
+                                class="flex-1 py-2 text-xs rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                            >
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                                <span>Massal (Batch)</span>
+                                <span class="px-1.5 py-0.2 bg-gray-800 text-gray-300 text-[9px] rounded-full">Otomatis</span>
+                            </button>
+                        </div>
+
+                        <!-- TAB 1: SINGLE VOUCHER FORM -->
+                        <form v-if="activeGeneratorTab === 'single'" @submit.prevent="submitSingleForm" class="space-y-4 flex-1 flex flex-col">
+                            <!-- 1. Pilih Profil -->
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1.5">
+                                    PILIH PROFIL PAKET HOTSPOT <span class="text-rose-400">*</span>
+                                </label>
+                                <div class="relative">
+                                    <select v-model="singleForm.voucher_profile_id" class="w-full appearance-none bg-[#191c36] border border-indigo-900/80 rounded-xl text-sm font-semibold text-white p-3 pr-10 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all cursor-pointer" required>
+                                        <option value="" disabled class="bg-[#191c36] text-gray-400">-- Pilih Profil Paket --</option>
+                                        <option v-for="prof in sellableProfiles" :key="prof.id" :value="prof.id" class="bg-[#191c36] text-white">
+                                            {{ prof.name }} • Durasi: {{ prof.duration || '-' }} • Tarif: Rp{{ Number(prof.price).toLocaleString('id-ID') }}
+                                        </option>
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-gray-400">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                                     </div>
                                 </div>
-                                
-                                <div class="grid grid-cols-2 gap-3.5">
-                                    <div>
-                                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1.5">Jumlah (Keping)</label>
-                                        <input v-model="form.qty" type="number" min="1" max="100" class="w-full bg-gray-50/70 border border-gray-300 text-gray-900 text-base font-bold rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white block p-3 shadow-sm transition-all" placeholder="10" />
-                                        <div v-if="form.errors.qty" class="text-rose-600 text-xs font-medium mt-1">{{ form.errors.qty }}</div>
+                                <div v-if="singleForm.errors.voucher_profile_id" class="text-rose-400 text-xs mt-1">{{ singleForm.errors.voucher_profile_id }}</div>
+                            </div>
+
+                            <!-- 2. Reseller Price Breakdown (Pengganti Gratis) -->
+                            <div v-if="selectedSingleProfile" class="p-3.5 bg-[#191c36]/90 border border-indigo-900/70 rounded-xl space-y-2 text-xs">
+                                <div class="flex justify-between items-center text-gray-400">
+                                    <span>Tarif Jual Pelanggan</span>
+                                    <span class="font-bold text-white">Rp {{ Number(selectedSingleProfile.price).toLocaleString('id-ID') }}</span>
+                                </div>
+                                <div class="flex justify-between items-center text-gray-400">
+                                    <span>Keuntungan Reseller (Fee)</span>
+                                    <span class="font-bold text-emerald-400">+Rp {{ Number(selectedSingleProfile.fee_reseller || 0).toLocaleString('id-ID') }}</span>
+                                </div>
+                                <div class="h-px bg-indigo-900/50 w-full my-1"></div>
+                                <div class="flex justify-between items-center text-sm">
+                                    <span class="font-bold text-gray-200">Potong Saldo Modal</span>
+                                    <span class="font-extrabold text-indigo-300 bg-indigo-950 border border-indigo-800/80 px-2 py-0.5 rounded-lg">
+                                        Rp {{ Number(getProfileResellerCost(selectedSingleProfile)).toLocaleString('id-ID') }}
+                                    </span>
+                                </div>
+                                <div v-if="getProfileResellerCost(selectedSingleProfile) > (reseller.balance || 0)" class="bg-rose-950/60 text-rose-300 p-2 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 border border-rose-800/50 mt-1">
+                                    <svg class="w-3.5 h-3.5 shrink-0 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                    <span>Saldo tidak cukup (Saldo: Rp {{ Number(reseller.balance || 0).toLocaleString('id-ID') }})</span>
+                                </div>
+                            </div>
+
+                            <!-- 3. Format Kredensial Login -->
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1.5">
+                                    FORMAT KREDENSIAL LOGIN <span class="text-rose-400">*</span>
+                                </label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button 
+                                        type="button" 
+                                        @click="singleForm.login_type = 'username_only'"
+                                        :class="singleForm.login_type === 'username_only' ? 'bg-[#4f46e5] text-white shadow-md font-bold' : 'bg-[#191c36] text-gray-300 border border-indigo-900/60 hover:bg-[#202344] font-medium'"
+                                        class="py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                        <span>Hanya Username</span>
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        @click="singleForm.login_type = 'username_password'"
+                                        :class="singleForm.login_type === 'username_password' ? 'bg-[#4f46e5] text-white shadow-md font-bold' : 'bg-[#191c36] text-gray-300 border border-indigo-900/60 hover:bg-[#202344] font-medium'"
+                                        class="py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                                        <span>Username & Password</span>
+                                    </button>
+                                </div>
+                                <div class="mt-1.5 text-[11px] text-indigo-300/80 flex items-start gap-1">
+                                    <span class="text-indigo-400">ℹ️</span>
+                                    <span v-if="singleForm.login_type === 'username_only'">Mode Satu Kode: Cukup ketik Username (Password otomatis sama).</span>
+                                    <span v-else>Mode Dua Kode: Login dengan Username & Password terpisah.</span>
+                                </div>
+                            </div>
+
+                            <!-- 4. Username & Password Inputs -->
+                            <div class="bg-[#15172e] p-3.5 rounded-xl border border-indigo-950 space-y-3">
+                                <div>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <label class="block text-xs font-bold text-gray-300">
+                                            Username / Kode Login <span class="text-rose-400">*</span>
+                                        </label>
+                                        <button 
+                                            type="button" 
+                                            @click="generateRandomUsername"
+                                            class="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                                        >
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                            <span>Acak Username</span>
+                                        </button>
                                     </div>
-                                    <div>
-                                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1.5">Format Kode</label>
-                                        <div class="relative">
-                                            <select v-model="form.combination" class="w-full appearance-none bg-gray-50/70 border border-gray-300 text-gray-900 text-sm font-semibold rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white block p-3 pr-8 shadow-sm transition-all cursor-pointer">
-                                                <option value="alphanumeric">Abjad & Angka</option>
-                                                <option value="numeric">Angka (0-9)</option>
-                                                <option value="alpha">Abjad (A-Z)</option>
-                                            </select>
-                                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                                            </div>
+                                    <div class="relative">
+                                        <input 
+                                            v-model="singleForm.username" 
+                                            type="text" 
+                                            placeholder="VCDCY85" 
+                                            class="w-full bg-[#191c36] border border-indigo-900/80 rounded-xl text-white font-mono font-bold tracking-wider text-base p-3 pr-10 focus:ring-2 focus:ring-indigo-500 uppercase transition-all" 
+                                            required
+                                        />
+                                        <div class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-gray-500">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                                         </div>
                                     </div>
+                                    <div v-if="singleForm.errors.username" class="text-rose-400 text-xs mt-1">{{ singleForm.errors.username }}</div>
                                 </div>
 
-                                <!-- Preview Total -->
-                                <div v-if="selectedProfile" class="mt-2 p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2.5 text-xs">
-                                    <div class="flex justify-between items-center text-gray-600">
-                                        <span class="font-medium">Harga Jual Pelanggan</span>
-                                        <span class="font-bold text-gray-800">Rp {{ Number(selectedProfile.price).toLocaleString('id-ID') }}</span>
+                                <div v-if="singleForm.login_type === 'username_password'">
+                                    <div class="flex justify-between items-center mb-1">
+                                        <label class="block text-xs font-bold text-gray-300">
+                                            Password Login <span class="text-rose-400">*</span>
+                                        </label>
+                                        <button 
+                                            type="button" 
+                                            @click="generateRandomPassword"
+                                            class="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                                        >
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                            <span>Acak Password</span>
+                                        </button>
                                     </div>
-                                    <div class="flex justify-between items-center text-gray-600">
-                                        <span class="font-medium">Keuntungan Reseller (Fee)</span>
-                                        <span class="font-bold text-emerald-600">+Rp {{ Number(selectedProfile.fee_reseller || 0).toLocaleString('id-ID') }}/voucher</span>
-                                    </div>
-                                    <div class="flex justify-between items-center text-gray-600">
-                                        <span class="font-medium">Harga Modal Beli</span>
-                                        <span class="font-bold text-indigo-600">Rp {{ Number(getCostPerVoucher(selectedProfile)).toLocaleString('id-ID') }}/voucher</span>
-                                    </div>
-                                    <div class="h-px bg-slate-200 w-full my-1.5"></div>
-                                    <div class="flex justify-between items-center text-sm pt-0.5">
-                                        <span class="text-gray-900 font-bold">Total Potong Saldo Modal</span>
-                                        <span class="font-black text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-lg">
-                                            Rp {{ Number(getTotalCost(selectedProfile, form.qty)).toLocaleString('id-ID') }}
-                                        </span>
-                                    </div>
-                                    <div class="flex justify-between items-center text-emerald-700 font-semibold bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-100">
-                                        <span>Estimasi Total Keuntungan</span>
-                                        <span class="font-bold">Rp {{ Number(getTotalProfit(selectedProfile, form.qty)).toLocaleString('id-ID') }}</span>
-                                    </div>
-                                    <div v-if="getTotalCost(selectedProfile, form.qty) > reseller.balance" class="bg-rose-50 text-rose-700 p-3 rounded-lg text-xs font-semibold mt-2 flex items-start gap-2 border border-rose-200 leading-snug">
-                                        <svg class="w-4 h-4 shrink-0 text-rose-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                                        <span>Saldo tidak mencukupi! Butuh modal Rp {{ Number(getTotalCost(selectedProfile, form.qty)).toLocaleString('id-ID') }} (Saldo Anda: Rp {{ Number(reseller.balance || 0).toLocaleString('id-ID') }}).</span>
+                                    <div class="relative">
+                                        <input 
+                                            v-model="singleForm.password" 
+                                            :type="showSinglePassword ? 'text' : 'password'" 
+                                            placeholder="Ketik password..." 
+                                            class="w-full bg-[#191c36] border border-indigo-900/80 rounded-xl text-white font-mono text-sm p-3 pr-10 focus:ring-2 focus:ring-indigo-500 transition-all" 
+                                            required
+                                        />
+                                        <button 
+                                            type="button" 
+                                            @click="showSinglePassword = !showSinglePassword"
+                                            class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-200 cursor-pointer"
+                                        >
+                                            <svg v-if="!showSinglePassword" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/></svg>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
 
+                            <!-- 5. Data Pembeli (Opsional) -->
+                            <div class="bg-[#15172e] p-3 rounded-xl border border-indigo-950 space-y-2.5">
+                                <span class="text-[11px] font-bold text-emerald-400 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
+                                    Data Pembeli (Opsional)
+                                </span>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <input 
+                                        v-model="singleForm.buyer_name" 
+                                        type="text" 
+                                        placeholder="Nama Pembeli" 
+                                        class="w-full bg-[#191c36] border border-indigo-900/80 rounded-xl text-white text-xs p-2.5 focus:ring-2 focus:ring-emerald-500" 
+                                    />
+                                    <input 
+                                        v-model="singleForm.buyer_phone" 
+                                        type="text" 
+                                        placeholder="No. WhatsApp" 
+                                        class="w-full bg-[#191c36] border border-indigo-900/80 rounded-xl text-white text-xs p-2.5 focus:ring-2 focus:ring-emerald-500" 
+                                    />
+                                </div>
+                            </div>
+
+                            <!-- Submit Single Button -->
                             <button 
                                 type="submit" 
-                                class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl font-bold text-sm transition-all shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed mt-auto flex justify-center items-center gap-2"
-                                :disabled="form.processing || !form.profile_id || !form.qty || (getTotalCost(selectedProfile, form.qty) > reseller.balance)"
+                                class="w-full py-3.5 bg-gradient-to-r from-[#4f46e5] to-[#6366f1] hover:brightness-110 active:brightness-95 text-white rounded-xl font-bold text-sm transition-all shadow-[0_0_20px_rgba(99,102,241,0.4)] disabled:opacity-50 disabled:cursor-not-allowed mt-auto flex justify-center items-center gap-2 cursor-pointer"
+                                :disabled="singleForm.processing || !singleForm.voucher_profile_id || !singleForm.username || (getProfileResellerCost(selectedSingleProfile) > (reseller.balance || 0))"
                             >
-                                <svg v-if="form.processing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                {{ form.processing ? 'Sedang Memproses...' : 'Generate Voucher Sekarang' }}
+                                <svg v-if="singleForm.processing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                {{ singleForm.processing ? 'Memproses...' : 'Buat 1 Voucher' }}
+                            </button>
+                        </form>
+
+                        <!-- TAB 2: BULK / MASSAL FORM -->
+                        <form v-else @submit.prevent="submitBulkForm" class="space-y-4 flex-1 flex flex-col">
+                            <!-- 1. Pilih Profil -->
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1.5">
+                                    PILIH PROFIL PAKET HOTSPOT <span class="text-rose-400">*</span>
+                                </label>
+                                <div class="relative">
+                                    <select v-model="bulkForm.voucher_profile_id" class="w-full appearance-none bg-[#191c36] border border-indigo-900/80 rounded-xl text-sm font-semibold text-white p-3 pr-10 focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer" required>
+                                        <option value="" disabled class="bg-[#191c36] text-gray-400">-- Pilih Profil Paket --</option>
+                                        <option v-for="prof in sellableProfiles" :key="prof.id" :value="prof.id" class="bg-[#191c36] text-white">
+                                            {{ prof.name }} • Modal: Rp{{ Number(getProfileResellerCost(prof)).toLocaleString('id-ID') }}
+                                        </option>
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-gray-400">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 2. Jumlah Generate & Quick Picks -->
+                            <div>
+                                <div class="flex justify-between items-center mb-1.5">
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-300">
+                                        JUMLAH VOUCHER (QTY) <span class="text-rose-400">*</span>
+                                    </label>
+                                    <div class="flex gap-1">
+                                        <button 
+                                            v-for="amt in [10, 25, 50, 100]" 
+                                            :key="amt"
+                                            type="button" 
+                                            @click="bulkForm.amount = amt"
+                                            :class="bulkForm.amount === amt ? 'bg-indigo-600 text-white font-black' : 'bg-[#191c36] text-gray-400 hover:text-white'"
+                                            class="px-2 py-0.5 rounded text-[10px] border border-indigo-900/60 transition-colors cursor-pointer"
+                                        >
+                                            {{ amt }}
+                                        </button>
+                                    </div>
+                                </div>
+                                <input 
+                                    v-model.number="bulkForm.amount" 
+                                    type="number" 
+                                    min="1" 
+                                    max="500" 
+                                    class="w-full bg-[#191c36] border border-indigo-900/80 rounded-xl text-white font-bold text-base p-3 focus:ring-2 focus:ring-indigo-500" 
+                                    required 
+                                />
+                            </div>
+
+                            <!-- 3. Format Kredensial Login & Kombinasi -->
+                            <div class="grid grid-cols-2 gap-2.5">
+                                <div>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1">Tipe Login</label>
+                                    <select v-model="bulkForm.type" class="w-full bg-[#191c36] border border-indigo-900/80 rounded-xl text-white text-xs p-2.5">
+                                        <option value="vc">Satu Kode (vc)</option>
+                                        <option value="up">User & Pass (up)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1">Kombinasi</label>
+                                    <select v-model="bulkForm.combination" class="w-full bg-[#191c36] border border-indigo-900/80 rounded-xl text-white text-xs p-2.5">
+                                        <option value="alphanumeric">Abjad & Angka</option>
+                                        <option value="numeric">Angka (0-9)</option>
+                                        <option value="alpha">Abjad (A-Z)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- 4. Prefix & Panjang -->
+                            <div class="grid grid-cols-2 gap-2.5">
+                                <div>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1">Prefix (Opsional)</label>
+                                    <input v-model="bulkForm.prefix" type="text" maxlength="4" placeholder="VC" class="w-full bg-[#191c36] border border-indigo-900/80 rounded-xl text-white text-xs p-2.5 uppercase font-mono">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1">Panjang Karakter</label>
+                                    <input v-model.number="bulkForm.length" type="number" min="4" max="12" class="w-full bg-[#191c36] border border-indigo-900/80 rounded-xl text-white text-xs p-2.5 font-bold">
+                                </div>
+                            </div>
+
+                            <!-- 5. Total Biaya Modal & Estimasi Keuntungan -->
+                            <div v-if="selectedBulkProfile" class="p-3.5 bg-[#191c36]/90 border border-indigo-900/70 rounded-xl space-y-2 text-xs">
+                                <div class="flex justify-between items-center text-sm">
+                                    <span class="font-bold text-gray-200">Total Potong Modal</span>
+                                    <span class="font-extrabold text-indigo-300 bg-indigo-950 border border-indigo-800/80 px-2 py-0.5 rounded-lg">
+                                        Rp {{ Number(getTotalBulkCost).toLocaleString('id-ID') }}
+                                    </span>
+                                </div>
+                                <div class="flex justify-between items-center text-emerald-400 font-semibold bg-emerald-950/30 px-2 py-1 rounded-lg border border-emerald-900/40">
+                                    <span>Estimasi Keuntungan</span>
+                                    <span class="font-bold">+Rp {{ Number(getTotalBulkProfit).toLocaleString('id-ID') }}</span>
+                                </div>
+                                <div v-if="getTotalBulkCost > (reseller.balance || 0)" class="bg-rose-950/60 text-rose-300 p-2 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 border border-rose-800/50 mt-1">
+                                    <svg class="w-3.5 h-3.5 shrink-0 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                    <span>Saldo tidak cukup (Saldo: Rp {{ Number(reseller.balance || 0).toLocaleString('id-ID') }})</span>
+                                </div>
+                            </div>
+
+                            <!-- Submit Bulk Button -->
+                            <button 
+                                type="submit" 
+                                class="w-full py-3.5 bg-gradient-to-r from-[#4f46e5] to-[#6366f1] hover:brightness-110 active:brightness-95 text-white rounded-xl font-bold text-sm transition-all shadow-[0_0_20px_rgba(99,102,241,0.4)] disabled:opacity-50 disabled:cursor-not-allowed mt-auto flex justify-center items-center gap-2 cursor-pointer"
+                                :disabled="bulkForm.processing || !bulkForm.voucher_profile_id || !bulkForm.amount || (getTotalBulkCost > (reseller.balance || 0))"
+                            >
+                                <svg v-if="bulkForm.processing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                {{ bulkForm.processing ? 'Sedang Memproses...' : `Generate ${bulkForm.amount} Voucher` }}
                             </button>
                         </form>
                     </div>
@@ -249,7 +476,15 @@
                                 <h2 class="text-lg font-bold text-gray-900 tracking-tight">Riwayat Voucher</h2>
                                 <p class="text-xs text-gray-500 font-medium mt-0.5">Daftar voucher yang telah Anda generate.</p>
                             </div>
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <button 
+                                    type="button"
+                                    @click="openGenerateModal"
+                                    class="px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm shadow-indigo-200 cursor-pointer"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                    <span>+ Generate Voucher</span>
+                                </button>
                                 <Link 
                                     :href="route('vouchers.index')" 
                                     class="px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs"
@@ -258,7 +493,7 @@
                                 </Link>
                                 <button 
                                     @click="printSelected" 
-                                    class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                    class="px-4 py-2 bg-slate-800 hover:bg-slate-900 active:bg-black text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                                     :disabled="vouchers.data.length === 0"
                                 >
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
@@ -726,6 +961,380 @@
                 </div>
             </div>
         </Teleport>
+
+        <!-- MODAL GENERATOR VOUCHER HOTSPOT (MODERN DUAL-TAB MATCHING USER SCREENSHOT) -->
+        <Teleport to="body">
+            <div v-if="showGenerateModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/80 backdrop-blur-sm p-4 overflow-y-auto">
+                <div class="relative bg-[#111327] border border-indigo-900/80 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-fade-in-up text-gray-200">
+                    
+                    <!-- MODAL HEADER -->
+                    <div class="px-6 py-4 bg-[#111327] border-b border-indigo-950 flex justify-between items-center shrink-0">
+                        <div class="flex items-center gap-3.5">
+                            <div class="w-11 h-11 rounded-xl bg-[#1e213d] flex items-center justify-center border border-indigo-500/20 text-indigo-300 shadow-sm shrink-0">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h2 class="text-base font-bold tracking-tight text-white">Generator Voucher Hotspot</h2>
+                                    <span class="px-2.5 py-0.5 text-[10px] font-semibold bg-indigo-500/20 text-indigo-300 rounded-full border border-indigo-400/30">Mikrotik / RADIUS</span>
+                                </div>
+                                <p class="text-xs text-gray-400 mt-0.5">Buat voucher kustom satuan atau cetak voucher massal otomatis</p>
+                            </div>
+                        </div>
+                        <button @click="closeGenerateModal" class="w-9 h-9 rounded-xl bg-[#1e213d] hover:bg-[#282c50] text-gray-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- TAB SELECTOR -->
+                    <div class="bg-[#15172e] border-b border-indigo-950 px-6 pt-3 flex gap-2 shrink-0">
+                        <button 
+                            type="button" 
+                            @click="activeGeneratorTab = 'single'"
+                            :class="activeGeneratorTab === 'single' ? 'bg-[#222649] text-white border-b-2 border-indigo-500 shadow-sm font-bold' : 'text-gray-400 hover:text-gray-200 border-transparent font-medium'"
+                            class="px-4 py-2.5 text-xs rounded-t-xl flex items-center gap-2 transition-all cursor-pointer"
+                        >
+                            <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                            <span>Single Voucher (Satuan)</span>
+                            <span class="px-1.5 py-0.2 bg-indigo-900/60 text-indigo-300 border border-indigo-700/50 text-[10px] rounded-full">Kustom</span>
+                        </button>
+                        <button 
+                            type="button" 
+                            @click="activeGeneratorTab = 'bulk'"
+                            :class="activeGeneratorTab === 'bulk' ? 'bg-[#222649] text-white border-b-2 border-indigo-500 shadow-sm font-bold' : 'text-gray-400 hover:text-gray-200 border-transparent font-medium'"
+                            class="px-4 py-2.5 text-xs rounded-t-xl flex items-center gap-2 transition-all cursor-pointer"
+                        >
+                            <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                            <span>Generate Massal (Batch)</span>
+                            <span class="px-1.5 py-0.2 bg-gray-800 text-gray-400 text-[10px] rounded-full">Otomatis</span>
+                        </button>
+                    </div>
+
+                    <!-- MODAL BODY -->
+                    <div class="p-6 overflow-y-auto space-y-5">
+                        
+                        <!-- TAB 1: SINGLE VOUCHER -->
+                        <form v-if="activeGeneratorTab === 'single'" @submit.prevent="submitSingleForm" class="space-y-5">
+                            <!-- 1. PILIH PROFIL -->
+                            <div>
+                                <label class="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-1.5">
+                                    PILIH PROFIL PAKET HOTSPOT <span class="text-rose-400">*</span>
+                                </label>
+                                <div class="relative">
+                                    <select v-model="singleForm.voucher_profile_id" class="w-full appearance-none bg-[#191c36] border border-indigo-900/80 rounded-xl text-sm font-semibold text-white p-3.5 pr-10 focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer" required>
+                                        <option value="" disabled class="bg-[#191c36] text-gray-400">-- Pilih Profil Paket --</option>
+                                        <option v-for="prof in sellableProfiles" :key="prof.id" :value="prof.id" class="bg-[#191c36] text-white">
+                                            {{ prof.name }} • Durasi: {{ prof.duration || '-' }} • Tarif: Rp{{ Number(prof.price).toLocaleString('id-ID') }}
+                                        </option>
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-gray-400">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </div>
+                                </div>
+                                <div v-if="singleForm.errors.voucher_profile_id" class="text-rose-400 text-xs mt-1">{{ singleForm.errors.voucher_profile_id }}</div>
+                            </div>
+
+                            <!-- 2. RESELLER FINANCIAL BREAKDOWN (Pengganti Gratis, disesuaikan untuk reseller) -->
+                            <div v-if="selectedSingleProfile" class="p-4 bg-[#191c36]/90 border border-indigo-900/80 rounded-xl space-y-2.5 text-xs">
+                                <div class="flex justify-between items-center text-gray-400">
+                                    <span>Tarif Jual ke Pelanggan</span>
+                                    <span class="font-bold text-white text-sm">Rp {{ Number(selectedSingleProfile.price).toLocaleString('id-ID') }}</span>
+                                </div>
+                                <div class="flex justify-between items-center text-gray-400">
+                                    <span>Keuntungan Reseller (Fee)</span>
+                                    <span class="font-bold text-emerald-400">+Rp {{ Number(selectedSingleProfile.fee_reseller || 0).toLocaleString('id-ID') }}</span>
+                                </div>
+                                <div class="h-px bg-indigo-900/60 w-full my-1"></div>
+                                <div class="flex justify-between items-center text-sm">
+                                    <span class="font-bold text-gray-200">Potong Saldo Modal</span>
+                                    <span class="font-extrabold text-indigo-300 bg-indigo-950/80 border border-indigo-800/80 px-2.5 py-1 rounded-lg">
+                                        Rp {{ Number(getProfileResellerCost(selectedSingleProfile)).toLocaleString('id-ID') }}
+                                    </span>
+                                </div>
+                                <div v-if="getProfileResellerCost(selectedSingleProfile) > (reseller.balance || 0)" class="bg-rose-950/60 text-rose-300 p-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 border border-rose-800/50 mt-1">
+                                    <svg class="w-4 h-4 shrink-0 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                    <span>Saldo tidak mencukupi! Butuh Rp {{ Number(getProfileResellerCost(selectedSingleProfile)).toLocaleString('id-ID') }} (Saldo Anda: Rp {{ Number(reseller.balance || 0).toLocaleString('id-ID') }}).</span>
+                                </div>
+                            </div>
+
+                            <!-- 3. FORMAT KREDENSIAL LOGIN -->
+                            <div>
+                                <label class="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">
+                                    FORMAT KREDENSIAL LOGIN <span class="text-rose-400">*</span>
+                                </label>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <button 
+                                        type="button" 
+                                        @click="singleForm.login_type = 'username_only'"
+                                        :class="singleForm.login_type === 'username_only' ? 'bg-[#4f46e5] text-white shadow-lg shadow-indigo-600/30 font-bold border-transparent' : 'bg-[#191c36] text-gray-300 border border-indigo-900/60 hover:bg-[#202344] font-medium'"
+                                        class="py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2.5 transition-all cursor-pointer"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                        <span>Hanya Username</span>
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        @click="singleForm.login_type = 'username_password'"
+                                        :class="singleForm.login_type === 'username_password' ? 'bg-[#4f46e5] text-white shadow-lg shadow-indigo-600/30 font-bold border-transparent' : 'bg-[#191c36] text-gray-300 border border-indigo-900/60 hover:bg-[#202344] font-medium'"
+                                        class="py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2.5 transition-all cursor-pointer"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                                        <span>Username & Password</span>
+                                    </button>
+                                </div>
+                                <div class="mt-2 text-xs text-indigo-300/90 flex items-start gap-1.5">
+                                    <span class="text-indigo-400">ℹ️</span>
+                                    <span v-if="singleForm.login_type === 'username_only'">Mode Satu Kode: Pengguna login cukup mengetik Username (Password otomatis sama dengan Username).</span>
+                                    <span v-else>Mode Dua Kode: Pengguna login memasukkan Username dan Password secara terpisah.</span>
+                                </div>
+                            </div>
+
+                            <!-- 4. USERNAME / KODE LOGIN (DENGAN TOMBOL ACAK) -->
+                            <div class="bg-[#15172e] p-4 rounded-xl border border-indigo-950 space-y-4">
+                                <div>
+                                    <div class="flex justify-between items-center mb-1.5">
+                                        <label class="block text-xs font-bold text-gray-300">
+                                            Username / Kode Login <span class="text-rose-400">*</span>
+                                        </label>
+                                        <button 
+                                            type="button" 
+                                            @click="generateRandomUsername"
+                                            class="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                                        >
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                            <span>Acak Username</span>
+                                        </button>
+                                    </div>
+                                    <div class="relative">
+                                        <input 
+                                            v-model="singleForm.username" 
+                                            type="text" 
+                                            placeholder="VCDCY85" 
+                                            class="w-full bg-[#191c36] border border-indigo-900/80 rounded-xl text-white font-mono font-bold tracking-wider text-base p-3.5 pr-10 focus:ring-2 focus:ring-indigo-500 uppercase transition-all" 
+                                            required
+                                        />
+                                        <div class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-gray-500">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                        </div>
+                                    </div>
+                                    <div v-if="singleForm.errors.username" class="text-rose-400 text-xs mt-1">{{ singleForm.errors.username }}</div>
+                                </div>
+
+                                <!-- Password (jika mode Username & Password) -->
+                                <div v-if="singleForm.login_type === 'username_password'">
+                                    <div class="flex justify-between items-center mb-1.5">
+                                        <label class="block text-xs font-bold text-gray-300">
+                                            Password Login <span class="text-rose-400">*</span>
+                                        </label>
+                                        <button 
+                                            type="button" 
+                                            @click="generateRandomPassword"
+                                            class="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                                        >
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                            <span>Acak Password</span>
+                                        </button>
+                                    </div>
+                                    <div class="relative">
+                                        <input 
+                                            v-model="singleForm.password" 
+                                            :type="showSinglePassword ? 'text' : 'password'" 
+                                            placeholder="Ketik password..." 
+                                            class="w-full bg-[#191c36] border border-indigo-900/80 rounded-xl text-white font-mono text-base p-3.5 pr-10 focus:ring-2 focus:ring-indigo-500 transition-all" 
+                                            required
+                                        />
+                                        <button 
+                                            type="button" 
+                                            @click="showSinglePassword = !showSinglePassword"
+                                            class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-200 cursor-pointer"
+                                        >
+                                            <svg v-if="!showSinglePassword" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                            <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 5. DATA PEMBELI (OPSIONAL) -->
+                            <div class="bg-[#15172e] p-3.5 rounded-xl border border-indigo-950 space-y-3">
+                                <div class="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
+                                    <span>Data Pembeli (Opsional — untuk cari nama & kirim WA)</span>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-300 mb-1">Nama Pembeli</label>
+                                        <input 
+                                            v-model="singleForm.buyer_name" 
+                                            type="text" 
+                                            placeholder="Contoh: Budi Santoso" 
+                                            class="w-full bg-[#191c36] border border-indigo-900/80 rounded-xl text-white text-sm p-2.5 focus:ring-2 focus:ring-emerald-500" 
+                                        />
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-300 mb-1">No. WhatsApp</label>
+                                        <input 
+                                            v-model="singleForm.buyer_phone" 
+                                            type="text" 
+                                            placeholder="081234567890" 
+                                            class="w-full bg-[#191c36] border border-indigo-900/80 rounded-xl text-white text-sm p-2.5 focus:ring-2 focus:ring-emerald-500" 
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- LIVE PREVIEW VOUCHER CARD -->
+                            <div v-if="singleForm.username" class="p-3.5 bg-gradient-to-br from-[#0c0d1c] to-[#1a1d3d] rounded-xl text-white shadow-lg border border-indigo-700/50">
+                                <div class="flex justify-between items-start mb-2">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                        <span class="text-[10px] uppercase font-bold tracking-wider text-indigo-300">Live Preview Voucher</span>
+                                    </div>
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-[#4f46e5] text-white shadow-sm">
+                                        Tarif: Rp {{ Number(selectedSingleProfile?.price || 0).toLocaleString('id-ID') }}
+                                    </span>
+                                </div>
+                                <div class="bg-white/5 backdrop-blur-sm p-3 rounded-lg border border-white/10 flex justify-between items-center">
+                                    <div>
+                                        <p class="text-xs text-indigo-200">Username: <span class="font-mono font-bold text-white text-sm">{{ singleForm.username }}</span></p>
+                                        <p v-if="singleForm.login_type === 'username_password'" class="text-xs text-indigo-200">
+                                            Password: <span class="font-mono font-bold text-amber-300">{{ singleForm.password || '-' }}</span>
+                                        </p>
+                                        <p v-else class="text-[11px] text-indigo-300/80 italic">User = Password</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-xs font-semibold text-white">{{ selectedSingleProfile?.name || '-' }}</p>
+                                        <p class="text-[10px] text-indigo-300">{{ selectedSingleProfile?.duration || '-' }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+
+                        <!-- TAB 2: BULK VOUCHER -->
+                        <form v-else @submit.prevent="submitBulkForm" class="space-y-4">
+                            <!-- 1. PILIH PROFIL -->
+                            <div>
+                                <label class="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-1">
+                                    PILIH PROFIL PAKET HOTSPOT <span class="text-rose-400">*</span>
+                                </label>
+                                <select v-model="bulkForm.voucher_profile_id" class="w-full bg-[#191c36] border border-indigo-900/80 rounded-xl text-sm text-white p-3 focus:ring-2 focus:ring-indigo-500" required>
+                                    <option value="" disabled class="bg-[#191c36] text-gray-400">-- Pilih Profil --</option>
+                                    <option v-for="prof in sellableProfiles" :key="prof.id" :value="prof.id" class="bg-[#191c36] text-white">
+                                        {{ prof.name }} (Modal: Rp{{ Number(getProfileResellerCost(prof)).toLocaleString('id-ID') }})
+                                    </option>
+                                </select>
+                            </div>
+
+                            <!-- 2. JUMLAH GENERATE & QUICK PICKS -->
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <label class="block text-xs font-bold text-gray-300 uppercase tracking-wider">
+                                        JUMLAH VOUCHER (QTY) <span class="text-rose-400">*</span>
+                                    </label>
+                                    <div class="flex gap-1.5">
+                                        <button 
+                                            v-for="amt in [10, 25, 50, 100]" 
+                                            :key="amt"
+                                            type="button" 
+                                            @click="bulkForm.amount = amt"
+                                            :class="bulkForm.amount === amt ? 'bg-indigo-600 text-white font-bold' : 'bg-[#191c36] text-gray-400 hover:text-white'"
+                                            class="px-2.5 py-0.5 rounded text-[11px] border border-indigo-900/60 transition-colors cursor-pointer"
+                                        >
+                                            {{ amt }}
+                                        </button>
+                                    </div>
+                                </div>
+                                <input v-model.number="bulkForm.amount" type="number" min="1" max="500" class="w-full bg-[#191c36] border border-indigo-900/80 rounded-xl text-white font-bold text-sm p-3 focus:ring-2 focus:ring-indigo-500" required />
+                            </div>
+
+                            <!-- 3. PANJANG KARAKTER & PREFIX -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-1">Panjang Karakter <span class="text-rose-400">*</span></label>
+                                    <input v-model.number="bulkForm.length" type="number" min="4" max="12" class="w-full bg-[#191c36] border border-indigo-900/80 rounded-xl text-white text-sm p-2.5 font-bold" required />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-1">Prefix (Opsional)</label>
+                                    <input v-model="bulkForm.prefix" type="text" maxlength="4" placeholder="Contoh: VC" class="w-full bg-[#191c36] border border-indigo-900/80 rounded-xl text-white text-sm p-2.5 uppercase font-mono" />
+                                </div>
+                            </div>
+
+                            <!-- 4. KOMBINASI & FORMAT KREDENSIAL -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-1">Kombinasi Karakter <span class="text-rose-400">*</span></label>
+                                    <select v-model="bulkForm.combination" class="w-full bg-[#191c36] border border-indigo-900/80 rounded-xl text-white text-sm p-2.5" required>
+                                        <option value="alphanumeric">Huruf & Angka (A1B2C)</option>
+                                        <option value="numeric">Hanya Angka (12345)</option>
+                                        <option value="alpha">Hanya Huruf (ABCDE)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-1">Format Kredensial <span class="text-rose-400">*</span></label>
+                                    <select v-model="bulkForm.type" class="w-full bg-[#191c36] border border-indigo-900/80 rounded-xl text-white text-sm p-2.5" required>
+                                        <option value="vc">Satu Kode (User = Pass)</option>
+                                        <option value="up">Username & Password Beda</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- 5. RINCIAN MODAL & ESTIMASI KEUNTUNGAN BULK -->
+                            <div v-if="selectedBulkProfile" class="p-4 bg-[#191c36]/90 border border-indigo-900/80 rounded-xl space-y-2.5 text-xs">
+                                <div class="flex justify-between items-center text-sm">
+                                    <span class="font-bold text-gray-200">Total Potong Saldo Modal</span>
+                                    <span class="font-extrabold text-indigo-300 bg-indigo-950/80 border border-indigo-800/80 px-2.5 py-1 rounded-lg">
+                                        Rp {{ Number(getTotalBulkCost).toLocaleString('id-ID') }}
+                                    </span>
+                                </div>
+                                <div class="flex justify-between items-center text-emerald-400 font-semibold bg-emerald-950/40 px-2.5 py-1.5 rounded-lg border border-emerald-900/40">
+                                    <span>Estimasi Keuntungan Reseller</span>
+                                    <span class="font-bold">+Rp {{ Number(getTotalBulkProfit).toLocaleString('id-ID') }}</span>
+                                </div>
+                                <div v-if="getTotalBulkCost > (reseller.balance || 0)" class="bg-rose-950/60 text-rose-300 p-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 border border-rose-800/50 mt-1">
+                                    <svg class="w-4 h-4 shrink-0 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                    <span>Saldo Anda tidak mencukupi! Butuh Rp {{ Number(getTotalBulkCost).toLocaleString('id-ID') }} (Saldo Anda: Rp {{ Number(reseller.balance || 0).toLocaleString('id-ID') }}).</span>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- MODAL FOOTER -->
+                    <div class="px-6 py-4 border-t border-indigo-950 bg-[#111327] flex justify-between items-center shrink-0">
+                        <button 
+                            type="button" 
+                            @click="closeGenerateModal" 
+                            class="px-5 py-2.5 rounded-xl border border-indigo-900/80 text-xs font-bold text-gray-300 hover:bg-[#1f2244] hover:text-white transition-colors cursor-pointer"
+                        >
+                            Batal
+                        </button>
+                        <div>
+                            <button 
+                                v-if="activeGeneratorTab === 'single'"
+                                type="button" 
+                                @click="submitSingleForm"
+                                :disabled="singleForm.processing || !singleForm.voucher_profile_id || !singleForm.username || (getProfileResellerCost(selectedSingleProfile) > (reseller.balance || 0))"
+                                class="px-6 py-2.5 bg-gradient-to-r from-[#4f46e5] to-[#6366f1] hover:brightness-110 active:brightness-95 text-white rounded-xl text-xs font-bold shadow-[0_0_20px_rgba(99,102,241,0.5)] transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                            >
+                                <svg v-if="singleForm.processing" class="animate-spin -ml-1 mr-1 h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                <span>{{ singleForm.processing ? 'Menyimpan...' : 'Buat 1 Voucher' }}</span>
+                            </button>
+
+                            <button 
+                                v-else
+                                type="button" 
+                                @click="submitBulkForm"
+                                :disabled="bulkForm.processing || !bulkForm.voucher_profile_id || !bulkForm.amount || (getTotalBulkCost > (reseller.balance || 0))"
+                                class="px-6 py-2.5 bg-gradient-to-r from-[#4f46e5] to-[#6366f1] hover:brightness-110 active:brightness-95 text-white rounded-xl text-xs font-bold shadow-[0_0_20px_rgba(99,102,241,0.5)] transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                            >
+                                <svg v-if="bulkForm.processing" class="animate-spin -ml-1 mr-1 h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                <span>{{ bulkForm.processing ? 'Generating...' : `Generate ${bulkForm.amount} Voucher` }}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </Teleport>
     </ClientAreaLayout>
 </template>
 
@@ -783,33 +1392,150 @@ const submitTopUp = () => {
     });
 };
 
-const form = useForm({
-    profile_id: '',
-    qty: 1,
-    combination: 'alphanumeric'
+const activeGeneratorTab = ref('single');
+const showGenerateModal = ref(false);
+const showSinglePassword = ref(false);
+
+const sellableProfiles = computed(() => {
+    return (props.profiles || []).filter(p => !p.is_customer_free);
 });
 
-const selectedVouchers = ref([]);
-
-const selectedProfile = computed(() => {
-    if (!form.profile_id) return null;
-    return props.profiles.find(p => p.id === form.profile_id);
+const singleForm = useForm({
+    mode: 'single',
+    voucher_profile_id: props.profiles?.[0]?.id || '',
+    login_type: 'username_only',
+    username: '',
+    password: '',
+    buyer_name: '',
+    buyer_phone: '',
+    cost_type: 'paid',
 });
 
-const getCostPerVoucher = (profile) => {
+const bulkForm = useForm({
+    mode: 'bulk',
+    voucher_profile_id: props.profiles?.[0]?.id || '',
+    amount: 10,
+    length: 6,
+    prefix: '',
+    type: 'vc',
+    combination: 'alphanumeric',
+    cost_type: 'paid',
+});
+
+const selectedSingleProfile = computed(() => {
+    if (!singleForm.voucher_profile_id) return null;
+    return props.profiles?.find(p => p.id === singleForm.voucher_profile_id) || null;
+});
+
+const selectedBulkProfile = computed(() => {
+    if (!bulkForm.voucher_profile_id) return null;
+    return props.profiles?.find(p => p.id === bulkForm.voucher_profile_id) || null;
+});
+
+const getProfileResellerCost = (profile) => {
     if (!profile) return 0;
     const price = Number(profile.price || 0);
     const fee = Number(profile.fee_reseller || 0);
     return Math.max(0, price - fee);
 };
 
-const getTotalCost = (profile, qty) => {
-    return getCostPerVoucher(profile) * Number(qty || 0);
+const getTotalBulkCost = computed(() => {
+    if (!selectedBulkProfile.value) return 0;
+    return getProfileResellerCost(selectedBulkProfile.value) * Number(bulkForm.amount || 0);
+});
+
+const getTotalBulkProfit = computed(() => {
+    if (!selectedBulkProfile.value) return 0;
+    return Number(selectedBulkProfile.value.fee_reseller || 0) * Number(bulkForm.amount || 0);
+});
+
+const generateRandomUsername = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let res = 'VC';
+    for (let i = 0; i < 5; i++) {
+        res += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    singleForm.username = res;
+    if (singleForm.login_type === 'username_only') {
+        singleForm.password = res;
+    }
 };
 
-const getTotalProfit = (profile, qty) => {
-    return Number(profile?.fee_reseller || 0) * Number(qty || 0);
+const generateRandomPassword = () => {
+    const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+    let res = '';
+    for (let i = 0; i < 6; i++) {
+        res += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    singleForm.password = res;
 };
+
+// Auto generate username if empty
+if (!singleForm.username) {
+    generateRandomUsername();
+}
+
+const openGenerateModal = () => {
+    if (!singleForm.username) {
+        generateRandomUsername();
+    }
+    showGenerateModal.value = true;
+};
+
+const closeGenerateModal = () => {
+    showGenerateModal.value = false;
+};
+
+const submitSingleForm = () => {
+    singleForm.post(route('vouchers.store'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showGenerateModal.value = false;
+            const createdCode = singleForm.username;
+            singleForm.reset('buyer_name', 'buyer_phone');
+            generateRandomUsername();
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil',
+                text: `Voucher ${createdCode} berhasil dibuat.`,
+                timer: 2500,
+                showConfirmButton: false
+            });
+        },
+        onError: (errs) => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal',
+                text: errs.voucher_profile_id || errs.reseller_id || errs.username || errs.error || 'Terjadi kesalahan saat membuat voucher.',
+            });
+        }
+    });
+};
+
+const submitBulkForm = () => {
+    bulkForm.post(route('vouchers.store'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showGenerateModal.value = false;
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil',
+                text: `${bulkForm.amount} Voucher berhasil digenerate.`,
+                timer: 2500,
+                showConfirmButton: false
+            });
+        },
+        onError: (errs) => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal',
+                text: errs.voucher_profile_id || errs.reseller_id || errs.amount || errs.error || 'Terjadi kesalahan saat generate massal.',
+            });
+        }
+    });
+};
+
+const selectedVouchers = ref([]);
 
 const isAllSelected = computed(() => {
     return props.vouchers.data.length > 0 && selectedVouchers.value.length === props.vouchers.data.length;
@@ -841,31 +1567,6 @@ const printSelected = () => {
 
     const url = '/vouchers/print?' + queryParams.toString();
     window.open(url, '_blank');
-};
-
-const generateVoucher = () => {
-    form.post(route('client-area.generate-vouchers'), {
-        preserveScroll: true,
-        onSuccess: () => {
-            form.reset('qty');
-            Swal.fire({
-                icon: 'success',
-                title: 'Berhasil',
-                text: 'Voucher berhasil digenerate',
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-                timer: 3000
-            });
-        },
-        onError: (errors) => {
-            Swal.fire({
-                icon: 'error',
-                title: 'Gagal',
-                text: errors.error || 'Terjadi kesalahan saat generate voucher',
-            });
-        }
-    });
 };
 
 // WhatsApp & Buyer Modal Logic
