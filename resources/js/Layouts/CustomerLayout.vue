@@ -1,5 +1,5 @@
 <template>
-    <div class="apm-shell min-h-screen text-slate-900 flex flex-col font-sans">
+    <div class="apm-shell workspace-ui workspace-customer min-h-screen text-slate-900 flex flex-col font-sans">
         <!-- Top Navbar -->
         <nav class="apm-topbar bg-white shadow-xs border-b border-slate-200 sticky top-0 z-50">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -137,7 +137,7 @@
         </div>
 
         <!-- Main Content Slot -->
-        <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex-1 w-full">
+        <main class="workspace-content max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex-1 w-full">
             <slot />
         </main>
 

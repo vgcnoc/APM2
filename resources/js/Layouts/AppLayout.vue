@@ -1,5 +1,6 @@
 <template>
-    <div class="apm-shell flex min-h-screen font-sans text-gray-900 dark:text-gray-100 transition-colors duration-200">
+    <div class="apm-shell workspace-ui workspace-admin flex min-h-screen font-sans text-gray-900 dark:text-gray-100 transition-colors duration-200">
+        <a href="#workspace-content" class="workspace-skip-link print:hidden">Langsung ke konten</a>
         <div v-show="mobileMenuOpen" class="fixed inset-0 bg-gray-900/50 z-40 lg:hidden transition-opacity" @click="mobileMenuOpen = false"></div>
         <aside
             :class="[
@@ -9,7 +10,7 @@
             ]"
         >
             <!-- Logo & Brand Header -->
-            <div class="flex items-center justify-between px-4 py-4 border-b border-slate-200/80 dark:border-slate-800/80 shrink-0">
+            <div class="workspace-brand flex items-center justify-between px-4 py-4 border-b border-slate-200/80 dark:border-slate-800/80 shrink-0">
                 <Link href="/" class="block transition-transform hover:scale-[1.02]">
                     <AppLogo :sidebar-collapsed="!sidebarOpen" context="desktop" :white="isDarkMode" />
                 </Link>
@@ -45,7 +46,9 @@
                         ref="searchInputRef"
                         v-model="searchQuery"
                         type="text"
-                        placeholder="Cari menu... (Ctrl+K atau /)"
+                        placeholder="Cari menu..."
+                        aria-label="Cari menu"
+                        title="Cari menu (Ctrl+K atau /)"
                         class="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/60 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-800 transition-all shadow-sm"
                     />
                     <button
@@ -76,6 +79,7 @@
             <!-- Navigation Scroll Container -->
             <nav 
                 ref="sidebarNav" 
+                aria-label="Navigasi aplikasi"
                 class="flex-1 overflow-y-auto overscroll-contain px-2.5 py-2 space-y-1 scrollbar-thin"
                 @scroll.passive="saveScrollPosition"
             >
@@ -157,6 +161,8 @@
                                 <Link
                                     v-if="item.type === 'link'"
                                     :href="item.href"
+                                    :aria-label="item.label"
+                                    :aria-current="item.active($page.url) ? 'page' : undefined"
                                     @click="mobileMenuOpen = false"
                                     @mouseenter="onFlyoutEnter(item, $event)"
                                     @mouseleave="onFlyoutLeave"
@@ -195,6 +201,9 @@
                                     <button
                                         type="button"
                                         @click="handleToggleDropdown(item)"
+                                        :aria-label="item.label"
+                                        :aria-expanded="isDropdownOpen(item)"
+                                        :data-active="item.active($page.url)"
                                         @mouseenter="onFlyoutEnter(item, $event)"
                                         @mouseleave="onFlyoutLeave"
                                         :class="[
@@ -255,6 +264,7 @@
                                             <Link
                                                 v-if="!child.permission || hasPermission(child.permission)"
                                                 :href="child.href"
+                                                :aria-current="child.active($page.url) ? 'page' : undefined"
                                                 @click="mobileMenuOpen = false"
                                                 :class="[
                                                     'flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all duration-150 relative group/sub',
@@ -355,7 +365,7 @@
         <Teleport to="body">
             <div
                 v-if="!sidebarOpen && hoveredFlyout"
-                class="fixed z-[9999] w-64 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-3 animate-fade-in-up"
+                class="workspace-flyout fixed z-[9999] w-64 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-3 animate-fade-in-up"
                 :style="{ top: hoveredFlyout.top + 'px', left: '84px' }"
                 @mouseenter="cancelFlyoutLeave"
                 @mouseleave="onFlyoutLeave"
@@ -412,12 +422,13 @@
             <!-- Top Bar -->
             <header class="apm-topbar sticky top-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-4 shadow-sm dark:shadow-gray-950/40 flex items-center justify-between gap-4 print:hidden transition-colors duration-200">
                 <div class="flex items-center gap-3 min-w-0">
-                    <button @click="mobileMenuOpen = true" class="lg:hidden p-2 -ml-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
+                    <button @click="mobileMenuOpen = true" aria-label="Buka menu utama" :aria-expanded="mobileMenuOpen" class="lg:hidden p-2 -ml-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
                         </svg>
                     </button>
-                    <div class="min-w-0">
+                    <div class="min-w-0 workspace-page-heading">
+                        <p class="workspace-eyebrow">VIZBILL <span>/</span> Ruang kerja</p>
                         <h2 class="text-lg sm:text-xl font-bold text-gray-900 dark:text-white truncate">{{ title }}</h2>
                         <p v-if="subtitle" class="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 mt-0.5 truncate">{{ subtitle }}</p>
                     </div>
@@ -438,13 +449,6 @@
                                 <span class="apm-switch-thumb inline-block h-4 w-4 transform rounded-full bg-white transition-transform" :class="$page.props.auth?.user?.is_on_duty ? 'translate-x-6' : 'translate-x-1'"></span>
                             </Link>
                         </div>
-                        <!-- Notification Bell -->
-                        <button class="relative p-2 rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600 dark:hover:text-gray-200 transition-all">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-                            </svg>
-                            <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
-                        </button>
                         <!-- User Menu -->
                         <div class="flex items-center gap-3 pl-4 border-l border-gray-200 dark:border-gray-800">
                             <div class="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-sm font-bold text-blue-700 dark:text-blue-300">
@@ -472,12 +476,12 @@
             </div>
 
             <!-- Page Content -->
-            <div :class="[fullBleed ? 'p-0 flex-1 w-full max-w-full flex flex-col overflow-hidden' : 'p-4 sm:p-6 lg:p-8 flex-1 w-full max-w-full overflow-hidden print:p-0 print:overflow-visible']">
+            <div id="workspace-content" tabindex="-1" :class="[fullBleed ? 'workspace-full-bleed p-0 flex-1 w-full max-w-full flex flex-col overflow-hidden' : 'workspace-content p-4 sm:p-6 lg:p-8 flex-1 w-full max-w-full overflow-hidden print:p-0 print:overflow-visible']">
                 <slot />
             </div>
 
             <!-- Application Footer -->
-            <footer v-if="!fullBleed" class="mt-auto py-3.5 px-4 sm:px-6 lg:px-8 border-t border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md text-xs text-slate-500 dark:text-slate-400 print:hidden transition-colors">
+            <footer v-if="!fullBleed" class="workspace-footer mt-auto py-3.5 px-4 sm:px-6 lg:px-8 border-t border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md text-xs text-slate-500 dark:text-slate-400 print:hidden transition-colors">
                 <div class="flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
                     <p class="font-medium">
                         Copyright {{ new Date().getFullYear() }} &copy; <span class="font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">VIRUZS</span> - Smart Billing, Smarter Business.

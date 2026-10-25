@@ -22,19 +22,29 @@ test('overview is the default and unknown or operational tabs cannot become acti
     assert.equal(affiliateSection('/affiliate/booking/create', 'overview'), 'booking');
 });
 
-test('sales and booking pages use native scale while other operational modules retain their scale', () => {
+test('native scale stays consistent and workspace styling is removed on entry to sales or auth', () => {
     const classes = new Set();
     globalThis.document = { body: { classList: { toggle: (key, on) => on ? classes.add(key) : classes.delete(key) }, style: {} } };
     applyDeviceScale('Auth/Login');
     assert.equal(document.body.style.zoom, '100%');
     assert.equal(classes.has('auth-device-scale'), true);
+    assert.equal(classes.has('workspace-ui-page'), false);
     applyDeviceScale('Affiliate/Dashboard');
     assert.equal(document.body.style.zoom, '100%');
     assert.equal(classes.has('auth-device-scale'), false);
+    assert.equal(classes.has('workspace-ui-page'), false);
     applyDeviceScale('Customers/Create', { affiliatePortal: true });
     assert.equal(document.body.style.zoom, '100%');
+    assert.equal(classes.has('workspace-ui-page'), false);
     applyDeviceScale('Customers/Create', { affiliatePortal: false });
-    assert.equal(document.body.style.zoom, '80%');
+    assert.equal(document.body.style.zoom, '100%');
+    assert.equal(classes.has('workspace-ui-page'), true);
+    applyDeviceScale('Affiliate/Dashboard');
+    assert.equal(classes.has('workspace-ui-page'), false);
+    applyDeviceScale('Dashboard');
+    assert.equal(classes.has('workspace-ui-page'), true);
+    applyDeviceScale('Auth/Login');
+    assert.equal(classes.has('workspace-ui-page'), false);
     delete globalThis.document;
     assert.doesNotThrow(() => applyDeviceScale('Affiliate/Dashboard'));
 });

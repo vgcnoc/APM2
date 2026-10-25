@@ -2,6 +2,7 @@ import { createApp, h } from 'vue';
 import { createInertiaApp, router } from '@inertiajs/vue3';
 import '../css/app.css';
 import '../css/dark.css';
+import '../css/workspace.css';
 import { applyTheme } from './Composables/useTheme';
 import { applyDeviceScale } from './Composables/deviceScale';
 
@@ -13,7 +14,7 @@ router.on('invalid', (event) => {
     }
 });
 
-// Portal sales dan auth mengikuti ukuran perangkat; modul operasional tetap pada skala semula.
+// Skala native perangkat; tema workspace terisolasi dari portal sales dan auth.
 applyTheme();
 
 router.on('navigate', (event) => {

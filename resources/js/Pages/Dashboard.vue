@@ -1,5 +1,21 @@
 <template>
     <AppLayout title="Dashboard" subtitle="Ringkasan statistik jaringan & pelanggan ISP">
+        <section class="workspace-welcome">
+            <div>
+                <p class="workspace-eyebrow">PUSAT OPERASIONAL</p>
+                <h1>Kelola layanan. Jangkau lebih jauh.</h1>
+                <p>Ringkasan pelanggan, jaringan, dan aktivitas tim dalam satu ruang kerja.</p>
+            </div>
+            <div class="workspace-welcome-actions">
+                <a v-can="'menu_network_map'" href="/network-map" class="workspace-welcome-link">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="m9 18-6 3V6l6-3 6 3 6-3v15l-6 3-6-3Zm0 0V3m6 18V6" /></svg>
+                    Peta jaringan
+                </a>
+                <a v-can="'menu_customers_all'" href="/customers" class="workspace-welcome-link workspace-welcome-primary">
+                    Kelola pelanggan <span aria-hidden="true">↗</span>
+                </a>
+            </div>
+        </section>
         <!-- ═══ Area / Wilayah Smart Filter Bar (Dropdown Selector) ═══ -->
         <div v-can="'dashboard_filter_area'" class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6 transition-all">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

@@ -1,5 +1,5 @@
 <template>
-    <div class="apm-shell min-h-screen flex flex-col transition-colors">
+    <div class="apm-shell workspace-ui workspace-partner min-h-screen flex flex-col transition-colors">
         <!-- Top Navbar -->
         <nav class="apm-topbar bg-white/95 dark:bg-gray-900/95 backdrop-blur-md shadow-xs border-b border-gray-100 dark:border-gray-800/90 sticky top-0 z-50 transition-colors">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -335,7 +335,7 @@
         </nav>
 
         <!-- Main Content Slot -->
-        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 flex-1 w-full">
+        <main class="workspace-content max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex-1 w-full">
             <slot />
         </main>
 

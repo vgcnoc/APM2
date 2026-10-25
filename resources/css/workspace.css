@@ -1,0 +1,284 @@
+/* Operational design system. Every rule is scoped: auth and affiliate screens keep their own UI. */
+@media screen {
+    .workspace-ui, body.workspace-ui-page {
+        --ws-canvas: #f3f6fa;
+        --ws-surface: #ffffff;
+        --ws-subtle: #f7f9fc;
+        --ws-raised: #edf2f8;
+        --ws-border: #e1e7ef;
+        --ws-heading: #14243b;
+        --ws-text: #42536a;
+        --ws-muted: #6b7c93;
+        --ws-accent: #2563eb;
+        --ws-accent-soft: #eaf1ff;
+        --ws-accent-text: #1d4ed8;
+        --ws-shadow: 0 2px 3px -2px rgb(20 36 59 / .05), 0 6px 24px -12px rgb(20 36 59 / .1);
+        --ws-focus: 0 0 0 3px rgb(37 99 235 / .14);
+    }
+
+    html.dark .workspace-ui, html.dark body.workspace-ui-page {
+        --ws-canvas: #0b1220;
+        --ws-surface: #111d2e;
+        --ws-subtle: #0e1929;
+        --ws-raised: #1b2b41;
+        --ws-border: #26354b;
+        --ws-heading: #edf3fc;
+        --ws-text: #bdcbe0;
+        --ws-muted: #91a3bd;
+        --ws-accent: #4f8df5;
+        --ws-accent-soft: #192f50;
+        --ws-accent-text: #a3c6ff;
+        --ws-shadow: 0 4px 20px -8px rgb(0 0 0 / .24);
+        --ws-focus: 0 0 0 3px rgb(79 141 245 / .2);
+        --apm-canvas: var(--ws-canvas);
+        --apm-surface: var(--ws-surface);
+        --apm-recessed: var(--ws-subtle);
+        --apm-raised: var(--ws-raised);
+        --apm-border: var(--ws-border);
+        --apm-text: var(--ws-heading);
+        --apm-secondary: var(--ws-text);
+        --apm-muted: var(--ws-muted);
+    }
+
+    body.workspace-ui-page, html.dark body.workspace-ui-page {
+        background: var(--ws-canvas) !important;
+        color: var(--ws-text) !important;
+    }
+
+    html .workspace-ui.apm-shell,
+    html[data-bg-pattern] .workspace-ui.apm-shell {
+        background-color: var(--ws-canvas) !important;
+        color: var(--ws-text);
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    /* Preserve the chosen pattern, with quieter canvas and solid reading surfaces. */
+    .workspace-ui :is(.glass, .glass-card, .stat-card) {
+        background: var(--ws-surface) !important;
+        border: 1px solid var(--ws-border) !important;
+        border-radius: 16px;
+        box-shadow: var(--ws-shadow) !important;
+        backdrop-filter: none;
+    }
+
+    /* Override the old purple theme's high-specificity !important fallbacks only inside this UI. */
+    html.dark .workspace-ui :is(.glass, .glass-card, .stat-card) {
+        background: var(--ws-surface) !important;
+        border-color: var(--ws-border) !important;
+        box-shadow: var(--ws-shadow) !important;
+    }
+    html.dark .workspace-ui :is(.text-gray-900, .text-slate-900, .text-gray-800, .text-slate-800) { color: var(--ws-heading) !important; }
+    html.dark .workspace-ui :is(.text-gray-700, .text-slate-700, .text-gray-600, .text-slate-600) { color: var(--ws-text) !important; }
+    html.dark .workspace-ui :is(.text-gray-500, .text-slate-500, .text-gray-400, .text-slate-400) { color: var(--ws-muted) !important; }
+    html.dark body.workspace-ui-page .workspace-ui :is(.form-input, .form-select, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="hidden"]), select, textarea) {
+        background-color: var(--ws-surface) !important;
+        color: var(--ws-heading) !important;
+        border-color: var(--ws-border) !important;
+    }
+    html.dark body.workspace-ui-page .workspace-ui :is(input, select, textarea):focus { background-color: var(--ws-surface) !important; border-color: var(--ws-accent) !important; box-shadow: var(--ws-focus) !important; }
+    html.dark body.workspace-ui-page .workspace-ui :is(input, select, textarea):is(:disabled, [readonly]) { background-color: var(--ws-subtle) !important; color: var(--ws-muted) !important; }
+    html.dark .workspace-ui .form-label { color: var(--ws-text) !important; }
+    html.dark .workspace-ui :is(input, textarea)::placeholder { color: var(--ws-muted) !important; }
+    html.dark .workspace-ui :is(.data-table thead, table thead) { background-color: var(--ws-subtle) !important; border-color: var(--ws-border) !important; }
+    html.dark .workspace-ui :is(.data-table, table) thead th { color: var(--ws-muted) !important; border-color: var(--ws-border) !important; }
+    html.dark .workspace-ui :is(.data-table, table) tbody tr { border-color: var(--ws-border) !important; }
+    html.dark .workspace-ui :is(.data-table, table) tbody td { color: var(--ws-text) !important; }
+    html.dark .workspace-ui :is(.data-table, table) tbody tr:hover { background-color: var(--ws-subtle) !important; }
+
+    .workspace-ui .workspace-content :is([class~="bg-white"], [class~="bg-white/95"])[class*="rounded"] {
+        background-color: var(--ws-surface) !important;
+        border-color: var(--ws-border) !important;
+        box-shadow: var(--ws-shadow);
+    }
+
+    .workspace-ui :is(h1, h2, h3, h4, h5, h6) { color: var(--ws-heading); letter-spacing: -.025em; }
+    .workspace-ui :is(.text-gray-900, .text-slate-900, .text-gray-800, .text-slate-800) { color: var(--ws-heading) !important; }
+    .workspace-ui :is(.text-gray-700, .text-slate-700, .text-gray-600, .text-slate-600) { color: var(--ws-text); }
+    .workspace-ui :is(.text-gray-500, .text-slate-500, .text-gray-400, .text-slate-400) { color: var(--ws-muted); }
+    .workspace-ui :is(.border-gray-100, .border-gray-200, .border-slate-100, .border-slate-200) { border-color: var(--ws-border); }
+    .workspace-ui :is(.bg-gray-50, .bg-slate-50) { background-color: var(--ws-subtle); }
+    .workspace-ui :is(.font-black, .font-extrabold) { font-weight: 700; }
+
+    .workspace-ui .apm-sidebar {
+        background: var(--ws-surface) !important;
+        border-color: var(--ws-border) !important;
+        box-shadow: none !important;
+        backdrop-filter: none;
+    }
+
+    .workspace-ui .workspace-brand { min-height: 92px; padding: 20px; }
+    .workspace-ui .workspace-brand img { max-height: 44px; filter: none; }
+    .workspace-ui .workspace-brand svg > rect { fill: #2563eb; }
+    html.dark .workspace-ui .workspace-brand img { filter: brightness(0) invert(1); }
+    .workspace-ui .apm-sidebar nav { padding: 8px 12px 20px; scrollbar-width: thin; }
+    .workspace-ui .apm-sidebar nav :is(a, button) { font-size: 12px; line-height: 1.5; }
+    .workspace-ui .apm-sidebar nav :is(a, button)[class*="px-3"] { padding-top: 10px; padding-bottom: 10px; }
+    .workspace-ui .apm-sidebar nav :is(a, button)[class*="bg-gradient-to-r"],
+    .workspace-ui .apm-sidebar nav [aria-current="page"],
+    .workspace-ui .apm-sidebar nav [data-active="true"] {
+        background: var(--ws-accent-soft) !important;
+        color: var(--ws-accent-text) !important;
+        box-shadow: inset 3px 0 0 var(--ws-accent) !important;
+        border-radius: 10px;
+    }
+    .workspace-ui .apm-sidebar nav :is(a, button)[class*="bg-gradient-to-r"] > div,
+    .workspace-ui .apm-sidebar nav [data-active="true"] > div {
+        color: var(--ws-accent-text) !important;
+        background: transparent !important;
+        box-shadow: none;
+    }
+    .workspace-ui .apm-sidebar nav :is(a, button) > div[class*="w-7"] {
+        border: 0;
+        background: transparent !important;
+        color: var(--ws-muted);
+        transform: none;
+    }
+    .workspace-ui .apm-sidebar nav :is(a, button):hover { background-color: var(--ws-subtle); }
+    .workspace-ui .apm-sidebar nav [class*="text-white"] > svg { color: currentColor; }
+    .workspace-ui .apm-sidebar nav [class*="text-white"] > span.bg-white { background: var(--ws-accent); animation: none; }
+    .workspace-ui .apm-sidebar .group-badge {
+        padding: 8px 0 4px;
+        color: var(--ws-muted) !important;
+        background: transparent !important;
+        border: 0;
+        box-shadow: none;
+        font-size: 9px;
+        letter-spacing: .13em;
+        font-weight: 700;
+    }
+    .workspace-ui .group-badge__dot { display: none; }
+    .workspace-ui .apm-sidebar input { border-radius: 10px; font-size: 11px; box-shadow: none; }
+
+    .workspace-ui .apm-topbar {
+        min-height: 92px;
+        padding: 16px 28px;
+        background: var(--ws-surface) !important;
+        border-color: var(--ws-border) !important;
+        box-shadow: 0 1px 0 rgb(20 36 59 / .02) !important;
+    }
+    .workspace-ui .workspace-page-heading h2 { font-size: 19px; font-weight: 650; line-height: 1.3; }
+    .workspace-ui .workspace-page-heading > p:last-child:not(.workspace-eyebrow) { font-size: 11px; font-weight: 400; }
+    .workspace-ui .workspace-eyebrow {
+        margin-bottom: 6px;
+        font-size: 9px;
+        line-height: 1.5;
+        font-weight: 650;
+        letter-spacing: .12em;
+        color: var(--ws-muted);
+    }
+    .workspace-ui .workspace-eyebrow span { padding: 0 6px; opacity: .5; }
+    .workspace-ui .workspace-content { padding: 28px; }
+    .workspace-ui .workspace-content > :is(.space-y-6, .space-y-8) { --tw-space-y-reverse: 0; }
+    .workspace-ui .workspace-footer { background: transparent !important; font-size: 10px; }
+    .workspace-ui:not(.workspace-admin) .apm-topbar { padding: 0; }
+    .workspace-ui:not(.workspace-admin) .apm-topbar > div > div:first-child { min-height: 80px; }
+    .workspace-partner .apm-topbar a { white-space: nowrap; }
+
+    /* Common forms: inherited padding and custom icons remain intact. */
+    .workspace-ui :is(.form-input, .form-select, input:not([type]), input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="search"], input[type="tel"], input[type="url"], input[type="date"], input[type="time"], input[type="datetime-local"], select, textarea) {
+        min-height: 42px;
+        background-color: var(--ws-surface) !important;
+        color: var(--ws-heading) !important;
+        border: 1px solid var(--ws-border) !important;
+        border-radius: 9px;
+        font-size: 13px;
+        line-height: 1.5;
+        box-shadow: 0 1px 2px rgb(20 36 59 / .025);
+        transition: border-color .15s, box-shadow .15s;
+    }
+    .workspace-ui :is(input, select, textarea)::placeholder { color: var(--ws-muted) !important; opacity: .8; }
+    .workspace-ui :is(input, select, textarea):focus {
+        border-color: var(--ws-accent) !important;
+        outline: none;
+        box-shadow: var(--ws-focus) !important;
+    }
+    .workspace-ui :is(input, select, textarea):is(:disabled, [readonly]) {
+        background-color: var(--ws-subtle) !important;
+        color: var(--ws-muted) !important;
+        cursor: default;
+    }
+    .workspace-ui :is(select option, select optgroup) { background: var(--ws-surface); color: var(--ws-heading); }
+    .workspace-ui .form-label { color: var(--ws-text); font-size: 11px; letter-spacing: .025em; font-weight: 600; }
+    .workspace-ui input[type="checkbox"], .workspace-ui input[type="radio"] { accent-color: var(--ws-accent); }
+    .workspace-ui :is(a, button):focus-visible { outline: 2px solid var(--ws-accent); outline-offset: 3px; }
+
+    .workspace-ui .btn { min-height: 40px; border-radius: 9px; font-size: 12px; font-weight: 600; gap: 8px; box-shadow: none; }
+    .workspace-ui .btn-primary { background: #2563eb !important; color: #fff !important; border: 1px solid #2563eb; box-shadow: 0 2px 3px rgb(37 99 235 / .15); }
+    .workspace-ui .btn-primary:hover { background: #1d4ed8 !important; }
+    .workspace-ui :is(.btn-secondary, .btn-outline) { background: var(--ws-surface); color: var(--ws-text); border: 1px solid var(--ws-border); }
+    .workspace-ui :is(.btn-secondary, .btn-outline, .btn-ghost):hover { background: var(--ws-raised); color: var(--ws-heading); }
+    .workspace-ui :is(button, .btn):disabled { opacity: .5; cursor: not-allowed; }
+
+    /* Tables retain status colors, row actions, sticky columns and horizontal scrolling. */
+    .workspace-ui .data-table { font-size: 12px; }
+    .workspace-ui :is(.data-table thead, table thead) { background: var(--ws-subtle) !important; }
+    .workspace-ui :is(.data-table, table) thead th {
+        padding-top: 14px;
+        padding-bottom: 14px;
+        color: var(--ws-muted) !important;
+        border-color: var(--ws-border);
+        font-size: 10px;
+        font-weight: 650;
+        letter-spacing: .055em;
+        line-height: 1.5;
+    }
+    .workspace-ui .data-table tbody td { padding-top: 16px; padding-bottom: 16px; color: var(--ws-text); }
+    .workspace-ui table tbody tr { border-color: var(--ws-border); }
+    .workspace-ui table tbody tr:hover { background-color: var(--ws-subtle); }
+    .workspace-ui table :is(.font-mono, [class*="text-right"]) { font-variant-numeric: tabular-nums; }
+    .workspace-ui .badge { padding: 4px 9px; font-size: 10px; font-weight: 600; letter-spacing: .015em; border-radius: 6px; }
+    .workspace-ui .stat-card { padding: 22px; transform: none; }
+    .workspace-ui .stat-card::before, .workspace-ui .stat-card::after { display: none; }
+    .workspace-ui .stat-card:hover { transform: none; border-color: var(--ws-accent) !important; }
+    .workspace-ui .stat-card :is(.text-3xl, .text-4xl) { font-size: 28px; font-weight: 650; font-variant-numeric: tabular-nums; }
+    .workspace-ui .stat-card .text-sm { font-size: 12px; }
+
+    .workspace-ui .workspace-welcome {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 24px;
+        margin-bottom: 26px;
+        padding: 26px 30px;
+        border: 1px solid #d4e2f8;
+        border-radius: 16px;
+        background: linear-gradient(105deg, #edf4ff 0%, #f8fbff 65%, #e8f5f8 100%);
+    }
+    .workspace-ui .workspace-welcome h1 { margin: 0 0 8px; font-size: clamp(20px, 2vw, 26px); line-height: 1.3; font-weight: 650; }
+    .workspace-ui .workspace-welcome p:not(.workspace-eyebrow) { font-size: 12px; color: var(--ws-muted); }
+    .workspace-ui .workspace-welcome .workspace-eyebrow { color: var(--ws-accent-text); }
+    .workspace-ui .workspace-welcome-actions { display: flex; flex-wrap: wrap; gap: 10px; flex-shrink: 0; }
+    .workspace-ui .workspace-welcome-link { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 10px 14px; font-size: 11px; font-weight: 600; border: 1px solid var(--ws-border); border-radius: 9px; background: var(--ws-surface); color: var(--ws-text); }
+    .workspace-ui .workspace-welcome-link svg { width: 15px; height: 15px; }
+    .workspace-ui .workspace-welcome-primary { border-color: #2563eb; background: #2563eb; color: #fff; }
+    .workspace-ui .workspace-welcome-link:hover { filter: brightness(.97); }
+    html.dark .workspace-ui .workspace-welcome { border-color: #2b4160; background: linear-gradient(110deg, #162b47, #142237 65%, #16313d); }
+
+    .workspace-skip-link { position: fixed; left: 12px; top: -100px; z-index: 10000; padding: 10px 18px; border-radius: 8px; background: #2563eb; color: white; }
+    .workspace-skip-link:focus { top: 12px; }
+    body.workspace-ui-page .workspace-flyout { background: var(--ws-surface) !important; color: var(--ws-text); border-color: var(--ws-border); box-shadow: 0 16px 50px rgb(0 0 0 / .15); }
+    body.workspace-ui-page .swal2-popup { background: var(--ws-surface); color: var(--ws-text); border: 1px solid var(--ws-border); border-radius: 16px; }
+    body.workspace-ui-page :is(.swal2-title, .swal2-html-container) { color: var(--ws-heading); }
+    body.workspace-ui-page > :is(.glass, .glass-card),
+    body.workspace-ui-page > div :is([role="dialog"], [aria-modal="true"]) .glass-card { background: var(--ws-surface) !important; border-color: var(--ws-border) !important; box-shadow: var(--ws-shadow) !important; }
+}
+
+@media screen and (max-width: 1279px) {
+    .workspace-ui .workspace-welcome { align-items: flex-start; flex-direction: column; }
+}
+@media screen and (max-width: 767px) {
+    .workspace-ui .apm-topbar { min-height: 76px; padding: 12px 16px; gap: 8px; }
+    .workspace-ui .workspace-page-heading h2 { font-size: 16px; }
+    .workspace-ui .workspace-page-heading .workspace-eyebrow { display: none; }
+    .workspace-ui .workspace-page-heading > p:last-child:not(.workspace-eyebrow) { display: none; }
+    .workspace-ui .workspace-content { padding: 18px 14px; }
+    .workspace-ui .workspace-welcome { padding: 22px; gap: 18px; }
+    .workspace-ui .workspace-welcome-actions { width: 100%; }
+    .workspace-ui .workspace-welcome-link { flex: 1; }
+    .workspace-ui .apm-sidebar { max-width: calc(100vw - 40px); }
+    .workspace-ui .data-table tbody td { padding-top: 12px; padding-bottom: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .workspace-ui *, .workspace-ui *::before, .workspace-ui *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
