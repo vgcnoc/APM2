@@ -303,6 +303,8 @@ class VoucherController extends Controller
             $query->where(function($q) use ($search) {
                 $q->where('vouchers.code', 'like', "%{$search}%")
                   ->orWhere('vouchers.username', 'like', "%{$search}%")
+                  ->orWhere('vouchers.buyer_name', 'like', "%{$search}%")
+                  ->orWhere('vouchers.buyer_phone', 'like', "%{$search}%")
                   ->orWhereHas('reseller.customer', function($sub) use ($search) {
                       $sub->where('name', 'like', "%{$search}%");
                   });
@@ -583,9 +585,14 @@ class VoucherController extends Controller
                 $ip = strtolower($session?->framedipaddress ?? '');
                 $mac = strtolower($session?->callingstationid ?? '');
 
+                $buyerName = strtolower($voucher?->buyer_name ?? '');
+                $buyerPhone = strtolower($voucher?->buyer_phone ?? '');
+
                 if (
                     strpos($code, $q) === false &&
                     strpos($username, $q) === false &&
+                    strpos($buyerName, $q) === false &&
+                    strpos($buyerPhone, $q) === false &&
                     strpos($profileName, $q) === false &&
                     strpos($resellerName, $q) === false &&
                     strpos($areaName, $q) === false &&
@@ -916,6 +923,8 @@ class VoucherController extends Controller
                 'voucher_profile_id' => 'required|exists:voucher_profiles,id',
                 'username' => 'nullable|string|max:50',
                 'password' => 'nullable|string|max:50',
+                'buyer_name' => 'nullable|string|max:100',
+                'buyer_phone' => 'nullable|string|max:30',
                 'login_type' => 'nullable|in:username_only,username_password',
                 'reseller_id' => 'nullable|exists:resellers,id',
                 'customer_id' => 'nullable|exists:customers,id',
@@ -982,6 +991,8 @@ class VoucherController extends Controller
                 'code' => $username,
                 'username' => $username,
                 'password' => $password,
+                'buyer_name' => !empty($validated['buyer_name']) ? trim($validated['buyer_name']) : null,
+                'buyer_phone' => !empty($validated['buyer_phone']) ? trim($validated['buyer_phone']) : null,
                 'status' => 'available',
                 'is_active' => true,
                 'is_free' => $isFree,
@@ -1215,6 +1226,27 @@ class VoucherController extends Controller
         }
         
         return redirect()->back()->with('success', count($vouchersToDelete) . ' Voucher berhasil dihapus.');
+    }
+
+    public function assignBuyer(Request $request, Voucher $voucher)
+    {
+        $user = auth()->user();
+        $isAdminLike = $user && ($user->isAdmin() || in_array(strtolower($user->role ?? ''), ['admin', 'super admin', 'superadmin', 'demo']));
+        if (!$isAdminLike && $voucher->reseller?->user_id !== $user?->id) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengubah voucher ini.');
+        }
+
+        $validated = $request->validate([
+            'buyer_name' => 'nullable|string|max:100',
+            'buyer_phone' => 'nullable|string|max:30',
+        ]);
+
+        $voucher->update([
+            'buyer_name' => !empty($validated['buyer_name']) ? trim($validated['buyer_name']) : null,
+            'buyer_phone' => !empty($validated['buyer_phone']) ? trim($validated['buyer_phone']) : null,
+        ]);
+
+        return redirect()->back()->with('success', "Data pembeli voucher {$voucher->code} berhasil diperbarui.");
     }
 
     public function print(Request $request)

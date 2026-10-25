@@ -55,6 +55,7 @@ class ResellerClientController extends Controller
         }
 
         $vouchers = Voucher::where('reseller_id', $reseller->id)
+            ->with('profile')
             ->latest()
             ->paginate(10);
 

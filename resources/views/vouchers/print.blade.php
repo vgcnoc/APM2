@@ -213,6 +213,13 @@
                     <div class="voucher-code">
                         {{ $voucher->code }}
                     </div>
+
+                    @if($voucher->buyer_name)
+                    <div class="info-row" style="margin-top: 6px; padding-top: 4px; border-top: 1px dashed #d1d5db; font-size: 11px;">
+                        <span class="info-label">Pembeli:</span>
+                        <span class="info-value" style="color: #059669;">{{ $voucher->buyer_name }}</span>
+                    </div>
+                    @endif
                 </div>
             </div>
         @endforeach

@@ -13,6 +13,8 @@ class Voucher extends Model
         'code',
         'username',
         'password',
+        'buyer_name',
+        'buyer_phone',
         'status',
         'is_free',
         'payment_method',

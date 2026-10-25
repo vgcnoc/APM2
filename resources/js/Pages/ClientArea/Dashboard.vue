@@ -250,6 +250,12 @@
                                 <p class="text-xs text-gray-500 font-medium mt-0.5">Daftar voucher yang telah Anda generate.</p>
                             </div>
                             <div class="flex items-center gap-2">
+                                <Link 
+                                    :href="route('vouchers.index')" 
+                                    class="px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs"
+                                >
+                                    <span>Semua Voucher &rarr;</span>
+                                </Link>
                                 <button 
                                     @click="printSelected" 
                                     class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
@@ -278,7 +284,8 @@
                                         <th scope="col" class="px-3 py-3.5 text-xs font-bold uppercase tracking-wider text-gray-500">Paket</th>
                                         <th scope="col" class="px-3 py-3.5 text-xs font-bold uppercase tracking-wider text-gray-500">Harga Jual</th>
                                         <th scope="col" class="px-3 py-3.5 text-xs font-bold uppercase tracking-wider text-gray-500">Status</th>
-                                        <th scope="col" class="py-3.5 pl-3 pr-4 sm:pr-6 text-right text-xs font-bold uppercase tracking-wider text-gray-500">Tanggal</th>
+                                        <th scope="col" class="px-3 py-3.5 text-xs font-bold uppercase tracking-wider text-gray-500">Tanggal</th>
+                                        <th scope="col" class="py-3.5 pl-3 pr-4 sm:pr-6 text-right text-xs font-bold uppercase tracking-wider text-gray-500">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-100 bg-white">
@@ -296,7 +303,12 @@
                                                 <div class="w-6 h-6 rounded-md bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs">
                                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>
                                                 </div>
-                                                {{ voucher.code }}
+                                                <div>
+                                                    <div>{{ voucher.code }}</div>
+                                                    <div v-if="voucher.buyer_name" class="text-[11px] font-sans font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 w-fit mt-0.5 flex items-center gap-1">
+                                                        👤 {{ voucher.buyer_name }} <span v-if="voucher.buyer_phone" class="text-gray-500 font-mono text-[10px]">({{ voucher.buyer_phone }})</span>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </td>
                                         <td class="whitespace-nowrap px-3 py-3.5 text-sm font-medium text-gray-700">
@@ -318,12 +330,24 @@
                                                 {{ voucher.status }}
                                             </span>
                                         </td>
-                                        <td class="whitespace-nowrap py-3.5 pl-3 pr-4 sm:pr-6 text-right text-xs font-medium text-gray-500">
+                                        <td class="whitespace-nowrap px-3 py-3.5 text-xs font-medium text-gray-500">
                                             {{ new Date(voucher.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) }}
+                                        </td>
+                                        <td class="whitespace-nowrap py-3.5 pl-3 pr-4 sm:pr-6 text-right text-xs font-medium">
+                                            <button 
+                                                type="button"
+                                                @click="openBuyerModal(voucher)" 
+                                                :class="voucher.buyer_name ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-300' : 'text-gray-700 bg-gray-50 hover:bg-gray-100 border-gray-300'"
+                                                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold border shadow-2xs transition-all cursor-pointer"
+                                                title="Kirim ke WhatsApp & Beri Nama Pembeli"
+                                            >
+                                                <svg class="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
+                                                <span>{{ voucher.buyer_name ? 'Kirim WA' : '+ Nama/WA' }}</span>
+                                            </button>
                                         </td>
                                     </tr>
                                     <tr v-if="vouchers.data.length === 0">
-                                        <td colspan="6" class="px-6 py-12 text-center">
+                                        <td colspan="7" class="px-6 py-12 text-center">
                                             <div class="flex flex-col items-center justify-center text-gray-400">
                                                 <svg class="w-12 h-12 mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                                                 <p class="text-sm font-bold text-gray-700">Belum ada voucher</p>
@@ -572,6 +596,136 @@
                 </div>
             </div>
         </Teleport>
+
+        <!-- MODAL BERI NAMA & KIRIM WHATSAPP -->
+        <Teleport to="body">
+            <div v-if="showBuyerModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4 overflow-y-auto">
+                <div class="relative bg-white border border-gray-200 rounded-2xl shadow-2xl w-full max-w-lg max-h-[92vh] flex flex-col overflow-hidden animate-fade-in-up">
+                    
+                    <!-- HEADER -->
+                    <div class="px-6 py-4 bg-gradient-to-r from-emerald-800 to-teal-900 text-white flex justify-between items-center shrink-0">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 text-emerald-300">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-bold text-white flex items-center gap-2">
+                                    Kirim Voucher via WhatsApp
+                                </h2>
+                                <p class="text-xs text-emerald-100">Beri nama pembeli & kirim rincian login ke WhatsApp</p>
+                            </div>
+                        </div>
+                        <button @click="closeBuyerModal" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 hover:text-white flex items-center justify-center transition-colors cursor-pointer">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- BODY -->
+                    <div class="p-6 overflow-y-auto space-y-4">
+                        <!-- Info Voucher Card -->
+                        <div class="bg-gray-50 rounded-xl p-3.5 border border-gray-200">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <span class="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Voucher Dipilih</span>
+                                    <div class="text-lg font-mono font-extrabold text-gray-900 mt-0.5">{{ selectedVoucherForBuyer?.code }}</div>
+                                    <div v-if="selectedVoucherForBuyer?.password && selectedVoucherForBuyer?.password !== selectedVoucherForBuyer?.code" class="text-xs text-gray-600 font-mono">
+                                        Password: <strong class="text-indigo-600">{{ selectedVoucherForBuyer?.password }}</strong>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-indigo-100 text-indigo-700">
+                                        {{ selectedVoucherForBuyer?.profile?.name || '-' }}
+                                    </span>
+                                    <div class="text-xs font-semibold text-gray-600 mt-1">
+                                        {{ selectedVoucherForBuyer?.profile?.duration || '-' }}
+                                    </div>
+                                    <div class="text-xs font-bold text-emerald-600 mt-0.5">
+                                        Rp {{ Number(selectedVoucherForBuyer?.profile?.price || 0).toLocaleString('id-ID') }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Input Nama & WhatsApp -->
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                                    Nama Pembeli <span class="text-red-500">*</span>
+                                </label>
+                                <input 
+                                    v-model="buyerForm.buyer_name" 
+                                    type="text" 
+                                    placeholder="Contoh: Budi Santoso" 
+                                    class="w-full border-gray-300 rounded-xl text-sm focus:ring-emerald-500 focus:border-emerald-500" 
+                                    required
+                                />
+                                <p class="text-[11px] text-gray-400 mt-1">Jika pembeli lupa kodenya, Anda bisa mencari langsung dengan nama ini di menu Semua Voucher.</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                                    No. WhatsApp Pembeli
+                                </label>
+                                <div class="relative">
+                                    <input 
+                                        v-model="buyerForm.buyer_phone" 
+                                        type="text" 
+                                        placeholder="Contoh: 081234567890 atau 6281234567890" 
+                                        class="w-full border-gray-300 rounded-xl text-sm focus:ring-emerald-500 focus:border-emerald-500" 
+                                    />
+                                </div>
+                                <p class="text-[11px] text-gray-400 mt-1">Jika diisi, WhatsApp akan langsung terbuka ke nomor pembeli.</p>
+                            </div>
+                        </div>
+
+                        <!-- Preview Pesan WhatsApp -->
+                        <div class="bg-emerald-50/60 rounded-xl p-3.5 border border-emerald-200">
+                            <div class="flex justify-between items-center mb-1.5">
+                                <span class="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                                    <span>💬 Preview Pesan WhatsApp</span>
+                                </span>
+                                <button 
+                                    type="button" 
+                                    @click="copyWaMessage" 
+                                    class="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-emerald-300 transition-colors cursor-pointer"
+                                >
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+                                    <span>Salin Teks</span>
+                                </button>
+                            </div>
+                            <pre class="text-[11px] text-gray-700 font-sans whitespace-pre-wrap bg-white/80 p-2.5 rounded-lg border border-emerald-100 max-h-40 overflow-y-auto leading-relaxed">{{ previewWaMessage }}</pre>
+                        </div>
+                    </div>
+
+                    <!-- FOOTER -->
+                    <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-2 shrink-0">
+                        <button type="button" @click="closeBuyerModal" class="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-xl text-xs font-bold text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer">
+                            Tutup
+                        </button>
+                        <div class="flex items-center gap-2 w-full sm:w-auto">
+                            <button 
+                                type="button" 
+                                @click="saveBuyerOnly" 
+                                :disabled="buyerForm.processing"
+                                class="flex-1 sm:flex-initial px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all disabled:opacity-50 cursor-pointer"
+                            >
+                                {{ buyerForm.processing ? 'Menyimpan...' : 'Hanya Simpan Nama' }}
+                            </button>
+                            <button 
+                                type="button" 
+                                @click="sendViaWhatsApp" 
+                                :disabled="buyerForm.processing"
+                                class="flex-1 sm:flex-initial px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-200 hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                            >
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
+                                <span>Kirim ke WhatsApp</span>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </Teleport>
     </ClientAreaLayout>
 </template>
 
@@ -710,6 +864,107 @@ const generateVoucher = () => {
                 title: 'Gagal',
                 text: errors.error || 'Terjadi kesalahan saat generate voucher',
             });
+        }
+    });
+};
+
+// WhatsApp & Buyer Modal Logic
+const showBuyerModal = ref(false);
+const selectedVoucherForBuyer = ref(null);
+
+const buyerForm = useForm({
+    buyer_name: '',
+    buyer_phone: '',
+});
+
+const openBuyerModal = (voucher) => {
+    selectedVoucherForBuyer.value = voucher;
+    buyerForm.buyer_name = voucher.buyer_name || '';
+    buyerForm.buyer_phone = voucher.buyer_phone || '';
+    showBuyerModal.value = true;
+};
+
+const closeBuyerModal = () => {
+    showBuyerModal.value = false;
+    selectedVoucherForBuyer.value = null;
+};
+
+const formatWaPhone = (phone) => {
+    if (!phone) return '';
+    let cleaned = phone.toString().replace(/\D/g, '');
+    if (cleaned.startsWith('0')) {
+        cleaned = '62' + cleaned.substring(1);
+    } else if (cleaned.startsWith('8')) {
+        cleaned = '62' + cleaned;
+    }
+    return cleaned;
+};
+
+const previewWaMessage = computed(() => {
+    const v = selectedVoucherForBuyer.value;
+    if (!v) return '';
+    const buyerName = buyerForm.buyer_name ? buyerForm.buyer_name.trim() : 'Kak';
+    const profileName = v.profile?.name || 'Paket Hotspot';
+    const duration = v.profile?.duration ? ` (${v.profile.duration})` : '';
+    const price = Number(v.profile?.price || 0).toLocaleString('id-ID');
+
+    let credText = '';
+    if (v.password && v.password !== v.username && v.password !== v.code) {
+        credText = `🔑 *Username:* ${v.username}\n🔒 *Password:* ${v.password}`;
+    } else {
+        credText = `🔑 *Kode Voucher:* ${v.code}\n_(Username dan Password sama)_`;
+    }
+
+    return `Halo Kak *${buyerName}*,\nBerikut detail voucher internet WiFi Anda:\n\n📶 *Paket:* ${profileName}${duration}\n💰 *Harga:* Rp ${price}\n\n${credText}\n\n🌐 *Cara Login:*\n1. Hubungkan HP/Laptop ke sinyal WiFi Hotspot\n2. Buka browser (Chrome/Safari)\n3. Masukkan Username & Password di atas lalu klik Login\n\n⚠️ *Penting:* Simpan pesan WhatsApp ini agar kode voucher tidak hilang jika perangkat Anda terputus.\n\nTerima kasih! 🙏`;
+});
+
+const copyWaMessage = async () => {
+    try {
+        await navigator.clipboard.writeText(previewWaMessage.value);
+        Swal.fire({
+            icon: 'success',
+            title: 'Tersalin!',
+            text: 'Teks pesan voucher berhasil disalin ke clipboard.',
+            timer: 1500,
+            showConfirmButton: false
+        });
+    } catch (e) {
+        Swal.fire('Info', 'Silakan salin teks pesan secara manual.', 'info');
+    }
+};
+
+const saveBuyerOnly = () => {
+    if (!selectedVoucherForBuyer.value) return;
+    buyerForm.post(route('vouchers.assign-buyer', selectedVoucherForBuyer.value.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeBuyerModal();
+            Swal.fire({
+                icon: 'success',
+                title: 'Tersimpan',
+                text: 'Data nama pembeli voucher berhasil diperbarui.',
+                timer: 1500,
+                showConfirmButton: false
+            });
+        }
+    });
+};
+
+const sendViaWhatsApp = () => {
+    if (!selectedVoucherForBuyer.value) return;
+    const v = selectedVoucherForBuyer.value;
+    const cleanPhone = formatWaPhone(buyerForm.buyer_phone);
+    const message = previewWaMessage.value;
+    const waUrl = cleanPhone 
+        ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(message)}`
+        : `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+
+    // Save buyer name & phone first, then open WhatsApp in new tab
+    buyerForm.post(route('vouchers.assign-buyer', v.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeBuyerModal();
+            window.open(waUrl, '_blank');
         }
     });
 };
