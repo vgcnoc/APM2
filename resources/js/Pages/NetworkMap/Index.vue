@@ -493,7 +493,7 @@
                         </div>
 
                         <div class="flex items-center gap-3">
-                            <span class="w-5 h-5 rounded-full bg-emerald-500 border-2 border-white shadow-xs shrink-0"></span>
+                            <span class="gis-customer-guide-icon shrink-0" v-html="customerIconHtml('online')"></span>
                             <div>
                                 <p class="font-semibold text-slate-800">Pelanggan Online (Denyut Hijau)</p>
                                 <p class="text-slate-500 text-[11px]">Sesi PPPoE/Hotspot aktif pada NAS terkait, dari API atau accounting RADIUS terbaru.</p>
@@ -501,7 +501,7 @@
                         </div>
 
                         <div class="flex items-center gap-3">
-                            <span class="w-5 h-5 rounded-full bg-rose-500 border-2 border-white shadow-xs shrink-0"></span>
+                            <span class="gis-customer-guide-icon shrink-0" v-html="customerIconHtml('offline')"></span>
                             <div>
                                 <p class="font-semibold text-slate-800">Pelanggan Offline (Denyut Merah)</p>
                                 <p class="text-slate-500 text-[11px]">API berhasil dibaca tetapi sesi pelanggan tidak ditemukan. Penyebab putus perlu diperiksa terpisah.</p>
@@ -509,7 +509,7 @@
                         </div>
 
                         <div class="flex items-center gap-3">
-                            <span class="w-5 h-5 rounded-full bg-slate-400 border-2 border-white shadow-xs shrink-0"></span>
+                            <span class="gis-customer-guide-icon shrink-0" v-html="customerIconHtml('unknown')"></span>
                             <div>
                                 <p class="font-semibold text-slate-800">Status Belum Diketahui (Abu-abu)</p>
                                 <p class="text-slate-500 text-[11px]">API tidak terjangkau, data kedaluwarsa, atau username/NAS belum dipetakan. Status langganan ditampilkan terpisah.</p>
@@ -1224,11 +1224,23 @@ const createOdpIcon = (used, total) => {
     });
 };
 
+const customerIconHtml = status => {
+    const state = ['online', 'offline'].includes(status) ? status : 'unknown';
+    return `<span class="gis-connection-dot gis-connection-${state}" aria-hidden="true">
+        <span class="gis-customer-home">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+                <path d="m3.5 10 8.5-7 8.5 7M5.5 8.5v11h13v-11" />
+                <path d="M8.5 12.5a5.1 5.1 0 0 1 7 0M10.3 14.6a2.5 2.5 0 0 1 3.4 0" />
+                <circle cx="12" cy="16.6" r=".75" fill="currentColor" stroke="none" />
+            </svg>
+        </span>
+    </span>`;
+};
 const createCustomerIcon = (status) => {
     return L.divIcon({
         className: 'custom-customer-marker',
-        html: `<span class="gis-connection-dot gis-connection-${status}"><span></span></span>`,
-        iconSize: [24, 24], iconAnchor: [12, 12], popupAnchor: [0, -12],
+        html: customerIconHtml(status),
+        iconSize: [40, 40], iconAnchor: [20, 20], popupAnchor: [0, -22], tooltipAnchor: [22, 0],
     });
 };
 
@@ -1990,13 +2002,18 @@ html.dark .gis-workspace .gis-drawer > .bg-slate-50 { background: #192b41; borde
     .gis-workspace .leaflet-control-zoom { margin-right: 10px; margin-bottom: 105px; }
     .gis-workspace .leaflet-control-scale { margin-left: 12px; }
 }
-.gis-connection-dot { --gis-dot: #94a3b8; position: relative; display: grid; place-items: center; width: 24px; height: 24px; color: var(--gis-dot); }
+.custom-customer-marker { background: transparent; border: 0; }
+.gis-connection-dot { --gis-dot: #94a3b8; position: relative; display: grid; place-items: center; width: 40px; height: 40px; color: var(--gis-dot); isolation: isolate; }
 .gis-connection-online { --gis-dot: #10b981; }
 .gis-connection-offline { --gis-dot: #f43f5e; }
-.gis-connection-dot > span { display: block; width: 13px; height: 13px; border: 2px solid #fff; border-radius: 50%; background: var(--gis-dot); box-shadow: 0 1px 5px #0007; position: relative; }
-.gis-connection-online::before, .gis-connection-offline::before { content: ''; position: absolute; width: 16px; height: 16px; border: 2px solid var(--gis-dot); background: var(--gis-dot); opacity: .35; border-radius: 50%; animation: gis-connection-pulse 2s ease-out infinite; pointer-events: none; }
-@keyframes gis-connection-pulse { from { transform: scale(.6); opacity: .55; } to { transform: scale(1.8); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .gis-connection-dot::before { animation: none; opacity: .2; } }
+.gis-connection-dot > .gis-customer-home { display: grid; place-items: center; box-sizing: border-box; width: 34px; height: 34px; border: 3px solid #fff; border-radius: 12px; background: linear-gradient(145deg, #ffffff26, #00000018), var(--gis-dot); color: #fff; box-shadow: 0 2px 7px #0f172a60, 0 0 0 1px #0f172a22; position: relative; z-index: 1; transition: transform .15s ease-out; }
+.gis-customer-home svg { display: block; width: 23px; height: 23px; }
+.custom-customer-marker:hover .gis-customer-home, .custom-customer-marker:focus-visible .gis-customer-home { transform: scale(1.12); }
+.gis-connection-online::before, .gis-connection-offline::before { content: ''; position: absolute; box-sizing: border-box; width: 36px; height: 36px; border: 2px solid var(--gis-dot); background: var(--gis-dot); border-radius: 50%; animation: gis-connection-pulse 2.4s ease-out infinite; pointer-events: none; }
+@keyframes gis-connection-pulse { 0% { transform: scale(.85); opacity: .65; } 75%, 100% { transform: scale(2.2); opacity: 0; } }
+.gis-customer-guide-icon { display: block; width: 40px; height: 40px; }
+.gis-customer-guide-icon .gis-connection-dot::before { animation: none; transform: scale(1.05); opacity: .2; }
+@media (prefers-reduced-motion: reduce) { .gis-connection-dot::before { animation: none; transform: scale(1.15); opacity: .2; }.gis-connection-dot > .gis-customer-home { transition: none; } }
 /* Leaflet Popup Styling */
 .gis-workspace .leaflet-popup-content-wrapper {
     border-radius: 1rem !important;
