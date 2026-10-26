@@ -424,7 +424,7 @@
                 </div>
 
                 <!-- Modal Body -->
-                <div class="flex-1 overflow-y-auto overflow-x-hidden p-0 sm:p-6 flex flex-col lg:flex-row gap-6">
+                <div ref="modalScrollRef" class="flex-1 overflow-y-auto overflow-x-hidden p-0 sm:p-6 flex flex-col lg:flex-row gap-6">
                     
                     <!-- LEFT COLUMN: FORM -->
                     <div class="flex-1 space-y-6 max-w-4xl p-6 sm:p-0">
@@ -532,11 +532,26 @@
                                         </div>
                                     </div>
 
-                                    <div>
-                                        <label class="block text-xs font-bold text-gray-700 mb-1">Shared Device <span class="text-red-500">*</span></label>
+                                    <div class="sm:col-span-2">
+                                        <label class="block text-xs font-bold text-gray-700 mb-1">
+                                            Shared Device (Batas Perangkat Simultan) <span class="text-red-500">*</span>
+                                        </label>
                                         <div class="flex items-center gap-2">
-                                            <input v-model="form.shared_device" type="number" min="1" class="input-text w-20 text-center" required>
-                                            <span class="text-sm text-gray-500 font-medium">Perangkat (HP/Laptop)</span>
+                                            <input v-model.number="form.shared_device" type="number" min="1" max="100" class="input-text w-24 text-center font-extrabold text-sm" required>
+                                            <span class="text-xs text-gray-500 font-medium">Perangkat (HP/Laptop) bersamaan</span>
+                                        </div>
+
+                                        <!-- Hotspot Strict Limit Indicator -->
+                                        <div class="mt-2.5 p-3 rounded-xl border text-xs transition-colors" :class="form.access_mode === 'hotspot' ? 'bg-amber-50/90 border-amber-200 text-amber-900' : 'bg-slate-50 border-slate-200 text-slate-700'">
+                                            <div class="font-bold flex items-center gap-1.5" :class="form.access_mode === 'hotspot' ? 'text-amber-800' : 'text-slate-800'">
+                                                <svg class="w-4 h-4 shrink-0 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                                <span v-if="form.access_mode === 'hotspot'">Mode Hotspot: Batas Login Maksimal {{ form.shared_device }} Perangkat (Strict Port-Limit)</span>
+                                                <span v-else>Batas Simultan {{ form.shared_device }} Perangkat (Port-Limit & Simultaneous-Use)</span>
+                                            </div>
+                                            <p class="text-[11px] mt-1" :class="form.access_mode === 'hotspot' ? 'text-amber-700' : 'text-slate-500'">
+                                                <span v-if="form.shared_device == 1">Hanya <strong>1 HP/Laptop</strong> yang dapat login hotspot bersamaan. Perangkat kedua akan ditolak seketika oleh router MikroTik dan FreeRADIUS.</span>
+                                                <span v-else>Akun pelanggan hanya dapat login bersamaan maksimal <strong>{{ form.shared_device }} HP/Laptop</strong>. Login dari perangkat ke-{{ Number(form.shared_device) + 1 }} dan seterusnya otomatis ditolak oleh router MikroTik dan RADIUS.</span>
+                                            </p>
                                         </div>
                                     </div>
                                     
@@ -691,7 +706,7 @@
                                         </li>
                                         <li class="flex items-center gap-3 text-sm text-gray-700">
                                             <div class="p-1 rounded-full bg-orange-50 text-orange-500"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div>
-                                            <span>Maks. <strong>{{ form.shared_device }}</strong> Perangkat</span>
+                                            <span>Maks. <strong>{{ form.shared_device }}</strong> Perangkat (Simultan)</span>
                                         </li>
                                         <li v-if="form.rate_limit" class="flex items-center gap-3 text-sm text-gray-700">
                                             <div class="p-1 rounded-full bg-purple-50 text-purple-500"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg></div>
@@ -1099,7 +1114,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, nextTick } from 'vue';
 import { router, useForm, Link, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
@@ -1357,11 +1372,18 @@ const isFormValid = computed(() => {
     return true;
 });
 
+const modalScrollRef = ref(null);
+
 const openCreateModal = () => {
     editMode.value = false;
     form.reset();
     form.clearErrors();
     showModal.value = true;
+    nextTick(() => {
+        if (modalScrollRef.value) {
+            modalScrollRef.value.scrollTop = 0;
+        }
+    });
 };
 
 const openEditModal = (pkg) => {
@@ -1389,6 +1411,11 @@ const openEditModal = (pkg) => {
     
     form.clearErrors();
     showModal.value = true;
+    nextTick(() => {
+        if (modalScrollRef.value) {
+            modalScrollRef.value.scrollTop = 0;
+        }
+    });
 };
 
 const closeModal = () => {

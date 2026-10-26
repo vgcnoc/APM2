@@ -113,13 +113,13 @@ class RadiusService
             $rateLimit = "{$package->speed_mbps}M/{$package->speed_mbps}M";
         }
 
-        $shared = $package->shared_device > 0 ? (int) $package->shared_device : null;
+        $shared = max(1, (int) ($package->shared_device ?? 1));
 
         $this->writeGroup($this->packageGroup($package->id), [
             'Mikrotik-Rate-Limit' => $rateLimit,
             'Mikrotik-Group' => $package->is_mikrotik_group_custom ? $package->mikrotik_group : null,
             'Mikrotik-Address-List' => $package->is_mikrotik_address_list_custom ? $package->mikrotik_address_list : null,
-            'Acct-Interim-Interval' => config('radius.interim_interval'),
+            'Acct-Interim-Interval' => config('radius.interim_interval', 60),
             'Port-Limit' => $shared,
         ], [
             'Simultaneous-Use' => $shared,
@@ -208,7 +208,6 @@ class RadiusService
     public function customerAccounts(Customer $customer): array
     {
         $ont = $customer->ont;
-        $package = $customer->package;
         if (!$ont) {
             return [];
         }
@@ -218,8 +217,9 @@ class RadiusService
             $accounts[$ont->pppoe_user] = $ont->pppoe_password;
         }
 
-        // Jika pelanggan mendapatkan free_hotspot
-        if ($ont->free_hotspot && $ont->hotspot_user && $ont->hotspot_password) {
+        // Akun hotspot aktif jika paket bertipe hotspot atau fitur free_hotspot aktif
+        $isHotspotPackage = strtolower($customer->package?->access_mode ?? '') === 'hotspot';
+        if (($ont->free_hotspot || $isHotspotPackage) && $ont->hotspot_user && $ont->hotspot_password) {
             $accounts[$ont->hotspot_user] = $ont->hotspot_password;
         }
 
@@ -228,7 +228,7 @@ class RadiusService
 
     /**
      * Sinkronkan akun pelanggan berdasarkan status & paketnya.
-     * PPPoE mengikuti paket langganan / isolir.
+     * PPPoE / Hotspot mengikuti paket langganan / isolir.
      * Hotspot gratis mengikuti VoucherProfile khusus (is_customer_free) dan aktif selama status pelanggan active.
      *
      * @param string[] $staleUsernames username lama yang harus dihapus (mis. setelah rename)
@@ -260,79 +260,93 @@ class RadiusService
             return;
         }
 
+        $targetGroup = match (true) {
+            $customer->status === 'suspended' || $customer->service_status === 'isolir' => $this->isolirGroup(),
+            $customer->status === 'active' && $customer->service_status !== 'isolir' && $customer->package_id => $this->packageGroup($customer->package_id),
+            default => null,
+        };
+
+        $isHotspotPackage = strtolower($customer->package?->access_mode ?? '') === 'hotspot';
+
         // 1. Sinkronkan akun PPPoE / Primary Connection
         if ($ont && $ont->pppoe_user && $ont->pppoe_password) {
-            $pppoeGroup = match (true) {
-                $customer->status === 'suspended' || $customer->service_status === 'isolir' => $this->isolirGroup(),
-                $customer->status === 'active' && $customer->service_status !== 'isolir' && $customer->package_id => $this->packageGroup($customer->package_id),
-                default => null,
-            };
-
-            if ($pppoeGroup) {
-                $this->upsertUser($ont->pppoe_user, $ont->pppoe_password, $pppoeGroup);
+            if ($targetGroup) {
+                $this->upsertUser($ont->pppoe_user, $ont->pppoe_password, $targetGroup);
             } else {
                 $this->removeUser($ont->pppoe_user);
                 $this->disconnect($ont->pppoe_user);
             }
         }
 
-        // 2. Sinkronkan akun Hotspot Gratis (1 user, masa aktif mengikuti data pelanggan)
-        if ($ont && $ont->free_hotspot && $ont->hotspot_user && $ont->hotspot_password) {
-            $freeProfile = \App\Models\VoucherProfile::where('is_customer_free', true)->first();
-            if (!$freeProfile) {
-                $freeProfile = \App\Models\VoucherProfile::firstOrCreate(
-                    ['name' => 'Hotspot Gratis Pelanggan'],
-                    [
-                        'price' => 0,
-                        'fee_admin' => 0,
-                        'fee_reseller' => 0,
-                        'fee_partner' => 0,
-                        'duration' => 'Mengikuti Pelanggan',
-                        'limit_rate' => '5M/5M',
-                        'shared_users' => 1,
-                        'description' => 'Voucher khusus gratis 1 user hotspot saat aktivasi pelanggan (masa aktif mengikuti data pelanggan)',
-                        'is_customer_free' => true,
-                    ]
-                );
-            }
+        // 2. Sinkronkan akun Hotspot
+        if ($ont && $ont->hotspot_user && $ont->hotspot_password) {
+            if ($isHotspotPackage) {
+                // Pelanggan paket Mode Hotspot Berlangganan:
+                // Akun hotspot masuk ke group paket pelanggan (pkg_{id}), mengikuti Port-Limit & Simultaneous-Use sesuai shared_device!
+                if ($targetGroup) {
+                    $this->upsertUser($ont->hotspot_user, $ont->hotspot_password, $targetGroup);
+                } else {
+                    $this->removeUser($ont->hotspot_user);
+                    $this->disconnect($ont->hotspot_user);
+                }
+            } elseif ($ont->free_hotspot) {
+                // Pelanggan dengan add-on Hotspot Gratis (1 user, profile gratis)
+                $freeProfile = \App\Models\VoucherProfile::where('is_customer_free', true)->first();
+                if (!$freeProfile) {
+                    $freeProfile = \App\Models\VoucherProfile::firstOrCreate(
+                        ['name' => 'Hotspot Gratis Pelanggan'],
+                        [
+                            'price' => 0,
+                            'fee_admin' => 0,
+                            'fee_reseller' => 0,
+                            'fee_partner' => 0,
+                            'duration' => 'Mengikuti Pelanggan',
+                            'limit_rate' => '5M/5M',
+                            'shared_users' => 1,
+                            'description' => 'Voucher khusus gratis 1 user hotspot saat aktivasi pelanggan (masa aktif mengikuti data pelanggan)',
+                            'is_customer_free' => true,
+                        ]
+                    );
+                }
 
-            if ($customer->status === 'active') {
-                $this->upsertUser($ont->hotspot_user, $ont->hotspot_password, $this->voucherGroup($freeProfile->id));
+                if ($customer->status === 'active') {
+                    $this->upsertUser($ont->hotspot_user, $ont->hotspot_password, $this->voucherGroup($freeProfile->id));
 
-                // Pastikan voucher record tersimpan di tabel vouchers
-                \App\Models\Voucher::updateOrCreate(
-                    [
-                        'customer_id' => $customer->id,
-                        'is_free' => true,
-                    ],
-                    [
-                        'voucher_profile_id' => $freeProfile->id,
-                        'code' => $ont->hotspot_user,
-                        'username' => $ont->hotspot_user,
-                        'password' => $ont->hotspot_password,
-                        'status' => 'used',
-                        'is_active' => true,
-                        'payment_method' => 'free',
-                        'used_at' => $customer->activation_date ?: now(),
-                    ]
-                );
+                    // Pastikan voucher record tersimpan di tabel vouchers
+                    \App\Models\Voucher::updateOrCreate(
+                        [
+                            'customer_id' => $customer->id,
+                            'is_free' => true,
+                        ],
+                        [
+                            'voucher_profile_id' => $freeProfile->id,
+                            'code' => $ont->hotspot_user,
+                            'username' => $ont->hotspot_user,
+                            'password' => $ont->hotspot_password,
+                            'status' => 'used',
+                            'is_active' => true,
+                            'payment_method' => 'free',
+                            'used_at' => $customer->activation_date ?: now(),
+                        ]
+                    );
+                } else {
+                    // Pelanggan suspend/isolir atau tidak aktif -> nonaktifkan hotspot gratis
+                    $this->removeUser($ont->hotspot_user);
+                    $this->disconnect($ont->hotspot_user);
+
+                    \App\Models\Voucher::where('customer_id', $customer->id)
+                        ->where('is_free', true)
+                        ->update([
+                            'is_active' => false,
+                            'status' => $customer->status === 'suspended' ? 'used' : 'expired',
+                        ]);
+                }
             } else {
-                // Pelanggan suspend/isolir atau tidak aktif -> nonaktifkan hotspot gratis
+                // Free hotspot tidak aktif & bukan paket hotspot -> bersihkan
                 $this->removeUser($ont->hotspot_user);
                 $this->disconnect($ont->hotspot_user);
-
-                \App\Models\Voucher::where('customer_id', $customer->id)
-                    ->where('is_free', true)
-                    ->update([
-                        'is_active' => false,
-                        'status' => $customer->status === 'suspended' ? 'used' : 'expired',
-                    ]);
+                \App\Models\Voucher::where('customer_id', $customer->id)->where('is_free', true)->delete();
             }
-        } elseif ($ont && !$ont->free_hotspot && $ont->hotspot_user) {
-            // Free hotspot dimatikan
-            $this->removeUser($ont->hotspot_user);
-            $this->disconnect($ont->hotspot_user);
-            \App\Models\Voucher::where('customer_id', $customer->id)->where('is_free', true)->delete();
         }
     }
 
@@ -579,5 +593,64 @@ class RadiusService
         }
 
         return $seconds ?: null;
+    }
+
+    /**
+     * Audit seluruh sesi online di RadAcct.
+     * Jika sesi aktif untuk suatu username melebihi Port-Limit / Simultaneous-Use yang diizinkan (misal diset 5 tapi ada 6 sesi),
+     * putuskan sesi yang melebihi batas via paket CoA Disconnect.
+     */
+    public function auditSimultaneousSessions(): int
+    {
+        try {
+            $onlineSessions = RadAcct::online()->get()->groupBy('username');
+            if ($onlineSessions->isEmpty()) {
+                return 0;
+            }
+
+            $kicked = 0;
+            foreach ($onlineSessions as $username => $sessions) {
+                // Cari group user dari RadUserGroup
+                $userGroup = RadUserGroup::where('username', $username)->first();
+                if (!$userGroup) {
+                    continue;
+                }
+
+                // Cari batas limit simultan dari RadGroupReply (Port-Limit) atau RadGroupCheck (Simultaneous-Use)
+                $limitAttr = RadGroupReply::where('groupname', $userGroup->groupname)
+                    ->where('attribute', 'Port-Limit')
+                    ->first();
+
+                if (!$limitAttr) {
+                    $limitAttr = RadGroupCheck::where('groupname', $userGroup->groupname)
+                        ->where('attribute', 'Simultaneous-Use')
+                        ->first();
+                }
+
+                $maxLimit = $limitAttr ? (int) $limitAttr->value : 1;
+                if ($maxLimit <= 0) {
+                    $maxLimit = 1;
+                }
+
+                if ($sessions->count() > $maxLimit) {
+                    // Ada sesi melebihi kuota! Urutkan sesi dari yang terbaru ke terlama
+                    $sorted = $sessions->sortByDesc('acctstarttime');
+                    $excess = $sorted->slice($maxLimit);
+
+                    foreach ($excess as $session) {
+                        $this->disconnectSession($session);
+                        $session->acctstoptime = now();
+                        $session->acctterminatecause = 'Simultaneous-Limit-Exceeded';
+                        $session->save();
+                        $kicked++;
+                    }
+                }
+            }
+
+            return $kicked;
+        } catch (\Throwable $e) {
+            Log::warning("[RADIUS] Audit simultaneous sessions error: " . $e->getMessage());
+            return 0;
+        }
     }
 }

@@ -33,6 +33,9 @@ class ExpireVouchers extends Command
 
         $expiredCount = \App\Http\Controllers\VoucherController::checkAndExpireVouchers();
 
-        $this->info("Finished! Marked {$expiredCount} vouchers as expired.");
+        // Enforce shared devices limit (Hotspot mode / PPPoE / Vouchers)
+        $excessKicked = app(\App\Services\RadiusService::class)->auditSimultaneousSessions();
+
+        $this->info("Finished! Marked {$expiredCount} vouchers as expired, terminated {$excessKicked} excess concurrent sessions.");
     }
 }
