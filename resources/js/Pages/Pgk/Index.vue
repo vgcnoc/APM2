@@ -480,13 +480,6 @@
                         ></textarea>
                     </div>
 
-                    <div>
-                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Tujukan Kepala Teknisi (Opsional)</label>
-                        <select v-model="escalateForm.lead_technician_id" class="w-full rounded-xl border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-100 text-sm">
-                            <option value="">-- Semua Kepala Teknisi / Default --</option>
-                            <option v-for="lead in leadTechnicians" :key="lead.id" :value="lead.id">{{ lead.name }}</option>
-                        </select>
-                    </div>
 
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Catatan Tambahan Admin</label>
