@@ -885,7 +885,10 @@ class Customer extends Model
             if (\Illuminate\Support\Facades\Schema::hasTable('incentives')) {
                 DB::table('incentives')
                     ->where('reference_id', 'like', "customer_{$this->id}%")
+                    ->orWhere('reference_id', 'like', "%cust_{$this->id}%")
                     ->orWhere('reference_id', 'like', "%_{$this->customer_code}%")
+                    ->orWhere('description', 'like', "%({$this->customer_code})%")
+                    ->orWhere('description', 'like', "%: {$this->name}%")
                     ->delete();
             }
         } catch (\Throwable $e) {

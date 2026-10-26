@@ -80,6 +80,17 @@
                     </button>
 
                     <button
+                        v-if="can('payroll_manage') || can('payroll_incentives') || can('payroll_incentives_delete')"
+                        type="button"
+                        @click="cleanOrphanedIncentives"
+                        class="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                        title="Bersihkan insentif otomatis yang data pelanggannya sudah tidak ada"
+                    >
+                        <span>🧹</span>
+                        <span>Bersihkan Insentif Tanpa Pelanggan</span>
+                    </button>
+
+                    <button
                         v-if="(can('payroll_disburse_all') || can('payroll_disburse')) && totalPendingCount > 0"
                         type="button"
                         @click="disburseAll"
@@ -1158,6 +1169,39 @@ const deleteDeductionItem = (ded) => {
                 },
                 onError: (err) => {
                     const msg = Object.values(err || {})[0] || 'Gagal menghapus potongan.';
+                    Swal.fire('Gagal', msg, 'error');
+                }
+            });
+        }
+    });
+};
+
+const cleanOrphanedIncentives = () => {
+    Swal.fire({
+        title: 'Bersihkan Insentif Tanpa Pelanggan?',
+        text: 'Sistem akan memeriksa dan menghapus data insentif otomatis pending yang datanya terputus (pelanggan sudah tidak ada di data pelanggan). Data manual / bonus staf tetap aman.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: '🧹 Ya, Bersihkan Sekarang',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#64748b'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.post(route('payroll.clean-orphaned'), {}, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'Pembersihan Selesai',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
+                },
+                onError: (err) => {
+                    const msg = Object.values(err || {})[0] || 'Gagal membersihkan data insentif.';
                     Swal.fire('Gagal', msg, 'error');
                 }
             });

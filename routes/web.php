@@ -608,6 +608,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/payroll/{user}/disburse', [\App\Http\Controllers\PayrollController::class, 'disburse'])->name('payroll.disburse');
         Route::post('/payroll/disburse-all', [\App\Http\Controllers\PayrollController::class, 'disburseAll'])->name('payroll.disburse-all');
         Route::post('/payroll/{user}/update-bpjs-bank', [\App\Http\Controllers\PayrollController::class, 'updateBpjsBank'])->name('payroll.update-bpjs-bank');
+        Route::post('/payroll/clean-orphaned-incentives', [\App\Http\Controllers\PayrollController::class, 'cleanOrphanedIncentives'])->name('payroll.clean-orphaned');
 
         // Insentif & Potongan List
         Route::get('/insentif-potongan', [\App\Http\Controllers\IncentiveDeductionController::class, 'index'])->name('insentif-potongan.index');

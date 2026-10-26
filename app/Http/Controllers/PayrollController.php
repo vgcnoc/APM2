@@ -1025,4 +1025,77 @@ class PayrollController extends Controller
 
         return response()->json(['status' => 'success']);
     }
+
+    /**
+     * Bersihkan insentif otomatis yang pelanggannya sudah tidak ada di data pelanggan
+     */
+    public function cleanOrphanedIncentives(Request $request)
+    {
+        $authUser = auth()->user();
+        $isSuperAdmin = $authUser && ($authUser->is_admin || $authUser->hasRole('admin'));
+        if (!$isSuperAdmin && !$authUser->can('payroll_manage') && !$authUser->can('payroll_incentives') && !$authUser->can('payroll_incentives_delete')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk membersihkan data insentif.');
+        }
+
+        $custCodes = \App\Models\Customer::pluck('customer_code')->filter()->toArray();
+        $custIds = \App\Models\Customer::pluck('id')->toArray();
+        $custNames = \App\Models\Customer::pluck('name')->map(fn($n) => strtolower(trim($n)))->toArray();
+
+        $pendingAuto = Incentive::where('status', 'pending')
+            ->where('type', '!=', 'manual')
+            ->get();
+
+        $toDeleteIds = [];
+        $totalNominal = 0;
+
+        foreach ($pendingAuto as $inc) {
+            $matched = false;
+
+            if (!empty($inc->reference_id)) {
+                if (preg_match('/cust_(\d+)/i', $inc->reference_id, $m)) {
+                    if (in_array((int)$m[1], $custIds)) {
+                        $matched = true;
+                    }
+                }
+                if (!$matched) {
+                    foreach ($custCodes as $code) {
+                        if (str_contains($inc->reference_id, $code)) {
+                            $matched = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!$matched && preg_match('/\((CUS-[^)]+)\)/i', $inc->description, $m)) {
+                if (in_array(strtoupper($m[1]), array_map('strtoupper', $custCodes))) {
+                    $matched = true;
+                }
+            }
+
+            if (!$matched) {
+                $cleanName = trim(preg_replace('/^(Fee (Booking|Survey|Pasang|Aktivasi) Pelanggan:?\s*)/i', '', $inc->description));
+                $cleanName = strtolower(trim(preg_replace('/\s*\(CUS-[^)]+\)/', '', $cleanName)));
+                if (!empty($cleanName) && in_array($cleanName, $custNames)) {
+                    $matched = true;
+                }
+            }
+
+            if (!$matched) {
+                $toDeleteIds[] = $inc->id;
+                $totalNominal += (float) $inc->amount;
+            }
+        }
+
+        $count = count($toDeleteIds);
+        if ($count > 0) {
+            foreach (array_chunk($toDeleteIds, 500) as $chunk) {
+                Incentive::whereIn('id', $chunk)->delete();
+            }
+            \Illuminate\Support\Facades\Log::info("[PayrollController@cleanOrphanedIncentives] Berhasil menghapus {$count} insentif yatim senilai Rp {$totalNominal} oleh {$authUser->name}");
+            return redirect()->back()->with('success', "Berhasil menghapus {$count} insentif tanpa pelanggan (senilai Rp " . number_format($totalNominal, 0, ',', '.') . ").");
+        }
+
+        return redirect()->back()->with('info', 'Tidak ditemukan insentif tanpa pelanggan. Semua data insentif valid.');
+    }
 }
