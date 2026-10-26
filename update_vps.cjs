@@ -17,6 +17,9 @@ php artisan permissions:sync
 echo "Fixing corrupted ONTs..."
 php artisan app:fix-corrupted-onts
 
+echo "Cleaning Orphaned Incentives (where customer was deleted)..."
+php artisan payroll:clean-orphaned-incentives --force
+
 echo "Creating storage symlink if missing..."
 php artisan storage:link
 
