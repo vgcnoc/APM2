@@ -21,7 +21,24 @@ class VoucherProfile extends Model
 
     protected $casts = [
         'is_customer_free' => 'boolean',
+        'shared_users' => 'integer',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (VoucherProfile $profile) {
+            if ($profile->is_customer_free || $profile->duration === 'Mengikuti Pelanggan') {
+                $profile->shared_users = 1;
+            }
+        });
+    }
+
+    public function sessionLimit(): int
+    {
+        // Also enforce the single-session rule for legacy or directly imported free profiles.
+        return $this->is_customer_free || $this->duration === 'Mengikuti Pelanggan'
+            ? 1 : max(1, (int) $this->shared_users);
+    }
 
     protected $appends = [
         'reseller_buy_price',

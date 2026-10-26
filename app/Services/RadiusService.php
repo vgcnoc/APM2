@@ -125,8 +125,9 @@ class RadiusService
 
     public function syncVoucherProfile(VoucherProfile $profile): void
     {
+        $sessionLimit = $profile->sessionLimit();
         $checks = [
-            'Simultaneous-Use' => $profile->shared_users > 0 ? $profile->shared_users : 1,
+            'Simultaneous-Use' => $sessionLimit,
         ];
 
         // Jika bukan profil khusus gratis pelanggan / durasi mengikuti pelanggan, terapkan batas durasi
@@ -137,6 +138,8 @@ class RadiusService
         $this->writeGroup($this->voucherGroup($profile->id), [
             'Mikrotik-Rate-Limit' => $profile->limit_rate,
             'Acct-Interim-Interval' => config('radius.interim_interval'),
+            // Router-side enforcement is needed even before Accounting-Start reaches SQL.
+            'Port-Limit' => $sessionLimit,
         ], $checks);
     }
 

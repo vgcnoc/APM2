@@ -332,8 +332,9 @@ function generateScript() {
     L.push(`/ip hotspot profile set login-by=http-chap,http-pap,cookie,mac-cookie http-cookie-lifetime=4w2d use-radius=yes radius-accounting=yes [find];`);
     ['APM2RADIUS', 'APM2RADIUS-Short', 'APM2RADIUS-Long'].forEach(p => L.push(`/ip hotspot user profile remove [find name="${p}"];`));
     profiles.forEach(p => L.push(`/ip hotspot user profile remove [find name="${p.name}"];`));
-    profiles.forEach(p => L.push(`/ip hotspot user profile add name=${p.name} mac-cookie-timeout=${p.cookie} status-autorefresh=${p.refresh} keepalive-timeout=${p.keepalive} shared-users=unlimited;`));
-    L.push(`/ip hotspot user profile set [find default=yes] keepalive-timeout=2m mac-cookie-timeout=1w shared-users=unlimited status-autorefresh=1m;`);
+    // Safe fallback; RADIUS Port-Limit overrides this for profiles allowing multiple sessions.
+    profiles.forEach(p => L.push(`/ip hotspot user profile add name=${p.name} mac-cookie-timeout=${p.cookie} status-autorefresh=${p.refresh} keepalive-timeout=${p.keepalive} shared-users=1;`));
+    L.push(`/ip hotspot user profile set [find default=yes] keepalive-timeout=2m mac-cookie-timeout=1w shared-users=1 status-autorefresh=1m;`);
     L.push(``);
 
     L.push(`### 5. PPP PROFILE ###`);
