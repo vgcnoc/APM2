@@ -956,6 +956,9 @@ onMounted(async () => {
     map = L.map(mapContainer.value, {
         center: [defaultLat, defaultLng],
         zoom: defaultZoom,
+        // Clusters initialize before basemap tiles, so they need explicit zoom bounds.
+        minZoom: 0,
+        maxZoom: 20,
         zoomControl: false, // will put custom zoom in controls or keep neat
         preferCanvas: true,
         fadeAnimation: false,
