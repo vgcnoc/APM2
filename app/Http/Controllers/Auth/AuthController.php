@@ -131,23 +131,71 @@ class AuthController extends Controller
             }
 
             // 4. Portal default / Staf & Tim
-            // Jika akun khusus (reseller / sales / customer) login dari portal staf, alihkan ke portal mereka
-            if (in_array($userRole, ['sales', 'affiliate'], true)) {
-                $request->session()->put('login_portal', 'affiliate');
-                $request->session()->forget('url.intended');
-                return redirect()->route('affiliate.dashboard');
+            $isAdmin = in_array($userRole, ['admin', 'superadmin', 'super admin', 'super-admin'], true)
+                || (method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super admin') || $user->hasRole('superadmin')));
+
+            $isEmployee = \App\Models\Employee::where('user_id', $user->id)
+                ->orWhere('email', $user->email)
+                ->exists();
+
+            $isReseller = ($userRole === 'reseller')
+                || (method_exists($user, 'hasRole') && $user->hasRole('reseller'))
+                || \App\Models\Reseller::where('user_id', $user->id)->exists();
+
+            $isCustomer = ($userRole === 'customer')
+                || (method_exists($user, 'hasRole') && $user->hasRole('customer'))
+                || \App\Models\Customer::where('user_id', $user->id)->orWhere('email', $user->email)->exists();
+
+            $staffRoles = ['admin', 'superadmin', 'super admin', 'super-admin', 'noc', 'teknisi', 'maintenance', 'kepala teknisi', 'dispatcher', 'cs', 'admin cs', 'finance', 'manager', 'hrd', 'marketing', 'gudang'];
+            $hasStaffRole = in_array($userRole, $staffRoles, true)
+                || (method_exists($user, 'hasRole') && $user->hasRole($staffRoles));
+
+            $isValidStaff = $isAdmin || $isEmployee || $hasStaffRole;
+
+            // Jika bukan staf/karyawan/admin, tolak login dari portal Staf & Tim
+            if (!$isValidStaff) {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                if ($isReseller) {
+                    return back()->withErrors([
+                        'email' => 'Akun Anda terdaftar sebagai Mitra Biller / Reseller. Silakan masuk melalui portal Mitra Biller.'
+                    ])->onlyInput('email');
+                }
+
+                if ($isCustomer) {
+                    return back()->withErrors([
+                        'email' => 'Akun Anda terdaftar sebagai Pelanggan. Silakan masuk melalui portal Pelanggan.'
+                    ])->onlyInput('email');
+                }
+
+                if (in_array($userRole, ['sales', 'affiliate'], true) || (method_exists($user, 'hasRole') && ($user->hasRole('sales') || $user->hasRole('affiliate')))) {
+                    return back()->withErrors([
+                        'email' => 'Akun Anda terdaftar untuk portal Afiliasi & Sales. Silakan masuk melalui portal Afiliasi & Sales.'
+                    ])->onlyInput('email');
+                }
+
+                return back()->withErrors([
+                    'email' => 'Akun Anda tidak memiliki hak akses sebagai Staf & Tim. Silakan gunakan portal yang sesuai.'
+                ])->onlyInput('email');
             }
 
-            if ($userRole === 'reseller') {
-                $request->session()->put('login_portal', 'reseller');
-                $request->session()->forget('url.intended');
-                return redirect()->route('client-area.dashboard');
-            }
+            // Jika akun adalah reseller murni atau customer murni tanpa role staf atau data karyawan, tolak login
+            if (!$isAdmin && !$isEmployee && ($isReseller || $isCustomer)) {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
 
-            if ($userRole === 'customer') {
-                $request->session()->put('login_portal', 'customer');
-                $request->session()->forget('url.intended');
-                return redirect()->route('customer-area.dashboard');
+                if ($isReseller) {
+                    return back()->withErrors([
+                        'email' => 'Akun Anda terdaftar sebagai Mitra Biller / Reseller. Silakan masuk melalui portal Mitra Biller.'
+                    ])->onlyInput('email');
+                }
+
+                return back()->withErrors([
+                    'email' => 'Akun Anda terdaftar sebagai Pelanggan. Silakan masuk melalui portal Pelanggan.'
+                ])->onlyInput('email');
             }
 
             $request->session()->put('login_portal', 'staff');
