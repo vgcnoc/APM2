@@ -673,26 +673,37 @@
                                 </div>
                                 
                                 <div v-else class="space-y-3">
-                                    <div v-for="item in hardwareItems" :key="item.id" class="text-sm text-gray-700 bg-white p-3 rounded-lg border border-amber-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                                        <div class="flex-1">
-                                            <span class="text-xs text-gray-500 font-medium block mb-1">{{ item.type }}</span>
-                                            <span class="font-bold text-gray-900">
+                                    <div v-for="item in hardwareItems" :key="item.id" class="text-sm text-gray-700 bg-white p-3.5 rounded-xl border border-amber-200 shadow-2xs flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex flex-wrap items-center gap-1.5 mb-1.5">
+                                                <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md" 
+                                                      :class="item.type === 'ONT' ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-800'">
+                                                    {{ item.type }}
+                                                </span>
+                                                <span v-if="item.isInstalled && item.type === 'Material'" class="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1 shadow-2xs">
+                                                    ✓ Terpakai: {{ getMaterialUsageInfo(item)?.usedQty }} {{ getMaterialUsageInfo(item)?.unit }}
+                                                </span>
+                                                <span v-if="item.isInstalled && item.type === 'Material' && getMaterialUsageInfo(item)?.returnedQty > 0" class="text-[11px] font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-md border border-amber-300 flex items-center gap-1 shadow-2xs">
+                                                    📦 Sisa Retur: {{ getMaterialUsageInfo(item)?.returnedQty }} {{ getMaterialUsageInfo(item)?.unit }} (ke Gudang)
+                                                </span>
+                                                <span v-if="item.isInstalled && item.type === 'ONT' && item.isBroken" class="text-[11px] font-bold text-rose-700 bg-rose-50 px-2.5 py-0.5 rounded-md border border-rose-200 flex items-center gap-1 shadow-2xs">
+                                                    ⚠️ Rusak / Retur RMA ke Gudang
+                                                </span>
+                                                <span v-else-if="item.isInstalled && item.type === 'ONT'" class="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200 flex items-center gap-1 shadow-2xs">
+                                                    ✓ Berfungsi Normal
+                                                </span>
+                                            </div>
+                                            <div class="font-bold text-gray-900 truncate" :title="item.name">
                                                 {{ item.name }}
-                                                <span v-if="item.isInstalled && item.type === 'Material' && item.actual_qty" class="text-emerald-600 ml-2">
-                                                    (Terpakai: {{ item.actual_qty }})
-                                                </span>
-                                                <span v-if="item.isInstalled && item.type === 'ONT' && item.isBroken" class="text-red-600 ml-2">
-                                                    (Rusak / RMA)
-                                                </span>
-                                            </span>
+                                            </div>
                                         </div>
-                                        <div class="flex items-center gap-2">
+                                        <div class="flex items-center gap-2 shrink-0">
                                             <button type="button" 
                                                 :disabled="!ontForm.start_time" 
                                                 @click="openInstallModal(item)"
-                                                :class="['px-6 py-2 rounded-lg font-bold text-sm transition-all whitespace-nowrap flex items-center gap-2', 
+                                                :class="['px-5 py-2 rounded-lg font-bold text-xs transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer', 
                                                     !ontForm.start_time ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 
-                                                    item.isInstalled ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 shadow-sm border border-emerald-200' : 'bg-amber-500 text-white hover:bg-amber-600 shadow-md hover:shadow-lg']">
+                                                    item.isInstalled ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 shadow-2xs border border-emerald-200' : 'bg-amber-500 text-white hover:bg-amber-600 shadow-sm hover:shadow-md']">
                                                 <template v-if="item.isInstalled">
                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                                                     Dipasang
@@ -702,6 +713,50 @@
                                                     Pasang
                                                 </template>
                                             </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Kotak Ringkasan Serah Terima & Retur Material -->
+                                    <div v-if="materialHandoverSummary.hasInstalled" class="mt-4 p-4 rounded-xl bg-white border border-amber-200/90 shadow-2xs space-y-3">
+                                        <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+                                            <h5 class="text-xs font-bold text-gray-900 uppercase tracking-wider flex items-center gap-1.5">
+                                                <span>📦</span> Ringkasan Serah Terima Material Lapangan
+                                            </h5>
+                                            <span class="text-[10px] text-gray-500 italic">Otomatis sinkron ke Gudang</span>
+                                        </div>
+
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                                            <!-- Terpasang di Pelanggan -->
+                                            <div class="bg-emerald-50/70 p-3 rounded-lg border border-emerald-100 space-y-1.5">
+                                                <span class="font-bold text-emerald-900 flex items-center gap-1 text-[11px] uppercase tracking-wider">
+                                                    <span>🟢</span> Terpasang di Pelanggan (Potong Stok):
+                                                </span>
+                                                <ul class="list-disc pl-5 space-y-0.5 text-emerald-800">
+                                                    <li v-for="(inst, i) in materialHandoverSummary.installed" :key="'inst-'+i">
+                                                        <strong>{{ inst.name }}</strong>: {{ inst.qty }} {{ inst.unit }}
+                                                    </li>
+                                                </ul>
+                                            </div>
+
+                                            <!-- Sisa Retur ke Gudang -->
+                                            <div class="p-3 rounded-lg border space-y-1.5" :class="materialHandoverSummary.hasReturned ? 'bg-amber-50/70 border-amber-200' : 'bg-slate-50 border-slate-200'">
+                                                <span class="font-bold flex items-center gap-1 text-[11px] uppercase tracking-wider" :class="materialHandoverSummary.hasReturned ? 'text-amber-900' : 'text-slate-600'">
+                                                    <span>↩️</span> Wajib Dikembalikan ke Gudang (Retur Fisik):
+                                                </span>
+                                                <div v-if="materialHandoverSummary.hasReturned">
+                                                    <ul class="list-disc pl-5 space-y-0.5 text-amber-800">
+                                                        <li v-for="(ret, r) in materialHandoverSummary.returned" :key="'ret-'+r">
+                                                            <strong>{{ ret.name }}</strong>: {{ ret.qty }} {{ ret.unit }}
+                                                        </li>
+                                                    </ul>
+                                                    <p class="text-[10px] text-amber-700/90 mt-1 pl-1">
+                                                        * Sisa material di atas otomatis dibuatkan formulir serah terima retur ke Gudang saat laporan dikirim.
+                                                    </p>
+                                                </div>
+                                                <div v-else class="text-[11px] text-slate-500 italic pl-1">
+                                                    Seluruh material habis terpasang (Tidak ada sisa retur).
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1757,10 +1812,24 @@
                     <div v-else class="space-y-4">
                         <div>
                             <label class="block text-sm font-bold text-gray-700 mb-1">Total Pemakaian Aktual</label>
-                            <p class="text-xs text-gray-500 mb-2">Sisa material yang tidak dipakai otomatis akan mengendap di Stok Area Anda untuk bisa di-retur nanti.</p>
+                            <p class="text-xs text-gray-500 mb-2">Sisa material yang tidak dipakai otomatis akan dibuatkan formulir serah terima pengembalian ke Gudang.</p>
                             <div class="relative flex items-center">
                                 <input type="number" v-model="installModalQty" min="0" step="0.01" class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 text-lg font-bold pr-16">
                                 <span class="absolute right-4 text-sm font-bold text-gray-500 uppercase">{{ installModalUnit }}</span>
+                            </div>
+                            <!-- Hitungan Real-time Sisa yang Dikembalikan -->
+                            <div v-if="installModalReturnedCalc > 0" class="mt-2.5 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center justify-between">
+                                <div class="flex items-center gap-1.5 font-semibold">
+                                    <span>📦</span>
+                                    <span>Sisa yang Dikembalikan ke Gudang:</span>
+                                </div>
+                                <span class="font-bold text-amber-950 bg-amber-200/80 px-2.5 py-0.5 rounded text-xs font-mono">
+                                    {{ installModalReturnedCalc }} {{ installModalUnit }}
+                                </span>
+                            </div>
+                            <div v-else class="mt-2.5 p-2 rounded-lg bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-800 flex items-center gap-1.5">
+                                <span>✓</span>
+                                <span>Material habis terpakai penuh (Tidak ada sisa retur).</span>
                             </div>
                         </div>
                     </div>
@@ -3077,6 +3146,93 @@ const installModalUnit = computed(() => {
     if (name.toLowerCase().includes('kabel')) return 'meter';
     if (name.toLowerCase().includes('isolasi')) return 'cm';
     return 'pcs';
+});
+
+const installModalReturnedCalc = computed(() => {
+    if (!installModalItem.value || installModalItem.value.type !== 'Material') return 0;
+    const match = installModalItem.value.name.match(/\((\d+(?:\.\d+)?)\s/);
+    const assignedQty = match ? parseFloat(match[1]) : 0;
+    const actual = parseFloat(installModalQty.value) || 0;
+    return Math.max(0, Math.round((assignedQty - actual) * 100) / 100);
+});
+
+function getMaterialUsageInfo(item) {
+    if (!item || item.type !== 'Material') return null;
+    const match = item.name.match(/\((\d+(?:\.\d+)?)\s/);
+    const assignedQty = match ? parseFloat(match[1]) : 0;
+    
+    const uMatch = item.name.match(/\((\d+(?:\.\d+)?)\s*([a-zA-Z]+)\)/);
+    let unit = 'pcs';
+    if (uMatch) unit = uMatch[2];
+    else if (item.name.toLowerCase().includes('kabel')) unit = 'meter';
+    else if (item.name.toLowerCase().includes('isolasi')) unit = 'cm';
+    
+    let usedQty = 0;
+    if (item.isInstalled) {
+        if (item.actual_qty !== undefined && item.actual_qty !== null) {
+            usedQty = parseFloat(item.actual_qty);
+        } else if (item.returned_qty !== undefined && item.returned_qty !== null) {
+            usedQty = Math.max(0, assignedQty - parseFloat(item.returned_qty));
+        } else {
+            usedQty = assignedQty;
+        }
+    }
+    const returnedQty = Math.max(0, Math.round((assignedQty - usedQty) * 100) / 100);
+    
+    return {
+        assignedQty,
+        usedQty,
+        returnedQty,
+        unit,
+        isPartial: item.isInstalled && returnedQty > 0
+    };
+}
+
+const materialHandoverSummary = computed(() => {
+    const installed = [];
+    const returned = [];
+    
+    hardwareItems.value.forEach(item => {
+        if (item.type === 'Material') {
+            const info = getMaterialUsageInfo(item);
+            if (!info) return;
+            if (item.isInstalled && info.usedQty > 0) {
+                installed.push({
+                    name: item.name.replace(/\(.*?\)/, '').trim(),
+                    qty: info.usedQty,
+                    unit: info.unit
+                });
+            }
+            if (item.isInstalled && info.returnedQty > 0) {
+                returned.push({
+                    name: item.name.replace(/\(.*?\)/, '').trim(),
+                    qty: info.returnedQty,
+                    unit: info.unit
+                });
+            }
+        } else if (item.type === 'ONT' && item.isInstalled) {
+            if (item.isBroken) {
+                returned.push({
+                    name: item.name,
+                    qty: 1,
+                    unit: 'unit (Rusak/RMA)'
+                });
+            } else {
+                installed.push({
+                    name: item.name,
+                    qty: 1,
+                    unit: 'unit'
+                });
+            }
+        }
+    });
+    
+    return {
+        installed,
+        returned,
+        hasInstalled: installed.length > 0,
+        hasReturned: returned.length > 0
+    };
 });
 
 function openInstallModal(item) {
