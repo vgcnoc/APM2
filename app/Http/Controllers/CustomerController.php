@@ -1728,7 +1728,7 @@ class CustomerController extends Controller
             'invoices.payments',
             'tickets' => fn ($q) => $q->orderByDesc('created_at')->limit(10),
             'tickets.assignee',
-            'surveys.odp',
+            'surveys.odp.odc',
             'surveys.surveyor',
             'technicianSchedules.technician',
             'user',

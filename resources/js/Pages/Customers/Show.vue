@@ -475,7 +475,155 @@
                             Batal Edit
                         </button>
                     </div>
-                        <div v-if="customer.technician_schedules?.find(s => s.type === 'installation')" class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-6 space-y-2">
+
+                    <!-- Patokan Hasil Survey Lapangan -->
+                    <div v-if="latestSurvey" class="bg-gradient-to-br from-sky-50 via-cyan-50/50 to-emerald-50/40 p-4 sm:p-5 rounded-2xl border border-sky-200/80 shadow-xs mb-6 space-y-4">
+                        <!-- Header -->
+                        <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-sky-200/60">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-lg bg-sky-600 text-white flex items-center justify-center font-bold text-base shadow-xs shrink-0">
+                                    🔭
+                                </div>
+                                <div>
+                                    <h4 class="text-xs font-bold text-sky-950 uppercase tracking-wider flex items-center gap-1.5">
+                                        Patokan Hasil Survey Lapangan
+                                    </h4>
+                                    <p class="text-[11px] text-sky-700/80">
+                                        Surveyor: <span class="font-semibold text-sky-900">{{ latestSurvey.surveyor?.name || '-' }}</span> 
+                                        <span v-if="latestSurvey.survey_date" class="text-sky-400 mx-1">•</span> 
+                                        <span v-if="latestSurvey.survey_date">{{ formatDate(latestSurvey.survey_date) }}</span>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button v-if="latestSurvey.odp_id && (!ontForm.odp_id || ontForm.odp_id != latestSurvey.odp_id || (latestSurvey.port_number && ontForm.port_number != latestSurvey.port_number))" 
+                                        type="button" 
+                                        @click="applySurveyToForm" 
+                                        class="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 text-white shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
+                                        title="Otomatis gunakan ODP dan Port hasil survey ini pada form di bawah">
+                                    <span>⚡</span> Gunakan Data Survey Ini
+                                </button>
+                                <span v-if="latestSurvey.feasibility === 'feasible'" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-2xs">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Feasible (Layak)
+                                </span>
+                                <span v-else-if="latestSurvey.feasibility === 'not_feasible'" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-200 shadow-2xs">
+                                    ⚠️ Unfeasible (Tidak Layak)
+                                </span>
+                                <span v-else class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200 shadow-2xs">
+                                    ⏳ {{ latestSurvey.feasibility || 'Pending' }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- 4 Kolom Metrik Patokan Utama -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <!-- Rekomendasi ODP & Port -->
+                            <div class="bg-white/95 backdrop-blur-xs p-3 rounded-xl border border-sky-100 shadow-2xs space-y-1">
+                                <span class="text-[10px] font-bold text-sky-700 uppercase tracking-wider block">ODP & Port Target</span>
+                                <div class="flex items-center justify-between gap-1">
+                                    <div class="font-bold text-gray-900 text-sm truncate" :title="latestSurvey.odp?.name || '-'">
+                                        {{ latestSurvey.odp?.name || '-' }}
+                                    </div>
+                                    <span v-if="latestSurvey.port_number" class="px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 font-mono text-xs font-bold shrink-0">
+                                        Port {{ latestSurvey.port_number }}
+                                    </span>
+                                </div>
+                                <div class="text-[11px] text-gray-500 truncate flex items-center justify-between gap-1 pt-0.5">
+                                    <span v-if="latestSurvey.odp?.odc?.name" class="truncate" :title="'ODC: ' + latestSurvey.odp.odc.name">ODC: {{ latestSurvey.odp.odc.name }}</span>
+                                    <span v-else class="truncate">{{ latestSurvey.odp?.address || '-' }}</span>
+                                    <span :class="latestSurvey.port_available ? 'text-emerald-600 font-medium' : 'text-amber-600 font-medium'" class="shrink-0">
+                                        {{ latestSurvey.port_available ? 'Port Bebas' : 'Penuh' }}
+                                    </span>
+                                </div>
+                                <a v-if="latestSurvey.odp?.latitude && latestSurvey.odp?.longitude" 
+                                   :href="`https://www.google.com/maps?q=${latestSurvey.odp.latitude},${latestSurvey.odp.longitude}`" 
+                                   target="_blank" 
+                                   class="mt-1 text-[11px] text-blue-600 hover:text-blue-800 font-medium inline-flex items-center gap-1 hover:underline">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                    Titik ODP di Maps
+                                </a>
+                            </div>
+
+                            <!-- Estimasi Tarikan Kabel -->
+                            <div class="bg-white/95 backdrop-blur-xs p-3 rounded-xl border border-sky-100 shadow-2xs space-y-1">
+                                <span class="text-[10px] font-bold text-sky-700 uppercase tracking-wider block">Estimasi Tarikan Kabel</span>
+                                <div class="font-extrabold text-gray-900 text-base flex items-baseline gap-1">
+                                    <span>{{ latestSurvey.distance_meters ? Math.round(latestSurvey.distance_meters) : '-' }}</span>
+                                    <span class="text-xs font-normal text-gray-500">meter (Dropcore)</span>
+                                </div>
+                                <p class="text-[11px] text-gray-500 leading-tight">
+                                    Perkiraan kebutuhan panjang kabel dari ODP ke rumah.
+                                </p>
+                            </div>
+
+                            <!-- Redaman Optik di ODP -->
+                            <div class="bg-white/95 backdrop-blur-xs p-3 rounded-xl border border-sky-100 shadow-2xs space-y-1">
+                                <span class="text-[10px] font-bold text-sky-700 uppercase tracking-wider block">Redaman Optik ODP</span>
+                                <div class="font-extrabold font-mono text-base flex items-baseline gap-1" :class="latestSurvey.signal_loss ? 'text-cyan-700' : 'text-gray-400'">
+                                    <span>{{ latestSurvey.signal_loss ? latestSurvey.signal_loss : '-' }}</span>
+                                    <span v-if="latestSurvey.signal_loss" class="text-xs font-sans font-normal text-gray-500">dBm</span>
+                                </div>
+                                <p class="text-[11px] text-gray-500 leading-tight">
+                                    Nilai acuan redaman port ODP sebelum ditarik ke pelanggan.
+                                </p>
+                            </div>
+
+                            <!-- Surveyor Lapangan -->
+                            <div class="bg-white/95 backdrop-blur-xs p-3 rounded-xl border border-sky-100 shadow-2xs space-y-1">
+                                <span class="text-[10px] font-bold text-sky-700 uppercase tracking-wider block">Surveyor Lapangan</span>
+                                <div class="font-bold text-gray-900 text-sm truncate">
+                                    {{ latestSurvey.surveyor?.name || '-' }}
+                                </div>
+                                <p class="text-[11px] text-gray-500 truncate">
+                                    Tgl: {{ latestSurvey.survey_date ? formatDate(latestSurvey.survey_date) : '-' }}
+                                </p>
+                                <span class="inline-flex items-center gap-1 text-[10px] text-sky-700 font-semibold bg-sky-50 px-2 py-0.5 rounded border border-sky-200/50">
+                                    ✓ Data Terverifikasi
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Catatan / Rute Penarikan Jalur -->
+                        <div v-if="latestSurvey.notes" class="bg-white/90 p-3 rounded-xl border border-sky-100 text-xs text-gray-700 space-y-1">
+                            <div class="flex items-center gap-1.5 text-sky-900 font-bold text-[11px] uppercase tracking-wider">
+                                <span>📝</span>
+                                <span>Catatan Rute & Penarikan Jalur:</span>
+                            </div>
+                            <p class="text-gray-800 leading-relaxed whitespace-pre-line pl-5">{{ latestSurvey.notes }}</p>
+                        </div>
+
+                        <!-- Foto Dokumentasi Hasil Survey -->
+                        <div v-if="latestSurvey.photos && latestSurvey.photos.length > 0" class="pt-2 border-t border-sky-200/60">
+                            <p class="text-[11px] font-bold text-sky-900 uppercase tracking-wider mb-2 flex items-center gap-1">
+                                <span>📷</span> Dokumentasi Survey (Klik foto untuk perbesar):
+                            </p>
+                            <div class="flex gap-3 overflow-x-auto pb-1">
+                                <div v-for="(photo, idx) in latestSurvey.photos" :key="idx" 
+                                     class="relative group shrink-0 w-24 h-24 rounded-xl overflow-hidden border-2 border-white shadow-sm bg-gray-100 cursor-pointer hover:border-sky-500 hover:shadow-md transition-all"
+                                     @click="openImage(getSurveyPhotoUrl(photo), getSurveyPhotoLabel(photo, idx))">
+                                    <img :src="getSurveyPhotoUrl(photo)" :alt="getSurveyPhotoLabel(photo, idx)" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" />
+                                    <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent opacity-90 group-hover:opacity-100 flex items-end p-1.5 transition-opacity">
+                                        <p class="text-[10px] text-white font-medium truncate w-full leading-tight drop-shadow-xs">
+                                            {{ getSurveyPhotoLabel(photo, idx) }}
+                                        </p>
+                                    </div>
+                                    <div class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 text-white rounded p-1">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Jika Tidak Ada Data Survey -->
+                    <div v-else class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 mb-6 flex items-center justify-between text-xs text-slate-600">
+                        <div class="flex items-center gap-2">
+                            <span class="text-base">ℹ️</span>
+                            <span><strong>Info Survey:</strong> Belum ada data survey lapangan untuk pelanggan ini (Pemasangan Langsung / Tanpa Riwayat Survey).</span>
+                        </div>
+                    </div>
+
+                    <div v-if="customer.technician_schedules?.find(s => s.type === 'installation')" class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-6 space-y-2">
                             <p class="text-xs font-semibold text-indigo-800 uppercase tracking-wider mb-2">Info Penugasan Pasang</p>
                             <InfoRow label="Teknisi" :value="getAssignedTechnicians('installation')" />
                             <InfoRow label="Tanggal Pasang" :value="formatDate(customer.technician_schedules.find(s => s.type === 'installation').scheduled_date)" />
@@ -2767,6 +2915,37 @@ const getAssignedTechnicians = (type) => {
 
 const previewImage = ref(null);
 
+const latestSurvey = computed(() => {
+    if (!props.customer?.surveys || props.customer.surveys.length === 0) return null;
+    const list = [...props.customer.surveys];
+    return list.sort((a, b) => (b.id || 0) - (a.id || 0))[0] || list[0];
+});
+
+function getSurveyPhotoUrl(photo) {
+    if (!photo) return '';
+    const path = typeof photo === 'string' ? photo : (photo.path || photo.url || '');
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('/storage/')) {
+        return path;
+    }
+    return `/storage/${path}`;
+}
+
+function getSurveyPhotoLabel(photo, index) {
+    if (!photo) return `Foto ${index + 1}`;
+    if (typeof photo === 'object' && photo.label) return photo.label;
+    return `Dokumentasi Survey ${index + 1}`;
+}
+
+function applySurveyToForm() {
+    if (!latestSurvey.value) return;
+    if (latestSurvey.value.odp_id) {
+        ontForm.odp_id = latestSurvey.value.odp_id;
+        if (latestSurvey.value.port_number) {
+            ontForm.port_number = latestSurvey.value.port_number;
+        }
+    }
+}
+
 const hardwareItems = ref([]);
 const installationNotes = ref('');
 
@@ -3147,6 +3326,7 @@ onMounted(() => {
     const savedOdp = localStorage.getItem(`apm_odp_id_${props.customer.id}`);
     if (savedOdp) initialOdpId = Number(savedOdp);
     else if (props.customer.ont?.odp_id) initialOdpId = props.customer.ont?.odp_id;
+    else if (latestSurvey.value?.odp_id) initialOdpId = latestSurvey.value.odp_id;
     
     // Ensure initialOdpId matches the area
     if (initialOdpId) {
@@ -3161,6 +3341,7 @@ onMounted(() => {
     const savedPort = localStorage.getItem(`apm_port_number_${props.customer.id}`);
     if (savedPort && ontForm.odp_id) ontForm.port_number = Number(savedPort);
     else if (props.customer.ont?.port_number && ontForm.odp_id == props.customer.ont?.odp_id) ontForm.port_number = props.customer.ont?.port_number;
+    else if (latestSurvey.value?.port_number && ontForm.odp_id == latestSurvey.value?.odp_id) ontForm.port_number = latestSurvey.value.port_number;
     
     const savedRx = localStorage.getItem(`apm_rx_power_${props.customer.id}`);
     if (savedRx) ontForm.rx_power = savedRx;
