@@ -1736,7 +1736,37 @@ class CustomerController extends Controller
         ]);
 
         $materialRequests = \App\Models\MaterialTransaction::with('items.material')
-            ->where('customer_id', $customer->id)
+            ->where(function($q) use ($customer) {
+                $q->where('customer_id', $customer->id)
+                  ->orWhere(function($sub) use ($customer) {
+                      $sub->where('source_type', 'instalasi')->where('source_id', $customer->id);
+                  });
+            })
+            ->latest()
+            ->get();
+
+        $installationReturns = \App\Models\MaterialTransaction::with(['items.material', 'user:id,name'])
+            ->where(function($q) use ($customer) {
+                $q->where('customer_id', $customer->id)
+                  ->orWhere(function($sub) use ($customer) {
+                      $sub->where('source_type', 'instalasi')->where('source_id', $customer->id);
+                  });
+            })
+            ->where(function($q) {
+                $q->where('request_type', 'return_handover')
+                  ->orWhere('transaction_number', 'like', 'RTR-%');
+            })
+            ->latest()
+            ->get();
+
+        $installationUsages = \App\Models\MaterialTransaction::with('items.material')
+            ->where(function($q) use ($customer) {
+                $q->where('customer_id', $customer->id)
+                  ->orWhere(function($sub) use ($customer) {
+                      $sub->where('source_type', 'instalasi')->where('source_id', $customer->id);
+                  });
+            })
+            ->where('transaction_number', 'like', 'OUT-INSTALASI-%')
             ->latest()
             ->get();
 
@@ -1757,6 +1787,8 @@ class CustomerController extends Controller
             'salesUsers' => User::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'materials' => \App\Models\Material::orderBy('name')->get(),
             'materialRequests' => $materialRequests,
+            'installationReturns' => $installationReturns,
+            'installationUsages' => $installationUsages,
             'materialTransactions' => $materialTransactions,
         ]);
     }
@@ -2300,6 +2332,10 @@ class CustomerController extends Controller
                 }
             }
 
+            $allocatedDetails = [];
+            $returnFormattedDetails = [];
+            $returnTrx = null;
+
             // Handle material usage
             if ($request->has('materials_returned') && is_array($request->materials_returned)) {
                 $items = $request->materials_returned;
@@ -2334,6 +2370,10 @@ class CustomerController extends Controller
                             $unitStr = $uMatches[2];
                         }
                         
+                        if ($assignedQty > 0) {
+                            $allocatedDetails[] = $material->name . ' (' . $assignedQty . ' ' . $unitStr . ')';
+                        }
+
                         // 1. Catat pemakaian asli (Instalasi)
                         if ($usedQty > 0) {
                             $usedItems[] = [
@@ -2354,6 +2394,7 @@ class CustomerController extends Controller
                                 'unit' => $unitStr
                             ];
                             $rincianNotesReturn[] = "- {$material->name}: SISA (Dikembalikan): {$excessQty} {$unitStr}";
+                            $returnFormattedDetails[] = $material->name . ' (' . $excessQty . ' ' . $unitStr . ')';
                         }
                     }
                 }
@@ -2449,7 +2490,7 @@ class CustomerController extends Controller
 
                 // Proses Serah Terima Pengembalian Sisa ke Gudang (Verifikasi Fisik oleh Petugas Gudang / Ka. Teknisi)
                 if (count($returnItems) > 0) {
-                    \App\Services\MaterialHandoverService::submitReturnHandover(
+                    $returnTrx = \App\Services\MaterialHandoverService::submitReturnHandover(
                         sourceType: 'instalasi',
                         sourceId: $customer->id,
                         sourceRef: $customer->customer_id ?? ('CUST-' . $customer->id),
@@ -2502,11 +2543,26 @@ class CustomerController extends Controller
                         }
                     }
 
-                    // Remove old Material lines
+                    // Remove old Material and return lines
                     $lines = array_filter($lines, function($line) {
-                        return !str_starts_with(trim($line), 'Material:');
+                        $trimmed = trim($line);
+                        return !str_starts_with($trimmed, 'Material:') &&
+                               !str_starts_with($trimmed, 'Material Terpasang:') &&
+                               !str_starts_with($trimmed, 'Material Dikembalikan:') &&
+                               !str_starts_with($trimmed, 'Alokasi Awal:') &&
+                               !str_starts_with($trimmed, 'Retur Gudang:');
                     });
+
+                    if (!empty($allocatedDetails)) {
+                        $lines[] = "Alokasi Awal: " . implode(', ', array_unique($allocatedDetails));
+                    }
                     $lines[] = "Material: " . implode(', ', $finalMaterials);
+                    if (!empty($returnFormattedDetails)) {
+                        $lines[] = "Material Dikembalikan: " . implode(', ', $returnFormattedDetails);
+                        if ($returnTrx) {
+                            $lines[] = "Retur Gudang: " . $returnTrx->transaction_number;
+                        }
+                    }
                     $newNotes = implode("\n", $lines);
                 }
                 $schedule->update([

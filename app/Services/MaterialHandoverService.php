@@ -146,6 +146,7 @@ class MaterialHandoverService
                 'purpose' => "Serah Terima Pengembalian {$sourceType} [{$sourceRef}]",
                 'source_type' => $sourceType,
                 'source_id' => $sourceId,
+                'customer_id' => ($sourceType === 'instalasi' ? $sourceId : null),
                 'source_reference' => $sourceRef,
                 'area' => $areaName,
                 'area_id' => $areaId,

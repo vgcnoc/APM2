@@ -397,17 +397,110 @@
                         </div>
                     </div>
                         
-                        <div v-if="hardwareItems.length > 0" class="bg-amber-50 p-4 rounded-xl border border-amber-100 mb-6">
-                            <p class="text-xs font-semibold text-amber-800 uppercase tracking-wider mb-3">Riwayat Alokasi Material & ONT</p>
-                            <div class="space-y-2">
-                                <div v-for="item in hardwareItems" :key="item.id" class="text-sm text-gray-700 bg-white p-3 rounded-lg border border-amber-200 shadow-sm flex items-center justify-between">
-                                    <div>
-                                        <span class="text-xs text-gray-500 font-medium block mb-1">{{ item.type }}</span>
-                                        <span class="font-bold text-gray-900">{{ item.name }}</span>
+                        <!-- RIWAYAT ALOKASI & SERAH TERIMA MATERIAL & ONT -->
+                        <div v-if="hardwareItems.length > 0 || detailedReturnItems.length > 0" class="bg-gradient-to-br from-amber-50/70 via-white to-amber-50/40 p-5 rounded-2xl border border-amber-200/90 shadow-sm mb-6 space-y-4">
+                            <!-- Header -->
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-amber-200/70 gap-2">
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-base">📦</span>
+                                        <p class="text-xs font-bold text-amber-900 uppercase tracking-wider">Riwayat Alokasi & Serah Terima Material / ONT</p>
                                     </div>
-                                    <div class="text-emerald-600 font-bold flex items-center gap-1">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                        Dipasang
+                                    <p class="text-[11px] text-amber-700/80 mt-0.5">Rincian perangkat terpasang di pelanggan dan sisa material yang dikembalikan ke Gudang.</p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span v-if="detailedReturnItems.length > 0" class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1 shadow-2xs">
+                                        <span>↩️</span> {{ detailedReturnItems.length }} Item Retur Gudang
+                                    </span>
+                                    <span class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1 shadow-2xs">
+                                        <span>✓</span> {{ hardwareItems.length }} Terpasang
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- 1. PERANGKAT & MATERIAL TERPASANG DI PELANGGAN -->
+                            <div class="space-y-2">
+                                <p class="text-[11px] font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                                    Perangkat & Material Terpasang di Pelanggan (Pemakaian):
+                                </p>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                                    <div v-for="item in hardwareItems" :key="item.id" class="text-sm bg-white p-3 rounded-xl border border-gray-200 shadow-2xs hover:border-emerald-300 transition-all flex items-center justify-between">
+                                        <div class="min-w-0 pr-2">
+                                            <div class="flex items-center gap-1.5 mb-0.5">
+                                                <span class="text-[10px] font-bold px-2 py-0.5 rounded" :class="item.type === 'ONT' ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-800'">
+                                                    {{ item.type }}
+                                                </span>
+                                                <span v-if="item.initialAllocated" class="text-[10px] text-gray-500 font-medium">
+                                                    Bekal Awal: {{ item.initialAllocated }}
+                                                </span>
+                                            </div>
+                                            <span class="font-bold text-gray-900 text-xs sm:text-sm block truncate" :title="item.name">{{ item.name }}</span>
+                                            <span v-if="item.returnedNote" class="text-[11px] text-amber-700 block mt-0.5 font-medium">
+                                                {{ item.returnedNote }}
+                                            </span>
+                                        </div>
+                                        <div class="shrink-0 text-right">
+                                            <span class="text-xs text-emerald-700 font-bold bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 flex items-center gap-1">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                                Dipasang
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 2. DETAIL MATERIAL YANG DIKEMBALIKAN KE GUDANG (RETUR FISIK) -->
+                            <div v-if="detailedReturnItems.length > 0" class="pt-3 border-t border-amber-200/70 space-y-2">
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                    <p class="text-[11px] font-bold text-amber-950 uppercase tracking-wider flex items-center gap-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>
+                                        Detail Material yang Dikembalikan ke Gudang (Retur Fisik):
+                                    </p>
+                                    <!-- Badge Status Serah Terima Gudang -->
+                                    <div v-if="latestReturnTrx" class="flex items-center gap-1.5 flex-wrap">
+                                        <span class="text-[10px] text-gray-500 font-mono font-medium bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                                            {{ latestReturnTrx.transaction_number }}
+                                        </span>
+                                        <span v-if="latestReturnTrx.handover_status === 'received' || latestReturnTrx.handover_status === 'handover_approved' || latestReturnTrx.status === 'completed'" class="text-[10px] font-bold px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                                            ✓ Diterima Gudang
+                                        </span>
+                                        <span v-else-if="latestReturnTrx.handover_status === 'rejected'" class="text-[10px] font-bold px-2.5 py-0.5 rounded-md bg-rose-100 text-rose-800 border border-rose-300">
+                                            ✕ Ditolak
+                                        </span>
+                                        <span v-else class="text-[10px] font-bold px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
+                                            ⏳ Menunggu Verifikasi Gudang
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="bg-amber-50/70 border border-amber-200 rounded-xl p-3.5 space-y-2">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                        <div v-for="(ret, idx) in detailedReturnItems" :key="'ret-item-'+idx" class="bg-white p-3 rounded-lg border border-amber-200/90 shadow-2xs flex items-center justify-between">
+                                            <div>
+                                                <div class="flex items-center gap-2 mb-1">
+                                                    <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-200">
+                                                        Sisa Retur
+                                                    </span>
+                                                    <span class="text-[10px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                                        {{ ret.condition || 'Layak Pakai' }}
+                                                    </span>
+                                                </div>
+                                                <p class="font-bold text-gray-900 text-xs sm:text-sm">{{ ret.name }}</p>
+                                                <p v-if="ret.note" class="text-[11px] text-gray-500 mt-0.5 italic">{{ ret.note }}</p>
+                                            </div>
+                                            <div class="text-right">
+                                                <span class="text-sm font-extrabold text-amber-900 block">
+                                                    {{ ret.qty }} {{ ret.unit }}
+                                                </span>
+                                                <span class="text-[10px] text-amber-700 font-medium">Dikembalikan</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div v-if="latestReturnTrx?.notes" class="text-[11px] text-amber-800/90 bg-amber-100/50 p-2.5 rounded-lg border border-amber-200/60 mt-2">
+                                        <span class="font-semibold">Catatan Pengembalian Gudang:</span>
+                                        <p class="whitespace-pre-line mt-0.5 font-mono text-[10px]">{{ latestReturnTrx.notes }}</p>
                                     </div>
                                 </div>
                             </div>
@@ -1473,8 +1566,18 @@
                             <div class="text-gray-500 font-medium">Total Durasi:</div>
                             <div class="font-bold text-blue-600">{{ durationText }}</div>
                             
-                            <div class="text-gray-500 font-medium">Material:</div>
-                            <div class="font-bold">{{ hardwareItems.length }} item</div>
+                            <div class="text-gray-500 font-medium">Material Terpasang:</div>
+                            <div class="font-bold text-emerald-600">{{ materialHandoverSummary.installed.length }} item terpasang</div>
+                            
+                            <template v-if="materialHandoverSummary.hasReturned">
+                                <div class="text-amber-800 font-medium">Retur ke Gudang:</div>
+                                <div class="font-bold text-amber-800">
+                                    {{ materialHandoverSummary.returned.length }} item sisa dikembalikan
+                                    <span class="block text-[11px] font-normal text-amber-700 mt-0.5">
+                                        ({{ materialHandoverSummary.returned.map(r => `${r.name}: ${r.qty} ${r.unit}`).join(', ') }})
+                                    </span>
+                                </div>
+                            </template>
                             
                             <div class="text-gray-500 font-medium">Dokumentasi:</div>
                             <div class="font-bold text-green-600">Lengkap ✓</div>
@@ -2919,6 +3022,8 @@ const props = defineProps({
     materials: Array,
     materialRequests: Array,
     materialTransactions: Array,
+    installationReturns: Array,
+    installationUsages: Array,
     technicians: Array,
     packages: Array,
     areas: Array,
@@ -3018,6 +3123,115 @@ function applySurveyToForm() {
 const hardwareItems = ref([]);
 const installationNotes = ref('');
 
+const latestReturnTrx = computed(() => {
+    if (props.installationReturns && props.installationReturns.length > 0) {
+        return props.installationReturns[0];
+    }
+    if (props.materialRequests && props.materialRequests.length > 0) {
+        const found = props.materialRequests.find(r => 
+            r.request_type === 'return_handover' || 
+            (r.transaction_number && r.transaction_number.startsWith('RTR-'))
+        );
+        if (found) return found;
+    }
+    return null;
+});
+
+const detailedReturnItems = computed(() => {
+    const list = [];
+    const seenKeys = new Set();
+
+    // Prioritas 1: Dari transaksi serah terima retur di database
+    const returnTrx = latestReturnTrx.value;
+    if (returnTrx && returnTrx.items && returnTrx.items.length > 0) {
+        returnTrx.items.forEach(it => {
+            const name = it.material?.name || 'Material';
+            const key = name.toLowerCase().trim();
+            seenKeys.add(key);
+            list.push({
+                name: name,
+                qty: it.quantity,
+                unit: it.unit || 'pcs',
+                condition: it.condition || 'Layak Pakai',
+                note: `Ref: ${returnTrx.transaction_number}`
+            });
+        });
+        return list;
+    }
+
+    // Prioritas 2: Dari catatan schedule installation ('Material Dikembalikan:')
+    const schedule = props.customer?.technician_schedules?.find(s => s.type === 'installation');
+    if (schedule && schedule.notes) {
+        const lines = schedule.notes.split('\n');
+        lines.forEach(line => {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('Material Dikembalikan:')) {
+                const parts = trimmed.replace('Material Dikembalikan:', '').split(',');
+                parts.forEach(p => {
+                    const match = p.trim().match(/^(.*?)\s*\((\d+(?:\.\d+)?)\s*([a-zA-Z]+)?\)$/);
+                    if (match) {
+                        const name = match[1].trim();
+                        const key = name.toLowerCase();
+                        if (!seenKeys.has(key)) {
+                            seenKeys.add(key);
+                            list.push({
+                                name: name,
+                                qty: parseFloat(match[2]),
+                                unit: match[3] || 'pcs',
+                                condition: 'Layak Pakai',
+                                note: 'Tercatat di Laporan Pemasangan'
+                            });
+                        }
+                    } else if (p.trim()) {
+                        list.push({
+                            name: p.trim(),
+                            qty: 1,
+                            unit: 'item',
+                            condition: 'Layak Pakai',
+                            note: 'Tercatat di Laporan Pemasangan'
+                        });
+                    }
+                });
+            }
+        });
+        if (list.length > 0) return list;
+    }
+
+    // Prioritas 3: Parse dari notes transaksi OUT-INSTALASI jika ada hitungan sisa
+    if (props.installationUsages && props.installationUsages.length > 0) {
+        const outTrx = props.installationUsages[0];
+        if (outTrx && outTrx.notes) {
+            const outLines = outTrx.notes.split('\n');
+            outLines.forEach(l => {
+                const m = l.match(/^-\s*(.*?):\s*(\d+(?:\.\d+)?)\s*([a-zA-Z]+)?\s*\(Bekal awal:\s*(\d+(?:\.\d+)?)\s*([a-zA-Z]+)?\)/i);
+                if (m) {
+                    const name = m[1].trim();
+                    const used = parseFloat(m[2]);
+                    const assigned = parseFloat(m[4]);
+                    const unit = m[3] || m[5] || 'pcs';
+                    const retQty = Math.max(0, Math.round((assigned - used) * 100) / 100);
+                    if (retQty > 0) {
+                        const key = name.toLowerCase();
+                        if (!seenKeys.has(key)) {
+                            seenKeys.add(key);
+                            list.push({
+                                name: name,
+                                qty: retQty,
+                                unit: unit,
+                                condition: 'Layak Pakai',
+                                note: `Sisa dari bekal ${assigned} ${unit}`
+                            });
+                        }
+                    }
+                }
+            });
+            if (list.length > 0) return list;
+        }
+    }
+
+    return list;
+});
+
 watch(() => props.customer, () => {
     const schedule = props.customer?.technician_schedules?.find(s => s.type === 'installation');
     if (!schedule || !schedule.notes) {
@@ -3030,31 +3244,111 @@ watch(() => props.customer, () => {
     const items = [];
     const notesList = [];
     let idCounter = 0;
-    
+    const isScheduleDone = schedule.status === 'done';
+
+    // Map bekal awal jika ada
+    const initialAllocMap = {};
+    const returnedMap = {};
+
+    lines.forEach(line => {
+        const text = line.trim();
+        if (text.startsWith('Alokasi Awal:')) {
+            const rawMats = text.replace('Alokasi Awal:', '').split(',');
+            rawMats.forEach(rm => {
+                const match = rm.trim().match(/^(.*?)\s*\((.*?)\)$/);
+                if (match) {
+                    initialAllocMap[match[1].trim().toLowerCase()] = match[2].trim();
+                }
+            });
+        }
+        if (text.startsWith('Material Dikembalikan:')) {
+            const rawRets = text.replace('Material Dikembalikan:', '').split(',');
+            rawRets.forEach(rr => {
+                const match = rr.trim().match(/^(.*?)\s*\((.*?)\)$/);
+                if (match) {
+                    returnedMap[match[1].trim().toLowerCase()] = match[2].trim();
+                }
+            });
+        }
+    });
+
+    // Juga map dari OUT-INSTALASI notes jika ada info bekal awal
+    if (props.installationUsages && props.installationUsages.length > 0) {
+        const outTrx = props.installationUsages[0];
+        if (outTrx && outTrx.notes) {
+            const outLines = outTrx.notes.split('\n');
+            outLines.forEach(ol => {
+                const om = ol.match(/^-\s*(.*?):\s*(\d+(?:\.\d+)?)\s*([a-zA-Z]+)?\s*\(Bekal awal:\s*(\d+(?:\.\d+)?\s*[a-zA-Z]+)\)/i);
+                if (om) {
+                    const cleanName = om[1].trim().toLowerCase();
+                    initialAllocMap[cleanName] = om[4].trim();
+                    const used = parseFloat(om[2]);
+                    const assigned = parseFloat(om[4]);
+                    const diff = assigned - used;
+                    if (diff > 0) {
+                        const unit = om[3] || 'pcs';
+                        returnedMap[cleanName] = `${diff} ${unit}`;
+                    }
+                }
+            });
+        }
+    }
+
     lines.forEach(line => {
         let text = line.trim();
         if (!text) return;
         if (text.startsWith('ONT: ')) {
             const onts = text.replace('ONT: ', '').split(', ');
             onts.forEach(ont => {
-                if(ont.trim()) items.push({ id: idCounter++, type: 'ONT', name: ont.trim(), isInstalled: false });
+                if (ont.trim()) items.push({ id: idCounter++, type: 'ONT', name: ont.trim(), isInstalled: isScheduleDone });
             });
         } else if (text.startsWith('Material: ')) {
             const mats = text.replace('Material: ', '').split(', ');
             mats.forEach(mat => {
-                if(mat.trim()) items.push({ id: idCounter++, type: 'Material', name: mat.trim(), isInstalled: false });
+                if (mat.trim()) {
+                    const cleanMatName = mat.trim();
+                    const baseLower = cleanMatName.replace(/\(.*?\)/, '').trim().toLowerCase();
+                    let initialAlloc = null;
+                    let returnedNote = null;
+                    for (const [k, v] of Object.entries(initialAllocMap)) {
+                        if (baseLower.includes(k) || k.includes(baseLower)) {
+                            initialAlloc = v;
+                            break;
+                        }
+                    }
+                    for (const [k, v] of Object.entries(returnedMap)) {
+                        if (baseLower.includes(k) || k.includes(baseLower)) {
+                            returnedNote = `↩️ Sisa ${v} dikembalikan ke Gudang`;
+                            break;
+                        }
+                    }
+                    items.push({ 
+                        id: idCounter++, 
+                        type: 'Material', 
+                        name: cleanMatName, 
+                        isInstalled: isScheduleDone,
+                        initialAllocated: initialAlloc,
+                        returnedNote: returnedNote
+                    });
+                }
             });
         } else if (text.startsWith('Catatan Tambahan:') || text.startsWith('Catatan:')) {
             const cleanNote = text.replace(/^Catatan(\s+Tambahan)?:\s*/i, '').trim();
             if (cleanNote) notesList.push(cleanNote);
-        } else if (text.startsWith('Material diambil dari Surat Jalan') || text === 'ONT:') {
+        } else if (
+            text.startsWith('Material diambil dari Surat Jalan') || 
+            text === 'ONT:' || 
+            text.startsWith('Alokasi Awal:') || 
+            text.startsWith('Material Dikembalikan:') || 
+            text.startsWith('Retur Gudang:')
+        ) {
             // Abaikan header transaksi
         } else {
             if (text.toLowerCase().startsWith('catatan')) {
                 const cleanNote = text.replace(/^catatan[^:]*:\s*/i, '').trim();
                 if (cleanNote) notesList.push(cleanNote);
             } else {
-                items.push({ id: idCounter++, type: 'Material', name: text, isInstalled: false });
+                items.push({ id: idCounter++, type: 'Material', name: text, isInstalled: isScheduleDone });
             }
         }
     });
@@ -3068,8 +3362,8 @@ watch(() => props.customer, () => {
             const savedState = JSON.parse(savedHardware);
             hardwareItems.value.forEach(item => {
                 const savedItem = savedState.find(s => s.id === item.id);
-                if (savedItem && savedItem.isInstalled) {
-                    item.isInstalled = true;
+                if (savedItem && savedItem.isInstalled !== undefined) {
+                    item.isInstalled = savedItem.isInstalled;
                 }
                 if (savedItem && savedItem.returned_qty) {
                     item.returned_qty = savedItem.returned_qty;
