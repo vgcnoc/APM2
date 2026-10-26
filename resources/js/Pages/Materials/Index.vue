@@ -190,14 +190,14 @@
                                                 <span class="text-[10px] font-bold text-gray-700">{{ formatNumber(s.stock) }}</span>
                                             </div>
                                         </div>
-                                        <div v-if="item.category?.toLowerCase().includes('kabel') && item.total_rolls" class="text-xs text-gray-400 mt-1">
-                                            ({{ item.total_rolls }} roll)
+                                        <div v-if="item.category?.toLowerCase().includes('kabel') && (item.scoped_stock !== undefined ? (item.scoped_stock / (item.meter_per_roll || 100)) : item.total_rolls)" class="text-xs text-gray-400 mt-1">
+                                            ({{ formatNumber(item.scoped_stock !== undefined ? (item.scoped_stock / (item.meter_per_roll || 100)) : item.total_rolls) }} roll)
                                         </div>
-                                        <div v-else-if="item.category?.toLowerCase().includes('klem') && item.total_packs" class="text-xs text-gray-400 mt-0.5">
-                                            ({{ item.total_packs }} bungkus)
+                                        <div v-else-if="item.category?.toLowerCase().includes('klem') && (item.scoped_stock !== undefined ? (item.scoped_stock / (item.pcs_per_pack || 25)) : item.total_packs)" class="text-xs text-gray-400 mt-0.5">
+                                            ({{ formatNumber(item.scoped_stock !== undefined ? (item.scoped_stock / (item.pcs_per_pack || 25)) : item.total_packs) }} bungkus)
                                         </div>
-                                        <div v-else-if="item.category?.toLowerCase().includes('isolasi') && item.total_pieces" class="text-xs text-gray-400 mt-0.5">
-                                            ({{ item.total_pieces }} pcs utuh)
+                                        <div v-else-if="item.category?.toLowerCase().includes('isolasi') && (item.scoped_stock !== undefined ? Math.floor(item.scoped_stock / ((item.cm_per_pcs || 2400) * (item.pcs_per_pack || 1))) : item.total_pieces)" class="text-xs text-gray-400 mt-0.5">
+                                            ({{ formatNumber(item.scoped_stock !== undefined ? Math.floor(item.scoped_stock / ((item.cm_per_pcs || 2400) * (item.pcs_per_pack || 1))) : item.total_pieces) }} pcs utuh)
                                         </div>
                                     </div>
                                 </td>
