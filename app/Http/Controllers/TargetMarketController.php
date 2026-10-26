@@ -28,37 +28,6 @@ class TargetMarketController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        // Jika belum ada program tapi ada program bulan berjalan, buatkan default jika baru pertama kali
-        if ($programs->isEmpty() && TargetMarketProgram::count() === 0) {
-            TargetMarketProgram::create([
-                'title' => 'Program Akselerasi Target Q4 ' . $year,
-                'concept' => 'hybrid',
-                'period_month' => $month,
-                'period_year' => $year,
-                'target_quota' => 15,
-                'target_role' => null, // semua karyawan
-                'reward_flat' => 25000,
-                'reward_bonus_target' => 500000,
-                'rules' => [
-                    'tiers' => [
-                        ['min' => 1, 'max' => 5, 'reward' => 25000],
-                        ['min' => 6, 'max' => 15, 'reward' => 50000],
-                        ['min' => 16, 'max' => null, 'reward' => 75000],
-                    ],
-                    'target_areas' => [],
-                    'target_packages' => [],
-                ],
-                'description' => 'Program komisi target market hybrid untuk seluruh karyawan (Tier kuota + Flat per closing + Bonus tembus target).',
-                'is_active' => true,
-                'auto_disburse' => true,
-                'created_by' => auth()->id(),
-            ]);
-
-            $programs = TargetMarketProgram::where('period_month', $month)
-                ->where('period_year', $year)
-                ->get();
-        }
-
         // Ambil logs untuk periode ini
         $logs = TargetMarketLog::where('period_month', $month)
             ->where('period_year', $year)
@@ -193,15 +162,32 @@ class TargetMarketController extends Controller
 
     public function destroyProgram(TargetMarketProgram $program)
     {
-        $title = $program->title;
-        $month = $program->period_month;
-        $year = $program->period_year;
+        try {
+            $title = $program->title;
+            $month = $program->period_month;
+            $year = $program->period_year;
 
-        $program->delete();
+            // Cek apakah ada logs yang sudah disinkronkan ke payroll
+            $syncedLogsCount = TargetMarketLog::where('program_id', $program->id)
+                ->where('status', 'synced_payroll')
+                ->count();
 
-        TargetMarketService::recalculatePeriod($month, $year);
+            if ($syncedLogsCount > 0) {
+                return back()->with('error', "Program '{$title}' tidak dapat dihapus karena sebagian bonusnya sudah disinkronkan ke Payroll. Anda dapat menonaktifkan program ini jika sudah tidak berlaku.");
+            }
 
-        return back()->with('success', "Program '{$title}' berhasil dihapus.");
+            // Hapus log terkait yang belum disinkronkan ke payroll
+            TargetMarketLog::where('program_id', $program->id)->delete();
+
+            $program->delete();
+
+            TargetMarketService::recalculatePeriod($month, $year);
+
+            return back()->with('success', "Program '{$title}' berhasil dihapus.");
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Failed to delete TargetMarketProgram: " . $e->getMessage());
+            return back()->with('error', "Gagal menghapus program: " . $e->getMessage());
+        }
     }
 
     public function recalculate(Request $request)

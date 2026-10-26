@@ -1,6 +1,22 @@
 <template>
     <AppLayout title="Bonus Target Market" subtitle="Sistem reward pencapaian target pasar & komisi closing seluruh karyawan">
         <div class="max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 space-y-6 font-sans">
+            <!-- Flash Message Alerts -->
+            <div v-if="$page.props.flash?.error" class="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 flex items-center justify-between text-xs font-bold shadow-xs">
+                <div class="flex items-center gap-2">
+                    <span>⚠️</span>
+                    <span>{{ $page.props.flash.error }}</span>
+                </div>
+                <button type="button" @click="$page.props.flash.error = null" class="text-rose-500 hover:text-rose-800 p-1 font-bold cursor-pointer">✕</button>
+            </div>
+            <div v-if="$page.props.flash?.success" class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-between text-xs font-bold shadow-xs">
+                <div class="flex items-center gap-2">
+                    <span>✅</span>
+                    <span>{{ $page.props.flash.success }}</span>
+                </div>
+                <button type="button" @click="$page.props.flash.success = null" class="text-emerald-500 hover:text-emerald-800 p-1 font-bold cursor-pointer">✕</button>
+            </div>
+
             <!-- ═══ Top Filter Bar & Action Buttons ═══ -->
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
                 <div class="flex flex-wrap items-center gap-3">
@@ -763,18 +779,34 @@ function deleteProgram(prog) {
         cancelButtonColor: '#64748b'
     }).then((res) => {
         if (res.isConfirmed) {
-            router.delete(`/bonus-target-market/programs/${prog.id}`, {
+            router.post(`/bonus-target-market/programs/${prog.id}/destroy`, {}, {
                 preserveScroll: true,
-                onSuccess: () => {
+                onSuccess: (page) => {
+                    const flash = page?.props?.flash;
+                    if (flash?.error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal Menghapus',
+                            text: flash.error
+                        });
+                        return;
+                    }
                     Swal.fire({
                         toast: true,
                         position: 'top-end',
                         icon: 'success',
                         title: 'Program Dihapus!',
-                        text: `Program '${prog.title}' berhasil dihapus.`,
+                        text: flash?.success || `Program '${prog.title}' berhasil dihapus.`,
                         showConfirmButton: false,
                         timer: 3000,
                         timerProgressBar: true
+                    });
+                },
+                onError: (errors) => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal Menghapus',
+                        text: errors?.message || Object.values(errors)[0] || 'Terjadi kesalahan saat menghapus program.'
                     });
                 }
             });

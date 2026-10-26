@@ -155,6 +155,12 @@ class TargetMarketService
      */
     public static function recalculatePeriod(int $month, int $year): array
     {
+        // Hapus log lama yang belum synced payroll untuk periode ini terlebih dahulu
+        TargetMarketLog::where('period_month', $month)
+            ->where('period_year', $year)
+            ->where('status', '!=', 'synced_payroll')
+            ->delete();
+
         $programs = TargetMarketProgram::where('is_active', true)
             ->where('period_month', $month)
             ->where('period_year', $year)
@@ -163,12 +169,6 @@ class TargetMarketService
         if ($programs->isEmpty()) {
             return ['processed' => 0, 'total_bonus' => 0];
         }
-
-        // Hapus log lama yang belum synced payroll
-        TargetMarketLog::where('period_month', $month)
-            ->where('period_year', $year)
-            ->where('status', '!=', 'synced_payroll')
-            ->delete();
 
         // Cari pelanggan aktif di periode ini yang memiliki sales_id
         $customers = Customer::where('status', 'active')
