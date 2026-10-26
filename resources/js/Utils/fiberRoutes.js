@@ -6,22 +6,44 @@ const point = item => {
 
 export const fiberRouteKey = segment => [...segment.origin, ...segment.destination].map(value => value.toFixed(6)).join(',');
 
+// Markers and cable endpoints must use the same anti-overlap positions.
+export function fiberAssetPositions({ odcs = [], odps = [] }) {
+    const cabinets = new Map(odcs.map(item => [String(item.id), point(item)]));
+    const terminals = new Map(odps.map(item => {
+        let location = point(item);
+        if (location && [...cabinets.values()].some(origin => origin
+            && Math.abs(origin[0] - location[0]) < .00008 && Math.abs(origin[1] - location[1]) < .00008)) {
+            location = [location[0] + .00018, location[1] + .00018];
+        }
+        return [String(item.id), location];
+    }));
+    const terminalLocations = new Map(odps.map(item => [String(item.id), point(item)]));
+    return { cabinets, terminals, terminalLocations };
+}
+
+export function fiberCustomerPosition(customer, odps = []) {
+    let location = point(customer);
+    const origin = odps instanceof Map ? odps.get(String(customer.odp_id)) : point(odps.find(odp => String(odp.id) === String(customer.odp_id)));
+    if (origin && location && Math.abs(origin[0] - location[0]) < .00003 && Math.abs(origin[1] - location[1]) < .00003) {
+        location = [location[0] + .00010, location[1] + .00010];
+    }
+    return location;
+}
+
 export function buildFiberSegments({ odcs = [], odps = [], customers = [], area = 'all' }) {
     const inArea = item => area === 'all' || String(item.area_id) === String(area);
-    const cabinets = new Map(odcs.map(item => [String(item.id), point(item)]));
-    const terminals = new Map(odps.map(item => [String(item.id), point(item)]));
+    const { cabinets, terminals, terminalLocations } = fiberAssetPositions({ odcs, odps });
+    const terminalNames = new Map(odps.map(item => [String(item.id), item.name]));
     const segments = [];
     odps.filter(inArea).forEach(item => {
-        const origin = cabinets.get(String(item.odc_id)), destination = point(item);
+        const origin = cabinets.get(String(item.odc_id)), destination = terminals.get(String(item.id));
         if (origin && destination) segments.push({ id: `feeder-${item.id}`, kind: 'feeder', name: `Feeder → ${item.name}`, origin, destination });
     });
     customers.filter(inArea).forEach(item => {
         const origin = terminals.get(String(item.odp_id));
-        let destination = point(item);
+        const destination = fiberCustomerPosition(item, terminalLocations);
         if (!origin || !destination) return;
-        // Match the customer marker's visual offset when it shares the ODP location.
-        if (Math.abs(origin[0] - destination[0]) < .00002 && Math.abs(origin[1] - destination[1]) < .00002) destination = [destination[0] + .00010, destination[1] + .00010];
-        segments.push({ id: `drop-${item.id}`, kind: 'drop', name: `Drop → ${item.name}`, origin, destination });
+        segments.push({ id: `drop-${item.id}`, kind: 'drop', name: `${terminalNames.get(String(item.odp_id)) || 'ODP'} → ${item.name}`, origin, destination });
     });
     return segments;
 }

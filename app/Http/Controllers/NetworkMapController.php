@@ -61,7 +61,7 @@ class NetworkMapController extends Controller
             ->withCount('onts as customer_count');
 
         // 3. Data Pelanggan
-        $customerQuery = $this->mapCustomers($user)->select('id', 'name', 'customer_code', 'phone', 'latitude', 'longitude', 'address', 'is_reseller', 'status', 'service_status', 'area_id', 'package_id')
+        $customerQuery = $this->mapCustomers($user)->select('id', 'name', 'customer_code', 'phone', 'latitude', 'longitude', 'address', 'is_reseller', 'status', 'service_status', 'area_id', 'package_id', 'connection_disabled', 'connection_access_pending')
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->with(['package:id,name,speed_mbps', 'areaModel:id,name', 'ont.odp:id,name,odc_id']);
@@ -134,6 +134,8 @@ class NetworkMapController extends Controller
                     'address' => $customer->address,
                     'status' => $customer->status,
                     'service_status' => $customer->service_status,
+                    'connection_disabled' => (bool) $customer->connection_disabled,
+                    'connection_access_pending' => (bool) $customer->connection_access_pending,
                     'is_reseller' => (bool)$customer->is_reseller,
                     'area_id' => $customer->area_id,
                     'area_name' => $customer->areaModel?->name ?? ($customer->area ?: 'Umum'),

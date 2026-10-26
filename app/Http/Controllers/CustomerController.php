@@ -22,6 +22,34 @@ use Inertia\Response;
 
 class CustomerController extends Controller
 {
+    public function connectionAccess(Request $request, Customer $customer, \App\Services\CustomerAccessService $access): RedirectResponse
+    {
+        $user = $request->user();
+        $isAdmin = $user && (in_array($user->role, ['admin', 'super admin', 'superadmin', 'super-admin'], true)
+            || $user->hasAnyRole(['admin', 'super admin']));
+        abort_unless($user && ($isAdmin || $user->can('customers_active_suspend')), 403);
+        abort_unless($isAdmin || DataScopeService::applyCustomerScope(Customer::query(), $user)->whereKey($customer->id)->exists(), 403);
+        $validated = $request->validate(['disabled' => ['required', 'boolean']]);
+        $disabled = (bool) $validated['disabled'];
+        if (!$disabled && in_array($customer->status, ['terminated', 'canceled'], true)) {
+            return back()->with('error', 'Pelanggan yang sudah berhenti atau dibatalkan harus diaktivasi ulang terlebih dahulu.');
+        }
+        $old = (bool) $customer->connection_disabled;
+        try {
+            $result = $access->setDisabled($customer, $disabled);
+        } catch (\Illuminate\Contracts\Cache\LockTimeoutException $e) {
+            return back()->with('error', 'Perubahan koneksi pelanggan sedang diproses. Coba kembali sesaat lagi.');
+        }
+        \App\Models\AuditLog::createLog($disabled ? 'Disable Koneksi' : 'Enable Koneksi', $customer,
+            ['connection_disabled' => $old], ['connection_disabled' => $disabled, 'pending' => !$result['complete']],
+            $disabled ? 'Menonaktifkan akses koneksi pelanggan' : 'Mengaktifkan kembali akses koneksi pelanggan');
+        $action = $disabled ? 'Disable' : 'Enable';
+        if (!$result['complete']) {
+            return back()->with('error', "$action tersimpan, tetapi penerapan belum lengkap: ".implode(' ', $result['warnings']).' Gunakan Sinkronkan Ulang.');
+        }
+        return back()->with('success', "$action koneksi {$customer->name} berhasil diterapkan.");
+    }
+
     /**
      * Daftar semua pelanggan (dengan filter & pencarian)
      */
@@ -64,8 +92,8 @@ class CustomerController extends Controller
         $lastMonthTotal = (clone $baseQuery)->where('created_at', '<', $now->copy()->startOfMonth())->count();
         $totalGrowth = $lastMonthTotal > 0 ? round((($totalCustomers - $lastMonthTotal) / $lastMonthTotal) * 100, 1) : ($totalCustomers > 0 ? 100 : 0);
 
-        $activeCustomers = (clone $baseQuery)->where('status', 'active')->count();
-        $lastMonthActive = (clone $baseQuery)->where('status', 'active')->where('created_at', '<', $now->copy()->startOfMonth())->count();
+        $activeCustomers = (clone $baseQuery)->where('status', 'active')->where('connection_disabled', false)->count();
+        $lastMonthActive = (clone $baseQuery)->where('status', 'active')->where('connection_disabled', false)->where('created_at', '<', $now->copy()->startOfMonth())->count();
         $activeGrowth = $lastMonthActive > 0 ? round((($activeCustomers - $lastMonthActive) / $lastMonthActive) * 100, 1) : ($activeCustomers > 0 ? 100 : 0);
         $activePercentage = $totalCustomers > 0 ? round(($activeCustomers / $totalCustomers) * 100, 1) : 0;
 
@@ -74,8 +102,9 @@ class CustomerController extends Controller
         $pendingGrowth = $lastMonthPending > 0 ? round((($pendingCustomers - $lastMonthPending) / $lastMonthPending) * 100, 1) : ($pendingCustomers > 0 ? 100 : 0);
         $pendingPercentage = $totalCustomers > 0 ? round(($pendingCustomers / $totalCustomers) * 100, 1) : 0;
 
-        $inactiveCustomers = (clone $baseQuery)->where('status', 'suspended')->count();
-        $lastMonthInactive = (clone $baseQuery)->where('status', 'suspended')->where('created_at', '<', $now->copy()->startOfMonth())->count();
+        $inactiveQuery = (clone $baseQuery)->where(fn ($q) => $q->where('status', 'suspended')->orWhere('connection_disabled', true));
+        $inactiveCustomers = (clone $inactiveQuery)->count();
+        $lastMonthInactive = (clone $inactiveQuery)->where('created_at', '<', $now->copy()->startOfMonth())->count();
         $inactiveGrowth = $lastMonthInactive > 0 ? round((($inactiveCustomers - $lastMonthInactive) / $lastMonthInactive) * 100, 1) : ($inactiveCustomers > 0 ? 100 : 0);
         $inactivePercentage = $totalCustomers > 0 ? round(($inactiveCustomers / $totalCustomers) * 100, 1) : 0;
 
@@ -95,6 +124,12 @@ class CustomerController extends Controller
             ->when($request->status, function ($q, $status) {
                 if ($status === 'pending') {
                     $q->whereIn('status', ['booking', 'survey', 'installing']);
+                } elseif ($status === 'disabled') {
+                    $q->where('connection_disabled', true);
+                } elseif ($status === 'inactive') {
+                    $q->where(fn ($sub) => $sub->where('status', 'suspended')->orWhere('connection_disabled', true));
+                } elseif ($status === 'active') {
+                    $q->where('status', 'active')->where('connection_disabled', false);
                 } else {
                     $q->where('status', $status);
                 }
@@ -147,6 +182,8 @@ class CustomerController extends Controller
                 'inactive' => ['value' => $inactiveCustomers, 'percentage' => $inactivePercentage, 'growth' => $inactiveGrowth],
             ],
             'statusOptions' => [
+                'disabled' => 'Disable Koneksi',
+                'inactive' => 'Nonaktif (Isolir / Disable)',
                 'active' => 'Aktif',
                 'suspended' => 'Suspended (Isolir)',
                 'pending' => 'Pending (PSB)',

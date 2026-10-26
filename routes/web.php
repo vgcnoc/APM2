@@ -146,6 +146,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{customer}/print-termination', [CustomerController::class, 'printTermination'])->name('print-termination');
         Route::get('/{customer}/print-booking', [CustomerController::class, 'printBooking'])->name('print-booking');
         Route::post('/{customer}/unsuspend', [CustomerController::class, 'unsuspend'])->name('unsuspend');
+        Route::post('/{customer}/connection-access', [CustomerController::class, 'connectionAccess'])->name('connection-access');
 
         // Assign ONT ke pelanggan
         Route::post('/{customer}/assign-ont', [CustomerController::class, 'assignOnt'])

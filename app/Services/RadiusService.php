@@ -172,6 +172,14 @@ class RadiusService
         RadUserGroup::where('username', $username)->delete();
     }
 
+    public function blockUser(string $username): void
+    {
+        $this->db()->transaction(function () use ($username) {
+            $this->removeUser($username);
+            RadCheck::create(['username' => $username, 'attribute' => 'Auth-Type', 'op' => ':=', 'value' => 'Reject']);
+        });
+    }
+
     /**
      * Akun RADIUS milik pelanggan (diambil dari data ONT).
      *
@@ -218,6 +226,19 @@ class RadiusService
         }
 
         $ont = $customer->ont;
+
+        // Manual disable is independent of billing/isolir and survives every resync.
+        if ($customer->connection_disabled) {
+            foreach ($customer->onts as $device) {
+                foreach (array_filter([$device->pppoe_user, $device->hotspot_user]) as $username) {
+                    $this->blockUser($username);
+                }
+            }
+            foreach (Voucher::where('customer_id', $customer->id)->where('is_free', true)->get() as $voucher) {
+                if ($voucher->username) $this->blockUser($voucher->username);
+            }
+            return;
+        }
 
         // 1. Sinkronkan akun PPPoE / Primary Connection
         if ($ont && $ont->pppoe_user && $ont->pppoe_password) {
@@ -311,6 +332,10 @@ class RadiusService
     {
         foreach ($vouchers as $voucher) {
             if (!$voucher->username) {
+                continue;
+            }
+            if ($voucher->customer_id && $voucher->customer?->connection_disabled) {
+                $this->blockUser($voucher->username);
                 continue;
             }
             if ($voucher->status === 'expired' || !$voucher->is_active) {

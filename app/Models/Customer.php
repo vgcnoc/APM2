@@ -83,12 +83,17 @@ class Customer extends Model
             'suspend_start' => 'date:Y-m-d',
             'suspend_end' => 'date:Y-m-d',
             'is_audited' => 'boolean',
+            'connection_disabled' => 'boolean',
+            'connection_access_pending' => 'boolean',
+            'connection_disable_state' => 'array',
         ];
     }
 
     protected $appends = [
         'customer_id',
     ];
+
+    protected $hidden = ['connection_disable_state'];
 
     public static bool $isPurging = false;
 

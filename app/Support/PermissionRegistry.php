@@ -80,7 +80,7 @@ class PermissionRegistry
                     ['name' => 'customers_all_edit', 'type' => 'button', 'label' => 'Tombol Edit Data Pelanggan'],
                     ['name' => 'customers_active_edit', 'type' => 'button', 'label' => 'Tombol Edit Pelanggan Aktif'],
                     ['name' => 'customers_delete', 'type' => 'button', 'label' => 'Tombol Hapus Pelanggan'],
-                    ['name' => 'customers_active_suspend', 'type' => 'button', 'label' => 'Tombol Isolir / Buka Isolir'],
+                    ['name' => 'customers_active_suspend', 'type' => 'button', 'label' => 'Tombol Isolir / Buka Isolir & Disable / Enable Koneksi'],
                     ['name' => 'customers_active_terminate', 'type' => 'button', 'label' => 'Tombol Putus Permanen / Terminate'],
                     ['name' => 'customers_all_export', 'type' => 'button', 'label' => 'Tombol Export Data Pelanggan (Excel/PDF)'],
                     ['name' => 'customers_btn_whatsapp', 'type' => 'button', 'label' => 'Tombol Chat WhatsApp Cepat'],

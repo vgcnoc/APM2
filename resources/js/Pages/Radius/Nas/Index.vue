@@ -308,10 +308,11 @@ function generateScript() {
     L.push(`/ip dns set allow-remote-requests=yes;`);
     L.push(``);
 
-    L.push(`### 1. USER API (UNTUK BILLING VIZBILL: CEK PING, ONLINE USER, TROUBLESHOOT) ###`);
+    L.push(`### 1. USER API (MONITORING DAN DISABLE/ENABLE KONEKSI PELANGGAN) ###`);
+    L.push(`:if ([:len [/user group find name="VIZBILL-API"]] = 0) do={ /user group add name="VIZBILL-API" policy=read,write,api,test } else={ /user group set [find name="VIZBILL-API"] policy=read,write,api,test };`);
     L.push(`/user rem [find comment~"APM2"];`);
     L.push(`/user rem [find comment~"VIZBILL"];`);
-    L.push(`/user add name="${apiUser}" password="${apiPass}" group=read address=${radiusIp}/${radiusHostMask} comment="USER FOR VIZBILL BILLING API (DON'T CHANGE IT)";`);
+    L.push(`/user add name="${apiUser}" password="${apiPass}" group="VIZBILL-API" address=${radiusIp}/${radiusHostMask} comment="USER FOR VIZBILL BILLING API (DON'T CHANGE IT)";`);
     L.push(`/ip service set api disabled=no port=${apiPort};`);
     L.push(``);
 

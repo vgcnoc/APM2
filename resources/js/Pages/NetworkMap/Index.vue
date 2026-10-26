@@ -555,7 +555,7 @@ import axios from 'axios';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import MapControls from './MapControls.vue';
 import { connectionPresentation } from '@/Utils/networkConnectionStatus';
-import { buildFiberSegments, fiberRouteKey, fiberRoadGeometry } from '@/Utils/fiberRoutes';
+import { buildFiberSegments, fiberAssetPositions, fiberCustomerPosition, fiberRouteKey, fiberRoadGeometry } from '@/Utils/fiberRoutes';
 import { createBasemapTransition } from '@/Utils/basemapTransition';
 
 // ═══ PROPS DARI BACKEND ═══
@@ -999,6 +999,9 @@ onMounted(async () => {
     L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
 
     // Initialize Layer Groups
+    map.createPane('gis-area-labels');
+    map.getPane('gis-area-labels').style.zIndex = 350;
+    map.getPane('gis-area-labels').style.pointerEvents = 'none';
     odcLayerGroup = L.layerGroup().addTo(map);
     odpLayerGroup = L.layerGroup();
     customerLayerGroup = L.layerGroup();
@@ -1258,21 +1261,7 @@ const refreshMarkers = () => {
     const clusteredOdps = [];
     const clusteredCustomers = [];
 
-    // Mapping koordinat ODC untuk cek tumpukan dengan ODP
-    const odcCoords = [];
-    props.odcs.forEach(odc => {
-        if (odc.latitude && odc.longitude) {
-            odcCoords.push([parseFloat(odc.latitude), parseFloat(odc.longitude)]);
-        }
-    });
-
-    // Mapping koordinat ODP untuk cek tumpukan titik dengan pelanggan
-    const odpCoordsMap = new Map();
-    props.odps.forEach(odp => {
-        if (odp.latitude && odp.longitude) {
-            odpCoordsMap.set(odp.id, [parseFloat(odp.latitude), parseFloat(odp.longitude)]);
-        }
-    });
+    const { terminals, terminalLocations } = fiberAssetPositions({ odcs: props.odcs, odps: props.odps });
 
     // 1. Plot ODCs (Infrastruktur Utama - Core distribution)
     if (layers.value.odcs) {
@@ -1323,16 +1312,9 @@ const refreshMarkers = () => {
         props.odps.forEach(odp => {
             if (selectedAreaFilter.value !== 'all' && odp.area_id != selectedAreaFilter.value) return;
 
-            let oLat = parseFloat(odp.latitude);
-            let oLng = parseFloat(odp.longitude);
-
-            // Jitter / offset (~15m) jika koordinat ODP persis menempel pada titik ODC
-            odcCoords.forEach(([odcLat, odcLng]) => {
-                if (Math.abs(oLat - odcLat) < 0.00008 && Math.abs(oLng - odcLng) < 0.00008) {
-                    oLat += 0.00018;
-                    oLng += 0.00018;
-                }
-            });
+            const location = terminals.get(String(odp.id));
+            if (!location) return;
+            const [oLat, oLng] = location;
 
             const marker = L.marker([oLat, oLng], {
                 icon: createOdpIcon(odp.used_ports, odp.total_ports),
@@ -1386,17 +1368,9 @@ const refreshMarkers = () => {
         props.customers.forEach(cust => {
             if (selectedAreaFilter.value !== 'all' && cust.area_id != selectedAreaFilter.value) return;
 
-            let cLat = parseFloat(cust.latitude);
-            let cLng = parseFloat(cust.longitude);
-
-            // Jitter / offset (~10 meter) jika titik pelanggan persis sama dengan titik ODP-nya
-            if (cust.odp_id && odpCoordsMap.has(cust.odp_id)) {
-                const odpCoords = odpCoordsMap.get(cust.odp_id);
-                if (Math.abs(cLat - odpCoords[0]) < 0.00003 && Math.abs(cLng - odpCoords[1]) < 0.00003) {
-                    cLat += 0.00010;
-                    cLng += 0.00010;
-                }
-            }
+            const location = fiberCustomerPosition(cust, terminalLocations);
+            if (!location) return;
+            const [cLat, cLng] = location;
 
             const marker = L.marker([cLat, cLng], {
                 icon: createCustomerIcon(customerConnection(cust).status),
@@ -1458,6 +1432,7 @@ const customerPopup = cust => {
     const routeName = escapePopup(JSON.stringify(String(cust.name)));
     return `
                 <div class="p-1 font-sans text-xs min-w-[220px]">
+                    ${cust.connection_disabled ? '<div class="mb-2 text-xs font-bold text-rose-600">Akses internet: Disable'+(cust.connection_access_pending ? ' · Perlu sinkronisasi' : '')+'</div>' : ''}
                     <div class="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-100">
                         <span class="px-2 py-0.5 rounded text-[10px] font-bold ${connection.badge} uppercase">
                             ${connection.label}
@@ -1529,32 +1504,22 @@ const toggleAreasLayer = () => {
             dashArray: '5, 5',
         });
 
-        circle.bindTooltip(`📍 Wilayah: <b>${area.name}</b>`, {
+        circle.bindTooltip(`Wilayah: <b>${escapePopup(area.name)}</b>`, {
             sticky: true,
             className: 'area-circle-tooltip',
         });
 
-        // Centroid Badge Marker (Dengan anti-tumpukan offset jika ada area dengan koordinat identik)
-        let bLat = parseFloat(area.latitude);
-        let bLng = parseFloat(area.longitude);
-        const duplicateIndex = props.areas.findIndex(other => other.id !== area.id && other.latitude && Math.abs(parseFloat(other.latitude) - bLat) < 0.001 && Math.abs(parseFloat(other.longitude) - bLng) < 0.001);
-        if (duplicateIndex !== -1 && area.id > props.areas[duplicateIndex].id) {
-            bLat += 0.0018; // offset ~200m agar badge tidak menutupi nama area lain
-            bLng += 0.0018;
-        }
-
-        const areaBadge = L.marker([bLat, bLng], {
+        // Put a small, non-interactive label on the northern boundary, below devices.
+        const areaBadge = L.marker([circle.getBounds().getNorth(), parseFloat(area.longitude)], {
+            pane: 'gis-area-labels',
             icon: L.divIcon({
                 className: 'area-centroid-badge',
-                html: `
-                    <div class="px-2.5 py-0.5 bg-slate-900/85 border border-purple-400/60 rounded-full shadow-lg text-center transform -translate-x-1/2 -translate-y-1/2 pointer-events-none whitespace-nowrap">
-                        <span class="text-[10px] font-bold text-purple-200">📍 ${area.name}</span>
-                    </div>
-                `,
-                iconSize: [100, 22],
-                iconAnchor: [50, 11],
+                html: `<span class="gis-area-label">${escapePopup(area.name)}</span>`,
+                iconSize: [1, 1],
+                iconAnchor: [0, 0],
             }),
             interactive: false,
+            keyboard: false,
         });
 
         areaLayerGroup.addLayer(circle);
@@ -1978,6 +1943,9 @@ const toggleFullScreen = () => {
 .gis-workspace { min-height: 360px; isolation: isolate; }
 .gis-workspace:fullscreen { width: 100%; height: 100dvh !important; }
 .gis-workspace .gis-map-canvas { background: #e8eef1; }
+.area-centroid-badge { pointer-events: none !important; background: transparent; border: 0; }
+.gis-area-label { display: inline-block; transform: translate(-50%, -100%); padding: 2px 6px; border: 1px solid #b8a8d866; border-radius: 4px; background: #ffffffe0; color: #685183; font-size: 10px; font-weight: 600; line-height: 15px; white-space: nowrap; pointer-events: none; }
+html.dark .gis-area-label { background: #172336d9; color: #d5c3eb; }
 .gis-workspace .gis-map-canvas .leaflet-top { top: 95px; }
 .gis-workspace .leaflet-control-zoom { margin-right: 18px; margin-bottom: 28px; border: 1px solid #dce4ef !important; border-radius: 11px; overflow: hidden; box-shadow: 0 2px 12px #172a4318; }
 .gis-workspace .leaflet-control-zoom a { width: 35px; height: 34px; line-height: 34px; color: #486079; background: white; font-weight: 400; font-size: 20px; }

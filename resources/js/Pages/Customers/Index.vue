@@ -88,9 +88,9 @@
 
             <!-- Pelanggan Nonaktif -->
             <div 
-                @click="setQuickStatus('suspended')" 
+                @click="setQuickStatus('inactive')"
                 class="glass-card p-5 flex items-center justify-between cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 group"
-                :class="filterStatus === 'suspended' ? 'ring-2 ring-red-500/40 border-red-400 bg-red-50/20 shadow-sm' : 'hover:border-red-200'"
+                :class="filterStatus === 'inactive' ? 'ring-2 ring-red-500/40 border-red-400 bg-red-50/20 shadow-sm' : 'hover:border-red-200'"
                 title="Filter Pelanggan Suspended (Isolir)"
             >
                 <div class="flex items-center gap-3">
@@ -315,7 +315,9 @@
                 </td>
                 <td>
                     <div class="flex flex-col gap-1 items-start">
-                        <StatusBadge :status="row.status" />
+                        <span v-if="row.connection_disabled" class="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-700">Disable</span>
+                        <StatusBadge v-else :status="row.status" />
+                        <span v-if="row.connection_access_pending" class="text-[10px] font-medium text-amber-600">Perlu sinkronisasi koneksi</span>
                         <div v-if="row.status === 'active' && row.ont?.pppoe_user">
                             <span v-if="onlineUsernames?.includes(row.ont.pppoe_user)" class="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600">
                                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Online
@@ -485,6 +487,25 @@
 
                     <!-- Grup 3: Penonaktifan & Hapus (Danger Zone) -->
                     <div class="py-1">
+                        <button
+                            v-can="'customers_active_suspend'"
+                            v-if="activeDropdownRow.status !== 'terminated' && activeDropdownRow.status !== 'canceled'"
+                            type="button"
+                            :disabled="connectionAccessBusy"
+                            @click="changeConnectionAccess(activeDropdownRow, !activeDropdownRow.connection_disabled); closeDropdown()"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-amber-50/80 transition-colors font-medium group cursor-pointer disabled:opacity-50"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+                                <svg class="w-3.5 h-3.5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3v9M6.3 5.8a8 8 0 1 0 11.4 0" /></svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block">{{ activeDropdownRow.connection_disabled ? 'Enable Koneksi' : 'Disable Koneksi' }}</span>
+                                <p class="text-[10px] text-slate-400 font-normal leading-tight">{{ activeDropdownRow.connection_disabled ? 'Izinkan kembali akses internet' : 'Blokir login & putus sesi internet' }}</p>
+                            </div>
+                        </button>
+                        <button v-can="'customers_active_suspend'" v-if="activeDropdownRow.connection_access_pending" type="button" :disabled="connectionAccessBusy"
+                            @click="changeConnectionAccess(activeDropdownRow, !!activeDropdownRow.connection_disabled, true); closeDropdown()"
+                            class="w-full px-3.5 py-2 text-left text-xs font-semibold text-amber-600 hover:bg-amber-50 disabled:opacity-50">Sinkronkan Ulang Koneksi</button>
                         <!-- Stop Permanen -->
                         <button 
                             v-can="'customers_active_terminate'"
@@ -763,6 +784,18 @@ const props = defineProps({
 
 const page = usePage();
 const selectedIds = ref([]);
+const connectionAccessBusy = ref(false);
+function changeConnectionAccess(customer, disabled, retry = false) {
+    if (connectionAccessBusy.value) return;
+    if (!retry && !window.confirm(disabled
+        ? `Disable koneksi ${customer.name}? Sesi internet akan diputus dan login diblokir hingga di-enable kembali. Status langganan dan tagihan tetap mengikuti ketentuan yang berlaku.`
+        : `Enable kembali koneksi ${customer.name}? Layanan akan mengikuti status langganan pelanggan saat ini.`)) return;
+    connectionAccessBusy.value = true;
+    router.post(`/customers/${customer.id}/connection-access`, { disabled }, {
+        preserveScroll: true,
+        onFinish: () => { connectionAccessBusy.value = false; },
+    });
+}
 
 const canDelete = computed(() => {
     try {

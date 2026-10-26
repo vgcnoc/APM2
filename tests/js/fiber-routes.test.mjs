@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildFiberSegments, fiberRoadGeometry, fiberRouteKey } from '../../resources/js/Utils/fiberRoutes.js';
+import { buildFiberSegments, fiberAssetPositions, fiberCustomerPosition, fiberRoadGeometry, fiberRouteKey } from '../../resources/js/Utils/fiberRoutes.js';
 
 const data = {
     odcs: [{ id: 1, name: 'ODC', latitude: -7, longitude: 106.7 }],
@@ -22,6 +22,24 @@ test('builds feeder and drop links only for the selected area and valid endpoint
 test('keeps a customer link when its ODP belongs to a different area', () => {
     const links = buildFiberSegments({ ...data, customers: [{ ...data.customers[0], area_id: 9 }], area: '9' });
     assert.deepEqual(links.map(link => link.id), ['drop-5']);
+});
+
+test('drop starts at the displayed ODP, not the overlapping ODC', () => {
+    const odcs = [{ id: 1, latitude: -7, longitude: 106.7 }];
+    const odps = [{ id: 2, odc_id: 1, name: 'ODP A', latitude: -7, longitude: 106.7 }];
+    const customers = [{ id: 3, odp_id: 2, name: 'Customer', latitude: -7, longitude: 106.7 }];
+    const [feeder, drop] = buildFiberSegments({ odcs, odps, customers });
+    const displayedOdp = fiberAssetPositions({ odcs, odps }).terminals.get('2');
+    assert.deepEqual(drop.origin, displayedOdp);
+    assert.deepEqual(feeder.destination, drop.origin);
+    assert.notDeepEqual(drop.origin, feeder.origin);
+    assert.deepEqual(drop.destination, fiberCustomerPosition(customers[0], odps));
+    assert.match(drop.name, /ODP A/);
+});
+
+test('missing ODP never falls back to connecting a customer to an ODC', () => {
+    const links = buildFiberSegments({ ...data, customers: [{ ...data.customers[0], odp_id: null, odc_id: 1 }] });
+    assert.equal(links.some(link => link.kind === 'drop'), false);
 });
 
 test('road geometry converts coordinates and connects the road to the devices', () => {
