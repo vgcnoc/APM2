@@ -1,6 +1,9 @@
 <?php
 
 return [
+    'osrm' => [
+        'url' => env('GIS_ROUTING_URL', 'https://router.project-osrm.org'),
+    ],
 
     /*
     |--------------------------------------------------------------------------

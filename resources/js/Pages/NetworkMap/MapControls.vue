@@ -10,6 +10,7 @@
             <div class="gis-primary-tools" aria-label="Alat peta">
                 <button :class="{ selected: overview }" :aria-pressed="overview" @click="toggleOverview" title="Ringkasan jaringan" aria-label="Ringkasan jaringan"><Squares2X2Icon /><span>Ringkasan</span></button>
                 <button :class="{ selected: panel === 'layers' }" :aria-expanded="panel === 'layers'" aria-label="Layer jaringan" @click="togglePanel('layers')"><Square3Stack3DIcon /><span>Layer</span><b>{{ enabledLayers }}</b></button>
+                <button :class="{ selected: panel === 'fiber' }" :aria-expanded="panel === 'fiber'" aria-label="Pengaturan jalur kabel" @click="togglePanel('fiber')"><ShareIcon /><span>Kabel</span></button>
                 <span class="gis-tool-divider"></span>
                 <button v-if="routeAllowed" :class="{ selected: activeTool === 'route' }" :aria-pressed="activeTool === 'route'" aria-label="Rute jalan" @click="$emit('route')"><ArrowTrendingUpIcon /><span>Rute jalan</span></button>
                 <button v-if="finderAllowed" :class="{ selected: activeTool === 'finder' }" :aria-pressed="activeTool === 'finder'" aria-label="Cari ODP terdekat" @click="$emit('finder')"><ViewfinderCircleIcon /><span>Cari ODP</span></button>
@@ -47,6 +48,27 @@
             <label v-for="item in layerOptions" :key="item.key" class="gis-layer-row"><span class="gis-layer-symbol" :data-kind="item.key"><component :is="item.icon" /></span><span><strong>{{ item.label }}</strong><small>{{ item.description }}</small></span><input type="checkbox" :checked="layers[item.key]" @change="$emit('layer', item.key, $event.target.checked)" /><span class="gis-switch" aria-hidden="true"></span></label>
         </section>
 
+        <section v-if="panel === 'fiber'" class="gis-layer-panel gis-surface" aria-label="Pengaturan jalur kabel">
+            <div class="gis-panel-heading"><div><span class="gis-eyebrow">TOPOLOGI FIBER</span><h3>Jalur kabel</h3></div><button class="gis-icon-close" @click="panel = null" aria-label="Tutup pengaturan kabel"><XMarkIcon /></button></div>
+            <div class="gis-fiber-modes" role="group" aria-label="Mode jalur kabel">
+                <button :aria-pressed="fiberMode === 'straight'" :class="{ selected: fiberMode === 'straight' }" @click="$emit('fiber-mode', 'straight')"><span class="gis-straight-icon"></span><strong>Lurus</strong><small>Langsung antar titik</small></button>
+                <button :aria-pressed="fiberMode === 'road'" :class="{ selected: fiberMode === 'road' }" @click="$emit('fiber-mode', 'road')"><ArrowTrendingUpIcon /><strong>Ikuti jalan</strong><small>Sesuai jalan pada peta</small></button>
+            </div>
+            <p class="gis-fiber-description">Berlaku untuk kabel feeder ODC–ODP dan drop ODP–pelanggan. Pilihan disimpan di perangkat ini.</p>
+            <div class="gis-fiber-progress" aria-live="polite">
+                <p v-if="!layers.fiberLines">Layer jalur fiber sedang disembunyikan. Aktifkan melalui menu Layer.</p>
+                <template v-else-if="fiberMode === 'road'">
+                    <p v-if="fiberStats.loading"><ArrowPathIcon class="spinning" />Menghitung {{ fiberStats.completed }}/{{ fiberStats.total }} jalur…</p>
+                    <p v-else>{{ fiberStats.road }} dari {{ fiberStats.total }} jalur mengikuti jalan.</p>
+                    <div v-if="fiberStats.loading" class="gis-fiber-progress-track"><span :style="{ width: `${fiberStats.total ? fiberStats.completed / fiberStats.total * 100 : 0}%` }"></span></div>
+                    <p v-if="fiberStats.fallback" class="gis-fiber-fallback">{{ fiberStats.fallback }} jalur memakai garis lurus karena rute jalan belum tersedia.</p>
+                    <button v-if="!fiberStats.loading && fiberStats.fallback" @click="$emit('retry-fiber')"><ArrowPathIcon />Coba hitung kembali</button>
+                </template>
+                <p v-else>{{ fiberStats.total }} jalur lurus antarperangkat.</p>
+            </div>
+            <p class="gis-fiber-disclaimer">Jalur mengikuti jalan merupakan estimasi, bukan hasil survei jalur kabel sebenarnya.</p>
+        </section>
+
         <div class="gis-map-tools gis-surface" aria-label="Kontrol navigasi peta">
             <button @click="$emit('fit')" title="Tampilkan seluruh jaringan" aria-label="Tampilkan seluruh jaringan"><ArrowsPointingOutIcon /></button>
             <button @click="$emit('locate')" :disabled="locating" title="Lokasi saya" aria-label="Pusatkan ke lokasi saya"><MapPinIcon :class="{ spinning: locating }" /></button>
@@ -61,12 +83,15 @@
             <label v-if="basemap === 'google_sat'" class="gis-label-toggle"><span><MapIcon /><span>Nama jalan & lokasi</span></span><input type="checkbox" :checked="labels" @change="$emit('update:labels', $event.target.checked)" /></label>
         </section>
 
-        <section class="gis-legend gis-surface" :class="{ collapsed: !legend }" aria-label="Legenda peta">
+        <section v-if="!['layers', 'fiber'].includes(panel)" class="gis-legend gis-surface" :class="{ collapsed: !legend }" aria-label="Legenda peta">
             <button class="gis-legend-heading" @click="toggleLegend" :aria-expanded="legend"><span><span class="gis-legend-key"><i></i><i></i><i></i></span><strong>{{ basemap === 'google_sat' ? 'Legenda satelit' : 'Legenda jaringan' }}</strong></span><ChevronDownIcon :class="{ rotated: !legend }" /></button>
             <div v-if="legend" class="gis-legend-body">
                 <p v-if="basemap === 'google_sat'" class="gis-satellite-note">Citra satelit dengan lapisan jaringan Anda.</p>
                 <div class="gis-legend-grid"><span><i class="gis-symbol gis-symbol-odc"></i>ODC / kabinet</span><span><i class="gis-symbol gis-symbol-odp"></i>ODP tersedia</span><span><i class="gis-symbol gis-symbol-limited"></i>ODP sisa 1 port</span><span><i class="gis-symbol gis-symbol-full"></i>ODP penuh</span><span><i class="gis-symbol gis-symbol-area"></i>Area layanan</span><span><i class="gis-symbol gis-symbol-cluster">3</i>Grup titik</span></div>
-                <div class="gis-line-legend"><span><i class="gis-line-feeder"></i>Feeder ODC–ODP</span><span><i class="gis-line-drop"></i>Drop ke pelanggan</span><span><i class="gis-line-route"></i>Rute jalan</span></div>
+                <div class="gis-line-legend" :class="{ 'gis-cable-road': fiberMode === 'road' }"><span><i class="gis-line-feeder"></i>Feeder ODC–ODP</span><span><i class="gis-line-drop"></i>Drop ke pelanggan</span><span><i class="gis-line-route"></i>Rute jalan</span></div>
+                <div class="gis-cable-caption" aria-live="polite"><span>Jalur kabel: <strong>{{ fiberMode === 'road' ? 'Ikuti jalan' : 'Lurus' }}</strong></span><span v-if="layers.fiberLines && fiberStats.loading"><ArrowPathIcon class="spinning" />{{ fiberStats.completed }}/{{ fiberStats.total }}</span></div>
+                <p v-if="fiberMode === 'road' && layers.fiberLines && fiberStats.fallback" class="gis-fiber-fallback">Garis putus-putus: {{ fiberStats.fallback }} rute belum tersedia.</p>
+                <p v-if="fiberMode === 'road'" class="gis-routing-credit">Estimasi rute: <a href="https://project-osrm.org/" target="_blank" rel="noopener noreferrer">OSRM</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap</a> · <a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener noreferrer">Koreksi peta</a></p>
                 <div class="gis-legend-status"><span v-for="item in statuses" :key="item.key"><i :class="`gis-dot-${item.key}`"></i>{{ item.label }}</span></div>
                 <button class="gis-guide-link" @click="$emit('guide')">Panduan simbol & status <ArrowUpRightIcon /></button>
             </div>
@@ -84,8 +109,9 @@ const props = defineProps({
     counts: { type: Object, default: () => ({}) }, connections: { type: Object, default: () => ({}) },
     updateLabel: String, error: String, refreshing: Boolean, basemap: String, basemaps: Array, labels: Boolean,
     layers: { type: Object, default: () => ({}) }, activeTool: String, routeAllowed: Boolean, finderAllowed: Boolean, locating: Boolean, fullscreen: Boolean,
+    fiberMode: { type: String, default: 'straight' }, fiberStats: { type: Object, default: () => ({ total: 0, completed: 0, road: 0, fallback: 0, loading: false }) },
 });
-defineEmits(['update:query', 'update:searchFocused', 'update:area', 'update:basemap', 'update:labels', 'select', 'layer', 'refresh', 'route', 'finder', 'ruler', 'locate', 'fit', 'fullscreen', 'guide']);
+defineEmits(['update:query', 'update:searchFocused', 'update:area', 'update:basemap', 'update:labels', 'select', 'layer', 'fiber-mode', 'retry-fiber', 'refresh', 'route', 'finder', 'ruler', 'locate', 'fit', 'fullscreen', 'guide']);
 const overview = ref(true);
 const legend = ref(true);
 let mobileQuery;
@@ -196,6 +222,21 @@ const layerOptions = [
 .gis-switch::after { content: ''; position: absolute; width: 11px; height: 11px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform .15s; }
 .gis-layer-row input:checked + .gis-switch { background: #3c7cd4; }.gis-layer-row input:checked + .gis-switch::after { transform: translateX(12px); }.gis-layer-row input:focus-visible + .gis-switch { outline: 2px solid #3b82f6; outline-offset: 3px; }
 .gis-map-tools { position: absolute; right: 18px; top: 96px; padding: 5px; display: flex; flex-direction: column; gap: 4px; border-radius: 12px; }
+.gis-fiber-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.gis-fiber-modes button { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 13px 10px; border: 1px solid var(--gis-border); border-radius: 11px; color: var(--gis-muted); background: var(--gis-subtle); text-align: left; }
+.gis-fiber-modes button.selected { color: #3b7dd8; border-color: #729ee4; background: #3b82f60b; box-shadow: inset 0 0 0 1px #3b82f630; }
+.gis-fiber-modes strong { font-size: 11px; font-weight: 650; }.gis-fiber-modes small { font-size: 9px; font-weight: 400; line-height: 1.5; }
+.gis-straight-icon { display: block; width: 18px; height: 18px; background: linear-gradient(145deg, transparent 44%, currentColor 45%, currentColor 52%, transparent 53%); }
+.gis-fiber-description, .gis-fiber-disclaimer { color: var(--gis-muted); font-size: 10px; line-height: 1.7; margin-top: 13px; }
+.gis-fiber-disclaimer { padding-top: 13px; border-top: 1px solid var(--gis-border); font-size: 9px; }
+.gis-fiber-progress { background: var(--gis-subtle); border-radius: 10px; padding: 11px; margin-top: 14px; color: var(--gis-ink); font-size: 10px; line-height: 1.6; }
+.gis-fiber-progress p { display: flex; align-items: center; gap: 6px; }.gis-fiber-progress svg { width: 13px; height: 13px; }
+.gis-fiber-progress-track { height: 4px; background: var(--gis-border); border-radius: 5px; overflow: hidden; margin-top: 10px; }.gis-fiber-progress-track span { display: block; height: 100%; background: #4e8bdb; transition: width .2s; }
+.gis-fiber-fallback { color: #b68535; font-size: 9px; line-height: 1.6; margin-top: 8px; }
+.gis-fiber-progress button { display: flex; align-items: center; gap: 5px; border: 0; background: transparent; color: #4384db; font-size: 10px; padding: 0; margin-top: 10px; }
+.gis-cable-road .gis-line-feeder, .gis-cable-road .gis-line-drop { border-style: solid; }
+.gis-cable-caption { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; font-size: 9px; color: var(--gis-muted); }.gis-cable-caption > span { display: flex; align-items: center; gap: 5px; }.gis-cable-caption strong { font-weight: 600; }.gis-cable-caption svg { width: 11px; height: 11px; }
+.gis-routing-credit { font-size: 8px; color: var(--gis-muted); margin-top: 8px; }.gis-routing-credit a { color: #5087c6; }
 .gis-map-tools button { display: grid; place-items: center; width: 33px; height: 33px; background: transparent; border: 0; border-radius: 7px; color: #60718a; }
 .gis-map-tools > span { height: 1px; background: var(--gis-border); margin: 1px 3px; }
 .gis-basemap { position: absolute; bottom: 27px; left: 18px; width: 244px; padding: 8px; z-index: 3; }
@@ -223,6 +264,7 @@ const layerOptions = [
 :global(html.dark .gis-primary-tools button), :global(html.dark .gis-area-select select), :global(html.dark .gis-legend-grid > span), :global(html.dark .gis-line-legend > span), :global(html.dark .gis-legend-status), :global(html.dark .gis-label-toggle) { color: #a5b6cc; }
 :global(html.dark .gis-primary-tools button.selected), :global(html.dark .gis-map-tools button.selected) { background: #223d60; border-color: #36557b; color: #96c1ff; }
 :global(html.dark .gis-search) { border-color: #334860; }
+:global(html.dark .gis-fiber-modes button.selected) { color: #9bc6ff; border-color: #6b9bda; }
 @media (max-height: 700px) and (min-width: 701px) { .gis-overview { padding: 14px; }.gis-overview-footer { display: none; }.gis-metrics { margin: 12px 0; gap: 12px; }.gis-panel-heading { margin-bottom: 12px; }.gis-update { margin-top: 7px; } }
 @media (max-width: 1000px) { .gis-topbar { gap: 8px; }.gis-primary-tools button { padding: 8px; }.gis-heading h2 { font-size: 14px; }.gis-primary-tools button:first-child > span { display: none; }.gis-legend { width: 260px; }.gis-overview { width: 260px; padding: 15px; }.gis-results { width: max(100%, 275px); } }
 @media (max-width: 700px) { .gis-topbar { top: 10px; left: 10px; right: 10px; padding: 10px; min-height: 59px; border-radius: 13px; }.gis-app-icon { width: 31px; height: 33px; border-radius: 9px; }.gis-app-icon svg { width: 18px; }.gis-heading { gap: 8px; }.gis-heading .gis-eyebrow { font-size: 7px; letter-spacing: 1px; }.gis-heading h2 { font-size: 12px; gap: 7px; }.gis-live { font-size: 8px; }.gis-primary-tools { gap: 2px; }.gis-primary-tools button { padding: 7px; min-height: 32px; }.gis-primary-tools button > span, .gis-primary-tools b, .gis-tool-divider { display: none; }.gis-primary-tools svg { width: 16px; height: 16px; }.gis-overview { left: 10px; top: 80px; width: min(290px, calc(100% - 78px)); padding: 13px; max-height: calc(100% - 175px); overflow-y: auto; }.gis-panel-heading { margin-bottom: 12px; }.gis-panel-heading h3 { font-size: 13px; }.gis-overview .gis-eyebrow { font-size: 8px; }.gis-results { width: calc(100% + 2px); }.gis-metrics { gap: 12px; margin: 14px 0; }.gis-metrics strong { font-size: 17px; }.gis-overview-footer { display: none; }.gis-map-tools { top: 80px; right: 10px; }.gis-layer-panel { top: 80px; right: 10px; width: min(306px, calc(100% - 20px)); }.gis-basemap { left: 10px; bottom: 26px; width: 166px; border-radius: 12px; }.gis-basemap.is-expanded { width: min(270px, calc(100% - 20px)); z-index: 5; }.gis-basemap-thumb { width: 33px; height: 30px; }.gis-basemap-heading { gap: 7px; }.gis-basemap-heading small { font-size: 7px; }.gis-basemap-heading strong { font-size: 10px; }.gis-legend { bottom: 26px; right: 10px; width: min(290px, calc(100% - 20px)); padding: 12px; z-index: 3; }.gis-legend.collapsed { width: 153px; }.gis-legend-heading strong { font-size: 10px; }.gis-legend:not(.collapsed) { bottom: 98px; }.gis-label-toggle > span { gap: 5px; font-size: 9px; } }

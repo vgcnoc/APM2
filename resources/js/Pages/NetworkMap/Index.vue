@@ -19,6 +19,8 @@
                 :basemaps="basemaps"
                 :labels="satelliteLabels"
                 :layers="layers"
+                :fiber-mode="fiberMode"
+                :fiber-stats="fiberStats"
                 :active-tool="isRoutingActive ? 'route' : isOdpFinderActive ? 'finder' : isRulerActive ? 'ruler' : ''"
                 :route-allowed="hasPermission('network_map_routing')"
                 :finder-allowed="hasPermission('network_map_find_odp')"
@@ -28,6 +30,8 @@
                 @update:basemap="changeBasemap"
                 @update:labels="setSatelliteLabels"
                 @layer="setLayerVisibility"
+                @fiber-mode="setFiberMode"
+                @retry-fiber="retryFiberRoutes"
                 @select="selectSearchResult"
                 @refresh="refreshConnections"
                 @route="toggleRoutingDrawer"
@@ -548,6 +552,7 @@ import axios from 'axios';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import MapControls from './MapControls.vue';
 import { connectionPresentation } from '@/Utils/networkConnectionStatus';
+import { buildFiberSegments, fiberRouteKey, fiberRoadGeometry } from '@/Utils/fiberRoutes';
 
 // ═══ PROPS DARI BACKEND ═══
 const props = defineProps({
@@ -613,6 +618,21 @@ let connectionTimer = null;
 let expiryTimer = null;
 let connectionRequest = null;
 let disposed = false;
+let fiberRequest = null;
+const fiberMode = ref('straight');
+const fiberStats = ref({ total: 0, completed: 0, road: 0, fallback: 0, loading: false });
+const fiberRouteCache = new Map();
+const fiberPreferenceKey = () => `vizbill:gis:fiber-path:${authUser.value.id || 'user'}`;
+const setFiberMode = mode => {
+    if (!['straight', 'road'].includes(mode) || mode === fiberMode.value) return;
+    fiberMode.value = mode;
+    try { localStorage.setItem(fiberPreferenceKey(), mode); } catch {}
+    toggleFiberLines();
+};
+const retryFiberRoutes = () => {
+    fiberRouteCache.forEach((result, key) => { if (!result.geometry) fiberRouteCache.delete(key); });
+    toggleFiberLines();
+};
 const connectionRows = ref({});
 const connectionClock = ref(Date.now());
 const isRefreshingConnections = ref(false);
@@ -861,6 +881,7 @@ const calculateDistanceMeters = (lat1, lon1, lat2, lon2) => {
 
 // ═══ LEAFLET INITIALIZATION ═══
 onMounted(async () => {
+    try { if (localStorage.getItem(fiberPreferenceKey()) === 'road') fiberMode.value = 'road'; } catch {}
     resizeWorkspace();
     window.addEventListener('resize', resizeWorkspace);
     document.addEventListener('fullscreenchange', onFullscreenChange);
@@ -1054,6 +1075,7 @@ onMounted(async () => {
 onUnmounted(() => {
     disposed = true;
     connectionRequest?.abort();
+    fiberRequest?.abort();
     clearInterval(connectionTimer);
     clearInterval(expiryTimer);
     resizeObserver?.disconnect();
@@ -1491,61 +1513,88 @@ const toggleAreasLayer = () => {
 };
 
 // ═══ FIBER TOPOLOGY LINES (ODC -> ODP -> Pelanggan) ═══
-const toggleFiberLines = () => {
-    if (!map || !L || !fiberLinesLayerGroup) return;
-    fiberLinesLayerGroup.clearLayers();
+const pauseFiberQueue = (milliseconds, signal) => new Promise(resolve => {
+    if (signal.aborted || milliseconds <= 0) return resolve();
+    const finish = () => { clearTimeout(timer); signal.removeEventListener('abort', finish); resolve(); };
+    const timer = setTimeout(finish, milliseconds);
+    signal.addEventListener('abort', finish, { once: true });
+});
 
+const loadFiberRoad = async (segment, signal) => {
+    const key = fiberRouteKey(segment);
+    const cached = fiberRouteCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) return cached;
+    for (let attempt = 0; attempt < 3 && !signal.aborted; attempt++) {
+        const started = Date.now();
+        try {
+            const { data } = await axios.post('/network-map/route', {
+                origin_lat: segment.origin[0], origin_lng: segment.origin[1],
+                dest_lat: segment.destination[0], dest_lng: segment.destination[1], purpose: 'fiber',
+            }, { signal, timeout: 10000 });
+            const result = { geometry: fiberRoadGeometry(segment, data), distance: data.distance };
+            result.expiresAt = Date.now() + (result.geometry ? 7 * 86400000 : 60000);
+            if (!signal.aborted) {
+                if (fiberRouteCache.size >= 2000) fiberRouteCache.delete(fiberRouteCache.keys().next().value);
+                fiberRouteCache.set(key, result);
+            }
+            // Server cache hits do not consume an upstream request.
+            if (!data.cached) await pauseFiberQueue(Math.max(0, 1100 - (Date.now() - started)), signal);
+            return result;
+        } catch (error) {
+            if (signal.aborted) return null;
+            if (error.response?.status === 429 && attempt < 2) {
+                await pauseFiberQueue(Math.min(5000, Math.max(1100, Number(error.response.headers?.['retry-after'] || 1) * 1000)), signal);
+                continue;
+            }
+            await pauseFiberQueue(Math.max(0, 1100 - (Date.now() - started)), signal);
+            const fallback = { geometry: null, expiresAt: Date.now() + 60000 };
+            if (!signal.aborted) fiberRouteCache.set(key, fallback);
+            return fallback;
+        }
+    }
+    return null;
+};
+
+const toggleFiberLines = async () => {
+    if (!map || !L || !fiberLinesLayerGroup) return;
+    fiberRequest?.abort();
+    const request = new AbortController();
+    fiberRequest = request;
+    fiberLinesLayerGroup.clearLayers();
+    fiberStats.value = { total: 0, completed: 0, road: 0, fallback: 0, loading: false };
     if (!layers.value.fiberLines) return;
 
-    // 1. Feeder Lines: ODC to ODP
-    const odcCoordsMap = new Map();
-    props.odcs.forEach(odc => {
-        if (odc.latitude && odc.longitude) {
-            odcCoordsMap.set(odc.id, [parseFloat(odc.latitude), parseFloat(odc.longitude)]);
-        }
+    const segments = buildFiberSegments({ ...props, area: selectedAreaFilter.value });
+    const roadMode = fiberMode.value === 'road';
+    fiberStats.value = { total: segments.length, completed: roadMode ? 0 : segments.length, road: 0, fallback: 0, loading: roadMode && segments.length > 0 };
+    const polylines = new Map();
+    segments.forEach(segment => {
+        const satellite = activeBasemap.value === 'google_sat';
+        const color = segment.kind === 'feeder' ? (satellite ? '#7dbbff' : '#3b82f6') : (satellite ? '#51e8bd' : '#10b981');
+        const polyline = L.polyline([segment.origin, segment.destination], {
+            color, weight: segment.kind === 'feeder' ? 2.8 : 1.8,
+            opacity: roadMode ? .45 : .85, dashArray: segment.kind === 'feeder' ? '6, 6' : '4, 4',
+        }).bindTooltip(() => `${escapePopup(segment.name)} · ${roadMode ? 'Menunggu rute jalan…' : 'Jalur lurus'}`, { sticky: true });
+        fiberLinesLayerGroup.addLayer(polyline);
+        polylines.set(segment.id, polyline);
     });
+    if (!roadMode) return;
 
-    const odpCoordsMap = new Map();
-    props.odps.forEach(odp => {
-        if (selectedAreaFilter.value !== 'all' && odp.area_id != selectedAreaFilter.value) return;
-        if (odp.latitude && odp.longitude) {
-            const odpCoords = [parseFloat(odp.latitude), parseFloat(odp.longitude)];
-            odpCoordsMap.set(odp.id, odpCoords);
-
-            if (odp.odc_id && odcCoordsMap.has(odp.odc_id)) {
-                const odcCoords = odcCoordsMap.get(odp.odc_id);
-                const poly = L.polyline([odcCoords, odpCoords], {
-                    color: activeBasemap.value === 'google_sat' ? '#7dbbff' : '#3b82f6',
-                    weight: activeBasemap.value === 'google_sat' ? 3 : 2.5,
-                    opacity: 0.9,
-                    dashArray: '6, 6',
-                });
-                fiberLinesLayerGroup.addLayer(poly);
-            }
+    try {
+        for (const segment of segments) {
+            const result = await loadFiberRoad(segment, request.signal);
+            if (disposed || request.signal.aborted || fiberRequest !== request) return;
+            const polyline = polylines.get(segment.id);
+            const routed = !!result?.geometry;
+            if (routed) polyline.setLatLngs(result.geometry);
+            polyline.setStyle({ opacity: routed ? .9 : .55, dashArray: routed ? null : '3, 7' });
+            polyline.setTooltipContent(() => `${escapePopup(segment.name)} · ${routed ? 'Estimasi mengikuti jalan · ' + formatDistance(result.distance) : 'Rute jalan tidak tersedia · garis lurus'}`);
+            fiberStats.value.completed++;
+            fiberStats.value[routed ? 'road' : 'fallback']++;
         }
-    });
-
-    // 2. Drop Lines: ODP to Customer
-    props.customers.forEach(cust => {
-        if (selectedAreaFilter.value !== 'all' && cust.area_id != selectedAreaFilter.value) return;
-        if (cust.latitude && cust.longitude && cust.odp_id && odpCoordsMap.has(cust.odp_id)) {
-            const odpCoords = odpCoordsMap.get(cust.odp_id);
-            let custCoords = [parseFloat(cust.latitude), parseFloat(cust.longitude)];
-
-            // Jika koordinat pelanggan sama dengan ODP, sesuaikan titik akhir garis dengan offset marker
-            if (Math.abs(custCoords[0] - odpCoords[0]) < 0.00002 && Math.abs(custCoords[1] - odpCoords[1]) < 0.00002) {
-                custCoords = [custCoords[0] + 0.00010, custCoords[1] + 0.00010];
-            }
-
-            const dropPoly = L.polyline([odpCoords, custCoords], {
-                color: activeBasemap.value === 'google_sat' ? '#51e8bd' : '#10b981',
-                weight: 1.8,
-                opacity: 0.65,
-                dashArray: '4, 4',
-            });
-            fiberLinesLayerGroup.addLayer(dropPoly);
-        }
-    });
+    } finally {
+        if (fiberRequest === request) fiberStats.value.loading = false;
+    }
 };
 
 // ═══ MAP CLICK HANDLER (PICKING OR RULER) ═══

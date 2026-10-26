@@ -14,6 +14,7 @@ use App\Services\DataScopeService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 class NetworkMapController extends Controller
 {
@@ -202,11 +203,13 @@ class NetworkMapController extends Controller
      */
     public function calculateRoute(Request $request)
     {
+        $this->authorizeMap($request->user());
         $request->validate([
-            'origin_lat' => 'required|numeric',
-            'origin_lng' => 'required|numeric',
-            'dest_lat' => 'required|numeric',
-            'dest_lng' => 'required|numeric',
+            'origin_lat' => 'required|numeric|between:-90,90',
+            'origin_lng' => 'required|numeric|between:-180,180',
+            'dest_lat' => 'required|numeric|between:-90,90',
+            'dest_lng' => 'required|numeric|between:-180,180',
+            'purpose' => 'nullable|in:navigation,fiber',
         ]);
 
         $oLat = (float)$request->origin_lat;
@@ -214,16 +217,39 @@ class NetworkMapController extends Controller
         $dLat = (float)$request->dest_lat;
         $dLng = (float)$request->dest_lng;
 
-        // Coba OSRM Public Routing Server
-        $url = "https://router.project-osrm.org/route/v1/driving/{$oLng},{$oLat};{$dLng},{$dLat}?overview=full&geometries=geojson&steps=true";
+        $fiber = $request->input('purpose') === 'fiber';
+        $endpoint = rtrim(config('services.osrm.url', 'https://router.project-osrm.org'), '/');
+        $cacheKey = 'gis-fiber-route:v1:' . hash('sha256', $endpoint . ':' . implode(',', array_map(
+            fn ($value) => sprintf('%.6F', $value), [$oLat, $oLng, $dLat, $dLng]
+        )));
+        if ($fiber && ($cached = Cache::get($cacheKey))) {
+            return response()->json(array_merge($cached, ['cached' => true]));
+        }
+        // Uncached cable routes share one request/second across all GIS users.
+        if ($fiber && !Cache::add('gis-fiber-routing:slot', true, 1)) {
+            return response()->json(['message' => 'Perhitungan rute sedang antre.'], 429)
+                ->header('Retry-After', 1);
+        }
+        $steps = $fiber ? 'false' : 'true';
+        $url = "{$endpoint}/route/v1/driving/{$oLng},{$oLat};{$dLng},{$dLat}?overview=full&geometries=geojson&steps={$steps}";
 
         try {
-            $response = Http::timeout(6)->get($url);
+            $response = Http::withHeaders(['User-Agent' => 'VIZBILL-GIS/1.0', 'Referer' => config('app.url')])->timeout(6)->get($url);
             if ($response->successful()) {
                 $data = $response->json();
-                if (!empty($data['routes'][0])) {
+                $coordinates = $data['routes'][0]['geometry']['coordinates'] ?? [];
+                $validGeometry = ($data['routes'][0]['geometry']['type'] ?? null) === 'LineString'
+                    && is_array($coordinates) && count($coordinates) >= 2;
+                if ($validGeometry) foreach ($coordinates as $point) {
+                    if (!is_array($point) || count($point) < 2 || !is_numeric($point[0]) || !is_numeric($point[1])
+                        || abs((float)$point[0]) > 180 || abs((float)$point[1]) > 90) {
+                        $validGeometry = false;
+                        break;
+                    }
+                }
+                if ($validGeometry && isset($data['routes'][0]['distance'], $data['routes'][0]['duration'])) {
                     $route = $data['routes'][0];
-                    return response()->json([
+                    $result = [
                         'success' => true,
                         'status' => 'success',
                         'source' => 'osrm',
@@ -231,7 +257,9 @@ class NetworkMapController extends Controller
                         'duration' => $route['duration'], // seconds
                         'geometry' => $route['geometry'],
                         'legs' => $route['legs'] ?? [],
-                    ]);
+                    ];
+                    if ($fiber) Cache::put($cacheKey, $result, now()->addDays(7));
+                    return response()->json($result);
                 }
             }
         } catch (\Throwable $e) {
