@@ -285,7 +285,7 @@ function generateScript() {
     const radiusHostMask = radiusIp.includes(':') ? 128 : 32;
     const endpoints = (props.vpn?.endpoints?.length ? props.vpn.endpoints : [publicIp]);
     const backup = props.vpn?.backup || null;
-    const backupOn = Boolean(vpnOn && backup?.enabled && backup?.endpoint && backup?.ipsec_secret);
+    const backupOn = Boolean(vpnOn && backup?.enabled && backup?.l2tp_enabled && backup?.endpoint && backup?.ipsec_secret);
     const pool = props.clientPool || { name: 'VIZBILLPOOL', network: '10.200.192.0/20', local_address: '10.200.192.1', ranges: '10.200.192.2-10.200.207.254' };
     const isolirUrl = props.isolirUrl || 'isolir.apm2.com';
     const secret = rosEscape(nasItem.secret || '');

@@ -63,6 +63,9 @@ return [
         // melalui SSH key khusus yang hanya dapat menulis blok APM2 di chap-secrets.
         'backup' => [
             'enabled' => env('RADIUS_VPN_BACKUP_ENABLED', false),
+            // Sinkronisasi akun ke VPS cadangan dapat tetap aktif meski
+            // generator tidak membuat interface L2TP/IPsec di router.
+            'l2tp_enabled' => env('RADIUS_VPN_BACKUP_L2TP_ENABLED', true),
             'endpoint' => env('RADIUS_VPN_BACKUP_ENDPOINT'),
             'ipsec_secrets_file' => env('RADIUS_VPN_BACKUP_IPSEC_SECRETS_FILE', storage_path('app/private/apm2-vpn-backup-ipsec.secrets')),
             'ssh_binary' => env('RADIUS_VPN_BACKUP_SSH_BINARY', '/usr/bin/ssh'),

@@ -125,10 +125,15 @@ class VpnAccountService
     /** Data cadangan yang boleh diberikan ke generator script NAS. */
     public function backupClientConfig(): array
     {
+        $enabled = (bool) config('radius.vpn.backup.enabled');
+        $l2tpEnabled = $enabled && (bool) config('radius.vpn.backup.l2tp_enabled');
+
         return [
-            'enabled' => (bool) config('radius.vpn.backup.enabled'),
+            'enabled' => $enabled,
+            'l2tp_enabled' => $l2tpEnabled,
             'endpoint' => trim((string) config('radius.vpn.backup.endpoint')),
-            'ipsec_secret' => $this->backupIpsecSecret(),
+            // PSK hanya dikirim ke generator bila L2TP memang diaktifkan.
+            'ipsec_secret' => $l2tpEnabled ? $this->backupIpsecSecret() : null,
         ];
     }
 
