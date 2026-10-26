@@ -363,7 +363,7 @@ class VoucherController extends Controller
         }
         
         $currentReseller = null;
-        if (($isResellerPortal || $user?->reseller) && $user) {
+        if ($isResellerPortal && $user) {
             $currentReseller = $this->getOrCreateReseller($user);
             if ($currentReseller) {
                 $currentReseller->load('customer');

@@ -1064,12 +1064,18 @@ const isClientArea = computed(() => {
     const role = (page.props.auth?.user?.role || '').toLowerCase();
     const portal = (page.props.auth?.user?.login_portal || '').toLowerCase();
     const url = typeof window !== 'undefined' ? window.location.pathname : '';
+    const isAdmin = role === 'admin' || role === 'super admin' || role === 'superadmin' || hasRole('admin') || hasRole('super admin');
+
+    // Jika admin mengakses dari panel utama, wajib AppLayout
+    if (isAdmin && portal !== 'reseller' && !url.startsWith('/client-area') && !props.isResellerPortal) {
+        return false;
+    }
+
     return role === 'reseller' 
         || role === 'biller'
         || role === 'customer' 
         || portal === 'reseller'
         || Boolean(props.isResellerPortal)
-        || Boolean(props.currentReseller)
         || url.startsWith('/client-area');
 });
 
@@ -1078,11 +1084,17 @@ const layoutComponent = computed(() => isClientArea.value ? ClientAreaLayout : A
 const isReseller = computed(() => {
     const role = (page.props.auth?.user?.role || '').toLowerCase();
     const portal = (page.props.auth?.user?.login_portal || '').toLowerCase();
+    const url = typeof window !== 'undefined' ? window.location.pathname : '';
+    const isAdmin = role === 'admin' || role === 'super admin' || role === 'superadmin' || hasRole('admin') || hasRole('super admin');
+
+    if (isAdmin && portal !== 'reseller' && !url.startsWith('/client-area') && !props.isResellerPortal) {
+        return false;
+    }
+
     return isClientArea.value 
         || role === 'reseller' 
         || role === 'biller'
         || portal === 'reseller'
-        || !!props.currentReseller
         || Boolean(props.isResellerPortal);
 });
 
