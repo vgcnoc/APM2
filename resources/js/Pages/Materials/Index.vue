@@ -173,15 +173,15 @@
                                         <div v-can="'materials_field_initial_stock'" class="flex items-center gap-1.5" title="Stok Awal">
                                             <span class="text-[10px] font-bold text-gray-400 uppercase">Awal:</span>
                                             <span class="text-xs font-semibold text-gray-600">
-                                                {{ formatNumber(item.initial_stock) }} 
-                                                {{ item.category === 'Kabel' ? 'meter' : (item.category === 'Isolasi' ? 'cm' : (item.category === 'Paku Klem' ? 'pcs' : item.unit)) }}
+                                                {{ formatNumber(item.scoped_initial_stock !== undefined ? item.scoped_initial_stock : item.initial_stock) }} 
+                                                {{ item.category?.toLowerCase().includes('kabel') ? 'meter' : (item.category?.toLowerCase().includes('isolasi') ? 'cm' : (item.category?.toLowerCase().includes('klem') ? 'pcs' : item.unit)) }}
                                             </span>
                                         </div>
                                         <div class="flex items-center gap-1.5" title="Sisa Stok Saat Ini">
                                             <span class="text-[10px] font-bold text-gray-400 uppercase">Total Sisa:</span>
-                                            <span class="text-sm font-bold text-blue-600">{{ formatNumber(item.stock) }}</span>
+                                            <span class="text-sm font-bold text-blue-600">{{ formatNumber(item.scoped_stock !== undefined ? item.scoped_stock : item.stock) }}</span>
                                             <span class="text-xs text-gray-500">
-                                                {{ item.category === 'Kabel' ? 'meter' : (item.category === 'Isolasi' ? 'cm' : (item.category === 'Paku Klem' ? 'pcs' : item.unit)) }}
+                                                {{ item.category?.toLowerCase().includes('kabel') ? 'meter' : (item.category?.toLowerCase().includes('isolasi') ? 'cm' : (item.category?.toLowerCase().includes('klem') ? 'pcs' : item.unit)) }}
                                             </span>
                                         </div>
                                         <div v-if="item.stocks && item.stocks.length > 0" class="flex flex-col items-end w-full mt-1.5 gap-0.5 border-t border-gray-100 pt-1.5">
@@ -190,13 +190,13 @@
                                                 <span class="text-[10px] font-bold text-gray-700">{{ formatNumber(s.stock) }}</span>
                                             </div>
                                         </div>
-                                        <div v-if="item.category === 'Kabel' && item.total_rolls" class="text-xs text-gray-400 mt-1">
+                                        <div v-if="item.category?.toLowerCase().includes('kabel') && item.total_rolls" class="text-xs text-gray-400 mt-1">
                                             ({{ item.total_rolls }} roll)
                                         </div>
-                                        <div v-else-if="item.category === 'Paku Klem' && item.total_packs" class="text-xs text-gray-400 mt-0.5">
+                                        <div v-else-if="item.category?.toLowerCase().includes('klem') && item.total_packs" class="text-xs text-gray-400 mt-0.5">
                                             ({{ item.total_packs }} bungkus)
                                         </div>
-                                        <div v-else-if="item.category === 'Isolasi' && item.total_pieces" class="text-xs text-gray-400 mt-0.5">
+                                        <div v-else-if="item.category?.toLowerCase().includes('isolasi') && item.total_pieces" class="text-xs text-gray-400 mt-0.5">
                                             ({{ item.total_pieces }} pcs utuh)
                                         </div>
                                     </div>
