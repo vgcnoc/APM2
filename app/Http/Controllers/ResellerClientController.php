@@ -208,7 +208,7 @@ class ResellerClientController extends Controller
         $validated = $request->validate([
             'profile_id' => 'required|exists:voucher_profiles,id',
             'qty' => 'required|integer|min:1|max:100',
-            'combination' => 'nullable|string|in:alphanumeric,numeric,alpha',
+            'combination' => 'nullable|string|in:alphanumeric,alphanumeric_lower,alphanumeric_mixed,numeric,alpha,alpha_lower,clean_readable,clean_readable_lower,consonant_vowel,words_numeric',
         ]);
 
         $profile = VoucherProfile::where('is_customer_free', false)->findOrFail($validated['profile_id']);
@@ -250,19 +250,76 @@ class ResellerClientController extends Controller
 
         $combination = $validated['combination'] ?? 'alphanumeric';
         
+        $generateString = function($len, $comb) {
+            switch ($comb) {
+                case 'numeric':
+                    $chars = '0123456789';
+                    return substr(str_shuffle(str_repeat($chars, max(2, (int)ceil($len / 10) + 1))), 0, $len);
+                case 'alpha':
+                    $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                    return substr(str_shuffle(str_repeat($chars, max(2, (int)ceil($len / 26) + 1))), 0, $len);
+                case 'alpha_lower':
+                    $chars = 'abcdefghijklmnopqrstuvwxyz';
+                    return substr(str_shuffle(str_repeat($chars, max(2, (int)ceil($len / 26) + 1))), 0, $len);
+                case 'alphanumeric_lower':
+                    $chars = '23456789abcdefghijklmnopqrstuvwxyz';
+                    return substr(str_shuffle(str_repeat($chars, max(2, (int)ceil($len / 34) + 1))), 0, $len);
+                case 'alphanumeric_mixed':
+                    $chars = '23456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ';
+                    return substr(str_shuffle(str_repeat($chars, max(2, (int)ceil($len / 56) + 1))), 0, $len);
+                case 'clean_readable':
+                    $chars = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+                    return substr(str_shuffle(str_repeat($chars, max(2, (int)ceil($len / 31) + 1))), 0, $len);
+                case 'clean_readable_lower':
+                    $chars = '23456789abcdefghjkmnpqrstuvwxyz';
+                    return substr(str_shuffle(str_repeat($chars, max(2, (int)ceil($len / 31) + 1))), 0, $len);
+                case 'words_numeric':
+                    $words = ['KOPI', 'CERIA', 'MAJU', 'SUKSES', 'KILAT', 'SUPER', 'MANTAP', 'HEBAT', 'BINTANG', 'PINTAR', 'BERKAH', 'JAYA', 'CEPAT', 'ASIK', 'NET', 'HOT', 'SPEED'];
+                    $word = $words[array_rand($words)];
+                    $numLen = max(2, $len - strlen($word));
+                    if ($numLen < 2) {
+                        $word = substr($word, 0, max(2, $len - 2));
+                        $numLen = $len - strlen($word);
+                    }
+                    $num = '';
+                    for ($k = 0; $k < $numLen; $k++) {
+                        $num .= mt_rand(0, 9);
+                    }
+                    return substr($word . $num, 0, $len);
+                case 'consonant_vowel':
+                    $consonants = 'BCDFGHJKLMNPQRSTVWXYZ';
+                    $vowels = 'AEU';
+                    $res = '';
+                    $numDigits = max(2, (int)floor($len / 3));
+                    $charLen = max(2, $len - $numDigits);
+                    for ($k = 0; $k < $charLen; $k++) {
+                        $pool = ($k % 2 === 0) ? $consonants : $vowels;
+                        $res .= $pool[mt_rand(0, strlen($pool) - 1)];
+                    }
+                    for ($k = 0; $k < $numDigits; $k++) {
+                        $res .= mt_rand(0, 9);
+                    }
+                    return substr($res, 0, $len);
+                case 'alphanumeric':
+                default:
+                    $chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+                    return substr(str_shuffle(str_repeat($chars, max(2, (int)ceil($len / 32) + 1))), 0, $len);
+            }
+        };
+
         $vouchers = [];
         $now = now();
         for ($i = 0; $i < $validated['qty']; $i++) {
-            if ($combination === 'numeric') {
-                $code = substr(str_shuffle(str_repeat('0123456789', 5)), 0, 6);
-            } elseif ($combination === 'alpha') {
-                $code = substr(str_shuffle(str_repeat('ABCDEFGHIJKLMNOPQRSTUVWXYZ', 5)), 0, 6);
-            } else {
-                $code = strtoupper(Str::random(6));
+            $code = $generateString(6, $combination);
+            if (!in_array($combination, ['alphanumeric_lower', 'alpha_lower', 'clean_readable_lower', 'alphanumeric_mixed'])) {
+                $code = strtoupper($code);
             }
 
             while (Voucher::where('code', $code)->exists()) {
-                $code = strtoupper(Str::random(6));
+                $code = $generateString(6, $combination);
+                if (!in_array($combination, ['alphanumeric_lower', 'alpha_lower', 'clean_readable_lower', 'alphanumeric_mixed'])) {
+                    $code = strtoupper($code);
+                }
             }
             
             $vouchers[] = [

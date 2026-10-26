@@ -1041,7 +1041,7 @@ class VoucherController extends Controller
             'type' => 'required|in:up,vc', // up = user & password, vc = code only (user=pass=code)
             'reseller_id' => 'nullable|exists:resellers,id',
             'customer_id' => 'nullable|exists:customers,id',
-            'combination' => 'nullable|string|in:alphanumeric,numeric,alpha',
+            'combination' => 'nullable|string|in:alphanumeric,alphanumeric_lower,alphanumeric_mixed,numeric,alpha,alpha_lower,clean_readable,clean_readable_lower,consonant_vowel,words_numeric',
             'is_free' => 'nullable|boolean',
             'cost_type' => 'nullable|string',
         ]);
@@ -1092,12 +1092,70 @@ class VoucherController extends Controller
         $combination = $validated['combination'] ?? 'alphanumeric';
 
         $generateString = function($len, $comb) {
-            if ($comb === 'numeric') {
-                return substr(str_shuffle(str_repeat('0123456789', $len)), 0, $len);
-            } elseif ($comb === 'alpha') {
-                return substr(str_shuffle(str_repeat('ABCDEFGHIJKLMNOPQRSTUVWXYZ', $len)), 0, $len);
-            } else {
-                return strtoupper(Str::random($len));
+            switch ($comb) {
+                case 'numeric':
+                    $chars = '0123456789';
+                    return substr(str_shuffle(str_repeat($chars, max(2, (int)ceil($len / 10) + 1))), 0, $len);
+
+                case 'alpha':
+                    $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                    return substr(str_shuffle(str_repeat($chars, max(2, (int)ceil($len / 26) + 1))), 0, $len);
+
+                case 'alpha_lower':
+                    $chars = 'abcdefghijklmnopqrstuvwxyz';
+                    return substr(str_shuffle(str_repeat($chars, max(2, (int)ceil($len / 26) + 1))), 0, $len);
+
+                case 'alphanumeric_lower':
+                    $chars = '23456789abcdefghijklmnopqrstuvwxyz';
+                    return substr(str_shuffle(str_repeat($chars, max(2, (int)ceil($len / 34) + 1))), 0, $len);
+
+                case 'alphanumeric_mixed':
+                    $chars = '23456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ';
+                    return substr(str_shuffle(str_repeat($chars, max(2, (int)ceil($len / 56) + 1))), 0, $len);
+
+                case 'clean_readable':
+                    // Anti-bingung (Tanpa 0, O, 1, I, L)
+                    $chars = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+                    return substr(str_shuffle(str_repeat($chars, max(2, (int)ceil($len / 31) + 1))), 0, $len);
+
+                case 'clean_readable_lower':
+                    // Anti-bingung huruf kecil (Tanpa 0, o, 1, i, l)
+                    $chars = '23456789abcdefghjkmnpqrstuvwxyz';
+                    return substr(str_shuffle(str_repeat($chars, max(2, (int)ceil($len / 31) + 1))), 0, $len);
+
+                case 'words_numeric':
+                    $words = ['KOPI', 'CERIA', 'MAJU', 'SUKSES', 'KILAT', 'SUPER', 'MANTAP', 'HEBAT', 'BINTANG', 'PINTAR', 'BERKAH', 'JAYA', 'CEPAT', 'ASIK', 'NET', 'HOT', 'SPEED'];
+                    $word = $words[array_rand($words)];
+                    $numLen = max(2, $len - strlen($word));
+                    if ($numLen < 2) {
+                        $word = substr($word, 0, max(2, $len - 2));
+                        $numLen = $len - strlen($word);
+                    }
+                    $num = '';
+                    for ($k = 0; $k < $numLen; $k++) {
+                        $num .= mt_rand(0, 9);
+                    }
+                    return substr($word . $num, 0, $len);
+
+                case 'consonant_vowel':
+                    $consonants = 'BCDFGHJKLMNPQRSTVWXYZ';
+                    $vowels = 'AEU';
+                    $res = '';
+                    $numDigits = max(2, (int)floor($len / 3));
+                    $charLen = max(2, $len - $numDigits);
+                    for ($k = 0; $k < $charLen; $k++) {
+                        $pool = ($k % 2 === 0) ? $consonants : $vowels;
+                        $res .= $pool[mt_rand(0, strlen($pool) - 1)];
+                    }
+                    for ($k = 0; $k < $numDigits; $k++) {
+                        $res .= mt_rand(0, 9);
+                    }
+                    return substr($res, 0, $len);
+
+                case 'alphanumeric':
+                default:
+                    $chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+                    return substr(str_shuffle(str_repeat($chars, max(2, (int)ceil($len / 32) + 1))), 0, $len);
             }
         };
 
@@ -1105,9 +1163,18 @@ class VoucherController extends Controller
             $prefix = $validated['prefix'] ?? ($isFree ? 'FREE-' : '');
             $len = $validated['length'];
 
-            $code = strtoupper($prefix . $generateString($len, $combination));
+            $rawRandom = $generateString($len, $combination);
+            $code = $prefix . $rawRandom;
+            if (!in_array($combination, ['alphanumeric_lower', 'alpha_lower', 'clean_readable_lower', 'alphanumeric_mixed'])) {
+                $code = strtoupper($code);
+            }
+
             while (Voucher::where('code', $code)->exists()) {
-                $code = strtoupper($prefix . $generateString($len, $combination));
+                $rawRandom = $generateString($len, $combination);
+                $code = $prefix . $rawRandom;
+                if (!in_array($combination, ['alphanumeric_lower', 'alpha_lower', 'clean_readable_lower', 'alphanumeric_mixed'])) {
+                    $code = strtoupper($code);
+                }
             }
 
             if ($validated['type'] === 'vc') {
@@ -1115,7 +1182,11 @@ class VoucherController extends Controller
                 $password = $code;
             } else {
                 $username = $code;
-                $password = $generateString($len, $combination);
+                $rawPass = $generateString($len, $combination);
+                $password = $rawPass;
+                if (!in_array($combination, ['alphanumeric_lower', 'alpha_lower', 'clean_readable_lower', 'alphanumeric_mixed'])) {
+                    $password = strtoupper($password);
+                }
             }
 
             $vouchers[] = [
