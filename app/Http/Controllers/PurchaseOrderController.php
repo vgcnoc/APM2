@@ -219,6 +219,7 @@ class PurchaseOrderController extends Controller
                     ], ['stock' => 0, 'initial_stock' => 0]);
                     
                     $materialStock->increment('stock', $convertedQuantity);
+                    $materialStock->increment('initial_stock', $convertedQuantity);
                 }
             }
 

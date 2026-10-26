@@ -101,11 +101,12 @@ class MaterialHandoverService
                     'condition' => 'Terpasang/Digunakan',
                 ]);
 
-                // Kurangi stok di Area dan Master Material
+                // Kurangi stok di Area atau Master Material (jika non-area)
                 if ($matStock) {
                     $matStock->decrement('stock', $qty);
+                } else {
+                    $material->decrement('stock', $qty);
                 }
-                $material->decrement('stock', $qty);
             }
 
             $transaction->update(['total_cost' => $totalCost]);
@@ -241,12 +242,13 @@ class MaterialHandoverService
                     $isLayak = (trim($newCondition) === 'Layak Pakai');
                     $stockAfter = $isLayak ? ($stockBefore + $newQty) : $stockBefore;
 
-                    // TAMBAH STOK FISIK AKTIF KE GUDANG & AREA HANYA JIKA LAYAK PAKAI
+                    // TAMBAH STOK FISIK AKTIF KE GUDANG AREA ATAU GUDANG UTAMA HANYA JIKA LAYAK PAKAI
                     if ($isLayak) {
                         if ($matStock) {
                             $matStock->increment('stock', $newQty);
+                        } else {
+                            $material->increment('stock', $newQty);
                         }
-                        $material->increment('stock', $newQty);
                     }
 
                     $ppu = (float) $trxItem->price_per_unit;
@@ -439,8 +441,9 @@ class MaterialHandoverService
 
                     if ($matStock) {
                         $matStock->decrement('stock', $qty);
+                    } else {
+                        $material->decrement('stock', $qty);
                     }
-                    $material->decrement('stock', $qty);
 
                     $trxItem->update([
                         'stock_before' => $stockBefore,
@@ -546,14 +549,7 @@ class MaterialHandoverService
                     $qty = (float) $item->quantity;
 
                     if ($material && $qty > 0) {
-                        // Tambah stok master material
-                        $material->increment('stock', $qty);
-                        if (str_contains(strtolower($material->category ?? ''), 'kabel') && $material->meter_per_roll > 0) {
-                            $material->total_rolls = $material->stock / $material->meter_per_roll;
-                            $material->save();
-                        }
-
-                        // Tambah stok area gudang
+                        // Tambah stok area gudang jika ada target area, atau master material jika non-area
                         if ($targetAreaId) {
                             $matStock = MaterialStock::where('material_id', $material->id)
                                 ->where('area_id', $targetAreaId)
@@ -564,6 +560,12 @@ class MaterialHandoverService
                                     $matStock->total_rolls = $matStock->stock / $material->meter_per_roll;
                                     $matStock->save();
                                 }
+                            }
+                        } else {
+                            $material->increment('stock', $qty);
+                            if (str_contains(strtolower($material->category ?? ''), 'kabel') && $material->meter_per_roll > 0) {
+                                $material->total_rolls = $material->stock / $material->meter_per_roll;
+                                $material->save();
                             }
                         }
                     }

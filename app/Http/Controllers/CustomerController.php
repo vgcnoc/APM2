@@ -2374,18 +2374,24 @@ class CustomerController extends Controller
                             $allocatedDetails[] = $material->name . ' (' . $assignedQty . ' ' . $unitStr . ')';
                         }
 
-                        // 1. Catat pemakaian asli (Instalasi)
-                        if ($usedQty > 0) {
+                        // Jika ada bekal awal yang dibawa teknisi (> usedQty), kurangi stok sebesar bekal yang dibawa,
+                        // sisa yang tidak terpakai akan dikembalikan ke stok gudang area saat petugas menerima form serah terima.
+                        $deductQty = ($assignedQty > 0) ? $assignedQty : $usedQty;
+
+                        // 1. Catat pengeluaran material bekal / pemakaian instalasi
+                        if ($deductQty > 0) {
                             $usedItems[] = [
                                 'material' => $material,
-                                'qty' => $usedQty,
-                                'unit' => $unitStr
+                                'qty' => $deductQty,
+                                'unit' => $unitStr,
+                                'actual_used' => $usedQty,
+                                'assigned_qty' => $assignedQty,
                             ];
-                            $rincianNotesUsed[] = "- {$material->name}: {$usedQty} {$unitStr} (Bekal awal: {$assignedQty} {$unitStr})";
+                            $rincianNotesUsed[] = "- {$material->name}: {$usedQty} {$unitStr} terpasang" . ($assignedQty > $usedQty ? " (Bekal dibawa: {$assignedQty} {$unitStr}, Sisa dikembalikan: " . ($assignedQty - $usedQty) . " {$unitStr})" : "");
                             $usageDetails[] = $material->name . ' (' . $usedQty . ' ' . $unitStr . ')';
                         }
                         
-                        // 2. Jika ada sisa, buatkan pengembalian pending
+                        // 2. Jika ada sisa dari bekal, buatkan pengembalian pending ke gudang area
                         if ($usedQty < $assignedQty) {
                             $excessQty = $assignedQty - $usedQty;
                             $returnItems[] = [
@@ -2408,21 +2414,24 @@ class CustomerController extends Controller
                             $usedItems[] = [
                                 'material' => $mItem->material,
                                 'qty' => 1,
-                                'unit' => 'pcs'
+                                'unit' => 'pcs',
+                                'actual_used' => 1,
+                                'assigned_qty' => 1,
                             ];
                             $rincianNotesUsed[] = "- {$mItem->material->name}: 1 pcs (SN: {$cOnt->serial_number})";
                         }
                     }
                 }
 
-                // Proses Instalasi (Memotong Stok Area sesuai Pemakaian)
+                // Proses Instalasi (Memotong Stok Area sesuai Pemakaian / Bekal)
                 if (count($usedItems) > 0) {
                     // Hapus transaksi lama agar tidak ada riwayat ganda saat edit pemasangan
                     \App\Models\MaterialTransaction::where('customer_id', $customer->id)
                         ->whereIn('type', ['out', 'in'])
                         ->where(function($q) {
                             $q->where('transaction_number', 'like', 'OUT-INSTALASI-%')
-                              ->orWhere('transaction_number', 'like', 'RTR-EXCESS-%');
+                              ->orWhere('transaction_number', 'like', 'RTR-EXCESS-%')
+                              ->orWhere('transaction_number', 'like', 'RTR-INS-%');
                         })
                         ->delete();
 
