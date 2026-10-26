@@ -789,10 +789,10 @@ const menuItems = [
         label: 'Penagihan Lapangan',
         theme: 'green',
         active: (url) => ['/customer-billing', '/customer-settlements'].some(path => (url || '').startsWith(path)),
-        permission: 'menu_customer_billing',
+        permission: ['menu_customer_billing', 'menu_customer_settlements'],
         children: [
             { href: '/customer-billing', label: 'Terima Setoran', active: (url) => (url || '').startsWith('/customer-billing'), permission: 'menu_customer_billing' },
-            { href: '/customer-settlements', label: 'Validasi Setoran', active: (url) => (url || '').startsWith('/customer-settlements'), permission: 'menu_customer_billing' },
+            { href: '/customer-settlements', label: 'Validasi Setoran', active: (url) => (url || '').startsWith('/customer-settlements'), permission: 'menu_customer_settlements' },
         ]
     },
     {
@@ -909,12 +909,12 @@ const menuItems = [
         label: 'Keuangan Reseller',
         theme: 'green',
         active: (url) => ['/reseller-requests', '/reseller-billing', '/reseller-settlements', '/reseller-reports'].some(path => (url || '').startsWith(path)),
-        permission: 'menu_resellers',
+        permission: ['menu_resellers', 'menu_reseller_billing', 'menu_reseller_requests', 'menu_reseller_settlements', 'menu_reseller_reports'],
         children: [
-            { href: '/reseller-requests', label: 'Riwayat Saldo', active: (url) => (url || '').startsWith('/reseller-requests'), permission: 'menu_resellers' },
-            { href: '/reseller-billing', label: 'Penagihan Kasbon', active: (url) => (url || '').startsWith('/reseller-billing'), permission: 'menu_resellers' },
-            { href: '/reseller-settlements', label: 'Pelunasan Kasbon', active: (url) => (url || '').startsWith('/reseller-settlements'), permission: 'menu_resellers' },
-            { href: '/reseller-reports', label: 'Laporan Reseller', active: (url) => (url || '').startsWith('/reseller-reports'), permission: 'menu_resellers' },
+            { href: '/reseller-requests', label: 'Riwayat Saldo', active: (url) => (url || '').startsWith('/reseller-requests'), permission: 'menu_reseller_requests' },
+            { href: '/reseller-billing', label: 'Penagihan Kasbon', active: (url) => (url || '').startsWith('/reseller-billing'), permission: 'menu_reseller_billing' },
+            { href: '/reseller-settlements', label: 'Pelunasan Kasbon', active: (url) => (url || '').startsWith('/reseller-settlements'), permission: 'menu_reseller_settlements' },
+            { href: '/reseller-reports', label: 'Laporan Reseller', active: (url) => (url || '').startsWith('/reseller-reports'), permission: 'menu_reseller_reports' },
         ]
     },
 

@@ -768,6 +768,8 @@ const categoryMap = {
     'billing': [
         'Billing & Invoice Pelanggan',
         'Penagihan Lapangan & Setoran',
+        'Penagihan Lapangan (Terima Setoran)',
+        'Validasi Setoran Lapangan (Kasir / Admin)',
         'Laporan Keuangan & Pajak',
     ],
     'jaringan': [
@@ -806,6 +808,8 @@ const categoryMap = {
     ],
     'voucher': [
         'Voucher & Mitra Reseller',
+        'Sistem Voucher Hotspot',
+        'Mitra & Reseller Hotspot',
     ],
     'whatsapp': [
         'WhatsApp Gateway & Smart Blast',

@@ -254,22 +254,34 @@ class PermissionRegistry
                 ],
             ],
 
-            // ── 6. PENAGIHAN LAPANGAN & SETORAN ──────────────────────
+            // ── 6A. TERIMA SETORAN LAPANGAN ─────────────────────────
             [
-                'group' => 'Penagihan Lapangan & Setoran',
+                'group' => 'Penagihan Lapangan (Terima Setoran)',
                 'category' => 'billing',
                 'icon' => 'cash',
                 'menu_parent' => 'menu_customer_billing',
                 'permissions' => [
-                    ['name' => 'menu_customer_billing', 'type' => 'menu', 'label' => 'Akses Penagihan Lapangan & Validasi'],
+                    ['name' => 'menu_customer_billing', 'type' => 'menu', 'label' => 'Submenu: Terima Setoran Lapangan'],
                     ['name' => 'customer_billing_card_summary', 'type' => 'card', 'label' => 'Card Total Tagihan Tertagih Petugas'],
                     ['name' => 'customer_billing_filter', 'type' => 'filter', 'label' => 'Filter Petugas Penagih & Wilayah'],
                     ['name' => 'customer_billing_collect', 'type' => 'button', 'label' => 'Tombol Terima Setoran Tagihan'],
-                    ['name' => 'customer_settlements_approve', 'type' => 'button', 'label' => 'Tombol Validasi / Approve Setoran Kasir'],
                     ['name' => 'customer_billing_btn_print', 'type' => 'button', 'label' => 'Tombol Cetak Bukti Setoran'],
                     ['name' => 'customer_billing_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Penagihan Lapangan'],
                     ['name' => 'customer_billing_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Penagihan Sesuai Area User'],
                     ['name' => 'customer_billing_view_own', 'type' => 'feature', 'label' => 'Scope: Hanya Tampilkan Penagihan & Setoran Petugas Sendiri'],
+                ],
+            ],
+
+            // ── 6B. VALIDASI SETORAN LAPANGAN (KASIR / ADMIN) ─────────
+            [
+                'group' => 'Validasi Setoran Lapangan (Kasir / Admin)',
+                'category' => 'billing',
+                'icon' => 'badge-check',
+                'menu_parent' => 'menu_customer_settlements',
+                'permissions' => [
+                    ['name' => 'menu_customer_settlements', 'type' => 'menu', 'label' => 'Submenu: Validasi Setoran (Kasir / Admin)'],
+                    ['name' => 'customer_settlements_approve', 'type' => 'button', 'label' => 'Tombol Validasi / Approve Setoran Kasir'],
+                    ['name' => 'customer_settlements_cancel', 'type' => 'button', 'label' => 'Tombol Batalkan Setoran Kasir'],
                 ],
             ],
 
@@ -896,9 +908,9 @@ class PermissionRegistry
                 ],
             ],
 
-            // ── 18. RESELLER & VOUCHER ───────────────────────────────
+            // ── 18A. SISTEM VOUCHER HOTSPOT ───────────────────────────
             [
-                'group' => 'Voucher & Mitra Reseller',
+                'group' => 'Sistem Voucher Hotspot',
                 'category' => 'voucher',
                 'icon' => 'ticket',
                 'menu_parent' => 'menu_vouchers',
@@ -917,10 +929,8 @@ class PermissionRegistry
                     ['name' => 'voucher_free_color_indicator', 'type' => 'feature', 'label' => 'Visualisasi Blok Warna Barisan Voucher (Hijau Online / Merah Offline)'],
                     ['name' => 'menu_vouchers_monitoring', 'type' => 'menu', 'label' => 'Akses Monitoring Sesi Voucher (Online & Offline)'],
                     ['name' => 'menu_vouchers_profiles', 'type' => 'menu', 'label' => 'Akses Profil Paket Voucher'],
-                    ['name' => 'menu_resellers', 'type' => 'menu', 'label' => 'Akses Data Reseller'],
                     ['name' => 'voucher_card_stats', 'type' => 'card', 'label' => 'Card Total Voucher Aktif, Terjual & Omset'],
                     ['name' => 'voucher_monitoring_card_stats', 'type' => 'card', 'label' => 'Card Statistik Sesi Online, Offline & Traffic'],
-                    ['name' => 'reseller_card_stats', 'type' => 'card', 'label' => 'Card Total Saldo & Kasbon Reseller'],
                     ['name' => 'voucher_monitoring_tab_online', 'type' => 'tab', 'label' => 'Tab Voucher Online'],
                     ['name' => 'voucher_monitoring_tab_offline', 'type' => 'tab', 'label' => 'Tab Voucher Offline'],
                     ['name' => 'voucher_filter_profile', 'type' => 'filter', 'label' => 'Filter Profil & Status Voucher'],
@@ -930,11 +940,27 @@ class PermissionRegistry
                     ['name' => 'vouchers_print', 'type' => 'button', 'label' => 'Tombol Cetak Lembar Voucher'],
                     ['name' => 'voucher_monitoring_btn_kick', 'type' => 'button', 'label' => 'Tombol Kick / Disconnect Sesi Online'],
                     ['name' => 'voucher_monitoring_btn_toggle', 'type' => 'button', 'label' => 'Tombol Nonaktifkan / Aktifkan Status Voucher'],
+                ],
+            ],
+
+            // ── 18B. MITRA & RESELLER HOTSPOT ─────────────────────────
+            [
+                'group' => 'Mitra & Reseller Hotspot',
+                'category' => 'voucher',
+                'icon' => 'users',
+                'menu_parent' => null,
+                'permissions' => [
+                    ['name' => 'menu_resellers', 'type' => 'menu', 'label' => 'Submenu: Data Reseller'],
+                    ['name' => 'menu_reseller_billing', 'type' => 'menu', 'label' => 'Submenu: Penagihan Kasbon Reseller'],
+                    ['name' => 'menu_reseller_requests', 'type' => 'menu', 'label' => 'Submenu: Riwayat & Top Up Saldo Reseller'],
+                    ['name' => 'menu_reseller_settlements', 'type' => 'menu', 'label' => 'Submenu: Pelunasan Kasbon Reseller'],
+                    ['name' => 'menu_reseller_reports', 'type' => 'menu', 'label' => 'Submenu: Laporan Keuangan Reseller'],
+                    ['name' => 'reseller_card_stats', 'type' => 'card', 'label' => 'Card Total Saldo & Kasbon Reseller'],
                     ['name' => 'resellers_create', 'type' => 'button', 'label' => 'Tombol Tambah Reseller Baru'],
                     ['name' => 'resellers_edit', 'type' => 'button', 'label' => 'Tombol Edit Reseller'],
                     ['name' => 'resellers_delete', 'type' => 'button', 'label' => 'Tombol Hapus Reseller'],
                     ['name' => 'resellers_balance_approve', 'type' => 'button', 'label' => 'Tombol Top Up / Approve Saldo Reseller'],
-                    ['name' => 'resellers_billing_collect', 'type' => 'button', 'label' => 'Tombol Penagihan & Pelunasan Kasbon Reseller'],
+                    ['name' => 'resellers_billing_collect', 'type' => 'button', 'label' => 'Tombol Terima Pembayaran Kasbon Reseller'],
                 ],
             ],
 
@@ -1356,7 +1382,7 @@ class PermissionRegistry
                 'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_revenue', 'dashboard_filter_area', 'dashboard_btn_refresh',
                 'menu_customers_booking', 'customers_booking_card_stats', 'customers_booking_create', 'customers_booking_view', 'customers_booking_print', 'customers_booking_view_all',
                 'menu_invoices', 'invoices_card_summary', 'invoices_card_revenue', 'invoices_tab_all', 'invoices_tab_unpaid', 'invoices_tab_paid', 'invoices_tab_isolated', 'invoices_filter_search', 'invoices_filter_status', 'invoices_filter_period', 'invoices_filter_area', 'invoices_create', 'invoices_edit', 'invoices_delete', 'invoices_pay', 'invoices_promise', 'invoices_print', 'invoices_btn_whatsapp', 'invoices_btn_export', 'invoices_rollback', 'invoices_view_all',
-                'menu_customer_billing', 'customer_billing_collect',
+                'menu_customer_billing', 'menu_customer_settlements', 'customer_billing_collect', 'customer_settlements_approve',
                 'menu_financial_reports',
                 'menu_payroll', 'menu_incentives_deductions', 'menu_target_market', 'payroll_card_summary', 'payroll_card_bpjs', 'incentives_card_stats', 'target_market_card_stats',
                 'payroll_tab_slip', 'payroll_tab_bpjs', 'payroll_tab_incentives', 'payroll_tab_target', 'target_market_tab_programs', 'target_market_tab_closings',
@@ -1365,7 +1391,7 @@ class PermissionRegistry
                 'target_market_manage', 'target_market_recalculate', 'target_market_sync_payroll',
                 'payroll_btn_print_slip', 'payroll_btn_auto_transfer', 'payroll_btn_settings_bpjs', 'payroll_btn_update_bpjs_bank',
                 'payroll_view_all', 'payroll_field_salary_edit', 'payroll_field_bank_view',
-                'menu_resellers',
+                'menu_resellers', 'menu_reseller_billing', 'menu_reseller_requests', 'menu_reseller_settlements', 'menu_reseller_reports',
                 'menu_settings_billing', 'menu_settings_payroll',
                 'menu_customers_all', 'customers_card_summary', 'customers_all_view_all', 'customers_tab_invoices',
                 'menu_customers_gratis', 'menu_customers_free_home', 'menu_customers_terminated',
@@ -1514,7 +1540,15 @@ class PermissionRegistry
         $presets['marketing & komunikasi'] = $presets['marketing'];
         $presets['marcom'] = $presets['marketing'];
         $presets['komunikasi'] = $presets['marketing'];
-        $presets['kolektor'] = $presets['sales'];
+        $presets['kolektor'] = array_values(array_unique(array_merge($presets['sales'], [
+            'menu_customer_billing',
+            'customer_billing_collect',
+            'customer_billing_btn_print',
+            'customer_billing_view_own',
+            'menu_reseller_billing',
+            'resellers_billing_collect',
+        ])));
+        $presets['kolektor & sales'] = $presets['kolektor'];
         $presets['customer care'] = $presets['cs'];
         $presets['admin customer care'] = $presets['admin cs'];
         $presets['staff administrasi'] = $presets['admin cs'];

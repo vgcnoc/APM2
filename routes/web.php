@@ -436,34 +436,46 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/vouchers/{voucher}/delete', [\App\Http\Controllers\VoucherController::class, 'destroy'])->name('vouchers.destroy.post');
 
     // ── Reseller Voucher ───────────────────────────────────────
-    Route::resource('resellers', \App\Http\Controllers\ResellerController::class)->except(['create', 'show', 'edit']);
-    Route::post('/resellers/{reseller}/update', [\App\Http\Controllers\ResellerController::class, 'update'])->name('resellers.update.post');
-    Route::post('/resellers/{reseller}/delete', [\App\Http\Controllers\ResellerController::class, 'destroy'])->name('resellers.destroy.post');
-    Route::post('/resellers/{reseller}/create-account', [\App\Http\Controllers\ResellerController::class, 'createAccount'])->name('resellers.create-account');
-    Route::post('/resellers/{reseller}/reset-password', [\App\Http\Controllers\ResellerController::class, 'resetPassword'])->name('resellers.reset-password');
+    Route::middleware(['permission:menu_resellers'])->group(function () {
+        Route::resource('resellers', \App\Http\Controllers\ResellerController::class)->except(['create', 'show', 'edit']);
+        Route::post('/resellers/{reseller}/update', [\App\Http\Controllers\ResellerController::class, 'update'])->name('resellers.update.post');
+        Route::post('/resellers/{reseller}/delete', [\App\Http\Controllers\ResellerController::class, 'destroy'])->name('resellers.destroy.post');
+        Route::post('/resellers/{reseller}/create-account', [\App\Http\Controllers\ResellerController::class, 'createAccount'])->name('resellers.create-account');
+        Route::post('/resellers/{reseller}/reset-password', [\App\Http\Controllers\ResellerController::class, 'resetPassword'])->name('resellers.reset-password');
+    });
     
-    // ── Reseller Requests (Admin) ───────────────────────────────────────
-    Route::get('/reseller-requests', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'index'])->name('reseller-requests.index');
-    Route::post('/reseller-requests', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'store'])->name('reseller-requests.store');
-    Route::put('/reseller-requests/{balanceRequest}', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'update'])->name('reseller-requests.update');
-    Route::delete('/reseller-requests/{balanceRequest}', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'destroy'])->name('reseller-requests.destroy');
-    Route::post('/reseller-requests/{balanceRequest}/approve', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'approve'])->name('reseller-requests.approve');
-    Route::post('/reseller-requests/{balanceRequest}/reject', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'reject'])->name('reseller-requests.reject');
-    Route::put('/reseller-transactions/{transaction}', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'updateTransaction'])->name('reseller-transactions.update');
-    Route::delete('/reseller-transactions/{transaction}', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'destroyTransaction'])->name('reseller-transactions.destroy');
+    // ── Reseller Requests (Riwayat & Top Up Saldo) ──────────────
+    Route::middleware(['permission:menu_reseller_requests|resellers_balance_approve'])->group(function () {
+        Route::get('/reseller-requests', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'index'])->name('reseller-requests.index');
+        Route::post('/reseller-requests', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'store'])->name('reseller-requests.store');
+        Route::put('/reseller-requests/{balanceRequest}', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'update'])->name('reseller-requests.update');
+        Route::delete('/reseller-requests/{balanceRequest}', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'destroy'])->name('reseller-requests.destroy');
+        Route::post('/reseller-requests/{balanceRequest}/approve', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'approve'])->name('reseller-requests.approve');
+        Route::post('/reseller-requests/{balanceRequest}/reject', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'reject'])->name('reseller-requests.reject');
+        Route::put('/reseller-transactions/{transaction}', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'updateTransaction'])->name('reseller-transactions.update');
+        Route::delete('/reseller-transactions/{transaction}', [\App\Http\Controllers\ResellerBalanceRequestController::class, 'destroyTransaction'])->name('reseller-transactions.destroy');
+    });
 
-    // ── Reseller Billing (Penagihan & Pelunasan) ────────────────────────
-    Route::get('/reseller-billing', [\App\Http\Controllers\ResellerBillingController::class, 'index'])->name('reseller-billing.index');
-    Route::post('/reseller-billing/{invoice}/collect', [\App\Http\Controllers\ResellerBillingController::class, 'collect'])->name('reseller-billing.collect');
-    Route::delete('/reseller-billing/{invoice}', [\App\Http\Controllers\ResellerBillingController::class, 'destroy'])->name('reseller-billing.destroy');
+    // ── Reseller Billing (Penagihan Kasbon) ──────────────────────
+    Route::middleware(['permission:menu_reseller_billing|resellers_billing_collect'])->group(function () {
+        Route::get('/reseller-billing', [\App\Http\Controllers\ResellerBillingController::class, 'index'])->name('reseller-billing.index');
+        Route::post('/reseller-billing/{invoice}/collect', [\App\Http\Controllers\ResellerBillingController::class, 'collect'])->name('reseller-billing.collect');
+        Route::delete('/reseller-billing/{invoice}', [\App\Http\Controllers\ResellerBillingController::class, 'destroy'])->name('reseller-billing.destroy');
+    });
     
-    Route::get('/reseller-settlements', [\App\Http\Controllers\ResellerBillingController::class, 'settlements'])->name('reseller-settlements.index');
-    Route::post('/reseller-settlements/{payment}/approve', [\App\Http\Controllers\ResellerBillingController::class, 'approve'])->name('reseller-settlements.approve');
-    Route::post('/reseller-settlements/{payment}/cancel', [\App\Http\Controllers\ResellerBillingController::class, 'cancel'])->name('reseller-settlements.cancel');
+    // ── Reseller Settlements (Pelunasan Kasbon) ──────────────────
+    Route::middleware(['permission:menu_reseller_settlements'])->group(function () {
+        Route::get('/reseller-settlements', [\App\Http\Controllers\ResellerBillingController::class, 'settlements'])->name('reseller-settlements.index');
+        Route::post('/reseller-settlements/{payment}/approve', [\App\Http\Controllers\ResellerBillingController::class, 'approve'])->name('reseller-settlements.approve');
+        Route::post('/reseller-settlements/{payment}/cancel', [\App\Http\Controllers\ResellerBillingController::class, 'cancel'])->name('reseller-settlements.cancel');
+    });
 
-    Route::get('/reseller-reports', [\App\Http\Controllers\ResellerReportController::class, 'index'])->name('reseller-reports.index');
-    Route::post('/expenses', [\App\Http\Controllers\ExpenseController::class, 'store'])->name('expenses.store');
-    Route::delete('/expenses/{expense}', [\App\Http\Controllers\ExpenseController::class, 'destroy'])->name('expenses.destroy');
+    // ── Reseller Reports (Laporan Keuangan Reseller) ─────────────
+    Route::middleware(['permission:menu_reseller_reports'])->group(function () {
+        Route::get('/reseller-reports', [\App\Http\Controllers\ResellerReportController::class, 'index'])->name('reseller-reports.index');
+        Route::post('/expenses', [\App\Http\Controllers\ExpenseController::class, 'store'])->name('expenses.store');
+        Route::delete('/expenses/{expense}', [\App\Http\Controllers\ExpenseController::class, 'destroy'])->name('expenses.destroy');
+    });
 
 
     // ── Pengguna & Hak Akses ───────────────────────────────────
@@ -508,14 +520,18 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/operational/daily-progress/send-wa', [\App\Http\Controllers\OperationalDailyProgressController::class, 'sendWa'])->name('operational.daily-progress.send-wa');
     });
 
-    // ── Customer Billing (Penagihan Lapangan) ─────────────────────
+    // ── Customer Billing (Terima Setoran Lapangan) ─────────────────────
     Route::middleware(['permission:menu_customer_billing'])->group(function () {
         Route::get('/customer-billing', [\App\Http\Controllers\CustomerBillingController::class, 'index'])->name('customer-billing.index');
         Route::post('/customer-billing/{invoice}/collect', [\App\Http\Controllers\CustomerBillingController::class, 'collect'])->name('customer-billing.collect');
+        Route::get('/customer-billing/{invoice}/print-promise', [\App\Http\Controllers\InvoiceController::class, 'printPromise'])->name('customer-billing.print-promise');
+    });
+
+    // ── Validasi Setoran Lapangan (Kasir / Admin) ─────────────────
+    Route::middleware(['permission:menu_customer_settlements|customer_settlements_approve'])->group(function () {
         Route::get('/customer-settlements', [\App\Http\Controllers\CustomerBillingController::class, 'settlements'])->name('customer-settlements.index');
         Route::post('/customer-settlements/{payment}/approve', [\App\Http\Controllers\CustomerBillingController::class, 'approve'])->name('customer-settlements.approve');
         Route::post('/customer-settlements/{payment}/cancel', [\App\Http\Controllers\CustomerBillingController::class, 'cancel'])->name('customer-settlements.cancel');
-        Route::get('/customer-billing/{invoice}/print-promise', [\App\Http\Controllers\InvoiceController::class, 'printPromise'])->name('customer-billing.print-promise');
     });
 
     // ── Laporan Keuangan Global & Pajak ───────────────────────────
