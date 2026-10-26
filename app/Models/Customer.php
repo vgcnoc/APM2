@@ -891,6 +891,15 @@ class Customer extends Model
                     ->orWhere('description', 'like', "%: {$this->name}%")
                     ->delete();
             }
+            if (\Illuminate\Support\Facades\Schema::hasTable('deductions')) {
+                DB::table('deductions')
+                    ->where('reference_id', 'like', "%cust_{$this->id}%")
+                    ->orWhere('reference_id', 'like', "%_{$this->customer_code}%")
+                    ->orWhere('description', 'like', "%({$this->customer_code})%")
+                    ->orWhere('description', 'like', "%: {$this->name}%")
+                    ->orWhere('description', 'like', "% {$this->name} (%")
+                    ->delete();
+            }
         } catch (\Throwable $e) {
             Log::warning('[Customer::purgeConnectedData] Error handling affiliate/target market: ' . $e->getMessage());
         }

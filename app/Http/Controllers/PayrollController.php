@@ -1087,15 +1087,68 @@ class PayrollController extends Controller
             }
         }
 
+        // 2. Pemindaian Potongan Otomatis (Pinalti/Clawback) tanpa Pelanggan
+        $pendingDeductions = \App\Models\Deduction::where('status', 'pending')
+            ->where('type', '!=', 'manual')
+            ->get();
+
+        $toDeleteDedIds = [];
+        $totalNominalDed = 0;
+
+        foreach ($pendingDeductions as $ded) {
+            $matched = false;
+
+            if (!empty($ded->reference_id)) {
+                if (preg_match('/cust_(\d+)/i', $ded->reference_id, $m)) {
+                    if (in_array((int)$m[1], $custIds)) {
+                        $matched = true;
+                    }
+                }
+                if (!$matched) {
+                    foreach ($custCodes as $code) {
+                        if (str_contains($ded->reference_id, $code)) {
+                            $matched = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!$matched && preg_match('/\((CUS-[^)]+)\)/i', $ded->description, $m)) {
+                if (in_array(strtoupper($m[1]), array_map('strtoupper', $custCodes))) {
+                    $matched = true;
+                }
+            }
+
+            if (!$matched) {
+                $cleanName = trim(preg_replace('/^(Pinalti Stop Dini[^:]*:\s*(Pemotongan Fee (Booking|Survey|Pasang|Aktivasi)\s*)?)/i', '', $ded->description));
+                $cleanName = preg_replace('/\s*\(CUS-[^)]+\).*/i', '', $cleanName);
+                $cleanName = strtolower(trim($cleanName));
+                if (!empty($cleanName) && in_array($cleanName, $custNames)) {
+                    $matched = true;
+                }
+            }
+
+            if (!$matched) {
+                $toDeleteDedIds[] = $ded->id;
+                $totalNominalDed += (float) $ded->amount;
+            }
+        }
+
         $count = count($toDeleteIds);
-        if ($count > 0) {
+        $countDed = count($toDeleteDedIds);
+
+        if ($count > 0 || $countDed > 0) {
             foreach (array_chunk($toDeleteIds, 500) as $chunk) {
                 Incentive::whereIn('id', $chunk)->delete();
             }
-            \Illuminate\Support\Facades\Log::info("[PayrollController@cleanOrphanedIncentives] Berhasil menghapus {$count} insentif yatim senilai Rp {$totalNominal} oleh {$authUser->name}");
-            return redirect()->back()->with('success', "Berhasil menghapus {$count} insentif tanpa pelanggan (senilai Rp " . number_format($totalNominal, 0, ',', '.') . ").");
+            foreach (array_chunk($toDeleteDedIds, 500) as $chunk) {
+                \App\Models\Deduction::whereIn('id', $chunk)->delete();
+            }
+            \Illuminate\Support\Facades\Log::info("[PayrollController@cleanOrphanedIncentives] Berhasil menghapus {$count} insentif dan {$countDed} potongan tanpa pelanggan oleh {$authUser->name}");
+            return redirect()->back()->with('success', "Berhasil menghapus {$count} insentif dan {$countDed} potongan pinalti tanpa data pelanggan.");
         }
 
-        return redirect()->back()->with('info', 'Tidak ditemukan insentif tanpa pelanggan. Semua data insentif valid.');
+        return redirect()->back()->with('info', 'Tidak ditemukan data insentif atau potongan tanpa pelanggan. Semua data valid.');
     }
 }

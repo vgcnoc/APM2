@@ -86,34 +86,86 @@ class CleanOrphanedIncentives extends Command
             }
         }
 
+        // 2. Pemindaian Potongan Otomatis (Pinalti/Clawback) tanpa Pelanggan
+        $pendingDeductions = \App\Models\Deduction::where('status', 'pending')
+            ->where('type', '!=', 'manual')
+            ->get();
+
+        $toDeleteDedIds = [];
+        $totalNominalDed = 0;
+
+        foreach ($pendingDeductions as $ded) {
+            $matched = false;
+
+            if (!empty($ded->reference_id)) {
+                if (preg_match('/cust_(\d+)/i', $ded->reference_id, $m)) {
+                    if (in_array((int)$m[1], $custIds)) {
+                        $matched = true;
+                    }
+                }
+                if (!$matched) {
+                    foreach ($custCodes as $code) {
+                        if (str_contains($ded->reference_id, $code)) {
+                            $matched = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!$matched && preg_match('/\((CUS-[^)]+)\)/i', $ded->description, $m)) {
+                if (in_array(strtoupper($m[1]), array_map('strtoupper', $custCodes))) {
+                    $matched = true;
+                }
+            }
+
+            if (!$matched) {
+                $cleanName = trim(preg_replace('/^(Pinalti Stop Dini[^:]*:\s*(Pemotongan Fee (Booking|Survey|Pasang|Aktivasi)\s*)?)/i', '', $ded->description));
+                $cleanName = preg_replace('/\s*\(CUS-[^)]+\).*/i', '', $cleanName);
+                $cleanName = strtolower(trim($cleanName));
+                if (!empty($cleanName) && in_array($cleanName, $custNames)) {
+                    $matched = true;
+                }
+            }
+
+            if (!$matched) {
+                $toDeleteDedIds[] = $ded->id;
+                $totalNominalDed += (float) $ded->amount;
+            }
+        }
+
         $count = count($toDeleteIds);
-        if ($count === 0) {
-            $this->info('✓ Semua data insentif pending valid. Tidak ada data insentif yatim (orphaned).');
+        $countDed = count($toDeleteDedIds);
+
+        if ($count === 0 && $countDed === 0) {
+            $this->info('✓ Semua data insentif dan potongan pending valid. Tidak ada data yatim (orphaned).');
             return 0;
         }
 
-        $this->warn("Ditemukan {$count} data insentif otomatis yang pelanggannya TIDAK DITEMUKAN di database.");
-        $this->warn("Total Nominal: Rp " . number_format($totalNominal, 0, ',', '.'));
+        $this->warn("Ditemukan {$count} data insentif otomatis (Rp " . number_format($totalNominal, 0, ',', '.') . ") dan {$countDed} data potongan pinalti (Rp " . number_format($totalNominalDed, 0, ',', '.') . ") tanpa data pelanggan.");
 
-        if (!$this->option('force') && !$this->confirm('Apakah Anda yakin ingin menghapus data insentif ini?')) {
+        if (!$this->option('force') && !$this->confirm('Apakah Anda yakin ingin menghapus data ini?')) {
             $this->info('Operasi dibatalkan oleh pengguna.');
             return 0;
         }
 
         DB::beginTransaction();
         try {
-            // Hapus dalam batch per 500 ID agar performa stabil
             foreach (array_chunk($toDeleteIds, 500) as $chunk) {
                 Incentive::whereIn('id', $chunk)->delete();
             }
 
+            foreach (array_chunk($toDeleteDedIds, 500) as $chunk) {
+                \App\Models\Deduction::whereIn('id', $chunk)->delete();
+            }
+
             DB::commit();
-            $this->info("✓ Sukses menghapus {$count} data insentif tanpa pelanggan senilai Rp " . number_format($totalNominal, 0, ',', '.') . ".");
-            Log::info("[CleanOrphanedIncentives] Berhasil menghapus {$count} insentif tanpa data pelanggan senilai Rp {$totalNominal}");
+            $this->info("✓ Sukses menghapus {$count} insentif (Rp " . number_format($totalNominal, 0, ',', '.') . ") dan {$countDed} potongan pinalti (Rp " . number_format($totalNominalDed, 0, ',', '.') . ") tanpa data pelanggan.");
+            Log::info("[CleanOrphanedIncentives] Berhasil menghapus {$count} insentif dan {$countDed} potongan tanpa pelanggan.");
         } catch (\Throwable $e) {
             DB::rollBack();
-            $this->error('Gagal menghapus data insentif: ' . $e->getMessage());
-            Log::error('[CleanOrphanedIncentives] Gagal menghapus insentif: ' . $e->getMessage());
+            $this->error('Gagal menghapus data: ' . $e->getMessage());
+            Log::error('[CleanOrphanedIncentives] Gagal menghapus insentif/potongan: ' . $e->getMessage());
             return 1;
         }
 
