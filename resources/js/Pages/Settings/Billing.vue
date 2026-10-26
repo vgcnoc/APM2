@@ -239,28 +239,28 @@
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
                                     </div>
                                     <div class="flex-1">
-                                        <label class="block text-sm font-bold text-gray-900 mb-1">Batas Masa Tenggang & Jam Isolir</label>
+                                        <label class="block text-sm font-bold text-gray-900 mb-1">Tanggal & Jam Isolir</label>
                                         <p class="text-[11px] text-gray-500 mb-4 leading-relaxed">
-                                            Layanan akan di-suspend secara otomatis apabila menunggak sekian hari sejak invoice terbit, persis pada jam yang Anda tentukan di bawah ini.
+                                            Pelanggan yang masih menunggak akan diisolir pada tanggal dan jam berikut (WIB), dihitung dari tanggal terbit invoice. Jika tanggal isolir lebih kecil dari tanggal terbit, jadwal masuk bulan berikutnya.
                                         </p>
                                         
                                         <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                                             <div class="w-full sm:w-48">
                                                 <div class="flex items-center rounded-lg border border-red-200 shadow-sm focus-within:ring-1 focus-within:ring-red-500 focus-within:border-red-500 overflow-hidden bg-white">
-                                                    <input type="number" v-model="form.isolate_days" min="0" class="form-input flex-1 border-0 focus:ring-0 sm:text-sm font-medium py-2 px-3 min-w-0" />
+                                                    <input type="number" aria-label="Tanggal isolir setiap bulan" v-model="form.isolate_day" min="1" max="31" class="form-input flex-1 border-0 focus:ring-0 sm:text-sm font-medium py-2 px-3 min-w-0" />
                                                     <div class="pr-3 pl-2 py-2 flex items-center justify-center bg-red-50 text-red-500 text-xs font-medium border-l border-red-200">
-                                                        Hari
+                                                        Tanggal
                                                     </div>
                                                 </div>
                                             </div>
                                             <div class="text-sm font-bold text-gray-400 uppercase tracking-widest hidden sm:block">Pukul</div>
                                             <div class="relative w-full sm:w-32">
-                                                <input type="time" v-model="form.isolate_time" class="form-input block w-full rounded-lg border-red-200 px-3 focus:border-red-500 focus:ring-red-500 sm:text-sm font-medium bg-white shadow-sm" />
+                                                <input type="time" aria-label="Jam isolir WIB" v-model="form.isolate_time" class="form-input block w-full rounded-lg border-red-200 px-3 focus:border-red-500 focus:ring-red-500 sm:text-sm font-medium bg-white shadow-sm" />
                                             </div>
                                         </div>
-                                        <div v-if="form.errors.isolate_days" class="mt-1 text-sm text-red-600">{{ form.errors.isolate_days }}</div>
+                                        <div v-if="form.errors.isolate_day" class="mt-1 text-sm text-red-600">{{ form.errors.isolate_day }}</div>
                                         <div v-if="form.errors.isolate_time" class="mt-1 text-sm text-red-600">{{ form.errors.isolate_time }}</div>
-                                        <span class="text-xs font-medium text-red-500 mt-2 block" v-if="form.isolate_days == 0">Peringatan: Jika di set 0, internet langsung terisolir di hari tagihan terbit.</span>
+                                        <span class="text-[11px] text-gray-500 mt-2 block">Tanggal 29–31 menyesuaikan hari terakhir pada bulan yang lebih pendek. Perubahan berlaku untuk invoice yang belum lunas; janji bayar aktif tetap dihormati.</span>
                                     </div>
                                 </div>
                             </div>
@@ -752,10 +752,10 @@
                             <div class="absolute right-0 top-0 w-16 h-16 bg-red-500/10 rounded-bl-full pointer-events-none"></div>
                             <div class="flex items-center gap-2 mb-1">
                                 <div class="w-2 h-2 rounded-full bg-red-400 animate-pulse"></div>
-                                <span class="text-[11px] font-bold text-red-200 uppercase tracking-wider">Jatuh Tempo & Jam Isolir</span>
+                                <span class="text-[11px] font-bold text-red-200 uppercase tracking-wider">Tanggal & Jam Isolir</span>
                             </div>
                             <p class="text-sm font-bold text-white pl-4">Tgl {{ isolateDateFormatted }}</p>
-                            <p class="text-[10px] text-red-200 pl-4 mt-0.5">Masa tenggang {{ form.isolate_days }} hari, lewat pukul {{ form.isolate_time || '00:00' }} otomatis di-isolir</p>
+                            <p class="text-[10px] text-red-200 pl-4 mt-0.5">Tanggal {{ form.isolate_day }}, pukul {{ form.isolate_time || '00:00' }} WIB · diperiksa setiap menit</p>
                         </div>
                     </div>
 
@@ -935,6 +935,7 @@ import { ref, computed, watch } from 'vue';
 import { useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Swal from 'sweetalert2';
+import { billingIsolationDate } from '@/Utils/billingIsolation';
 
 const props = defineProps({
     billing_cycle: String,
@@ -943,6 +944,8 @@ const props = defineProps({
     prorata_first_month: Boolean,
     invoice_issue_date: [String, Number],
     isolate_days: [String, Number],
+    isolate_day: [String, Number],
+    billing_timezone: String,
     isolate_time: String,
     payment_banks: Array,
     pg_provider: String,
@@ -963,7 +966,7 @@ const form = useForm({
     prorata_formula: props.prorata_formula || 'exact_days',
     prorata_first_month: props.prorata_first_month !== undefined ? props.prorata_first_month : true,
     invoice_issue_date: props.invoice_issue_date || '1',
-    isolate_days: props.isolate_days || '3',
+    isolate_day: props.isolate_day ?? 4,
     isolate_time: props.isolate_time || '00:00',
     invoice_template: props.invoice_template || 'modern',
     payment_banks: props.payment_banks ? JSON.parse(JSON.stringify(props.payment_banks)) : [],
@@ -984,7 +987,7 @@ watch(() => props.billing_type, (val) => { if (val) form.billing_type = val; });
 watch(() => props.prorata_formula, (val) => { if (val) form.prorata_formula = val; });
 watch(() => props.prorata_first_month, (val) => { form.prorata_first_month = val !== undefined ? val : true; });
 watch(() => props.invoice_issue_date, (val) => { if (val) form.invoice_issue_date = val; });
-watch(() => props.isolate_days, (val) => { if (val) form.isolate_days = val; });
+watch(() => props.isolate_day, (val) => { if (val != null) form.isolate_day = val; });
 watch(() => props.isolate_time, (val) => { if (val) form.isolate_time = val; });
 watch(() => props.payment_banks, (val) => { if (val) form.payment_banks = JSON.parse(JSON.stringify(val)); });
 watch(() => props.pg_provider, (val) => { if (val) form.pg_provider = val; });
@@ -1168,7 +1171,7 @@ function saveSection(sectionKey, sectionLabel) {
         payload.prorata_first_month = form.prorata_first_month;
     } else if (sectionKey === 'timeline') {
         payload.invoice_issue_date = form.invoice_issue_date;
-        payload.isolate_days = form.isolate_days;
+        payload.isolate_day = form.isolate_day;
         payload.isolate_time = form.isolate_time;
     } else if (sectionKey === 'tax') {
         payload.tax_ppn = form.tax_ppn;
@@ -1359,14 +1362,12 @@ const nextRoutineBillingDateFormatted = computed(() => {
 
 // Isolate date based on routine billing date / activation date
 const isolateDateObj = computed(() => {
-    const base = new Date(nextRoutineBillingDateObj.value);
-    base.setDate(base.getDate() + (parseInt(form.isolate_days) || 0));
-    return base;
+    return billingIsolationDate(nextRoutineBillingDateObj.value, form);
 });
 
 const isolateDateFormatted = computed(() => {
     const d = isolateDateObj.value;
-    return `${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()} ${form.isolate_time || '00:00'}`;
+    return `${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()} ${form.isolate_time || '00:00'} WIB`;
 });
 
 // Total days in activation month cycle (matching endOfMonth in CustomerController.php)

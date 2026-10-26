@@ -86,6 +86,7 @@ class HandleInertiaRequests extends Middleware
                 'prorata_first_month' => \App\Models\Setting::get('prorata_first_month', '1') === '1',
                 'invoice_issue_date' => (int) \App\Models\Setting::get('invoice_issue_date', '1'),
                 'isolate_days' => (int) \App\Models\Setting::get('isolate_days', '3'),
+                'isolate_day' => \App\Models\Setting::get('isolate_day'),
                 'isolate_time' => \App\Models\Setting::get('isolate_time', '00:00'),
                 'tax_ppn' => (float) \App\Models\Setting::get('tax_ppn', '0'),
                 'tax_bhp' => (float) \App\Models\Setting::get('tax_bhp', '0'),

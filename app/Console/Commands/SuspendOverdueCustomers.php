@@ -3,72 +3,40 @@
 namespace App\Console\Commands;
 
 use App\Models\Customer;
-use App\Models\Invoice;
+use App\Services\BillingIsolationService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Log;
 
 class SuspendOverdueCustomers extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'billing:suspend-overdue';
+    protected $signature = 'billing:suspend-overdue {--dry-run : Count eligible customers without changing data or connections} {--limit=0 : Maximum connection updates; 0 processes all due customers}';
+    protected $description = 'Apply invoice isolation dates and times, then retry pending connection changes.';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Otomatis isolir / suspend pelanggan yang memiliki tagihan belum dibayar lewat dari jatuh tempo.';
-
-    /**
-     * Execute the console command.
-     */
-    public function handle()
+    public function handle(BillingIsolationService $isolation): int
     {
-        $this->info('Mengecek pelanggan yang telat bayar (Isolir)...');
-        
-        $now = now();
-
-        // Cari pelanggan aktif yang memiliki invoice status "unpaid" dan jatuh temponya sudah lewat
-        // TETAPI kecualikan jika pelanggan memiliki janji bayar (promise_date) yang masih berlaku.
-        $overdueCustomers = Customer::where('status', 'active')
-            ->whereHas('invoices', function ($query) use ($now) {
-                $query->whereIn('status', ['unpaid', 'partial'])
-                      ->where('due_date', '<=', $now)
-                      ->where(function($q) use ($now) {
-                          $q->whereNull('promise_date')
-                            ->orWhere('promise_date', '<', $now);
-                      });
-            })
-            ->get();
-
-        if ($overdueCustomers->isEmpty()) {
-            $this->info('Tidak ada pelanggan yang harus di-isolir hari ini.');
-            return;
+        if (\Illuminate\Support\Facades\Cache::get('billing:isolation:deploying')) {
+            $this->info('Billing isolation rollout validation is in progress.');
+            return self::SUCCESS;
         }
-
         $count = 0;
-        foreach ($overdueCustomers as $customer) {
-            try {
-                // Update status ke suspended.
-                // Ini akan trigger CustomerObserver yang akan otomatis:
-                // 1. Memindahkan user ke group "isolir" di database RADIUS.
-                // 2. Mengirim command CoA disconnect ke NAS (Router) jika pelanggan sedang online.
-                $customer->update(['status' => 'suspended']);
-                
-                $this->line("Pelanggan {$customer->name} ({$customer->customer_code}) berhasil di-isolir.");
-                Log::info("[BILLING] Pelanggan {$customer->customer_code} otomatis di-isolir karena telat bayar.");
-                
-                $count++;
-            } catch (\Exception $e) {
-                $this->error("Gagal isolir pelanggan {$customer->customer_code}: " . $e->getMessage());
-                Log::error("[BILLING] Gagal otomatis isolir {$customer->customer_code}: " . $e->getMessage());
+        $limit = max(0, (int) $this->option('limit'));
+        Customer::where(function ($q) {
+            $q->where(function ($active) {
+                $active->where('status', 'active')->whereHas('invoices', function ($invoice) {
+                    $invoice->whereIn('status', ['unpaid', 'partial', 'overdue'])->where('is_reseller_balance', false)
+                        ->where(fn ($date) => $date->whereNull('isolation_at')->orWhere('isolation_at', '<=', now()));
+                });
+            })->orWhereNotNull('billing_isolated_at')->orWhere('billing_isolation_pending', true);
+        })->chunkById(200, function ($customers) use ($isolation, &$count, $limit) {
+            foreach ($customers as $customer) {
+                if ($this->option('dry-run')) {
+                    if ($customer->status === 'active' && $isolation->hasDueBalance($customer)) $count++;
+                } elseif ($isolation->reconcile($customer)) {
+                    $count++;
+                    if ($limit && $count >= $limit) return false;
+                }
             }
-        }
-
-        $this->info("Proses selesai. Sebanyak {$count} pelanggan berhasil di-isolir.");
+        });
+        $this->info(($this->option('dry-run') ? 'Eligible for isolation: ' : 'Connection states processed: ').$count);
+        return self::SUCCESS;
     }
 }

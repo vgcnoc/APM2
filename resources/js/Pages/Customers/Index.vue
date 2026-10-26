@@ -318,6 +318,7 @@
                         <span v-if="row.connection_disabled" class="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-700">Disable</span>
                         <StatusBadge v-else :status="row.status" />
                         <span v-if="row.connection_access_pending" class="text-[10px] font-medium text-amber-600">Perlu sinkronisasi koneksi</span>
+                        <span v-if="row.billing_isolation_pending" class="text-[10px] font-medium text-amber-600">Perubahan layanan tertunda</span>
                         <div v-if="row.status === 'active' && row.ont?.pppoe_user">
                             <span v-if="onlineUsernames?.includes(row.ont.pppoe_user)" class="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600">
                                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Online

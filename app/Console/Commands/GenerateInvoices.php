@@ -29,7 +29,7 @@ class GenerateInvoices extends Command
      */
     public function handle()
     {
-        $today = now();
+        $today = now()->setTimezone(config('billing.timezone', 'Asia/Jakarta'));
         $globalCycle = Setting::get('billing_cycle', 'anniversary');
         $calendarIssueDay = (int) Setting::get('invoice_issue_date', '1');
         $force = (bool) $this->option('force');
@@ -112,14 +112,8 @@ class GenerateInvoices extends Command
                 }
                 $amount = (int) round($amount);
 
-                $isolateDays = (int) Setting::get('isolate_days', '3');
-                $isolateTime = Setting::get('isolate_time', '00:00');
-
-                $dueDateTime = $today->copy()->addDays($isolateDays);
-                $timeParts = explode(':', $isolateTime);
-                if (count($timeParts) == 2) {
-                    $dueDateTime->setTime((int)$timeParts[0], (int)$timeParts[1], 0);
-                }
+                $dueDateTime = app(\App\Services\BillingIsolationSchedule::class)->forIssueDate($today)
+                    ->setTimezone(config('billing.timezone', 'Asia/Jakarta'));
 
                 Invoice::create([
                     'customer_id' => $customer->id,

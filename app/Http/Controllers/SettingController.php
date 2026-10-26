@@ -36,7 +36,9 @@ class SettingController extends Controller
             'prorata_first_month' => Setting::get('prorata_first_month', '1') === '1',
             'invoice_issue_date' => Setting::get('invoice_issue_date', '1'),
             'isolate_days' => Setting::get('isolate_days', '3'),
+            'isolate_day' => app(\App\Services\BillingIsolationSchedule::class)->displayDay(),
             'isolate_time' => Setting::get('isolate_time', '00:00'),
+            'billing_timezone' => config('billing.timezone', 'Asia/Jakarta'),
             'payment_banks' => json_decode(Setting::get('payment_banks', '[]'), true),
             'pg_provider' => Setting::get('pg_provider', 'none'),
             'pg_environment' => Setting::get('pg_environment', 'sandbox'),
@@ -522,6 +524,7 @@ class SettingController extends Controller
             'prorata_first_month' => 'nullable|boolean',
             'invoice_issue_date' => 'sometimes|required|integer|min:1|max:28',
             'isolate_days' => 'sometimes|required|integer|min:0',
+            'isolate_day' => 'sometimes|required|integer|min:1|max:31',
             'isolate_time' => 'sometimes|required|date_format:H:i',
             'payment_banks' => 'nullable|array',
             'payment_banks.*.bank_name' => 'required|string',
@@ -559,6 +562,12 @@ class SettingController extends Controller
         }
         if ($request->has('isolate_time')) {
             Setting::set('isolate_time', $request->isolate_time);
+        }
+        if ($request->has('isolate_day')) {
+            Setting::set('isolate_day', $request->isolate_day);
+        }
+        if ($request->hasAny(['isolate_day', 'isolate_time', 'isolate_days'])) {
+            app(\App\Services\BillingIsolationSchedule::class)->refreshOutstanding();
         }
         if ($request->has('invoice_template')) {
             Setting::set('invoice_template', $request->invoice_template);
@@ -622,7 +631,7 @@ class SettingController extends Controller
             'id' => 9999,
             'invoice_number' => 'INV/' . date('Ym') . '/0089',
             'issued_date' => now(),
-            'due_date' => now()->addDays((int) Setting::get('isolate_days', 3)),
+            'due_date' => app(\App\Services\BillingIsolationSchedule::class)->forIssueDate(now())->setTimezone(config('billing.timezone', 'Asia/Jakarta')),
             'status' => 'unpaid',
             'amount' => 250000,
             'total_paid' => 0,

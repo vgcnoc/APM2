@@ -25,6 +25,7 @@ class Invoice extends Model
             'due_date' => 'date',
             'issued_date' => 'date',
             'promise_date' => 'date',
+            'isolation_at' => 'datetime',
             'is_prorata' => 'boolean',
             'is_reseller_balance' => 'boolean',
         ];
@@ -48,7 +49,7 @@ class Invoice extends Model
 
     public function getTotalPaidAttribute(): int
     {
-        return (int) round($this->payments()->sum('amount'));
+        return (int) round($this->payments()->where('status', 'verified')->sum('amount'));
     }
 
     public function getRemainingAttribute(): int
@@ -69,6 +70,10 @@ class Invoice extends Model
         });
 
         static::saving(function (Invoice $invoice) {
+            if (!$invoice->is_reseller_balance && $invoice->issued_date
+                && (!$invoice->exists || $invoice->isDirty('issued_date') || !$invoice->isolation_at)) {
+                $invoice->isolation_at = app(\App\Services\BillingIsolationSchedule::class)->forIssueDate($invoice->issued_date);
+            }
             if ($invoice->exists && $invoice->isDirty('amount') && $invoice->amount > 0) {
                 $totalPaid = (int) round($invoice->payments()->where('status', 'verified')->sum('amount'));
                 if ($totalPaid >= $invoice->amount) {

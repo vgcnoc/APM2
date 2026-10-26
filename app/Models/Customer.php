@@ -86,6 +86,8 @@ class Customer extends Model
             'connection_disabled' => 'boolean',
             'connection_access_pending' => 'boolean',
             'connection_disable_state' => 'array',
+            'billing_isolated_at' => 'datetime',
+            'billing_isolation_pending' => 'boolean',
         ];
     }
 

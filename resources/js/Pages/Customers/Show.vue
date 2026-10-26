@@ -1334,7 +1334,7 @@
                                 <div class="flex justify-between items-center pt-2">
                                     <div>
                                         <span class="text-xs font-bold text-gray-800 block">Total Tagihan Pertama</span>
-                                        <span class="text-[10px] text-gray-500">Jatuh Tempo: <strong class="text-rose-600 font-semibold">{{ invoiceSimulation.dueDate }}</strong></span>
+                                        <span class="text-[10px] text-gray-500">Tanggal Isolir: <strong class="text-rose-600 font-semibold">{{ invoiceSimulation.dueDate }}</strong></span>
                                     </div>
                                     <div class="text-right">
                                         <span class="text-sm sm:text-base font-extrabold text-amber-800 bg-amber-100/70 px-3 py-1 rounded-lg border border-amber-300">
@@ -2973,6 +2973,7 @@ import { Link, useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 import Swal from 'sweetalert2';
+import { billingIsolationDate } from '@/Utils/billingIsolation';
 
 const page = usePage();
 const formatDate = (dateString) => {
@@ -4043,7 +4044,6 @@ const invoiceSimulation = computed(() => {
 
     const bSettings = usePage().props.billingSettings || {};
     const issueDateSetting = Math.max(1, Math.min(28, Number(bSettings.invoice_issue_date || 1)));
-    const isolateDays = Number(bSettings.isolate_days || 3);
     const prorataFormula = bSettings.prorata_formula || 'exact_days';
 
     // Parse activation date safely (local date)
@@ -4110,13 +4110,13 @@ const invoiceSimulation = computed(() => {
             periodText = `1 Bulan Penuh (Cut-off tgl ${issueDateSetting} ${nextCutOffDate.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })})`;
         }
 
-        dueDate = new Date(nextCutOffDate.getTime() + isolateDays * 24 * 60 * 60 * 1000);
+        dueDate = billingIsolationDate(nextCutOffDate, bSettings);
     } else {
         badgeLabel = 'Prabayar (Bayar di Muka)';
         subtotal = basePrice;
         const endDate = new Date(actDate.getFullYear(), actDate.getMonth() + 1, actDate.getDate());
         periodText = `${formatDateShort(actDate)} s/d ${formatDateShort(endDate)} (1 Bulan di Muka)`;
-        dueDate = new Date(actDate.getTime() + isolateDays * 24 * 60 * 60 * 1000);
+        dueDate = billingIsolationDate(actDate, bSettings);
     }
 
     if (isGratis) {
@@ -4163,7 +4163,7 @@ const invoiceSimulation = computed(() => {
         endOfMonthText: formatDateShort(endOfMonthDate),
         nextCutOffDate: nextCutOffDate ? formatDateShort(nextCutOffDate) : null,
         periodText,
-        dueDate: dueDate ? formatDateShort(dueDate) : null,
+        dueDate: dueDate ? `${formatDateShort(dueDate)} ${bSettings.isolate_time || '00:00'} WIB` : null,
         taxPpn,
         taxBhp: 0,
         taxUso: 0,

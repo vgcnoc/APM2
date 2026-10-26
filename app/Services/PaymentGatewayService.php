@@ -756,22 +756,7 @@ class PaymentGatewayService
                 }
             }
 
-            // 4. JIKA INVOICE PELANGGAN INTERNET REGULER
-            // Jika pelanggan sedang isolir (suspended), otomatis buka isolir dan aktifkan kembali
-            if (!$invoice->is_reseller_balance && $customer) {
-                if ($customer->status === 'suspended') {
-                    $customer->update(['status' => 'active']);
-
-                    // Sinkronkan ke FreeRADIUS agar internet langsung online detik itu juga
-                    if (class_exists(\App\Services\RadiusService::class)) {
-                        try {
-                            app(\App\Services\RadiusService::class)->syncCustomer($customer);
-                        } catch (\Exception $re) {
-                            Log::warning('[PaymentGateway] Radius sync failed: ' . $re->getMessage());
-                        }
-                    }
-                }
-            }
+            // Payment::syncInvoiceStatus handles reopening only after all due balances are cleared.
 
             DB::commit();
             Log::info("[PaymentGateway] Settle Invoice Success: {$invoice->invoice_number} ({$refId}) Amount: {$amount}");

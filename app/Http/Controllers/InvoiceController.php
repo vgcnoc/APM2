@@ -284,7 +284,7 @@ class InvoiceController extends Controller
         foreach ($unpaidInvoices as $inv) {
             if ($remainingPayment <= 0) break;
 
-            $invRemaining = (int) round($inv->amount - $inv->payments()->sum('amount'));
+            $invRemaining = (int) round($inv->amount - $inv->payments()->where('status', 'verified')->sum('amount'));
             if ($invRemaining <= 0) continue;
 
             $payForThis = (int) min($invRemaining, $remainingPayment);
@@ -299,7 +299,7 @@ class InvoiceController extends Controller
                 'collected_by' => auth()->id(),
             ]);
 
-            $totalPaid = (int) round($inv->payments()->sum('amount'));
+            $totalPaid = (int) round($inv->payments()->where('status', 'verified')->sum('amount'));
             if ($totalPaid >= (int) round($inv->amount)) {
                 $inv->update(['status' => 'paid']);
             } else {
@@ -321,7 +321,7 @@ class InvoiceController extends Controller
                 'proof_image' => $proofPath,
                 'collected_by' => auth()->id(),
             ]);
-            $totalPaid = (int) round($invoice->payments()->sum('amount'));
+            $totalPaid = (int) round($invoice->payments()->where('status', 'verified')->sum('amount'));
             $invoice->update(['status' => 'paid']);
         }
 
@@ -392,24 +392,10 @@ class InvoiceController extends Controller
                 $internetMessage = ' Internet pelanggan dimatikan (diisolir).';
             } else {
                 // Fallback default: jika tagihan pelanggan tidak ada lagi yang menunggak dan statusnya suspended, aktifkan
-                if ($customer->status === 'suspended') {
-                    $customer->update([
-                        'status' => 'active',
-                        'suspend_start' => null,
-                        'suspend_end' => null,
-                    ]);
-
-                    try {
-                        $radius->guard(function($r) use ($customer) {
-                            $r->syncCustomer($customer);
-                            $accounts = $r->customerAccounts($customer);
-                            foreach (array_keys($accounts) as $username) {
-                                $r->disconnect($username);
-                            }
-                        });
-                    } catch (\Throwable $e) {
-                        \Log::warning('[RADIUS] Auto-unsuspend sync error: ' . $e->getMessage());
-                    }
+                $customer->refresh();
+                if ($customer->status === 'suspended' && !$customer->suspend_start && !$customer->suspend_end
+                    && !app(\App\Services\BillingIsolationService::class)->hasDueBalance($customer)) {
+                    app(\App\Services\BillingIsolationService::class)->releaseAfterPayment($customer);
 
                     \App\Models\AuditLog::createLog(
                         'Buka Isolir Otomatis (Pembayaran)',
@@ -537,24 +523,9 @@ class InvoiceController extends Controller
                     $internetMessage = ' Layanan internet pelanggan tetap dimatikan (diisolir).';
                 } else {
                     // Fallback default: jika pelanggan sedang isolir/suspended, aktifkan
-                    if (in_array($customer->status, ['isolir', 'suspended'])) {
-                        $customer->update([
-                            'status' => 'active',
-                            'suspend_start' => null,
-                            'suspend_end' => null,
-                        ]);
-
-                        try {
-                            $radius->guard(function($r) use ($customer) {
-                                $r->syncCustomer($customer);
-                                $accounts = $r->customerAccounts($customer);
-                                foreach (array_keys($accounts) as $username) {
-                                    $r->disconnect($username);
-                                }
-                            });
-                        } catch (\Throwable $e) {
-                            \Log::warning('[RADIUS] Sync on promise fallback error: ' . $e->getMessage());
-                        }
+                    if (in_array($customer->status, ['isolir', 'suspended']) && !$customer->suspend_start && !$customer->suspend_end
+                        && !app(\App\Services\BillingIsolationService::class)->hasDueBalance($customer)) {
+                        app(\App\Services\BillingIsolationService::class)->releaseAfterPayment($customer);
 
                         \App\Models\AuditLog::createLog(
                             'Buka Isolir (Janji Bayar)',
@@ -877,7 +848,7 @@ class InvoiceController extends Controller
                     $invoice->notes .= ' (' . $request->notes . ')';
                 }
                 
-                $totalPaid = (int) round($invoice->payments()->sum('amount'));
+                $totalPaid = (int) round($invoice->payments()->where('status', 'verified')->sum('amount'));
                 $invoice->status = $totalPaid >= $totalProrataAmount ? 'paid' : ($totalPaid > 0 ? 'partial' : 'unpaid');
                 $invoice->save();
 

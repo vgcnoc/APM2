@@ -71,34 +71,8 @@ class Payment extends Model
             $invoice->saveQuietly();
         }
 
-        // Jika invoice lunas dan pelanggan sedang isolir/suspended, cek apakah semua tunggakan jatuh tempo sudah lunas
-        if ($newStatus === 'paid' && $invoice->customer) {
-            $customer = $invoice->customer;
-            if (in_array($customer->status, ['isolir', 'suspended'])) {
-                $hasOtherUnpaid = Invoice::where('customer_id', $customer->id)
-                    ->where('id', '!=', $invoice->id)
-                    ->whereIn('status', ['unpaid', 'partial'])
-                    ->where('due_date', '<=', now())
-                    ->exists();
-
-                if (!$hasOtherUnpaid) {
-                    $customer->update(['status' => 'active', 'suspend_start' => null, 'suspend_end' => null]);
-                    try {
-                        $radius = app(\App\Services\RadiusService::class);
-                        if ($radius && $radius->enabled()) {
-                            $radius->guard(function($r) use ($customer) {
-                                $r->syncCustomer($customer);
-                                $accounts = $r->customerAccounts($customer);
-                                foreach (array_keys($accounts) as $u) {
-                                    $r->disconnect($u);
-                                }
-                            });
-                        }
-                    } catch (\Throwable $e) {
-                        \Illuminate\Support\Facades\Log::warning('[Payment::syncInvoiceStatus] Radius auto-open isolir error: ' . $e->getMessage());
-                    }
-                }
-            }
+        if ($newStatus === 'paid' && !$invoice->is_reseller_balance && $invoice->customer) {
+            app(\App\Services\BillingIsolationService::class)->releaseAfterPayment($invoice->customer);
         }
     }
 

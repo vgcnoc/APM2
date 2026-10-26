@@ -1184,6 +1184,8 @@ class CustomerController extends Controller
                 'billing_type' => \App\Models\Setting::get('billing_type', 'prabayar'),
                 'invoice_issue_date' => \App\Models\Setting::get('invoice_issue_date', '1'),
                 'isolate_days' => \App\Models\Setting::get('isolate_days', '3'),
+                'isolate_day' => \App\Models\Setting::get('isolate_day'),
+                'isolate_time' => \App\Models\Setting::get('isolate_time', '00:00'),
                 'prorata_formula' => \App\Models\Setting::get('prorata_formula', 'exact_days'),
             ],
         ]);
@@ -2814,8 +2816,6 @@ class CustomerController extends Controller
 
                 $prorataFormula = \App\Models\Setting::get('prorata_formula', 'exact_days');
                 $issueDateSetting = (int) \App\Models\Setting::get('invoice_issue_date', '1');
-                $isolateDays = (int) \App\Models\Setting::get('isolate_days', '3');
-                $isolateTime = \App\Models\Setting::get('isolate_time', '00:00');
 
                 $isProrataFirstMonth = $request->has('is_prorata') 
                     ? $request->boolean('is_prorata') 
@@ -2826,7 +2826,7 @@ class CustomerController extends Controller
                     // Pascabayar: Hitung tanggal cut-off / terbit berikutnya
                     $nextBillingDate = $activationDate->copy();
                     if ($activationDate->day >= $issueDateSetting) {
-                        $nextBillingDate->addMonth()->day($issueDateSetting);
+                        $nextBillingDate->startOfMonth()->addMonthNoOverflow()->day($issueDateSetting);
                     } else {
                         $nextBillingDate->day($issueDateSetting);
                     }
@@ -2852,26 +2852,22 @@ class CustomerController extends Controller
                         }
 
                         $isProrata = true;
-                        $dueDateTime = $nextBillingDate->copy()->addDays($isolateDays);
                         $invoiceBillingType = 'prorata';
                         $invoiceNotes = 'Tagihan Pertama (Prorata s/d Akhir Bulan: ' . $activationDate->format('d M') . ' - ' . $endOfMonth->format('d M Y') . ')';
                     } else {
                         // Pascabayar normal 1 bulan penuh
-                        $dueDateTime = $nextBillingDate->copy()->addDays($isolateDays);
                         $invoiceBillingType = 'pascabayar';
                         $invoiceNotes = 'Tagihan Pertama (Pascabayar)';
                     }
                 } else {
                     // Prabayar: Bayar dulu baru pakai (Full 1 bulan di muka)
-                    $dueDateTime = $activationDate->copy()->addDays($isolateDays);
                     $invoiceBillingType = 'prabayar';
                     $invoiceNotes = 'Tagihan Pertama (Prabayar)';
                 }
                 
-                $timeParts = explode(':', $isolateTime);
-                if (count($timeParts) == 2) {
-                    $dueDateTime->setTime((int)$timeParts[0], (int)$timeParts[1], 0);
-                }
+                $invoiceIssuedDate = $billingType === 'pascabayar' ? $nextBillingDate : $activationDate;
+                $dueDateTime = app(\App\Services\BillingIsolationSchedule::class)->forIssueDate($invoiceIssuedDate)
+                    ->setTimezone(config('billing.timezone', 'Asia/Jakarta'));
 
                 // JANGAN BUAT INVOICE APAPUN JIKA PELANGGAN GRATIS ATAU FREE HOME
                 if (!in_array($serviceStatus, ['gratis', 'free_home'])) {
@@ -2886,7 +2882,7 @@ class CustomerController extends Controller
                         'period_year' => $activationDate->year,
                         'amount' => $amount,
                         'due_date' => $dueDateTime,
-                        'issued_date' => $activationDate,
+                        'issued_date' => $invoiceIssuedDate,
                         'status' => 'unpaid',
                         'is_prorata' => $isProrata,
                         'billing_type' => $invoiceBillingType,

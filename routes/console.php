@@ -8,11 +8,14 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote')->hourly();
 
-// Jalankan pengecekan isolir setiap jam agar jam isolir yang ditentukan dieksekusi tepat waktu
-Schedule::command('billing:suspend-overdue')->hourly();
-
-// Generate invoice otomatis setiap hari pada jam 00:05 (akan dijalankan berdasarkan invoice_issue_date di pengaturan)
-Schedule::command('app:generate-invoices')->dailyAt('00:05');
+// Issue invoices before checking same-day midnight isolation deadlines.
+$invoiceSchedule = Schedule::command('app:generate-invoices')->dailyAt('00:00')
+    ->timezone(config('billing.timezone', 'Asia/Jakarta'))->withoutOverlapping(60);
+$isolationSchedule = Schedule::command('billing:suspend-overdue')->everyMinute()->withoutOverlapping(60);
+if ($billingUser = config('billing.scheduler_user')) {
+    $invoiceSchedule->user($billingUser);
+    $isolationSchedule->user($billingUser);
+}
 
 // Pengecekan voucher expired setiap menit
 Schedule::command('vouchers:expire')->everyMinute();
