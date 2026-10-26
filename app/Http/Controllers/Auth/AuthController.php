@@ -134,9 +134,8 @@ class AuthController extends Controller
             $isAdmin = in_array($userRole, ['admin', 'superadmin', 'super admin', 'super-admin'], true)
                 || (method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super admin') || $user->hasRole('superadmin')));
 
-            $isEmployee = \App\Models\Employee::where('user_id', $user->id)
-                ->orWhere('email', $user->email)
-                ->exists();
+            // Tabel employees mencocokkan data karyawan lewat email (bukan kolom user_id)
+            $isEmployee = !empty($user->email) && \App\Models\Employee::where('email', $user->email)->exists();
 
             $isReseller = ($userRole === 'reseller')
                 || (method_exists($user, 'hasRole') && $user->hasRole('reseller'))
@@ -146,13 +145,29 @@ class AuthController extends Controller
                 || (method_exists($user, 'hasRole') && $user->hasRole('customer'))
                 || \App\Models\Customer::where('user_id', $user->id)->orWhere('email', $user->email)->exists();
 
-            $staffRoles = ['admin', 'superadmin', 'super admin', 'super-admin', 'noc', 'teknisi', 'maintenance', 'kepala teknisi', 'dispatcher', 'cs', 'admin cs', 'finance', 'manager', 'hrd', 'marketing', 'gudang'];
-            $hasStaffRole = in_array($userRole, $staffRoles, true)
-                || (method_exists($user, 'hasRole') && $user->hasRole($staffRoles));
+            // Kumpulkan seluruh role user (baik kolom role langsung maupun Spatie roles)
+            $spatieRoles = method_exists($user, 'getRoleNames')
+                ? $user->getRoleNames()->map(fn($r) => strtolower(trim((string) $r)))->toArray()
+                : [];
+            $allUserRoles = array_unique(array_filter(array_merge([$userRole], $spatieRoles)));
+
+            // Periksa apakah user memiliki peran staf (semua role selain murni reseller, customer, atau mitra affiliate luar)
+            $hasStaffRole = false;
+            foreach ($allUserRoles as $roleName) {
+                if (!in_array($roleName, ['reseller', 'customer', 'affiliate'], true)) {
+                    $hasStaffRole = true;
+                    break;
+                }
+            }
+
+            // Jika user memiliki permission internal langsung di sistem
+            if (!$hasStaffRole && method_exists($user, 'getAllPermissions') && $user->getAllPermissions()->isNotEmpty()) {
+                $hasStaffRole = true;
+            }
 
             $isValidStaff = $isAdmin || $isEmployee || $hasStaffRole;
 
-            // Jika bukan staf/karyawan/admin, tolak login dari portal Staf & Tim
+            // Jika bukan staf/karyawan/admin (misal akun murni reseller, pelanggan, atau afiliasi luar), tolak login dari portal Staf & Tim
             if (!$isValidStaff) {
                 Auth::logout();
                 $request->session()->invalidate();
@@ -170,7 +185,7 @@ class AuthController extends Controller
                     ])->onlyInput('email');
                 }
 
-                if (in_array($userRole, ['sales', 'affiliate'], true) || (method_exists($user, 'hasRole') && ($user->hasRole('sales') || $user->hasRole('affiliate')))) {
+                if (in_array('affiliate', $allUserRoles, true) || in_array($userRole, ['affiliate'], true)) {
                     return back()->withErrors([
                         'email' => 'Akun Anda terdaftar untuk portal Afiliasi & Sales. Silakan masuk melalui portal Afiliasi & Sales.'
                     ])->onlyInput('email');
@@ -178,23 +193,6 @@ class AuthController extends Controller
 
                 return back()->withErrors([
                     'email' => 'Akun Anda tidak memiliki hak akses sebagai Staf & Tim. Silakan gunakan portal yang sesuai.'
-                ])->onlyInput('email');
-            }
-
-            // Jika akun adalah reseller murni atau customer murni tanpa role staf atau data karyawan, tolak login
-            if (!$isAdmin && !$isEmployee && ($isReseller || $isCustomer)) {
-                Auth::logout();
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
-
-                if ($isReseller) {
-                    return back()->withErrors([
-                        'email' => 'Akun Anda terdaftar sebagai Mitra Biller / Reseller. Silakan masuk melalui portal Mitra Biller.'
-                    ])->onlyInput('email');
-                }
-
-                return back()->withErrors([
-                    'email' => 'Akun Anda terdaftar sebagai Pelanggan. Silakan masuk melalui portal Pelanggan.'
                 ])->onlyInput('email');
             }
 
