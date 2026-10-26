@@ -113,34 +113,51 @@ class RadiusService
             $rateLimit = "{$package->speed_mbps}M/{$package->speed_mbps}M";
         }
 
+        $shared = $package->shared_device > 0 ? (int) $package->shared_device : null;
+
         $this->writeGroup($this->packageGroup($package->id), [
             'Mikrotik-Rate-Limit' => $rateLimit,
             'Mikrotik-Group' => $package->is_mikrotik_group_custom ? $package->mikrotik_group : null,
             'Mikrotik-Address-List' => $package->is_mikrotik_address_list_custom ? $package->mikrotik_address_list : null,
             'Acct-Interim-Interval' => config('radius.interim_interval'),
+            'Port-Limit' => $shared,
         ], [
-            'Simultaneous-Use' => $package->shared_device > 0 ? $package->shared_device : null,
+            'Simultaneous-Use' => $shared,
         ]);
     }
 
     public function syncVoucherProfile(VoucherProfile $profile): void
     {
-        $sessionLimit = $profile->sessionLimit();
+        $sharedUsers = $profile->sessionLimit();
+        $durationSeconds = self::parseDuration($profile->duration);
+
+        // 1. Check Items (FreeRADIUS Layer)
         $checks = [
-            'Simultaneous-Use' => $sessionLimit,
+            'Simultaneous-Use' => $sharedUsers,
         ];
 
-        // Jika bukan profil khusus gratis pelanggan / durasi mengikuti pelanggan, terapkan batas durasi
-        if (!$profile->is_customer_free && $profile->duration !== 'Mengikuti Pelanggan') {
-            $checks['Max-All-Session'] = self::parseDuration($profile->duration);
+        if (!$profile->is_customer_free && $profile->duration !== 'Mengikuti Pelanggan' && $durationSeconds > 0) {
+            $checks['Max-All-Session'] = $durationSeconds;
         }
 
-        $this->writeGroup($this->voucherGroup($profile->id), [
-            'Mikrotik-Rate-Limit' => $profile->limit_rate,
-            'Acct-Interim-Interval' => config('radius.interim_interval'),
-            // Router-side enforcement is needed even before Accounting-Start reaches SQL.
-            'Port-Limit' => $sessionLimit,
-        ], $checks);
+        // 2. Reply Items (MikroTik RouterOS & Hotspot Layer)
+        $replies = [
+            // Standard RFC 2865 attribute: MikroTik Hotspot uses Port-Limit as strict shared-users per login!
+            'Port-Limit' => $sharedUsers,
+            'Acct-Interim-Interval' => config('radius.interim_interval', 60),
+        ];
+
+        // Rate Limit (Upload/Download bandwidth queue)
+        if (!empty($profile->limit_rate)) {
+            $replies['Mikrotik-Rate-Limit'] = trim($profile->limit_rate);
+        }
+
+        // Session Timeout (Countdown timer on MikroTik Hotspot session)
+        if (!$profile->is_customer_free && $profile->duration !== 'Mengikuti Pelanggan' && $durationSeconds > 0) {
+            $replies['Session-Timeout'] = $durationSeconds;
+        }
+
+        $this->writeGroup($this->voucherGroup($profile->id), $replies, $checks);
     }
 
     public function syncIsolirGroup(): void
@@ -530,7 +547,7 @@ class RadiusService
     // ── Helpers ────────────────────────────────────────────────
 
     /**
-     * Ubah durasi format MikroTik ("30m", "1h", "1d12h", "1w") ke detik.
+     * Ubah durasi format MikroTik ("30m", "1h", "1d12h", "1w") atau teks Indonesia ("1 jam", "30 menit", "1 hari") ke detik.
      */
     public static function parseDuration(?string $duration): ?int
     {
@@ -542,6 +559,13 @@ class RadiusService
         if (ctype_digit($duration)) {
             return (int) $duration; // angka polos dianggap detik
         }
+
+        // Dukung padanan kata Indonesia
+        $duration = str_replace(
+            ['minggu', 'hari', 'jam', 'menit', 'detik', 'bulan'],
+            ['w', 'd', 'h', 'm', 's', '30d'],
+            $duration
+        );
 
         preg_match_all('/(\d+)\s*([wdhms])/', $duration, $matches, PREG_SET_ORDER);
         if (!$matches) {

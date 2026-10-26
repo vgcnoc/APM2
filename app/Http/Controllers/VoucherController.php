@@ -250,11 +250,30 @@ class VoucherController extends Controller
                     $radius->removeUser($voucher->username);
 
                     $expiredCount++;
-                } elseif ($voucher->status === 'available' && ($firstLogin || $totalTime > 0)) {
-                    // Jika voucher sudah mulai digunakan tetapi belum habis, set status used
-                    $voucher->status = 'used';
-                    $voucher->used_at = $firstLogin;
-                    $voucher->save();
+                } else {
+                    if ($voucher->status === 'available' && ($firstLogin || $totalTime > 0)) {
+                        // Jika voucher sudah mulai digunakan tetapi belum habis, set status used
+                        $voucher->status = 'used';
+                        $voucher->used_at = $firstLogin;
+                        $voucher->save();
+                    }
+
+                    // Enforce Shared Users Cerdas: Jangan sampai perangkat aktif melebihi batas kuota profil!
+                    $sharedLimit = max(1, (int) ($voucher->profile->shared_users ?? 1));
+                    $onlineSessions = $userAccts->filter(fn ($acct) => empty($acct->acctstoptime))->sortByDesc('acctstarttime');
+                    if ($onlineSessions->count() > $sharedLimit) {
+                        if (!$radius) {
+                            $radius = app(RadiusService::class);
+                        }
+                        // Sesi yang melebihi kuota perangkat (misal perangkat ke-2 dst jika limit 1) diputus seketika via CoA
+                        $excessSessions = $onlineSessions->slice($sharedLimit);
+                        foreach ($excessSessions as $excess) {
+                            $radius->disconnectSession($excess);
+                            $excess->acctstoptime = now();
+                            $excess->acctterminatecause = 'Simultaneous-Limit-Exceeded';
+                            $excess->save();
+                        }
+                    }
                 }
             }
 

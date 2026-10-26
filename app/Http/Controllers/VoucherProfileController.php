@@ -20,7 +20,7 @@ class VoucherProfileController extends Controller
     {
         $isCustomerFree = $request->boolean('is_customer_free');
 
-        $validated = $request->validate([
+        $rules = [
             'name' => 'required|string|max:255',
             'price' => $isCustomerFree ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
             'fee_admin' => $isCustomerFree ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
@@ -31,7 +31,27 @@ class VoucherProfileController extends Controller
             'shared_users' => 'required|integer|min:1',
             'is_customer_free' => 'nullable|boolean',
             'description' => 'nullable|string',
-        ]);
+        ];
+
+        $validated = $request->validate($rules);
+
+        if (!$isCustomerFree) {
+            $price = (float) ($validated['price'] ?? 0);
+            $feeReseller = (float) ($validated['fee_reseller'] ?? 0);
+
+            if ($feeReseller > $price) {
+                return redirect()->back()->withErrors([
+                    'fee_reseller' => 'Fee reseller (Rp ' . number_format($feeReseller, 0, ',', '.') . ') tidak boleh melebihi harga jual voucher (Rp ' . number_format($price, 0, ',', '.') . ').'
+                ])->withInput();
+            }
+
+            $durationSec = \App\Services\RadiusService::parseDuration($validated['duration']);
+            if (!$durationSec || $durationSec <= 0) {
+                return redirect()->back()->withErrors([
+                    'duration' => 'Format durasi tidak valid. Gunakan format MikroTik standar seperti: 30m, 1h, 3h, 1d, 7d, 30d.'
+                ])->withInput();
+            }
+        }
 
         if ($isCustomerFree) {
             $validated['price'] = 0;
@@ -43,16 +63,22 @@ class VoucherProfileController extends Controller
             $validated['is_customer_free'] = true;
         }
 
-        VoucherProfile::create($validated);
+        $profile = VoucherProfile::create($validated);
 
-        return redirect()->back()->with('success', 'Profil Voucher berhasil ditambahkan.');
+        try {
+            app(\App\Services\RadiusService::class)->syncVoucherProfile($profile);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("[RADIUS] Sync Voucher Profile {$profile->id} error: " . $e->getMessage());
+        }
+
+        return redirect()->back()->with('success', 'Profil Voucher berhasil ditambahkan dan disinkronkan ke RADIUS.');
     }
 
     public function update(Request $request, VoucherProfile $voucherProfile)
     {
         $isCustomerFree = $request->boolean('is_customer_free') || $voucherProfile->is_customer_free;
 
-        $validated = $request->validate([
+        $rules = [
             'name' => 'required|string|max:255',
             'price' => $isCustomerFree ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
             'fee_admin' => $isCustomerFree ? 'nullable|numeric|min:0' : 'required|numeric|min:0',
@@ -63,7 +89,27 @@ class VoucherProfileController extends Controller
             'shared_users' => 'required|integer|min:1',
             'is_customer_free' => 'nullable|boolean',
             'description' => 'nullable|string',
-        ]);
+        ];
+
+        $validated = $request->validate($rules);
+
+        if (!$isCustomerFree) {
+            $price = (float) ($validated['price'] ?? 0);
+            $feeReseller = (float) ($validated['fee_reseller'] ?? 0);
+
+            if ($feeReseller > $price) {
+                return redirect()->back()->withErrors([
+                    'fee_reseller' => 'Fee reseller (Rp ' . number_format($feeReseller, 0, ',', '.') . ') tidak boleh melebihi harga jual voucher (Rp ' . number_format($price, 0, ',', '.') . ').'
+                ])->withInput();
+            }
+
+            $durationSec = \App\Services\RadiusService::parseDuration($validated['duration']);
+            if (!$durationSec || $durationSec <= 0) {
+                return redirect()->back()->withErrors([
+                    'duration' => 'Format durasi tidak valid. Gunakan format MikroTik standar seperti: 30m, 1h, 3h, 1d, 7d, 30d.'
+                ])->withInput();
+            }
+        }
 
         if ($isCustomerFree) {
             $validated['price'] = 0;
@@ -77,7 +123,13 @@ class VoucherProfileController extends Controller
 
         $voucherProfile->update($validated);
 
-        return redirect()->back()->with('success', 'Profil Voucher berhasil diperbarui.');
+        try {
+            app(\App\Services\RadiusService::class)->syncVoucherProfile($voucherProfile);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("[RADIUS] Sync Voucher Profile {$voucherProfile->id} error: " . $e->getMessage());
+        }
+
+        return redirect()->back()->with('success', 'Profil Voucher berhasil diperbarui dan disinkronkan ke RADIUS.');
     }
 
     public function destroy(VoucherProfile $voucherProfile)
