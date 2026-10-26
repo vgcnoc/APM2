@@ -63,12 +63,14 @@ class RoleController extends Controller
 
     public function store(Request $request)
     {
+        $request->merge(['name' => strtolower(trim($request->name))]);
+
         $request->validate([
             'name' => 'required|string|max:100|unique:roles,name',
             'permissions' => 'array',
         ]);
 
-        $role = Role::create(['name' => strtolower(trim($request->name)), 'guard_name' => 'web']);
+        $role = Role::create(['name' => $request->name, 'guard_name' => 'web']);
 
         if ($request->has('permissions') && is_array($request->permissions)) {
             $role->syncPermissions($request->permissions);
@@ -81,6 +83,8 @@ class RoleController extends Controller
 
     public function update(Request $request, Role $role)
     {
+        $request->merge(['name' => strtolower(trim($request->name))]);
+
         $request->validate([
             'name' => ['required', 'string', 'max:100', Rule::unique('roles', 'name')->ignore($role->id)],
             'permissions' => 'array',
@@ -95,7 +99,7 @@ class RoleController extends Controller
             return redirect()->back()->with('success', "Role Admin terkunci permanen dengan akses penuh.");
         }
 
-        $role->update(['name' => strtolower(trim($request->name))]);
+        $role->update(['name' => $request->name]);
 
         if ($request->has('permissions')) {
             $role->syncPermissions($request->permissions);
