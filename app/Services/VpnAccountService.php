@@ -163,9 +163,10 @@ class VpnAccountService
         $knownHosts = (string) config('radius.vpn.backup.ssh_known_hosts');
         $port = (int) config('radius.vpn.backup.ssh_port');
         $binary = (string) config('radius.vpn.backup.ssh_binary');
+        $l2tpEnabled = (bool) config('radius.vpn.backup.l2tp_enabled');
 
-        if ($host === '' || $user === '' || $endpoint === '' || !is_file($key) || !is_file($knownHosts) || $port < 1 || $port > 65535 || !$this->backupIpsecSecret()) {
-            Log::warning('VPN backup belum siap: endpoint, SSH key, known_hosts, atau PSK IPsec tidak valid.');
+        if ($host === '' || $user === '' || $endpoint === '' || !is_file($key) || !is_file($knownHosts) || $port < 1 || $port > 65535 || ($l2tpEnabled && !$this->backupIpsecSecret())) {
+            Log::warning('VPN backup belum siap: endpoint, SSH key, known_hosts, atau konfigurasi IPsec tidak valid.');
             return false;
         }
 
