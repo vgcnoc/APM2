@@ -1073,11 +1073,11 @@ class CustomerController extends Controller
         $waitingQuery = Customer::query()->where('status', 'installing')->where('is_audited', true);
         $applyAreaScope($waitingQuery);
 
-        // 2. Riwayat Aktivasi (pelanggan yang sudah diaktivasi)
+        // 2. Riwayat Aktivasi (pelanggan yang sudah diaktivasi dan bukan berhenti/dibatalkan)
         $historyQuery = Customer::query()->where(function($q) {
             $q->whereNotNull('activation_date')
               ->orWhere('status', 'active');
-        })->where('status', '!=', 'installing');
+        })->whereNotIn('status', ['installing', 'terminated', 'canceled']);
         $applyAreaScope($historyQuery);
 
         $stats = [
