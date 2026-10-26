@@ -7,7 +7,7 @@
                     <p class="text-xs text-gray-500 mt-0.5">Daftar semua bonus, insentif, dan potongan karyawan</p>
                 </div>
                 <div class="flex gap-2">
-                    <button v-if="can('payroll_incentives') || can('payroll_deductions') || can('payroll_manage')" @click="showManualModal = true" class="inline-flex items-center px-4 py-2.5 bg-indigo-600 border border-transparent rounded-xl font-bold text-xs text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all cursor-pointer">
+                    <button v-if="can('payroll_incentives') || can('payroll_deductions') || can('payroll_manage')" @click="openCreateModal" class="inline-flex items-center px-4 py-2.5 bg-indigo-600 border border-transparent rounded-xl font-bold text-xs text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all cursor-pointer">
                         <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                         Tambah Manual
                     </button>
@@ -222,7 +222,7 @@
                                 </td>
                             </tr>
                             <tr v-if="records.data.length === 0">
-                                <td :colspan="(can('payroll_incentives') || can('payroll_manage')) ? 7 : 6" class="px-6 py-12 text-center text-gray-500">
+                                <td :colspan="(can('payroll_incentives_delete') || can('payroll_incentives') || can('payroll_manage')) ? 7 : 6" class="px-6 py-12 text-center text-gray-500">
                                     <div class="flex flex-col items-center justify-center">
                                         <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
                                         <span class="text-sm font-bold text-gray-700">Tidak Ada Data Ditemukan</span>
@@ -364,6 +364,17 @@ const filter = reactive({
 });
 
 const showManualModal = ref(false);
+
+const openCreateModal = () => {
+    manualForm.reset();
+    manualForm.user_id = '';
+    const now = new Date();
+    const isCurrentPeriod = (now.getMonth() + 1 === Number(filter.month) && now.getFullYear() === Number(filter.year));
+    manualForm.date = isCurrentPeriod 
+        ? now.toISOString().split('T')[0] 
+        : `${filter.year}-${String(filter.month).padStart(2, '0')}-01`;
+    showManualModal.value = true;
+};
 
 const manualForm = useForm({
     type: 'incentive',

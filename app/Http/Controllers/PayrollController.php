@@ -141,10 +141,22 @@ class PayrollController extends Controller
             })
             ->with([
                 'incentives' => function($q) use ($month, $year) {
-                    $q->whereMonth('incentive_date', $month)->whereYear('incentive_date', $year);
+                    $q->where(function($sub) use ($month, $year) {
+                        $sub->where(function($dateQ) use ($month, $year) {
+                            $dateQ->whereMonth('incentive_date', $month)->whereYear('incentive_date', $year);
+                        })->orWhereHas('payroll', function($pq) use ($month, $year) {
+                            $pq->where('month', $month)->where('year', $year);
+                        });
+                    });
                 }, 
                 'deductions' => function($q) use ($month, $year) {
-                    $q->whereMonth('deduction_date', $month)->whereYear('deduction_date', $year);
+                    $q->where(function($sub) use ($month, $year) {
+                        $sub->where(function($dateQ) use ($month, $year) {
+                            $dateQ->whereMonth('deduction_date', $month)->whereYear('deduction_date', $year);
+                        })->orWhereHas('payroll', function($pq) use ($month, $year) {
+                            $pq->where('month', $month)->where('year', $year);
+                        });
+                    });
                 },
                 'payrolls' => function($q) use ($month, $year) {
                     $q->where('month', $month)->where('year', $year);
@@ -161,27 +173,57 @@ class PayrollController extends Controller
 
         $users = $usersQuery->get()
             ->map(function ($user) use (&$recapBpjs) {
-                $pendingIncentives = $user->incentives->where('status', 'pending');
-                $totalAuto = (float) $pendingIncentives->where('type', 'auto')->sum('amount');
-                $totalManual = (float) $pendingIncentives->where('type', 'manual')->sum('amount');
-                
-                $pendingDeductions = $user->deductions->where('status', 'pending');
-                $totalDeduction = (float) $pendingDeductions->sum('amount');
-                
                 $payroll = $user->payrolls->first();
                 $isPaid = $payroll && $payroll->status === 'paid';
-                
+
                 $rawBaseSalary = (float) $user->base_salary;
+                $emp = $user->employee ?: \App\Models\Employee::where('email', $user->email)
+                    ->orWhere('name', $user->name)
+                    ->orWhere(function($q) use ($user) {
+                        if (!empty($user->phone)) {
+                            $q->where('phone', $user->phone);
+                        }
+                    })
+                    ->first();
                 if ($rawBaseSalary <= 0) {
-                    $emp = $user->employee ?: \App\Models\Employee::where('email', $user->email)->orWhere('name', $user->name)->first();
                     if ($emp && (float) $emp->base_salary > 0) {
                         $rawBaseSalary = (float) $emp->base_salary;
                         $user->update(['base_salary' => $rawBaseSalary]);
                     }
+                } elseif ($emp && (float) $emp->base_salary <= 0) {
+                    $emp->update(['base_salary' => $rawBaseSalary]);
                 }
+
                 $baseSalary = $isPaid ? (float) $payroll->base_salary : $rawBaseSalary;
-                $totalIncentive = $isPaid ? (float) $payroll->total_incentive : ($totalAuto + $totalManual);
-                $finalDeduction = $isPaid ? (float) $payroll->total_deduction : $totalDeduction;
+
+                if ($isPaid) {
+                    $relevantIncentives = $user->incentives->filter(function ($inc) use ($payroll) {
+                        return $inc->payroll_id == $payroll->id || $inc->status === 'paid';
+                    });
+                    if ($relevantIncentives->isNotEmpty()) {
+                        $totalManual = (float) $relevantIncentives->where('type', 'manual')->sum('amount');
+                        $totalAuto = (float) $relevantIncentives->where('type', '!=', 'manual')->sum('amount');
+                    } else {
+                        $totalAuto = (float) $payroll->total_incentive;
+                        $totalManual = 0;
+                    }
+                    $totalIncentive = (float) $payroll->total_incentive;
+
+                    $relevantDeductions = $user->deductions->filter(function ($ded) use ($payroll) {
+                        return $ded->payroll_id == $payroll->id || $ded->status === 'applied';
+                    });
+                    $finalDeduction = (float) $payroll->total_deduction;
+                } else {
+                    $pendingIncentives = $user->incentives->where('status', 'pending');
+                    $totalManual = (float) $pendingIncentives->where('type', 'manual')->sum('amount');
+                    $totalAuto = (float) $pendingIncentives->where('type', '!=', 'manual')->sum('amount');
+                    $totalIncentive = $totalAuto + $totalManual;
+
+                    $pendingDeductions = $user->deductions->where('status', 'pending');
+                    $finalDeduction = (float) $pendingDeductions->sum('amount');
+                    $relevantIncentives = $pendingIncentives;
+                    $relevantDeductions = $pendingDeductions;
+                }
 
                 // Hitung / Ambil rincian BPJS
                 if ($isPaid) {
@@ -229,8 +271,8 @@ class PayrollController extends Controller
                     'role' => $user->role,
                     'base_salary' => $baseSalary,
                     'auto_incentive_rate' => (float) $user->incentive_rate,
-                    'total_auto_incentive' => $isPaid ? 0 : $totalAuto,
-                    'total_manual_incentive' => $isPaid ? 0 : $totalManual,
+                    'total_auto_incentive' => $totalAuto,
+                    'total_manual_incentive' => $totalManual,
                     'total_incentive' => $totalIncentive,
                     'total_deduction' => $finalDeduction,
                     'bpjs' => $bpjs,
@@ -248,8 +290,8 @@ class PayrollController extends Controller
                     'disbursement_id' => $payroll ? ($payroll->disbursement_id ?? null) : null,
                     'disbursement_status' => $payroll ? ($payroll->disbursement_status ?? null) : null,
                     'disbursement_error' => $payroll ? ($payroll->disbursement_error ?? null) : null,
-                    'incentives_list' => $user->incentives->toArray(),
-                    'deductions_list' => $user->deductions->toArray()
+                    'incentives_list' => $relevantIncentives->values()->toArray(),
+                    'deductions_list' => $relevantDeductions->values()->toArray()
                 ];
             });
 
@@ -396,7 +438,14 @@ class PayrollController extends Controller
         $user->update($updateData);
 
         // Sinkronkan ke data Employee HR jika ada
-        $emp = $user->employee ?: \App\Models\Employee::where('email', $user->email)->orWhere('name', $user->name)->first();
+        $emp = $user->employee ?: \App\Models\Employee::where('email', $user->email)
+            ->orWhere('name', $user->name)
+            ->orWhere(function($q) use ($user) {
+                if (!empty($user->phone)) {
+                    $q->where('phone', $user->phone);
+                }
+            })
+            ->first();
         if ($emp) {
             $empUpdate = [];
             if ($request->has('base_salary')) {
@@ -450,14 +499,19 @@ class PayrollController extends Controller
     public function destroyIncentive(Incentive $incentive)
     {
         $authUser = auth()->user();
-        if (!$authUser->is_admin && !$authUser->hasRole('admin') && !$authUser->can('payroll_incentives')) {
+        if (!$authUser->is_admin && !$authUser->hasRole('admin') && !$authUser->can('payroll_incentives') && !$authUser->can('payroll_incentives_delete') && !$authUser->can('payroll_manage')) {
             abort(403, 'Anda tidak memiliki hak akses untuk menghapus insentif.');
         }
 
         if ($incentive->status === 'paid') {
             return back()->with('error', 'Tidak bisa menghapus insentif yang sudah dicairkan.');
         }
+        $id = $incentive->id;
         $incentive->delete();
+        \App\Models\TargetMarketLog::where('incentive_id', $id)->update([
+            'status' => 'approved',
+            'incentive_id' => null,
+        ]);
         return back()->with('success', 'Insentif berhasil dihapus.');
     }
 
@@ -467,7 +521,7 @@ class PayrollController extends Controller
     public function storeDeduction(Request $request, User $user)
     {
         $authUser = auth()->user();
-        if (!$authUser->is_admin && !$authUser->hasRole('admin') && !$authUser->can('payroll_incentives')) {
+        if (!$authUser->is_admin && !$authUser->hasRole('admin') && !$authUser->can('payroll_incentives') && !$authUser->can('payroll_deductions') && !$authUser->can('payroll_manage')) {
             abort(403, 'Anda tidak memiliki hak akses untuk menambah potongan.');
         }
 
@@ -498,7 +552,7 @@ class PayrollController extends Controller
     public function destroyDeduction(\App\Models\Deduction $deduction)
     {
         $authUser = auth()->user();
-        if (!$authUser->is_admin && !$authUser->hasRole('admin') && !$authUser->can('payroll_incentives')) {
+        if (!$authUser->is_admin && !$authUser->hasRole('admin') && !$authUser->can('payroll_incentives') && !$authUser->can('payroll_incentives_delete') && !$authUser->can('payroll_deductions') && !$authUser->can('payroll_manage')) {
             abort(403, 'Anda tidak memiliki hak akses untuk menghapus potongan.');
         }
 
@@ -549,12 +603,21 @@ class PayrollController extends Controller
 
             // Hitung Gaji Pokok & BPJS
             $rawBaseSalary = (float) $user->base_salary;
+            $emp = $user->employee ?: \App\Models\Employee::where('email', $user->email)
+                ->orWhere('name', $user->name)
+                ->orWhere(function($q) use ($user) {
+                    if (!empty($user->phone)) {
+                        $q->where('phone', $user->phone);
+                    }
+                })
+                ->first();
             if ($rawBaseSalary <= 0) {
-                $emp = $user->employee ?: \App\Models\Employee::where('email', $user->email)->orWhere('name', $user->name)->first();
                 if ($emp && (float) $emp->base_salary > 0) {
                     $rawBaseSalary = (float) $emp->base_salary;
                     $user->update(['base_salary' => $rawBaseSalary]);
                 }
+            } elseif ($emp && (float) $emp->base_salary <= 0) {
+                $emp->update(['base_salary' => $rawBaseSalary]);
             }
             $bpjs = self::calculateBpjs($user, $rawBaseSalary);
             $netSalary = max(0, $rawBaseSalary + $totalIncentive - $totalDeduction - $bpjs['total_employee']);
@@ -757,12 +820,21 @@ class PayrollController extends Controller
                 $totalIncentive = (float) $pendingIncentives->sum('amount');
                 $totalDeduction = (float) $pendingDeductions->sum('amount');
                 $rawBaseSalary = (float) $user->base_salary;
+                $emp = $user->employee ?: \App\Models\Employee::where('email', $user->email)
+                    ->orWhere('name', $user->name)
+                    ->orWhere(function($q) use ($user) {
+                        if (!empty($user->phone)) {
+                            $q->where('phone', $user->phone);
+                        }
+                    })
+                    ->first();
                 if ($rawBaseSalary <= 0) {
-                    $emp = $user->employee ?: \App\Models\Employee::where('email', $user->email)->orWhere('name', $user->name)->first();
                     if ($emp && (float) $emp->base_salary > 0) {
                         $rawBaseSalary = (float) $emp->base_salary;
                         $user->update(['base_salary' => $rawBaseSalary]);
                     }
+                } elseif ($emp && (float) $emp->base_salary <= 0) {
+                    $emp->update(['base_salary' => $rawBaseSalary]);
                 }
                 $bpjs = self::calculateBpjs($user, $rawBaseSalary);
                 $netSalary = max(0, $rawBaseSalary + $totalIncentive - $totalDeduction - $bpjs['total_employee']);

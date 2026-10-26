@@ -132,7 +132,16 @@ class IncentiveDeductionController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        $usersQuery = User::with('area')->where('is_active', true)->orderBy('name');
+        $excludedRoles = ['customer', 'pelanggan', 'reseller', 'superadmin', 'super admin'];
+        $usersQuery = User::with('area')->where('is_active', true)
+            ->whereNotIn('role', $excludedRoles)
+            ->whereDoesntHave('roles', function($q) use ($excludedRoles) {
+                $q->whereIn('name', $excludedRoles);
+            })
+            ->whereDoesntHave('customer')
+            ->whereDoesntHave('reseller')
+            ->orderBy('name');
+
         if (!$isSuperAdmin && !$authUser->can('payroll_view_all')) {
             if ($authUser->can('payroll_view_area') && $authUser->area_id) {
                 $usersQuery->where('area_id', $authUser->area_id);
@@ -170,7 +179,7 @@ class IncentiveDeductionController extends Controller
     {
         $authUser = auth()->user();
         $isSuperAdmin = $authUser && ($authUser->is_admin || $authUser->hasRole('admin'));
-        if (!$isSuperAdmin && !$authUser->can('payroll_incentives') && !$authUser->can('payroll_manage')) {
+        if (!$isSuperAdmin && !$authUser->can('payroll_incentives') && !$authUser->can('payroll_incentives_delete') && !$authUser->can('payroll_manage')) {
             abort(403, 'Anda tidak memiliki hak akses untuk menghapus data insentif/potongan.');
         }
 
@@ -179,6 +188,12 @@ class IncentiveDeductionController extends Controller
         if (str_starts_with($id, 'inc_')) {
             $realId = str_replace('inc_', '', $id);
             $deleted = Incentive::where('id', $realId)->where('status', 'pending')->delete();
+            if ($deleted) {
+                \App\Models\TargetMarketLog::where('incentive_id', $realId)->update([
+                    'status' => 'approved',
+                    'incentive_id' => null,
+                ]);
+            }
         } elseif (str_starts_with($id, 'ded_')) {
             $realId = str_replace('ded_', '', $id);
             $deleted = Deduction::where('id', $realId)->where('status', 'pending')->delete();

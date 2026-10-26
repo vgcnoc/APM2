@@ -16,8 +16,7 @@ composer dump-autoload
 
 echo "=== 3. Database Migration & Seeding ==="
 php artisan migrate --force
-sudo php artisan permission:cache-reset
-sudo php artisan db:seed --class=RoleAndPermissionSeeder --force
+sudo php artisan permissions:sync
 
 echo "=== 4. Vite Build ==="
 npm run build

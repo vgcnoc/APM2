@@ -31,6 +31,10 @@ const savedDropdowns = isBrowser ? readJson('sidebarOpenDropdowns', []) : [];
 const openDropdowns = ref(Array.isArray(savedDropdowns)
     ? [...new Set(savedDropdowns.filter((item) => typeof item === 'string' && item.trim() !== ''))]
     : []);
+const savedCollapsedGroups = isBrowser ? readJson('apm_collapsed_groups', []) : [];
+const collapsedGroups = ref(Array.isArray(savedCollapsedGroups)
+    ? [...new Set(savedCollapsedGroups.filter((item) => typeof item === 'string' && item.trim() !== ''))]
+    : []);
 const scrollTop = { value: isBrowser ? (parseInt(localStorage.getItem('sidebarScrollPos'), 10) || 0) : 0 };
 
 const persist = (key, value) => {
@@ -46,6 +50,7 @@ export function useSidebarState() {
     };
 
     const toggleDropdown = (key) => {
+        if (!key) return;
         if (openDropdowns.value.includes(key)) {
             openDropdowns.value = openDropdowns.value.filter(item => item !== key);
         } else {
@@ -55,9 +60,28 @@ export function useSidebarState() {
     };
 
     const ensureDropdownOpen = (key) => {
+        if (!key) return;
         if (!openDropdowns.value.includes(key)) {
             openDropdowns.value = [...openDropdowns.value, key];
             persist('sidebarOpenDropdowns', openDropdowns.value);
+        }
+    };
+
+    const toggleGroup = (key) => {
+        if (!key) return;
+        if (collapsedGroups.value.includes(key)) {
+            collapsedGroups.value = collapsedGroups.value.filter(item => item !== key);
+        } else {
+            collapsedGroups.value = [...collapsedGroups.value, key];
+        }
+        persist('apm_collapsed_groups', collapsedGroups.value);
+    };
+
+    const ensureGroupOpen = (key) => {
+        if (!key) return;
+        if (collapsedGroups.value.includes(key)) {
+            collapsedGroups.value = collapsedGroups.value.filter(item => item !== key);
+            persist('apm_collapsed_groups', collapsedGroups.value);
         }
     };
 
@@ -69,10 +93,13 @@ export function useSidebarState() {
     return {
         sidebarOpen,
         openDropdowns,
+        collapsedGroups,
         scrollTop,
         setSidebarOpen,
         toggleDropdown,
         ensureDropdownOpen,
+        toggleGroup,
+        ensureGroupOpen,
         saveScrollTop,
     };
 }

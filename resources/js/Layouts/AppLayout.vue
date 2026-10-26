@@ -125,11 +125,12 @@
                 <template v-else>
                     <div v-for="(grp, gIdx) in structuredGroups" :key="gIdx" class="mb-3">
                         <!-- Group Header (Accordion Toggle) -->
-                        <div v-if="sidebarOpen" class="pt-2 pb-1.5 px-2">
+                        <div v-if="sidebarOpen" class="pt-2 pb-0.5">
                             <button
                                 type="button"
-                                @click="toggleGroup(grp.label)"
-                                class="w-full flex items-center justify-between group/grp text-left cursor-pointer select-none"
+                                @click.stop="toggleGroup(grp.label)"
+                                :aria-expanded="!isGroupCollapsed(grp)"
+                                class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg group/grp text-left cursor-pointer select-none hover:bg-slate-100/90 dark:hover:bg-slate-800/60 active:scale-[0.99] transition-all duration-150"
                                 title="Klik untuk Ciutkan / Bentangkan Kategori"
                             >
                                 <div class="flex items-center gap-2 min-w-0">
@@ -138,7 +139,7 @@
                                         {{ grp.label }}
                                     </span>
                                 </div>
-                                <div class="flex items-center gap-1.5 text-slate-400">
+                                <div class="flex items-center gap-1.5 text-slate-400 group-hover/grp:text-slate-600 dark:group-hover/grp:text-slate-300 transition-colors">
                                     <span class="text-[10px] font-bold opacity-60 group-hover/grp:opacity-100 transition-opacity">{{ grp.items.length }}</span>
                                     <svg
                                         class="w-3.5 h-3.5 transition-transform duration-200"
@@ -522,10 +523,13 @@ const { can, hasRole } = usePermission();
 const {
     sidebarOpen,
     openDropdowns,
+    collapsedGroups,
     scrollTop: sidebarScrollTop,
     setSidebarOpen,
     toggleDropdown,
     ensureDropdownOpen,
+    toggleGroup,
+    ensureGroupOpen,
     saveScrollTop,
 } = useSidebarState();
 const mobileMenuOpen = ref(false);
@@ -536,43 +540,8 @@ const searchQuery = ref('');
 // Baca tema langsung dari <html> agar ikon tidak berkedip saat render pertama
 const { isDarkMode, toggleTheme, initTheme } = useTheme();
 
-// Collapsed Category Groups (LocalStorage Persisted)
-const loadCollapsedGroups = () => {
-    if (typeof window === 'undefined') return [];
-    try {
-        const raw = localStorage.getItem('apm_collapsed_groups');
-        return raw ? JSON.parse(raw) : [];
-    } catch (e) {
-        return [];
-    }
-};
-
-const collapsedGroups = ref(loadCollapsedGroups());
-
-const toggleGroup = (groupLabel) => {
-    if (collapsedGroups.value.includes(groupLabel)) {
-        collapsedGroups.value = collapsedGroups.value.filter(l => l !== groupLabel);
-    } else {
-        collapsedGroups.value = [...collapsedGroups.value, groupLabel];
-    }
-    try {
-        localStorage.setItem('apm_collapsed_groups', JSON.stringify(collapsedGroups.value));
-    } catch (e) {}
-};
-
 const isGroupCollapsed = (grp) => {
     if (isSearching.value) return false;
-    // Don't collapse if an item in the group is active
-    const hasActiveItem = grp.items.some(item => {
-        if (item.type === 'link') return item.active(page.url);
-        if (item.type === 'dropdown' && item.children) {
-            return item.children.some(c => c.active(page.url));
-        }
-        return false;
-    });
-    // Dashboard berada di Menu Utama. Berbeda dari kategori aktif lain,
-    // pengguna tetap boleh melipat Menu Utama saat berada di Dashboard.
-    if (hasActiveItem && grp.label !== 'MENU UTAMA') return false;
     return collapsedGroups.value.includes(grp.label);
 };
 
@@ -762,10 +731,24 @@ const menuItems = [
         icon: 'users',
         label: 'Data Pelanggan',
         theme: 'blue',
-        active: (url) => ['/customers', '/customers/gratis', '/customers/free-home', '/customers/online', '/customers/offline', '/customers/connections', '/customers/terminated'].some(path => (url || '') === path || (url || '').startsWith(path + '?')),
+        active: (url) => {
+            const u = url || '';
+            const nonDataPrefixes = ['/customers/booking', '/customers/survey', '/customers/installed', '/customers/activation', '/customers/canceled'];
+            if (nonDataPrefixes.some(p => u.startsWith(p))) return false;
+            return u === '/customers' || u.startsWith('/customers/') || u.startsWith('/customers?');
+        },
         permission: ['menu_customers_all', 'menu_customers_online', 'menu_customers_gratis', 'menu_customers_free_home', 'menu_customers_terminated'],
         children: [
-            { href: '/customers', label: 'Semua Pelanggan', active: (url) => (url || '').length > 0 && url === '/customers', permission: 'menu_customers_all' },
+            {
+                href: '/customers',
+                label: 'Semua Pelanggan',
+                active: (url) => {
+                    const u = url || '';
+                    const otherPrefixes = ['/customers/booking', '/customers/survey', '/customers/installed', '/customers/activation', '/customers/canceled', '/customers/gratis', '/customers/free-home', '/customers/online', '/customers/offline', '/customers/connections', '/customers/terminated'];
+                    return u === '/customers' || u.startsWith('/customers?') || (u.startsWith('/customers/') && !otherPrefixes.some(p => u.startsWith(p)));
+                },
+                permission: 'menu_customers_all'
+            },
             { href: '/customers/online', label: 'Status Koneksi (Online / Offline)', active: (url) => (url || '').startsWith('/customers/online') || (url || '').startsWith('/customers/offline') || (url || '').startsWith('/customers/connections'), permission: 'menu_customers_online' },
             { href: '/customers/gratis', label: 'Pelanggan Gratis & CSR', active: (url) => (url || '').startsWith('/customers/gratis'), permission: 'menu_customers_gratis' },
             { href: '/customers/free-home', label: 'Pelanggan Free Home', active: (url) => (url || '').startsWith('/customers/free-home'), permission: 'menu_customers_free_home' },
@@ -1256,8 +1239,24 @@ const searchResults = computed(() => {
     return results;
 });
 
-// Buka dropdown yang sesuai URL aktif SEBELUM render pertama,
+// Buka kategori group dan dropdown yang memiliki menu aktif SEBELUM render pertama,
 // sehingga tinggi sidebar sudah final saat posisi scroll dipulihkan.
+structuredGroups.value.forEach((grp) => {
+    const hasActiveItem = grp.items.some(item => {
+        if (item.type === 'link') return item.active(page.url);
+        if (item.type === 'dropdown') {
+            if (item.active(page.url)) return true;
+            if (item.children) {
+                return item.children.some(c => c.active(page.url));
+            }
+        }
+        return false;
+    });
+    if (hasActiveItem) {
+        ensureGroupOpen(grp.label);
+    }
+});
+
 filteredMenuItems.value.forEach((item) => {
     if (item.type === 'dropdown' && item.active(page.url)) {
         ensureDropdownOpen(item.label);

@@ -246,8 +246,19 @@
 
                                 <!-- Insentif & Bonus -->
                                 <td class="px-5 py-4 whitespace-nowrap">
-                                    <div class="font-bold text-emerald-600 font-mono">
-                                        + Rp {{ formatRupiah(user.total_auto_incentive + user.total_manual_incentive) }}
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="font-bold text-emerald-600 font-mono">
+                                            + Rp {{ formatRupiah(user.total_incentive) }}
+                                        </span>
+                                        <button 
+                                            v-if="(user.incentives_list && user.incentives_list.length > 0) || (user.deductions_list && user.deductions_list.length > 0)"
+                                            type="button" 
+                                            @click="openDetailsModal(user)"
+                                            class="text-[10px] text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-1.5 py-0.5 rounded border border-indigo-200 font-bold transition-colors cursor-pointer"
+                                            title="Lihat Rincian & Kelola"
+                                        >
+                                            🔍 Rincian
+                                        </button>
                                     </div>
                                     <div class="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">
                                         <span>Auto: +{{ formatRupiah(user.total_auto_incentive) }}</span>
@@ -431,13 +442,23 @@
                                 <span class="font-bold font-mono">Rp {{ formatRupiah(selectedSlipUser.base_salary) }}</span>
                             </div>
                             <div class="flex justify-between text-slate-700">
-                                <span>Insentif Booking &amp; Pasif Afiliasi Otomatis:</span>
+                                <span>Insentif &amp; Komisi Otomatis:</span>
                                 <span class="font-bold text-emerald-600 font-mono">+ Rp {{ formatRupiah(selectedSlipUser.total_auto_incentive) }}</span>
                             </div>
                             <div v-if="selectedSlipUser.total_manual_incentive > 0" class="flex justify-between text-slate-700">
                                 <span>Bonus Tambahan:</span>
                                 <span class="font-bold text-emerald-600 font-mono">+ Rp {{ formatRupiah(selectedSlipUser.total_manual_incentive) }}</span>
                             </div>
+
+                            <!-- Rincian Item Insentif jika ada -->
+                            <div v-if="selectedSlipUser.incentives_list && selectedSlipUser.incentives_list.length > 0" class="mt-2 pt-2 border-t border-slate-100 space-y-1 bg-slate-50/70 p-2.5 rounded-xl">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Rincian Insentif / Bonus:</span>
+                                <div v-for="inc in selectedSlipUser.incentives_list" :key="inc.id" class="flex justify-between text-[11px] text-slate-600">
+                                    <span class="truncate max-w-[320px]">&bull; {{ cleanDescription(inc.description) }}</span>
+                                    <span class="font-semibold text-emerald-600 font-mono shrink-0">+Rp {{ formatRupiah(inc.amount) }}</span>
+                                </div>
+                            </div>
+
                             <div class="flex justify-between font-extrabold text-slate-900 pt-2 border-t border-slate-100">
                                 <span>Total Penghasilan Kotor:</span>
                                 <span class="font-mono text-emerald-700">Rp {{ formatRupiah(selectedSlipUser.base_salary + selectedSlipUser.total_incentive) }}</span>
@@ -463,6 +484,16 @@
                                 <span>Potongan Kasbon / Lainnya:</span>
                                 <span class="font-bold text-rose-600 font-mono">- Rp {{ formatRupiah(selectedSlipUser.total_deduction) }}</span>
                             </div>
+
+                            <!-- Rincian Item Potongan jika ada -->
+                            <div v-if="selectedSlipUser.deductions_list && selectedSlipUser.deductions_list.length > 0" class="mt-2 pt-2 border-t border-slate-100 space-y-1 bg-slate-50/70 p-2.5 rounded-xl">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Rincian Potongan:</span>
+                                <div v-for="ded in selectedSlipUser.deductions_list" :key="ded.id" class="flex justify-between text-[11px] text-slate-600">
+                                    <span class="truncate max-w-[320px]">&bull; {{ cleanDescription(ded.description) }}</span>
+                                    <span class="font-semibold text-rose-600 font-mono shrink-0">-Rp {{ formatRupiah(ded.amount) }}</span>
+                                </div>
+                            </div>
+
                             <div class="flex justify-between font-extrabold text-slate-900 pt-2 border-t border-slate-100">
                                 <span>Total Potongan:</span>
                                 <span class="font-mono text-rose-700">- Rp {{ formatRupiah(selectedSlipUser.total_deduction + (selectedSlipUser.bpjs?.total_employee || 0)) }}</span>
@@ -724,6 +755,99 @@
                 </div>
             </div>
 
+            <!-- ── MODAL 5: RINCIAN & KELOLA INSENTIF & POTONGAN ── -->
+            <div v-if="showDetailsModal && selectedDetailsUser" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" @click.self="showDetailsModal = false">
+                <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-100 p-6 sm:p-7">
+                    <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900">Rincian Insentif &amp; Potongan</h3>
+                            <p class="text-xs text-slate-500 mt-0.5">Karyawan: <strong>{{ selectedDetailsUser.name }}</strong> ({{ months[month - 1] }} {{ year }})</p>
+                        </div>
+                        <button type="button" @click="showDetailsModal = false" class="text-slate-400 hover:text-slate-600">✕</button>
+                    </div>
+
+                    <div class="space-y-4 max-h-[60vh] overflow-y-auto text-xs pr-1">
+                        <!-- Daftar Insentif -->
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-extrabold text-slate-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                                    <span>🎁</span> Insentif &amp; Bonus (+Rp {{ formatRupiah(selectedDetailsUser.total_incentive) }})
+                                </span>
+                            </div>
+                            <div v-if="selectedDetailsUser.incentives_list && selectedDetailsUser.incentives_list.length > 0" class="divide-y divide-slate-100 border border-slate-100 rounded-2xl overflow-hidden bg-slate-50/50">
+                                <div v-for="inc in selectedDetailsUser.incentives_list" :key="inc.id" class="p-3 flex items-center justify-between gap-2 hover:bg-slate-50">
+                                    <div class="min-w-0">
+                                        <div class="font-bold text-slate-800 text-xs">{{ cleanDescription(inc.description) }}</div>
+                                        <div class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-2">
+                                            <span class="px-1.5 py-0.2 rounded font-bold capitalize text-[9px]" :class="inc.type === 'manual' ? 'bg-teal-50 text-teal-700 border border-teal-200' : 'bg-blue-50 text-blue-700 border border-blue-200'">{{ inc.type }}</span>
+                                            <span>📅 {{ inc.incentive_date ? new Date(inc.incentive_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '-' }}</span>
+                                            <span class="font-bold" :class="inc.status === 'paid' ? 'text-emerald-600' : 'text-amber-600'">{{ inc.status === 'paid' ? 'Sudah Cair' : 'Pending' }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2 shrink-0">
+                                        <span class="font-bold text-emerald-600 font-mono text-xs">+Rp {{ formatRupiah(inc.amount) }}</span>
+                                        <button 
+                                            v-if="inc.status === 'pending' && (can('payroll_incentives') || can('payroll_incentives_delete') || can('payroll_manage'))"
+                                            @click="deleteIncentiveItem(inc)"
+                                            type="button" 
+                                            class="text-rose-500 hover:text-rose-700 p-1 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                            title="Hapus Insentif Ini"
+                                        >
+                                            🗑️
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-else class="p-4 text-center text-slate-400 border border-dashed border-slate-200 rounded-2xl">
+                                Belum ada insentif tercatat pada periode ini.
+                            </div>
+                        </div>
+
+                        <!-- Daftar Potongan -->
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-extrabold text-slate-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                                    <span>📉</span> Potongan Kasbon / Lain (-Rp {{ formatRupiah(selectedDetailsUser.total_deduction) }})
+                                </span>
+                            </div>
+                            <div v-if="selectedDetailsUser.deductions_list && selectedDetailsUser.deductions_list.length > 0" class="divide-y divide-slate-100 border border-slate-100 rounded-2xl overflow-hidden bg-slate-50/50">
+                                <div v-for="ded in selectedDetailsUser.deductions_list" :key="ded.id" class="p-3 flex items-center justify-between gap-2 hover:bg-slate-50">
+                                    <div class="min-w-0">
+                                        <div class="font-bold text-slate-800 text-xs">{{ cleanDescription(ded.description) }}</div>
+                                        <div class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-2">
+                                            <span class="px-1.5 py-0.2 rounded font-bold capitalize text-[9px]" :class="ded.type === 'manual' ? 'bg-teal-50 text-teal-700 border border-teal-200' : 'bg-blue-50 text-blue-700 border border-blue-200'">{{ ded.type || 'manual' }}</span>
+                                            <span>📅 {{ ded.deduction_date ? new Date(ded.deduction_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '-' }}</span>
+                                            <span class="font-bold" :class="ded.status === 'applied' ? 'text-emerald-600' : 'text-amber-600'">{{ ded.status === 'applied' ? 'Sudah Diterapkan' : 'Pending' }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2 shrink-0">
+                                        <span class="font-bold text-rose-600 font-mono text-xs">-Rp {{ formatRupiah(ded.amount) }}</span>
+                                        <button 
+                                            v-if="ded.status === 'pending' && (can('payroll_deductions') || can('payroll_incentives') || can('payroll_incentives_delete') || can('payroll_manage'))"
+                                            @click="deleteDeductionItem(ded)"
+                                            type="button" 
+                                            class="text-rose-500 hover:text-rose-700 p-1 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                            title="Hapus Potongan Ini"
+                                        >
+                                            🗑️
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-else class="p-4 text-center text-slate-400 border border-dashed border-slate-200 rounded-2xl">
+                                Tidak ada potongan kasbon tercatat pada periode ini.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 mt-4 border-t border-slate-100 flex justify-end">
+                        <button type="button" @click="showDetailsModal = false" class="px-4 py-2 border border-slate-300 text-slate-700 font-semibold text-xs rounded-xl hover:bg-slate-50">
+                            Tutup
+                        </button>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </AppLayout>
 </template>
@@ -792,6 +916,10 @@ const totalPaidCount = computed(() => {
 
 const totalPendingCount = computed(() => {
     return (props.users || []).filter(u => !u.is_paid).length;
+});
+
+const totalPendingNetSalary = computed(() => {
+    return (props.users || []).filter(u => !u.is_paid).reduce((sum, u) => sum + (Number(u.net_salary) || 0), 0);
 });
 
 const form = useForm({
@@ -938,12 +1066,103 @@ const openManualModal = (user, type = 'incentive') => {
     selectedUser.value = user;
     modalType.value = type;
     manualForm.reset();
+    const now = new Date();
+    const isCurrentPeriod = (now.getMonth() + 1 === props.month && now.getFullYear() === props.year);
+    manualForm.date = isCurrentPeriod ? now.toISOString().split('T')[0] : `${props.year}-${String(props.month).padStart(2, '0')}-01`;
     showManualModal.value = true;
 };
 
 const closeManualModal = () => {
     showManualModal.value = false;
     selectedUser.value = null;
+};
+
+// ── Details Modal & Item Actions ──
+const showDetailsModal = ref(false);
+const selectedDetailsUser = ref(null);
+
+const openDetailsModal = (user) => {
+    selectedDetailsUser.value = user;
+    showDetailsModal.value = true;
+};
+
+const cleanDescription = (desc) => {
+    if (!desc) return '-';
+    return String(desc).replace(/\s*\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\)/gi, '').trim();
+};
+
+const deleteIncentiveItem = (inc) => {
+    Swal.fire({
+        title: 'Hapus Insentif?',
+        text: `Hapus insentif "${cleanDescription(inc.description)}" sebesar Rp ${formatRupiah(inc.amount)}?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Hapus',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#64748b'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.delete(route('payroll.incentive.destroy', inc.id), {
+                preserveScroll: true,
+                onSuccess: () => {
+                    if (selectedDetailsUser.value?.incentives_list) {
+                        selectedDetailsUser.value.incentives_list = selectedDetailsUser.value.incentives_list.filter(i => i.id !== inc.id);
+                        selectedDetailsUser.value.total_incentive = (selectedDetailsUser.value.total_incentive || 0) - Number(inc.amount || 0);
+                    }
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'Insentif Dihapus',
+                        showConfirmButton: false,
+                        timer: 2500
+                    });
+                },
+                onError: (err) => {
+                    const msg = Object.values(err || {})[0] || 'Gagal menghapus insentif.';
+                    Swal.fire('Gagal', msg, 'error');
+                }
+            });
+        }
+    });
+};
+
+const deleteDeductionItem = (ded) => {
+    Swal.fire({
+        title: 'Hapus Potongan?',
+        text: `Hapus potongan "${cleanDescription(ded.description)}" sebesar Rp ${formatRupiah(ded.amount)}?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Hapus',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#64748b'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.delete(route('payroll.deduction.destroy', ded.id), {
+                preserveScroll: true,
+                onSuccess: () => {
+                    if (selectedDetailsUser.value?.deductions_list) {
+                        selectedDetailsUser.value.deductions_list = selectedDetailsUser.value.deductions_list.filter(d => d.id !== ded.id);
+                        selectedDetailsUser.value.total_deduction = (selectedDetailsUser.value.total_deduction || 0) - Number(ded.amount || 0);
+                    }
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'Potongan Dihapus',
+                        showConfirmButton: false,
+                        timer: 2500
+                    });
+                },
+                onError: (err) => {
+                    const msg = Object.values(err || {})[0] || 'Gagal menghapus potongan.';
+                    Swal.fire('Gagal', msg, 'error');
+                }
+            });
+        }
+    });
 };
 
 const handleDescriptionChange = () => {
@@ -1086,9 +1305,9 @@ const disburseAll = () => {
             <div class="text-left text-xs text-slate-600 space-y-2 mt-2">
                 <p>Anda akan mencairkan penggajian periode <b>${months[props.month - 1]} ${props.year}</b> untuk seluruh <b>${totalPendingCount.value} staf</b> yang belum cair.</p>
                 <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
-                    <span class="text-xs font-bold text-emerald-800">Total Pengeluaran Kas (Net):</span>
+                    <span class="text-xs font-bold text-emerald-800">Total Pengeluaran Kas (Net Belum Cair):</span>
                     <div class="text-lg font-black text-emerald-700 font-mono mt-0.5">
-                        Rp ${formatRupiah(totalNetSalary.value)}
+                        Rp ${formatRupiah(totalPendingNetSalary.value)}
                     </div>
                 </div>
                 ${transferNotice}

@@ -180,6 +180,7 @@ class EmployeeController extends Controller
             'area_id' => 'nullable|exists:areas,id',
             'join_date' => 'nullable|date',
             'employee_type' => 'nullable|string|max:50',
+            'base_salary' => 'nullable|numeric|min:0',
             'payment_method' => 'nullable|string|max:50',
             'bank_name' => 'nullable|string|max:50',
             'bank_account_number' => 'nullable|string|max:50',
@@ -203,6 +204,7 @@ class EmployeeController extends Controller
             'role' => $roleName,
             'password' => bcrypt('password123'), // Default password
             'area_id' => $validated['area_id'] ?? null,
+            'base_salary' => (float) ($validated['base_salary'] ?? 0),
             'bank_name' => $validated['bank_name'] ?? null,
             'bank_account_number' => $validated['bank_account_number'] ?? null,
             'bank_account_holder' => $validated['bank_account_holder'] ?? null,
@@ -232,6 +234,7 @@ class EmployeeController extends Controller
             'area_id' => 'nullable|exists:areas,id',
             'join_date' => 'nullable|date',
             'employee_type' => 'nullable|string|max:50',
+            'base_salary' => 'nullable|numeric|min:0',
             'payment_method' => 'nullable|string|max:50',
             'bank_name' => 'nullable|string|max:50',
             'bank_account_number' => 'nullable|string|max:50',
@@ -268,7 +271,7 @@ class EmployeeController extends Controller
             $user = \App\Models\User::where('email', $oldEmail)->first();
             if ($user) {
                 $roleName = !empty($validated['position']) ? self::mapPositionToRole($validated['position']) : ($user->role ?: 'cs');
-                $user->update([
+                $userUpdate = [
                     'name' => $validated['name'],
                     'email' => $validated['email'],
                     'role' => $roleName,
@@ -276,7 +279,11 @@ class EmployeeController extends Controller
                     'bank_name' => $validated['bank_name'] ?? null,
                     'bank_account_number' => $validated['bank_account_number'] ?? null,
                     'bank_account_holder' => $validated['bank_account_holder'] ?? null,
-                ]);
+                ];
+                if (isset($validated['base_salary'])) {
+                    $userUpdate['base_salary'] = (float) $validated['base_salary'];
+                }
+                $user->update($userUpdate);
                 
                 if (!empty($validated['position'])) {
                     $targetRole = self::mapPositionToRole($validated['position']);

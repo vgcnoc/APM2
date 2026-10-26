@@ -25,12 +25,15 @@ class RoleAndPermissionSeeder extends Seeder
         }
 
         // 2. Sync all role presets
+        // PENTING: Role 'admin' selalu mendapatkan seluruh permissions.
+        // Role lain HANYA diinisialisasi jika baru dibuat atau belum memiliki izin sama sekali.
+        // Izin yang sudah dikonfigurasi kustom oleh admin di database DIJAGA & TIDAK DITIMPA.
         $presets = \App\Support\PermissionRegistry::getDefaultRolePresets();
         foreach ($presets as $roleName => $perms) {
             $role = Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
             if ($roleName === 'admin') {
                 $role->syncPermissions(Permission::all());
-            } else {
+            } elseif ($role->wasRecentlyCreated || $role->permissions()->count() === 0) {
                 $validPerms = Permission::whereIn('name', $perms)->pluck('name')->toArray();
                 $role->syncPermissions($validPerms);
             }

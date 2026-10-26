@@ -28,9 +28,9 @@ npm run build
 # Generate app key if not generated
 php artisan key:generate --force
 
-# Run migrations
+# Run migrations and sync permissions safely without overwriting custom role settings
 php artisan migrate --force
-php artisan db:seed --class=RoleAndPermissionSeeder --force
+php artisan permissions:sync
 
 # Sync existing string areas to area_id
 php sync_areas.php
