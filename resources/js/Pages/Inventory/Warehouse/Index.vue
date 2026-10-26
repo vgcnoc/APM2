@@ -22,16 +22,16 @@
                         </div>
 
                         <div class="flex flex-wrap items-center gap-2.5">
-                            <button type="button" @click="openStatusModal(null)" class="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm hover:shadow transition-all" title="Catat / Buat Status Material (Layak / Rusak / Retur)">
+                            <button v-can="'warehouse_stocks_btn_status'" type="button" @click="openStatusModal(null)" class="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm hover:shadow transition-all" title="Catat / Buat Status Material (Layak / Rusak / Retur)">
                                 <span>⚡</span> Buat Status Material
                             </button>
-                            <Link href="/stok-in-out?action=retur" class="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm hover:shadow transition-all">
+                            <Link v-can="'warehouse_stocks_btn_retur'" href="/stok-in-out?action=retur" class="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm hover:shadow transition-all">
                                 <span>🟢</span> + Catat Retur Sisa (Layak)
                             </Link>
-                            <Link href="/stok-in-out?action=rusak" class="inline-flex items-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm hover:shadow transition-all">
+                            <Link v-can="'warehouse_stocks_btn_rusak'" href="/stok-in-out?action=rusak" class="inline-flex items-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm hover:shadow transition-all">
                                 <span>🔴</span> + Catat Barang Rusak
                             </Link>
-                            <Link href="/material-mutations" class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-bold text-xs sm:text-sm shadow-sm transition-all">
+                            <Link v-can="'menu_material_mutations'" href="/material-mutations" class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-bold text-xs sm:text-sm shadow-sm transition-all">
                                 <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                                 Rekap Kondisi
                             </Link>
@@ -44,7 +44,7 @@
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10 space-y-6">
                 
                 <!-- Summary Metrics Bar -->
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div v-can="'warehouse_stocks_card_stats'" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
                         <div>
                             <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Varian Barang</p>
@@ -78,7 +78,7 @@
                 </div>
 
                 <!-- Comprehensive Filters Toolbar -->
-                <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-4">
+                <div v-can="'warehouse_stocks_filter'" class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-4">
                     <!-- Top row: Search Box and Quick Reset -->
                     <div class="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center">
                         <div class="relative flex-1 group">
@@ -201,7 +201,7 @@
                                             <div>
                                                 <div class="text-sm font-bold text-gray-900 flex items-center gap-2 flex-wrap">
                                                     <span>{{ material.name }}</span>
-                                                    <button type="button" @click="openStatusModal(material)" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 hover:border-amber-300 transition-all shadow-sm shrink-0" title="Klik untuk Buat/Ubah Status Kondisi (Layak, Tidak Layak, Rusak)">
+                                                    <button v-can="'warehouse_stocks_btn_status'" type="button" @click="openStatusModal(material)" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 hover:border-amber-300 transition-all shadow-sm shrink-0" title="Klik untuk Buat/Ubah Status Kondisi (Layak, Tidak Layak, Rusak)">
                                                         <span>⚡</span> Buat Status
                                                     </button>
                                                 </div>
@@ -252,16 +252,16 @@
                                     </td>
                                     <td class="px-6 py-4 text-center">
                                         <div class="flex items-center justify-center gap-2">
-                                            <button type="button" @click="openStatusModal(material)" class="p-2 text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-lg transition-colors inline-flex items-center justify-center" title="Set Status Kondisi Material (Layak/Tidak Layak/Rusak)">
+                                            <button v-can="'warehouse_stocks_btn_status'" type="button" @click="openStatusModal(material)" class="p-2 text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-lg transition-colors inline-flex items-center justify-center" title="Set Status Kondisi Material (Layak/Tidak Layak/Rusak)">
                                                 <span class="text-xs font-black">⚡</span>
                                             </button>
-                                            <Link :href="`/produk?search=${encodeURIComponent(material.name)}`" class="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="Edit Produk">
+                                            <Link v-can="'warehouse_stocks_edit'" :href="`/produk?search=${encodeURIComponent(material.name)}`" class="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="Edit Produk">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                             </Link>
                                             <Link :href="`/stok-in-out?search=${encodeURIComponent(material.name)}`" class="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors" title="Riwayat Mutasi & Pemakaian">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
                                             </Link>
-                                            <button @click="deleteMaterial(material)" class="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors inline-flex items-center justify-center" title="Hapus Barang">
+                                            <button v-can="'warehouse_stocks_delete'" @click="deleteMaterial(material)" class="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors inline-flex items-center justify-center" title="Hapus Barang">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                             </button>
                                         </div>
