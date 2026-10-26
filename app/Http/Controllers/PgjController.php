@@ -1130,35 +1130,19 @@ class PgjController extends Controller
         $loc = $pgj->location_name;
         $oldStatus = $pgj->status;
 
-        // Hapus file foto penanganan jika ada di storage
-        if (!empty($pgj->handling_photos) && is_array($pgj->handling_photos)) {
-            foreach ($pgj->handling_photos as $p) {
-                if (!empty($p['path']) && \Illuminate\Support\Facades\Storage::disk('public')->exists($p['path'])) {
-                    \Illuminate\Support\Facades\Storage::disk('public')->delete($p['path']);
-                }
-            }
-        }
-        if ($pgj->photo_before && \Illuminate\Support\Facades\Storage::disk('public')->exists($pgj->photo_before)) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($pgj->photo_before);
-        }
-        if ($pgj->photo_after && \Illuminate\Support\Facades\Storage::disk('public')->exists($pgj->photo_after)) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($pgj->photo_after);
-        }
-
-        $pgj->technicians()->detach();
-        $pgj->materials()->delete();
-        AuditLog::where('entity_type', PgjTicket::class)->where('entity_id', $pgj->id)->delete();
-        $pgj->delete();
+        DB::transaction(function () use ($pgj) {
+            $this->cleanupAndRestoreTicketStock($pgj);
+        });
 
         AuditLog::createLog(
             'Hapus Tiket PGJ',
             null,
             $oldStatus,
             'deleted',
-            "Menghapus tiket PGJ #{$num} ({$loc})"
+            "Menghapus tiket PGJ #{$num} ({$loc}) (Stok material dikembalikan ke gudang)"
         );
 
-        return redirect()->back()->with('success', "Tiket PGJ #{$num} berhasil dihapus.");
+        return redirect()->back()->with('success', "Tiket PGJ #{$num} berhasil dibatalkan/dihapus dan seluruh material telah dikembalikan ke stok gudang.");
     }
 
     /**
@@ -1193,36 +1177,83 @@ class PgjController extends Controller
         }
 
         $records = $query->get();
-        foreach ($records as $record) {
-            // Hapus file foto
-            if (!empty($record->handling_photos) && is_array($record->handling_photos)) {
-                foreach ($record->handling_photos as $p) {
-                    if (!empty($p['path']) && \Illuminate\Support\Facades\Storage::disk('public')->exists($p['path'])) {
-                        \Illuminate\Support\Facades\Storage::disk('public')->delete($p['path']);
-                    }
-                }
+        DB::transaction(function () use ($records) {
+            foreach ($records as $record) {
+                $this->cleanupAndRestoreTicketStock($record);
             }
-            if ($record->photo_before && \Illuminate\Support\Facades\Storage::disk('public')->exists($record->photo_before)) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($record->photo_before);
-            }
-            if ($record->photo_after && \Illuminate\Support\Facades\Storage::disk('public')->exists($record->photo_after)) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($record->photo_after);
-            }
-
-            $record->technicians()->detach();
-            $record->materials()->delete();
-            AuditLog::where('entity_type', PgjTicket::class)->where('entity_id', $record->id)->delete();
-            $record->delete();
-        }
+        });
 
         AuditLog::createLog(
             'Hapus Massal Tiket PGJ',
             null,
             null,
             'deleted',
-            "Menghapus {$count} tiket gangguan jalur PGJ secara massal (Tipe: {$validated['type']})"
+            "Menghapus {$count} tiket gangguan jalur PGJ secara massal (Tipe: {$validated['type']}) (Stok material dikembalikan ke gudang)"
         );
 
-        return redirect()->back()->with('success', "Berhasil menghapus {$count} tiket gangguan jalur PGJ.");
+        return redirect()->back()->with('success', "Berhasil membatalkan/menghapus {$count} tiket gangguan jalur PGJ dan seluruh material terkait dikembalikan ke gudang.");
+    }
+
+    /**
+     * Bersihkan data tiket PGJ dan kembalikan stok material ke gudang jika tiket dibatalkan/dihapus
+     */
+    protected function cleanupAndRestoreTicketStock(PgjTicket $pgj): void
+    {
+        $areaId = $pgj->area_id;
+
+        // 1. Kembalikan seluruh material pengeluaran (OUT) ke stok gudang & bersihkan transaksi
+        try {
+            \App\Services\MaterialHandoverService::restoreDispatchedMaterials(
+                'pgj',
+                $pgj->id,
+                $areaId,
+                $pgj->ticket_number
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[PgjController::cleanup] Gagal restore material handover: ' . $e->getMessage());
+        }
+
+        // 2. Fallback: Kembalikan dari tabel pgj_materials jika ada
+        foreach ($pgj->materials as $pgjMat) {
+            $qty = (float) ($pgjMat->quantity_prepared ?: $pgjMat->quantity_used);
+            if ($qty > 0 && $pgjMat->material_id) {
+                $material = Material::find($pgjMat->material_id);
+                if ($material) {
+                    $material->increment('stock', $qty);
+                    if (str_contains(strtolower($material->category ?? ''), 'kabel') && $material->meter_per_roll > 0) {
+                        $material->total_rolls = $material->stock / $material->meter_per_roll;
+                        $material->save();
+                    }
+                }
+                if ($areaId) {
+                    $matStock = \App\Models\MaterialStock::where('material_id', $pgjMat->material_id)
+                        ->where('area_id', $areaId)
+                        ->first();
+                    if ($matStock) {
+                        $matStock->increment('stock', $qty);
+                    }
+                }
+            }
+        }
+
+        // 3. Hapus file foto penanganan jika ada di storage
+        if (!empty($pgj->handling_photos) && is_array($pgj->handling_photos)) {
+            foreach ($pgj->handling_photos as $p) {
+                if (!empty($p['path']) && \Illuminate\Support\Facades\Storage::disk('public')->exists($p['path'])) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($p['path']);
+                }
+            }
+        }
+        if ($pgj->photo_before && \Illuminate\Support\Facades\Storage::disk('public')->exists($pgj->photo_before)) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($pgj->photo_before);
+        }
+        if ($pgj->photo_after && \Illuminate\Support\Facades\Storage::disk('public')->exists($pgj->photo_after)) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($pgj->photo_after);
+        }
+
+        $pgj->technicians()->detach();
+        $pgj->materials()->delete();
+        AuditLog::where('entity_type', PgjTicket::class)->where('entity_id', $pgj->id)->delete();
+        $pgj->delete();
     }
 }

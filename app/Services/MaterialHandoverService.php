@@ -496,4 +496,119 @@ class MaterialHandoverService
         ]);
         return $transaction;
     }
+
+    /**
+     * 8. Batalkan penugasan & Kembalikan seluruh material ke Gudang & Area (Instalasi, PGS, PGK, PGJ, Rollout ODC/ODP).
+     * Otomatis mengembalikan stok global master dan stok area inventory,
+     * serta membersihkan transaksi pengeluaran (OUT) dan pengembalian (IN).
+     */
+    public static function restoreDispatchedMaterials(
+        string $sourceType,
+        int $sourceId,
+        ?int $areaId = null,
+        ?string $reference = null
+    ): void {
+        DB::transaction(function () use ($sourceType, $sourceId, $areaId, $reference) {
+            // 1. Ambil transaksi material keluar (OUT) terkait penugasan ini
+            $outTransactions = MaterialTransaction::with(['items.material', 'items.onts'])
+                ->where('type', 'out')
+                ->where(function ($q) use ($sourceType, $sourceId, $reference) {
+                    $q->where(function ($sq) use ($sourceType, $sourceId) {
+                        $sq->where('source_type', $sourceType)
+                           ->where('source_id', $sourceId);
+                    });
+
+                    // Khusus instalasi / customer
+                    if (in_array(strtolower($sourceType), ['instalasi', 'installation', 'customer'])) {
+                        $q->orWhere('customer_id', $sourceId)
+                          ->orWhere(function ($cq) use ($sourceId) {
+                              $cq->whereIn('source_type', ['instalasi', 'installation', 'customer'])
+                                 ->where('source_id', $sourceId);
+                          });
+                    }
+
+                    // Cocokkan juga dengan reference / nomor tiket / WO jika ada
+                    if ($reference) {
+                        $q->orWhere('source_reference', $reference)
+                          ->orWhere('transaction_number', 'like', "%{$reference}%")
+                          ->orWhere('purpose', 'like', "%{$reference}%")
+                          ->orWhere('notes', 'like', "%{$reference}%");
+                    }
+                })
+                ->get();
+
+            foreach ($outTransactions as $trx) {
+                $targetAreaId = $trx->area_id ?: $areaId;
+
+                foreach ($trx->items as $item) {
+                    $material = $item->material;
+                    $qty = (float) $item->quantity;
+
+                    if ($material && $qty > 0) {
+                        // Tambah stok master material
+                        $material->increment('stock', $qty);
+                        if (str_contains(strtolower($material->category ?? ''), 'kabel') && $material->meter_per_roll > 0) {
+                            $material->total_rolls = $material->stock / $material->meter_per_roll;
+                            $material->save();
+                        }
+
+                        // Tambah stok area gudang
+                        if ($targetAreaId) {
+                            $matStock = MaterialStock::where('material_id', $material->id)
+                                ->where('area_id', $targetAreaId)
+                                ->first();
+                            if ($matStock) {
+                                $matStock->increment('stock', $qty);
+                                if (str_contains(strtolower($material->category ?? ''), 'kabel') && $material->meter_per_roll > 0) {
+                                    $matStock->total_rolls = $matStock->stock / $material->meter_per_roll;
+                                    $matStock->save();
+                                }
+                            }
+                        }
+                    }
+
+                    // Kembalikan ONT yang terhubung ke Gudang
+                    if ($item->onts && $item->onts->isNotEmpty()) {
+                        foreach ($item->onts as $ont) {
+                            $ont->update([
+                                'customer_id' => null,
+                                'odp_id' => null,
+                                'odp_port_id' => null,
+                                'port_number' => null,
+                                'status' => 'Belum Set/Baru Input',
+                                'description' => trim(($ont->description ? $ont->description . ' | ' : '') . 'Kembali ke Gudang (Batal ' . $sourceType . ')'),
+                            ]);
+                        }
+                    }
+                }
+
+                $trx->items()->delete();
+                $trx->delete();
+            }
+
+            // 2. Bersihkan transaksi pengembalian (IN / pending serah terima) terkait penugasan ini
+            $inTransactions = MaterialTransaction::where('type', 'in')
+                ->where(function ($q) use ($sourceType, $sourceId, $reference) {
+                    $q->where('source_type', $sourceType)
+                       ->where('source_id', $sourceId);
+
+                    if (in_array(strtolower($sourceType), ['instalasi', 'installation', 'customer'])) {
+                        $q->orWhere('customer_id', $sourceId);
+                    }
+
+                    if ($reference) {
+                        $q->orWhere('source_reference', $reference)
+                          ->orWhere('transaction_number', 'like', "%{$reference}%")
+                          ->orWhere('purpose', 'like', "%{$reference}%")
+                          ->orWhere('notes', 'like', "%{$reference}%");
+                    }
+                })
+                ->get();
+
+            foreach ($inTransactions as $inTrx) {
+                $inTrx->items()->delete();
+                $inTrx->delete();
+            }
+        });
+    }
 }

@@ -65,7 +65,7 @@ const formatDate = (dateStr) => {
 };
 
 const deleteWo = (wo) => {
-    if (confirm(`Apakah Anda yakin ingin menghapus Work Order ${wo.wo_number} (${wo.target_name})? Semua data rekonsiliasi dan QC akan dihapus.`)) {
+    if (confirm(`Apakah Anda yakin ingin membatalkan & menghapus Work Order Rollout ${wo.wo_number} (${wo.target_name})? Seluruh material yang telah dialokasikan/disiapkan akan otomatis dikembalikan ke stok gudang.`)) {
         router.delete(route('infrastructure.work-orders.destroy', wo.id));
     }
 };

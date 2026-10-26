@@ -231,6 +231,16 @@
                                         >
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                                         </button>
+
+                                        <!-- Tombol Batalkan & Hapus Tiket -->
+                                        <button 
+                                            v-if="can('pgs_btn_delete') || $page.props.auth?.user?.roles?.includes('admin')"
+                                            @click="deleteTicket(ticket)" 
+                                            class="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors"
+                                            title="Batalkan & Hapus Tiket (Material Kembali ke Gudang)"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -847,6 +857,13 @@ function openDetailModal(ticket) {
 function printTicket(ticket) {
     if (!ticket) return;
     window.open(`/pgs/${ticket.id}/print`, '_blank');
+}
+
+function deleteTicket(ticket) {
+    if (!ticket) return;
+    if (confirm(`Apakah Anda yakin ingin membatalkan/menghapus tiket PGS #${ticket.ticket_number} (${ticket.customer?.name || 'Pelanggan'})? Seluruh material yang telah dialokasikan/disiapkan akan otomatis dikembalikan ke stok gudang.`)) {
+        router.delete(`/pgs/${ticket.id}`);
+    }
 }
 
 function openImage(url) {

@@ -565,6 +565,16 @@
                                         <a :href="`/pgk/${ticket.id}/print`" target="_blank" title="Cetak SPK Tugas Lapangan" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                                         </a>
+
+                                        <!-- Tombol Batalkan & Hapus Tiket -->
+                                        <button 
+                                            v-if="can('pgk_btn_delete') || $page.props.auth?.user?.roles?.includes('admin')"
+                                            @click="deleteTicket(ticket)" 
+                                            class="p-2 text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-colors shrink-0"
+                                            title="Batalkan & Hapus Tiket (Material Kembali ke Gudang)"
+                                        >
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -1238,6 +1248,13 @@ const cancelPreparedOntFromLead = (ticket) => {
             ontTicket.value = null;
         }
     });
+};
+
+const deleteTicket = (ticket) => {
+    if (!ticket) return;
+    if (confirm(`Apakah Anda yakin ingin membatalkan/menghapus tiket PGK #${ticket.ticket_number} (${ticket.customer?.name || 'Pelanggan'})? Seluruh material yang telah dialokasikan/disiapkan akan otomatis dikembalikan ke stok gudang.`)) {
+        router.delete(`/pgk/${ticket.id}`);
+    }
 };
 
 const customerAreaId = computed(() => {

@@ -266,6 +266,12 @@ const submitRejection = () => {
     });
 };
 
+const cancelWorkOrder = () => {
+    if (confirm(`Apakah Anda yakin ingin membatalkan & menghapus Work Order Rollout ${props.workOrder.wo_number} (${props.workOrder.target_name})? Seluruh material yang telah dialokasikan/disiapkan akan otomatis dikembalikan ke stok gudang.`)) {
+        router.delete(route('infrastructure.work-orders.destroy', props.workOrder.id));
+    }
+};
+
 const formatDate = (dateStr) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString('id-ID', {
@@ -448,6 +454,18 @@ const formatDate = (dateStr) => {
                                 <span>Minta Revisi</span>
                             </button>
                         </div>
+
+                        <!-- Action: Batalkan & Hapus Work Order (Stok Kembali ke Gudang) -->
+                        <button
+                            v-can="'infrastructure_work_orders_delete'"
+                            type="button"
+                            @click="cancelWorkOrder"
+                            class="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                            title="Batalkan dan hapus penugasan rollout, seluruh material akan dikembalikan ke stok gudang"
+                        >
+                            <span>🗑️</span>
+                            <span>Batalkan Work Order</span>
+                        </button>
                     </div>
                 </div>
             </div>

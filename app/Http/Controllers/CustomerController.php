@@ -4070,7 +4070,38 @@ class CustomerController extends Controller
             'cancel_date' => $request->cancel_date,
         ]);
 
-        // Lepaskan port ODP yang di-reservasi oleh survey jika ada
+        // 1. Kembalikan seluruh material pengeluaran instalasi (OUT) ke stok gudang & bersihkan transaksi
+        try {
+            \App\Services\MaterialHandoverService::restoreDispatchedMaterials(
+                'instalasi',
+                $customer->id,
+                $customer->area_id,
+                $customer->customer_code ?? ('CUST-' . $customer->id)
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[CustomerController::cancel] Gagal restore material handover: ' . $e->getMessage());
+        }
+
+        // 2. Kembalikan seluruh material terpasang (CustomerInstalledMaterial) ke stok gudang
+        try {
+            $installedMaterials = \App\Models\CustomerInstalledMaterial::where('customer_id', $customer->id)->get();
+            foreach ($installedMaterials as $installed) {
+                if ($installed->material_id && (float) $installed->quantity > 0) {
+                    \App\Services\CustomerMaterialService::returnMaterialToWarehouse(
+                        (int) $installed->material_id,
+                        (float) $installed->quantity,
+                        $customer->area_id,
+                        $installed->unit
+                    );
+                }
+                try { $installed->dismantles()->delete(); } catch (\Throwable $de) {}
+                $installed->delete();
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[CustomerController::cancel] Gagal restore installed materials: ' . $e->getMessage());
+        }
+
+        // 3. Lepaskan port ODP yang di-reservasi oleh survey jika ada
         foreach ($customer->surveys as $survey) {
             if ($survey->odp_id && $survey->port_number) {
                 \App\Models\OdpPort::where('odp_id', $survey->odp_id)
@@ -4080,24 +4111,31 @@ class CustomerController extends Controller
             }
         }
 
-        // Lepaskan ONT jika terpasang
-        if ($customer->ont) {
-            $odp = $customer->ont->odp;
-            $portNumber = $customer->ont->port_number;
-            if ($odp && $portNumber) {
-                \App\Models\OdpPort::where('odp_id', $odp->id)
-                    ->where('port_number', $portNumber)
-                    ->where('status', 'reserved')
+        // 4. Lepaskan seluruh ONT terpasang & kembalikan ke status Belum Set (Gudang)
+        $customerOnts = \App\Models\Ont::where('customer_id', $customer->id)->get();
+        foreach ($customerOnts as $cOnt) {
+            if ($cOnt->odp_id && $cOnt->port_number) {
+                \App\Models\OdpPort::where('odp_id', $cOnt->odp_id)
+                    ->where('port_number', $cOnt->port_number)
                     ->update(['status' => 'available']);
             }
-            $customer->ont->update([
+            $cOnt->update([
                 'customer_id' => null,
-                'status' => 'inactive',
+                'odp_id' => null,
+                'odp_port_id' => null,
                 'port_number' => null,
+                'status' => 'Belum Set/Baru Input',
+                'rx_power' => null,
+                'tx_power' => null,
+                'description' => 'Kembali ke Gudang (Batal Instalasi Pelanggan ' . $customer->name . ' [' . ($customer->customer_code ?? $customer->id) . '])',
             ]);
         }
 
-        // Batalkan jadwal teknisi
+        // 5. Batalkan dan bersihkan jadwal teknisi instalasi
+        $customer->technicianSchedules()
+            ->where('type', 'installation')
+            ->delete();
+
         $customer->technicianSchedules()
             ->whereIn('status', ['scheduled', 'in_progress'])
             ->update(['status' => 'canceled']);

@@ -714,15 +714,65 @@ class InfrastructureWorkOrderController extends Controller
     }
 
     /**
-     * Hapus Work Order Rollout.
+     * Hapus / Batalkan Work Order Rollout & Kembalikan seluruh material ke Gudang.
      */
     public function destroy(InfrastructureWorkOrder $workOrder)
     {
         if (!Auth::user()->can('infrastructure_work_orders_delete') && !Auth::user()->hasRole('admin')) {
-            abort(403, 'Anda tidak memiliki hak akses untuk menghapus Work Order.');
+            abort(403, 'Anda tidak memiliki hak akses untuk membatalkan/menghapus Work Order.');
         }
 
+        $woNum = $workOrder->wo_number;
+        $target = $workOrder->target_name;
+
         DB::transaction(function () use ($workOrder) {
+            // 1. Kembalikan seluruh material pengeluaran (OUT) ke stok gudang & bersihkan transaksi
+            try {
+                \App\Services\MaterialHandoverService::restoreDispatchedMaterials(
+                    'rollout_odc_odp',
+                    $workOrder->id,
+                    $workOrder->area_id,
+                    $workOrder->wo_number
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[InfrastructureWorkOrderController::destroy] Gagal restore material handover: ' . $e->getMessage());
+            }
+
+            // 2. Fallback: Kembalikan dari tabel infrastructure_work_order_materials jika status taken
+            foreach ($workOrder->materials as $woMat) {
+                $qty = (float) ($woMat->used_qty ?: $woMat->requested_qty);
+                if ($woMat->status === 'taken' && $qty > 0 && $woMat->material_id) {
+                    $material = Material::find($woMat->material_id);
+                    if ($material) {
+                        $material->increment('stock', $qty);
+                        if (str_contains(strtolower($material->category ?? ''), 'kabel') && $material->meter_per_roll > 0) {
+                            $material->total_rolls = $material->stock / $material->meter_per_roll;
+                            $material->save();
+                        }
+                    }
+                    if ($workOrder->area_id) {
+                        $matStock = \App\Models\MaterialStock::where('material_id', $woMat->material_id)
+                            ->where('area_id', $workOrder->area_id)
+                            ->first();
+                        if ($matStock) {
+                            $matStock->increment('stock', $qty);
+                            if ($material && $material->meter_per_roll > 0) {
+                                $matStock->total_rolls = $matStock->stock / $material->meter_per_roll;
+                                $matStock->save();
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 3. Hapus foto dari disk storage jika ada
+            $photos = [$workOrder->photo_pole, $workOrder->photo_splicing, $workOrder->photo_opm, $workOrder->photo_odp];
+            foreach ($photos as $photo) {
+                if ($photo && \Illuminate\Support\Facades\Storage::disk('public')->exists($photo)) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($photo);
+                }
+            }
+
             $workOrder->opticalChecks()->delete();
             $workOrder->materials()->delete();
             $workOrder->materialRequests()->delete();
@@ -730,6 +780,6 @@ class InfrastructureWorkOrderController extends Controller
             $workOrder->delete();
         });
 
-        return redirect()->route('infrastructure.work-orders.index')->with('success', 'Work Order berhasil dihapus.');
+        return redirect()->route('infrastructure.work-orders.index')->with('success', "Work Order {$woNum} ({$target}) berhasil dibatalkan/dihapus dan seluruh material telah dikembalikan ke stok gudang.");
     }
 }

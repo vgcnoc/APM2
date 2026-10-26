@@ -1088,7 +1088,7 @@
                         Batalkan Pemasangan?
                     </h3>
                     <p class="text-sm text-gray-500 mb-4 text-center">
-                        Pelanggan <strong>{{ cancelCustomer?.name }}</strong> akan dipindahkan ke menu "Dibatalkan" dengan status <span class="font-semibold text-rose-600">Batal Pasang</span>.
+                        Pelanggan <strong>{{ cancelCustomer?.name }}</strong> akan dipindahkan ke menu "Dibatalkan" (<span class="font-semibold text-rose-600">Batal Pasang</span>). Seluruh material instalasi dan unit ONT akan <strong>otomatis dikembalikan ke stok gudang</strong>.
                     </p>
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Pembatalan <span class="text-red-500">*</span></label>

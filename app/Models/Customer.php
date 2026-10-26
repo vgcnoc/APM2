@@ -842,22 +842,12 @@ class Customer extends Model
 
         // 11. Tangani Transaksi Material Pengeluaran (type: out) ke pelanggan ini & kembalikan stok ke gudang
         try {
-            $transactions = MaterialTransaction::where('customer_id', $this->id)->get();
-            foreach ($transactions as $trx) {
-                if ($trx->type === 'out') {
-                    foreach ($trx->items as $trxItem) {
-                        if ($trxItem->material && (float) $trxItem->quantity > 0) {
-                            \App\Services\CustomerMaterialService::returnMaterialToWarehouse(
-                                $trxItem->material,
-                                (float) $trxItem->quantity,
-                                $this->area_id ?? $trx->area_id,
-                                $trxItem->unit
-                            );
-                        }
-                    }
-                }
-                $trx->update(['customer_id' => null]);
-            }
+            \App\Services\MaterialHandoverService::restoreDispatchedMaterials(
+                'instalasi',
+                $this->id,
+                $this->area_id,
+                $this->customer_code ?? ('CUST-' . $this->id)
+            );
             DB::table('material_requests')->where('customer_id', $this->id)->delete();
         } catch (\Throwable $e) {
             Log::warning('[Customer::purgeConnectedData] Error handling material transactions: ' . $e->getMessage());

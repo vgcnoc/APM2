@@ -1651,63 +1651,36 @@ class PgkController extends Controller
     {
         $areaId = $pgk->area_id ?? $pgk->customer?->area_id;
 
-        // 1. Kembalikan stok dari semua transaksi material keluar (OUT) terkait tiket ini
-        $outTransactions = MaterialTransaction::with('items.material')
-            ->where('source_type', 'pgk')
-            ->where('source_id', $pgk->id)
-            ->where('type', 'out')
-            ->get();
+        // 1. Kembalikan seluruh material pengeluaran (OUT) ke stok gudang & bersihkan transaksi
+        try {
+            \App\Services\MaterialHandoverService::restoreDispatchedMaterials(
+                'pgk',
+                $pgk->id,
+                $areaId,
+                $pgk->ticket_number
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[PgkController::cleanup] Gagal restore material handover: ' . $e->getMessage());
+        }
 
-        if ($outTransactions->isNotEmpty()) {
-            foreach ($outTransactions as $trx) {
-                $trxAreaId = $trx->area_id ?: $areaId;
-                foreach ($trx->items as $item) {
-                    $material = $item->material;
-                    if ($material) {
-                        $qty = (float) $item->quantity;
-                        $material->increment('stock', $qty);
-                        if (str_contains(strtolower($material->category ?? ''), 'kabel') && $material->meter_per_roll > 0) {
-                            $material->total_rolls = $material->stock / $material->meter_per_roll;
-                            $material->save();
-                        }
-
-                        if ($trxAreaId) {
-                            $matStock = \App\Models\MaterialStock::where('material_id', $material->id)
-                                ->where('area_id', $trxAreaId)
-                                ->first();
-                            if ($matStock) {
-                                $matStock->increment('stock', $qty);
-                                if (str_contains(strtolower($material->category ?? ''), 'kabel') && $material->meter_per_roll > 0) {
-                                    $matStock->total_rolls = $matStock->stock / $material->meter_per_roll;
-                                    $matStock->save();
-                                }
-                            }
-                        }
+        // Fallback: Jika ada material di pgk_materials yang belum dikembalikan
+        foreach ($pgk->materials as $pgkMat) {
+            $qty = (float) $pgkMat->quantity_prepared;
+            if ($qty > 0 && $pgkMat->material_id) {
+                $material = Material::find($pgkMat->material_id);
+                if ($material) {
+                    $material->increment('stock', $qty);
+                    if (str_contains(strtolower($material->category ?? ''), 'kabel') && $material->meter_per_roll > 0) {
+                        $material->total_rolls = $material->stock / $material->meter_per_roll;
+                        $material->save();
                     }
                 }
-                $trx->items()->delete();
-                $trx->delete();
-            }
-        } else {
-            // Fallback: Jika tidak tercatat di MaterialTransaction, kembalikan dari tabel pgk_materials
-            foreach ($pgk->materials as $pgkMat) {
-                $qty = (float) $pgkMat->quantity_prepared;
-                if ($qty > 0 && $pgkMat->material_id) {
-                    $material = Material::find($pgkMat->material_id);
-                    if ($material) {
-                        $material->increment('stock', $qty);
-                        if (str_contains(strtolower($material->category ?? ''), 'kabel') && $material->meter_per_roll > 0) {
-                            $material->total_rolls = $material->stock / $material->meter_per_roll;
-                            $material->save();
-                        }
-                    }
-                    if ($areaId) {
-                        $matStock = \App\Models\MaterialStock::where('material_id', $pgkMat->material_id)
-                            ->where('area_id', $areaId)
-                            ->first();
-                        if ($matStock) {
-                            $matStock->increment('stock', $qty);
-                        }
+                if ($areaId) {
+                    $matStock = \App\Models\MaterialStock::where('material_id', $pgkMat->material_id)
+                        ->where('area_id', $areaId)
+                        ->first();
+                    if ($matStock) {
+                        $matStock->increment('stock', $qty);
                     }
                 }
             }
