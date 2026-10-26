@@ -378,7 +378,7 @@
                                         <option value="survey">Survey</option>
                                         <option value="installing">Proses Pasang</option>
                                         <option value="active">Aktif</option>
-                                        <option value="suspended">Suspended</option>
+                                        <option value="suspended">Isolir</option>
                                         <option value="terminated">Terminated</option>
                                     </select>
                                 </div>

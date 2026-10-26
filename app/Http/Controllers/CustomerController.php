@@ -55,8 +55,14 @@ class CustomerController extends Controller
      */
     public function index(Request $request): Response
     {
+        $isolirOnly = $request->routeIs('customers.isolir');
+        if ($isolirOnly) {
+            // Keep this dedicated list restricted even when query parameters are changed.
+            $request->merge(['status' => 'suspended']);
+        }
         $baseQuery = Customer::query()
             ->where('status', '!=', 'terminated')
+            ->when($isolirOnly, fn ($q) => $q->where('status', 'suspended'))
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function($q) {
                 if (auth()->user()->can('customers_all_view_area')) {
                     $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
@@ -169,6 +175,7 @@ class CustomerController extends Controller
         }
 
         return Inertia::render('Customers/Index', [
+            'isolirOnly' => $isolirOnly,
             'customers' => $customers,
             'packages' => InternetPackage::active()->get(),
             'areas' => DataScopeService::getScopedAreas($request->user(), 'customers_all'),
@@ -185,7 +192,7 @@ class CustomerController extends Controller
                 'disabled' => 'Disable Koneksi',
                 'inactive' => 'Nonaktif (Isolir / Disable)',
                 'active' => 'Aktif',
-                'suspended' => 'Suspended (Isolir)',
+                'suspended' => 'Isolir',
                 'pending' => 'Pending (PSB)',
                 'booking' => 'Booking',
                 'survey' => 'Survey',
@@ -1202,9 +1209,9 @@ class CustomerController extends Controller
     /**
      * Halaman Pelanggan Isolir
      */
-    public function isolir(Request $request): RedirectResponse
+    public function isolir(Request $request): Response
     {
-        return redirect()->route('customers.index', array_merge($request->query(), ['status' => 'suspended']));
+        return $this->index($request);
     }
 
     /**

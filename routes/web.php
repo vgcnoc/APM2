@@ -131,7 +131,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/gratis', [CustomerController::class, 'gratis'])->name('gratis');
         Route::get('/free-home', [CustomerController::class, 'freeHome'])->name('free-home');
         Route::post('/{customer}/toggle-service-status', [CustomerController::class, 'toggleServiceStatus'])->name('toggle-service-status');
-        Route::get('/isolir', [CustomerController::class, 'isolir'])->name('isolir');
+        Route::get('/isolir', [CustomerController::class, 'isolir'])->middleware('permission:menu_customers_all')->name('isolir');
         Route::get('/connections', [CustomerController::class, 'connections'])->name('connections');
         Route::get('/online', [CustomerController::class, 'connections'])->name('online');
         Route::get('/offline', [CustomerController::class, 'connections'])->name('offline');

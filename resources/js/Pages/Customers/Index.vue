@@ -1,7 +1,7 @@
 <template>
-    <AppLayout title="Data Pelanggan" subtitle="Kelola semua data pelanggan ISP">
+    <AppLayout :title="isolirOnly ? 'Pelanggan Isolir' : 'Data Pelanggan'" :subtitle="isolirOnly ? 'Daftar pelanggan yang layanannya sedang diisolir' : 'Kelola semua data pelanggan ISP'">
         <!-- STATS SECTION -->
-        <div v-if="stats" v-can="'customers_card_summary'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div v-if="stats && !isolirOnly" v-can="'customers_card_summary'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <!-- Total Pelanggan -->
             <div 
                 @click="setQuickStatus('')" 
@@ -91,7 +91,7 @@
                 @click="setQuickStatus('inactive')"
                 class="glass-card p-5 flex items-center justify-between cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 group"
                 :class="filterStatus === 'inactive' ? 'ring-2 ring-red-500/40 border-red-400 bg-red-50/20 shadow-sm' : 'hover:border-red-200'"
-                title="Filter Pelanggan Suspended (Isolir)"
+                title="Filter Pelanggan Nonaktif (Isolir / Disable)"
             >
                 <div class="flex items-center gap-3">
                     <div class="w-12 h-12 rounded-xl bg-red-400 flex items-center justify-center group-hover:scale-105 transition-transform">
@@ -120,14 +120,14 @@
             :data="customers.data"
             :pagination="customers"
             searchPlaceholder="Cari nama, kode pelanggan, telepon, atau alamat..."
-            searchRoute="/customers"
+            :searchRoute="customerListRoute"
             selectable
             v-model:selected="selectedIds"
         >
             <!-- Filter Slot -->
             <template #filters>
                 <!-- Status -->
-                <div v-can="'customers_filter_status'" class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[160px]">
+                <div v-if="!isolirOnly" v-can="'customers_filter_status'" class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[160px]">
                     <div class="shrink-0 mr-2 text-gray-400">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                     </div>
@@ -316,7 +316,7 @@
                 <td>
                     <div class="flex flex-col gap-1 items-start">
                         <span v-if="row.connection_disabled" class="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-700">Disable</span>
-                        <StatusBadge v-else :status="row.status" />
+                        <StatusBadge v-if="!row.connection_disabled || row.status === 'suspended'" :status="row.status" />
                         <span v-if="row.connection_access_pending" class="text-[10px] font-medium text-amber-600">Perlu sinkronisasi koneksi</span>
                         <span v-if="row.billing_isolation_pending" class="text-[10px] font-medium text-amber-600">Perubahan layanan tertunda</span>
                         <div v-if="row.status === 'active' && row.ont?.pppoe_user">
@@ -767,6 +767,7 @@ import DataTable from '@/Components/DataTable.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 
 const props = defineProps({
+    isolirOnly: { type: Boolean, default: false },
     customers: Object,
     packages: Array,
     areas: Array,
@@ -871,10 +872,12 @@ const filterPackage = ref(props.filters?.package_id || '');
 const filterArea = ref(props.filters?.area_id || '');
 const filterOdp = ref(props.filters?.odp_id || '');
 const filterSort = ref(props.filters?.sort_by || '');
+const customerListRoute = computed(() => props.isolirOnly ? '/customers/isolir' : '/customers');
 
 function applyFilters() {
-    router.get('/customers', {
-        status: filterStatus.value || undefined,
+    router.get(customerListRoute.value, {
+        status: props.isolirOnly ? undefined : filterStatus.value || undefined,
+        search: props.filters?.search || undefined,
         service_status: filterServiceStatus.value || undefined,
         package_id: filterPackage.value || undefined,
         area_id: filterArea.value || undefined,

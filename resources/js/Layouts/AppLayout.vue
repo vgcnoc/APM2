@@ -744,12 +744,13 @@ const menuItems = [
                 label: 'Semua Pelanggan',
                 active: (url) => {
                     const u = url || '';
-                    const otherPrefixes = ['/customers/booking', '/customers/survey', '/customers/installed', '/customers/activation', '/customers/canceled', '/customers/gratis', '/customers/free-home', '/customers/online', '/customers/offline', '/customers/connections', '/customers/terminated'];
+                    const otherPrefixes = ['/customers/booking', '/customers/survey', '/customers/installed', '/customers/activation', '/customers/canceled', '/customers/gratis', '/customers/free-home', '/customers/online', '/customers/offline', '/customers/connections', '/customers/terminated', '/customers/isolir'];
                     return u === '/customers' || u.startsWith('/customers?') || (u.startsWith('/customers/') && !otherPrefixes.some(p => u.startsWith(p)));
                 },
                 permission: 'menu_customers_all'
             },
             { href: '/customers/online', label: 'Status Koneksi (Online / Offline)', active: (url) => (url || '').startsWith('/customers/online') || (url || '').startsWith('/customers/offline') || (url || '').startsWith('/customers/connections'), permission: 'menu_customers_online' },
+            { href: '/customers/isolir', label: 'Pelanggan Isolir', active: (url) => (url || '').split('?')[0] === '/customers/isolir', permission: 'menu_customers_all' },
             { href: '/customers/gratis', label: 'Pelanggan Gratis & CSR', active: (url) => (url || '').startsWith('/customers/gratis'), permission: 'menu_customers_gratis' },
             { href: '/customers/free-home', label: 'Pelanggan Free Home', active: (url) => (url || '').startsWith('/customers/free-home'), permission: 'menu_customers_free_home' },
             { href: '/customers/terminated', label: 'Stop Permanen (Terminated)', active: (url) => (url || '').startsWith('/customers/terminated'), permission: ['menu_customers_terminated', 'menu_customers_all'] },

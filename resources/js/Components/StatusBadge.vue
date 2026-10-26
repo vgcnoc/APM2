@@ -23,7 +23,7 @@ const statusMap = {
     audit: { label: 'Menunggu Audit', color: 'purple' },
     menunggu_aktivasi: { label: 'Menunggu Aktivasi', color: 'indigo' },
     active: { label: 'Aktif', color: 'green' },
-    suspended: { label: 'Suspended', color: 'orange' },
+    suspended: { label: 'ISOLIR', color: 'orange' },
     terminated: { label: 'Terminated', color: 'red' },
     // Pembatalan
     batal_booking: { label: 'Batal Booking', color: 'amber' },

@@ -361,7 +361,7 @@ class Customer extends Model
             'survey' => 'Proses Survey',
             'installing' => 'Proses Pemasangan',
             'active' => 'Aktif',
-            'suspended' => 'Dibekukan',
+            'suspended' => 'ISOLIR',
             'terminated' => 'Berhenti',
             default => $this->status,
         };
