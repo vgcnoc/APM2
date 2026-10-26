@@ -7,13 +7,14 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::table('material_transactions')
-            ->where('source_type', 'instalasi')
-            ->whereNull('customer_id')
-            ->whereNotNull('source_id')
-            ->update([
-                'customer_id' => DB::raw('source_id')
-            ]);
+        DB::statement("
+            UPDATE material_transactions
+            SET customer_id = source_id
+            WHERE source_type = 'instalasi'
+              AND customer_id IS NULL
+              AND source_id IS NOT NULL
+              AND source_id IN (SELECT id FROM customers)
+        ");
     }
 
     public function down(): void
