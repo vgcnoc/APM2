@@ -798,6 +798,7 @@ class PermissionRegistry
                     ['name' => 'attendance_card_stats', 'type' => 'card', 'label' => 'Card Rekap Kehadiran, Terlambat & Izin'],
                     ['name' => 'attendance_tab_reguler', 'type' => 'tab', 'label' => 'Tab Absensi Reguler (Presensi Saya)'],
                     ['name' => 'attendance_select_type', 'type' => 'feature', 'label' => 'Pilihan Tipe Kehadiran Hari Ini (WFO / Dinas Lapangan)'],
+                    ['name' => 'attendance_select_shift', 'type' => 'feature', 'label' => 'Pilihan / Ganti Shift Presensi Hari Ini (Dropdown Shift)'],
                     ['name' => 'attendance_recap_link', 'type' => 'button', 'label' => 'Tombol / Link Rekap Lengkap Presensi Dashboard'],
                     ['name' => 'attendance_btn_set_shift_holiday', 'type' => 'button', 'label' => 'Tombol Aksi Atur Shift & Libur (Widget Presensi Dashboard)'],
                     ['name' => 'attendances_tab_monitoring', 'type' => 'tab', 'label' => 'Tab Live Monitoring Hari Ini'],

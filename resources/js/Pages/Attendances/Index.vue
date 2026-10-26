@@ -185,14 +185,23 @@
                                 <p class="text-xs text-slate-500 mt-0.5">
                                     {{ todayDateStr }} • 
                                     <span v-if="shiftToday">Jadwal kerja resmi Anda hari ini</span>
-                                    <span v-else-if="todaySchedule && todaySchedule.status === 'off'">Hari libur terjadwal (OFF). Anda dapat memilih shift di sebelah kanan jika bertugas lembur/pengganti.</span>
-                                    <span v-else>Sistem siap: Anda dapat memilih shift di bawah untuk langsung presensi masuk.</span>
+                                    <span v-else-if="todaySchedule && todaySchedule.status === 'off'">
+                                        Hari libur terjadwal (OFF). <span v-if="can('attendance_select_shift')">Anda dapat memilih shift di sebelah kanan jika bertugas lembur/pengganti.</span>
+                                    </span>
+                                    <span v-else>
+                                        <template v-if="can('attendance_select_shift')">
+                                            Sistem siap: Anda dapat memilih shift di sebelah kanan untuk langsung presensi masuk.
+                                        </template>
+                                        <template v-else>
+                                            Silakan hubungi admin atau atasan untuk penetapan jadwal shift kerja Anda hari ini.
+                                        </template>
+                                    </span>
                                 </p>
                             </div>
                         </div>
 
-                        <!-- Shift Quick Selector jika belum ada shift hari ini atau ingin ubah -->
-                        <div class="flex items-center gap-2">
+                        <!-- Shift Quick Selector jika diizinkan dalam role akses -->
+                        <div v-if="can('attendance_select_shift')" class="flex items-center gap-2">
                             <div class="text-xs font-semibold text-slate-500 hidden sm:block">Pilih Shift:</div>
                             <select
                                 v-model="selectedShiftId"
@@ -1475,7 +1484,7 @@ const submitClockIn = () => {
     router.post(route('attendances.clock-in'), {
         employee_id: props.currentEmployee.id,
         photo: capturedPhoto.value,
-        shift_id: selectedShiftId.value || props.shiftToday?.id || undefined,
+        shift_id: can('attendance_select_shift') ? (selectedShiftId.value || props.shiftToday?.id || undefined) : (props.shiftToday?.id || undefined),
         attendance_type: can('attendance_select_type') ? attendanceType.value : 'wfo',
         duty_location: can('attendance_select_type') && attendanceType.value === 'dinas_luar' ? (dutyLocation.value || undefined) : undefined,
         latitude: userCoordinates.value?.latitude || null,
@@ -1518,6 +1527,7 @@ const submitClockOut = () => {
 };
 
 const applyQuickShift = () => {
+    if (!can('attendance_select_shift')) return;
     if (!selectedShiftId.value) return;
     router.post(route('attendances.quick-assign-shift'), {
         employee_id: props.currentEmployee.id,

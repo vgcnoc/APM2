@@ -383,7 +383,10 @@ class AttendanceController extends Controller
             ->where('date', $today)
             ->first();
 
-        $shiftId = $request->shift_id ?: ($schedule?->shift_id ?: ($employee->shift_id ?: $this->resolveDefaultShiftForEmployee($employee)?->id));
+        $user = auth()->user();
+        $canSelectShift = $user && ($user->hasRole('admin') || $user->can('attendance_select_shift') || $user->can('attendance_btn_set_shift_holiday') || $user->can('work_schedules_manage'));
+        $requestedShiftId = $canSelectShift ? $request->shift_id : null;
+        $shiftId = $requestedShiftId ?: ($schedule?->shift_id ?: ($employee->shift_id ?: $this->resolveDefaultShiftForEmployee($employee)?->id));
         $shift = $shiftId ? Shift::find($shiftId) : null;
         if (!$shift) {
             $shift = $this->resolveDefaultShiftForEmployee($employee);
@@ -650,7 +653,7 @@ class AttendanceController extends Controller
     public function quickAssignShift(Request $request)
     {
         $user = auth()->user();
-        if ($user && !$user->hasRole('admin') && !$user->can('attendance_btn_set_shift_holiday') && !$user->can('work_schedules_manage')) {
+        if ($user && !$user->hasRole('admin') && !$user->can('attendance_select_shift') && !$user->can('attendance_btn_set_shift_holiday') && !$user->can('work_schedules_manage')) {
             abort(403, 'Anda tidak memiliki hak akses untuk mengubah shift atau menetapkan hari libur.');
         }
 
