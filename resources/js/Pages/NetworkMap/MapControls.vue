@@ -79,6 +79,10 @@
 
         <section class="gis-basemap gis-surface" :class="{ 'is-expanded': panel === 'basemap' }" aria-label="Pilihan tampilan peta">
             <button class="gis-basemap-heading" @click="togglePanel('basemap')" :aria-expanded="panel === 'basemap'"><span class="gis-basemap-thumb" :class="`preview-${basemap}`"></span><span><small>TAMPILAN PETA</small><strong>{{ currentBasemap?.label }}</strong></span><ChevronUpIcon :class="{ rotated: panel === 'basemap' }" /></button>
+            <div v-if="basemapLoading || basemapError" class="gis-basemap-status" :class="{ 'has-error': basemapError }" role="status">
+                <template v-if="basemapLoading"><ArrowPathIcon class="spinning" /><span>Memuat {{ currentBasemap?.label?.toLowerCase() }}…</span></template>
+                <template v-else><span>{{ basemapError }}</span><button @click="$emit('retry-basemap')" aria-label="Coba muat tampilan peta lagi"><ArrowPathIcon /></button></template>
+            </div>
             <div v-if="panel === 'basemap'" class="gis-basemap-options"><button v-for="item in basemaps" :key="item.id" :class="{ selected: item.id === basemap }" :aria-pressed="item.id === basemap" @click="$emit('update:basemap', item.id)"><span class="gis-basemap-preview" :class="`preview-${item.id}`"><CheckIcon v-if="item.id === basemap" /></span><strong>{{ item.label }}</strong></button></div>
             <label v-if="basemap === 'google_sat'" class="gis-label-toggle"><span><MapIcon /><span>Nama jalan & lokasi</span></span><input type="checkbox" :checked="labels" @change="$emit('update:labels', $event.target.checked)" /></label>
         </section>
@@ -108,10 +112,11 @@ const props = defineProps({
     area: { type: [String, Number], default: 'all' }, areas: { type: Array, default: () => [] },
     counts: { type: Object, default: () => ({}) }, connections: { type: Object, default: () => ({}) },
     updateLabel: String, error: String, refreshing: Boolean, basemap: String, basemaps: Array, labels: Boolean,
+    basemapLoading: Boolean, basemapError: String,
     layers: { type: Object, default: () => ({}) }, activeTool: String, routeAllowed: Boolean, finderAllowed: Boolean, locating: Boolean, fullscreen: Boolean,
     fiberMode: { type: String, default: 'straight' }, fiberStats: { type: Object, default: () => ({ total: 0, completed: 0, road: 0, fallback: 0, loading: false }) },
 });
-defineEmits(['update:query', 'update:searchFocused', 'update:area', 'update:basemap', 'update:labels', 'select', 'layer', 'fiber-mode', 'retry-fiber', 'refresh', 'route', 'finder', 'ruler', 'locate', 'fit', 'fullscreen', 'guide']);
+defineEmits(['update:query', 'update:searchFocused', 'update:area', 'update:basemap', 'update:labels', 'retry-basemap', 'select', 'layer', 'fiber-mode', 'retry-fiber', 'refresh', 'route', 'finder', 'ruler', 'locate', 'fit', 'fullscreen', 'guide']);
 const overview = ref(true);
 const legend = ref(true);
 let mobileQuery;
@@ -245,6 +250,7 @@ const layerOptions = [
 .gis-basemap-heading > svg { width: 15px; color: var(--gis-muted); margin-right: 5px; }.rotated { transform: rotate(180deg); }
 .gis-basemap-thumb { display: block; width: 44px; height: 34px; border: 1px solid #9aaec040; border-radius: 7px; }
 .gis-basemap-options { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; padding-top: 12px; }
+.gis-basemap-status { display: flex; align-items: center; gap: 6px; padding: 9px 3px 2px; color: var(--gis-muted); font-size: 9px; line-height: 1.5; }.gis-basemap-status.has-error { color: #b68535; }.gis-basemap-status > span { flex: 1; }.gis-basemap-status svg { width: 12px; height: 12px; }.gis-basemap-status button { padding: 3px; color: #508bd3; background: transparent; border: 0; }
 .gis-basemap-options button { min-width: 0; padding: 0; border: 0; background: transparent; color: var(--gis-muted); font-size: 9px; text-align: center; }
 .gis-basemap-options button strong { font-weight: 500; }.gis-basemap-options button.selected { color: #3374cc; }.gis-basemap-preview { display: grid; place-items: center; height: 45px; margin-bottom: 6px; border: 2px solid transparent; border-radius: 8px; }.selected .gis-basemap-preview { border-color: #3b82f6; }.gis-basemap-preview svg { padding: 2px; width: 19px; height: 19px; border-radius: 50%; background: #347bdb; color: white; }
 .preview-osm { background: linear-gradient(32deg, transparent 40%, #fff 41%, #fff 46%, transparent 47%), linear-gradient(118deg, transparent 40%, #83b5d3 41%, #83b5d3 45%, transparent 46%), repeating-linear-gradient(0deg, #e7ecd9 0 11px, #f5f1e8 12px 22px); }

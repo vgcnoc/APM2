@@ -17,6 +17,8 @@
                 :refreshing="isRefreshingConnections"
                 :basemap="activeBasemap"
                 :basemaps="basemaps"
+                :basemap-loading="isBasemapLoading"
+                :basemap-error="basemapError"
                 :labels="satelliteLabels"
                 :layers="layers"
                 :fiber-mode="fiberMode"
@@ -28,6 +30,7 @@
                 :fullscreen="isFullscreen"
                 @update:area="setAreaFilter"
                 @update:basemap="changeBasemap"
+                @retry-basemap="retryBasemap"
                 @update:labels="setSatelliteLabels"
                 @layer="setLayerVisibility"
                 @fiber-mode="setFiberMode"
@@ -553,6 +556,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import MapControls from './MapControls.vue';
 import { connectionPresentation } from '@/Utils/networkConnectionStatus';
 import { buildFiberSegments, fiberRouteKey, fiberRoadGeometry } from '@/Utils/fiberRoutes';
+import { createBasemapTransition } from '@/Utils/basemapTransition';
 
 // ═══ PROPS DARI BACKEND ═══
 const props = defineProps({
@@ -589,7 +593,8 @@ const resizeWorkspace = () => {
     if (!element) return;
     const rect = element.getBoundingClientRect();
     const scale = rect.width / element.offsetWidth || 1;
-    workspaceHeight.value = Math.max(360, (window.innerHeight - rect.top) / scale);
+    const height = Math.max(360, Math.floor((window.innerHeight - rect.top) / scale));
+    if (workspaceHeight.value !== height) workspaceHeight.value = height;
 };
 const onFullscreenChange = () => {
     isFullscreen.value = document.fullscreenElement === workspaceContainer.value;
@@ -599,8 +604,7 @@ let map = null;
 let L = null;
 
 // Layer Groups
-let tileLayer = null;
-let satelliteLabelLayer = null;
+let basemapTransition = null;
 let clusterGroup = null;
 let odpClusterGroup = null;
 let odcLayerGroup = null;
@@ -740,6 +744,9 @@ const setLayerVisibility = (key, visible) => {
 
 // Basemaps
 const activeBasemap = ref('osm');
+const displayedBasemap = ref('osm');
+const isBasemapLoading = ref(false);
+const basemapError = ref('');
 const satelliteLabels = ref(true);
 const basemaps = [
     { id: 'osm', label: 'Peta jalan', url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxNativeZoom: 19 },
@@ -950,17 +957,43 @@ onMounted(async () => {
         center: [defaultLat, defaultLng],
         zoom: defaultZoom,
         zoomControl: false, // will put custom zoom in controls or keep neat
+        preferCanvas: true,
+        fadeAnimation: false,
+        markerZoomAnimation: false,
     });
-    map.createPane('gis-labels');
-    map.getPane('gis-labels').style.zIndex = 350;
-    map.getPane('gis-labels').style.pointerEvents = 'none';
+    basemapTransition = createBasemapTransition({
+        map,
+        createLayer: key => {
+            const [id, labels] = key.split(':');
+            const selected = basemaps.find(item => item.id === id) || basemaps[0];
+            // Hybrid tiles already contain labels: no second full tile grid is needed.
+            const url = id === 'google_sat' && labels === 'labels' ? selected.url.replace('lyrs=s', 'lyrs=y') : selected.url;
+            return L.tileLayer(url, {
+                attribution: selected.attribution, maxZoom: 20, maxNativeZoom: selected.maxNativeZoom,
+                subdomains: ['a', 'b', 'c'], updateWhenIdle: true, updateWhenZooming: false, keepBuffer: 1,
+            });
+        },
+        onActivate: key => {
+            const [id, labels] = key.split(':');
+            const wasSatellite = displayedBasemap.value === 'google_sat';
+            displayedBasemap.value = activeBasemap.value = id;
+            if (id === 'google_sat') satelliteLabels.value = labels === 'labels';
+            if (wasSatellite !== (id === 'google_sat')) updateMapPalette();
+        },
+        onState: state => {
+            isBasemapLoading.value = state.loading;
+            basemapError.value = state.error;
+            if (state.loading && state.key) {
+                const [id, labels] = state.key.split(':');
+                activeBasemap.value = id;
+                if (id === 'google_sat') satelliteLabels.value = labels === 'labels';
+            }
+        },
+    });
 
     // Custom Zoom Control at Bottom Right
     L.control.zoom({ position: 'bottomright' }).addTo(map);
     L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
-
-    // Initial Tile Layer
-    changeBasemap(activeBasemap.value);
 
     // Initialize Layer Groups
     odcLayerGroup = L.layerGroup().addTo(map);
@@ -979,6 +1012,7 @@ onMounted(async () => {
         spiderfyOnMaxZoom: true,
         disableClusteringAtZoom: 16,
         spiderfyDistanceMultiplier: 1.5,
+        animate: false,
     });
     map.addLayer(clusterGroup);
 
@@ -989,6 +1023,7 @@ onMounted(async () => {
         spiderfyOnMaxZoom: true,
         disableClusteringAtZoom: 14,
         spiderfyDistanceMultiplier: 1.4,
+        animate: false,
         iconCreateFunction: (cluster) => {
             const count = cluster.getChildCount();
             return L.divIcon({
@@ -1060,6 +1095,9 @@ onMounted(async () => {
         }
     }
 
+    // Request tiles only after the final initial bounds have been calculated.
+    changeBasemap(activeBasemap.value);
+
     // Auto Invalidate Size
     resizeObserver = new ResizeObserver(() => {
         resizeWorkspace();
@@ -1076,6 +1114,7 @@ onUnmounted(() => {
     disposed = true;
     connectionRequest?.abort();
     fiberRequest?.abort();
+    basemapTransition?.dispose();
     clearInterval(connectionTimer);
     clearInterval(expiryTimer);
     resizeObserver?.disconnect();
@@ -1095,35 +1134,27 @@ onUnmounted(() => {
 });
 
 // ═══ BASEMAP CHANGER ═══
-const changeBasemap = (typeId) => {
-    const selected = basemaps.find(b => b.id === typeId) || basemaps[0];
+const changeBasemap = typeId => {
+    const selected = basemaps.find(item => item.id === typeId) || basemaps[0];
     activeBasemap.value = selected.id;
-    if (!L || !map) return;
-
-    if (tileLayer && map) {
-        map.removeLayer(tileLayer);
-    }
-
-    tileLayer = L.tileLayer(selected.url, {
-        attribution: selected.attribution,
-        maxZoom: 20,
-        maxNativeZoom: selected.maxNativeZoom,
-        subdomains: ['a', 'b', 'c'],
-    }).addTo(map);
-    syncSatelliteLabels();
-    toggleFiberLines();
-    toggleAreasLayer();
+    const key = selected.id === 'google_sat' ? `google_sat:${satelliteLabels.value ? 'labels' : 'plain'}` : selected.id;
+    basemapTransition?.select(key);
 };
-const syncSatelliteLabels = () => {
-    if (!map || !L) return;
-    if (satelliteLabelLayer) { map.removeLayer(satelliteLabelLayer); satelliteLabelLayer = null; }
-    if (activeBasemap.value === 'google_sat' && satelliteLabels.value) {
-        satelliteLabelLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}', {
-            pane: 'gis-labels', maxZoom: 20, maxNativeZoom: 20, attribution: '&copy; Google',
-        }).addTo(map);
-    }
+const setSatelliteLabels = value => {
+    satelliteLabels.value = value;
+    if (activeBasemap.value === 'google_sat') changeBasemap('google_sat');
 };
-const setSatelliteLabels = value => { satelliteLabels.value = value; syncSatelliteLabels(); };
+const retryBasemap = () => basemapTransition?.retry();
+
+const fiberColor = kind => {
+    const satellite = displayedBasemap.value === 'google_sat';
+    return kind === 'feeder' ? (satellite ? '#7dbbff' : '#3b82f6') : (satellite ? '#51e8bd' : '#10b981');
+};
+const updateMapPalette = () => {
+    // Restyle existing paths; never restart the road queue or recreate geometry.
+    fiberLinesLayerGroup?.eachLayer(layer => layer.setStyle({ color: fiberColor(layer.options.fiberKind) }));
+    areaLayerGroup?.eachLayer(layer => layer.setStyle({ color: displayedBasemap.value === 'google_sat' ? '#c4a3ff' : '#8b5cf6' }));
+};
 
 const fitNetworkBounds = () => {
     if (!map || !L) return;
@@ -1208,6 +1239,9 @@ const refreshMarkers = () => {
     odpLayerGroup.clearLayers();
     customerLayerGroup.clearLayers();
     customerMarkers.clear();
+
+    const clusteredOdps = [];
+    const clusteredCustomers = [];
 
     // Mapping koordinat ODC untuk cek tumpukan dengan ODP
     const odcCoords = [];
@@ -1325,7 +1359,7 @@ const refreshMarkers = () => {
             `);
 
             if (layers.value.cluster && odpClusterGroup) {
-                odpClusterGroup.addLayer(marker);
+                clusteredOdps.push(marker);
             } else {
                 odpLayerGroup.addLayer(marker);
             }
@@ -1357,12 +1391,15 @@ const refreshMarkers = () => {
             customerMarkers.set(cust.id, { marker, customer: cust, status: customerConnection(cust).status });
 
             if (layers.value.cluster) {
-                clusterGroup.addLayer(marker);
+                clusteredCustomers.push(marker);
             } else {
                 customerLayerGroup.addLayer(marker);
             }
         });
     }
+
+    if (clusteredOdps.length) odpClusterGroup.addLayers(clusteredOdps);
+    if (clusteredCustomers.length) clusterGroup.addLayers(clusteredCustomers);
 
     // Kelola visibilitas layer group pada Leaflet map
     if (layers.value.odcs) {
@@ -1470,7 +1507,7 @@ const toggleAreasLayer = () => {
         // Draw soft geofence circle
         const circle = L.circle([parseFloat(area.latitude), parseFloat(area.longitude)], {
             radius: radius,
-            color: activeBasemap.value === 'google_sat' ? '#c4a3ff' : '#8b5cf6',
+            color: displayedBasemap.value === 'google_sat' ? '#c4a3ff' : '#8b5cf6',
             fillColor: '#8b5cf6',
             fillOpacity: 0.05,
             weight: 1.5,
@@ -1495,7 +1532,7 @@ const toggleAreasLayer = () => {
             icon: L.divIcon({
                 className: 'area-centroid-badge',
                 html: `
-                    <div class="px-2.5 py-0.5 bg-slate-900/85 backdrop-blur-md border border-purple-400/60 rounded-full shadow-lg text-center transform -translate-x-1/2 -translate-y-1/2 pointer-events-none whitespace-nowrap">
+                    <div class="px-2.5 py-0.5 bg-slate-900/85 border border-purple-400/60 rounded-full shadow-lg text-center transform -translate-x-1/2 -translate-y-1/2 pointer-events-none whitespace-nowrap">
                         <span class="text-[10px] font-bold text-purple-200">📍 ${area.name}</span>
                     </div>
                 `,
@@ -1569,10 +1606,8 @@ const toggleFiberLines = async () => {
     fiberStats.value = { total: segments.length, completed: roadMode ? 0 : segments.length, road: 0, fallback: 0, loading: roadMode && segments.length > 0 };
     const polylines = new Map();
     segments.forEach(segment => {
-        const satellite = activeBasemap.value === 'google_sat';
-        const color = segment.kind === 'feeder' ? (satellite ? '#7dbbff' : '#3b82f6') : (satellite ? '#51e8bd' : '#10b981');
         const polyline = L.polyline([segment.origin, segment.destination], {
-            color, weight: segment.kind === 'feeder' ? 2.8 : 1.8,
+            color: fiberColor(segment.kind), fiberKind: segment.kind, weight: segment.kind === 'feeder' ? 2.8 : 1.8,
             opacity: roadMode ? .45 : .85, dashArray: segment.kind === 'feeder' ? '6, 6' : '4, 4',
         }).bindTooltip(() => `${escapePopup(segment.name)} · ${roadMode ? 'Menunggu rute jalan…' : 'Jalur lurus'}`, { sticky: true });
         fiberLinesLayerGroup.addLayer(polyline);
