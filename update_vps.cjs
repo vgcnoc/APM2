@@ -57,6 +57,16 @@ chown -R www-data:www-data /var/www/APM2/public/build
 chmod -R 755 /var/www/APM2/public/build
 chown -R www-data:www-data /var/www/APM2/storage /var/www/APM2/bootstrap/cache
 chmod -R 775 /var/www/APM2/storage /var/www/APM2/bootstrap/cache
+# Restore restrictive permissions for deployment credentials after the
+# recursive storage permission step above.
+PRIVATE_VPN_DIR=/var/www/APM2/storage/app/private
+if [ -d "$PRIVATE_VPN_DIR" ]; then
+    chown www-data:www-data "$PRIVATE_VPN_DIR"
+    chmod 750 "$PRIVATE_VPN_DIR"
+    [ ! -f "$PRIVATE_VPN_DIR/apm2-vpn-backup-sync" ] || chmod 600 "$PRIVATE_VPN_DIR/apm2-vpn-backup-sync"
+    [ ! -f "$PRIVATE_VPN_DIR/apm2-vpn-backup-ipsec.secrets" ] || chmod 640 "$PRIVATE_VPN_DIR/apm2-vpn-backup-ipsec.secrets"
+    [ ! -f "$PRIVATE_VPN_DIR/apm2-vpn-backup-known-hosts" ] || chmod 644 "$PRIVATE_VPN_DIR/apm2-vpn-backup-known-hosts"
+fi
 mkdir -p /var/www/APM2/wa-gateway/sessions
 chown -R www-data:www-data /var/www/APM2/wa-gateway/sessions
 
