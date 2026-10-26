@@ -361,7 +361,7 @@ function generateScript() {
     L.push(``);
 
     if (vpnOn) {
-        L.push(`### 7. VPN KE SERVER VIZBILL (CUKUP 1 YANG AKTIF, SISANYA CADANGAN FAILOVER) ###`);
+        L.push(`### 7. VPN L2TP KE SERVER VIZBILL (CUKUP 1 YANG AKTIF, SISANYA CADANGAN FAILOVER) ###`);
         L.push(`/system scheduler rem [find name~"apm2failovervpn"];`);
         L.push(`/system scheduler rem [find name~"vizbillfailovervpn"];`);
         L.push(`/interface l2tp-client remove [find name~"APM2-VPN"];`);
@@ -374,7 +374,7 @@ function generateScript() {
         L.push(`/ppp profile remove [find name="VIZBILLVPN"];`);
         L.push(`/ppp profile add name=VIZBILLVPN change-tcp-mss=yes only-one=default use-encryption=no comment="DEFAULT BY VIZBILL (DON'T CHANGE IT)";`);
         endpoints.forEach((ep, i) => {
-            L.push(`/interface ovpn-client add disabled=${i === 0 ? 'no' : 'yes'} connect-to=${ep} port=1195 name="VIZBILL-VPN-${i + 1}" profile=VIZBILLVPN user="${nasItem.vpn_user}" password="${nasItem.vpn_password}" add-default-route=no cipher=aes256 auth=sha1 certificate=none comment="CUKUP AKTIFKAN 1 SAJA IPADDR : ${nasItem.vpn_ip}";`);
+            L.push(`/interface l2tp-client add disabled=${i === 0 ? 'no' : 'yes'} connect-to=${ep} name="VIZBILL-VPN-${i + 1}" profile=VIZBILLVPN user="${nasItem.vpn_user}" password="${nasItem.vpn_password}" use-ipsec=no add-default-route=no comment="L2TP NAS billing; IP tunnel: ${nasItem.vpn_ip}";`);
         });
         L.push(``);
 
