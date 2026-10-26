@@ -46,7 +46,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | VPN Tunnel (L2TP) Router -> Server
+    | VPN Tunnel Router -> Server
     |--------------------------------------------------------------------------
     | Router client terhubung ke VPS via L2TP. RADIUS & API diakses lewat IP
     | tunnel, sehingga router tanpa IP publik tetap bisa dikelola (CoA/API).
@@ -59,6 +59,19 @@ return [
         // Endpoint VPN publik (bisa lebih dari satu, pisahkan koma) untuk failover
         'endpoints' => array_values(array_filter(array_map('trim', explode(',', (string) env('RADIUS_VPN_ENDPOINTS', env('RADIUS_SERVER_IP', '127.0.0.1')))))),
         'chap_secrets' => env('RADIUS_VPN_CHAP_SECRETS', '/etc/ppp/chap-secrets'),
+        // Jalur cadangan: L2TP/IPsec pada VPS terpisah. Akun NAS disinkronkan
+        // melalui SSH key khusus yang hanya dapat menulis blok APM2 di chap-secrets.
+        'backup' => [
+            'enabled' => env('RADIUS_VPN_BACKUP_ENABLED', false),
+            'endpoint' => env('RADIUS_VPN_BACKUP_ENDPOINT'),
+            'ipsec_secrets_file' => env('RADIUS_VPN_BACKUP_IPSEC_SECRETS_FILE', storage_path('app/private/apm2-vpn-backup-ipsec.secrets')),
+            'ssh_binary' => env('RADIUS_VPN_BACKUP_SSH_BINARY', '/usr/bin/ssh'),
+            'ssh_key' => env('RADIUS_VPN_BACKUP_SSH_KEY', storage_path('app/private/apm2-vpn-backup-sync')),
+            'ssh_known_hosts' => env('RADIUS_VPN_BACKUP_SSH_KNOWN_HOSTS', storage_path('app/private/apm2-vpn-backup-known-hosts')),
+            'ssh_host' => env('RADIUS_VPN_BACKUP_SSH_HOST'),
+            'ssh_port' => (int) env('RADIUS_VPN_BACKUP_SSH_PORT', 22),
+            'ssh_user' => env('RADIUS_VPN_BACKUP_SSH_USER', 'apm2-vpn-sync'),
+        ],
     ],
 
     // Pool IP pelanggan default yang dibuat oleh script di router

@@ -25,7 +25,12 @@ class NasController extends Controller
         return Inertia::render('Radius/Nas/Index', [
             'nas' => $nas, 'filters' => $request->only('search'),
             'serverIp' => config('radius.server_ip') !== '127.0.0.1' ? config('radius.server_ip') : $request->getHost(),
-            'vpn' => ['enabled' => (bool) config('radius.vpn.enabled'), 'gateway' => config('radius.vpn.gateway'), 'endpoints' => config('radius.vpn.endpoints')],
+            'vpn' => [
+                'enabled' => (bool) config('radius.vpn.enabled'),
+                'gateway' => config('radius.vpn.gateway'),
+                'endpoints' => config('radius.vpn.endpoints'),
+                'backup' => app(\App\Services\VpnAccountService::class)->backupClientConfig(),
+            ],
             'clientPool' => config('radius.client_pool'), 'isolirUrl' => config('radius.isolir_url'),
             'configuration' => app(NasConfigurationService::class)->status(),
             'createdNasId' => session('created_nas_id'),

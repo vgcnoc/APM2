@@ -284,6 +284,8 @@ function generateScript() {
     const radiusIp = vpnOn ? props.vpn.gateway : publicIp;
     const radiusHostMask = radiusIp.includes(':') ? 128 : 32;
     const endpoints = (props.vpn?.endpoints?.length ? props.vpn.endpoints : [publicIp]);
+    const backup = props.vpn?.backup || null;
+    const backupOn = Boolean(vpnOn && backup?.enabled && backup?.endpoint && backup?.ipsec_secret);
     const pool = props.clientPool || { name: 'VIZBILLPOOL', network: '10.200.192.0/20', local_address: '10.200.192.1', ranges: '10.200.192.2-10.200.207.254' };
     const isolirUrl = props.isolirUrl || 'isolir.apm2.com';
     const secret = rosEscape(nasItem.secret || '');
@@ -361,7 +363,7 @@ function generateScript() {
     L.push(``);
 
     if (vpnOn) {
-        L.push(`### 7. VPN OPENVPN TCP KE SERVER VIZBILL (CUKUP 1 YANG AKTIF, SISANYA CADANGAN FAILOVER) ###`);
+        L.push(`### 7. VPN OPENVPN UTAMA${backupOn ? ' + L2TP/IPSEC CADANGAN' : ''} KE SERVER VIZBILL ###`);
         L.push(`/system scheduler rem [find name~"apm2failovervpn"];`);
         L.push(`/system scheduler rem [find name~"vizbillfailovervpn"];`);
         L.push(`/interface l2tp-client remove [find name~"APM2-VPN"];`);
@@ -376,6 +378,9 @@ function generateScript() {
         endpoints.forEach((ep, i) => {
             L.push(`/interface ovpn-client add disabled=${i === 0 ? 'no' : 'yes'} connect-to=${ep} port=1195 name="VIZBILL-VPN-${i + 1}" profile=VIZBILLVPN user="${nasItem.vpn_user}" password="${nasItem.vpn_password}" add-default-route=no cipher=aes256 auth=sha1 certificate=none comment="OpenVPN NAS billing; IP tunnel: ${nasItem.vpn_ip}";`);
         });
+        if (backupOn) {
+            L.push(`/interface l2tp-client add disabled=yes connect-to=${backup.endpoint} name="VIZBILL-VPN-BACKUP-L2TP" profile=VIZBILLVPN user="${nasItem.vpn_user}" password="${nasItem.vpn_password}" use-ipsec=yes ipsec-secret="${rosEscape(backup.ipsec_secret)}" add-default-route=no comment="L2TP/IPsec backup NAS billing; IP tunnel: ${nasItem.vpn_ip}";`);
+        }
         L.push(``);
 
         L.push(`### 8. STATIC ROUTE RADIUS LEWAT VPN ###`);
