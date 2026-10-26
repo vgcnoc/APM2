@@ -1,303 +1,48 @@
 <template>
-    <AppLayout title="GIS Map Jaringan & Rute" subtitle="Peta Cerdas Pelanggan, ODC, ODP, Area & Routing Turn-by-Turn" :full-bleed="true">
-        <div class="relative w-full h-[calc(100vh-68px)] overflow-hidden bg-slate-900 select-none">
+    <AppLayout title="GIS Map Jaringan & Rute" subtitle="Eksplorasi infrastruktur, koneksi pelanggan & navigasi lapangan" :full-bleed="true">
+        <div ref="workspaceContainer" class="gis-workspace relative w-full overflow-hidden bg-slate-100" :style="{ height: workspaceHeight ? `${workspaceHeight}px` : 'calc(100dvh - 84px)' }">
             
-            <!-- ═══ 1. TOP FLOATING CONTROL BAR ═══ -->
-            <div class="absolute top-3 left-3 right-3 z-[1000] flex flex-wrap items-center justify-between gap-2 pointer-events-none">
-                <!-- Search & Quick Navigation Bar (Hidden when Routing Drawer is open) -->
-                <div
-                    v-if="!isRoutingActive"
-                    class="relative pointer-events-auto w-full sm:w-80 md:w-96 shadow-xl rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/80 transition-all"
-                >
-                    <div class="flex items-center px-3.5 py-2">
-                        <svg class="w-4 h-4 text-indigo-500 mr-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        <input
-                            v-model="searchQuery"
-                            @focus="isSearchFocused = true"
-                            type="text"
-                            placeholder="Cari Pelanggan, ODP, ODC, atau Area..."
-                            class="w-full text-xs sm:text-sm bg-transparent border-0 p-0 text-slate-800 placeholder-slate-400 focus:ring-0 focus:outline-none"
-                        />
-                        <button
-                            v-if="searchQuery"
-                            @click="searchQuery = ''"
-                            class="p-1 text-slate-400 hover:text-slate-600 rounded-full"
-                        >
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-
-                    <!-- Autocomplete Dropdown -->
-                    <div
-                        v-if="isSearchFocused && searchResults.length > 0"
-                        class="absolute left-0 right-0 top-full mt-1.5 max-h-72 overflow-y-auto bg-white rounded-xl shadow-2xl border border-slate-200 divide-y divide-slate-100 z-50 text-xs"
-                    >
-                        <div
-                            v-for="item in searchResults"
-                            :key="item.type + '-' + item.id"
-                            @click="selectSearchResult(item)"
-                            class="px-3 py-2.5 hover:bg-indigo-50/70 cursor-pointer flex items-center justify-between transition-colors"
-                        >
-                            <div class="flex items-center gap-2.5 min-w-0">
-                                <span
-                                    :class="item.badgeClass"
-                                    class="px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 uppercase"
-                                >
-                                    {{ item.typeLabel }}
-                                </span>
-                                <div class="truncate">
-                                    <p class="font-semibold text-slate-800 truncate">{{ item.title }}</p>
-                                    <p class="text-[11px] text-slate-500 truncate">{{ item.subtitle }}</p>
-                                </div>
-                            </div>
-                            <span class="text-[10px] text-indigo-600 font-medium shrink-0 ml-2">Fokus ➔</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Action Buttons: Tools & Navigation -->
-                <div class="pointer-events-auto flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-                    <!-- Basemap Switcher -->
-                    <div class="relative">
-                        <button
-                            @click="togglePanel('basemap')"
-                            class="px-3 py-2 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200/80 shadow-md hover:bg-white text-slate-700 font-semibold text-xs flex items-center gap-1.5 transition-all"
-                            title="Ganti Jenis Peta"
-                        >
-                            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                            </svg>
-                            <span class="hidden md:inline">{{ activeBasemapLabel }}</span>
-                        </button>
-
-                        <!-- Basemap Menu -->
-                        <div
-                            v-if="openPanel === 'basemap'"
-                            class="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 text-xs"
-                        >
-                            <div class="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pilihan Layer Peta</div>
-                            <button
-                                v-for="mapType in basemaps"
-                                :key="mapType.id"
-                                @click="changeBasemap(mapType.id)"
-                                :class="activeBasemap === mapType.id ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-slate-700 hover:bg-slate-50'"
-                                class="w-full text-left px-3 py-2 flex items-center justify-between transition-colors"
-                            >
-                                <span>{{ mapType.name }}</span>
-                                <span v-if="activeBasemap === mapType.id" class="text-indigo-600">✓</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Layer Filter Switcher -->
-                    <div class="relative">
-                        <button
-                            @click="togglePanel('layers')"
-                            class="px-3 py-2 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200/80 shadow-md hover:bg-white text-slate-700 font-semibold text-xs flex items-center gap-1.5 transition-all"
-                            title="Filter Objek Peta"
-                        >
-                            <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                            </svg>
-                            <span class="hidden md:inline">Filter Layer</span>
-                        </button>
-
-                        <!-- Layer Toggles Dropdown -->
-                        <div
-                            v-if="openPanel === 'layers'"
-                            class="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-200 p-3 z-50 text-xs space-y-2.5"
-                        >
-                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Visibilitas Lapisan</div>
-                            
-                            <label class="flex items-center justify-between cursor-pointer hover:bg-slate-50 p-1 rounded">
-                                <span class="flex items-center gap-2 text-slate-700 font-medium">
-                                    <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span> Pelanggan ({{ customers.length }})
-                                </span>
-                                <input v-model="layers.customers" @change="refreshMarkers" type="checkbox" class="rounded text-indigo-600 focus:ring-indigo-500" />
-                            </label>
-
-                            <label class="flex items-center justify-between cursor-pointer hover:bg-slate-50 p-1 rounded">
-                                <span class="flex items-center gap-2 text-slate-700 font-medium">
-                                    <span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span> ODP ({{ odps.length }})
-                                </span>
-                                <input v-model="layers.odps" @change="refreshMarkers" type="checkbox" class="rounded text-indigo-600 focus:ring-indigo-500" />
-                            </label>
-
-                            <label class="flex items-center justify-between cursor-pointer hover:bg-slate-50 p-1 rounded">
-                                <span class="flex items-center gap-2 text-slate-700 font-medium">
-                                    <span class="w-3 h-3 rounded bg-blue-600 inline-block"></span> ODC ({{ odcs.length }})
-                                </span>
-                                <input v-model="layers.odcs" @change="refreshMarkers" type="checkbox" class="rounded text-indigo-600 focus:ring-indigo-500" />
-                            </label>
-
-                            <label class="flex items-center justify-between cursor-pointer hover:bg-slate-50 p-1 rounded">
-                                <span class="flex items-center gap-2 text-slate-700 font-medium">
-                                    <span class="w-3 h-3 rounded-full border border-purple-500 bg-purple-100 inline-block"></span> Area / Wilayah ({{ areas.length }})
-                                </span>
-                                <input v-model="layers.areas" @change="toggleAreasLayer" type="checkbox" class="rounded text-indigo-600 focus:ring-indigo-500" />
-                            </label>
-
-                            <label class="flex items-center justify-between cursor-pointer hover:bg-slate-50 p-1 rounded">
-                                <span class="flex items-center gap-2 text-slate-700 font-medium">
-                                    <span class="w-3 h-1 bg-blue-400 inline-block"></span> Jalur Fiber ODC-ODP-User
-                                </span>
-                                <input v-model="layers.fiberLines" @change="toggleFiberLines" type="checkbox" class="rounded text-indigo-600 focus:ring-indigo-500" />
-                            </label>
-
-                            <label class="flex items-center justify-between cursor-pointer hover:bg-slate-50 p-1 rounded">
-                                <span class="flex items-center gap-2 text-slate-700 font-medium">
-                                    <span class="w-3 h-3 rounded-full bg-slate-600 inline-block"></span> Marker Cluster (Grup)
-                                </span>
-                                <input v-model="layers.cluster" @change="refreshMarkers" type="checkbox" class="rounded text-indigo-600 focus:ring-indigo-500" />
-                            </label>
-
-                            <!-- Area Filter Selector -->
-                            <div class="pt-2 border-t border-slate-100">
-                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Filter Wilayah Tertentu:</label>
-                                <select
-                                    v-model="selectedAreaFilter"
-                                    @change="onAreaFilterChange"
-                                    class="w-full text-xs rounded-lg border-slate-200 py-1.5 focus:ring-indigo-500 focus:border-indigo-500"
-                                >
-                                    <option value="all">Semua Wilayah</option>
-                                    <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Smart Routing Drawer Toggle -->
-                    <button
-                        v-if="hasPermission('network_map_routing')"
-                        @click="toggleRoutingDrawer"
-                        :class="isRoutingActive ? 'bg-indigo-600 text-white shadow-indigo-500/30' : 'bg-white/95 text-slate-700 hover:bg-white'"
-                        class="px-3.5 py-2 rounded-xl backdrop-blur-md border border-slate-200/80 shadow-md font-semibold text-xs flex items-center gap-1.5 transition-all"
-                    >
-                        <svg class="w-4 h-4" :class="isRoutingActive ? 'text-white' : 'text-indigo-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                        </svg>
-                        <span>Rute Jalan</span>
-                        <span v-if="activeRoute" class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                    </button>
-
-                    <!-- Smart Closest ODP Finder -->
-                    <button
-                        v-if="hasPermission('network_map_find_odp')"
-                        @click="toggleOdpFinder"
-                        :class="isOdpFinderActive ? 'bg-emerald-600 text-white shadow-emerald-500/30' : 'bg-white/95 text-slate-700 hover:bg-white'"
-                        class="px-3.5 py-2 rounded-xl backdrop-blur-md border border-slate-200/80 shadow-md font-semibold text-xs flex items-center gap-1.5 transition-all"
-                        title="Analisis ODP Terdekat & Cek Port Kosong"
-                    >
-                        <svg class="w-4 h-4" :class="isOdpFinderActive ? 'text-white' : 'text-emerald-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <circle cx="12" cy="12" r="10" stroke-width="2" />
-                            <circle cx="12" cy="12" r="4" stroke-width="2" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2v4m0 12v4M2 12h4m12 0h4" />
-                        </svg>
-                        <span class="hidden sm:inline">Cari ODP</span>
-                    </button>
-
-                    <!-- Fiber Cable Ruler Tool -->
-                    <button
-                        @click="toggleRulerTool"
-                        :class="isRulerActive ? 'bg-amber-500 text-white shadow-amber-500/30' : 'bg-white/95 text-slate-700 hover:bg-white'"
-                        class="p-2 rounded-xl backdrop-blur-md border border-slate-200/80 shadow-md font-semibold text-xs flex items-center transition-all"
-                        title="Penggaris Jarak & Estimasi Redaman dBm"
-                    >
-                        <svg class="w-4 h-4" :class="isRulerActive ? 'text-white' : 'text-amber-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21.3 8.7L8.7 21.3c-1 1-2.5 1-3.4 0l-2.6-2.6c-1-1-1-2.5 0-3.4L15.3 2.7c1-1 2.5-1 3.4 0l2.6 2.6c1 1 1 2.5 0 3.4zM14.5 5.5l2 2M11.5 8.5l2 2M8.5 11.5l2 2M5.5 14.5l2 2" />
-                        </svg>
-                    </button>
-
-                    <!-- GPS Location Button -->
-                    <button
-                        @click="locateMe"
-                        :disabled="isLocating"
-                        class="p-2 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200/80 shadow-md hover:bg-white text-slate-700 transition-all"
-                        title="Pusatkan ke Lokasi Saya"
-                    >
-                        <svg class="w-4 h-4 text-blue-600" :class="{ 'animate-spin': isLocating }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                    </button>
-
-                    <!-- Fullscreen Toggle -->
-                    <button
-                        @click="toggleFullScreen"
-                        class="p-2 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200/80 shadow-md hover:bg-white text-slate-700 transition-all hidden sm:flex"
-                        title="Mode Layar Penuh"
-                    >
-                        <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0 0l-5-5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-
-            <!-- ═══ 2. LEAFLET MAP ELEMENT ═══ -->
-            <div ref="mapContainer" class="w-full h-full z-0"></div>
-
-            <!-- ═══ 3. BOTTOM FLOATING HUD (KPI STATS & LEGEND) ═══ -->
-            <div class="absolute bottom-3 left-3 right-3 sm:right-auto z-[990] pointer-events-none">
-                <div class="pointer-events-auto bg-slate-900/90 backdrop-blur-md border border-slate-700/60 shadow-2xl rounded-2xl p-3 text-white max-w-sm sm:max-w-md transition-all">
-                    <!-- KPI Pills Grid -->
-                    <div class="grid grid-cols-4 gap-2 text-center pb-2 border-b border-slate-800">
-                        <div class="bg-slate-800/70 p-1.5 rounded-xl border border-slate-700/40">
-                            <div class="text-[10px] text-slate-400 font-medium">Pelanggan</div>
-                            <div class="text-sm font-black text-emerald-400">{{ filteredCustomersCount }}</div>
-                        </div>
-                        <div class="bg-slate-800/70 p-1.5 rounded-xl border border-slate-700/40">
-                            <div class="text-[10px] text-slate-400 font-medium">ODP</div>
-                            <div class="text-sm font-black text-amber-400">{{ filteredOdpsCount }}</div>
-                        </div>
-                        <div class="bg-slate-800/70 p-1.5 rounded-xl border border-slate-700/40">
-                            <div class="text-[10px] text-slate-400 font-medium">ODC</div>
-                            <div class="text-sm font-black text-blue-400">{{ filteredOdcsCount }}</div>
-                        </div>
-                        <div class="bg-slate-800/70 p-1.5 rounded-xl border border-slate-700/40">
-                            <div class="text-[10px] text-slate-400 font-medium">Wilayah</div>
-                            <div class="text-sm font-black text-purple-400">{{ filteredAreasCount }}</div>
-                        </div>
-                    </div>
-
-                    <!-- Legend & Quick Status Toggle -->
-                    <div class="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-300">
-                        <div class="flex flex-wrap items-center gap-3">
-                            <span class="flex items-center gap-1.5">
-                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]"></span>
-                                <span>Online {{ connectionCounts.online }}</span>
-                            </span>
-                            <span class="flex items-center gap-1.5">
-                                <span class="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]"></span>
-                                <span>Offline {{ connectionCounts.offline }}</span>
-                            </span>
-                            <span class="flex items-center gap-1.5">
-                                <span class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
-                                <span>Belum diketahui {{ connectionCounts.unknown }}</span>
-                            </span>
-                        </div>
-                        <button
-                            @click="showLegendModal = true"
-                            class="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold underline cursor-pointer"
-                        >
-                            Panduan Simbol
-                        </button>
-                    </div>
-                    <div class="mt-2 pt-2 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-400" aria-live="polite">
-                        <span>{{ connectionError || (isRefreshingConnections ? 'Memeriksa koneksi…' : connectionUpdatedAt ? `Diperbarui ${connectionUpdatedAt} · otomatis 30 detik` : 'Menunggu data koneksi') }}</span>
-                        <button type="button" @click="refreshConnections" :disabled="isRefreshingConnections" class="text-indigo-300 hover:text-white disabled:opacity-50">Perbarui</button>
-                    </div>
-                </div>
-            </div>
+            <div ref="mapContainer" class="gis-map-canvas w-full h-full z-0"></div>
+            <MapControls
+                ref="mapControls"
+                v-model:query="searchQuery"
+                v-model:search-focused="isSearchFocused"
+                :results="searchResults"
+                :area="selectedAreaFilter"
+                :areas="areas"
+                :counts="{ customers: filteredCustomersCount, odps: filteredOdpsCount, odcs: filteredOdcsCount, areas: filteredAreasCount }"
+                :connections="connectionCounts"
+                :update-label="connectionError || (isRefreshingConnections ? 'Memeriksa koneksi…' : connectionUpdatedAt ? `Diperbarui ${connectionUpdatedAt}` : 'Menunggu data koneksi')"
+                :error="connectionError"
+                :refreshing="isRefreshingConnections"
+                :basemap="activeBasemap"
+                :basemaps="basemaps"
+                :labels="satelliteLabels"
+                :layers="layers"
+                :active-tool="isRoutingActive ? 'route' : isOdpFinderActive ? 'finder' : isRulerActive ? 'ruler' : ''"
+                :route-allowed="hasPermission('network_map_routing')"
+                :finder-allowed="hasPermission('network_map_find_odp')"
+                :locating="isLocating"
+                :fullscreen="isFullscreen"
+                @update:area="setAreaFilter"
+                @update:basemap="changeBasemap"
+                @update:labels="setSatelliteLabels"
+                @layer="setLayerVisibility"
+                @select="selectSearchResult"
+                @refresh="refreshConnections"
+                @route="toggleRoutingDrawer"
+                @finder="toggleOdpFinder"
+                @ruler="toggleRulerTool"
+                @locate="locateMe"
+                @fit="fitNetworkBounds"
+                @fullscreen="toggleFullScreen"
+                @guide="showLegendModal = true"
+            />
 
             <!-- ═══ 4. RULER MEASUREMENT FLOATING OVERLAY ═══ -->
             <div
                 v-if="isRulerActive"
-                class="absolute top-16 left-1/2 -translate-x-1/2 z-[1000] bg-slate-900/95 backdrop-blur-md border border-amber-500/50 shadow-2xl rounded-2xl px-4 py-2.5 text-white flex items-center gap-4 animate-fade-in"
+                class="gis-ruler absolute left-1/2 -translate-x-1/2 z-[1000] bg-slate-900/95 backdrop-blur-md border border-amber-500/50 shadow-2xl rounded-2xl px-4 py-2.5 text-white flex items-center gap-4"
             >
                 <div class="flex items-center gap-2">
                     <span class="w-3 h-3 rounded-full bg-amber-500 animate-pulse"></span>
@@ -319,7 +64,7 @@
                     Reset
                 </button>
                 <button
-                    @click="isRulerActive = false"
+                            @click="toggleRulerTool"
                     class="text-slate-400 hover:text-white"
                 >
                     ✕
@@ -337,7 +82,8 @@
             >
                 <div
                     v-if="isRoutingActive"
-                    class="absolute top-0 bottom-0 left-0 w-full sm:w-96 z-[1010] bg-white shadow-2xl border-r border-slate-200 flex flex-col"
+                    class="gis-drawer absolute z-[1010] bg-white shadow-2xl border border-slate-200 flex flex-col"
+                    :class="{ 'gis-picking': isPickingOrigin || isPickingDest }"
                 >
                     <!-- Routing Header -->
                     <div class="p-4 bg-gradient-to-r from-indigo-600 to-blue-600 text-white flex items-center justify-between">
@@ -346,12 +92,13 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                             </svg>
                             <div>
-                                <h3 class="font-bold text-sm leading-tight">Navigasi Rute Cerdas</h3>
-                                <p class="text-[11px] text-indigo-100 font-normal">Turn-by-turn OSRM Road Routing</p>
+                                <h3 class="font-bold text-sm leading-tight">Rencanakan perjalanan</h3>
+                                <p class="text-[11px] text-indigo-100 font-normal">Rute jalan & petunjuk arah lapangan</p>
                             </div>
                         </div>
                         <button
                             @click="closeRoutingDrawer"
+                            aria-label="Tutup panel rute"
                             class="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
                         >
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -541,7 +288,8 @@
             >
                 <div
                     v-if="isOdpFinderActive"
-                    class="absolute top-0 bottom-0 left-0 w-full sm:w-96 z-[1010] bg-white shadow-2xl border-r border-slate-200 flex flex-col"
+                    class="gis-drawer absolute z-[1010] bg-white shadow-2xl border border-slate-200 flex flex-col"
+                    :class="{ 'gis-picking': isPickingFinderTarget }"
                 >
                     <!-- Header -->
                     <div class="p-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex items-center justify-between">
@@ -551,12 +299,13 @@
                                 <circle cx="12" cy="12" r="4" stroke-width="2" />
                             </svg>
                             <div>
-                                <h3 class="font-bold text-sm leading-tight">Smart ODP Recommender</h3>
-                                <p class="text-[11px] text-emerald-100 font-normal">Cek Kapasitas & Jarak Terdekat</p>
+                                <h3 class="font-bold text-sm leading-tight">Temukan ODP terdekat</h3>
+                                <p class="text-[11px] text-emerald-100 font-normal">Bandingkan jarak & ketersediaan port</p>
                             </div>
                         </div>
                         <button
-                            @click="isOdpFinderActive = false"
+                            @click="closeOdpFinder"
+                            aria-label="Tutup pencarian ODP"
                             class="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
                         >
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -695,18 +444,23 @@
             <!-- ═══ 7. SYMBOL LEGEND MODAL ═══ -->
             <div
                 v-if="showLegendModal"
-                class="fixed inset-0 z-[2000] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+                class="gis-guide fixed inset-0 z-[2000] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+                role="dialog" aria-modal="true" aria-labelledby="gis-guide-title" tabindex="-1"
+                @click.self="showLegendModal = false" @keydown.esc="showLegendModal = false"
             >
                 <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full p-5 space-y-4">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                         <div class="flex items-center gap-2">
                             <span class="text-lg">🗺️</span>
-                            <h3 class="font-bold text-slate-900 text-sm">Panduan Simbol & Layer GIS</h3>
+                            <h3 id="gis-guide-title" class="font-bold text-slate-900 text-sm">Panduan Simbol & Layer GIS</h3>
                         </div>
                         <button @click="showLegendModal = false" class="text-slate-400 hover:text-slate-600">✕</button>
                     </div>
 
                     <div class="space-y-3 text-xs">
+                        <div v-if="activeBasemap === 'google_sat'" class="rounded-xl border border-blue-100 bg-blue-50 p-3 text-slate-600 leading-relaxed">
+                            Mode satelit menampilkan citra permukaan dengan simbol jaringan yang sama. Aktifkan <strong>Nama jalan & lokasi</strong> pada pemilih peta untuk menampilkan label. Garis fiber menunjukkan hubungan antarperangkat, bukan hasil survei jalur kabel sebenarnya.
+                        </div>
                         <div class="flex items-center gap-3">
                             <span class="w-6 h-6 rounded bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">ODC</span>
                             <div>
@@ -792,6 +546,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import MapControls from './MapControls.vue';
 import { connectionPresentation } from '@/Utils/networkConnectionStatus';
 
 // ═══ PROPS DARI BACKEND ═══
@@ -807,7 +562,7 @@ const props = defineProps({
 const page = usePage();
 const authUser = computed(() => page.props.auth?.user || {});
 const userRole = computed(() => authUser.value?.role?.name || authUser.value?.role || '');
-const isAdmin = computed(() => ['admin', 'superadmin', 'super-admin'].includes(String(userRole.value).toLowerCase()));
+const isAdmin = computed(() => ['admin', 'super admin', 'superadmin', 'super-admin'].includes(String(userRole.value).toLowerCase()));
 const permissions = computed(() => page.props.auth?.permissions || authUser.value?.permissions || []);
 
 const hasPermission = (perm) => {
@@ -820,11 +575,27 @@ const hasPermission = (perm) => {
 
 // ═══ REFS & STATE ═══
 const mapContainer = ref(null);
+const workspaceContainer = ref(null);
+const workspaceHeight = ref(0);
+const mapControls = ref(null);
+const isFullscreen = ref(false);
+const resizeWorkspace = () => {
+    const element = workspaceContainer.value;
+    if (!element) return;
+    const rect = element.getBoundingClientRect();
+    const scale = rect.width / element.offsetWidth || 1;
+    workspaceHeight.value = Math.max(360, (window.innerHeight - rect.top) / scale);
+};
+const onFullscreenChange = () => {
+    isFullscreen.value = document.fullscreenElement === workspaceContainer.value;
+    nextTick(resizeWorkspace);
+};
 let map = null;
 let L = null;
 
 // Layer Groups
 let tileLayer = null;
+let satelliteLabelLayer = null;
 let clusterGroup = null;
 let odpClusterGroup = null;
 let odcLayerGroup = null;
@@ -895,12 +666,7 @@ const onConnectionVisibility = () => {
 };
 
 // UI Panels
-const openPanel = ref(null); // 'basemap' | 'layers' | null
 const showLegendModal = ref(false);
-
-const togglePanel = (panelName) => {
-    openPanel.value = openPanel.value === panelName ? null : panelName;
-};
 
 // Search & Filter
 const searchQuery = ref('');
@@ -939,20 +705,28 @@ const onAreaFilterChange = () => {
     toggleAreasLayer();
     toggleFiberLines();
 };
+const setAreaFilter = value => {
+    selectedAreaFilter.value = value;
+    onAreaFilterChange();
+    fitNetworkBounds();
+};
+const setLayerVisibility = (key, visible) => {
+    if (!(key in layers.value)) return;
+    layers.value[key] = visible;
+    if (key === 'areas') toggleAreasLayer();
+    else if (key === 'fiberLines') toggleFiberLines();
+    else refreshMarkers();
+};
 
 // Basemaps
 const activeBasemap = ref('osm');
+const satelliteLabels = ref(true);
 const basemaps = [
-    { id: 'osm', name: 'OpenStreetMap (Standar)', url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; OSM' },
-    { id: 'google_sat', name: 'Google Satellite (Satelit)', url: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attribution: '&copy; Google' },
-    { id: 'carto_dark', name: 'Dark Mode (NOC Command)', url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attribution: '&copy; CartoDB' },
-    { id: 'topo', name: 'Topografi / Kontur', url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenTopo' },
+    { id: 'osm', label: 'Peta jalan', url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxNativeZoom: 19 },
+    { id: 'google_sat', label: 'Satelit', url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', attribution: '&copy; Google', maxNativeZoom: 20 },
+    { id: 'carto_dark', label: 'Peta gelap', url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; CARTO', maxNativeZoom: 20 },
+    { id: 'topo', label: 'Topografi', url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap, SRTM | &copy; OpenTopoMap (CC-BY-SA)', maxNativeZoom: 17 },
 ];
-
-const activeBasemapLabel = computed(() => {
-    const found = basemaps.find(b => b.id === activeBasemap.value);
-    return found ? found.name.split(' ')[0] : 'Peta';
-});
 
 // User GPS Location
 const myLocation = ref(null);
@@ -1087,8 +861,12 @@ const calculateDistanceMeters = (lat1, lon1, lat2, lon2) => {
 
 // ═══ LEAFLET INITIALIZATION ═══
 onMounted(async () => {
+    resizeWorkspace();
+    window.addEventListener('resize', resizeWorkspace);
+    document.addEventListener('fullscreenchange', onFullscreenChange);
     // 1. Expose Window Helpers for Leaflet Popups
     window.networkMapSetRouteDest = (lat, lng, name) => {
+        isOdpFinderActive.value = false;
         routeDest.value = { lat: parseFloat(lat), lng: parseFloat(lng), name };
         isRoutingActive.value = true;
         if (!routeOrigin.value.lat && myLocation.value) {
@@ -1100,11 +878,13 @@ onMounted(async () => {
     };
 
     window.networkMapSetRouteOrigin = (lat, lng, name) => {
+        isOdpFinderActive.value = false;
         routeOrigin.value = { lat: parseFloat(lat), lng: parseFloat(lng), name };
         isRoutingActive.value = true;
     };
 
     window.networkMapFindNearbyOdp = (lat, lng, name) => {
+        isRoutingActive.value = false;
         finderTarget.value = { lat: parseFloat(lat), lng: parseFloat(lng), name };
         isOdpFinderActive.value = true;
         findNearbyOdps();
@@ -1150,9 +930,13 @@ onMounted(async () => {
         zoom: defaultZoom,
         zoomControl: false, // will put custom zoom in controls or keep neat
     });
+    map.createPane('gis-labels');
+    map.getPane('gis-labels').style.zIndex = 350;
+    map.getPane('gis-labels').style.pointerEvents = 'none';
 
     // Custom Zoom Control at Bottom Right
     L.control.zoom({ position: 'bottomright' }).addTo(map);
+    L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
 
     // Initial Tile Layer
     changeBasemap(activeBasemap.value);
@@ -1204,6 +988,8 @@ onMounted(async () => {
 
     // 5. Map Click & Zoom Event Handlers
     map.on('click', (e) => {
+        mapControls.value?.dismiss();
+        isSearchFocused.value = false;
         handleMapClick(e.latlng.lat, e.latlng.lng);
     });
 
@@ -1240,7 +1026,7 @@ onMounted(async () => {
             });
 
             const bounds = L.latLngBounds(validPoints);
-            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+            map.fitBounds(bounds, { paddingTopLeft: map.getSize().x > 900 ? [330, 115] : [40, 100], paddingBottomRight: [70, 120], maxZoom: 15 });
         } else if (props.customers.length > 0) {
             const custPoints = props.customers.filter(c => c.latitude && c.longitude).map(c => [parseFloat(c.latitude), parseFloat(c.longitude)]);
             if (custPoints.length > 0) {
@@ -1255,6 +1041,7 @@ onMounted(async () => {
 
     // Auto Invalidate Size
     resizeObserver = new ResizeObserver(() => {
+        resizeWorkspace();
         if (map) requestAnimationFrame(() => map.invalidateSize());
     });
     if (mapContainer.value) resizeObserver.observe(mapContainer.value);
@@ -1271,6 +1058,8 @@ onUnmounted(() => {
     clearInterval(expiryTimer);
     resizeObserver?.disconnect();
     document.removeEventListener('visibilitychange', onConnectionVisibility);
+    window.removeEventListener('resize', resizeWorkspace);
+    document.removeEventListener('fullscreenchange', onFullscreenChange);
     customerMarkers.clear();
     delete window.networkMapSetRouteDest;
     delete window.networkMapSetRouteOrigin;
@@ -1285,19 +1074,48 @@ onUnmounted(() => {
 
 // ═══ BASEMAP CHANGER ═══
 const changeBasemap = (typeId) => {
-    activeBasemap.value = typeId;
-    openPanel.value = null;
+    const selected = basemaps.find(b => b.id === typeId) || basemaps[0];
+    activeBasemap.value = selected.id;
+    if (!L || !map) return;
 
     if (tileLayer && map) {
         map.removeLayer(tileLayer);
     }
 
-    const selected = basemaps.find(b => b.id === typeId) || basemaps[0];
     tileLayer = L.tileLayer(selected.url, {
         attribution: selected.attribution,
         maxZoom: 20,
+        maxNativeZoom: selected.maxNativeZoom,
         subdomains: ['a', 'b', 'c'],
     }).addTo(map);
+    syncSatelliteLabels();
+    toggleFiberLines();
+    toggleAreasLayer();
+};
+const syncSatelliteLabels = () => {
+    if (!map || !L) return;
+    if (satelliteLabelLayer) { map.removeLayer(satelliteLabelLayer); satelliteLabelLayer = null; }
+    if (activeBasemap.value === 'google_sat' && satelliteLabels.value) {
+        satelliteLabelLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}', {
+            pane: 'gis-labels', maxZoom: 20, maxNativeZoom: 20, attribution: '&copy; Google',
+        }).addTo(map);
+    }
+};
+const setSatelliteLabels = value => { satelliteLabels.value = value; syncSatelliteLabels(); };
+
+const fitNetworkBounds = () => {
+    if (!map || !L) return;
+    const inArea = item => selectedAreaFilter.value === 'all' || item.area_id == selectedAreaFilter.value;
+    const points = [
+        ...(layers.value.odcs ? props.odcs.filter(inArea) : []),
+        ...(layers.value.odps ? props.odps.filter(inArea) : []),
+        ...(layers.value.customers ? props.customers.filter(inArea) : []),
+    ].filter(item => Number(item.latitude) && Number(item.longitude))
+        .map(item => [Number(item.latitude), Number(item.longitude)]);
+    if (points.length) {
+        const wide = map.getSize().x > 900;
+        map.fitBounds(L.latLngBounds(points), { paddingTopLeft: wide ? [330, 115] : [40, 100], paddingBottomRight: [70, 120], maxZoom: 16 });
+    }
 };
 
 // ═══ MARKER ICONS FACTORY ═══
@@ -1619,7 +1437,7 @@ const toggleAreasLayer = () => {
     areaLayerGroup.clearLayers();
     areaBadgeLayerGroup.clearLayers();
 
-    if (!layers.value.areas) return;
+    if (!layers.value.areas) { updateAreaBadgesVisibility(); return; }
 
     props.areas.forEach(area => {
         if (!area.latitude || !area.longitude) return;
@@ -1630,7 +1448,7 @@ const toggleAreasLayer = () => {
         // Draw soft geofence circle
         const circle = L.circle([parseFloat(area.latitude), parseFloat(area.longitude)], {
             radius: radius,
-            color: '#8b5cf6',
+            color: activeBasemap.value === 'google_sat' ? '#c4a3ff' : '#8b5cf6',
             fillColor: '#8b5cf6',
             fillOpacity: 0.05,
             weight: 1.5,
@@ -1689,6 +1507,7 @@ const toggleFiberLines = () => {
 
     const odpCoordsMap = new Map();
     props.odps.forEach(odp => {
+        if (selectedAreaFilter.value !== 'all' && odp.area_id != selectedAreaFilter.value) return;
         if (odp.latitude && odp.longitude) {
             const odpCoords = [parseFloat(odp.latitude), parseFloat(odp.longitude)];
             odpCoordsMap.set(odp.id, odpCoords);
@@ -1696,9 +1515,9 @@ const toggleFiberLines = () => {
             if (odp.odc_id && odcCoordsMap.has(odp.odc_id)) {
                 const odcCoords = odcCoordsMap.get(odp.odc_id);
                 const poly = L.polyline([odcCoords, odpCoords], {
-                    color: '#3b82f6',
-                    weight: 2.5,
-                    opacity: 0.75,
+                    color: activeBasemap.value === 'google_sat' ? '#7dbbff' : '#3b82f6',
+                    weight: activeBasemap.value === 'google_sat' ? 3 : 2.5,
+                    opacity: 0.9,
                     dashArray: '6, 6',
                 });
                 fiberLinesLayerGroup.addLayer(poly);
@@ -1708,6 +1527,7 @@ const toggleFiberLines = () => {
 
     // 2. Drop Lines: ODP to Customer
     props.customers.forEach(cust => {
+        if (selectedAreaFilter.value !== 'all' && cust.area_id != selectedAreaFilter.value) return;
         if (cust.latitude && cust.longitude && cust.odp_id && odpCoordsMap.has(cust.odp_id)) {
             const odpCoords = odpCoordsMap.get(cust.odp_id);
             let custCoords = [parseFloat(cust.latitude), parseFloat(cust.longitude)];
@@ -1718,7 +1538,7 @@ const toggleFiberLines = () => {
             }
 
             const dropPoly = L.polyline([odpCoords, custCoords], {
-                color: '#10b981',
+                color: activeBasemap.value === 'google_sat' ? '#51e8bd' : '#10b981',
                 weight: 1.8,
                 opacity: 0.65,
                 dashArray: '4, 4',
@@ -1761,6 +1581,9 @@ const handleMapClick = (lat, lng) => {
 // ═══ RULER TOOL FUNCTIONS ═══
 const toggleRulerTool = () => {
     isRulerActive.value = !isRulerActive.value;
+    isRoutingActive.value = false;
+    isOdpFinderActive.value = false;
+    isPickingOrigin.value = isPickingDest.value = isPickingFinderTarget.value = false;
     if (!isRulerActive.value) {
         clearRuler();
     }
@@ -1809,6 +1632,10 @@ const clearRuler = () => {
 // ═══ SMART ROUTING FUNCTIONS ═══
 const toggleRoutingDrawer = () => {
     isRoutingActive.value = !isRoutingActive.value;
+    isOdpFinderActive.value = false;
+    isRulerActive.value = false;
+    isPickingFinderTarget.value = false;
+    if (!isRoutingActive.value) isPickingOrigin.value = isPickingDest.value = false;
     if (isRoutingActive.value && !routeOrigin.value.lat && myLocation.value) {
         routeOrigin.value = { lat: myLocation.value.lat, lng: myLocation.value.lng, name: 'Lokasi Saya' };
     }
@@ -1821,6 +1648,7 @@ const toggleRoutingDrawer = () => {
 
 const closeRoutingDrawer = () => {
     isRoutingActive.value = false;
+    isPickingOrigin.value = isPickingDest.value = false;
     nextTick(() => {
         setTimeout(() => {
             if (map) map.invalidateSize();
@@ -1933,7 +1761,12 @@ const getGoogleMapsNavigationUrl = () => {
 // ═══ SMART ODP FINDER FUNCTIONS ═══
 const toggleOdpFinder = () => {
     isOdpFinderActive.value = !isOdpFinderActive.value;
+    isRoutingActive.value = false;
+    isRulerActive.value = false;
+    isPickingOrigin.value = isPickingDest.value = false;
+    if (!isOdpFinderActive.value) isPickingFinderTarget.value = false;
 };
+const closeOdpFinder = () => { isOdpFinderActive.value = false; isPickingFinderTarget.value = false; };
 
 const startPickingFinderTarget = () => {
     isPickingFinderTarget.value = true;
@@ -2023,13 +1856,17 @@ const focusMapToCoords = (lat, lng, zoom = 17) => {
 const selectSearchResult = (item) => {
     isSearchFocused.value = false;
     searchQuery.value = item.title;
+    if (selectedAreaFilter.value !== 'all') {
+        selectedAreaFilter.value = 'all';
+        onAreaFilterChange();
+    }
     focusMapToCoords(item.lat, item.lng, 17);
 };
 
 // ═══ FULLSCREEN TOGGLE ═══
 const toggleFullScreen = () => {
     if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(() => {});
+        workspaceContainer.value?.requestFullscreen?.().catch(() => {});
     } else {
         if (document.exitFullscreen) {
             document.exitFullscreen();
@@ -2039,6 +1876,33 @@ const toggleFullScreen = () => {
 </script>
 
 <style>
+.gis-workspace { min-height: 360px; isolation: isolate; }
+.gis-workspace:fullscreen { width: 100%; height: 100dvh !important; }
+.gis-workspace .gis-map-canvas { background: #e8eef1; }
+.gis-workspace .gis-map-canvas .leaflet-top { top: 95px; }
+.gis-workspace .leaflet-control-zoom { margin-right: 18px; margin-bottom: 28px; border: 1px solid #dce4ef !important; border-radius: 11px; overflow: hidden; box-shadow: 0 2px 12px #172a4318; }
+.gis-workspace .leaflet-control-zoom a { width: 35px; height: 34px; line-height: 34px; color: #486079; background: white; font-weight: 400; font-size: 20px; }
+.gis-workspace .leaflet-control-zoom a:hover { background: #edf4ff; color: #3779cb; }
+.gis-workspace .leaflet-control-attribution { font-size: 9px; background: #ffffffd9; padding: 1px 6px; }
+.gis-workspace .leaflet-control-scale { margin-left: 22px; margin-bottom: 4px; }
+.gis-workspace .leaflet-control-scale-line { border-color: #61778a; background: #ffffffc4; color: #344a60; font-size: 9px; }
+.gis-workspace .gis-drawer { top: 96px; left: 18px; bottom: 26px; width: 338px; border-radius: 16px; overflow: hidden; }
+.gis-workspace .gis-drawer > div:first-child { background: #234b78; }
+.gis-workspace .gis-drawer > div:first-child h3 { color: #fff; }
+.gis-workspace .gis-drawer input { min-width: 0; }
+.gis-workspace .gis-ruler { top: 96px; max-width: calc(100% - 140px); flex-wrap: wrap; justify-content: center; }
+.gis-workspace .gis-guide > div { max-height: 85dvh; overflow-y: auto; }
+.gis-workspace .gis-guide p { line-height: 1.6; }
+html.dark .gis-workspace .gis-drawer { background: #132033; border-color: #29394f; }
+html.dark .gis-workspace .gis-drawer > .bg-slate-50 { background: #192b41; border-color: #29394f; }
+@media (max-width: 700px) {
+    .gis-workspace .gis-drawer { top: 80px; left: 10px; bottom: 90px; width: min(338px, calc(100% - 70px)); }
+    .gis-workspace .gis-drawer.gis-picking { bottom: auto; max-height: 175px; overflow-y: auto; }
+    .gis-workspace .gis-drawer.gis-picking > div:last-child { display: none; }
+    .gis-workspace .gis-ruler { top: 80px; left: 10px; transform: none; max-width: calc(100% - 78px); gap: 10px; padding: 12px; }
+    .gis-workspace .leaflet-control-zoom { margin-right: 10px; margin-bottom: 105px; }
+    .gis-workspace .leaflet-control-scale { margin-left: 12px; }
+}
 .gis-connection-dot { --gis-dot: #94a3b8; position: relative; display: grid; place-items: center; width: 24px; height: 24px; color: var(--gis-dot); }
 .gis-connection-online { --gis-dot: #10b981; }
 .gis-connection-offline { --gis-dot: #f43f5e; }
@@ -2047,19 +1911,19 @@ const toggleFullScreen = () => {
 @keyframes gis-connection-pulse { from { transform: scale(.6); opacity: .55; } to { transform: scale(1.8); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .gis-connection-dot::before { animation: none; opacity: .2; } }
 /* Leaflet Popup Styling */
-.leaflet-popup-content-wrapper {
+.gis-workspace .leaflet-popup-content-wrapper {
     border-radius: 1rem !important;
     padding: 4px !important;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
     border: 1px solid rgba(226, 232, 240, 0.8) !important;
 }
 
-.leaflet-popup-content {
+.gis-workspace .leaflet-popup-content {
     margin: 8px 10px !important;
     line-height: 1.4 !important;
 }
 
-.leaflet-container {
+.gis-workspace .leaflet-container {
     font-family: inherit !important;
 }
 
