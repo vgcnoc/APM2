@@ -1509,6 +1509,9 @@ const toggleAreasLayer = () => {
             className: 'area-circle-tooltip',
         });
 
+        // Leaflet projects circles only after mounting; getBounds() requires that projection.
+        areaLayerGroup.addLayer(circle);
+
         // Put a small, non-interactive label on the northern boundary, below devices.
         const areaBadge = L.marker([circle.getBounds().getNorth(), parseFloat(area.longitude)], {
             pane: 'gis-area-labels',
@@ -1522,7 +1525,6 @@ const toggleAreasLayer = () => {
             keyboard: false,
         });
 
-        areaLayerGroup.addLayer(circle);
         areaBadgeLayerGroup.addLayer(areaBadge);
     });
 
