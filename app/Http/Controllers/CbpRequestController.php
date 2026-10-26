@@ -266,7 +266,13 @@ class CbpRequestController extends Controller
     public function store(Request $request, \App\Services\RadiusService $radius)
     {
         $user = $request->user();
-        if ($user && !$user->can(['cbp_btn_request', 'cbp_manage']) && !$user->hasRole('admin')) {
+        $canRequest = $user && (
+            $user->can('cbp_btn_request') ||
+            $user->can('cbp_manage') ||
+            $user->hasRole(['admin', 'kepala teknisi', 'cs', 'admin cs']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'cs', 'admin cs'])
+        );
+        if (!$canRequest) {
             abort(403, 'Anda tidak memiliki hak akses untuk membuat permintaan CBP.');
         }
 
@@ -302,7 +308,13 @@ class CbpRequestController extends Controller
     public function assign(Request $request, CbpRequest $cbp)
     {
         $user = $request->user();
-        if ($user && !$user->can(['cbp_btn_assign', 'cbp_manage']) && !$user->hasRole('admin')) {
+        $canAssign = $user && (
+            $user->can('cbp_btn_assign') ||
+            $user->can('cbp_manage') ||
+            $user->hasRole(['admin', 'kepala teknisi', 'dispatcher', 'maintenance']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'dispatcher', 'maintenance'])
+        );
+        if (!$canAssign) {
             abort(403, 'Anda tidak memiliki hak akses untuk menugaskan teknisi CBP.');
         }
 
@@ -329,7 +341,13 @@ class CbpRequestController extends Controller
     public function updateStatus(Request $request, CbpRequest $cbp)
     {
         $user = $request->user();
-        if ($user && !$user->can(['cbp_btn_report', 'cbp_manage']) && !$user->hasRole('admin')) {
+        $canReport = $user && (
+            $user->can('cbp_btn_report') ||
+            $user->can('cbp_manage') ||
+            $user->hasRole(['admin', 'kepala teknisi', 'teknisi']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'teknisi'])
+        );
+        if (!$canReport) {
             abort(403, 'Anda tidak memiliki hak akses untuk melaporkan hasil CBP.');
         }
 
@@ -410,7 +428,14 @@ class CbpRequestController extends Controller
     public function dispatchToSchedule(Request $request, CbpRequest $cbp)
     {
         $user = $request->user();
-        if ($user && !$user->can(['cbp_btn_dispatch', 'cbp_btn_request', 'cbp_manage']) && !$user->hasRole('admin')) {
+        $canDispatch = $user && (
+            $user->can('cbp_btn_dispatch') ||
+            $user->can('cbp_btn_request') ||
+            $user->can('cbp_manage') ||
+            $user->hasRole(['admin', 'kepala teknisi', 'dispatcher', 'cs', 'admin cs']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'dispatcher', 'cs', 'admin cs'])
+        );
+        if (!$canDispatch) {
             abort(403, 'Anda tidak memiliki hak akses untuk mengirim ke Jadwal CBP.');
         }
 
@@ -446,7 +471,14 @@ class CbpRequestController extends Controller
     public function retractFromSchedule(Request $request, CbpRequest $cbp)
     {
         $user = $request->user();
-        if ($user && !$user->can(['cbp_btn_dispatch', 'cbp_btn_request', 'cbp_manage']) && !$user->hasRole('admin')) {
+        $canRetract = $user && (
+            $user->can('cbp_btn_dispatch') ||
+            $user->can('cbp_btn_request') ||
+            $user->can('cbp_manage') ||
+            $user->hasRole(['admin', 'kepala teknisi', 'dispatcher', 'cs', 'admin cs']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'dispatcher', 'cs', 'admin cs'])
+        );
+        if (!$canRetract) {
             abort(403, 'Anda tidak memiliki hak akses untuk menarik kembali tiket CBP.');
         }
 
@@ -473,7 +505,13 @@ class CbpRequestController extends Controller
     public function cancel(CbpRequest $cbp)
     {
         $user = request()->user();
-        if ($user && !$user->can(['cbp_btn_cancel', 'cbp_manage']) && !$user->hasRole('admin')) {
+        $canCancel = $user && (
+            $user->can('cbp_btn_cancel') ||
+            $user->can('cbp_manage') ||
+            $user->hasRole(['admin', 'kepala teknisi']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi'])
+        );
+        if (!$canCancel) {
             abort(403, 'Anda tidak memiliki hak akses untuk membatalkan CBP.');
         }
 
@@ -488,7 +526,13 @@ class CbpRequestController extends Controller
     public function destroy(CbpRequest $cbp)
     {
         $user = request()->user();
-        if ($user && !$user->can(['cbp_btn_delete', 'cbp_manage']) && !$user->hasRole('admin')) {
+        $canDelete = $user && (
+            $user->can('cbp_btn_delete') ||
+            $user->can('cbp_manage') ||
+            $user->hasRole(['admin', 'kepala teknisi']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi'])
+        );
+        if (!$canDelete) {
             abort(403, 'Anda tidak memiliki hak akses untuk menghapus tiket CBP.');
         }
 
@@ -526,7 +570,14 @@ class CbpRequestController extends Controller
     public function bulkDestroy(Request $request)
     {
         $user = $request->user();
-        if ($user && !$user->can(['cbp_btn_delete_all', 'cbp_btn_delete', 'cbp_manage']) && !$user->hasRole('admin')) {
+        $canBulkDelete = $user && (
+            $user->can('cbp_btn_delete_all') ||
+            $user->can('cbp_btn_delete') ||
+            $user->can('cbp_manage') ||
+            $user->hasRole('admin') ||
+            in_array(strtolower($user->role ?? ''), ['admin'])
+        );
+        if (!$canBulkDelete) {
             abort(403, 'Anda tidak memiliki hak akses untuk menghapus massal tiket CBP.');
         }
 

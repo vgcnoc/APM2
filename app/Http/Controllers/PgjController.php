@@ -551,7 +551,13 @@ class PgjController extends Controller
     public function store(Request $request)
     {
         $user = $request->user();
-        if ($user && !$user->can(['pgj_btn_create', 'pgj_manage']) && !$user->hasRole('admin')) {
+        $canCreate = $user && (
+            $user->can('pgj_btn_create') ||
+            $user->can('pgj_manage') ||
+            $user->hasRole(['admin', 'kepala teknisi', 'cs', 'admin cs', 'noc']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'cs', 'admin cs', 'noc'])
+        );
+        if (!$canCreate) {
             abort(403, 'Anda tidak memiliki hak akses untuk membuat laporan PGJ.');
         }
 
@@ -674,7 +680,13 @@ class PgjController extends Controller
     public function resolveByAdmin(Request $request, PgjTicket $pgj)
     {
         $user = $request->user();
-        if ($user && !$user->can(['pgj_btn_resolve', 'pgj_manage']) && !$user->hasRole('admin')) {
+        $canResolve = $user && (
+            $user->can('pgj_btn_resolve') ||
+            $user->can('pgj_manage') ||
+            $user->hasRole(['admin', 'kepala teknisi', 'cs', 'admin cs', 'noc']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'cs', 'admin cs', 'noc'])
+        );
+        if (!$canResolve) {
             abort(403, 'Anda tidak memiliki hak akses untuk menyelesaikan PGJ.');
         }
 
@@ -707,7 +719,13 @@ class PgjController extends Controller
     public function escalateToLead(Request $request, PgjTicket $pgj)
     {
         $user = $request->user();
-        if ($user && !$user->can(['pgj_btn_escalate', 'pgj_manage']) && !$user->hasRole('admin')) {
+        $canEscalate = $user && (
+            $user->can('pgj_btn_escalate') ||
+            $user->can('pgj_manage') ||
+            $user->hasRole(['admin', 'kepala teknisi', 'cs', 'admin cs', 'noc']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'cs', 'admin cs', 'noc'])
+        );
+        if (!$canEscalate) {
             abort(403, 'Anda tidak memiliki hak akses untuk mengeskalasi PGJ.');
         }
 
@@ -742,7 +760,13 @@ class PgjController extends Controller
     public function schedule(Request $request, PgjTicket $pgj)
     {
         $user = $request->user();
-        if ($user && !$user->can(['pgj_btn_assign', 'pgj_manage']) && !$user->hasRole('admin')) {
+        $canSchedule = $user && (
+            $user->can('pgj_btn_assign') ||
+            $user->can('pgj_manage') ||
+            $user->hasRole(['admin', 'kepala teknisi', 'dispatcher', 'maintenance']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'dispatcher', 'maintenance'])
+        );
+        if (!$canSchedule) {
             abort(403, 'Anda tidak memiliki hak akses untuk menjadwalkan teknisi PGJ.');
         }
 
@@ -907,7 +931,13 @@ class PgjController extends Controller
     public function submitReport(Request $request, PgjTicket $pgj)
     {
         $user = $request->user();
-        if ($user && !$user->can(['pgj_btn_report', 'pgj_manage']) && !$user->hasRole('admin')) {
+        $canReport = $user && (
+            $user->can('pgj_btn_report') ||
+            $user->can('pgj_manage') ||
+            $user->hasRole(['admin', 'kepala teknisi', 'teknisi']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'teknisi'])
+        );
+        if (!$canReport) {
             abort(403, 'Anda tidak memiliki hak akses untuk melaporkan hasil restorasi PGJ.');
         }
 
@@ -1122,7 +1152,13 @@ class PgjController extends Controller
     public function destroy(Request $request, PgjTicket $pgj)
     {
         $user = $request->user();
-        if ($user && !$user->can(['pgj_btn_delete', 'pgj_manage']) && !$user->hasRole('admin')) {
+        $canDelete = $user && (
+            $user->can('pgj_btn_delete') ||
+            $user->can('pgj_manage') ||
+            $user->hasRole(['admin', 'kepala teknisi']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi'])
+        );
+        if (!$canDelete) {
             abort(403, 'Anda tidak memiliki hak akses untuk menghapus tiket PGJ.');
         }
 
@@ -1151,7 +1187,14 @@ class PgjController extends Controller
     public function bulkDestroy(Request $request)
     {
         $user = $request->user();
-        if ($user && !$user->can(['pgj_btn_delete_all', 'pgj_btn_delete', 'pgj_manage']) && !$user->hasRole('admin')) {
+        $canBulkDelete = $user && (
+            $user->can('pgj_btn_delete_all') ||
+            $user->can('pgj_btn_delete') ||
+            $user->can('pgj_manage') ||
+            $user->hasRole('admin') ||
+            in_array(strtolower($user->role ?? ''), ['admin'])
+        );
+        if (!$canBulkDelete) {
             abort(403, 'Anda tidak memiliki hak akses untuk menghapus massal tiket PGJ.');
         }
 

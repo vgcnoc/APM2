@@ -608,7 +608,13 @@ class PgkController extends Controller
     public function store(Request $request)
     {
         $user = $request->user();
-        if ($user && !$user->can(['pgk_btn_create', 'pgk_manage']) && !$user->hasRole('admin')) {
+        $canCreate = $user && (
+            $user->can('pgk_btn_create') ||
+            $user->can('pgk_manage') ||
+            $user->hasRole(['admin', 'kepala teknisi', 'cs', 'admin cs']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'cs', 'admin cs'])
+        );
+        if (!$canCreate) {
             abort(403, 'Anda tidak memiliki hak akses untuk mendaftarkan komplain PGK.');
         }
 
@@ -662,7 +668,13 @@ class PgkController extends Controller
     public function resolveByAdmin(Request $request, PgkTicket $pgk)
     {
         $user = $request->user();
-        if ($user && !$user->can(['pgk_btn_resolve_admin', 'pgk_manage']) && !$user->hasRole('admin')) {
+        $canResolve = $user && (
+            $user->can('pgk_btn_resolve_admin') ||
+            $user->can('pgk_manage') ||
+            $user->hasRole(['admin', 'kepala teknisi', 'cs', 'admin cs']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'cs', 'admin cs'])
+        );
+        if (!$canResolve) {
             abort(403, 'Anda tidak memiliki hak akses untuk menyelesaikan komplain PGK di sistem.');
         }
 
@@ -697,7 +709,13 @@ class PgkController extends Controller
     public function escalateToLead(Request $request, PgkTicket $pgk)
     {
         $user = $request->user();
-        if ($user && !$user->can(['pgk_btn_escalate', 'pgk_manage']) && !$user->hasRole('admin')) {
+        $canEscalate = $user && (
+            $user->can('pgk_btn_escalate') ||
+            $user->can('pgk_manage') ||
+            $user->hasRole(['admin', 'kepala teknisi', 'cs', 'admin cs']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'cs', 'admin cs'])
+        );
+        if (!$canEscalate) {
             abort(403, 'Anda tidak memiliki hak akses untuk meneruskan komplain ke Kepala Teknisi.');
         }
 
@@ -734,7 +752,13 @@ class PgkController extends Controller
     public function schedule(Request $request, PgkTicket $pgk)
     {
         $user = $request->user();
-        if ($user && !$user->can(['pgk_btn_assign', 'pgk_manage']) && !$user->hasRole('admin')) {
+        $canSchedule = $user && (
+            $user->can('pgk_btn_assign') ||
+            $user->can('pgk_manage') ||
+            $user->hasRole(['admin', 'kepala teknisi', 'dispatcher', 'maintenance']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'dispatcher', 'maintenance'])
+        );
+        if (!$canSchedule) {
             abort(403, 'Anda tidak memiliki hak akses untuk menjadwalkan teknisi PGK.');
         }
 
@@ -915,7 +939,13 @@ class PgkController extends Controller
     public function submitReport(Request $request, PgkTicket $pgk)
     {
         $user = $request->user();
-        if ($user && !$user->can(['pgk_btn_report', 'pgk_manage']) && !$user->hasRole('admin')) {
+        $canReport = $user && (
+            $user->can('pgk_btn_report') ||
+            $user->can('pgk_manage') ||
+            $user->hasRole(['admin', 'kepala teknisi', 'teknisi']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'teknisi'])
+        );
+        if (!$canReport) {
             abort(403, 'Anda tidak memiliki hak akses untuk melaporkan hasil penanganan PGK.');
         }
 
@@ -1758,7 +1788,13 @@ class PgkController extends Controller
     public function prepareOnt(Request $request, PgkTicket $pgk)
     {
         $user = $request->user();
-        if ($user && !$user->can(['pgk_manage', 'pgk_btn_assign']) && !$user->hasRole(['admin', 'kepala teknisi'])) {
+        $canPrepare = $user && (
+            $user->can('pgk_btn_assign') ||
+            $user->can('pgk_manage') ||
+            $user->hasRole(['admin', 'kepala teknisi', 'dispatcher', 'maintenance']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'dispatcher', 'maintenance'])
+        );
+        if (!$canPrepare) {
             abort(403, 'Hanya Kepala Teknisi atau Admin yang dapat menyiapkan ONT baru.');
         }
 
