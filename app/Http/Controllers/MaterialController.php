@@ -15,7 +15,9 @@ class MaterialController extends Controller
         $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('materials_view_all');
         $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
 
-        $query = Material::query();
+        $query = Material::where(function ($q) {
+            $q->where('is_active', true)->orWhereNull('is_active');
+        });
 
         // Scope relationship & filtering
         if (!$isGlobal && !empty($accessibleAreas)) {
@@ -102,35 +104,17 @@ class MaterialController extends Controller
             ? \App\Models\Area::orderBy('name')->get(['id', 'name'])
             : \App\Models\Area::whereIn('id', $accessibleAreas)->orderBy('name')->get(['id', 'name']);
         
-        // Summary Stats (Scoped to area if restricted or selected)
-        if ($scopedAreaIds) {
-            $stockQuery = \App\Models\MaterialStock::whereIn('area_id', $scopedAreaIds);
-            
-            $totalItems = (clone $stockQuery)->where('stock', '>', 0)->distinct('material_id')->count('material_id');
-            $outOfStock = Material::whereDoesntHave('stocks', fn($sq) => $sq->whereIn('area_id', $scopedAreaIds)->where('stock', '>', 0))->count();
-            $lowStock = (clone $stockQuery)->where('stock', '>', 0)->where('stock', '<=', 10)->distinct('material_id')->count('material_id');
-            
-            $totalValue = (float) \Illuminate\Support\Facades\DB::table('material_stocks')
-                ->join('materials', 'material_stocks.material_id', '=', 'materials.id')
-                ->whereIn('material_stocks.area_id', $scopedAreaIds)
-                ->sum(\Illuminate\Support\Facades\DB::raw('material_stocks.stock * COALESCE(materials.price_per_unit, 0)'));
-
-            $summary = [
-                'total_items' => $totalItems,
-                'out_of_stock' => $outOfStock,
-                'low_stock' => $lowStock,
-                'total_value' => $totalValue,
-            ];
-        } else {
-            $summary = [
-                'total_items' => Material::count(),
-                'out_of_stock' => Material::where('stock', '<=', 0)->count(),
-                'low_stock' => Material::where('stock', '>', 0)->where('stock', '<=', 10)->count(),
-                'total_value' => (float) Material::sum(\Illuminate\Support\Facades\DB::raw('stock * COALESCE(price_per_unit, 0)')),
-            ];
-        }
+        // Summary Stats: hanya menghitung material yang masih ada dan aktif dengan konversi unit yang tepat
+        $summary = $this->calculateMaterialSummary($scopedAreaIds);
         
-        $categories = Material::select('category')->whereNotNull('category')->where('category', '!=', '')->distinct()->pluck('category');
+        $categories = Material::where(function ($q) {
+                $q->where('is_active', true)->orWhereNull('is_active');
+            })
+            ->select('category')
+            ->whereNotNull('category')
+            ->where('category', '!=', '')
+            ->distinct()
+            ->pluck('category');
 
         return Inertia::render('Materials/Index', [
             'materials' => $materials,
@@ -194,13 +178,27 @@ class MaterialController extends Controller
     public function destroy(Material $material)
     {
         try {
-            $material->delete();
-            return redirect()->route('materials.index')->with('success', 'Data material berhasil dihapus.');
-        } catch (\Illuminate\Database\QueryException $e) {
-            if ($e->getCode() == "23000") {
-                return redirect()->route('materials.index')->with('error', 'Data material tidak dapat dihapus karena sudah digunakan dalam Riwayat Order/Pengambilan.');
+            \Illuminate\Support\Facades\DB::beginTransaction();
+            $hasTransactions = \App\Models\MaterialTransactionItem::where('material_id', $material->id)->exists();
+            if ($hasTransactions) {
+                // Soft delete via is_active = false dan kosongkan stok agar tidak muncul & tidak terhitung
+                $material->update([
+                    'is_active' => false,
+                    'stock' => 0
+                ]);
+                \App\Models\MaterialStock::where('material_id', $material->id)->update(['stock' => 0]);
+            } else {
+                \App\Models\MaterialStock::where('material_id', $material->id)->delete();
+                $material->delete();
             }
-            return redirect()->route('materials.index')->with('error', 'Terjadi kesalahan saat menghapus data material.');
+            \Illuminate\Support\Facades\DB::commit();
+            return redirect()->route('materials.index')->with('success', 'Data material berhasil dihapus.');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            // Fallback: nonaktifkan dan kosongkan stok
+            $material->update(['is_active' => false, 'stock' => 0]);
+            \App\Models\MaterialStock::where('material_id', $material->id)->update(['stock' => 0]);
+            return redirect()->route('materials.index')->with('success', 'Data material berhasil dinonaktifkan/dihapus dari sistem.');
         }
     }
 
@@ -213,19 +211,115 @@ class MaterialController extends Controller
 
         try {
             \Illuminate\Support\Facades\DB::beginTransaction();
-            Material::whereIn('id', $request->ids)->delete();
+            foreach ($request->ids as $id) {
+                $mat = Material::find($id);
+                if (!$mat) continue;
+                $hasTransactions = \App\Models\MaterialTransactionItem::where('material_id', $id)->exists();
+                if ($hasTransactions) {
+                    $mat->update(['is_active' => false, 'stock' => 0]);
+                    \App\Models\MaterialStock::where('material_id', $id)->update(['stock' => 0]);
+                } else {
+                    \App\Models\MaterialStock::where('material_id', $id)->delete();
+                    $mat->delete();
+                }
+            }
             \Illuminate\Support\Facades\DB::commit();
             return redirect()->route('materials.index')->with('success', count($request->ids) . ' data material berhasil dihapus.');
-        } catch (\Illuminate\Database\QueryException $e) {
-            \Illuminate\Support\Facades\DB::rollBack();
-            if ($e->getCode() == "23000") {
-                return redirect()->route('materials.index')->with('error', 'Beberapa material tidak dapat dihapus karena sudah digunakan dalam Riwayat Order/Pengambilan.');
-            }
-            return redirect()->route('materials.index')->with('error', 'Terjadi kesalahan saat menghapus data material.');
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\DB::rollBack();
             return redirect()->route('materials.index')->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Hitung ringkasan statistik material (hanya yang aktif/tidak dihapus dan dengan konversi unit yang tepat).
+     */
+    protected function calculateMaterialSummary($scopedAreaIds = null): array
+    {
+        $activeQuery = Material::where(function ($q) {
+            $q->where('is_active', true)->orWhereNull('is_active');
+        });
+
+        if ($scopedAreaIds) {
+            $stockQuery = \App\Models\MaterialStock::whereIn('area_id', $scopedAreaIds)
+                ->whereHas('material', function ($mq) {
+                    $mq->where('is_active', true)->orWhereNull('is_active');
+                });
+            
+            $totalItems = (clone $stockQuery)->where('stock', '>', 0)->distinct('material_id')->count('material_id');
+            $outOfStock = (clone $activeQuery)->whereDoesntHave('stocks', fn($sq) => $sq->whereIn('area_id', $scopedAreaIds)->where('stock', '>', 0))->count();
+            $lowStock = (clone $stockQuery)->where('stock', '>', 0)->where('stock', '<=', 10)->distinct('material_id')->count('material_id');
+            
+            // Hitung nilai aset dengan konversi satuan yang presisi
+            $areaStocks = \App\Models\MaterialStock::with('material')
+                ->whereIn('area_id', $scopedAreaIds)
+                ->whereHas('material', function ($mq) {
+                    $mq->where('is_active', true)->orWhereNull('is_active');
+                })
+                ->get();
+
+            $totalValue = 0;
+            foreach ($areaStocks as $ms) {
+                if (!$ms->material || $ms->stock <= 0) continue;
+                $totalValue += $this->calculateItemAssetValue($ms->material, (float) $ms->stock);
+            }
+
+            return [
+                'total_items' => $totalItems,
+                'out_of_stock' => $outOfStock,
+                'low_stock' => $lowStock,
+                'total_value' => $totalValue,
+            ];
+        }
+
+        // Mode Global / Gudang Utama
+        $activeMaterials = (clone $activeQuery)->get();
+        $totalItems = $activeMaterials->count();
+        $outOfStock = $activeMaterials->where('stock', '<=', 0)->count();
+        $lowStock = $activeMaterials->where('stock', '>', 0)->where('stock', '<=', 10)->count();
+
+        $totalValue = 0;
+        foreach ($activeMaterials as $m) {
+            if ($m->stock <= 0) continue;
+            $totalValue += $this->calculateItemAssetValue($m, (float) $m->stock);
+        }
+
+        return [
+            'total_items' => $totalItems,
+            'out_of_stock' => $outOfStock,
+            'low_stock' => $lowStock,
+            'total_value' => $totalValue,
+        ];
+    }
+
+    /**
+     * Hitung nilai aset per material dengan memperhatikan satuan besar (roll/pack/bungkus/pcs).
+     */
+    protected function calculateItemAssetValue(Material $material, float $stock): float
+    {
+        $price = (float) ($material->price_per_unit ?? 0);
+        if ($price <= 0 || $stock <= 0) return 0;
+
+        $cat = strtolower((string) $material->category);
+        $name = strtolower((string) $material->name);
+
+        if ((str_contains($cat, 'kabel') || str_contains($name, 'kabel')) && (float) $material->meter_per_roll > 0) {
+            return ($stock / (float) $material->meter_per_roll) * $price;
+        }
+
+        $isIsolasi = str_contains($cat, 'isolasi') || str_contains($name, 'isolasi');
+        if ($isIsolasi) {
+            $cmPerPcs = (float) ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
+            $pcsPerPack = (float) ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
+            $factor = $cmPerPcs * $pcsPerPack;
+            return ($stock / ($factor > 0 ? $factor : 1)) * $price;
+        }
+
+        if ((str_contains($cat, 'klem') || str_contains($name, 'klem')) && (float) $material->pcs_per_pack > 0) {
+            return ($stock / (float) $material->pcs_per_pack) * $price;
+        }
+
+        return $stock * $price;
     }
 
     public function addStock(Request $request, Material $material)
@@ -300,13 +394,29 @@ class MaterialController extends Controller
             'notes' => 'Pemasukan stok baru via menu Material'
         ]);
 
+        $unitPrice = (float) ($material->price_per_unit ?? 0);
+        $baseRate = $unitPrice;
+        $cat = strtolower((string) $material->category);
+        $name = strtolower((string) $material->name);
+        if ((str_contains($cat, 'kabel') || str_contains($name, 'kabel')) && (float) $material->meter_per_roll > 0) {
+            $baseRate = $unitPrice / (float) $material->meter_per_roll;
+        } elseif (str_contains($cat, 'isolasi') || str_contains($name, 'isolasi')) {
+            $cmPerPcs = (float) ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
+            $pcsPerPack = (float) ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
+            $factor = $cmPerPcs * $pcsPerPack;
+            $baseRate = $factor > 0 ? ($unitPrice / $factor) : $unitPrice;
+        } elseif ((str_contains($cat, 'klem') || str_contains($name, 'klem')) && (float) $material->pcs_per_pack > 0) {
+            $baseRate = $unitPrice / (float) $material->pcs_per_pack;
+        }
+        $itemTotal = $baseRate * (float) $validated['added_stock'];
+
         \App\Models\MaterialTransactionItem::create([
             'material_transaction_id' => $transactionIn->id,
             'material_id' => $material->id,
             'quantity' => $validated['added_stock'],
             'unit' => $material->unit,
-            'price_per_unit' => $material->price_per_unit ?? 0,
-            'total_price' => ($material->price_per_unit ?? 0) * $validated['added_stock'],
+            'price_per_unit' => $baseRate,
+            'total_price' => $itemTotal,
             'stock_before' => $materialStock->stock - $validated['added_stock'],
             'stock_after' => $materialStock->stock,
             'condition' => 'Layak Pakai'

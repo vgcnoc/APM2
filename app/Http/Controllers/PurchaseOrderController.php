@@ -21,9 +21,20 @@ class PurchaseOrderController extends Controller
         $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('purchase_orders_view_all');
         $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
 
-        // Only get transactions with purpose indicating it's a purchase
+        // Only get transactions with purpose indicating it's a purchase and has existing active materials
         $query = MaterialTransaction::where('purpose', 'Pembelian Toko / Supplier')
-                            ->with(['items.material', 'items.onts', 'expense.category', 'areaModel']);
+                            ->whereHas('items.material', function ($mq) {
+                                $mq->where('is_active', true)->orWhereNull('is_active');
+                            })
+                            ->with([
+                                'items' => function ($iq) {
+                                    $iq->whereHas('material', function ($mq) {
+                                        $mq->where('is_active', true)->orWhereNull('is_active');
+                                    })->with('material', 'onts');
+                                },
+                                'expense.category',
+                                'areaModel'
+                            ]);
 
         // Terapkan filter scope pada query
         $query = \App\Services\DataScopeService::applyPurchaseOrderScope($query, $user);
@@ -83,11 +94,24 @@ class PurchaseOrderController extends Controller
             }
         }
 
-        // Clone query for summary calculation before pagination
+        // Clone query for summary calculation before pagination - hanya hitung material yang masih ada/aktif
         $summaryQuery = clone $query;
-        $totalCost = (float) $summaryQuery->sum('total_cost');
+        $transactionIds = (clone $summaryQuery)->pluck('id');
+        $totalCost = (float) DB::table('material_transaction_items')
+            ->join('materials', 'material_transaction_items.material_id', '=', 'materials.id')
+            ->whereIn('material_transaction_items.material_transaction_id', $transactionIds)
+            ->where(function ($q) {
+                $q->where('materials.is_active', true)->orWhereNull('materials.is_active');
+            })
+            ->sum('material_transaction_items.total_price');
 
         $transactions = $query->latest('date')->latest('id')->paginate(15)->withQueryString();
+
+        // Pastikan total_cost per baris transaksi mencerminkan total dari material yang aktif
+        $transactions->getCollection()->transform(function ($trx) {
+            $trx->total_cost = (float) $trx->items->sum('total_price');
+            return $trx;
+        });
 
         // Hanya produk aktif dari menu Data Produk yang bisa diorder
         $materials = Material::where(function ($q) {
@@ -183,14 +207,39 @@ class PurchaseOrderController extends Controller
                     $convertedQuantity = $item['quantity'] * $material->cm_per_pcs;
                 }
 
-                if (isset($item['price']) && $item['price'] !== null && $item['price'] !== '') {
-                    $pricePerUnit = $item['price'];
-                    $itemTotal = $item['quantity'] * $item['price'];
+                // Hitung total harga item belanja secara akurat
+                $inputPrice = (isset($item['price']) && $item['price'] !== null && $item['price'] !== '') 
+                    ? (float) $item['price'] 
+                    : null;
+                $masterPrice = (float) ($material->price_per_unit ?? 0);
+
+                if ($inputPrice !== null) {
+                    $itemTotal = (float) $item['quantity'] * $inputPrice;
                 } else {
-                    // Fallback: harga dasar material per satuan stok
-                    $pricePerUnit = $material->price_per_unit ?? 0;
-                    $itemTotal = $convertedQuantity * $pricePerUnit;
+                    $pUnitLower = strtolower($item['purchase_unit']);
+                    if ($pUnitLower === 'roll' || $pUnitLower === 'pack' || $pUnitLower === 'bungkus') {
+                        $itemTotal = (float) $item['quantity'] * $masterPrice;
+                    } else {
+                        if ($item['purchase_unit'] === 'base' || $item['purchase_unit'] === $material->unit) {
+                            $baseUnitRate = $masterPrice;
+                            if ($material->meter_per_roll > 0) {
+                                $baseUnitRate = $masterPrice / $material->meter_per_roll;
+                            } elseif ($isIsolasi) {
+                                $pcsPerPack = $material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1;
+                                $cmPerPcs = $material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50;
+                                $factor = $pcsPerPack * $cmPerPcs;
+                                $baseUnitRate = $factor > 0 ? ($masterPrice / $factor) : $masterPrice;
+                            } elseif ($material->pcs_per_pack > 0) {
+                                $baseUnitRate = $masterPrice / $material->pcs_per_pack;
+                            }
+                            $itemTotal = (float) $convertedQuantity * $baseUnitRate;
+                        } else {
+                            $itemTotal = (float) $item['quantity'] * $masterPrice;
+                        }
+                    }
                 }
+
+                $pricePerBaseUnit = $convertedQuantity > 0 ? ($itemTotal / $convertedQuantity) : 0;
                 $totalCost += $itemTotal;
 
                 // Validasi kecukupan stok di Gudang Utama (Data Produk)
@@ -203,7 +252,7 @@ class PurchaseOrderController extends Controller
                     'material_id' => $material->id,
                     'quantity' => $convertedQuantity, // The quantity in BASE UNIT
                     'unit' => $material->unit,
-                    'price_per_unit' => $pricePerUnit,
+                    'price_per_unit' => $pricePerBaseUnit,
                     'total_price' => $itemTotal
                 ]);
 
@@ -326,13 +375,39 @@ class PurchaseOrderController extends Controller
                     $convertedQuantity = $item['quantity'] * $material->cm_per_pcs;
                 }
 
-                if (isset($item['price']) && $item['price'] !== null && $item['price'] !== '') {
-                    $pricePerUnit = $item['price'];
-                    $itemTotal = $item['quantity'] * $item['price'];
+                // Hitung total harga item belanja secara akurat
+                $inputPrice = (isset($item['price']) && $item['price'] !== null && $item['price'] !== '') 
+                    ? (float) $item['price'] 
+                    : null;
+                $masterPrice = (float) ($material->price_per_unit ?? 0);
+
+                if ($inputPrice !== null) {
+                    $itemTotal = (float) $item['quantity'] * $inputPrice;
                 } else {
-                    $pricePerUnit = $material->price_per_unit ?? 0;
-                    $itemTotal = $convertedQuantity * $pricePerUnit;
+                    $pUnitLower = strtolower($item['purchase_unit']);
+                    if ($pUnitLower === 'roll' || $pUnitLower === 'pack' || $pUnitLower === 'bungkus') {
+                        $itemTotal = (float) $item['quantity'] * $masterPrice;
+                    } else {
+                        if ($item['purchase_unit'] === 'base' || $item['purchase_unit'] === $material->unit) {
+                            $baseUnitRate = $masterPrice;
+                            if ($material->meter_per_roll > 0) {
+                                $baseUnitRate = $masterPrice / $material->meter_per_roll;
+                            } elseif ($isIsolasi) {
+                                $pcsPerPack = $material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1;
+                                $cmPerPcs = $material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50;
+                                $factor = $pcsPerPack * $cmPerPcs;
+                                $baseUnitRate = $factor > 0 ? ($masterPrice / $factor) : $masterPrice;
+                            } elseif ($material->pcs_per_pack > 0) {
+                                $baseUnitRate = $masterPrice / $material->pcs_per_pack;
+                            }
+                            $itemTotal = (float) $convertedQuantity * $baseUnitRate;
+                        } else {
+                            $itemTotal = (float) $item['quantity'] * $masterPrice;
+                        }
+                    }
                 }
+
+                $pricePerBaseUnit = $convertedQuantity > 0 ? ($itemTotal / $convertedQuantity) : 0;
                 $totalCost += $itemTotal;
 
                 // Cek ketersediaan stok di Gudang Utama
@@ -346,7 +421,7 @@ class PurchaseOrderController extends Controller
                     'material_id' => $material->id,
                     'quantity' => $convertedQuantity,
                     'unit' => $material->unit,
-                    'price_per_unit' => $pricePerUnit,
+                    'price_per_unit' => $pricePerBaseUnit,
                     'total_price' => $itemTotal
                 ]);
 

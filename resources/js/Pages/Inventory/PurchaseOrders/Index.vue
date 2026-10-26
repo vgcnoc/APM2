@@ -435,7 +435,10 @@
                                             <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
                                             Stok Gudang Utama tidak mencukupi untuk item tertentu
                                         </span>
-                                        <span v-else-if="form.items.length">{{ form.items.length }} produk di keranjang</span>
+                                        <div v-else-if="form.items.length" class="flex flex-col">
+                                            <span class="font-medium text-gray-700">{{ form.items.length }} produk di keranjang</span>
+                                            <span class="font-bold text-emerald-600 text-sm">Total Belanja: Rp {{ formatNumber(estimatedTotalCost) }}</span>
+                                        </div>
                                     </div>
                                     <div class="flex items-center gap-2">
                                         <button id="btn-cancel-order" type="button" @click="closeModal" class="px-5 py-2.5 text-sm font-bold text-gray-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">{{ isViewing ? 'Tutup' : 'Batal' }}</button>
@@ -706,6 +709,35 @@ const conversionText = (item) => {
     if (item.purchase_unit === 'base') return '';
     return `${formatNumber(convertedQty(item))} ${mat?.unit || ''}`;
 };
+
+const estimatedTotalCost = computed(() => {
+    return form.items.reduce((sum, item) => {
+        const mat = materialById(item.material_id);
+        if (!mat) return sum;
+        const qty = Number(item.quantity) || 0;
+        const price = Number(mat.price_per_unit) || 0;
+        const isIsolasi = (mat.category === 'Isolasi' || (mat.name && mat.name.toLowerCase().includes('isolasi')));
+        
+        if (item.purchase_unit === 'roll' || item.purchase_unit === 'pack' || item.purchase_unit === 'bungkus') {
+            return sum + (qty * price);
+        }
+        
+        if (item.purchase_unit === 'base' || item.purchase_unit === mat.unit) {
+            let baseRate = price;
+            if (Number(mat.meter_per_roll) > 0) {
+                baseRate = price / Number(mat.meter_per_roll);
+            } else if (isIsolasi) {
+                const factor = (Number(mat.pcs_per_pack) || 1) * (Number(mat.cm_per_pcs) || 50);
+                baseRate = factor > 0 ? (price / factor) : price;
+            } else if (Number(mat.pcs_per_pack) > 0) {
+                baseRate = price / Number(mat.pcs_per_pack);
+            }
+            return sum + (convertedQty(item) * baseRate);
+        }
+        
+        return sum + (qty * price);
+    }, 0);
+});
 
 const togglePicker = async () => {
     pickerOpen.value = !pickerOpen.value;
