@@ -418,9 +418,24 @@
                                 <div>
                                     <label class="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1">Kombinasi</label>
                                     <select v-model="bulkForm.combination" class="w-full bg-[#191c36] border border-indigo-900/80 rounded-xl text-white text-xs p-2.5">
-                                        <option value="alphanumeric">Abjad & Angka</option>
-                                        <option value="numeric">Angka (0-9)</option>
-                                        <option value="alpha">Abjad (A-Z)</option>
+                                        <optgroup label="── Populer & Standar ──" class="bg-[#191c36] text-gray-400">
+                                            <option value="alphanumeric" class="text-white">Huruf Besar & Angka (A1B2C)</option>
+                                            <option value="alphanumeric_lower" class="text-white">Huruf Kecil & Angka (a1b2c)</option>
+                                            <option value="alphanumeric_mixed" class="text-white">Campur Huruf Besar, Kecil & Angka (aB1c2)</option>
+                                            <option value="numeric" class="text-white">Hanya Angka (12345)</option>
+                                        </optgroup>
+                                        <optgroup label="── Anti Salah Ketik (Hotspot) ──" class="bg-[#191c36] text-gray-400">
+                                            <option value="clean_readable" class="text-white">Mudah Dibaca Kapital (Tanpa 0, O, 1, I, L)</option>
+                                            <option value="clean_readable_lower" class="text-white">Mudah Dibaca Kecil (Tanpa 0, o, 1, i, l)</option>
+                                        </optgroup>
+                                        <optgroup label="── Hanya Huruf ──" class="bg-[#191c36] text-gray-400">
+                                            <option value="alpha" class="text-white">Hanya Huruf Besar (ABCDE)</option>
+                                            <option value="alpha_lower" class="text-white">Hanya Huruf Kecil (abcdef)</option>
+                                        </optgroup>
+                                        <optgroup label="── Pola Unik & Mudah Diingat ──" class="bg-[#191c36] text-gray-400">
+                                            <option value="consonant_vowel" class="text-white">Mudah Dieja: Konsonan-Vokal (BADE84)</option>
+                                            <option value="words_numeric" class="text-white">Kata Indonesia + Angka (KOPI25, CERIA78)</option>
+                                        </optgroup>
                                     </select>
                                 </div>
                             </div>
@@ -1268,9 +1283,24 @@
                                 <div>
                                     <label class="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-1">Kombinasi Karakter <span class="text-rose-400">*</span></label>
                                     <select v-model="bulkForm.combination" class="w-full bg-[#191c36] border border-indigo-900/80 rounded-xl text-white text-sm p-2.5" required>
-                                        <option value="alphanumeric">Huruf & Angka (A1B2C)</option>
-                                        <option value="numeric">Hanya Angka (12345)</option>
-                                        <option value="alpha">Hanya Huruf (ABCDE)</option>
+                                        <optgroup label="── Populer & Standar ──" class="bg-[#191c36] text-gray-400">
+                                            <option value="alphanumeric" class="text-white">Huruf Besar & Angka (A1B2C)</option>
+                                            <option value="alphanumeric_lower" class="text-white">Huruf Kecil & Angka (a1b2c)</option>
+                                            <option value="alphanumeric_mixed" class="text-white">Campur Huruf Besar, Kecil & Angka (aB1c2)</option>
+                                            <option value="numeric" class="text-white">Hanya Angka (12345)</option>
+                                        </optgroup>
+                                        <optgroup label="── Anti Salah Ketik (Hotspot) ──" class="bg-[#191c36] text-gray-400">
+                                            <option value="clean_readable" class="text-white">Mudah Dibaca Kapital (Tanpa 0, O, 1, I, L)</option>
+                                            <option value="clean_readable_lower" class="text-white">Mudah Dibaca Kecil (Tanpa 0, o, 1, i, l)</option>
+                                        </optgroup>
+                                        <optgroup label="── Hanya Huruf ──" class="bg-[#191c36] text-gray-400">
+                                            <option value="alpha" class="text-white">Hanya Huruf Besar (ABCDE)</option>
+                                            <option value="alpha_lower" class="text-white">Hanya Huruf Kecil (abcdef)</option>
+                                        </optgroup>
+                                        <optgroup label="── Pola Unik & Mudah Diingat ──" class="bg-[#191c36] text-gray-400">
+                                            <option value="consonant_vowel" class="text-white">Mudah Dieja: Konsonan-Vokal (BADE84)</option>
+                                            <option value="words_numeric" class="text-white">Kata Indonesia + Angka (KOPI25, CERIA78)</option>
+                                        </optgroup>
                                     </select>
                                 </div>
                                 <div>
