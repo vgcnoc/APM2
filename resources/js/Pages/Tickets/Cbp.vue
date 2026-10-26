@@ -181,7 +181,7 @@
                     <div class="flex items-center gap-2 shrink-0 flex-wrap">
                         <!-- Tombol Hapus Terpilih -->
                         <button 
-                            v-if="selectedIds.length > 0 && can(['cbp_btn_delete', 'cbp_btn_delete_all', 'cbp_manage'])"
+                            v-if="selectedIds.length > 0 && (can('cbp_btn_delete') || can('cbp_btn_delete_all'))"
                             @click="openDeleteModal('selected')"
                             type="button"
                             class="px-3.5 py-2 bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold text-xs rounded-xl border border-rose-200 shadow-sm flex items-center gap-1.5 transition-all animate-fade-in"
@@ -192,7 +192,7 @@
 
                         <!-- Tombol Hapus Semua -->
                         <button 
-                            v-if="can(['cbp_btn_delete_all', 'cbp_manage'])"
+                            v-if="can('cbp_btn_delete_all')"
                             @click="openDeleteModal('all')"
                             type="button"
                             class="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 shadow-sm flex items-center gap-1.5 transition-all"
@@ -395,7 +395,7 @@
                                         </button>
 
                                         <!-- Hapus Tiket CBP (Salah Satu) -->
-                                        <button v-if="can(['cbp_btn_delete', 'cbp_manage'])" type="button" @click="openDeleteModal('single', req)" class="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors" title="Hapus Tiket CBP">
+                                        <button v-if="can('cbp_btn_delete')" type="button" @click="openDeleteModal('single', req)" class="p-1.5 text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors" title="Hapus Tiket CBP">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                         </button>
                                     </div>
