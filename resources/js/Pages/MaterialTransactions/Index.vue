@@ -2,7 +2,7 @@
     <AppLayout title="Riwayat Order & Pengambilan" subtitle="Daftar surat jalan dan pengeluaran material">
         <div class="space-y-6">
             <!-- Summary Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div v-can="'material_transactions_card_stats'" class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <!-- Total Transaksi -->
                 <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg shadow-blue-500/30 relative overflow-hidden">
                     <div class="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
@@ -55,7 +55,7 @@
             <!-- Filters & Actions -->
             <div class="glass-card p-5 animate-fade-in-up">
                 <div class="flex flex-col lg:flex-row justify-between gap-4">
-                    <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div v-can="'material_transactions_filter'" class="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                         <!-- Search -->
                         <div class="relative">
                             <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Pencarian</label>
@@ -120,6 +120,7 @@
                     <div class="flex items-end gap-3 shrink-0">
                         <button 
                             v-if="selectedItems.length > 0"
+                            v-can="'material_transactions_delete'"
                             @click="deleteSelected"
                             class="px-4 py-2.5 rounded-xl border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 font-medium text-sm transition-all flex items-center gap-2"
                         >
@@ -133,7 +134,7 @@
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                             Reset
                         </button>
-                        <button @click="openModal" class="btn-primary py-2.5 flex items-center gap-2 shadow-md hover:shadow-lg transition-all">
+                        <button v-can="'material_transactions_create'" @click="openModal" class="btn-primary py-2.5 flex items-center gap-2 shadow-md hover:shadow-lg transition-all">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                             </svg>
@@ -164,7 +165,7 @@
                     <table class="w-full text-left border-collapse">
                         <thead>
                             <tr class="bg-gray-50/50 border-b border-gray-100">
-                                <th class="py-4 px-6 text-xs font-semibold text-gray-500 w-12">
+                                <th v-can="'material_transactions_delete'" class="py-4 px-6 text-xs font-semibold text-gray-500 w-12">
                                     <input type="checkbox" @change="toggleAll" :checked="isAllSelected" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 transition-all">
                                 </th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">No. Transaksi / Tgl</th>
@@ -179,7 +180,7 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             <tr v-for="item in transactions.data" :key="item.id" class="hover:bg-gray-50/50 transition-colors">
-                                <td class="py-4 px-6 align-top">
+                                <td v-can="'material_transactions_delete'" class="py-4 px-6 align-top">
                                     <input type="checkbox" v-model="selectedItems" :value="item.id" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 mt-1 transition-all">
                                 </td>
                                 <td class="py-4 px-6 align-top">
@@ -287,13 +288,13 @@
                                             </svg>
                                             Detail
                                         </Link>
-                                        <Link :href="route('material-transactions.edit', item.id)" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 transition-colors">
+                                        <Link v-can="'material_transactions_edit'" :href="route('material-transactions.edit', item.id)" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 transition-colors">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                                             </svg>
                                             Edit
                                         </Link>
-                                        <button @click="deleteItem(item)" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 transition-colors">
+                                        <button v-can="'material_transactions_delete'" @click="deleteItem(item)" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 transition-colors">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                                             </svg>

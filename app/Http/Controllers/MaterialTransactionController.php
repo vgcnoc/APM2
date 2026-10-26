@@ -112,6 +112,9 @@ class MaterialTransactionController extends Controller
     public function create()
     {
         $user = auth()->user();
+        if ($user && !$user->hasRole('admin') && !$user->hasRole('super admin') && $user->role !== 'admin' && $user->role !== 'super admin' && !$user->can('material_transactions_create')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk membuat transaksi/surat jalan material.');
+        }
         $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('material_transactions_view_all');
         $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
 
@@ -130,6 +133,10 @@ class MaterialTransactionController extends Controller
 
     public function store(Request $request)
     {
+        $user = auth()->user();
+        if ($user && !$user->hasRole('admin') && !$user->hasRole('super admin') && $user->role !== 'admin' && $user->role !== 'super admin' && !$user->can('material_transactions_create')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk membuat transaksi/surat jalan material.');
+        }
         $request->validate([
             'date' => 'required|date',
             'technician_name' => 'required|string|max:255',
@@ -312,6 +319,11 @@ class MaterialTransactionController extends Controller
 
     public function edit(MaterialTransaction $materialTransaction)
     {
+        $user = auth()->user();
+        if ($user && !$user->hasRole('admin') && !$user->hasRole('super admin') && $user->role !== 'admin' && $user->role !== 'super admin' && !$user->can('material_transactions_edit')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengubah transaksi/surat jalan material.');
+        }
+
         $materialTransaction->load('items.material');
         return \Inertia\Inertia::render('MaterialTransactions/Edit', [
             'transaction' => $materialTransaction,
@@ -322,6 +334,10 @@ class MaterialTransactionController extends Controller
 
     public function update(Request $request, MaterialTransaction $materialTransaction)
     {
+        $user = auth()->user();
+        if ($user && !$user->hasRole('admin') && !$user->hasRole('super admin') && $user->role !== 'admin' && $user->role !== 'super admin' && !$user->can('material_transactions_edit')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengubah transaksi/surat jalan material.');
+        }
         $request->validate([
             'date' => 'required|date',
             'technician_name' => 'required|string|max:255',
@@ -558,6 +574,10 @@ class MaterialTransactionController extends Controller
     public function destroy(MaterialTransaction $materialTransaction)
     {
         $user = auth()->user();
+        if ($user && !$user->hasRole('admin') && !$user->hasRole('super admin') && $user->role !== 'admin' && $user->role !== 'super admin' && !$user->can('material_transactions_delete')) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk menghapus transaksi/surat jalan material.');
+        }
+
         $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('material_transactions_view_all');
         $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
 
@@ -581,6 +601,11 @@ class MaterialTransactionController extends Controller
 
     public function bulkDestroy(Request $request)
     {
+        $user = auth()->user();
+        if ($user && !$user->hasRole('admin') && !$user->hasRole('super admin') && $user->role !== 'admin' && $user->role !== 'super admin' && !$user->can('material_transactions_delete')) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk menghapus transaksi/surat jalan material.');
+        }
+
         $request->validate([
             'ids' => 'required|array',
             'ids.*' => 'exists:material_transactions,id',
