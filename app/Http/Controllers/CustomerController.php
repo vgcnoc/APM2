@@ -455,6 +455,335 @@ class CustomerController extends Controller
     }
 
     /**
+     * Menu Khusus Data Pelanggan Berbayar Lengkap dengan Status Pembayaran & Tagihan
+     */
+    public function paid(Request $request): Response
+    {
+        $user = auth()->user();
+        if ($user && !$user->hasRole('admin') && !$user->can('menu_customers_all') && !$user->can('menu_invoices')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk membuka Menu Pelanggan Berbayar.');
+        }
+
+        // Tentukan Periode Bulan & Tahun (Default: Bulan & Tahun Berjalan)
+        $selectedMonth = (int) ($request->period_month ?: now()->month);
+        $selectedYear = (int) ($request->period_year ?: now()->year);
+
+        // Base Query Pelanggan Berbayar (Bukan Gratis & Bukan Free Home, Tidak Terminated)
+        $baseQuery = Customer::query()
+            ->where(function($q) {
+                $q->whereNull('service_status')
+                  ->orWhereNotIn('service_status', ['gratis', 'free_home']);
+            })
+            ->where('status', '!=', 'terminated')
+            ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function($q) {
+                if (auth()->user()->can('customers_all_view_area')) {
+                    $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+                } else {
+                    $q->where('sales_id', auth()->id());
+                }
+            });
+
+        // 1. Online Usernames & Sessions dari FreeRADIUS
+        $onlineSessions = collect();
+        $onlineUsernames = [];
+        try {
+            $onlineSessions = \App\Models\Radius\RadAcct::online()
+                ->orderByDesc('acctstarttime')
+                ->get()
+                ->unique('username')
+                ->keyBy('username');
+            $onlineUsernames = $onlineSessions->keys()->all();
+        } catch (\Exception $e) {
+            $onlineSessions = collect();
+            $onlineUsernames = [];
+        }
+
+        // 2. Statistik Global untuk Pelanggan Berbayar
+        $totalPaidCustomers = (clone $baseQuery)->count();
+        $totalMonthlyPotential = (clone $baseQuery)->with('package')->get()->sum(fn($c) => $c->package?->price ?? 0);
+
+        // Ambil ID semua pelanggan berbayar untuk kalkulasi agregat invoice
+        $customerIds = (clone $baseQuery)->pluck('id')->toArray();
+
+        // Ambil invoice untuk periode terpilih
+        $periodInvoices = \App\Models\Invoice::whereIn('customer_id', $customerIds)
+            ->where('period_month', $selectedMonth)
+            ->where('period_year', $selectedYear)
+            ->where('is_reseller_balance', false)
+            ->with('payments')
+            ->get()
+            ->groupBy('customer_id');
+
+        // Ambil tunggakan masa lalu (invoice sebelum periode terpilih yang belum paid)
+        $pastUnpaidInvoices = \App\Models\Invoice::whereIn('customer_id', $customerIds)
+            ->where('status', '!=', 'paid')
+            ->where('is_reseller_balance', false)
+            ->where(function($q) use ($selectedMonth, $selectedYear) {
+                $q->where('period_year', '<', $selectedYear)
+                  ->orWhere(function($subQ) use ($selectedMonth, $selectedYear) {
+                      $subQ->where('period_year', $selectedYear)
+                           ->where('period_month', '<', $selectedMonth);
+                  });
+            })
+            ->get()
+            ->groupBy('customer_id');
+
+        // Hitung statistik pembayaran periode ini
+        $paidCount = 0;
+        $paidAmount = 0;
+        $unpaidCount = 0;
+        $unpaidAmount = 0;
+        $overdueCount = 0;
+        $overdueAmount = 0;
+        $partialCount = 0;
+        $noInvoiceCount = 0;
+        $suspendedCount = (clone $baseQuery)->where('status', 'suspended')->count();
+
+        $today = now()->startOfDay();
+
+        foreach ($customerIds as $cId) {
+            $inv = $periodInvoices->get($cId)?->first();
+            if ($inv) {
+                if ($inv->status === 'paid') {
+                    $paidCount++;
+                    $paidAmount += $inv->amount;
+                } elseif ($inv->status === 'partial') {
+                    $partialCount++;
+                    $paidAmount += $inv->total_paid;
+                    $unpaidAmount += $inv->remaining;
+                } else {
+                    $isOverdue = $inv->due_date && \Carbon\Carbon::parse($inv->due_date)->startOfDay()->lt($today);
+                    if ($isOverdue) {
+                        $overdueCount++;
+                        $overdueAmount += $inv->amount;
+                    } else {
+                        $unpaidCount++;
+                        $unpaidAmount += $inv->amount;
+                    }
+                }
+            } else {
+                $noInvoiceCount++;
+            }
+        }
+
+        // Online count
+        $onlineCount = (clone $baseQuery)->whereHas('ont', fn($q) => $q->whereIn('pppoe_user', $onlineUsernames))->count();
+        $offlineCount = max(0, $totalPaidCustomers - $onlineCount);
+
+        $stats = [
+            'total' => $totalPaidCustomers,
+            'total_potential' => $totalMonthlyPotential,
+            'paid_count' => $paidCount,
+            'paid_amount' => $paidAmount,
+            'unpaid_count' => $unpaidCount,
+            'unpaid_amount' => $unpaidAmount,
+            'overdue_count' => $overdueCount,
+            'overdue_amount' => $overdueAmount,
+            'partial_count' => $partialCount,
+            'no_invoice_count' => $noInvoiceCount,
+            'suspended_count' => $suspendedCount,
+            'online_count' => $onlineCount,
+            'offline_count' => $offlineCount,
+            'collection_rate' => $totalPaidCustomers > 0 ? round(($paidCount / $totalPaidCustomers) * 100, 1) : 0,
+        ];
+
+        // 3. Query Data Pelanggan Berbayar dengan Filter & Pagination
+        $query = (clone $baseQuery)->with(['package', 'areaModel', 'ont.odp', 'user', 'sales']);
+
+        // Filter Area
+        if ($request->filled('area_id')) {
+            $areaId = $request->area_id;
+            $query->where(function ($sub) use ($areaId) {
+                $sub->where('area_id', $areaId);
+                $areaName = \App\Models\Area::where('id', $areaId)->value('name');
+                if ($areaName) $sub->orWhere('area', $areaName);
+            });
+        }
+
+        // Filter Paket
+        if ($request->filled('package_id')) {
+            $query->where('package_id', $request->package_id);
+        }
+
+        // Filter Koneksi Online / Offline
+        if ($request->filled('connection_status') && in_array($request->connection_status, ['online', 'offline'])) {
+            if ($request->connection_status === 'online') {
+                $query->whereHas('ont', fn($oq) => $oq->whereIn('pppoe_user', $onlineUsernames));
+            } elseif ($request->connection_status === 'offline') {
+                $query->where(function($sq) use ($onlineUsernames) {
+                    $sq->whereDoesntHave('ont')
+                       ->orWhereHas('ont', fn($oq) => $oq->whereNotIn('pppoe_user', $onlineUsernames)->orWhereNull('pppoe_user'));
+                });
+            }
+        }
+
+        // Filter Pencarian Teks Cerdas
+        if ($search = trim((string) $request->search)) {
+            $query->where(function($sq) use ($search) {
+                $sq->where('name', 'like', "%{$search}%")
+                   ->orWhere('customer_code', 'like', "%{$search}%")
+                   ->orWhere('phone', 'like', "%{$search}%")
+                   ->orWhere('address', 'like', "%{$search}%")
+                   ->orWhereHas('ont', fn($oq) => $oq->where('pppoe_user', 'like', "%{$search}%")->orWhere('hotspot_user', 'like', "%{$search}%"))
+                   ->orWhereHas('invoices', fn($iq) => $iq->where('invoice_number', 'like', "%{$search}%"));
+            });
+        }
+
+        // Filter Status Pembayaran
+        if ($request->filled('payment_status')) {
+            $pStatus = $request->payment_status;
+            if ($pStatus === 'paid') {
+                $query->whereHas('invoices', function($iq) use ($selectedMonth, $selectedYear) {
+                    $iq->where('period_month', $selectedMonth)
+                       ->where('period_year', $selectedYear)
+                       ->where('status', 'paid')
+                       ->where('is_reseller_balance', false);
+                });
+            } elseif ($pStatus === 'unpaid') {
+                $query->whereHas('invoices', function($iq) use ($selectedMonth, $selectedYear, $today) {
+                    $iq->where('period_month', $selectedMonth)
+                       ->where('period_year', $selectedYear)
+                       ->where('status', 'unpaid')
+                       ->where(function($sq) use ($today) {
+                           $sq->whereNull('due_date')->orWhere('due_date', '>=', $today);
+                       })
+                       ->where('is_reseller_balance', false);
+                });
+            } elseif ($pStatus === 'overdue') {
+                $query->where(function($qOverdue) use ($selectedMonth, $selectedYear, $today) {
+                    $qOverdue->whereHas('invoices', function($iq) use ($selectedMonth, $selectedYear, $today) {
+                        $iq->where('period_month', $selectedMonth)
+                           ->where('period_year', $selectedYear)
+                           ->where('status', '!=', 'paid')
+                           ->whereNotNull('due_date')
+                           ->where('due_date', '<', $today)
+                           ->where('is_reseller_balance', false);
+                    })->orWhereHas('invoices', function($iqPast) use ($selectedMonth, $selectedYear) {
+                        $iqPast->where('status', '!=', 'paid')
+                               ->where('is_reseller_balance', false)
+                               ->where(function($subQ) use ($selectedMonth, $selectedYear) {
+                                   $subQ->where('period_year', '<', $selectedYear)
+                                        ->orWhere(function($mQ) use ($selectedMonth, $selectedYear) {
+                                            $mQ->where('period_year', $selectedYear)
+                                               ->where('period_month', '<', $selectedMonth);
+                                        });
+                               });
+                    });
+                });
+            } elseif ($pStatus === 'isolir') {
+                $query->where('status', 'suspended');
+            } elseif ($pStatus === 'partial') {
+                $query->whereHas('invoices', function($iq) use ($selectedMonth, $selectedYear) {
+                    $iq->where('period_month', $selectedMonth)
+                       ->where('period_year', $selectedYear)
+                       ->where('status', 'partial')
+                       ->where('is_reseller_balance', false);
+                });
+            } elseif ($pStatus === 'no_invoice') {
+                $query->whereDoesntHave('invoices', function($iq) use ($selectedMonth, $selectedYear) {
+                    $iq->where('period_month', $selectedMonth)
+                       ->where('period_year', $selectedYear)
+                       ->where('is_reseller_balance', false);
+                });
+            }
+        }
+
+        $perPage = (int) ($request->per_page ?? 15);
+        $customers = $query->latest('id')->paginate($perPage)->withQueryString();
+
+        // 4. Enrich Customer Collection dengan Data Pembayaran & Sesi Real-Time
+        $customers->getCollection()->transform(function ($c) use ($periodInvoices, $pastUnpaidInvoices, $onlineSessions, $today) {
+            $inv = $periodInvoices->get($c->id)?->first();
+            $pastInvs = $pastUnpaidInvoices->get($c->id) ?: collect();
+
+            // Sesi online FreeRADIUS
+            $pppoeUser = $c->ont?->pppoe_user;
+            $hotspotUser = $c->ont?->hotspot_user;
+            $session = ($pppoeUser ? $onlineSessions->get($pppoeUser) : null) ?: ($hotspotUser ? $onlineSessions->get($hotspotUser) : null);
+
+            $c->is_online = !is_null($session);
+            $c->online_session = $session ? [
+                'ip' => $session->framedipaddress ?? '-',
+                'mac' => $session->callingstationid ?? '-',
+                'uptime' => $session->liveSessionTime(),
+                'nas_ip' => $session->nasipaddress ?? '-',
+            ] : null;
+
+            // Tunggakan masa lalu
+            $pastDebtAmount = $pastInvs->sum(fn($i) => $i->status === 'partial' ? $i->remaining : $i->amount);
+            $pastDebtMonths = $pastInvs->count();
+
+            // Status pembayaran cerdas untuk periode ini
+            $paymentStatus = 'no_invoice';
+            $isOverdue = false;
+            $daysOverdue = 0;
+
+            if ($inv) {
+                if ($inv->status === 'paid') {
+                    $paymentStatus = 'paid';
+                } elseif ($inv->status === 'partial') {
+                    $paymentStatus = 'partial';
+                } else {
+                    if ($inv->due_date && \Carbon\Carbon::parse($inv->due_date)->startOfDay()->lt($today)) {
+                        $paymentStatus = 'overdue';
+                        $isOverdue = true;
+                        $daysOverdue = (int) \Carbon\Carbon::parse($inv->due_date)->startOfDay()->diffInDays($today);
+                    } else {
+                        $paymentStatus = 'unpaid';
+                    }
+                }
+            }
+
+            $c->is_suspended = ($c->status === 'suspended');
+
+            $c->current_invoice = $inv ? [
+                'id' => $inv->id,
+                'invoice_number' => $inv->invoice_number,
+                'amount' => (int) $inv->amount,
+                'total_paid' => (int) $inv->total_paid,
+                'remaining' => (int) $inv->remaining,
+                'due_date' => $inv->due_date ? $inv->due_date->format('Y-m-d') : null,
+                'status' => $inv->status,
+                'payment_channel' => $inv->payment_channel,
+                'paid_date' => $inv->payments->where('status', 'verified')->max('payment_date'),
+            ] : null;
+
+            $c->payment_summary = [
+                'status' => $paymentStatus,
+                'is_overdue' => $isOverdue || ($pastDebtMonths > 0),
+                'days_overdue' => $daysOverdue,
+                'past_debt_amount' => (int) $pastDebtAmount,
+                'past_debt_months' => $pastDebtMonths,
+                'total_bill' => (int) (($inv ? ($inv->status === 'partial' ? $inv->remaining : ($inv->status === 'paid' ? 0 : $inv->amount)) : ($c->package?->price ?? 0)) + $pastDebtAmount),
+            ];
+
+            return $c;
+        });
+
+        return Inertia::render('Customers/Paid', [
+            'customers' => $customers,
+            'packages' => InternetPackage::active()->get(['id', 'name', 'speed_mbps', 'price', 'access_mode']),
+            'areas' => DataScopeService::getScopedAreas($request->user(), 'customers_all'),
+            'filters' => [
+                'search' => $request->search ?: '',
+                'area_id' => $request->area_id ?: '',
+                'package_id' => $request->package_id ?: '',
+                'payment_status' => $request->payment_status ?: '',
+                'connection_status' => $request->connection_status ?: '',
+                'period_month' => $selectedMonth,
+                'period_year' => $selectedYear,
+                'per_page' => $perPage,
+            ],
+            'stats' => $stats,
+            'currentPeriod' => [
+                'month' => $selectedMonth,
+                'year' => $selectedYear,
+                'label' => (['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][$selectedMonth] ?? '') . ' ' . $selectedYear,
+            ],
+        ]);
+    }
+
+    /**
      * Menu Khusus Data Pelanggan Gratis (Bebas Tagihan / Non-Invoice)
      */
     public function gratis(Request $request): Response
@@ -797,7 +1126,9 @@ class CustomerController extends Controller
         $tab = $request->tab ?? 'semua';
         
         $baseQuery = Customer::survey()
-            ->with(['package', 'surveys.odp', 'surveys.surveyor', 'technicianSchedules.technician'])
+            ->with(['package', 'surveys.odp', 'surveys.surveyor', 'technicianSchedules' => function ($q) {
+                $q->where('type', 'survey')->with('technician');
+            }])
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_survey_view_all'), function($q) {
                 if (auth()->user()->can('customers_survey_view_area')) {
                     $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
@@ -910,15 +1241,22 @@ class CustomerController extends Controller
             ->with('odc.olt')
             ->get();
             
-        // Ambil semua user yang aktif (sesuai request untuk menampilkan semua karyawan)
-        $technicians = User::where('is_active', true)->get();
+        // Ambil semua user/karyawan yang aktif (tanpa dibatasi area)
+        $technicians = User::where(function ($q) {
+                $q->where('is_active', true)->orWhereNull('is_active');
+            })
+            ->with('employee')
+            ->orderBy('name')
+            ->get(['id', 'name', 'phone', 'email', 'role']);
 
         // Get scoped areas for dropdown
         $areas = DataScopeService::getScopedAreaNames($request->user(), 'customers_all');
 
         $openCustomer = null;
         if ($request->filled('open_report')) {
-            $openCustomerQuery = Customer::with(['package', 'surveys.odp', 'surveys.surveyor', 'technicianSchedules.technician']);
+            $openCustomerQuery = Customer::with(['package', 'surveys.odp', 'surveys.surveyor', 'technicianSchedules' => function ($q) {
+                $q->where('type', 'survey')->with('technician');
+            }]);
             if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_survey_view_all')) {
                 if (auth()->user()->can('customers_survey_view_area')) {
                     $openCustomerQuery->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
@@ -1054,8 +1392,13 @@ class CustomerController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        // Ambil semua user yang aktif (sesuai request untuk menampilkan semua karyawan)
-        $technicians = User::where('is_active', true)->get();
+        // Ambil semua user/karyawan yang aktif (tanpa dibatasi area)
+        $technicians = User::where(function ($q) {
+                $q->where('is_active', true)->orWhereNull('is_active');
+            })
+            ->with('employee')
+            ->orderBy('name')
+            ->get(['id', 'name', 'phone', 'email', 'role']);
         $availableOnts = \App\Models\Ont::whereIn('status', ['Sudah Set', 'Belum Set/Baru Input', 'inactive'])
             ->whereNull('customer_id')
             ->get();
@@ -3081,30 +3424,22 @@ class CustomerController extends Controller
             $validated['scheduled_time'] = substr($validated['scheduled_time'], 0, 5);
         }
 
-        $schedule = $customer->technicianSchedules()
+        // Hapus jadwal survey yang masih scheduled agar penugasan akurat sesuai petugas terpilih
+        $customer->technicianSchedules()
             ->where('type', 'survey')
-            ->first();
+            ->where('status', 'scheduled')
+            ->delete();
 
-        if ($schedule) {
-            $schedule->update([
-                'technician_id' => $validated['technician_id'],
-                'scheduled_date' => $validated['scheduled_date'],
-                'scheduled_time' => $validated['scheduled_time'] ?: null,
-                'status' => $validated['status'],
-                'notes' => $validated['notes'] ?? $schedule->notes,
-            ]);
-        } else {
-            \App\Models\TechnicianSchedule::create([
-                'customer_id' => $customer->id,
-                'technician_id' => $validated['technician_id'],
-                'type' => 'survey',
-                'status' => $validated['status'],
-                'scheduled_date' => $validated['scheduled_date'],
-                'scheduled_time' => $validated['scheduled_time'] ?: null,
-                'notes' => $validated['notes'] ?: 'Jadwal survey',
-                'area_id' => $customer->area_id,
-            ]);
-        }
+        \App\Models\TechnicianSchedule::create([
+            'customer_id' => $customer->id,
+            'technician_id' => $validated['technician_id'],
+            'type' => 'survey',
+            'status' => $validated['status'],
+            'scheduled_date' => $validated['scheduled_date'],
+            'scheduled_time' => $validated['scheduled_time'] ?: null,
+            'notes' => $validated['notes'] ?: 'Jadwal survey',
+            'area_id' => $customer->area_id,
+        ]);
 
         \App\Models\AuditLog::createLog('Edit Jadwal Survey', $customer, $customer->status, $customer->status, 'Memperbarui jadwal survey teknisi');
 
@@ -3235,30 +3570,22 @@ class CustomerController extends Controller
 
         $finalNotes = !empty($customNotes) ? implode("\n", $customNotes) : ($validated['notes'] ?: 'Jadwal pasang');
 
-        $schedule = $customer->technicianSchedules()
+        // Hapus jadwal instalasi yang masih scheduled agar penugasan akurat sesuai petugas terpilih
+        $customer->technicianSchedules()
             ->where('type', 'installation')
-            ->first();
+            ->where('status', 'scheduled')
+            ->delete();
 
-        if ($schedule) {
-            $schedule->update([
-                'technician_id' => $validated['technician_id'],
-                'scheduled_date' => $validated['scheduled_date'],
-                'scheduled_time' => $validated['scheduled_time'] ?: null,
-                'status' => $validated['status'],
-                'notes' => $finalNotes,
-            ]);
-        } else {
-            \App\Models\TechnicianSchedule::create([
-                'customer_id' => $customer->id,
-                'technician_id' => $validated['technician_id'],
-                'type' => 'installation',
-                'status' => $validated['status'],
-                'scheduled_date' => $validated['scheduled_date'],
-                'scheduled_time' => $validated['scheduled_time'] ?: null,
-                'notes' => $finalNotes,
-                'area_id' => $customer->area_id,
-            ]);
-        }
+        \App\Models\TechnicianSchedule::create([
+            'customer_id' => $customer->id,
+            'technician_id' => $validated['technician_id'],
+            'type' => 'installation',
+            'status' => $validated['status'],
+            'scheduled_date' => $validated['scheduled_date'],
+            'scheduled_time' => $validated['scheduled_time'] ?: null,
+            'notes' => $finalNotes,
+            'area_id' => $customer->area_id,
+        ]);
 
         // Kirim notifikasi WA ke teknisi jika diminta
         if ($request->boolean('send_wa', false)) {
@@ -3457,6 +3784,12 @@ class CustomerController extends Controller
             'notes' => 'nullable|string',
         ]);
 
+        // Hapus jadwal survey yang masih scheduled sebelumnya agar tidak ada duplikasi atau teknisi lama tertinggal
+        $customer->technicianSchedules()
+            ->where('type', 'survey')
+            ->where('status', 'scheduled')
+            ->delete();
+
         foreach ($validated['technician_ids'] as $techId) {
             TechnicianSchedule::create([
                 'customer_id' => $customer->id,
@@ -3466,6 +3799,7 @@ class CustomerController extends Controller
                 'scheduled_date' => $validated['scheduled_date'],
                 'scheduled_time' => $validated['scheduled_time'],
                 'notes' => $validated['notes'],
+                'area_id' => $customer->area_id,
             ]);
         }
         
@@ -3659,6 +3993,12 @@ class CustomerController extends Controller
             }
             $finalNotes = implode("\n\n", $customNotes);
 
+            // Hapus jadwal instalasi yang masih scheduled sebelumnya agar penugasan baru akurat & menggantikan teknisi lama
+            $customer->technicianSchedules()
+                ->where('type', 'installation')
+                ->where('status', 'scheduled')
+                ->delete();
+
             // Create Technician Schedules
             foreach ($validated['technician_ids'] as $techId) {
                 TechnicianSchedule::create([
@@ -3669,6 +4009,7 @@ class CustomerController extends Controller
                     'type' => 'installation',
                     'status' => 'scheduled',
                     'notes' => $finalNotes,
+                    'area_id' => $customer->area_id,
                 ]);
             }
 
@@ -3857,7 +4198,9 @@ class CustomerController extends Controller
      */
     public function storeSurvey(Request $request, Customer $customer): RedirectResponse
     {
-        if (!auth()->user()->can('customers_survey_report')) {
+        $user = auth()->user();
+        $isAssigned = $customer->technicianSchedules()->where('type', 'survey')->where('technician_id', $user?->id)->exists();
+        if (!$user?->hasRole('admin') && !$user?->can('customers_survey_report') && !$isAssigned) {
             abort(403, 'Anda tidak memiliki hak akses untuk mengisi laporan survey.');
         }
 
@@ -3935,11 +4278,11 @@ class CustomerController extends Controller
             );
         }
         
-        // Update schedule status if any
-        $schedule = $customer->technicianSchedules()->where('type', 'survey')->where('status', 'scheduled')->first();
-        if ($schedule) {
-            $schedule->update(['status' => 'done']);
-        }
+        // Update status jadwal teknisi survey ke 'done' untuk semua teknisi yang ditugaskan
+        $customer->technicianSchedules()
+            ->where('type', 'survey')
+            ->where('status', 'scheduled')
+            ->update(['status' => 'done']);
 
         // Auto Incentive: Fee Survey
         $surveyFee = \App\Models\MasterFee::where('type', 'Fee Survey')->where('is_active', true)->value('nominal');
@@ -3974,7 +4317,10 @@ class CustomerController extends Controller
 
     public function updateSurvey(Request $request, Customer $customer): RedirectResponse
     {
-        if (!auth()->user()->can('customers_survey_report')) {
+        $user = auth()->user();
+        $isAssigned = $customer->technicianSchedules()->where('type', 'survey')->where('technician_id', $user?->id)->exists()
+            || ($customer->surveys()->first()?->surveyor_id === $user?->id);
+        if (!$user?->hasRole('admin') && !$user?->can('customers_survey_report') && !$isAssigned) {
             abort(403, 'Anda tidak memiliki hak akses untuk mengubah laporan survey.');
         }
 
@@ -4333,6 +4679,36 @@ class CustomerController extends Controller
         });
 
         return redirect()->back()->with('success', "$count data pelanggan beserta seluruh data terhubung berhasil dihapus secara permanen.");
+    }
+
+    /**
+     * Isolir Pelanggan (suspend)
+     */
+    public function suspend(Request $request, Customer $customer, RadiusService $radius): RedirectResponse
+    {
+        if ($customer->status === 'suspended') {
+            return redirect()->back()->with('info', 'Pelanggan sudah dalam status isolir.');
+        }
+
+        $customer->update([
+            'status' => 'suspended',
+            'suspend_start' => now()->toDateString(),
+            'suspend_end' => null,
+        ]);
+
+        try {
+            $radius->syncCustomer($customer);
+            $accounts = $radius->customerAccounts($customer);
+            foreach (array_keys($accounts) as $username) {
+                $radius->disconnect($username);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('[RADIUS] Suspend sync error: ' . $e->getMessage());
+        }
+
+        \App\Models\AuditLog::createLog('Isolir Layanan', $customer, 'active', 'suspended', 'Mengisolir layanan internet pelanggan');
+
+        return redirect()->back()->with('success', "Isolir pelanggan {$customer->name} berhasil diaktifkan.");
     }
 
     /**

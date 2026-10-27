@@ -74,17 +74,18 @@ class GenerateAttendanceRewards extends Command
         $this->info("Memproses sinkronisasi data presensi & jadwal untuk periode: {$month} ({$monthStart->format('d M Y')} s/d {$monthEnd->format('d M Y')})");
 
         // Ambil konfigurasi denda & potongan
-        $latePenaltyMode = Setting::get('attendance_late_penalty_mode', 'per_kejadian');
+        $latePenaltyMode = Setting::get('attendance_late_mode', Setting::get('attendance_late_penalty_mode', 'Per Kejadian'));
+        $latePenaltyModeSlug = str_contains(strtolower($latePenaltyMode), 'menit') ? 'per_menit' : 'per_kejadian';
         $penaltyPerMinute = (float) Setting::get('attendance_late_per_minute_amount', 1000);
         $fixedPenalty = (float) Setting::get('attendance_late_amount', 10000);
         $missingOutAmount = (float) Setting::get('attendance_missing_out_amount', 10000);
         $earlyLeaveAmount = (float) Setting::get('attendance_early_leave_amount', 10000);
         $alphaAmount = (float) Setting::get('attendance_alpha_amount', 35000);
 
-        $latePenaltyEnabled = Setting::get('attendance_late_penalty_enabled', '1') === '1';
-        $missingOutPenaltyEnabled = Setting::get('attendance_missing_out_penalty_enabled', '1') === '1';
-        $earlyLeavePenaltyEnabled = Setting::get('attendance_early_leave_penalty_enabled', '1') === '1';
-        $alphaPenaltyEnabled = Setting::get('attendance_alpha_penalty_enabled', '1') === '1';
+        $latePenaltyEnabled = Setting::get('attendance_late_enabled', Setting::get('attendance_late_penalty_enabled', '1')) === '1';
+        $missingOutPenaltyEnabled = Setting::get('attendance_missing_out_enabled', Setting::get('attendance_missing_out_penalty_enabled', '1')) === '1';
+        $earlyLeavePenaltyEnabled = Setting::get('attendance_early_leave_enabled', Setting::get('attendance_early_leave_penalty_enabled', '1')) === '1';
+        $alphaPenaltyEnabled = Setting::get('attendance_alpha_enabled', Setting::get('attendance_alpha_penalty_enabled', '1')) === '1';
 
         // Ambil data absensi reguler, khusus, dan jadwal kerja
         $allMonthAtts = Attendance::with('employee.area')
@@ -133,7 +134,7 @@ class GenerateAttendanceRewards extends Command
                     $lateCount = $lateRegularAtts->count();
                     $totalLateMinutes = (int) $lateRegularAtts->sum('late_minutes');
 
-                    $lateDeductionAmount = ($latePenaltyMode === 'per_menit')
+                    $lateDeductionAmount = ($latePenaltyModeSlug === 'per_menit')
                         ? ($totalLateMinutes * $penaltyPerMinute)
                         : ($lateCount * $fixedPenalty);
 

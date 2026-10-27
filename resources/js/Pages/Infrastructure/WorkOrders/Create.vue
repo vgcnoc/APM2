@@ -353,8 +353,160 @@ const currentModalPonVlans = computed(() => {
 
 const selectedOdcInfo = computed(() => {
     if (!form.odc_id) return null;
-    return props.odcs.find(o => o.id === form.odc_id);
+    return (props.odcs || []).find(o => o.id === form.odc_id);
 });
+
+// ═════════════════════════════════════════════════════════════════
+// 🌟 DROPDOWN FUNGSI CERDAS: TITIK AWAL & TITIK AKHIR TARIKAN KABEL
+// ═════════════════════════════════════════════════════════════════
+const isCustomStartPoint = ref(false);
+const isCustomEndPoint = ref(false);
+
+// Rekomendasi Cerdas Otomatis untuk Titik Awal berdasarkan ODC / OLT yang dipilih
+const smartDefaultStartPoint = computed(() => {
+    if (form.type === 'odp_deployment') {
+        if (selectedOdcInfo.value) {
+            const portText = form.odc_splitter_port ? ` (Port Feeder ${form.odc_splitter_port})` : '';
+            return `ODC Induk: ${selectedOdcInfo.value.name}${portText}`;
+        }
+        if (filteredOdcs.value && filteredOdcs.value.length > 0) {
+            return `ODC Induk: ${filteredOdcs.value[0].name}`;
+        }
+        return 'ODC Induk / Server';
+    } else {
+        const olt = (props.olts || []).find(o => o.id === form.olt_id);
+        if (olt) {
+            const ponText = form.pon_port ? ` (Port PON ${form.pon_port})` : '';
+            return `Server OLT: ${olt.name}${ponText}`;
+        }
+        if (filteredOlts.value && filteredOlts.value.length > 0) {
+            return `Server OLT: ${filteredOlts.value[0].name}`;
+        }
+        return 'Ruang Server OLT / POP Sentral';
+    }
+});
+
+// Rekomendasi Cerdas Otomatis untuk Titik Akhir Kabel berdasarkan Target ODP/ODC dan Lokasi
+const smartDefaultEndPoint = computed(() => {
+    const target = form.target_name || (form.type === 'odc_deployment' ? 'ODC Baru' : 'ODP Baru');
+    const loc = form.location ? ` (${form.location.trim()})` : '';
+    return `Tiang Target: ${target}${loc}`;
+});
+
+// Daftar Pilihan Dropdown Cerdas untuk Titik Awal
+const startPointOptions = computed(() => {
+    const groups = [];
+
+    // 1. Rekomendasi Sistem dari Induk Terpilih
+    if (smartDefaultStartPoint.value) {
+        groups.push({
+            label: '⭐ Rekomendasi Induk Terpilih',
+            items: [smartDefaultStartPoint.value]
+        });
+    }
+
+    // 2. Daftar ODC di Area
+    if (filteredOdcs.value && filteredOdcs.value.length > 0) {
+        groups.push({
+            label: '🏢 ODC di Area Ini',
+            items: filteredOdcs.value.map(o => `ODC: ${o.name} (Kapasitas ${o.capacity} Port)`)
+        });
+    }
+
+    // 3. Daftar OLT di Area
+    if (filteredOlts.value && filteredOlts.value.length > 0) {
+        groups.push({
+            label: '🖥️ Server OLT di Area Ini',
+            items: filteredOlts.value.map(o => `Server OLT: ${o.name}`)
+        });
+    }
+
+    // 4. Standar Titik Topologi Lapangan
+    groups.push({
+        label: '📍 Titik Jaringan / Tiang Lapangan',
+        items: [
+            'Ruang Server / POP Sentral',
+            'Closure Sambungan FO (Tiang Splicing)',
+            'ODC Induk Terdekat',
+            'Tiang Distribusi Utama',
+            'ODP Cabang / Cascading',
+        ]
+    });
+
+    return groups;
+});
+
+// Daftar Pilihan Dropdown Cerdas untuk Titik Akhir
+const endPointOptions = computed(() => {
+    const groups = [];
+
+    // 1. Rekomendasi Target
+    if (smartDefaultEndPoint.value) {
+        groups.push({
+            label: '⭐ Rekomendasi Target Terencana',
+            items: [smartDefaultEndPoint.value]
+        });
+    }
+
+    // 2. Standar Target Lapangan
+    const target = form.target_name || (form.type === 'odc_deployment' ? 'ODC Baru' : 'ODP Baru');
+    groups.push({
+        label: '🎯 Target Lapangan',
+        items: [
+            `Tiang Target: ${target}`,
+            'Tiang Distribusi Target (Sesuai Koordinat GPS)',
+            'Boks ODP Baru di Tiang',
+            'Closure Sambungan Tiang Terdekat',
+            'Boks Pelanggan / Cluster Perumahan',
+        ]
+    });
+
+    return groups;
+});
+
+// Watcher untuk auto-sync start_point dengan smart recommendation jika belum diisi custom
+watch([smartDefaultStartPoint, () => form.type, () => form.odc_id, () => form.olt_id, () => form.pon_port, () => form.odc_splitter_port], () => {
+    if (!isCustomStartPoint.value) {
+        form.start_point = smartDefaultStartPoint.value;
+    }
+}, { immediate: true });
+
+// Watcher untuk auto-sync end_point dengan smart recommendation jika belum diisi custom
+watch([smartDefaultEndPoint, () => form.target_name, () => form.location], () => {
+    if (!isCustomEndPoint.value) {
+        form.end_point = smartDefaultEndPoint.value;
+    }
+}, { immediate: true });
+
+const onSelectStartPoint = (e) => {
+    const val = e.target.value;
+    if (val === '__custom__') {
+        isCustomStartPoint.value = true;
+    } else {
+        isCustomStartPoint.value = false;
+        form.start_point = val;
+    }
+};
+
+const onSelectEndPoint = (e) => {
+    const val = e.target.value;
+    if (val === '__custom__') {
+        isCustomEndPoint.value = true;
+    } else {
+        isCustomEndPoint.value = false;
+        form.end_point = val;
+    }
+};
+
+const resetStartPointToSmart = () => {
+    isCustomStartPoint.value = false;
+    form.start_point = smartDefaultStartPoint.value;
+};
+
+const resetEndPointToSmart = () => {
+    isCustomEndPoint.value = false;
+    form.end_point = smartDefaultEndPoint.value;
+};
 
 const currentModalOdpVlans = computed(() => {
     if (!selectedOdcInfo.value || !selectedOdcInfo.value.pon_port || !selectedOdcInfo.value.olt || !selectedOdcInfo.value.olt.pon_vlans) return [];
@@ -744,7 +896,7 @@ const submit = () => {
                         :class="currentStep === 1 ? 'bg-indigo-600 text-white shadow-sm' : (currentStep > 1 ? 'bg-emerald-50 text-emerald-700' : 'text-slate-400 bg-slate-50')"
                     >
                         <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px]" :class="currentStep === 1 ? 'bg-white/20' : (currentStep > 1 ? 'bg-emerald-200' : 'bg-slate-200')">1</span>
-                        <span>Spesifikasi &amp; Jaringan</span>
+                        <span>1. Persiapan: Spesifikasi</span>
                     </div>
 
                     <div
@@ -752,7 +904,7 @@ const submit = () => {
                         :class="currentStep === 2 ? 'bg-indigo-600 text-white shadow-sm' : (currentStep > 2 ? 'bg-emerald-50 text-emerald-700' : 'text-slate-400 bg-slate-50')"
                     >
                         <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px]" :class="currentStep === 2 ? 'bg-white/20' : (currentStep > 2 ? 'bg-emerald-200' : 'bg-slate-200')">2</span>
-                        <span>Auto-BOM Material</span>
+                        <span>2. Persiapan: Auto-BOM</span>
                     </div>
 
                     <div
@@ -760,7 +912,7 @@ const submit = () => {
                         :class="currentStep === 3 ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 bg-slate-50'"
                     >
                         <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px]" :class="currentStep === 3 ? 'bg-white/20' : 'bg-slate-200'">3</span>
-                        <span>Penugasan &amp; Terbitkan</span>
+                        <span>3. Penugasan Teknisi</span>
                     </div>
                 </div>
             </div>
@@ -1221,20 +1373,40 @@ const submit = () => {
 
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 <div>
-                                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Titik Awal Tarikan</label>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="block text-xs font-bold text-slate-700 uppercase">Titik Awal Tarikan</label>
+                                        <button
+                                            type="button"
+                                            @click="form.split_units[activeTab].start_point = (activeTab === 0 ? smartDefaultStartPoint : (form.split_units[0].name || 'Unit Induk'))"
+                                            class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-1.5 py-0.5 rounded cursor-pointer transition-colors"
+                                            title="Auto-fill dari konfigurasi induk"
+                                        >
+                                            {{ activeTab === 0 ? '⚡ Dari Induk' : '⚡ Dari Unit A' }}
+                                        </button>
+                                    </div>
                                     <input
                                         v-model="form.split_units[activeTab].start_point"
                                         type="text"
-                                        placeholder="Contoh: OLT Server / Tiang ODC-01"
+                                        :placeholder="activeTab === 0 ? smartDefaultStartPoint : (form.split_units[0].name || 'Unit A')"
                                         class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-indigo-500 focus:border-indigo-500"
                                     />
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Titik Akhir Tarikan</label>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="block text-xs font-bold text-slate-700 uppercase">Titik Akhir Tarikan</label>
+                                        <button
+                                            type="button"
+                                            @click="form.split_units[activeTab].end_point = `Tiang ${form.split_units[activeTab].name || (activeTab === 0 ? 'Unit A' : 'Unit B')}`"
+                                            class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-1.5 py-0.5 rounded cursor-pointer transition-colors"
+                                            title="Auto-fill sesuai nama unit"
+                                        >
+                                            ⚡ Nama Unit
+                                        </button>
+                                    </div>
                                     <input
                                         v-model="form.split_units[activeTab].end_point"
                                         type="text"
-                                        placeholder="Contoh: Tiang No 12 RW 03"
+                                        :placeholder="`Tiang ${form.split_units[activeTab].name || (activeTab === 0 ? 'Unit A' : 'Unit B')}`"
                                         class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-indigo-500 focus:border-indigo-500"
                                     />
                                 </div>
@@ -1357,24 +1529,125 @@ const submit = () => {
 
                             <!-- Jalur Tarikan Kabel & Metode Penarikan (Normal Mode) -->
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 border-t border-slate-200/60">
+                                <!-- Titik Awal (Start Point) Dropdown Cerdas -->
                                 <div>
-                                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Titik Awal (Start Point)</label>
-                                    <input
-                                        v-model="form.start_point"
-                                        type="text"
-                                        placeholder="Contoh: Server OLT / ODC Induk"
-                                        class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-indigo-500 focus:border-indigo-500"
-                                    />
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="block text-xs font-bold text-slate-700 uppercase">Titik Awal (Start Point)</label>
+                                        <button
+                                            type="button"
+                                            @click="isCustomStartPoint ? resetStartPointToSmart() : (isCustomStartPoint = true)"
+                                            class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-1.5 py-0.5 rounded cursor-pointer transition-colors flex items-center gap-1"
+                                            :title="isCustomStartPoint ? 'Kembali ke pilihan dropdown cerdas' : 'Ketik manual jika nama tiang/titik khusus'"
+                                        >
+                                            <span>{{ isCustomStartPoint ? '⚡ Dropdown Cerdas' : '✏️ Ketik Manual' }}</span>
+                                        </button>
+                                    </div>
+
+                                    <!-- Mode Dropdown Cerdas -->
+                                    <div v-if="!isCustomStartPoint" class="relative">
+                                        <select
+                                            :value="form.start_point"
+                                            @change="onSelectStartPoint"
+                                            class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:ring-indigo-500 focus:border-indigo-500 shadow-2xs cursor-pointer"
+                                        >
+                                            <option
+                                                v-if="form.start_point && !startPointOptions.some(g => g.items.includes(form.start_point))"
+                                                :value="form.start_point"
+                                            >
+                                                📌 {{ form.start_point }}
+                                            </option>
+                                            <optgroup
+                                                v-for="grp in startPointOptions"
+                                                :key="grp.label"
+                                                :label="grp.label"
+                                            >
+                                                <option
+                                                    v-for="item in grp.items"
+                                                    :key="item"
+                                                    :value="item"
+                                                >
+                                                    {{ item }}
+                                                </option>
+                                            </optgroup>
+                                            <optgroup label="✏️ Kustomisasi">
+                                                <option value="__custom__">✏️ Ketik Manual / Titik Khusus...</option>
+                                            </optgroup>
+                                        </select>
+                                    </div>
+
+                                    <!-- Mode Ketik Manual -->
+                                    <div v-else class="space-y-1">
+                                        <input
+                                            v-model="form.start_point"
+                                            type="text"
+                                            placeholder="Contoh: Server OLT / ODC Induk / Tiang PLN Gang Mawar"
+                                            class="w-full bg-white border border-indigo-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:ring-indigo-500 focus:border-indigo-500 shadow-2xs"
+                                            autofocus
+                                        />
+                                        <p class="text-[10px] text-slate-400">Mode manual. Klik <i>Dropdown Cerdas</i> untuk kembali otomatis.</p>
+                                    </div>
                                 </div>
+
+                                <!-- Titik Akhir Kabel (End Point) Dropdown Cerdas -->
                                 <div>
-                                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Titik Akhir Kabel (End Point)</label>
-                                    <input
-                                        v-model="form.end_point"
-                                        type="text"
-                                        placeholder="Contoh: Tiang Distribusi ODP"
-                                        class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-indigo-500 focus:border-indigo-500"
-                                    />
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="block text-xs font-bold text-slate-700 uppercase">Titik Akhir Kabel (End Point)</label>
+                                        <button
+                                            type="button"
+                                            @click="isCustomEndPoint ? resetEndPointToSmart() : (isCustomEndPoint = true)"
+                                            class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-1.5 py-0.5 rounded cursor-pointer transition-colors flex items-center gap-1"
+                                            :title="isCustomEndPoint ? 'Kembali ke pilihan dropdown cerdas' : 'Ketik manual jika nama tiang khusus'"
+                                        >
+                                            <span>{{ isCustomEndPoint ? '⚡ Dropdown Cerdas' : '✏️ Ketik Manual' }}</span>
+                                        </button>
+                                    </div>
+
+                                    <!-- Mode Dropdown Cerdas -->
+                                    <div v-if="!isCustomEndPoint" class="relative">
+                                        <select
+                                            :value="form.end_point"
+                                            @change="onSelectEndPoint"
+                                            class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:ring-indigo-500 focus:border-indigo-500 shadow-2xs cursor-pointer"
+                                        >
+                                            <option
+                                                v-if="form.end_point && !endPointOptions.some(g => g.items.includes(form.end_point))"
+                                                :value="form.end_point"
+                                            >
+                                                🎯 {{ form.end_point }}
+                                            </option>
+                                            <optgroup
+                                                v-for="grp in endPointOptions"
+                                                :key="grp.label"
+                                                :label="grp.label"
+                                            >
+                                                <option
+                                                    v-for="item in grp.items"
+                                                    :key="item"
+                                                    :value="item"
+                                                >
+                                                    {{ item }}
+                                                </option>
+                                            </optgroup>
+                                            <optgroup label="✏️ Kustomisasi">
+                                                <option value="__custom__">✏️ Ketik Manual / Titik Khusus...</option>
+                                            </optgroup>
+                                        </select>
+                                    </div>
+
+                                    <!-- Mode Ketik Manual -->
+                                    <div v-else class="space-y-1">
+                                        <input
+                                            v-model="form.end_point"
+                                            type="text"
+                                            placeholder="Contoh: Tiang Distribusi ODP / Tiang Depan Lapang"
+                                            class="w-full bg-white border border-indigo-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:ring-indigo-500 focus:border-indigo-500 shadow-2xs"
+                                            autofocus
+                                        />
+                                        <p class="text-[10px] text-slate-400">Mode manual. Klik <i>Dropdown Cerdas</i> untuk kembali otomatis.</p>
+                                    </div>
                                 </div>
+
+                                <!-- Penarikan Kabel -->
                                 <div>
                                     <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Penarikan Kabel</label>
                                     <select
@@ -1694,8 +1967,8 @@ const submit = () => {
                     </div>
 
                     <!-- Summary Ringkasan Box -->
-                    <div class="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 text-xs text-slate-700 space-y-1">
-                        <span class="font-bold text-indigo-900 block mb-1">📋 Konfirmasi Terbit Penugasan:</span>
+                    <div class="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 text-xs text-slate-700 space-y-1.5">
+                        <span class="font-bold text-indigo-900 block mb-1">📋 Konfirmasi Alur Terbit Penugasan:</span>
                         <div>
                             &bull; <b>Perangkat:</b> {{ form.target_name }} ({{ form.type === 'odc_deployment' ? 'ODC' : 'ODP' }} - Tipe {{ form.device_type }})
                             &bull; {{ form.capacity }} Port
@@ -1706,8 +1979,10 @@ const submit = () => {
                                 &bull; Koordinat: {{ form.planned_latitude }}, {{ form.planned_longitude }}
                             </template>
                         </div>
-                        <div>&bull; <b>Material Dialokasikan:</b> {{ form.materials.length }} Item Material</div>
-                        <div>&bull; <b>Alur Berikutnya:</b> Gudang akan menerima notifikasi penyiapan material &rarr; Surat Jalan Outbound &rarr; Teknisi pengerjaan lapangan &rarr; QC Redaman Optik.</div>
+                        <div>&bull; <b>Material Dialokasikan (BOM):</b> {{ form.materials.length }} Item Material dari Stok Gudang</div>
+                        <div class="text-indigo-950 bg-indigo-100/70 p-2.5 rounded-xl border border-indigo-200/80 mt-1">
+                            &bull; <b>Alur Cerdas Otomatis:</b> Logistik gudang serahkan material via Surat Jalan &rarr; Teknisi mengerjakan di lapangan &amp; QC redaman &rarr; ✨ <b>Ketika selesai, sistem OTOMATIS langsung mendaftarkan ke Data Master ODC/ODP &amp; Peta GIS!</b>
+                        </div>
                     </div>
 
                     <!-- Error Notification Banner -->

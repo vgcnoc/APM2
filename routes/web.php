@@ -128,6 +128,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/installed', [CustomerController::class, 'installed'])->name('installed');
         Route::get('/activation', [CustomerController::class, 'activation'])->name('activation');
         Route::get('/active', [CustomerController::class, 'active'])->name('active');
+        Route::get('/paid', [CustomerController::class, 'paid'])->name('paid');
+        Route::get('/berbayar', [CustomerController::class, 'paid'])->name('berbayar');
         Route::get('/gratis', [CustomerController::class, 'gratis'])->name('gratis');
         Route::get('/free-home', [CustomerController::class, 'freeHome'])->name('free-home');
         Route::post('/{customer}/toggle-service-status', [CustomerController::class, 'toggleServiceStatus'])->name('toggle-service-status');
@@ -145,6 +147,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{customer}/write-off-invoices', [CustomerController::class, 'writeOffInvoices'])->name('write-off-invoices');
         Route::get('/{customer}/print-termination', [CustomerController::class, 'printTermination'])->name('print-termination');
         Route::get('/{customer}/print-booking', [CustomerController::class, 'printBooking'])->name('print-booking');
+        Route::post('/{customer}/suspend', [CustomerController::class, 'suspend'])->name('suspend');
         Route::post('/{customer}/unsuspend', [CustomerController::class, 'unsuspend'])->name('unsuspend');
         Route::post('/{customer}/connection-access', [CustomerController::class, 'connectionAccess'])->name('connection-access');
 
@@ -424,6 +427,11 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/vouchers/free', [\App\Http\Controllers\VoucherController::class, 'free'])->name('vouchers.free');
     Route::post('/vouchers/free/customer/{customer}', [\App\Http\Controllers\VoucherController::class, 'generateForCustomer'])->name('vouchers.free.customer');
+    Route::post('/vouchers/free/clean-expired', [\App\Http\Controllers\VoucherController::class, 'cleanExpiredFree'])->name('vouchers.free.clean-expired');
+    Route::post('/vouchers/free/check-expired', [\App\Http\Controllers\VoucherController::class, 'checkExpiredNow'])->name('vouchers.free.check-expired');
+    Route::post('/vouchers/free/{voucher}/disconnect', [\App\Http\Controllers\VoucherController::class, 'disconnectFreeSession'])->name('vouchers.free.disconnect');
+    Route::post('/vouchers/free/{voucher}/reset-mac', [\App\Http\Controllers\VoucherController::class, 'resetFreeMac'])->name('vouchers.free.reset-mac');
+    Route::post('/vouchers/free/{voucher}/update', [\App\Http\Controllers\VoucherController::class, 'updateFree'])->name('vouchers.free.update');
     Route::get('/vouchers', [\App\Http\Controllers\VoucherController::class, 'index'])->name('vouchers.index');
     Route::get('/vouchers/online', [\App\Http\Controllers\VoucherController::class, 'online'])->name('vouchers.online');
     Route::get('/vouchers/offline', [\App\Http\Controllers\VoucherController::class, 'offline'])->name('vouchers.offline');
@@ -431,6 +439,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/vouchers/print', [\App\Http\Controllers\VoucherController::class, 'print'])->name('vouchers.print');
     Route::post('/vouchers', [\App\Http\Controllers\VoucherController::class, 'store'])->name('vouchers.store');
     Route::post('/vouchers/{voucher}/toggle-status', [\App\Http\Controllers\VoucherController::class, 'toggleStatus'])->name('vouchers.toggle-status');
+    Route::post('/vouchers/{voucher}/expire', [\App\Http\Controllers\VoucherController::class, 'forceExpire'])->name('vouchers.force-expire');
     Route::post('/vouchers/bulk-destroy', [\App\Http\Controllers\VoucherController::class, 'bulkDestroy'])->name('vouchers.bulk-destroy');
     Route::post('/vouchers/{voucher}/assign-buyer', [\App\Http\Controllers\VoucherController::class, 'assignBuyer'])->name('vouchers.assign-buyer');
     Route::post('/vouchers/{voucher}/delete', [\App\Http\Controllers\VoucherController::class, 'destroy'])->name('vouchers.destroy.post');

@@ -24,23 +24,34 @@ class VoucherController extends Controller
         // Jalankan pengecekan voucher expired terlebih dahulu
         self::checkAndExpireVouchers();
 
-        // Online Usernames dari RADIUS
-        $onlineUsernames = (function() {
-            try {
-                return RadAcct::online()->pluck('username')->toArray();
-            } catch (\Exception $e) {
-                return [];
-            }
-        })();
+        // Online Usernames & Sessions dari FreeRADIUS
+        $onlineSessions = collect();
+        $onlineUsernames = [];
+        try {
+            $onlineSessions = RadAcct::online()
+                ->orderByDesc('acctstarttime')
+                ->get()
+                ->unique('username')
+                ->keyBy('username');
+            $onlineUsernames = $onlineSessions->keys()->all();
+        } catch (\Exception $e) {
+            $onlineSessions = collect();
+            $onlineUsernames = [];
+        }
 
-        // 1. Query Data Voucher Gratis (Hasil Generate & Khusus)
+        // 1. Query Data Voucher Gratis (Hasil Generate & Khusus, Murni Non-Pelanggan ONT)
         $voucherQuery = Voucher::with(['profile', 'customer.areaModel', 'reseller.customer'])
             ->where(function($q) {
                 $q->where('is_free', true)
                   ->orWhere('payment_method', 'free')
                   ->orWhereHas('profile', function($pq) {
-                      $pq->where('is_customer_free', true)->orWhere('price', 0);
+                      $pq->where('price', 0);
                   });
+            })
+            ->whereDoesntHave('profile', function($pq) {
+                $pq->where('is_customer_free', true)
+                   ->orWhere('duration', 'Mengikuti Pelanggan')
+                   ->orWhere('name', 'Hotspot Gratis Pelanggan');
             });
 
         if ($request->filled('search')) {
@@ -48,6 +59,8 @@ class VoucherController extends Controller
             $voucherQuery->where(function($q) use ($search) {
                 $q->where('code', 'like', "%{$search}%")
                   ->orWhere('username', 'like', "%{$search}%")
+                  ->orWhere('buyer_name', 'like', "%{$search}%")
+                  ->orWhere('buyer_phone', 'like', "%{$search}%")
                   ->orWhereHas('customer', function($sub) use ($search) {
                       $sub->where('name', 'like', "%{$search}%")
                           ->orWhere('customer_code', 'like', "%{$search}%");
@@ -60,15 +73,22 @@ class VoucherController extends Controller
 
         if ($request->filled('status')) {
             if ($request->status === 'online') {
-                $voucherQuery->whereIn('username', $onlineUsernames);
+                $voucherQuery->where('status', '!=', 'expired')
+                    ->where(function($q) use ($onlineUsernames) {
+                        $q->whereIn('username', $onlineUsernames)
+                          ->orWhereIn('code', $onlineUsernames);
+                    });
             } elseif ($request->status === 'offline') {
-                $voucherQuery->where(function($q) use ($onlineUsernames) {
-                    $q->whereNotIn('username', $onlineUsernames)
-                      ->orWhereNull('username');
-                });
+                $voucherQuery->where('status', '!=', 'expired')
+                    ->where(function($q) use ($onlineUsernames) {
+                        $q->whereNotIn('username', $onlineUsernames)
+                          ->whereNotIn('code', $onlineUsernames);
+                    });
             } else {
                 $voucherQuery->where('status', $request->status);
             }
+        } elseif ($request->tab === 'expired') {
+            $voucherQuery->where('status', 'expired');
         }
 
         if ($request->filled('profile_id')) {
@@ -76,6 +96,28 @@ class VoucherController extends Controller
         }
 
         $vouchers = $voucherQuery->latest('id')->paginate(20, ['*'], 'vouchers_page')->withQueryString();
+
+        // Lampirkan data sesi aktif mandiri FreeRADIUS ke setiap voucher gratis
+        $vouchers->getCollection()->transform(function ($v) use ($onlineSessions) {
+            $s = $onlineSessions->get($v->username) ?? $onlineSessions->get($v->code);
+            if ($s) {
+                $v->is_online = true;
+                $v->online_session = [
+                    'radacctid' => $s->radacctid,
+                    'ip_address' => $s->framedipaddress ?? '-',
+                    'mac_address' => $s->callingstationid ?? '-',
+                    'nas_ip' => $s->nasipaddress ?? '-',
+                    'uptime' => $s->liveSessionTime(),
+                    'download' => (int) ($s->acctoutputoctets ?? 0),
+                    'upload' => (int) ($s->acctinputoctets ?? 0),
+                    'login_time' => $s->acctstarttime ? $s->acctstarttime->toIso8601String() : null,
+                ];
+            } else {
+                $v->is_online = false;
+                $v->online_session = null;
+            }
+            return $v;
+        });
 
         // 2. Query Data Pelanggan Hotspot Gratis (Dari Aktivasi ONT)
         $customerQuery = Customer::with(['ont', 'areaModel', 'package'])
@@ -110,14 +152,19 @@ class VoucherController extends Controller
         
         $customers = $customerQuery->latest()->paginate(15, ['*'], 'customers_page')->withQueryString();
 
-        // 3. Statistik Voucher Gratis
+        // 3. Statistik Voucher Gratis (Hasil Generate)
         $statsBase = Voucher::query()
             ->where(function($q) {
                 $q->where('is_free', true)
                   ->orWhere('payment_method', 'free')
                   ->orWhereHas('profile', function($pq) {
-                      $pq->where('is_customer_free', true)->orWhere('price', 0);
+                      $pq->where('price', 0);
                   });
+            })
+            ->whereDoesntHave('profile', function($pq) {
+                $pq->where('is_customer_free', true)
+                   ->orWhere('duration', 'Mengikuti Pelanggan')
+                   ->orWhere('name', 'Hotspot Gratis Pelanggan');
             });
 
         $totalFree = (clone $statsBase)->count();
@@ -134,12 +181,18 @@ class VoucherController extends Controller
         $ontOnline = (clone $baseCustQuery)->whereHas('ont', fn($q) => $q->whereIn('hotspot_user', $onlineUsernames))->count();
         $ontOffline = max(0, $ontTotal - $ontOnline);
 
-        // 4. Profil Voucher yang tersedia
-        $freeProfiles = VoucherProfile::where(function($q) {
-            $q->where('is_customer_free', true)->orWhere('price', 0);
-        })->get();
+        // 4. Profil Voucher yang tersedia (Hanya profil non-pelanggan ONT)
+        $freeProfiles = VoucherProfile::where('is_customer_free', false)
+            ->where('duration', '!=', 'Mengikuti Pelanggan')
+            ->where('name', '!=', 'Hotspot Gratis Pelanggan')
+            ->where('price', 0)
+            ->get();
 
-        $allProfiles = VoucherProfile::all();
+        $allProfiles = VoucherProfile::where('is_customer_free', false)
+            ->where('duration', '!=', 'Mengikuti Pelanggan')
+            ->where('name', '!=', 'Hotspot Gratis Pelanggan')
+            ->get();
+
         $freeProfile = $freeProfiles->first() ?? $allProfiles->first();
 
         $resellers = Reseller::with('customer')->get();
@@ -189,49 +242,77 @@ class VoucherController extends Controller
                 return 0;
             }
 
-            $usernames = $vouchers->pluck('username')->filter()->unique()->toArray();
-            if (empty($usernames)) {
-                return 0;
+            // Kumpulkan semua username dan code dari voucher
+            $usernames = $vouchers->flatMap(function ($v) {
+                return [$v->username, $v->code];
+            })->filter()->unique()->values()->toArray();
+
+            $accts = collect();
+            if (!empty($usernames)) {
+                try {
+                    $accts = \App\Models\Radius\RadAcct::whereIn('username', $usernames)->get()->groupBy('username');
+                } catch (\Exception $e) {
+                    $accts = collect();
+                }
             }
 
-            $accts = \App\Models\Radius\RadAcct::whereIn('username', $usernames)->get()->groupBy('username');
             $expiredCount = 0;
             $radius = null;
 
             foreach ($vouchers as $voucher) {
-                $userAccts = $accts->get($voucher->username);
-                if (!$userAccts || $userAccts->isEmpty()) {
-                    continue;
-                }
-
-                $durationLimit = RadiusService::parseDuration($voucher->profile->duration);
+                $durationLimit = RadiusService::parseDuration($voucher->profile?->duration);
                 if (!$durationLimit) {
                     continue;
                 }
 
+                $userAccts = $accts->get($voucher->username) ?? $accts->get($voucher->code);
                 $totalTime = 0;
                 $firstLogin = null;
                 $lastLogout = null;
+                $hasTimeoutCause = false;
 
-                foreach ($userAccts as $acct) {
-                    if (!$firstLogin || $acct->acctstarttime < $firstLogin) {
-                        $firstLogin = $acct->acctstarttime;
-                    }
-                    if (!$lastLogout || $acct->acctstoptime > $lastLogout) {
-                        $lastLogout = $acct->acctstoptime;
-                    }
+                if ($userAccts && $userAccts->isNotEmpty()) {
+                    foreach ($userAccts as $acct) {
+                        if (!$firstLogin || $acct->acctstarttime < $firstLogin) {
+                            $firstLogin = $acct->acctstarttime;
+                        }
+                        if (!$lastLogout || $acct->acctstoptime > $lastLogout) {
+                            $lastLogout = $acct->acctstoptime;
+                        }
 
-                    $totalTime += $acct->liveSessionTime();
+                        $totalTime += $acct->liveSessionTime();
+
+                        if (in_array(strtolower($acct->acctterminatecause ?? ''), ['session-timeout', 'expired'])) {
+                            $hasTimeoutCause = true;
+                        }
+                    }
                 }
 
                 $isExpired = false;
                 $expiredAt = null;
 
-                if ($totalTime >= $durationLimit) {
+                // 1. Cek jika sesi di RADIUS dihentikan karena session-timeout / expired
+                if ($hasTimeoutCause) {
                     $isExpired = true;
                     $expiredAt = $lastLogout ?? now();
-                } elseif ($firstLogin) {
+                }
+                // 2. Cek akumulasi waktu pemakaian sesi di RADIUS
+                elseif ($totalTime >= $durationLimit) {
+                    $isExpired = true;
+                    $expiredAt = $lastLogout ?? now();
+                }
+                // 3. Cek selisih waktu sejak first login di RADIUS
+                elseif ($firstLogin) {
                     $calcExpire = \Carbon\Carbon::parse($firstLogin)->addSeconds($durationLimit);
+                    if (now()->greaterThanOrEqualTo($calcExpire)) {
+                        $isExpired = true;
+                        $expiredAt = $calcExpire;
+                    }
+                }
+                // 4. Cek selisih waktu sejak voucher berstatus 'used' (used_at)
+                // Sangat penting jika log accounting RADIUS sudah ter-purge atau koneksi offline
+                elseif ($voucher->status === 'used' && $voucher->used_at) {
+                    $calcExpire = \Carbon\Carbon::parse($voucher->used_at)->addSeconds($durationLimit);
                     if (now()->greaterThanOrEqualTo($calcExpire)) {
                         $isExpired = true;
                         $expiredAt = $calcExpire;
@@ -240,46 +321,54 @@ class VoucherController extends Controller
 
                 if ($isExpired) {
                     $voucher->status = 'expired';
-                    $voucher->used_at = $expiredAt ?? now();
+                    $voucher->used_at = $expiredAt ?? $voucher->used_at ?? now();
                     $voucher->save();
 
-                    if (!$radius) {
-                        $radius = app(RadiusService::class);
-                    }
-                    $radius->disconnect($voucher->username);
-                    $radius->removeUser($voucher->username);
+                    try {
+                        if (!$radius) {
+                            $radius = app(RadiusService::class);
+                        }
+                        if ($voucher->username) {
+                            $radius->disconnect($voucher->username);
+                            $radius->removeUser($voucher->username);
+                        }
+                        if ($voucher->code && $voucher->code !== $voucher->username) {
+                            $radius->disconnect($voucher->code);
+                            $radius->removeUser($voucher->code);
+                        }
+                    } catch (\Throwable $e) {}
 
                     $expiredCount++;
                 } else {
                     if ($voucher->status === 'available' && ($firstLogin || $totalTime > 0)) {
                         // Jika voucher sudah mulai digunakan tetapi belum habis, set status used
                         $voucher->status = 'used';
-                        $voucher->used_at = $firstLogin;
+                        $voucher->used_at = $firstLogin ?? now();
                         $voucher->save();
                     }
 
                     // Enforce Shared Users Cerdas: Jangan sampai perangkat aktif melebihi batas kuota profil!
-                    $sharedLimit = max(1, (int) ($voucher->profile->shared_users ?? 1));
-                    $onlineSessions = $userAccts->filter(fn ($acct) => empty($acct->acctstoptime))->sortByDesc('acctstarttime');
-                    if ($onlineSessions->count() > $sharedLimit) {
-                        if (!$radius) {
-                            $radius = app(RadiusService::class);
-                        }
-                        // Sesi yang melebihi kuota perangkat (misal perangkat ke-2 dst jika limit 1) diputus seketika via CoA
-                        $excessSessions = $onlineSessions->slice($sharedLimit);
-                        foreach ($excessSessions as $excess) {
-                            $radius->disconnectSession($excess);
-                            $excess->acctstoptime = now();
-                            $excess->acctterminatecause = 'Simultaneous-Limit-Exceeded';
-                            $excess->save();
+                    if ($userAccts && $voucher->profile) {
+                        $sharedLimit = max(1, (int) ($voucher->profile->shared_users ?? 1));
+                        $onlineSessions = $userAccts->filter(fn ($acct) => empty($acct->acctstoptime))->sortByDesc('acctstarttime');
+                        if ($onlineSessions->count() > $sharedLimit) {
+                            try {
+                                if (!$radius) {
+                                    $radius = app(RadiusService::class);
+                                }
+                                $excessSessions = $onlineSessions->slice($sharedLimit);
+                                foreach ($excessSessions as $excess) {
+                                    $radius->disconnectSession($excess->radacctid);
+                                }
+                            } catch (\Throwable $e) {}
                         }
                     }
                 }
             }
 
             return $expiredCount;
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::warning("Failed checking expired vouchers: " . $e->getMessage());
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Error checkAndExpireVouchers: ' . $e->getMessage());
             return 0;
         }
     }
@@ -298,7 +387,18 @@ class VoucherController extends Controller
             }
         })();
 
-        $query = Voucher::with(['profile', 'reseller.customer.areaModel', 'customer.areaModel']);
+        $query = Voucher::with(['profile', 'reseller.customer.areaModel', 'customer.areaModel'])
+            ->where('is_free', false)
+            ->where(function($q) {
+                $q->whereNull('payment_method')
+                  ->orWhere('payment_method', '!=', 'free');
+            })
+            ->whereDoesntHave('profile', function($pq) {
+                $pq->where('is_customer_free', true)
+                   ->orWhere('duration', 'Mengikuti Pelanggan')
+                   ->orWhere('name', 'Hotspot Gratis Pelanggan')
+                   ->orWhere('price', 0);
+            });
 
         if ($request->filled('profile_id')) {
             $query->where('vouchers.voucher_profile_id', $request->profile_id);
@@ -373,11 +473,22 @@ class VoucherController extends Controller
         );
 
         if ($isAdminLike && session('login_portal') !== 'reseller') {
-            $profiles = VoucherProfile::all();
+            $profiles = VoucherProfile::where('is_customer_free', false)
+                ->where('duration', '!=', 'Mengikuti Pelanggan')
+                ->where('name', '!=', 'Hotspot Gratis Pelanggan')
+                ->orderBy('name')
+                ->get();
         } else {
-            $profiles = $user ? $user->voucherProfiles()->where('voucher_profiles.is_customer_free', false)->select('voucher_profiles.*')->get() : collect();
+            $profiles = $user ? $user->voucherProfiles()->where('voucher_profiles.is_customer_free', false)
+                ->where('voucher_profiles.duration', '!=', 'Mengikuti Pelanggan')
+                ->where('voucher_profiles.name', '!=', 'Hotspot Gratis Pelanggan')
+                ->select('voucher_profiles.*')->get() : collect();
             if ($profiles->isEmpty()) {
-                $profiles = VoucherProfile::where('is_customer_free', false)->get();
+                $profiles = VoucherProfile::where('is_customer_free', false)
+                    ->where('duration', '!=', 'Mengikuti Pelanggan')
+                    ->where('name', '!=', 'Hotspot Gratis Pelanggan')
+                    ->orderBy('name')
+                    ->get();
             }
         }
         
@@ -393,7 +504,12 @@ class VoucherController extends Controller
         $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
 
         // Query Dasar Statistik (mengikuti batasan user / reseller / area yang dipilih)
-        $statsBase = Voucher::query();
+        $statsBase = Voucher::query()
+            ->whereDoesntHave('profile', function($pq) {
+                $pq->where('is_customer_free', true)
+                   ->orWhere('duration', 'Mengikuti Pelanggan')
+                   ->orWhere('name', 'Hotspot Gratis Pelanggan');
+            });
         $this->applyResellerFilter($statsBase);
 
         if ($request->filled('reseller_id')) {
@@ -528,13 +644,21 @@ class VoucherController extends Controller
         // Master dropdown filters
         if ($isResellerPortal && $user) {
             $profiles = $user->voucherProfiles()->where('voucher_profiles.is_customer_free', false)
+                ->where('voucher_profiles.duration', '!=', 'Mengikuti Pelanggan')
+                ->where('voucher_profiles.name', '!=', 'Hotspot Gratis Pelanggan')
                 ->select('voucher_profiles.id', 'voucher_profiles.name', 'voucher_profiles.duration', 'voucher_profiles.price')
                 ->get();
             if ($profiles->isEmpty()) {
-                $profiles = VoucherProfile::where('is_customer_free', false)->orderBy('name')->get(['id', 'name', 'duration', 'price']);
+                $profiles = VoucherProfile::where('is_customer_free', false)
+                    ->where('duration', '!=', 'Mengikuti Pelanggan')
+                    ->where('name', '!=', 'Hotspot Gratis Pelanggan')
+                    ->orderBy('name')->get(['id', 'name', 'duration', 'price']);
             }
         } else {
-            $profiles = VoucherProfile::orderBy('name')->get(['id', 'name', 'duration', 'price']);
+            $profiles = VoucherProfile::where('is_customer_free', false)
+                ->where('duration', '!=', 'Mengikuti Pelanggan')
+                ->where('name', '!=', 'Hotspot Gratis Pelanggan')
+                ->orderBy('name')->get(['id', 'name', 'duration', 'price']);
         }
         $resellers = \App\Models\Reseller::with('customer.areaModel')->get();
         $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
@@ -552,8 +676,19 @@ class VoucherController extends Controller
             $onlineUsernames = [];
         }
 
-        // 2. Ambil data Voucher yang valid (mengikuti filter reseller jika login sebagai reseller)
-        $vouchersQuery = Voucher::with(['profile', 'reseller.customer.areaModel', 'customer.areaModel']);
+        // 2. Ambil data Voucher yang valid (Murni Voucher Berbayar, Voucher Gratis Diisolasi Mandiri)
+        $vouchersQuery = Voucher::with(['profile', 'reseller.customer.areaModel', 'customer.areaModel'])
+            ->where('is_free', false)
+            ->where(function($q) {
+                $q->whereNull('payment_method')
+                  ->orWhere('payment_method', '!=', 'free');
+            })
+            ->whereDoesntHave('profile', function($pq) {
+                $pq->where('is_customer_free', true)
+                   ->orWhere('duration', 'Mengikuti Pelanggan')
+                   ->orWhere('name', 'Hotspot Gratis Pelanggan')
+                   ->orWhere('price', 0);
+            });
         $this->applyResellerFilter($vouchersQuery);
         $allVouchers = $vouchersQuery->get();
 
@@ -820,7 +955,18 @@ class VoucherController extends Controller
         $isResellerPortal = $user && (strtolower($user->role ?? '') === 'reseller' || session('login_portal') === 'reseller');
 
         $vQuery = Voucher::with(['profile', 'reseller.customer.areaModel', 'customer.areaModel'])
-            ->where('status', 'expired');
+            ->where('status', 'expired')
+            ->where('is_free', false)
+            ->where(function($q) {
+                $q->whereNull('payment_method')
+                  ->orWhere('payment_method', '!=', 'free');
+            })
+            ->whereDoesntHave('profile', function($pq) {
+                $pq->where('is_customer_free', true)
+                   ->orWhere('duration', 'Mengikuti Pelanggan')
+                   ->orWhere('name', 'Hotspot Gratis Pelanggan')
+                   ->orWhere('price', 0);
+            });
         $this->applyResellerFilter($vQuery);
         $vouchers = $vQuery->latest('vouchers.id')->get();
 
@@ -857,13 +1003,21 @@ class VoucherController extends Controller
 
         if ($isResellerPortal && $user) {
             $profiles = $user->voucherProfiles()->where('voucher_profiles.is_customer_free', false)
+                ->where('voucher_profiles.duration', '!=', 'Mengikuti Pelanggan')
+                ->where('voucher_profiles.name', '!=', 'Hotspot Gratis Pelanggan')
                 ->select('voucher_profiles.id', 'voucher_profiles.name')
                 ->get();
             if ($profiles->isEmpty()) {
-                $profiles = VoucherProfile::where('is_customer_free', false)->orderBy('name')->get(['id', 'name']);
+                $profiles = VoucherProfile::where('is_customer_free', false)
+                    ->where('duration', '!=', 'Mengikuti Pelanggan')
+                    ->where('name', '!=', 'Hotspot Gratis Pelanggan')
+                    ->orderBy('name')->get(['id', 'name']);
             }
         } else {
-            $profiles = VoucherProfile::orderBy('name')->get(['id', 'name']);
+            $profiles = VoucherProfile::where('is_customer_free', false)
+                ->where('duration', '!=', 'Mengikuti Pelanggan')
+                ->where('name', '!=', 'Hotspot Gratis Pelanggan')
+                ->orderBy('name')->get(['id', 'name']);
         }
 
         $resellers = \App\Models\Reseller::with('customer.areaModel')->get();
@@ -970,10 +1124,13 @@ class VoucherController extends Controller
             ]);
 
             $profile = VoucherProfile::findOrFail($validated['voucher_profile_id']);
-            if ($isResellerUser && ($profile->price <= 0 || $profile->is_customer_free)) {
+            if ($profile->is_customer_free || $profile->duration === 'Mengikuti Pelanggan' || $profile->name === 'Hotspot Gratis Pelanggan') {
+                return redirect()->back()->withErrors(['voucher_profile_id' => 'Profil khusus Hotspot Pelanggan ONT tidak dapat digunakan untuk generate voucher manual.'])->withInput();
+            }
+            if ($isResellerUser && $profile->price <= 0) {
                 return redirect()->back()->withErrors(['voucher_profile_id' => 'Paket voucher gratis tidak dapat dijual oleh reseller.'])->withInput();
             }
-            if ($profile->price <= 0 || $profile->is_customer_free) {
+            if ($profile->price <= 0) {
                 $isFree = true;
             }
 
@@ -1066,10 +1223,13 @@ class VoucherController extends Controller
         ]);
 
         $profile = VoucherProfile::findOrFail($validated['voucher_profile_id']);
-        if ($isResellerUser && ($profile->price <= 0 || $profile->is_customer_free)) {
+        if ($profile->is_customer_free || $profile->duration === 'Mengikuti Pelanggan' || $profile->name === 'Hotspot Gratis Pelanggan') {
+            return redirect()->back()->withErrors(['voucher_profile_id' => 'Profil khusus Hotspot Pelanggan ONT tidak dapat digunakan untuk generate voucher manual.'])->withInput();
+        }
+        if ($isResellerUser && $profile->price <= 0) {
             return redirect()->back()->withErrors(['voucher_profile_id' => 'Paket voucher gratis tidak dapat dijual oleh reseller.'])->withInput();
         }
-        if ($profile->price <= 0 || $profile->is_customer_free) {
+        if ($profile->price <= 0) {
             $isFree = true;
         }
 
@@ -1381,5 +1541,182 @@ class VoucherController extends Controller
         $vouchers = $query->latest('vouchers.id')->get();
 
         return view('vouchers.print', compact('vouchers'));
+    }
+
+    /**
+     * Bersihkan semua voucher gratis yang statusnya sudah expired.
+     */
+    public function cleanExpiredFree(Request $request)
+    {
+        $user = auth()->user();
+        if ($user && !$user->isAdmin() && !$user->can('vouchers_free_delete') && !$user->can('menu_vouchers_free')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menghapus voucher expired.');
+        }
+
+        $query = Voucher::where('status', 'expired')
+            ->where(function($q) {
+                $q->where('is_free', true)
+                  ->orWhere('payment_method', 'free')
+                  ->orWhereHas('profile', function($pq) {
+                      $pq->where('price', 0);
+                  });
+            })
+            ->whereDoesntHave('profile', function($pq) {
+                $pq->where('is_customer_free', true)
+                   ->orWhere('duration', 'Mengikuti Pelanggan')
+                   ->orWhere('name', 'Hotspot Gratis Pelanggan');
+            });
+
+        $vouchersToDelete = $query->get();
+        $count = $vouchersToDelete->count();
+
+        if ($count === 0) {
+            return redirect()->back()->with('info', 'Tidak ada voucher gratis expired untuk dibersihkan.');
+        }
+
+        $radius = app(RadiusService::class);
+        foreach ($vouchersToDelete as $v) {
+            try {
+                if ($v->username) {
+                    $radius->removeUser($v->username);
+                }
+                if ($v->code && $v->code !== $v->username) {
+                    $radius->removeUser($v->code);
+                }
+            } catch (\Throwable $e) {}
+        }
+
+        Voucher::whereIn('id', $vouchersToDelete->pluck('id'))->delete();
+
+        return redirect()->back()->with('success', "{$count} Voucher gratis yang expired berhasil dibersihkan dari sistem.");
+    }
+
+    /**
+     * Trigger manual sinkronisasi dan audit voucher expired sekarang.
+     */
+    public function checkExpiredNow(Request $request)
+    {
+        $expiredCount = self::checkAndExpireVouchers();
+        return redirect()->back()->with('success', "Pemeriksaan selesai. {$expiredCount} voucher ditandai sebagai expired.");
+    }
+
+    /**
+     * Tandai voucher tertentu sebagai expired secara paksa & disconnect dari RADIUS.
+     */
+    public function forceExpire(Voucher $voucher)
+    {
+        $user = auth()->user();
+        if ($user && !$user->isAdmin() && !$user->can('menu_vouchers_free') && !$user->can('menu_vouchers')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengubah status voucher.');
+        }
+
+        $voucher->status = 'expired';
+        $voucher->used_at = $voucher->used_at ?? now();
+        $voucher->save();
+
+        try {
+            $radius = app(RadiusService::class);
+            if ($voucher->username) {
+                $radius->disconnect($voucher->username);
+                $radius->removeUser($voucher->username);
+            }
+            if ($voucher->code && $voucher->code !== $voucher->username) {
+                $radius->disconnect($voucher->code);
+                $radius->removeUser($voucher->code);
+            }
+        } catch (\Throwable $e) {}
+
+        return redirect()->back()->with('success', "Voucher {$voucher->code} berhasil diubah statusnya menjadi Expired.");
+    }
+
+    /**
+     * Putuskan koneksi sesi online voucher gratis aktif dari FreeRADIUS (Kick CoA).
+     */
+    public function disconnectFreeSession(Voucher $voucher)
+    {
+        $user = auth()->user();
+        if ($user && !$user->isAdmin() && !$user->can('menu_vouchers_free') && !$user->can('menu_vouchers')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk memutuskan sesi voucher gratis.');
+        }
+
+        $radius = app(RadiusService::class);
+        $disconnected = 0;
+        if ($voucher->username) {
+            $disconnected += $radius->disconnect($voucher->username);
+        }
+        if ($voucher->code && $voucher->code !== $voucher->username) {
+            $disconnected += $radius->disconnect($voucher->code);
+        }
+
+        // Bersihkan sisa status online di RadAcct
+        try {
+            \App\Models\Radius\RadAcct::online()->whereIn('username', array_filter([$voucher->username, $voucher->code]))->update([
+                'acctstoptime' => now(),
+                'acctterminatecause' => 'Admin-Reset',
+            ]);
+        } catch (\Throwable $e) {}
+
+        return redirect()->back()->with('success', "Sesi online voucher gratis {$voucher->code} berhasil diputuskan (Kick).");
+    }
+
+    /**
+     * Reset binding MAC address pengguna voucher gratis di FreeRADIUS.
+     */
+    public function resetFreeMac(Voucher $voucher)
+    {
+        $user = auth()->user();
+        if ($user && !$user->isAdmin() && !$user->can('menu_vouchers_free') && !$user->can('menu_vouchers')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk me-reset MAC voucher gratis.');
+        }
+
+        try {
+            $usernames = array_filter([$voucher->username, $voucher->code]);
+            \App\Models\Radius\RadCheck::whereIn('username', $usernames)
+                ->where('attribute', 'Calling-Station-Id')
+                ->delete();
+
+            // Putuskan sesi online jika ada agar bisa login dari perangkat lain
+            if ($voucher->username) {
+                app(RadiusService::class)->disconnect($voucher->username);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Reset MAC error: " . $e->getMessage());
+        }
+
+        return redirect()->back()->with('success', "Binding MAC / Perangkat untuk voucher gratis {$voucher->code} berhasil di-reset. Voucher kini dapat digunakan di perangkat lain.");
+    }
+
+    /**
+     * Update detail voucher gratis (password, profile, penerima/buyer_name, buyer_phone).
+     */
+    public function updateFree(Request $request, Voucher $voucher)
+    {
+        $user = auth()->user();
+        if ($user && !$user->isAdmin() && !$user->can('menu_vouchers_free') && !$user->can('menu_vouchers')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengubah voucher gratis.');
+        }
+
+        $validated = $request->validate([
+            'password' => 'required|string|min:3|max:50',
+            'buyer_name' => 'nullable|string|max:100',
+            'buyer_phone' => 'nullable|string|max:30',
+            'voucher_profile_id' => 'required|exists:voucher_profiles,id',
+        ]);
+
+        $voucher->update([
+            'password' => trim($validated['password']),
+            'buyer_name' => !empty($validated['buyer_name']) ? trim($validated['buyer_name']) : null,
+            'buyer_phone' => !empty($validated['buyer_phone']) ? trim($validated['buyer_phone']) : null,
+            'voucher_profile_id' => $validated['voucher_profile_id'],
+        ]);
+
+        // Sinkronkan ke FreeRADIUS
+        try {
+            app(RadiusService::class)->syncVouchers(collect([$voucher]));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Radius sync voucher update error: " . $e->getMessage());
+        }
+
+        return redirect()->back()->with('success', "Data voucher gratis {$voucher->code} berhasil diperbarui.");
     }
 }

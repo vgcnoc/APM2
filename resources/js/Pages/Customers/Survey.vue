@@ -140,7 +140,7 @@
                         <p class="text-[10px] text-gray-500">Selesai</p>
                     </div>
                     <div v-else-if="row.technician_schedules?.length">
-                        <span class="text-xs text-blue-400">{{ row.technician_schedules[0].technician?.name || '-' }}</span>
+                        <span class="text-xs text-blue-500 font-semibold">{{ row.technician_schedules.map(s => s.technician?.name).filter(Boolean).join(', ') || '-' }}</span>
                         <p class="text-[10px] text-blue-500/70">{{ row.technician_schedules[0].scheduled_date }} {{ row.technician_schedules[0].scheduled_time }}</p>
                     </div>
                     <span v-else class="text-gray-600 text-xs">Belum ada jadwal</span>
@@ -160,8 +160,8 @@
                         
                         <!-- Sudah Dijadwalkan, tapi belum disurvey -->
                         <template v-else-if="!row.surveys?.length && row.technician_schedules?.length">
-                            <!-- Jika punya akses Isi Laporan (Teknisi) -->
-                            <button v-if="hasPermission('customers_survey_report')" 
+                            <!-- Jika punya akses Isi Laporan atau ditugaskan pada survey ini -->
+                            <button v-if="hasPermission('customers_survey_report') || isUserAssigned(row)" 
                                 @click="openReportModal(row)" 
                                 class="btn-success py-1.5 px-3 text-xs flex items-center gap-1.5">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
@@ -295,7 +295,7 @@
 
                         <!-- Isi Laporan (Jika sudah dijadwalkan) -->
                         <button 
-                            v-if="activeDropdownRow.status === 'survey' && !activeDropdownRow.surveys?.length && activeDropdownRow.technician_schedules?.length && hasPermission('customers_survey_report')"
+                            v-if="activeDropdownRow.status === 'survey' && !activeDropdownRow.surveys?.length && activeDropdownRow.technician_schedules?.length && (hasPermission('customers_survey_report') || isUserAssigned(activeDropdownRow))"
                             type="button"
                             @click="openReportModal(activeDropdownRow); closeDropdown()"
                             class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-emerald-50/80 hover:text-emerald-700 transition-colors font-medium group cursor-pointer"
@@ -413,9 +413,10 @@
                                 <label v-for="tech in technicians" :key="tech.id" class="flex items-center gap-3 cursor-pointer px-3 py-2 hover:bg-white rounded-md transition-colors border border-transparent hover:border-gray-100 hover:shadow-sm">
                                     <input type="checkbox" :value="tech.id" v-model="assignForm.technician_ids" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4">
                                     <span class="text-sm font-medium text-gray-700">{{ tech.name }}</span>
+                                    <span class="text-xs text-gray-400 font-normal">({{ tech.role || 'Karyawan' }})</span>
                                 </label>
                             </div>
-                            <p class="text-[10px] text-gray-400 mt-1.5">* Anda dapat memilih lebih dari satu teknisi</p>
+                            <p class="text-[10px] text-gray-400 mt-1.5">* Anda dapat memilih lebih dari satu teknisi/karyawan (tidak dibatasi area)</p>
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
@@ -472,9 +473,10 @@
                                 <label v-for="tech in technicians" :key="tech.id" class="flex items-center gap-3 cursor-pointer px-3 py-2 hover:bg-white rounded-md transition-colors border border-transparent hover:border-amber-100 hover:shadow-sm">
                                     <input type="checkbox" :value="tech.id" v-model="rescheduleForm.technician_ids" class="rounded border-amber-300 text-amber-600 focus:ring-amber-500 w-4 h-4">
                                     <span class="text-sm font-medium text-gray-700">{{ tech.name }}</span>
+                                    <span class="text-xs text-gray-400 font-normal">({{ tech.role || 'Karyawan' }})</span>
                                 </label>
                             </div>
-                            <p class="text-[10px] text-amber-500/70 mt-1.5">* Anda dapat memilih lebih dari satu teknisi</p>
+                            <p class="text-[10px] text-amber-500/70 mt-1.5">* Anda dapat memilih lebih dari satu teknisi/karyawan (tidak dibatasi area)</p>
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
@@ -529,6 +531,17 @@
                         </div>
                     </div>
                     <div class="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Petugas / Surveyor Pelaksana <span class="text-red-500">*</span></label>
+                            <select v-model="reportForm.surveyor_id" required class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500">
+                                <option value="" disabled>-- Pilih Petugas Surveyor --</option>
+                                <option v-for="tech in technicians" :key="tech.id" :value="tech.id">
+                                    {{ tech.name }} ({{ tech.role || 'Karyawan' }})
+                                </option>
+                            </select>
+                            <p class="text-[10px] text-gray-400 mt-1">Bebas memilih karyawan dari seluruh area</p>
+                        </div>
+
                         <div>
                             <div class="flex items-center justify-between mb-1">
                                 <label class="block text-xs font-medium text-gray-500">Pilih ODP (Jika Feasible)</label>
@@ -774,7 +787,7 @@
                                     </div>
                                     <div>
                                         <h5 class="text-sm font-semibold text-gray-900 mb-1">Telah Dijadwalkan (Belum Ada Laporan)</h5>
-                                        <p class="text-sm text-gray-600">Teknisi: <strong class="text-gray-900">{{ selectedCustomer.technician_schedules[0].technician?.name || '-' }}</strong></p>
+                                        <p class="text-sm text-gray-600">Teknisi: <strong class="text-gray-900">{{ selectedCustomer.technician_schedules?.map(s => s.technician?.name).filter(Boolean).join(', ') || '-' }}</strong></p>
                                         <p class="text-sm text-gray-600">Waktu: <strong class="text-gray-900">{{ selectedCustomer.technician_schedules[0].scheduled_date }} {{ selectedCustomer.technician_schedules[0].scheduled_time }}</strong></p>
                                     </div>
                                 </div>
@@ -928,6 +941,12 @@ const hasPermission = (...permissions) => {
         return false;
     }
 };
+
+const isUserAssigned = (customer) => {
+    const currentUserId = page.props.auth?.user?.id;
+    if (!currentUserId || !customer?.technician_schedules) return false;
+    return customer.technician_schedules.some(s => s.technician_id === currentUserId);
+};
 const selectedIds = ref([]);
 
 const canDelete = computed(() => {
@@ -1028,8 +1047,20 @@ const assignForm = useForm({
 function openAssignModal(customer) {
     activeCustomer.value = customer;
     assignForm.reset();
-    assignForm.scheduled_date = new Date().toISOString().split('T')[0];
-    assignForm.scheduled_time = '10:00';
+    
+    // Pre-populate with existing survey schedule if any
+    const existing = (customer.technician_schedules || []).filter(s => s.type === 'survey');
+    if (existing.length > 0) {
+        assignForm.technician_ids = existing.map(s => s.technician_id).filter(Boolean);
+        assignForm.scheduled_date = existing[0].scheduled_date || new Date().toISOString().split('T')[0];
+        assignForm.scheduled_time = (existing[0].scheduled_time || '10:00').substring(0, 5);
+        assignForm.notes = existing[0].notes || '';
+    } else {
+        assignForm.technician_ids = [];
+        assignForm.scheduled_date = new Date().toISOString().split('T')[0];
+        assignForm.scheduled_time = '10:00';
+        assignForm.notes = '';
+    }
     showAssignModal.value = true;
 }
 

@@ -372,6 +372,24 @@
                             </div>
                         </div>
 
+                        <!-- Opsi Bebas Absen di Semua Area / Wilayah Cabang (Highlight Card) -->
+                        <div class="p-4 rounded-2xl border-2 border-blue-200 bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                            <div class="space-y-0.5">
+                                <div class="text-xs font-black text-blue-900 flex items-center gap-1.5">
+                                    <span class="text-sm">🌐</span>
+                                    <span>Bebas Absen di Semua Area / Wilayah Cabang</span>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-600 text-white shadow-2xs">Fleksibel Multi-Cabang</span>
+                                </div>
+                                <p class="text-[11px] text-slate-600 leading-relaxed">
+                                    Karyawan dapat memilih dan hadir di lokasi kantor cabang/wilayah mana saja saat presensi reguler (tidak dibatasi hanya kantor asal di profil karyawan). Radius geofencing otomatis dicocokkan ke kantor cabang yang dipilih atau cabang terdekat.
+                                </p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                                <input type="checkbox" v-model="form.attendance_regular_allow_any_area" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 pt-2 border-t border-slate-100">
                             <div>
                                 <label class="block text-xs font-semibold text-slate-700 mb-1">
@@ -1561,6 +1579,7 @@ const form = useForm({
     attendance_regular_require_gps: props.settings?.attendance_regular_require_gps ?? true,
     attendance_regular_strict_radius: props.settings?.attendance_regular_strict_radius ?? true,
     attendance_regular_default_radius: props.settings?.attendance_regular_default_radius ?? 200,
+    attendance_regular_allow_any_area: props.settings?.attendance_regular_allow_any_area ?? true,
     attendance_regular_allow_wfh: props.settings?.attendance_regular_allow_wfh ?? false,
     attendance_regular_allow_field: props.settings?.attendance_regular_allow_field ?? true,
     attendance_regular_allow_overtime: props.settings?.attendance_regular_allow_overtime ?? true,

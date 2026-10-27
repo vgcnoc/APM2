@@ -111,6 +111,10 @@
                                 {{ row.name }}
                             </Link>
                             <p class="text-xs text-gray-500 font-mono">{{ row.customer_code }}</p>
+                            <div v-if="getAssignedTechnicians(row, 'installation') !== '-'" class="mt-1 flex items-center gap-1 text-[11px] text-blue-600 font-semibold bg-blue-50/70 px-1.5 py-0.5 rounded border border-blue-100/60 w-fit">
+                                <svg class="w-3 h-3 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                <span>Teknisi: {{ getAssignedTechnicians(row, 'installation') }}</span>
+                            </div>
                         </div>
                     </div>
                 </td>
@@ -631,7 +635,7 @@
                                     </div>
                                     <div>
                                         <h5 class="text-sm font-semibold text-gray-900 mb-1">Telah Dijadwalkan (Belum Ada Laporan)</h5>
-                                        <p class="text-sm text-gray-600">Teknisi: <strong class="text-gray-900">{{ detailCustomer.technician_schedules[0].technician?.name || '-' }}</strong></p>
+                                        <p class="text-sm text-gray-600">Teknisi: <strong class="text-gray-900">{{ getAssignedTechnicians(detailCustomer, 'installation') }}</strong></p>
                                         <p class="text-sm text-gray-600">Waktu: <strong class="text-gray-900">{{ detailCustomer.technician_schedules[0].scheduled_date }} {{ detailCustomer.technician_schedules[0].scheduled_time }}</strong></p>
                                     </div>
                                 </div>
@@ -711,14 +715,17 @@
                                 <div v-if="assignForm.errors.technician_ids" class="text-red-500 text-xs mt-1">{{ assignForm.errors.technician_ids }}</div>
                                 
                                 <div v-if="showTechDropdown" class="absolute z-10 w-full mt-1.5 bg-white border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-y-auto py-1">
-                                    <label v-for="tech in technicians" :key="tech.id" class="flex items-center gap-3 cursor-pointer px-4 py-2.5 hover:bg-slate-50 transition-colors border-b border-gray-50 last:border-0">
-                                        <input type="checkbox" :value="tech.id" v-model="assignForm.technician_ids" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4">
-                                        <span class="text-sm font-medium text-slate-700">{{ tech.name }}</span>
+                                    <label v-for="tech in technicians" :key="tech.id" class="flex items-center justify-between cursor-pointer px-4 py-2.5 hover:bg-slate-50 transition-colors border-b border-gray-50 last:border-0">
+                                        <div class="flex items-center gap-3">
+                                            <input type="checkbox" :value="tech.id" v-model="assignForm.technician_ids" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4">
+                                            <span class="text-sm font-medium text-slate-700">{{ tech.name }}</span>
+                                        </div>
+                                        <span class="text-xs text-slate-400 font-normal">({{ tech.role || 'Karyawan' }})</span>
                                     </label>
                                 </div>
                                 <p class="text-[10px] text-slate-400 mt-1.5 flex items-center gap-1">
                                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                    Anda dapat memilih lebih dari satu teknisi
+                                    Anda dapat memilih lebih dari satu teknisi/karyawan (tidak dibatasi area)
                                 </p>
                             </div>
                         </div>
@@ -1795,8 +1802,22 @@ function openAssignModal(customer) {
     activeCustomer.value = customer;
     assignForm.reset();
     assignForm.send_wa = true;
-    assignForm.scheduled_date = new Date().toISOString().split('T')[0];
-    assignForm.scheduled_time = '10:00';
+    
+    // Pre-populate with existing installation schedule if any
+    const existingSchedules = (customer.technician_schedules || []).filter(s => s.type === 'installation');
+    if (existingSchedules.length > 0) {
+        assignForm.technician_ids = existingSchedules.map(s => s.technician_id).filter(Boolean);
+        const first = existingSchedules[0];
+        if (first.scheduled_date) assignForm.scheduled_date = first.scheduled_date;
+        if (first.scheduled_time) assignForm.scheduled_time = (first.scheduled_time || '10:00').substring(0, 5);
+        if (first.notes) assignForm.notes = first.notes;
+    } else {
+        assignForm.technician_ids = [];
+        assignForm.scheduled_date = new Date().toISOString().split('T')[0];
+        assignForm.scheduled_time = '10:00';
+        assignForm.notes = '';
+    }
+    
     showAssignModal.value = true;
 }
 

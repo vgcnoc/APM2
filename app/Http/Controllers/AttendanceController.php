@@ -232,10 +232,13 @@ class AttendanceController extends Controller
         }
 
         // 7. Data Monitoring Kehadiran Seluruh Karyawan Hari Ini (Admin Tab)
-        $monitoringQuery = Attendance::with(['employee.area', 'shift'])->where('date', $today);
+        $monitoringQuery = Attendance::with(['employee.area', 'area', 'shift'])->where('date', $today);
         if ($request->filled('area_id')) {
-            $monitoringQuery->whereHas('employee', function ($q) use ($request) {
-                $q->where('area_id', $request->area_id);
+            $monitoringQuery->where(function ($q) use ($request) {
+                $q->where('area_id', $request->area_id)
+                  ->orWhereHas('employee', function ($eq) use ($request) {
+                      $eq->where('area_id', $request->area_id);
+                  });
             });
         }
         $todayAllAttendances = $monitoringQuery->latest()->get();
@@ -332,6 +335,18 @@ class AttendanceController extends Controller
             ],
             'areas' => $areas,
             'positions' => $positions,
+            'settings' => [
+                'require_photo' => Setting::get('attendance_regular_require_photo', '1') === '1',
+                'require_gps' => Setting::get('attendance_regular_require_gps', '1') === '1',
+                'strict_radius' => Setting::get('attendance_regular_strict_radius', '1') === '1',
+                'default_radius' => (int) Setting::get('attendance_regular_default_radius', 200),
+                'allow_any_area' => Setting::get('attendance_regular_allow_any_area', '1') === '1',
+                'allow_wfh' => Setting::get('attendance_regular_allow_wfh', '0') === '1',
+                'allow_field' => Setting::get('attendance_regular_allow_field', '1') === '1',
+                'allow_overtime' => Setting::get('attendance_regular_allow_overtime', '1') === '1',
+                'deadline_time' => Setting::get('attendance_checkout_deadline_time', '23:30'),
+                'min_work_hours' => (int) Setting::get('attendance_checkout_min_work_hours', 4),
+            ],
             'filters' => [
                 'area_id' => $request->area_id ?? '',
                 'month' => $selectedMonth,
@@ -345,10 +360,12 @@ class AttendanceController extends Controller
      */
     public function clockIn(Request $request)
     {
+        $requirePhoto = Setting::get('attendance_regular_require_photo', '1') === '1';
         $request->validate([
             'employee_id' => 'required|exists:employees,id',
-            'photo' => 'required|string', // base64 photo
+            'photo' => $requirePhoto ? 'required|string' : 'nullable|string', // base64 photo
             'shift_id' => 'nullable|exists:shifts,id',
+            'area_id' => 'nullable|exists:areas,id',
             'attendance_type' => 'nullable|string|in:wfo,dinas_luar,wfh,lembur',
             'duty_location' => 'nullable|string|max:255',
             'latitude' => 'nullable|numeric',
@@ -423,30 +440,72 @@ class AttendanceController extends Controller
         }
 
         // ==============================================================
-        // VALIDASI RADIUS TITIK KOORDINAT BERPATOKAN PER AREA / WILAYAH
+        // PENENTUAN AREA PRESENSI & VALIDASI RADIUS GEOFENCING MULTI-AREA
         // ==============================================================
+        $allowAnyArea = Setting::get('attendance_regular_allow_any_area', '1') === '1';
+        $targetArea = null;
+
+        if ($allowAnyArea) {
+            if ($request->filled('area_id')) {
+                $targetArea = Area::find($request->area_id);
+            } elseif ($request->latitude && $request->longitude) {
+                // Auto-detect area kantor terdekat yang dalam radius
+                $allOfficeAreas = Area::whereNotNull('latitude')->whereNotNull('longitude')->get();
+                $closestArea = null;
+                $minDistance = null;
+
+                foreach ($allOfficeAreas as $oArea) {
+                    $distMeters = $this->calculateDistanceMeters(
+                        (float) $request->latitude,
+                        (float) $request->longitude,
+                        (float) $oArea->latitude,
+                        (float) $oArea->longitude
+                    );
+                    $maxRad = (int) ($oArea->radius_meters ?: Setting::get('attendance_regular_default_radius', 200));
+
+                    if ($distMeters <= $maxRad) {
+                        $targetArea = $oArea;
+                        break;
+                    }
+
+                    if ($minDistance === null || $distMeters < $minDistance) {
+                        $minDistance = $distMeters;
+                        $closestArea = $oArea;
+                    }
+                }
+
+                if (!$targetArea) {
+                    $targetArea = $employee->area ?: $closestArea;
+                }
+            } else {
+                $targetArea = $employee->area;
+            }
+        } else {
+            $targetArea = $employee->area;
+        }
+
         $distanceCalculated = $request->distance ? (int) $request->distance : null;
         if ($attendanceType === 'wfo') {
             $strictRadius = Setting::get('attendance_regular_strict_radius', '1') === '1';
             $requireGps = Setting::get('attendance_regular_require_gps', '1') === '1';
 
-            if ($employee->area && $employee->area->latitude && $employee->area->longitude) {
+            if ($targetArea && $targetArea->latitude && $targetArea->longitude) {
                 if ($requireGps && (!$request->latitude || !$request->longitude)) {
-                    return back()->with('error', "Titik koordinat GPS wajib diaktifkan untuk absensi reguler di area '{$employee->area->name}'. Pastikan GPS dan izin lokasi aktif di browser Anda.");
+                    return back()->with('error', "Titik koordinat GPS wajib diaktifkan untuk absensi reguler di area '{$targetArea->name}'. Pastikan GPS dan izin lokasi aktif di browser Anda.");
                 }
 
                 if ($request->latitude && $request->longitude) {
                     $distanceCalculated = $this->calculateDistanceMeters(
                         (float) $request->latitude,
                         (float) $request->longitude,
-                        (float) $employee->area->latitude,
-                        (float) $employee->area->longitude
+                        (float) $targetArea->latitude,
+                        (float) $targetArea->longitude
                     );
 
-                    $allowedRadius = (int) ($employee->area->radius_meters ?: Setting::get('attendance_regular_default_radius', 200));
+                    $allowedRadius = (int) ($targetArea->radius_meters ?: Setting::get('attendance_regular_default_radius', 200));
 
                     if ($strictRadius && $distanceCalculated > $allowedRadius) {
-                        return back()->with('error', "Presensi Masuk Ditolak: Anda berada di luar radius kantor cabang area '{$employee->area->name}'. Jarak Anda saat ini: {$distanceCalculated} meter dari titik kantor (Batas toleransi radius: {$allowedRadius} meter). Silakan mendekat ke lokasi kantor untuk melakukan presensi.");
+                        return back()->with('error', "Presensi Masuk Ditolak: Anda berada di luar radius kantor cabang area '{$targetArea->name}'. Jarak Anda saat ini: {$distanceCalculated} meter dari titik kantor (Batas toleransi radius: {$allowedRadius} meter). Silakan pilih cabang yang sesuai atau mendekat ke lokasi kantor untuk melakukan presensi.");
                     }
                 }
             }
@@ -471,8 +530,8 @@ class AttendanceController extends Controller
             }
         }
 
-        // Simpan Foto Selfie Base64
-        $photoPath = $this->saveBase64Photo($request->photo, 'attendances/in', "in_{$employee->id}_{$today}");
+        // Simpan Foto Selfie Base64 jika ada
+        $photoPath = $request->photo ? $this->saveBase64Photo($request->photo, 'attendances/in', "in_{$employee->id}_{$today}") : null;
 
         $notesFinal = $request->notes;
         if ($isHolidayOff) {
@@ -487,6 +546,7 @@ class AttendanceController extends Controller
             [
                 'work_schedule_id' => $schedule?->id,
                 'shift_id' => $shift?->id,
+                'area_id' => $targetArea?->id,
                 'attendance_type' => $attendanceType,
                 'clock_in' => $timeStr,
                 'photo_in' => $photoPath,
@@ -496,7 +556,7 @@ class AttendanceController extends Controller
                 'status' => $status,
                 'late_minutes' => $lateMinutes,
                 'notes' => $notesFinal,
-                'duty_location' => $request->duty_location,
+                'duty_location' => $targetArea ? $targetArea->name : $request->duty_location,
                 'is_verified' => true,
             ]
         );
@@ -525,9 +585,11 @@ class AttendanceController extends Controller
      */
     public function clockOut(Request $request)
     {
+        $requirePhoto = Setting::get('attendance_regular_require_photo', '1') === '1';
         $request->validate([
             'employee_id' => 'required|exists:employees,id',
-            'photo' => 'required|string',
+            'photo' => $requirePhoto ? 'required|string' : 'nullable|string',
+            'area_id' => 'nullable|exists:areas,id',
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
             'distance' => 'nullable|integer',
@@ -584,30 +646,64 @@ class AttendanceController extends Controller
         }
 
         // ==============================================================
-        // VALIDASI RADIUS TITIK KOORDINAT BERPATOKAN PER AREA / WILAYAH
+        // PENENTUAN AREA PULANG & VALIDASI RADIUS GEOFENCING MULTI-AREA
         // ==============================================================
+        $allowAnyArea = Setting::get('attendance_regular_allow_any_area', '1') === '1';
+        $targetArea = null;
+
+        if ($attendance->area_id) {
+            $targetArea = Area::find($attendance->area_id);
+        } elseif ($request->filled('area_id') && $allowAnyArea) {
+            $targetArea = Area::find($request->area_id);
+        } else {
+            $targetArea = $employee->area;
+        }
+
         $distanceOutCalculated = $request->distance ? (int) $request->distance : null;
         if ($attendance->attendance_type === 'wfo') {
             $strictRadius = Setting::get('attendance_regular_strict_radius', '1') === '1';
             $requireGps = Setting::get('attendance_regular_require_gps', '1') === '1';
 
-            if ($employee->area && $employee->area->latitude && $employee->area->longitude) {
+            if ($targetArea && $targetArea->latitude && $targetArea->longitude) {
                 if ($requireGps && (!$request->latitude || !$request->longitude)) {
-                    return back()->with('error', "Titik koordinat GPS wajib diaktifkan untuk absensi pulang di area '{$employee->area->name}'. Pastikan GPS aktif.");
+                    return back()->with('error', "Titik koordinat GPS wajib diaktifkan untuk absensi pulang di area '{$targetArea->name}'. Pastikan GPS aktif.");
                 }
 
                 if ($request->latitude && $request->longitude) {
                     $distanceOutCalculated = $this->calculateDistanceMeters(
                         (float) $request->latitude,
                         (float) $request->longitude,
-                        (float) $employee->area->latitude,
-                        (float) $employee->area->longitude
+                        (float) $targetArea->latitude,
+                        (float) $targetArea->longitude
                     );
 
-                    $allowedRadius = (int) ($employee->area->radius_meters ?: Setting::get('attendance_regular_default_radius', 200));
+                    $allowedRadius = (int) ($targetArea->radius_meters ?: Setting::get('attendance_regular_default_radius', 200));
 
                     if ($strictRadius && $distanceOutCalculated > $allowedRadius) {
-                        return back()->with('error', "Absen Pulang Ditolak: Anda berada di luar radius kantor area '{$employee->area->name}'. Jarak Anda saat ini: {$distanceOutCalculated} meter dari kantor (Batas toleransi radius: {$allowedRadius} meter).");
+                        // Jika allowAnyArea aktif, cek apakah user berada di dalam radius kantor cabang lain
+                        $foundAnother = false;
+                        if ($allowAnyArea) {
+                            $otherAreas = Area::whereNotNull('latitude')->whereNotNull('longitude')->get();
+                            foreach ($otherAreas as $oArea) {
+                                $dOther = $this->calculateDistanceMeters(
+                                    (float) $request->latitude,
+                                    (float) $request->longitude,
+                                    (float) $oArea->latitude,
+                                    (float) $oArea->longitude
+                                );
+                                $radOther = (int) ($oArea->radius_meters ?: Setting::get('attendance_regular_default_radius', 200));
+                                if ($dOther <= $radOther) {
+                                    $targetArea = $oArea;
+                                    $distanceOutCalculated = $dOther;
+                                    $foundAnother = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (!$foundAnother) {
+                            return back()->with('error', "Absen Pulang Ditolak: Anda berada di luar radius kantor cabang area '{$targetArea->name}'. Jarak Anda saat ini: {$distanceOutCalculated} meter dari kantor (Batas toleransi radius: {$allowedRadius} meter).");
+                        }
                     }
                 }
             }
@@ -628,7 +724,7 @@ class AttendanceController extends Controller
             }
         }
 
-        $photoPath = $this->saveBase64Photo($request->photo, 'attendances/out', "out_{$employee->id}_{$today}");
+        $photoPath = $request->photo ? $this->saveBase64Photo($request->photo, 'attendances/out', "out_{$employee->id}_{$today}") : null;
 
         $attendance->update([
             'clock_out' => $timeStr,
@@ -637,6 +733,7 @@ class AttendanceController extends Controller
             'lng_out' => $request->longitude,
             'distance_out' => $distanceOutCalculated,
             'notes' => $notesFinal,
+            'area_id' => $attendance->area_id ?: $targetArea?->id,
         ]);
 
         // SINKRONISASI KE STATUS USER ON-DUTY (Teknisi Selesai Bertugas)
@@ -721,17 +818,18 @@ class AttendanceController extends Controller
         ]);
 
         $month = $request->month;
-        $latePenaltyMode = Setting::get('attendance_late_penalty_mode', 'per_kejadian');
+        $latePenaltyMode = Setting::get('attendance_late_mode', Setting::get('attendance_late_penalty_mode', 'Per Kejadian'));
+        $latePenaltyModeSlug = str_contains(strtolower($latePenaltyMode), 'menit') ? 'per_menit' : 'per_kejadian';
         $penaltyPerMinute = (float) ($request->penalty_per_minute ?? Setting::get('attendance_late_per_minute_amount', 1000));
         $fixedPenalty = (float) ($request->fixed_penalty_per_late ?? Setting::get('attendance_late_amount', 10000));
         $missingOutAmount = (float) Setting::get('attendance_missing_out_amount', 10000);
         $earlyLeaveAmount = (float) Setting::get('attendance_early_leave_amount', 10000);
         $alphaAmount = (float) Setting::get('attendance_alpha_amount', 35000);
 
-        $latePenaltyEnabled = Setting::get('attendance_late_penalty_enabled', '1') === '1';
-        $missingOutPenaltyEnabled = Setting::get('attendance_missing_out_penalty_enabled', '1') === '1';
-        $earlyLeavePenaltyEnabled = Setting::get('attendance_early_leave_penalty_enabled', '1') === '1';
-        $alphaPenaltyEnabled = Setting::get('attendance_alpha_penalty_enabled', '1') === '1';
+        $latePenaltyEnabled = Setting::get('attendance_late_enabled', Setting::get('attendance_late_penalty_enabled', '1')) === '1';
+        $missingOutPenaltyEnabled = Setting::get('attendance_missing_out_enabled', Setting::get('attendance_missing_out_penalty_enabled', '1')) === '1';
+        $earlyLeavePenaltyEnabled = Setting::get('attendance_early_leave_enabled', Setting::get('attendance_early_leave_penalty_enabled', '1')) === '1';
+        $alphaPenaltyEnabled = Setting::get('attendance_alpha_enabled', Setting::get('attendance_alpha_penalty_enabled', '1')) === '1';
 
         $monthStart = Carbon::parse($month . '-01')->startOfMonth();
         $monthEnd = Carbon::parse($month . '-01')->endOfMonth();
@@ -785,7 +883,7 @@ class AttendanceController extends Controller
                     $lateCount = $lateRegularAtts->count();
                     $totalLateMinutes = (int) $lateRegularAtts->sum('late_minutes');
 
-                    $lateDeductionAmount = ($latePenaltyMode === 'per_menit')
+                    $lateDeductionAmount = ($latePenaltyModeSlug === 'per_menit')
                         ? ($totalLateMinutes * $penaltyPerMinute)
                         : ($lateCount * $fixedPenalty);
 

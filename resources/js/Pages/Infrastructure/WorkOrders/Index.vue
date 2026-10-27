@@ -97,6 +97,42 @@ const deleteWo = (wo) => {
                 </div>
             </div>
 
+            <!-- Alur Rollout 3 Tahap Cerdas -->
+            <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-5 text-white shadow-lg mb-8 border border-slate-800">
+                <div class="flex items-center justify-between mb-3 border-b border-white/10 pb-2">
+                    <span class="text-xs font-black uppercase tracking-wider text-indigo-300 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                        <span>Alur Rollout FTTH Cerdas: 3 Tahap Menuju Auto-Commissioning</span>
+                    </span>
+                    <span class="text-[11px] text-slate-400 hidden sm:inline">
+                        Otomatis terbit di master data ODC/ODP &amp; peta GIS
+                    </span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div class="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex items-start gap-3">
+                        <div class="w-7 h-7 rounded-full bg-indigo-500/30 text-indigo-300 border border-indigo-400/30 font-black text-xs flex items-center justify-center shrink-0">1</div>
+                        <div>
+                            <h4 class="font-bold text-xs text-white">1. Persiapan</h4>
+                            <p class="text-[11px] text-slate-300 mt-0.5">Spesifikasi perangkat, titik awal-akhir rute &amp; Auto-BOM kalkulator stok gudang.</p>
+                        </div>
+                    </div>
+                    <div class="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex items-start gap-3">
+                        <div class="w-7 h-7 rounded-full bg-amber-500/30 text-amber-300 border border-amber-400/30 font-black text-xs flex items-center justify-center shrink-0">2</div>
+                        <div>
+                            <h4 class="font-bold text-xs text-white">2. Penugasan</h4>
+                            <p class="text-[11px] text-slate-300 mt-0.5">Penetapan teknisi &amp; jadwal, pengeluaran material gudang &amp; cetak surat jalan.</p>
+                        </div>
+                    </div>
+                    <div class="p-3.5 rounded-2xl bg-white/5 border border-white/10 flex items-start gap-3">
+                        <div class="w-7 h-7 rounded-full bg-emerald-500/30 text-emerald-300 border border-emerald-400/30 font-black text-xs flex items-center justify-center shrink-0">3</div>
+                        <div>
+                            <h4 class="font-bold text-xs text-emerald-200">3. Pengerjaan &amp; Auto-Aktif</h4>
+                            <p class="text-[11px] text-emerald-100/80 mt-0.5">Tarik kabel, QC redaman optik &rarr; <b>Langsung otomatis masuk data ODC/ODP &amp; GIS!</b></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- KPI Summary Cards -->
             <div v-can="'infra_wo_card_stats'" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
                 <!-- Total -->
@@ -292,6 +328,27 @@ const deleteWo = (wo) => {
                                 <!-- Aksi -->
                                 <td class="px-5 py-3.5 text-right">
                                     <div class="inline-flex items-center gap-1.5">
+                                        <!-- Shortcut Cerdas: Langsung ke Master Data jika sudah selesai -->
+                                        <Link
+                                            v-if="wo.status === 'completed' && wo.type === 'odc_deployment'"
+                                            :href="route('odcs.index', { search: wo.target_name })"
+                                            class="px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold rounded-lg transition-colors border border-purple-200 text-[11px] flex items-center gap-1"
+                                            title="Buka langsung di Master Data ODC"
+                                        >
+                                            <span>🏢 ODC</span>
+                                            <span>&rarr;</span>
+                                        </Link>
+
+                                        <Link
+                                            v-else-if="wo.status === 'completed' && wo.type === 'odp_deployment'"
+                                            :href="route('odps.index', { search: wo.target_name })"
+                                            class="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-lg transition-colors border border-emerald-200 text-[11px] flex items-center gap-1"
+                                            title="Buka langsung di Master Data ODP"
+                                        >
+                                            <span>📦 ODP</span>
+                                            <span>&rarr;</span>
+                                        </Link>
+
                                         <Link
                                             :href="route('infrastructure.work-orders.show', wo.id)"
                                             class="px-3 py-1.5 bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 font-bold rounded-lg transition-colors border border-slate-200/60"

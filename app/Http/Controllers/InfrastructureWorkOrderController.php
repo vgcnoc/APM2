@@ -112,18 +112,8 @@ class InfrastructureWorkOrderController extends Controller
     protected function getEligibleTechnicians()
     {
         return User::where(function ($q) {
-            $q->whereIn('role', [
-                'teknisi', 'teknisi tim serbu', 'tim serbu',
-                'maintenance', 'maintenance-1',
-                'kepala teknisi', 'noc', 'admin'
-            ])->orWhereHas('roles', function ($rq) {
-                $rq->whereIn('name', [
-                    'teknisi', 'teknisi tim serbu', 'tim serbu',
-                    'maintenance', 'maintenance-1',
-                    'kepala teknisi', 'noc', 'admin'
-                ]);
-            });
-        })->orderBy('name')->get(['id', 'name']);
+            $q->where('is_active', true)->orWhereNull('is_active');
+        })->orderBy('name')->get(['id', 'name', 'phone', 'role']);
     }
 
     /**
@@ -438,10 +428,12 @@ class InfrastructureWorkOrderController extends Controller
                 $validated,
                 $photos,
                 $validated['optical_checks'] ?? [],
-                $validated['reconciliations'] ?? []
+                $validated['reconciliations'] ?? [],
+                Auth::user()
             );
 
-            return back()->with('success', "Laporan pengerjaan {$workOrder->wo_number} berhasil dikirim! Foto ODP/ODC otomatis diperbarui & menunggu verifikasi NOC.");
+            $deviceType = $workOrder->type === 'odc_deployment' ? 'ODC' : 'ODP';
+            return back()->with('success', "Pengerjaan {$workOrder->wo_number} selesai! Perangkat {$workOrder->target_name} telah otomatis terdaftar & aktif di master data {$deviceType} serta peta GIS.");
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }

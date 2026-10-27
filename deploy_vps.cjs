@@ -7,6 +7,7 @@ cd /var/www/APM2
 git fetch origin
 git reset --hard origin/main
 git clean -fd
+php artisan migrate --force
 composer dump-autoload
 php artisan permissions:sync
 npm install --legacy-peer-deps

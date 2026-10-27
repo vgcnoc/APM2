@@ -1050,6 +1050,18 @@ const getGroupCheckedCount = (group) => {
 // Template Hak Akses Standar List
 const availablePresets = [
     {
+        key: 'maintenance-1',
+        emoji: '🛠️',
+        title: 'Maintenance-1 (Persiapan & Penugasan)',
+        desc: 'Persiapan rollout ODC/ODP (spesifikasi, auto GPS, titik rute, Auto-BOM material) & penugasan tim serbu, alokasi material gudang serta surat jalan.',
+    },
+    {
+        key: 'teknisi tim serbu',
+        emoji: '⚡',
+        title: 'Teknisi Tim Serbu (Pengerjaan)',
+        desc: 'Pengerjaan lapangan rollout ODC/ODP (tarik kabel, request tambahan material, input meter riil, QC redaman optik OPM, foto fisik, & auto-commissioning).',
+    },
+    {
         key: 'teknisi',
         emoji: '🔧',
         title: 'Teknisi Lapangan',
@@ -1165,7 +1177,10 @@ const applyPreset = (presetName) => {
     
     let matchingKey = Object.keys(presets).find(k => k.toLowerCase() === key);
     if (!matchingKey) {
-        if (key.includes('teknisi')) matchingKey = 'teknisi';
+        if (key.includes('serbu')) matchingKey = 'teknisi tim serbu';
+        else if (key.includes('maintenance-1') || key.includes('maintenance 1')) matchingKey = 'maintenance-1';
+        else if (key.includes('maintenance')) matchingKey = 'maintenance-1';
+        else if (key.includes('teknisi')) matchingKey = 'teknisi';
         else if (key.includes('cs') || key.includes('customer')) matchingKey = 'cs';
         else if (key.includes('marketing') || key.includes('komunikasi') || key.includes('marcom')) matchingKey = 'marketing';
         else if (key.includes('gudang') || key.includes('logistik') || key.includes('inventory')) matchingKey = 'gudang';

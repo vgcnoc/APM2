@@ -344,15 +344,18 @@ class InfrastructureWorkOrderService
 
     /**
      * Submit Laporan Pelaksanaan Lapangan oleh Teknisi (QC Redaman & Bukti Foto).
+     * Cerdas & Otomatis: Begitu laporan pengerjaan disubmit, sistem langsung otomatis menerbitkan
+     * dan memasukkan perangkat baru ke master data ODC / ODP serta peta GIS!
      */
     public static function submitFieldReport(
         InfrastructureWorkOrder $workOrder,
         array $reportData,
         array $photos = [],
         array $opticalChecks = [],
-        array $reconciliations = []
+        array $reconciliations = [],
+        ?User $submittingUser = null
     ): void {
-        DB::transaction(function () use ($workOrder, $reportData, $photos, $opticalChecks, $reconciliations) {
+        DB::transaction(function () use ($workOrder, $reportData, $photos, $opticalChecks, $reconciliations, $submittingUser) {
             // Upload Foto-foto Bukti Lapangan
             $photoOdp = $workOrder->photo_odp;
             if (!empty($photos['photo_odp'])) {
@@ -395,7 +398,6 @@ class InfrastructureWorkOrderService
                 'photo_splicing' => $photoSplicing,
                 'photo_opm' => $photoOpm,
                 'notes' => $reportData['notes'] ?? $workOrder->notes,
-                'status' => 'under_review',
             ]);
 
             // Auto-update ke data ODC / ODP jika foto ODP / ODC terpasang
@@ -446,15 +448,21 @@ class InfrastructureWorkOrderService
                     }
                 }
             }
+
+            // ⚡ AUTO-COMMISSIONING CERDAS: Langsung daftarkan dan aktifkan perangkat ke master data ODC / ODP & GIS
+            $commissioner = $submittingUser ?? auth()->user();
+            self::approveAndCommission($workOrder, $commissioner);
         });
     }
 
     /**
-     * Persetujuan NOC / Supervisor & Komisioning Otomatis ke Master Database & GIS.
+     * Persetujuan / Komisioning Otomatis ke Master Database ODC / ODP & GIS.
      */
-    public static function approveAndCommission(InfrastructureWorkOrder $workOrder, User $approver): void
+    public static function approveAndCommission(InfrastructureWorkOrder $workOrder, ?User $approver = null): void
     {
-        DB::transaction(function () use ($workOrder, $approver) {
+        $approverUser = $approver ?? auth()->user();
+
+        DB::transaction(function () use ($workOrder, $approverUser) {
             $createdOdcId = null;
             $createdOdpId = null;
 
@@ -463,11 +471,11 @@ class InfrastructureWorkOrderService
             $photo = $workOrder->photo_odp ?: ($workOrder->photo_pole ?: $workOrder->photo_splicing);
 
             if ($workOrder->type === 'odc_deployment') {
-                // 1. Buat Record ODC Baru
+                // 1. Buat / Perbarui Record ODC Baru
                 $odcType = $workOrder->device_type ?: ($workOrder->splitter_ratio === 'Split' ? 'Split' : 'Normal');
                 $isSplit = in_array($odcType, ['Split']) || str_contains(strtolower($workOrder->splitter_ratio ?? ''), 'split');
 
-                $odc = Odc::create([
+                $odcPayload = [
                     'olt_id' => $workOrder->olt_id,
                     'pon_port' => $workOrder->pon_port,
                     'area_id' => $workOrder->area_id,
@@ -479,20 +487,28 @@ class InfrastructureWorkOrderService
                     'longitude' => $lng,
                     'capacity' => $workOrder->capacity ?: 8,
                     'splitter_ratio' => $workOrder->splitter_ratio,
-                    'description' => "Dibangun via {$workOrder->wo_number} oleh {$workOrder->technician?->name}",
+                    'description' => "Dibangun otomatis via Rollout {$workOrder->wo_number} oleh " . ($workOrder->technician?->name ?? 'Teknisi'),
                     'status' => 'active',
                     'start_point' => $workOrder->start_point,
                     'end_point' => $workOrder->end_point,
                     'cable_pull' => $workOrder->cable_pull ?: ($workOrder->cable_length_used ? "{$workOrder->cable_length_used}m" : 'Individu'),
                     'is_split' => $isSplit,
-                ]);
+                ];
+
+                $existingOdc = Odc::where('name', $workOrder->target_name)->first();
+                if ($existingOdc) {
+                    $existingOdc->update($odcPayload);
+                    $odc = $existingOdc;
+                } else {
+                    $odc = Odc::create($odcPayload);
+                }
                 $createdOdcId = $odc->id;
             } else {
-                // 2. Buat Record ODP Baru
+                // 2. Buat / Perbarui Record ODP Baru
                 $odpType = $workOrder->device_type ?: ($workOrder->splitter_ratio === 'Split 2' ? 'Split 2' : 'Normal');
                 $isSplit = in_array($odpType, ['Split 2']) || str_contains(strtolower($workOrder->splitter_ratio ?? ''), 'split');
 
-                $odp = Odp::create([
+                $odpPayload = [
                     'odc_id' => $workOrder->odc_id,
                     'area_id' => $workOrder->area_id,
                     'name' => $workOrder->target_name,
@@ -509,8 +525,16 @@ class InfrastructureWorkOrderService
                     'core_capacity' => $workOrder->core_capacity ?: null,
                     'used_ports' => 0,
                     'status' => 'active',
-                    'description' => "Dibangun via {$workOrder->wo_number} oleh {$workOrder->technician?->name}",
-                ]);
+                    'description' => "Dibangun otomatis via Rollout {$workOrder->wo_number} oleh " . ($workOrder->technician?->name ?? 'Teknisi'),
+                ];
+
+                $existingOdp = Odp::where('name', $workOrder->target_name)->first();
+                if ($existingOdp) {
+                    $existingOdp->update($odpPayload);
+                    $odp = $existingOdp;
+                } else {
+                    $odp = Odp::create($odpPayload);
+                }
                 $createdOdpId = $odp->id;
             }
 
@@ -531,7 +555,7 @@ class InfrastructureWorkOrderService
                     sourceId: $workOrder->id,
                     sourceRef: $workOrder->wo_number,
                     items: $itemsToReturn,
-                    technicianName: $workOrder->technician?->name ?: auth()->user()->name,
+                    technicianName: $workOrder->technician?->name ?: ($approverUser?->name ?? 'Teknisi'),
                     areaId: $workOrder->area_id,
                     notes: 'Pengembalian Sisa Material Rollout ' . ($workOrder->type === 'odc_deployment' ? 'ODC' : 'ODP') . ' ' . $workOrder->wo_number
                 );
@@ -539,7 +563,7 @@ class InfrastructureWorkOrderService
 
             $workOrder->update([
                 'status' => 'completed',
-                'approved_by' => $approver->id,
+                'approved_by' => $approverUser?->id,
                 'approved_at' => now(),
                 'created_odc_id' => $createdOdcId,
                 'created_odp_id' => $createdOdpId,

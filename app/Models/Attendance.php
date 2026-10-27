@@ -15,6 +15,7 @@ class Attendance extends Model
         'employee_id',
         'work_schedule_id',
         'shift_id',
+        'area_id',
         'attendance_type',
         'date',
         'clock_in',
@@ -61,6 +62,11 @@ class Attendance extends Model
     public function shift(): BelongsTo
     {
         return $this->belongsTo(Shift::class);
+    }
+
+    public function area(): BelongsTo
+    {
+        return $this->belongsTo(Area::class);
     }
 
     public function getFormattedDateAttribute(): string

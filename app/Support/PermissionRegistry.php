@@ -1494,43 +1494,74 @@ class PermissionRegistry
             ],
         ];
 
-        // Preset khusus Teknisi Tim Serbu (Penanganan, Mulai Kerja, Request Material Tambahan, Laporan & QC Lapangan Rollout ODC & ODP)
+        // Preset khusus Maintenance-1 (Persiapan Spesifikasi & Rute, Auto-BOM, Penunjukan Tim & Penugasan, Alokasi Material Gudang & Cetak Surat Jalan)
+        $presets['maintenance-1'] = [
+            'menu_dashboard', 'menu_dashboard_realtime', 'dashboard_card_realtime', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_infra', 'dashboard_filter_area', 'dashboard_btn_refresh',
+            'menu_network_map', 'network_map_routing', 'network_map_find_odp', 'menu_network_radar',
+            'menu_network_topology', 'menu_network_data', 'menu_network_data_terminated', 'network_data_view_area', 'menu_ftth', 'ftth_manage', 'ftth_view_area',
+            'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter', 'network_capacity_export', 'network_capacity_btn_rollout', 'network_capacity_view_area', 'network_capacity_view_all',
+            'menu_network_olt', 'network_olt_card_stats', 'network_olt_filter', 'network_olt_view_area',
+            'menu_network_odc', 'network_odc_card_stats', 'network_odc_filter', 'network_odc_create', 'network_odc_edit', 'network_odc_view_area',
+            'menu_network_odp', 'network_odp_card_stats', 'network_odp_filter', 'network_odp_create', 'network_odp_edit', 'network_odp_view_area',
+            'menu_network_ont', 'network_ont_card_stats', 'network_ont_filter', 'network_ont_view_area',
+            'menu_network_find_onu',
+            // Rollout Pembangunan ODC & ODP (FOKUS 1 & 2: PERSIAPAN & PENUGASAN)
+            'menu_infrastructure_work_orders', 'infra_wo_card_stats', 'infra_wo_tab_info', 'infra_wo_tab_materials', 'infra_wo_tab_qc', 'infra_wo_tab_photos', 'infra_wo_tab_logs', 'infra_wo_filter',
+            'infrastructure_work_orders_create', // Tahap 1: Persiapan (Tipe ODC/ODP, Auto GPS Tiang, Rute Dropdown Cerdas, Auto-BOM Kalkulator)
+            'infrastructure_work_orders_edit',   // Tahap 1: Koreksi & Update Parameter Rute
+            'infrastructure_work_orders_delete', // Tahap 1: Pembatalan Penugasan & Restok Otomatis
+            'infrastructure_work_orders_dispatch', // Tahap 2: Penugasan (Konfirmasi & Pengeluaran Material Gudang)
+            'infra_wo_btn_print_sj',             // Tahap 2: Penugasan (Cetak Surat Jalan Resmi Pengeluaran Barang)
+            'infrastructure_work_orders_review_material', // Tahap 2: Penugasan (Review & Setujui Request Material Tambahan Lapangan)
+            'infrastructure_work_orders_upload_photo',    // Upload / ganti foto dokumentasi
+            'infrastructure_work_orders_approve',         // Validasi QC & Komisioning
+            'infrastructure_work_orders_reject',          // Permintaan Revisi Laporan
+            'infrastructure_work_orders_view_area', 'infrastructure_work_orders_view_all',
+            'menu_materials', 'materials_card_stats', 'materials_filter_category', 'materials_view_area',
+            'menu_material_transactions', 'material_transactions_create', 'material_transactions_view_area', 'material_transactions_view_own',
+            'menu_material_handovers', 'material_handover_tab_returns', 'material_handover_tab_requests', 'material_handover_btn_create_return', 'material_handover_btn_create_request', 'material_handover_field_condition', 'material_handover_view_area',
+            'menu_attendances', 'attendance_tab_reguler', 'attendance_select_type', 'attendance_tab_field', 'attendances_view_own',
+            'menu_payroll', 'payroll_view_own', 'payroll_btn_print_slip',
+            'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_area', 'monitoring_teknisi_view_own',
+            'menu_operational_progress', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa',
+            'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
+        ];
+
+        // Preset khusus Teknisi Tim Serbu (FOKUS 3: PENGERJAAN LAPANGAN, TARIK KABEL, QC OPM & AUTO-COMMISSIONING)
         $presets['teknisi tim serbu'] = [
             'menu_dashboard', 'dashboard_card_realtime', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_infra', 'dashboard_filter_area', 'dashboard_btn_refresh',
             'menu_network_map', 'network_map_routing', 'network_map_find_odp', 'menu_network_radar',
             'network_data_view_area', 'menu_ftth', 'ftth_manage', 'ftth_view_area',
-            'menu_network_capacity', 'network_capacity_card_stats', 'network_capacity_tab_odp', 'network_capacity_tab_odc', 'network_capacity_tab_expansion', 'network_capacity_filter', 'network_capacity_view_area',
-            'menu_network_olt', 'network_olt_card_stats', 'network_olt_filter', 'network_olt_view_area',
             'menu_network_odc', 'network_odc_card_stats', 'network_odc_filter', 'network_odc_view_area',
             'menu_network_odp', 'network_odp_card_stats', 'network_odp_filter', 'network_odp_view_area',
-            'menu_network_ont', 'network_ont_card_stats', 'network_ont_filter', 'network_ont_print_card', 'network_ont_view_area',
             'menu_network_find_onu',
-            // Rollout Pembangunan ODC & ODP (Pelaksana Lapangan & Pembuat Laporan QC)
+            // Rollout Pembangunan ODC & ODP (FOKUS 3: PENGERJAAN LAPANGAN & QC REDAMAN)
             'menu_infrastructure_work_orders', 'infra_wo_card_stats', 'infra_wo_tab_info', 'infra_wo_tab_materials', 'infra_wo_tab_qc', 'infra_wo_tab_photos', 'infra_wo_tab_logs', 'infra_wo_filter',
-            'infra_wo_btn_print_sj', 'infrastructure_work_orders_start', 'infrastructure_work_orders_request_material', 'infrastructure_work_orders_report', 'infrastructure_work_orders_upload_photo',
+            'infra_wo_btn_print_sj', // Melihat Surat Jalan untuk Pengambilan Barang
+            'infrastructure_work_orders_start', // Mulai Pengerjaan Lapangan
+            'infrastructure_work_orders_request_material', // Request Tambahan Material di Lapangan jika kurang
+            'infrastructure_work_orders_report', // Submit Laporan Lapangan, Meter Kabel Riil, QC Redaman Optik & Auto-Commissioning Instan
+            'infrastructure_work_orders_upload_photo', // Upload Foto Bukti Fisik ODC/ODP, Tiang, Splicing Tray & Layar OPM
             'infrastructure_work_orders_view_assigned', 'infrastructure_work_orders_view_area',
-            'menu_materials', 'materials_card_stats', 'materials_filter_category', 'materials_view_area',
+            'menu_materials', 'materials_view_area',
             'menu_material_transactions', 'material_transactions_create', 'material_transactions_view_area', 'material_transactions_view_own',
             'menu_material_handovers', 'material_handover_tab_returns', 'material_handover_tab_requests', 'material_handover_btn_create_return', 'material_handover_btn_create_request', 'material_handover_field_condition', 'material_handover_view_area',
-            'menu_customers_booking', 'customers_booking_card_stats', 'customers_booking_filter_area', 'customers_booking_create', 'customers_booking_view', 'customers_booking_edit', 'customers_booking_print', 'customers_booking_whatsapp', 'customers_booking_view_area', 'customers_booking_view_own',
-            'menu_customers_survey', 'customers_survey_card_stats', 'customers_survey_filter', 'customers_survey_report', 'customers_survey_view_assigned',
-            'menu_customers_installed', 'customers_installed_card_stats', 'customers_installed_filter', 'customers_installed_report', 'customers_installed_edit',
-            'customers_installed_whatsapp', 'customers_btn_whatsapp', 'customers_installed_view_assigned',
-            'menu_cbp_jadwal', 'menu_cbp_laporan', 'cbp_card_stats', 'cbp_filter', 'cbp_btn_report', 'cbp_view_assigned',
-            'menu_pgk_jadwal', 'menu_pgk_laporan', 'pgk_card_summary', 'pgk_tab_flow', 'pgk_filter', 'pgk_btn_request_material', 'pgk_btn_report', 'pgk_view_assigned',
-            'menu_pgj_jadwal', 'menu_pgj_laporan', 'pgj_card_summary', 'pgj_card_stats', 'pgj_tab_flow', 'pgj_filter', 'pgj_btn_report', 'pgj_btn_view', 'pgj_view_assigned',
-            'menu_pgs_jadwal', 'menu_pgs_laporan', 'pgs_card_summary', 'pgs_card_stats', 'pgs_tab_flow', 'pgs_filter', 'pgs_btn_report', 'pgs_view_assigned',
+            'menu_customers_installed', 'customers_installed_report', 'customers_installed_view_assigned',
+            'menu_cbp_jadwal', 'menu_cbp_laporan', 'cbp_btn_report', 'cbp_view_assigned',
+            'menu_pgk_jadwal', 'menu_pgk_laporan', 'pgk_btn_request_material', 'pgk_btn_report', 'pgk_view_assigned',
+            'menu_pgj_jadwal', 'menu_pgj_laporan', 'pgj_btn_report', 'pgj_btn_view', 'pgj_view_assigned',
+            'menu_pgs_jadwal', 'menu_pgs_laporan', 'pgs_btn_report', 'pgs_view_assigned',
             'menu_attendances', 'attendance_tab_reguler', 'attendance_select_type', 'attendance_tab_field', 'attendance_tab_special', 'attendance_tab_best', 'attendances_view_own',
             'menu_payroll', 'payroll_view_own', 'payroll_btn_print_slip',
-            'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_area', 'monitoring_teknisi_view_own',
+            'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_view_area', 'monitoring_teknisi_view_own',
             'menu_operational_progress', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa',
-            'menu_vouchers_free', 'voucher_free_card_stats', 'voucher_free_tab_customers', 'vouchers_free_sync_customer', 'voucher_free_filter_connection', 'voucher_free_color_indicator',
-            'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
         ];
 
         // Role alias / turunan jabatan agar sinkron otomatis saat sinkronisasi izin
-        $presets['maintenance-1'] = $presets['maintenance'];
+        $presets['Maintenance-1'] = $presets['maintenance-1'];
+        $presets['Teknisi Tim Serbu'] = $presets['teknisi tim serbu'];
         $presets['tim serbu'] = $presets['teknisi tim serbu'];
+        $presets['Tim Serbu'] = $presets['teknisi tim serbu'];
         $presets['infrastruktur'] = $presets['teknisi tim serbu'];
         $presets['teknisi-2'] = $presets['teknisi'];
         $presets['logistik'] = $presets['gudang'];

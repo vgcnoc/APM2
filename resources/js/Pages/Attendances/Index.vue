@@ -338,6 +338,63 @@
                                 />
                             </div>
 
+                            <!-- PILIHAN AREA / KANTOR CABANG PRESENSI REGULER (WFO) -->
+                            <div v-if="attendanceType === 'wfo'" class="space-y-2 p-3.5 bg-gradient-to-br from-blue-50/70 via-indigo-50/30 to-white rounded-2xl border border-blue-200/80 shadow-2xs">
+                                <div class="flex items-center justify-between">
+                                    <label class="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+                                        <span>🏢</span>
+                                        <span>Lokasi Kantor Presensi:</span>
+                                    </label>
+                                    <span v-if="settings?.allow_any_area" class="px-2 py-0.5 rounded-md text-[10px] font-black bg-blue-600 text-white shadow-2xs">
+                                        Bebas Pilih Cabang
+                                    </span>
+                                    <span v-else class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                                        Area Cabang Asal
+                                    </span>
+                                </div>
+
+                                <!-- Dropdown Pemilihan Area jika settings.allow_any_area aktif -->
+                                <div v-if="settings?.allow_any_area" class="space-y-1.5">
+                                    <div class="relative">
+                                        <select
+                                            v-model="selectedAreaId"
+                                            :disabled="!!todayAttendance?.clock_in"
+                                            class="w-full text-xs font-bold text-slate-800 bg-white border border-blue-300 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:bg-slate-100 disabled:text-slate-500 cursor-pointer shadow-2xs transition"
+                                        >
+                                            <option v-for="ar in areas" :key="ar.id" :value="ar.id">
+                                                {{ formatAreaDistanceOption(ar) }}
+                                            </option>
+                                        </select>
+                                    </div>
+
+                                    <div class="flex items-center justify-between text-[11px] pt-0.5">
+                                        <div v-if="autoDetectedAreaInfo" class="text-emerald-700 font-semibold flex items-center gap-1 truncate">
+                                            <span>🎯</span>
+                                            <span>Otomatis terdeteksi: <strong>{{ autoDetectedAreaInfo.name }}</strong> ({{ formatDistance(autoDetectedAreaInfo.distance) }})</span>
+                                        </div>
+                                        <div v-else class="text-slate-500 truncate">
+                                            Pilih kantor tempat Anda hadir saat ini
+                                        </div>
+                                        <button
+                                            v-if="!todayAttendance?.clock_in"
+                                            type="button"
+                                            @click="autoSelectNearestArea"
+                                            class="text-blue-700 hover:text-blue-900 font-bold text-[11px] flex items-center gap-1 shrink-0 ml-2 hover:underline"
+                                            title="Deteksi kantor cabang terdekat dari lokasi GPS Anda"
+                                        >
+                                            <span>🎯</span>
+                                            <span>Cari Terdekat</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Tampilan Kantor Statis jika allow_any_area dinonaktifkan -->
+                                <div v-else class="text-xs text-slate-700 bg-white p-2.5 rounded-xl border border-slate-200">
+                                    <div class="font-bold text-slate-900">{{ currentTargetOffice?.name || currentEmployee?.area?.name || 'Kantor Pusat' }}</div>
+                                    <div class="text-[10px] text-slate-500 mt-0.5">{{ currentTargetOffice?.address || currentEmployee?.area?.address || 'Lokasi kantor cabang penugasan' }}</div>
+                                </div>
+                            </div>
+
                             <!-- Status Lokasi & GPS Engine -->
                             <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2.5">
                                 <div class="flex items-center justify-between">
@@ -376,9 +433,9 @@
                                     <div v-if="attendanceType === 'wfo' && !isWithinRadius && !bypassRadiusMode" class="mt-2 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-[11px] leading-relaxed">
                                         <div class="font-bold flex items-center gap-1 text-rose-900 mb-0.5">
                                             <span>📍</span>
-                                            <span>Di Luar Radius Kantor Area</span>
+                                            <span>Di Luar Radius Kantor Cabang</span>
                                         </div>
-                                        Jarak Anda saat ini <strong>{{ formatDistance(distanceToOffice) }}</strong> dari titik kantor <strong>{{ officeLocation?.name || 'Area' }}</strong> (Batas toleransi radius: {{ officeLocation?.radius_meters || 200 }}m). Presensi regular WFO wajib berada di dalam radius area ini.
+                                        Jarak Anda saat ini <strong>{{ formatDistance(distanceToOffice) }}</strong> dari titik kantor <strong>{{ currentTargetOffice?.name || officeLocation?.name || 'Area' }}</strong> (Batas toleransi radius: {{ currentTargetOffice?.radius_meters || 200 }}m). Presensi reguler WFO wajib berada di dalam radius kantor cabang ini.
                                     </div>
                                 </div>
 
@@ -458,7 +515,7 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
                                         </svg>
                                         <span v-if="isSubmitting">Memproses Presensi...</span>
-                                        <span v-else-if="!capturedPhoto">Ambil Foto Selfie Dulu</span>
+                                        <span v-else-if="!capturedPhoto && (settings?.require_photo ?? true)">Ambil Foto Selfie Dulu</span>
                                         <span v-else-if="isOutOfRadius">❌ Di Luar Radius Area ({{ formatDistance(distanceToOffice) }})</span>
                                         <span v-else>📷 Absen Masuk Sekarang</span>
                                     </button>
@@ -481,7 +538,7 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
                                         </svg>
                                         <span v-if="isSubmitting">Memproses Presensi Pulang...</span>
-                                        <span v-else-if="!capturedPhoto">Ambil Foto Selfie Dulu</span>
+                                        <span v-else-if="!capturedPhoto && (settings?.require_photo ?? true)">Ambil Foto Selfie Dulu</span>
                                         <span v-else-if="isOutOfRadius">❌ Di Luar Radius Area ({{ formatDistance(distanceToOffice) }})</span>
                                         <span v-else>📷 Absen Pulang Sekarang</span>
                                     </button>
@@ -766,7 +823,11 @@
                                     <td class="px-4 py-3">
                                         <div class="font-bold text-slate-800">{{ att.employee?.name }}</div>
                                         <div class="text-[11px] text-slate-400">
-                                            {{ att.employee?.position || 'Staf' }} • {{ att.employee?.area?.name || 'Area' }}
+                                            {{ att.employee?.position || 'Staf' }} • Home: {{ att.employee?.area?.name || 'Area' }}
+                                        </div>
+                                        <div v-if="att.area || att.duty_location" class="mt-0.5 text-[10px] font-bold text-blue-700 flex items-center gap-1">
+                                            <span>📍</span>
+                                            <span>Absen di: {{ att.area?.name || att.duty_location }}</span>
                                         </div>
                                     </td>
                                     <td class="px-4 py-3">
@@ -1170,6 +1231,7 @@ const props = defineProps({
     monthlyRecap: Object,
     areas: Array,
     positions: Array,
+    settings: Object,
     filters: Object,
 });
 
@@ -1194,6 +1256,33 @@ const selectedRecapMonth = ref(props.monthlyRecap?.month || '');
 // Form Presensi State
 const selectedShiftId = ref(props.shiftToday?.id || null);
 
+// Area Kantor Presensi State
+const selectedAreaId = ref(
+    props.todayAttendance?.area_id ||
+    props.currentEmployee?.area_id ||
+    props.officeLocation?.id ||
+    (props.areas && props.areas.length > 0 ? props.areas[0].id : null)
+);
+const autoDetectedAreaInfo = ref(null);
+
+// Kantor Acuan yang Aktif (Bisa Berpindah jika Multi-Cabang Aktif)
+const currentTargetOffice = computed(() => {
+    if (props.settings?.allow_any_area && selectedAreaId.value && props.areas) {
+        const found = props.areas.find(a => a.id === selectedAreaId.value);
+        if (found && found.latitude && found.longitude) {
+            return {
+                id: found.id,
+                name: found.name,
+                address: found.address,
+                latitude: Number(found.latitude),
+                longitude: Number(found.longitude),
+                radius_meters: Number(found.radius_meters || props.settings?.default_radius || 200),
+            };
+        }
+    }
+    return props.officeLocation;
+});
+
 // Sinkronisasi otomatis saat staf diganti atau jadwal shift berubah
 watch(() => props.shiftToday, (newShift) => {
     selectedShiftId.value = newShift?.id || null;
@@ -1202,6 +1291,10 @@ watch(() => props.shiftToday, (newShift) => {
 watch(() => props.currentEmployee?.id, () => {
     capturedPhoto.value = null;
     stopCamera();
+    if (!props.todayAttendance?.clock_in) {
+        selectedAreaId.value = props.currentEmployee?.area_id || props.officeLocation?.id || (props.areas && props.areas.length > 0 ? props.areas[0].id : null);
+        calculateDistanceToOffice();
+    }
 });
 
 const attendanceType = ref('wfo'); // 'wfo', 'dinas_luar', 'wfh', 'lembur'
@@ -1224,6 +1317,81 @@ const gpsAccuracy = ref(20);
 const distanceToOffice = ref(null);
 const isWithinRadius = ref(true);
 
+// Hitung Jarak ke Area Tertentu Menggunakan Haversine
+const getDistanceToSpecificArea = (area) => {
+    if (!userCoordinates.value || !area?.latitude || !area?.longitude) return null;
+    const lat1 = userCoordinates.value.latitude;
+    const lon1 = userCoordinates.value.longitude;
+    const lat2 = Number(area.latitude);
+    const lon2 = Number(area.longitude);
+
+    const R = 6371e3; // metres
+    const φ1 = (lat1 * Math.PI) / 180;
+    const φ2 = (lat2 * Math.PI) / 180;
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+    const a =
+        Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+        Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return Math.round(R * c);
+};
+
+const formatAreaDistanceOption = (area) => {
+    if (!area) return '';
+    if (!userCoordinates.value || !area.latitude || !area.longitude) {
+        return area.name;
+    }
+    const dist = getDistanceToSpecificArea(area);
+    if (dist === null) return area.name;
+    const rad = Number(area.radius_meters || props.settings?.default_radius || 200);
+    const distStr = dist < 1000 ? `${dist}m` : `${(dist / 1000).toFixed(1)}km`;
+    if (dist <= rad) {
+        return `🏢 ${area.name} (✓ Dalam Radius - ${distStr})`;
+    }
+    return `🏢 ${area.name} (${distStr})`;
+};
+
+// Smart Auto-Select Kantor Cabang Terdekat jika Dalam Radius
+const autoSelectNearestArea = () => {
+    if (!props.settings?.allow_any_area || !userCoordinates.value || !props.areas || props.areas.length === 0) return;
+    if (props.todayAttendance?.clock_in) return;
+
+    let matchedInRadius = null;
+    let closestArea = null;
+    let minDistance = Infinity;
+
+    for (const a of props.areas) {
+        if (a.latitude && a.longitude) {
+            const dist = getDistanceToSpecificArea(a);
+            if (dist !== null) {
+                const maxRad = Number(a.radius_meters || props.settings?.default_radius || 200);
+                if (dist <= maxRad) {
+                    matchedInRadius = a;
+                    break;
+                }
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    closestArea = a;
+                }
+            }
+        }
+    }
+
+    if (matchedInRadius) {
+        selectedAreaId.value = matchedInRadius.id;
+        const d = getDistanceToSpecificArea(matchedInRadius);
+        autoDetectedAreaInfo.value = {
+            name: matchedInRadius.name,
+            distance: d,
+            inRadius: true,
+        };
+    } else if (closestArea && !selectedAreaId.value) {
+        selectedAreaId.value = closestArea.id;
+    }
+};
+
 const initGeolocation = () => {
     if (!navigator.geolocation) {
         console.warn('Geolocation tidak didukung browser ini.');
@@ -1237,6 +1405,7 @@ const initGeolocation = () => {
                 longitude: pos.coords.longitude,
             };
             gpsAccuracy.value = pos.coords.accuracy || 20;
+            autoSelectNearestArea();
             calculateDistanceToOffice();
             if (mapInstance && userMarker) {
                 userMarker.setLatLng([pos.coords.latitude, pos.coords.longitude]);
@@ -1249,9 +1418,10 @@ const initGeolocation = () => {
     );
 };
 
-// Hitung Jarak Menggunakan Formula Haversine
+// Hitung Jarak Menggunakan Formula Haversine ke Kantor Target
 const calculateDistanceToOffice = () => {
-    if (!userCoordinates.value || !props.officeLocation?.latitude || !props.officeLocation?.longitude) {
+    const office = currentTargetOffice.value;
+    if (!userCoordinates.value || !office?.latitude || !office?.longitude) {
         isWithinRadius.value = true;
         distanceToOffice.value = 15;
         return;
@@ -1259,8 +1429,8 @@ const calculateDistanceToOffice = () => {
 
     const lat1 = userCoordinates.value.latitude;
     const lon1 = userCoordinates.value.longitude;
-    const lat2 = props.officeLocation.latitude;
-    const lon2 = props.officeLocation.longitude;
+    const lat2 = office.latitude;
+    const lon2 = office.longitude;
 
     const R = 6371e3; // metres
     const φ1 = (lat1 * Math.PI) / 180;
@@ -1275,9 +1445,26 @@ const calculateDistanceToOffice = () => {
 
     const dist = Math.round(R * c);
     distanceToOffice.value = dist;
-    const allowedRadius = props.officeLocation.radius_meters || 200;
+    const allowedRadius = office.radius_meters || props.settings?.default_radius || 200;
     isWithinRadius.value = dist <= allowedRadius;
 };
+
+// Sinkronisasi Marker Peta saat Area Terpilih Berubah
+watch(() => selectedAreaId.value, () => {
+    calculateDistanceToOffice();
+    const office = currentTargetOffice.value;
+    if (mapInstance && office?.latitude && office?.longitude) {
+        if (officeMarker) {
+            officeMarker.setLatLng([office.latitude, office.longitude]);
+            officeMarker.setPopupContent(`<b>${office.name}</b><br>${office.address || 'Kantor Cabang'}`);
+        }
+        if (radiusCircle) {
+            radiusCircle.setLatLng([office.latitude, office.longitude]);
+            radiusCircle.setRadius(office.radius_meters || 200);
+        }
+        mapInstance.panTo([office.latitude, office.longitude]);
+    }
+});
 
 const formatDistance = (meters) => {
     if (meters === null || meters === undefined) return '-';
@@ -1403,8 +1590,9 @@ const initMap = async () => {
     const L = await import('leaflet');
     await import('leaflet/dist/leaflet.css');
 
-    const defaultLat = props.officeLocation?.latitude || -6.2088;
-    const defaultLng = props.officeLocation?.longitude || 106.8456;
+    const office = currentTargetOffice.value || props.officeLocation;
+    const defaultLat = office?.latitude || -6.2088;
+    const defaultLng = office?.longitude || 106.8456;
 
     mapInstance = L.map('attendance-map').setView([defaultLat, defaultLng], 15);
 
@@ -1414,7 +1602,7 @@ const initMap = async () => {
     }).addTo(mapInstance);
 
     // Marker Kantor
-    if (props.officeLocation?.latitude && props.officeLocation?.longitude) {
+    if (office?.latitude && office?.longitude) {
         const officeIcon = L.divIcon({
             className: 'custom-office-pin',
             html: '<div style="background-color:#2563eb; color:white; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid white; box-shadow:0 2px 6px rgba(0,0,0,0.3); font-size:14px;">🏢</div>',
@@ -1422,13 +1610,13 @@ const initMap = async () => {
             iconAnchor: [14, 14],
         });
 
-        officeMarker = L.marker([props.officeLocation.latitude, props.officeLocation.longitude], { icon: officeIcon })
+        officeMarker = L.marker([office.latitude, office.longitude], { icon: officeIcon })
             .addTo(mapInstance)
-            .bindPopup(`<b>${props.officeLocation.name}</b><br>${props.officeLocation.address || 'Kantor Cabang'}`);
+            .bindPopup(`<b>${office.name}</b><br>${office.address || 'Kantor Cabang'}`);
 
         // Geofence Circle
-        const radius = props.officeLocation.radius_meters || 200;
-        radiusCircle = L.circle([props.officeLocation.latitude, props.officeLocation.longitude], {
+        const radius = office.radius_meters || 200;
+        radiusCircle = L.circle([office.latitude, office.longitude], {
             radius: radius,
             color: '#10b981',
             fillColor: '#10b981',
@@ -1458,20 +1646,25 @@ const isSubmitting = ref(false);
 
 const isOutOfRadius = computed(() => {
     if (attendanceType.value !== 'wfo') return false;
-    if (!props.officeLocation?.latitude || !props.officeLocation?.longitude) return false;
+    const office = currentTargetOffice.value || props.officeLocation;
+    if (!office?.latitude || !office?.longitude) return false;
     if (!userCoordinates.value) return false;
+    const isStrict = props.settings?.strict_radius ?? true;
+    if (!isStrict) return false;
     return !isWithinRadius.value && !bypassRadiusMode.value;
 });
 
 const canSubmitClockIn = computed(() => {
-    if (!capturedPhoto.value) return false;
+    const needPhoto = props.settings?.require_photo ?? true;
+    if (needPhoto && !capturedPhoto.value) return false;
     if (props.todayAttendance?.clock_in) return false;
     if (isOutOfRadius.value) return false;
     return true;
 });
 
 const canSubmitClockOut = computed(() => {
-    if (!capturedPhoto.value) return false;
+    const needPhoto = props.settings?.require_photo ?? true;
+    if (needPhoto && !capturedPhoto.value) return false;
     if (!props.todayAttendance?.clock_in || props.todayAttendance?.clock_out) return false;
     if (isOutOfRadius.value) return false;
     return true;
@@ -1485,6 +1678,7 @@ const submitClockIn = () => {
         employee_id: props.currentEmployee.id,
         photo: capturedPhoto.value,
         shift_id: can('attendance_select_shift') ? (selectedShiftId.value || props.shiftToday?.id || undefined) : (props.shiftToday?.id || undefined),
+        area_id: selectedAreaId.value || undefined,
         attendance_type: can('attendance_select_type') ? attendanceType.value : 'wfo',
         duty_location: can('attendance_select_type') && attendanceType.value === 'dinas_luar' ? (dutyLocation.value || undefined) : undefined,
         latitude: userCoordinates.value?.latitude || null,
@@ -1510,6 +1704,7 @@ const submitClockOut = () => {
     router.post(route('attendances.clock-out'), {
         employee_id: props.currentEmployee.id,
         photo: capturedPhoto.value,
+        area_id: selectedAreaId.value || undefined,
         latitude: userCoordinates.value?.latitude || null,
         longitude: userCoordinates.value?.longitude || null,
         distance: distanceToOffice.value || 0,

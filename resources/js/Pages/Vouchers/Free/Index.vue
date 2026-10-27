@@ -96,8 +96,8 @@
 
             <!-- Card 4: Expired -->
             <div 
-                @click="filterByStatus('expired')" 
-                :class="currentTab === 'vouchers' && statusFilter === 'expired' ? 'ring-2 ring-rose-500 border-rose-500 bg-rose-50/30' : 'border-gray-200 bg-white hover:border-rose-300 hover:shadow-md'"
+                @click="switchTab('expired')" 
+                :class="currentTab === 'expired' ? 'ring-2 ring-rose-500 border-rose-500 bg-rose-50/40 shadow-sm' : 'border-gray-200 bg-white hover:border-rose-300 hover:shadow-md'"
                 class="border rounded-2xl p-4 shadow-xs transition-all duration-200 cursor-pointer relative overflow-hidden group flex flex-col justify-between"
             >
                 <div class="flex items-center justify-between gap-2">
@@ -173,7 +173,7 @@
                     :class="currentTab === 'vouchers' 
                         ? 'bg-emerald-600 text-white shadow-xs font-bold' 
                         : 'text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/60 font-semibold'"
-                    class="px-4 py-2 rounded-xl text-xs sm:text-sm flex items-center gap-2 transition-all whitespace-nowrap"
+                    class="px-4 py-2 rounded-xl text-xs sm:text-sm flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer"
                 >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/>
@@ -193,7 +193,7 @@
                     :class="currentTab === 'customers' 
                         ? 'bg-indigo-600 text-white shadow-xs font-bold' 
                         : 'text-gray-600 hover:text-indigo-700 hover:bg-indigo-50/60 font-semibold'"
-                    class="px-4 py-2 rounded-xl text-xs sm:text-sm flex items-center gap-2 transition-all whitespace-nowrap"
+                    class="px-4 py-2 rounded-xl text-xs sm:text-sm flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer"
                 >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
@@ -206,56 +206,146 @@
                         {{ Number(stats?.customer_count || 0).toLocaleString('id-ID') }}
                     </span>
                 </button>
+
+                <!-- TAB 3: VOUCHER EXPIRED -->
+                <button 
+                    @click="switchTab('expired')"
+                    :class="currentTab === 'expired' 
+                        ? 'bg-rose-600 text-white shadow-xs font-bold' 
+                        : 'text-gray-600 hover:text-rose-700 hover:bg-rose-50/60 font-semibold'"
+                    class="px-4 py-2 rounded-xl text-xs sm:text-sm flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer"
+                >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span>Voucher Expired</span>
+                    <span 
+                        :class="currentTab === 'expired' ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-800'"
+                        class="px-2 py-0.5 text-[11px] font-bold rounded-full"
+                    >
+                        {{ Number(stats?.expired || 0).toLocaleString('id-ID') }}
+                    </span>
+                </button>
             </div>
 
-            <!-- Action Buttons (Print & Generate) -->
-            <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
-                <!-- Bulk Print Button -->
-                <button 
-                    v-if="currentTab === 'vouchers' && selectedVouchers.length > 0 && can('vouchers_free_print')" 
-                    @click="printSelected" 
-                    class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs flex items-center gap-2 transition-colors animate-fade-in"
-                >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
-                    </svg>
-                    <span>Cetak ({{ selectedVouchers.length }})</span>
-                </button>
+            <!-- Action Buttons (Print & Generate / Expired Actions) -->
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
+                <!-- EXPIRED TAB ACTIONS -->
+                <template v-if="currentTab === 'expired'">
+                    <button 
+                        @click="triggerCheckExpired"
+                        :disabled="checkingExpired"
+                        class="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
+                        title="Audit & sinkronkan voucher yang durasi masa aktifnya sudah habis"
+                    >
+                        <svg class="w-4 h-4" :class="{ 'animate-spin': checkingExpired }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        <span>{{ checkingExpired ? 'Memeriksa...' : 'Cek Masa Aktif' }}</span>
+                    </button>
 
-                <!-- Bulk Delete Button -->
-                <button 
-                    v-if="currentTab === 'vouchers' && selectedVouchers.length > 0 && can('vouchers_free_delete')" 
-                    @click="bulkDelete" 
-                    class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs flex items-center gap-2 transition-colors animate-fade-in"
-                >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                    </svg>
-                    <span>Hapus ({{ selectedVouchers.length }})</span>
-                </button>
+                    <button 
+                        v-if="selectedVouchers.length > 0 && can('vouchers_free_delete')" 
+                        @click="bulkDelete" 
+                        class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs flex items-center gap-2 transition-colors animate-fade-in cursor-pointer"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                        <span>Hapus Terpilih ({{ selectedVouchers.length }})</span>
+                    </button>
 
-                <!-- Main Generate Voucher Gratis Button -->
-                <button 
-                    v-if="can('vouchers_free_create')"
-                    @click="openGenerateModal" 
-                    class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                    </svg>
-                    <span>Generate Voucher Gratis</span>
-                </button>
+                    <button 
+                        v-if="Number(stats?.expired || 0) > 0 && can('vouchers_free_delete')"
+                        @click="cleanAllExpired"
+                        class="px-3.5 py-2 bg-rose-700 hover:bg-rose-800 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-rose-700/20 flex items-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                        title="Hapus semua voucher gratis yang sudah expired dari database dan RADIUS"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                        <span>Bersihkan Semua Expired</span>
+                    </button>
+                </template>
+
+                <!-- VOUCHERS TAB ACTIONS -->
+                <template v-else-if="currentTab === 'vouchers'">
+                    <!-- Bulk Print Button -->
+                    <button 
+                        v-if="selectedVouchers.length > 0 && can('vouchers_free_print')" 
+                        @click="printSelected" 
+                        class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs flex items-center gap-2 transition-colors animate-fade-in cursor-pointer"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                        </svg>
+                        <span>Cetak ({{ selectedVouchers.length }})</span>
+                    </button>
+
+                    <!-- Bulk Delete Button -->
+                    <button 
+                        v-if="selectedVouchers.length > 0 && can('vouchers_free_delete')" 
+                        @click="bulkDelete" 
+                        class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs flex items-center gap-2 transition-colors animate-fade-in cursor-pointer"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                        <span>Hapus ({{ selectedVouchers.length }})</span>
+                    </button>
+
+                    <!-- Main Generate Voucher Gratis Button -->
+                    <button 
+                        v-if="can('vouchers_free_create')"
+                        @click="openGenerateModal" 
+                        class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                        </svg>
+                        <span>Generate Voucher Gratis</span>
+                    </button>
+                </template>
             </div>
         </div>
 
         <!-- ========================================================================================= -->
-        <!-- SUB-TAB 1: DAFTAR VOUCHER GRATIS (HASIL GENERATE) -->
+        <!-- SUB-TAB 1 & 3: DAFTAR VOUCHER GRATIS (HASIL GENERATE) & EXPIRED -->
         <!-- ========================================================================================= -->
-        <div v-if="currentTab === 'vouchers'" class="space-y-4">
+        <div v-if="currentTab === 'vouchers' || currentTab === 'expired'" class="space-y-4">
+            <!-- BANNER KHUSUS TAB EXPIRED -->
+            <div v-if="currentTab === 'expired'" class="bg-gradient-to-r from-rose-50 via-red-50 to-amber-50 border border-rose-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+                <div class="flex items-center gap-3">
+                    <div class="p-3 bg-rose-600 text-white rounded-xl shadow-xs shrink-0">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-sm font-bold text-gray-900">Data Voucher Gratis Kedaluwarsa (Expired)</span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-200">Masa Aktif Habis</span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200">Sesi Terputus</span>
+                        </div>
+                        <p class="text-xs text-gray-600 mt-1">
+                            Daftar voucher gratis yang durasi masa aktifnya telah habis berdasarkan profil hotspot atau pemakaian sesi FreeRADIUS.
+                        </p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <button 
+                        @click="triggerCheckExpired"
+                        :disabled="checkingExpired"
+                        class="px-3.5 py-2 bg-white hover:bg-amber-50 text-amber-800 rounded-xl text-xs font-bold border border-amber-200 shadow-2xs flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                        <svg class="w-4 h-4" :class="{ 'animate-spin': checkingExpired }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        <span>{{ checkingExpired ? 'Memeriksa...' : 'Cek Masa Aktif Sekarang' }}</span>
+                    </button>
+                </div>
+            </div>
+
             <!-- FILTER BAR & SEGMENTED PILLS -->
             <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-3">
-                <!-- Segmented Filter Pills for Vouchers -->
-                <div class="flex items-center gap-1.5 p-1 bg-gray-100 rounded-2xl border border-gray-200 shadow-2xs overflow-x-auto shrink-0">
+                <!-- Segmented Filter Pills for Vouchers (Hanya tampil di tab vouchers) -->
+                <div v-if="currentTab === 'vouchers'" class="flex items-center gap-1.5 p-1 bg-gray-100 rounded-2xl border border-gray-200 shadow-2xs overflow-x-auto shrink-0">
                     <!-- Tab: Semua -->
                     <button 
                         type="button" 
@@ -332,23 +422,25 @@
                         </span>
                     </button>
 
-                    <!-- Tab: Expired -->
+                    <!-- Tab: Expired (Langsung beralih ke Sub-Tab Expired) -->
                     <button 
                         type="button" 
-                        @click="setVoucherStatus('expired')"
-                        :class="statusFilter === 'expired' 
-                            ? 'bg-gray-700 text-white shadow-xs font-bold border border-gray-800' 
-                            : 'text-gray-700 hover:bg-gray-200/70 font-semibold border border-transparent'"
-                        class="px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer"
+                        @click="switchTab('expired')"
+                        class="px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer text-gray-700 hover:bg-rose-50/70 hover:text-rose-800 font-semibold border border-transparent"
                     >
                         <span>Expired</span>
-                        <span 
-                            :class="statusFilter === 'expired' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-800'"
-                            class="px-2 py-0.5 text-[11px] font-extrabold rounded-full"
-                        >
+                        <span class="px-2 py-0.5 text-[11px] font-extrabold rounded-full bg-rose-100 text-rose-800">
                             {{ Number(stats?.expired || 0).toLocaleString('id-ID') }}
                         </span>
                     </button>
+                </div>
+
+                <!-- Indikator Tab Expired Aktif -->
+                <div v-else class="flex items-center gap-2 shrink-0">
+                    <span class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-rose-100 text-rose-900 border border-rose-300 flex items-center gap-1.5 shadow-2xs">
+                        <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                        Menampilkan Voucher Status: Expired ({{ Number(stats?.expired || 0).toLocaleString('id-ID') }})
+                    </span>
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2 flex-1 justify-end">
@@ -378,7 +470,7 @@
                     <button 
                         v-if="search || statusFilter || profileFilter" 
                         @click="resetVoucherFilter" 
-                        class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs shrink-0"
+                        class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs shrink-0 cursor-pointer"
                         title="Reset Filter"
                     >
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -387,8 +479,8 @@
                 </div>
             </div>
 
-            <!-- VISUAL COLOR INDICATOR LEGEND -->
-            <div v-if="can('voucher_free_color_indicator')" class="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 bg-gray-50/90 rounded-xl border border-gray-200 text-xs shadow-2xs">
+            <!-- VISUAL COLOR INDICATOR LEGEND (Hanya jika di tab vouchers) -->
+            <div v-if="currentTab === 'vouchers' && can('voucher_free_color_indicator')" class="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 bg-gray-50/90 rounded-xl border border-gray-200 text-xs shadow-2xs">
                 <div class="flex items-center gap-3 flex-wrap">
                     <span class="font-bold text-gray-700 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
                         <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
@@ -408,7 +500,7 @@
                 </div>
             </div>
 
-            <!-- TABLE OF GENERATED FREE VOUCHERS -->
+            <!-- TABLE OF GENERATED FREE VOUCHERS / EXPIRED VOUCHERS -->
             <div class="bg-white rounded-2xl shadow-xs border border-gray-200 overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
@@ -427,7 +519,7 @@
                                 <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Profil Hotspot</th>
                                 <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Penerima / Pelanggan</th>
                                 <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status & Sesi</th>
-                                <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Waktu Dibuat</th>
+                                <th class="px-5 py-3.5 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Masa Aktif & Kedaluwarsa</th>
                                 <th class="px-5 py-3.5 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
                             </tr>
                         </thead>
@@ -436,11 +528,13 @@
                                 v-for="voucher in vouchers.data" 
                                 :key="voucher.id" 
                                 :class="[
-                                    can('voucher_free_color_indicator') 
-                                        ? (isVoucherOnline(voucher) 
-                                            ? 'bg-emerald-50/80 hover:bg-emerald-100/90 border-l-4 border-l-emerald-500' 
-                                            : 'bg-rose-50/75 hover:bg-rose-100/80 border-l-4 border-l-rose-500')
-                                        : 'hover:bg-emerald-50/20'
+                                    voucher.status === 'expired'
+                                        ? 'bg-rose-50/40 hover:bg-rose-100/60 border-l-4 border-l-rose-500'
+                                        : can('voucher_free_color_indicator') 
+                                            ? (isVoucherOnline(voucher) 
+                                                ? 'bg-emerald-50/80 hover:bg-emerald-100/90 border-l-4 border-l-emerald-500' 
+                                                : 'bg-rose-50/75 hover:bg-rose-100/80 border-l-4 border-l-rose-500')
+                                            : 'hover:bg-emerald-50/20'
                                 ]"
                                 class="transition-colors"
                             >
@@ -480,21 +574,30 @@
                                             class="text-gray-400 hover:text-emerald-600 transition-colors p-1" 
                                             title="Salin Password"
                                         >
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                                         </button>
                                     </div>
                                 </td>
                                 <td class="px-5 py-4 whitespace-nowrap">
                                     <div class="text-sm font-bold text-gray-900">{{ voucher.profile?.name || 'Profil Khusus' }}</div>
                                     <div class="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
-                                        <span>Durasi: {{ voucher.profile?.duration || 'Mengikuti Pelanggan' }}</span>
+                                        <span class="font-semibold text-gray-700">Durasi: {{ voucher.profile?.duration || 'Tanpa Batas' }}</span>
                                         <span v-if="voucher.profile?.limit_rate" class="text-[10px] bg-purple-50 text-purple-700 font-mono px-1.5 py-0.2 rounded border border-purple-200">
                                             {{ voucher.profile.limit_rate }}
                                         </span>
                                     </div>
                                 </td>
                                 <td class="px-5 py-4 whitespace-nowrap">
-                                    <div v-if="voucher.customer" class="flex flex-col items-start gap-1">
+                                    <div v-if="voucher.buyer_name || voucher.buyer_phone" class="flex flex-col items-start gap-0.5">
+                                        <span class="text-xs font-bold text-gray-900 flex items-center gap-1">
+                                            <svg class="w-3.5 h-3.5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                            {{ voucher.buyer_name || 'Tanpa Nama' }}
+                                        </span>
+                                        <span v-if="voucher.buyer_phone" class="text-[11px] text-gray-500 font-mono flex items-center gap-1">
+                                            <span>📱</span> {{ voucher.buyer_phone }}
+                                        </span>
+                                    </div>
+                                    <div v-else-if="voucher.customer" class="flex flex-col items-start gap-1">
                                         <div class="text-sm font-semibold text-indigo-700 hover:underline">
                                             {{ voucher.customer.name }}
                                         </div>
@@ -509,85 +612,185 @@
                                     </div>
                                     <div v-else>
                                         <span class="inline-flex items-center gap-1 text-xs text-gray-600 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-lg">
-                                            <span>🏢 Voucher Bebas (Promosi/Trial)</span>
+                                            <span>🏢 Bebas (Promosi/Trial)</span>
                                         </span>
                                     </div>
                                 </td>
                                 <td class="px-5 py-4 whitespace-nowrap">
-                                    <div class="flex flex-col items-start gap-1">
+                                    <div class="flex flex-col items-start gap-1.5">
                                         <!-- Primary Status -->
-                                        <span 
-                                            v-if="voucher.status === 'available'" 
-                                            class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800"
-                                        >
-                                            TERSEDIA
-                                        </span>
-                                        <span 
-                                            v-else-if="voucher.status === 'used'" 
-                                            class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800"
-                                        >
-                                            DIGUNAKAN
-                                        </span>
-                                        <span 
-                                            v-else 
-                                            class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800"
-                                        >
-                                            EXPIRED
-                                        </span>
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <span 
+                                                v-if="voucher.status === 'available'" 
+                                                class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200"
+                                            >
+                                                TERSEDIA
+                                            </span>
+                                            <span 
+                                                v-else-if="voucher.status === 'used'" 
+                                                class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200"
+                                            >
+                                                DIGUNAKAN
+                                            </span>
+                                            <span 
+                                                v-else 
+                                                class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-200"
+                                            >
+                                                EXPIRED
+                                            </span>
 
-                                        <!-- RADIUS Active/Online Status -->
-                                        <div class="mt-1">
-                                            <span v-if="!voucher.is_active" class="inline-flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 uppercase">
+                                            <span v-if="!voucher.is_active && voucher.status !== 'expired'" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 uppercase">
                                                 Nonaktif
                                             </span>
-                                            <span v-else-if="isVoucherOnline(voucher)" class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 shadow-2xs">
-                                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                                Online
-                                            </span>
-                                            <span v-else class="inline-flex items-center gap-1.5 text-xs font-bold text-rose-800 bg-rose-100 px-2.5 py-0.5 rounded-full border border-rose-300 shadow-2xs">
+                                        </div>
+
+                                        <!-- RADIUS Live Sesi Online Mandiri -->
+                                        <div v-if="voucher.status !== 'expired'" class="w-full">
+                                            <div v-if="isVoucherOnline(voucher)" class="flex flex-col gap-1 bg-emerald-50/90 border border-emerald-300 rounded-xl p-2 shadow-2xs min-w-[210px]">
+                                                <div class="flex items-center justify-between gap-2">
+                                                    <span class="inline-flex items-center gap-1.5 text-xs font-extrabold text-emerald-800">
+                                                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                        SESI ONLINE
+                                                    </span>
+                                                    <span v-if="voucher.online_session?.uptime" class="text-[10px] font-bold text-emerald-900 bg-emerald-200/70 px-1.5 py-0.5 rounded font-mono">
+                                                        ⏱️ {{ formatSeconds(voucher.online_session.uptime) }}
+                                                    </span>
+                                                </div>
+                                                <div class="text-[11px] font-mono text-gray-700 flex flex-col gap-0.5 mt-0.5">
+                                                    <div v-if="voucher.online_session?.ip_address && voucher.online_session.ip_address !== '-'" class="flex items-center gap-1 text-gray-800">
+                                                        <span class="text-gray-400 font-sans font-semibold text-[10px]">IP:</span>
+                                                        <span class="font-bold text-emerald-950">{{ voucher.online_session.ip_address }}</span>
+                                                    </div>
+                                                    <div v-if="voucher.online_session?.mac_address && voucher.online_session.mac_address !== '-'" class="flex items-center gap-1 text-gray-700">
+                                                        <span class="text-gray-400 font-sans font-semibold text-[10px]">MAC:</span>
+                                                        <span>{{ voucher.online_session.mac_address }}</span>
+                                                    </div>
+                                                    <div v-if="voucher.online_session?.download || voucher.online_session?.upload" class="flex items-center gap-1.5 text-[10px] text-gray-600 mt-0.5 font-sans font-semibold">
+                                                        <span class="text-emerald-700 font-mono">⬇️ {{ formatBytes(voucher.online_session.download) }}</span>
+                                                        <span class="text-gray-300">|</span>
+                                                        <span class="text-indigo-700 font-mono">⬆️ {{ formatBytes(voucher.online_session.upload) }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div v-else class="inline-flex items-center gap-1.5 text-xs font-bold text-rose-800 bg-rose-100/80 px-2.5 py-1 rounded-xl border border-rose-200 shadow-2xs">
                                                 <span class="w-2 h-2 rounded-full bg-rose-500"></span>
-                                                Offline
-                                            </span>
+                                                <span>🔴 Sesi Offline</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </td>
-                                <td class="px-5 py-4 whitespace-nowrap text-xs text-gray-500">
-                                    <div>{{ voucher.created_at ? new Date(voucher.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-' }}</div>
-                                    <div v-if="voucher.used_at" class="text-[11px] text-gray-400 mt-0.5">
-                                        Pakai: {{ new Date(voucher.used_at).toLocaleDateString('id-ID', { month: 'short', day: 'numeric' }) }}
+                                <!-- KOLOM MASA AKTIF & KEDALUWARSA -->
+                                <td class="px-5 py-4 whitespace-nowrap text-xs">
+                                    <div v-if="voucher.status === 'expired'" class="flex flex-col items-start gap-1">
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                                            <svg class="w-3 h-3 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                            Kedaluwarsa
+                                        </span>
+                                        <div class="text-xs font-bold text-rose-900">
+                                            {{ formatDateTime(voucher.used_at || voucher.updated_at) }}
+                                        </div>
+                                        <div class="text-[11px] text-gray-500">
+                                            Durasi: {{ voucher.profile?.duration || '-' }}
+                                        </div>
+                                    </div>
+                                    <div v-else-if="voucher.status === 'used'" class="flex flex-col items-start gap-1">
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                                            <svg class="w-3 h-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                            Mulai Aktif
+                                        </span>
+                                        <div class="text-xs font-semibold text-gray-800">
+                                            {{ formatDateTime(voucher.used_at) }}
+                                        </div>
+                                        <div v-if="getExpireEstimate(voucher)" class="text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
+                                            Habis: {{ getExpireEstimate(voucher) }}
+                                        </div>
+                                    </div>
+                                    <div v-else class="flex flex-col items-start gap-0.5">
+                                        <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                                            Belum Digunakan
+                                        </span>
+                                        <div class="text-[11px] text-gray-600 font-medium mt-0.5">
+                                            Durasi: {{ voucher.profile?.duration || 'Tanpa Batas' }}
+                                        </div>
+                                        <div class="text-[10px] text-gray-400">
+                                            Dibuat: {{ formatDateTime(voucher.created_at) }}
+                                        </div>
                                     </div>
                                 </td>
                                 <td class="px-5 py-4 whitespace-nowrap text-right text-xs font-semibold">
-                                    <div class="flex items-center justify-end gap-2.5">
-                                        <!-- Cetak Satuan -->
+                                    <div class="flex items-center justify-end gap-1.5">
+                                        <!-- 1. Putuskan Sesi / Kick CoA (Hanya muncul jika voucher sedang ONLINE) -->
+                                        <button 
+                                            v-if="isVoucherOnline(voucher)"
+                                            @click="kickVoucherSession(voucher)" 
+                                            :disabled="kickingVoucher === voucher.id"
+                                            class="p-1.5 text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-2xs transition-all hover:scale-105 active:scale-95 disabled:opacity-50 cursor-pointer" 
+                                            title="Putuskan Sesi Aktif (Kick CoA Disconnect)"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                                        </button>
+
+                                        <!-- 2. Reset Binding MAC / Buka Kunci Perangkat -->
+                                        <button 
+                                            v-if="voucher.status !== 'expired'"
+                                            @click="resetVoucherMac(voucher)" 
+                                            :disabled="resettingMac === voucher.id"
+                                            class="p-1.5 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg shadow-2xs transition-all hover:scale-105 active:scale-95 disabled:opacity-50 cursor-pointer" 
+                                            title="Reset Binding MAC (Buka Kunci Perangkat Lain)"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                                        </button>
+
+                                        <!-- 3. Edit Voucher (Password, Profil, Nama/No HP Penerima) -->
+                                        <button 
+                                            v-if="voucher.status !== 'expired'"
+                                            @click="openEditModal(voucher)" 
+                                            class="p-1.5 text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-lg shadow-2xs transition-all hover:scale-105 active:scale-95 cursor-pointer" 
+                                            title="Edit Voucher (Password / Penerima / Profil)"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                        </button>
+
+                                        <!-- 4. Cetak Satuan -->
                                         <button 
                                             v-if="can('vouchers_free_print')"
                                             @click="printSingle(voucher.id)" 
-                                            class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" 
-                                            title="Cetak Voucher"
+                                            class="p-1.5 text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg shadow-2xs transition-all hover:scale-105 active:scale-95 cursor-pointer" 
+                                            title="Cetak Voucher Gratis"
                                         >
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                                         </button>
 
-                                        <!-- Toggle Status -->
+                                        <!-- 5. Toggle Status (Jika belum expired) -->
                                         <button 
-                                            v-if="can('vouchers_free_toggle')"
+                                            v-if="voucher.status !== 'expired' && can('vouchers_free_toggle')"
                                             @click="toggleStatus(voucher)" 
                                             :disabled="toggling === voucher.id"
-                                            :class="voucher.is_active ? 'text-amber-600 hover:bg-amber-50' : 'text-emerald-600 hover:bg-emerald-50'"
-                                            class="p-1.5 rounded-lg transition-colors disabled:opacity-50"
+                                            :class="voucher.is_active ? 'text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200' : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200'"
+                                            class="p-1.5 rounded-lg border shadow-2xs transition-all hover:scale-105 active:scale-95 disabled:opacity-50 cursor-pointer"
                                             :title="voucher.is_active ? 'Nonaktifkan Voucher' : 'Aktifkan Voucher'"
                                         >
                                             <svg v-if="voucher.is_active" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
                                             <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                         </button>
 
-                                        <!-- Delete -->
+                                        <!-- 6. Tandai Expired Manual (Jika belum expired) -->
+                                        <button 
+                                            v-if="voucher.status !== 'expired'"
+                                            @click="forceExpireVoucher(voucher)" 
+                                            :disabled="expiringVoucher === voucher.id"
+                                            class="p-1.5 text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg shadow-2xs transition-all hover:scale-105 active:scale-95 disabled:opacity-50 cursor-pointer" 
+                                            title="Tandai Expired & Putuskan Koneksi Sekarang"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        </button>
+
+                                        <!-- 7. Hapus Voucher -->
                                         <button 
                                             v-if="can('vouchers_free_delete')"
                                             @click="deleteVoucher(voucher.id)" 
-                                            class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" 
-                                            title="Hapus Voucher"
+                                            class="p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all hover:scale-105 active:scale-95 cursor-pointer" 
+                                            title="Hapus Voucher Gratis"
                                         >
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                         </button>
@@ -597,7 +800,25 @@
 
                             <tr v-if="!vouchers.data || vouchers.data.length === 0">
                                 <td colspan="8" class="px-6 py-12 text-center text-gray-500">
-                                    <div class="flex flex-col items-center justify-center max-w-sm mx-auto">
+                                    <!-- Empty State Khusus Tab Expired -->
+                                    <div v-if="currentTab === 'expired'" class="flex flex-col items-center justify-center max-w-sm mx-auto">
+                                        <div class="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mb-3">
+                                            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        </div>
+                                        <h3 class="text-base font-bold text-gray-900 mb-1">Tidak Ada Voucher Gratis yang Expired</h3>
+                                        <p class="text-xs text-gray-500 mb-4">Semua voucher gratis yang telah dibuat saat ini masih aktif atau belum digunakan.</p>
+                                        <button 
+                                            @click="triggerCheckExpired"
+                                            :disabled="checkingExpired"
+                                            class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                                        >
+                                            <svg class="w-3.5 h-3.5" :class="{ 'animate-spin': checkingExpired }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                            <span>Periksa Masa Aktif Sekarang</span>
+                                        </button>
+                                    </div>
+
+                                    <!-- Empty State Khusus Tab Vouchers -->
+                                    <div v-else class="flex flex-col items-center justify-center max-w-sm mx-auto">
                                         <div class="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
                                             <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>
                                         </div>
@@ -606,7 +827,7 @@
                                         <button 
                                             v-if="can('vouchers_free_create')"
                                             @click="openGenerateModal" 
-                                            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all"
+                                            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
                                         >
                                             + Generate Voucher Gratis Sekarang
                                         </button>
@@ -1189,6 +1410,140 @@
             </div>
         </Teleport>
 
+        <!-- ========================================================================= -->
+        <!-- MODAL EDIT VOUCHER GRATIS                                                 -->
+        <!-- ========================================================================= -->
+        <Teleport to="body">
+            <div 
+                v-if="showEditModal && editingVoucher" 
+                class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-xs animate-fade-in"
+            >
+                <div 
+                    class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 overflow-hidden transform transition-all animate-scale-up"
+                    @click.stop
+                >
+                    <!-- Header Modal Edit -->
+                    <div class="flex justify-between items-center pb-4 border-b border-gray-100">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2.5 bg-teal-50 text-teal-700 rounded-2xl border border-teal-200 shadow-2xs">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-bold text-gray-900">Edit Voucher Gratis</h3>
+                                <p class="text-xs text-gray-500 font-mono">Kode: <span class="font-bold text-emerald-700">{{ editingVoucher.code }}</span></p>
+                            </div>
+                        </div>
+                        <button 
+                            type="button" 
+                            @click="closeEditModal" 
+                            class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Form Edit -->
+                    <form @submit.prevent="submitEditForm" class="mt-5 space-y-4">
+                        <!-- 1. Username / Kode (Readonly Info) -->
+                        <div class="bg-gray-50 rounded-2xl p-3 border border-gray-200 flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] font-bold uppercase tracking-wider text-gray-500">Username / Kode Voucher</div>
+                                <div class="text-sm font-mono font-bold text-gray-900 mt-0.5">{{ editingVoucher.username || editingVoucher.code }}</div>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                🎁 Gratis (Rp 0)
+                            </span>
+                        </div>
+
+                        <!-- 2. Password Hotspot -->
+                        <div>
+                            <div class="flex justify-between items-center mb-1.5">
+                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                    Password Hotspot <span class="text-red-500">*</span>
+                                </label>
+                                <button 
+                                    type="button" 
+                                    @click="editForm.password = getRandomChars(6)" 
+                                    class="text-xs text-teal-600 hover:text-teal-800 font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                                >
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                    <span>Acak Sandi</span>
+                                </button>
+                            </div>
+                            <input 
+                                v-model="editForm.password" 
+                                type="text" 
+                                class="w-full border-gray-300 rounded-xl text-sm font-mono focus:ring-teal-500 focus:border-teal-500 shadow-2xs" 
+                                required
+                            >
+                            <p class="text-[11px] text-gray-500 mt-1">Perubahan sandi akan otomatis disinkronkan ke FreeRADIUS radcheck.</p>
+                        </div>
+
+                        <!-- 3. Profil Voucher Gratis -->
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                                Profil Hotspot <span class="text-red-500">*</span>
+                            </label>
+                            <select 
+                                v-model="editForm.voucher_profile_id" 
+                                class="w-full border-gray-300 rounded-xl text-sm focus:ring-teal-500 focus:border-teal-500 shadow-2xs" 
+                                required
+                            >
+                                <option v-for="prof in availableProfiles" :key="prof.id" :value="prof.id">
+                                    {{ prof.name }} &bull; Durasi: {{ prof.duration || 'Unlimited' }} &bull; Rate: {{ prof.limit_rate || 'Default' }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- 4. Nama Pembeli / Penerima -->
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                                Nama Penerima / Pengguna (Opsional)
+                            </label>
+                            <input 
+                                v-model="editForm.buyer_name" 
+                                type="text" 
+                                placeholder="Contoh: Tamu Kantor / Warung A / Bpk Budi" 
+                                class="w-full border-gray-300 rounded-xl text-sm focus:ring-teal-500 focus:border-teal-500 shadow-2xs"
+                            >
+                        </div>
+
+                        <!-- 5. No. WhatsApp / HP Penerima -->
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                                No. WhatsApp / HP (Opsional)
+                            </label>
+                            <input 
+                                v-model="editForm.buyer_phone" 
+                                type="tel" 
+                                placeholder="Contoh: 08123456789" 
+                                class="w-full border-gray-300 rounded-xl text-sm font-mono focus:ring-teal-500 focus:border-teal-500 shadow-2xs"
+                            >
+                        </div>
+
+                        <!-- Tombol Batal & Simpan -->
+                        <div class="pt-3 border-t border-gray-100 flex items-center justify-end gap-2">
+                            <button 
+                                type="button" 
+                                @click="closeEditModal" 
+                                class="px-4 py-2.5 border border-gray-300 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                            >
+                                Batal
+                            </button>
+                            <button 
+                                type="submit" 
+                                :disabled="editForm.processing"
+                                class="px-5 py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-teal-600/20 transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+                            >
+                                <svg v-if="editForm.processing" class="animate-spin -ml-1 mr-1 h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                <span>{{ editForm.processing ? 'Menyimpan...' : 'Simpan Perubahan' }}</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </Teleport>
+
     </AppLayout>
 </template>
 
@@ -1228,11 +1583,38 @@ const isCustomerOnline = (customer) => {
 };
 
 const isVoucherOnline = (voucher) => {
-    return !!(voucher?.username && props.onlineUsernames?.includes(voucher.username));
+    if (voucher?.is_online !== undefined) return voucher.is_online;
+    return !!(
+        (voucher?.username && props.onlineUsernames?.includes(voucher.username)) ||
+        (voucher?.code && props.onlineUsernames?.includes(voucher.code))
+    );
+};
+
+const formatBytes = (bytes) => {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+};
+
+const formatSeconds = (sec) => {
+    if (!sec || sec <= 0) return '0d';
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    if (h > 0) return `${h}j ${m}m`;
+    if (m > 0) return `${m}m ${s}d`;
+    return `${s}d`;
 };
 
 const switchTab = (tab) => {
     currentTab.value = tab;
+    if (tab === 'expired') {
+        statusFilter.value = 'expired';
+    } else if (tab === 'vouchers' && statusFilter.value === 'expired') {
+        statusFilter.value = '';
+    }
     router.get('/vouchers/free', {
         tab: tab,
         search: search.value,
@@ -1253,9 +1635,9 @@ const profileFilter = ref(props.filters?.profile_id || '');
 
 const doFilterVouchers = () => {
     router.get('/vouchers/free', {
-        tab: 'vouchers',
+        tab: currentTab.value === 'expired' ? 'expired' : 'vouchers',
         search: search.value,
-        status: statusFilter.value,
+        status: currentTab.value === 'expired' ? 'expired' : statusFilter.value,
         profile_id: profileFilter.value,
     }, {
         preserveState: true,
@@ -1264,6 +1646,10 @@ const doFilterVouchers = () => {
 };
 
 const filterByStatus = (status) => {
+    if (status === 'expired') {
+        switchTab('expired');
+        return;
+    }
     currentTab.value = 'vouchers';
     if (statusFilter.value === status) {
         statusFilter.value = '';
@@ -1274,15 +1660,144 @@ const filterByStatus = (status) => {
 };
 
 const setVoucherStatus = (status) => {
+    if (status === 'expired') {
+        switchTab('expired');
+        return;
+    }
     statusFilter.value = status;
     doFilterVouchers();
 };
 
 const resetVoucherFilter = () => {
     search.value = '';
-    statusFilter.value = '';
+    statusFilter.value = currentTab.value === 'expired' ? 'expired' : '';
     profileFilter.value = '';
     doFilterVouchers();
+};
+
+// Expired voucher actions & helpers
+const checkingExpired = ref(false);
+const triggerCheckExpired = () => {
+    checkingExpired.value = true;
+    router.post('/vouchers/free/check-expired', {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            checkingExpired.value = false;
+            Swal.fire({
+                icon: 'success',
+                title: 'Audit Selesai',
+                text: 'Status masa aktif voucher gratis telah disinkronkan dengan FreeRADIUS.',
+            });
+        },
+        onError: () => {
+            checkingExpired.value = false;
+            Swal.fire('Gagal', 'Terjadi kesalahan saat memeriksa masa aktif voucher.', 'error');
+        },
+        onFinish: () => {
+            checkingExpired.value = false;
+        }
+    });
+};
+
+const cleanAllExpired = () => {
+    const count = Number(props.stats?.expired || 0);
+    Swal.fire({
+        title: `Bersihkan ${count} Voucher Expired?`,
+        text: 'Semua voucher gratis yang telah kedaluwarsa akan dihapus permanen dari sistem dan RADIUS.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Bersihkan Semua!',
+        cancelButtonText: 'Batal'
+    }).then((res) => {
+        if (res.isConfirmed) {
+            router.post('/vouchers/free/clean-expired', {}, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    selectedVouchers.value = [];
+                    Swal.fire('Bersih!', 'Seluruh voucher gratis yang kedaluwarsa berhasil dibersihkan.', 'success');
+                }
+            });
+        }
+    });
+};
+
+const expiringVoucher = ref(null);
+const forceExpireVoucher = (voucher) => {
+    Swal.fire({
+        title: `Tandai Expired ${voucher.code}?`,
+        text: 'Voucher ini akan langsung diubah statusnya menjadi Expired dan sesi pengguna di RADIUS akan diputus.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Set Expired!',
+        cancelButtonText: 'Batal'
+    }).then((res) => {
+        if (res.isConfirmed) {
+            expiringVoucher.value = voucher.id;
+            router.post(`/vouchers/${voucher.id}/expire`, {}, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    expiringVoucher.value = null;
+                    Swal.fire('Expired!', `Voucher ${voucher.code} kini berstatus expired.`, 'success');
+                },
+                onError: () => {
+                    expiringVoucher.value = null;
+                    Swal.fire('Gagal', 'Terjadi kesalahan saat mengubah status voucher.', 'error');
+                }
+            });
+        }
+    });
+};
+
+const formatDateTime = (dateStr) => {
+    if (!dateStr) return '-';
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return '-';
+        return d.toLocaleDateString('id-ID', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    } catch (e) {
+        return dateStr;
+    }
+};
+
+const getExpireEstimate = (voucher) => {
+    if (!voucher?.used_at || !voucher?.profile?.duration) return null;
+    const durStr = voucher.profile.duration.toLowerCase();
+    if (durStr.includes('mengikuti') || durStr.includes('unlimited')) return null;
+    
+    let seconds = 0;
+    const match = durStr.match(/(\d+)\s*(jam|hari|minggu|menit|h|d|w|m)?/);
+    if (match) {
+        const val = parseInt(match[1]);
+        const unit = match[2] || 'h';
+        if (unit.startsWith('jam') || unit === 'h') seconds = val * 3600;
+        else if (unit.startsWith('hari') || unit === 'd') seconds = val * 86400;
+        else if (unit.startsWith('minggu') || unit === 'w') seconds = val * 604800;
+        else if (unit.startsWith('menit') || unit === 'm') seconds = val * 60;
+    }
+    if (!seconds) return null;
+    
+    try {
+        const start = new Date(voucher.used_at).getTime();
+        const expireTime = new Date(start + seconds * 1000);
+        return expireTime.toLocaleDateString('id-ID', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    } catch (e) {
+        return null;
+    }
 };
 
 // Search & Connection Filter for Customers tab
@@ -1400,6 +1915,127 @@ const toggleStatus = (voucher) => {
     router.post(`/vouchers/${voucher.id}/toggle-status`, {}, {
         preserveScroll: true,
         onFinish: () => (toggling.value = null)
+    });
+};
+
+// 1. Putuskan Sesi Online Aktif (Kick CoA Disconnect)
+const kickingVoucher = ref(null);
+const kickVoucherSession = (voucher) => {
+    Swal.fire({
+        title: `Putuskan Sesi ${voucher.code}?`,
+        text: 'Perangkat pengguna akan diputus seketika dari jaringan hotspot FreeRADIUS.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Putuskan (Kick)!',
+        cancelButtonText: 'Batal'
+    }).then((res) => {
+        if (res.isConfirmed) {
+            kickingVoucher.value = voucher.id;
+            router.post(`/vouchers/free/${voucher.id}/disconnect`, {}, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    kickingVoucher.value = null;
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Sesi Diputuskan',
+                        text: `Koneksi voucher ${voucher.code} berhasil diputus dari hotspot.`,
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                },
+                onError: () => {
+                    kickingVoucher.value = null;
+                    Swal.fire('Gagal', 'Terjadi kesalahan saat memutuskan sesi.', 'error');
+                },
+                onFinish: () => {
+                    kickingVoucher.value = null;
+                }
+            });
+        }
+    });
+};
+
+// 2. Reset Binding MAC / Buka Kunci Perangkat
+const resettingMac = ref(null);
+const resetVoucherMac = (voucher) => {
+    Swal.fire({
+        title: `Reset MAC ${voucher.code}?`,
+        text: 'Kunci MAC address perangkat akan dihapus dari FreeRADIUS sehingga voucher dapat dipakai di perangkat/HP lain.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#6366f1',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Reset MAC!',
+        cancelButtonText: 'Batal'
+    }).then((res) => {
+        if (res.isConfirmed) {
+            resettingMac.value = voucher.id;
+            router.post(`/vouchers/free/${voucher.id}/reset-mac`, {}, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    resettingMac.value = null;
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'MAC Di-reset',
+                        text: `Binding MAC voucher ${voucher.code} berhasil dihapus.`,
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                },
+                onError: () => {
+                    resettingMac.value = null;
+                    Swal.fire('Gagal', 'Terjadi kesalahan saat me-reset MAC voucher.', 'error');
+                },
+                onFinish: () => {
+                    resettingMac.value = null;
+                }
+            });
+        }
+    });
+};
+
+// 3. Edit Modal Handlers & Form State
+const showEditModal = ref(false);
+const editingVoucher = ref(null);
+const editForm = useForm({
+    password: '',
+    buyer_name: '',
+    buyer_phone: '',
+    voucher_profile_id: '',
+});
+
+const openEditModal = (voucher) => {
+    editingVoucher.value = voucher;
+    editForm.reset();
+    editForm.clearErrors();
+    editForm.password = voucher.password || '';
+    editForm.buyer_name = voucher.buyer_name || '';
+    editForm.buyer_phone = voucher.buyer_phone || '';
+    editForm.voucher_profile_id = voucher.voucher_profile_id || (props.freeProfiles?.[0]?.id || props.allProfiles?.[0]?.id || '');
+    showEditModal.value = true;
+};
+
+const closeEditModal = () => {
+    showEditModal.value = false;
+    editingVoucher.value = null;
+};
+
+const submitEditForm = () => {
+    if (!editingVoucher.value) return;
+    editForm.post(`/vouchers/free/${editingVoucher.value.id}/update`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeEditModal();
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil Diperbarui',
+                text: 'Data voucher gratis berhasil disimpan dan disinkronkan ke FreeRADIUS.',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        }
     });
 };
 

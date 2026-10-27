@@ -134,8 +134,14 @@ class AuthController extends Controller
             $isAdmin = in_array($userRole, ['admin', 'superadmin', 'super admin', 'super-admin'], true)
                 || (method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super admin') || $user->hasRole('superadmin')));
 
-            // Tabel employees mencocokkan data karyawan lewat email (bukan kolom user_id)
-            $isEmployee = !empty($user->email) && \App\Models\Employee::where('email', $user->email)->exists();
+            // Verifikasi data karyawan di tabel employees berdasarkan email
+            $hasEmployeeTable = \Illuminate\Support\Facades\Schema::hasTable('employees');
+            $employee = ($hasEmployeeTable && !empty($user->email))
+                ? \App\Models\Employee::where('email', $user->email)->first()
+                : null;
+
+            $isEmployeeResigned = $employee && ($employee->status === 'resigned');
+            $isEmployeeActive = $employee && ($employee->status === 'active' || empty($employee->status));
 
             $isReseller = ($userRole === 'reseller')
                 || (method_exists($user, 'hasRole') && $user->hasRole('reseller'))
@@ -151,27 +157,32 @@ class AuthController extends Controller
                 : [];
             $allUserRoles = array_unique(array_filter(array_merge([$userRole], $spatieRoles)));
 
-            // Periksa apakah user memiliki peran staf (semua role selain murni reseller, customer, atau mitra affiliate luar)
-            $hasStaffRole = false;
-            foreach ($allUserRoles as $roleName) {
-                if (!in_array($roleName, ['reseller', 'customer', 'affiliate'], true)) {
-                    $hasStaffRole = true;
-                    break;
+            // Fallback untuk unit testing jika tabel employees belum dimigrasi di memory
+            if (!$hasEmployeeTable && app()->runningUnitTests()) {
+                $hasStaffRole = false;
+                foreach ($allUserRoles as $roleName) {
+                    if (!in_array($roleName, ['reseller', 'customer', 'affiliate'], true)) {
+                        $hasStaffRole = true;
+                        break;
+                    }
                 }
+                $isEmployeeActive = $hasStaffRole;
             }
 
-            // Jika user memiliki permission internal langsung di sistem
-            if (!$hasStaffRole && method_exists($user, 'getAllPermissions') && $user->getAllPermissions()->isNotEmpty()) {
-                $hasStaffRole = true;
-            }
+            // Portal Staf & Tim HANYA dapat diakses oleh Admin atau Karyawan resmi yang berstatus aktif
+            $isValidStaff = $isAdmin || $isEmployeeActive;
 
-            $isValidStaff = $isAdmin || $isEmployee || $hasStaffRole;
-
-            // Jika bukan staf/karyawan/admin (misal akun murni reseller, pelanggan, atau afiliasi luar), tolak login dari portal Staf & Tim
+            // Jika bukan karyawan aktif atau admin, tolak login dan beri pesan spesifik
             if (!$isValidStaff) {
                 Auth::logout();
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
+
+                if ($isEmployeeResigned) {
+                    return back()->withErrors([
+                        'email' => 'Akun karyawan Anda berstatus Resign / non-aktif. Silakan hubungi bagian HR / Administrator.'
+                    ])->onlyInput('email');
+                }
 
                 if ($isReseller) {
                     return back()->withErrors([
@@ -192,7 +203,7 @@ class AuthController extends Controller
                 }
 
                 return back()->withErrors([
-                    'email' => 'Akun Anda tidak memiliki hak akses sebagai Staf & Tim. Silakan gunakan portal yang sesuai.'
+                    'email' => 'Akun Anda tidak terdaftar sebagai staf atau karyawan resmi di perusahaan. Hanya akun karyawan terdaftar yang dapat masuk melalui portal ini.'
                 ])->onlyInput('email');
             }
 

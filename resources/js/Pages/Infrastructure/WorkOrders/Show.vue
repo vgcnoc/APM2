@@ -470,6 +470,153 @@ const formatDate = (dateStr) => {
                 </div>
             </div>
 
+            <!-- ════ PIPELINE 3 TAHAP ALUR ROLLOUT CERDAS ════ -->
+            <div class="bg-white rounded-3xl border border-slate-200/80 p-5 shadow-xs mb-8">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
+                        <span>Alur Rollout FTTH Cerdas: Persiapan &rarr; Penugasan &rarr; Pengerjaan &amp; Auto-Commissioning</span>
+                    </h3>
+                    <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full border" :class="getStatusBadge(workOrder.status).class">
+                        {{ getStatusBadge(workOrder.status).label }}
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 relative">
+                    <!-- TAHAP 1: PERSIAPAN -->
+                    <div class="p-4 rounded-2xl border transition-all" :class="workOrder.status !== 'rejected' ? 'bg-emerald-50/50 border-emerald-200' : 'bg-slate-50 border-slate-200'">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
+                                1. Persiapan
+                            </span>
+                            <span class="text-emerald-600 font-bold text-xs flex items-center gap-1">
+                                <span>✓ Selesai</span>
+                            </span>
+                        </div>
+                        <h4 class="font-bold text-xs text-slate-900">Spesifikasi &amp; Auto-BOM Material</h4>
+                        <p class="text-[11px] text-slate-500 mt-1 line-clamp-2">
+                            Target {{ workOrder.target_name }} ({{ workOrder.capacity }} Port), kalkulasi material {{ workOrder.materials.length }} item &amp; validasi rute jaringan.
+                        </p>
+                    </div>
+
+                    <!-- TAHAP 2: PENUGASAN -->
+                    <div
+                        class="p-4 rounded-2xl border transition-all"
+                        :class="[
+                            workOrder.status === 'pending_material'
+                                ? 'bg-amber-50/70 border-amber-300 ring-2 ring-amber-400/20'
+                                : (['material_ready', 'in_progress', 'under_review', 'completed'].includes(workOrder.status)
+                                    ? 'bg-emerald-50/50 border-emerald-200'
+                                    : 'bg-slate-50 border-slate-200')
+                        ]"
+                    >
+                        <div class="flex items-center justify-between mb-2">
+                            <span
+                                class="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md"
+                                :class="workOrder.status === 'pending_material' ? 'bg-amber-100 text-amber-900' : 'bg-indigo-100 text-indigo-900'"
+                            >
+                                2. Penugasan
+                            </span>
+                            <span v-if="workOrder.status === 'pending_material'" class="text-amber-700 font-bold text-[11px] flex items-center gap-1">
+                                <span>⏳ Tunggu Gudang</span>
+                            </span>
+                            <span v-else-if="['material_ready', 'in_progress', 'under_review', 'completed'].includes(workOrder.status)" class="text-emerald-600 font-bold text-xs flex items-center gap-1">
+                                <span>✓ Siap / Diserahkan</span>
+                            </span>
+                        </div>
+                        <h4 class="font-bold text-xs text-slate-900">Lead Splicer &amp; Logistik Gudang</h4>
+                        <p class="text-[11px] text-slate-500 mt-1 line-clamp-2">
+                            Ditugaskan ke <b class="text-slate-800">{{ workOrder.technician?.name || 'Teknisi' }}</b> (Jadwal: {{ formatDate(workOrder.scheduled_date) }}), Surat Jalan &amp; Material disiapkan.
+                        </p>
+                    </div>
+
+                    <!-- TAHAP 3: PENGERJAAN & AUTO-COMMISSIONING -->
+                    <div
+                        class="p-4 rounded-2xl border transition-all"
+                        :class="[
+                            workOrder.status === 'completed'
+                                ? 'bg-emerald-500 text-white border-emerald-600 shadow-md'
+                                : (workOrder.status === 'in_progress'
+                                    ? 'bg-indigo-50/80 border-indigo-300 ring-2 ring-indigo-500/20'
+                                    : (workOrder.status === 'under_review' ? 'bg-purple-50/80 border-purple-300' : 'bg-slate-50 border-slate-200'))
+                        ]"
+                    >
+                        <div class="flex items-center justify-between mb-2">
+                            <span
+                                class="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md"
+                                :class="workOrder.status === 'completed' ? 'bg-white/20 text-white font-black' : 'bg-slate-200 text-slate-800'"
+                            >
+                                3. Pengerjaan
+                            </span>
+                            <span v-if="workOrder.status === 'completed'" class="text-white font-bold text-xs flex items-center gap-1">
+                                <span>✨ Auto Masuk Master</span>
+                            </span>
+                            <span v-else-if="workOrder.status === 'in_progress'" class="text-indigo-600 font-bold text-[11px] flex items-center gap-1 animate-pulse">
+                                <span>⚡ Sedang Dikerjakan</span>
+                            </span>
+                            <span v-else class="text-slate-400 font-bold text-[11px]">
+                                Menunggu Mulai
+                            </span>
+                        </div>
+                        <h4 class="font-bold text-xs" :class="workOrder.status === 'completed' ? 'text-white' : 'text-slate-900'">
+                            Tarik Kabel, QC OPM &amp; Auto-Aktif
+                        </h4>
+                        <p class="text-[11px] mt-1 line-clamp-2" :class="workOrder.status === 'completed' ? 'text-emerald-100' : 'text-slate-500'">
+                            {{ workOrder.status === 'completed' ? 'Perangkat telah otomatis aktif di Data ODC/ODP & GIS!' : 'Teknisi input meter riil, QC redaman optik & foto bukti lapangan.' }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ════ BANNER SUKSES AUTO-COMMISSIONING KE MASTER DATA ODC/ODP ════ -->
+            <div v-if="workOrder.status === 'completed'" class="mb-8 p-6 sm:p-7 rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white shadow-xl relative overflow-hidden animate-fade-in-up">
+                <div class="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                    <div class="space-y-2">
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-black backdrop-blur-xs border border-white/20">
+                            <span>✨ AUTO-COMMISSIONING SELESAI</span>
+                            <span>&bull;</span>
+                            <span>STATUS: AKTIF DI MASTER DATA</span>
+                        </div>
+                        <h2 class="text-xl sm:text-2xl font-black text-white tracking-tight">
+                            {{ workOrder.target_name }} Telah Otomatis Terbit di Master Data {{ workOrder.type === 'odc_deployment' ? 'ODC' : 'ODP' }}!
+                        </h2>
+                        <p class="text-xs text-emerald-100 max-w-2xl leading-relaxed">
+                            Pengerjaan lapangan telah diselesaikan oleh teknisi. Sistem otomatis mendaftarkan perangkat dengan kapasitas <b>{{ workOrder.capacity }} Port</b>, titik koordinat aktual (<b>{{ workOrder.actual_latitude || workOrder.planned_latitude || '-' }}, {{ workOrder.actual_longitude || workOrder.planned_longitude || '-' }}</b>), foto bukti fisik, dan langsung aktif di peta GIS. Sisa material tidak terpakai telah otomatis direstok kembali ke gudang.
+                        </p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+                        <!-- Direct Link to Master ODC -->
+                        <Link
+                            v-if="workOrder.type === 'odc_deployment'"
+                            :href="route('odcs.index', { search: workOrder.target_name })"
+                            class="px-5 py-2.5 bg-white text-emerald-900 hover:bg-emerald-50 rounded-xl font-black text-xs shadow-lg transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+                        >
+                            <span>🏢 Buka di Master Data ODC</span>
+                            <span>&rarr;</span>
+                        </Link>
+
+                        <!-- Direct Link to Master ODP -->
+                        <Link
+                            v-else
+                            :href="route('odps.index', { search: workOrder.target_name })"
+                            class="px-5 py-2.5 bg-white text-emerald-900 hover:bg-emerald-50 rounded-xl font-black text-xs shadow-lg transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+                        >
+                            <span>📦 Buka di Master Data ODP</span>
+                            <span>&rarr;</span>
+                        </Link>
+
+                        <!-- Direct Link to GIS Map -->
+                        <Link
+                            :href="route('network-map.index')"
+                            class="px-4 py-2.5 bg-emerald-800/80 hover:bg-emerald-800 text-white border border-white/20 rounded-xl font-bold text-xs shadow-sm transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                        >
+                            <span>🗺️ Peta Jaringan GIS</span>
+                        </Link>
+                    </div>
+                </div>
+            </div>
+
             <!-- Tab Navigation Header -->
             <div class="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden mb-8">
                 <div class="p-4 border-b border-slate-100 flex items-center gap-2 overflow-x-auto bg-slate-50/50">
@@ -882,12 +1029,31 @@ const formatDate = (dateStr) => {
                 </div>
             </div>
 
-            <!-- MODAL: INPUT LAPORAN PELAKSANAAN TEKNISI -->
+            <!-- MODAL: INPUT LAPORAN PELAKSANAAN TEKNISI & AUTO-COMMISSIONING -->
             <div v-if="showReportModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
                 <div class="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 max-h-[90vh] overflow-y-auto space-y-6">
                     <div class="flex items-center justify-between border-b pb-3">
-                        <h3 class="text-base font-bold text-slate-900">📋 Form Laporan Lapangan &amp; QC Redaman</h3>
-                        <button @click="showReportModal = false" class="text-slate-400 hover:text-slate-600 font-bold">&times;</button>
+                        <div>
+                            <h3 class="text-base font-black text-slate-900 flex items-center gap-2">
+                                <span>📋</span>
+                                <span>Laporan Lapangan &amp; Auto-Commissioning</span>
+                            </h3>
+                            <p class="text-xs text-slate-500 mt-0.5">
+                                Target: <b class="text-indigo-600">{{ workOrder.target_name }}</b> ({{ workOrder.type === 'odc_deployment' ? 'ODC' : 'ODP' }})
+                            </p>
+                        </div>
+                        <button @click="showReportModal = false" class="text-slate-400 hover:text-slate-600 font-bold text-xl">&times;</button>
+                    </div>
+
+                    <!-- Info Box Alur Cerdas Auto-Commissioning -->
+                    <div class="p-3.5 bg-gradient-to-r from-indigo-50 to-emerald-50 rounded-2xl border border-indigo-200 text-xs text-indigo-950 flex items-start gap-2.5">
+                        <span class="text-lg shrink-0">⚡</span>
+                        <div class="space-y-0.5">
+                            <p class="font-black text-indigo-900">Alur Cerdas &amp; Auto-Commissioning Instan:</p>
+                            <p class="text-[11px] text-slate-600 leading-relaxed">
+                                Begitu laporan disubmit, sistem akan <b>langsung mendaftarkan {{ workOrder.target_name }}</b> ke database master <b>{{ workOrder.type === 'odc_deployment' ? 'ODC' : 'ODP' }}</b> dengan status <b>AKTIF</b>, menampilkannya di peta GIS, dan otomatis mengembalikan sisa material yang tidak terpakai ke stok gudang tanpa tertunda.
+                            </p>
+                        </div>
                     </div>
 
                     <form @submit.prevent="submitFieldReport" class="space-y-5">
@@ -1015,9 +1181,13 @@ const formatDate = (dateStr) => {
                         </div>
 
                         <div class="flex justify-end gap-2 pt-4 border-t">
-                            <button type="button" @click="showReportModal = false" class="px-4 py-2 bg-slate-100 rounded-xl text-xs font-bold">Batal</button>
-                            <button type="submit" :disabled="reportForm.processing" class="px-5 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow-md">
-                                Kirim Laporan Lapangan &rarr;
+                            <button type="button" @click="showReportModal = false" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer">Batal</button>
+                            <button
+                                type="submit"
+                                :disabled="reportForm.processing"
+                                class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95"
+                            >
+                                <span>🚀 Selesaikan &amp; Auto-Daftarkan ke Data {{ workOrder.type === 'odc_deployment' ? 'ODC' : 'ODP' }}</span>
                             </button>
                         </div>
                     </form>

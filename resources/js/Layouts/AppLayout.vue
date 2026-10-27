@@ -744,10 +744,16 @@ const menuItems = [
                 label: 'Semua Pelanggan',
                 active: (url) => {
                     const u = url || '';
-                    const otherPrefixes = ['/customers/booking', '/customers/survey', '/customers/installed', '/customers/activation', '/customers/canceled', '/customers/gratis', '/customers/free-home', '/customers/online', '/customers/offline', '/customers/connections', '/customers/terminated', '/customers/isolir'];
+                    const otherPrefixes = ['/customers/booking', '/customers/survey', '/customers/installed', '/customers/activation', '/customers/canceled', '/customers/paid', '/customers/berbayar', '/customers/gratis', '/customers/free-home', '/customers/online', '/customers/offline', '/customers/connections', '/customers/terminated', '/customers/isolir'];
                     return u === '/customers' || u.startsWith('/customers?') || (u.startsWith('/customers/') && !otherPrefixes.some(p => u.startsWith(p)));
                 },
                 permission: 'menu_customers_all'
+            },
+            { 
+                href: '/customers/paid', 
+                label: '⭐ Pelanggan Berbayar', 
+                active: (url) => (url || '').startsWith('/customers/paid') || (url || '').startsWith('/customers/berbayar'), 
+                permission: 'menu_customers_all' 
             },
             { href: '/customers/online', label: 'Status Koneksi (Online / Offline)', active: (url) => (url || '').startsWith('/customers/online') || (url || '').startsWith('/customers/offline') || (url || '').startsWith('/customers/connections'), permission: 'menu_customers_online' },
             { href: '/customers/isolir', label: 'Pelanggan Isolir', active: (url) => (url || '').split('?')[0] === '/customers/isolir', permission: 'menu_customers_all' },
