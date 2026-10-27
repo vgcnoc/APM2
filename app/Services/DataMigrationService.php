@@ -654,6 +654,84 @@ class DataMigrationService
     }
 
     /**
+     * Resolve multiple technicians from comma/slash/semicolon/&/dan separated string
+     *
+     * @return array List of unique resolved user IDs
+     */
+    public static function resolveMultipleTechnicians(
+        ?string $techRef,
+        array $usersCache,
+        array $userNamesCache,
+        array $userPhonesCache,
+        array $affiliateCodesCache,
+        array $employeesIakCache,
+        $allUsersList = [],
+        $allEmployeesList = [],
+        array &$matchedNames = []
+    ): array {
+        if (empty($techRef)) {
+            return [];
+        }
+
+        $trimmed = trim((string) $techRef);
+        if ($trimmed === '' || $trimmed === '-' || $trimmed === '?' || strtolower($trimmed) === 'null') {
+            return [];
+        }
+
+        // Split by delimiter: comma, semicolon, slash, &, or ' dan ' (case-insensitive)
+        $tokens = preg_split('/[,;\/&]|\bdan\b/i', $trimmed);
+        $resolvedIds = [];
+        $matchedNames = [];
+
+        foreach ($tokens as $token) {
+            $token = trim($token);
+            if ($token === '' || $token === '-' || $token === '?' || strtolower($token) === 'null') {
+                continue;
+            }
+
+            [$uid, $method, $mName] = self::resolveSalesUser(
+                $token,
+                $usersCache,
+                $userNamesCache,
+                $userPhonesCache,
+                $affiliateCodesCache,
+                $employeesIakCache,
+                $allUsersList,
+                $allEmployeesList
+            );
+
+            if ($uid && !in_array($uid, $resolvedIds)) {
+                $resolvedIds[] = $uid;
+                if ($mName && !in_array($mName, $matchedNames)) {
+                    $matchedNames[] = $mName;
+                }
+            }
+        }
+
+        // Fallback: If tokenized lookup found nothing, try full string lookup directly
+        if (empty($resolvedIds)) {
+            [$uid, $method, $mName] = self::resolveSalesUser(
+                $trimmed,
+                $usersCache,
+                $userNamesCache,
+                $userPhonesCache,
+                $affiliateCodesCache,
+                $employeesIakCache,
+                $allUsersList,
+                $allEmployeesList
+            );
+            if ($uid) {
+                $resolvedIds[] = $uid;
+                if ($mName) {
+                    $matchedNames[] = $mName;
+                }
+            }
+        }
+
+        return $resolvedIds;
+    }
+
+    /**
      * Master schema definition per category
      */
     public static function getCategoryDefinitions(): array
@@ -683,7 +761,7 @@ class DataMigrationService
                     // ── 2. JADWAL SURVEY ───────────────────────────────────
                     'tgl_jadwal_survey' => ['label' => 'Tanggal Jadwal Survey (DD/MM/YYYY)', 'required' => false, 'db' => 'survey_scheduled_date'],
                     'jam_jadwal_survey' => ['label' => 'Jam Jadwal Survey (HH:MM, misal 09:00)', 'required' => false, 'db' => 'survey_scheduled_time'],
-                    'teknisi_survey' => ['label' => 'Teknisi / Surveyor (Nama / Email / No HP)', 'required' => false, 'db' => 'surveyor_id'],
+                    'teknisi_survey' => ['label' => 'Teknisi / Surveyor (Nama / Email / No HP - Bisa lebih dari 1 teknisi, pisahkan koma)', 'required' => false, 'db' => 'surveyor_id'],
                     'status_jadwal_survey' => ['label' => 'Status Jadwal Survey (scheduled / working / done / cancelled)', 'required' => false, 'db' => 'survey_schedule_status'],
 
                     // ── 3. HASIL LAPORAN SURVEY ────────────────────────────
@@ -697,7 +775,7 @@ class DataMigrationService
                     // ── 4. JADWAL PASANG ───────────────────────────────────
                     'tgl_jadwal_pasang' => ['label' => 'Tanggal Jadwal Pasang (DD/MM/YYYY)', 'required' => false, 'db' => 'installation_scheduled_date'],
                     'jam_jadwal_pasang' => ['label' => 'Jam Jadwal Pasang (HH:MM, misal 10:00)', 'required' => false, 'db' => 'installation_scheduled_time'],
-                    'teknisi_pasang' => ['label' => 'Teknisi Instalasi Pasang (Nama / Email / No HP)', 'required' => false, 'db' => 'technician_id'],
+                    'teknisi_pasang' => ['label' => 'Teknisi Instalasi Pasang (Nama / Email / No HP - Bisa lebih dari 1 teknisi, pisahkan koma)', 'required' => false, 'db' => 'technician_id'],
                     'status_jadwal_pasang' => ['label' => 'Status Jadwal Pasang (scheduled / working / done / cancelled)', 'required' => false, 'db' => 'installation_schedule_status'],
                     'catatan_jadwal_pasang' => ['label' => 'Catatan Penugasan Pemasangan', 'required' => false, 'db' => 'installation_schedule_notes'],
 
@@ -748,7 +826,7 @@ class DataMigrationService
                         'catatan' => 'Pelanggan Aktif Berbayar (Home 20 Mbps)',
                         'tgl_jadwal_survey' => '08/01/2026',
                         'jam_jadwal_survey' => '09:00',
-                        'teknisi_survey' => 'Dasep Juliandi',
+                        'teknisi_survey' => 'Dasep Juliandi, Riski Maulana',
                         'status_jadwal_survey' => 'done',
                         'tgl_survey' => '08/01/2026',
                         'nama_odp' => 'ODP-TMR-01-A',
@@ -758,7 +836,7 @@ class DataMigrationService
                         'catatan_survey' => 'Jalur tiang PLN aman dan redaman bagus',
                         'tgl_jadwal_pasang' => '10/01/2026',
                         'jam_jadwal_pasang' => '10:00',
-                        'teknisi_pasang' => 'Dasep Juliandi',
+                        'teknisi_pasang' => 'Dasep Juliandi, Rafli Agustian',
                         'status_jadwal_pasang' => 'done',
                         'catatan_jadwal_pasang' => 'Pemasangan rapi dan ONT normal',
                         'sn_ont' => 'ZTEG98765432',
@@ -1083,7 +1161,7 @@ class DataMigrationService
                 'id_column' => 'kode_pelanggan',
                 'headers' => [
                     'kode_pelanggan' => ['label' => 'Kode Pelanggan', 'required' => true, 'db' => 'customer_code'],
-                    'email_petugas_survey' => ['label' => 'Email / Username Petugas Survey', 'required' => true, 'db' => 'surveyor_email'],
+                    'email_petugas_survey' => ['label' => 'Email / Username Petugas Survey (Bisa lebih dari 1 teknisi, pisahkan koma)', 'required' => true, 'db' => 'surveyor_email'],
                     'nama_odp' => ['label' => 'Nama ODP Terpilih', 'required' => false, 'db' => 'odp_name'],
                     'nomor_port' => ['label' => 'Nomor Port ODP', 'required' => false, 'db' => 'port_number'],
                     'jarak_meter' => ['label' => 'Jarak Penarikan Kabel (meter)', 'required' => false, 'db' => 'distance_meters'],
@@ -1114,6 +1192,7 @@ class DataMigrationService
                 'id_column' => 'sn_ont',
                 'headers' => [
                     'kode_pelanggan' => ['label' => 'Kode Pelanggan', 'required' => true, 'db' => 'customer_code'],
+                    'teknisi_pasang' => ['label' => 'Teknisi Instalasi Pasang (Nama / Email / No HP - Bisa lebih dari 1 teknisi, pisahkan koma)', 'required' => false, 'db' => 'technician_id'],
                     'sn_ont' => ['label' => 'Serial Number Modem ONT', 'required' => true, 'db' => 'serial_number'],
                     'mac_address' => ['label' => 'MAC Address Modem', 'required' => false, 'db' => 'mac_address'],
                     'merk_ont' => ['label' => 'Merk Modem (ZTE/Huawei/dll)', 'required' => false, 'db' => 'brand'],
@@ -1492,10 +1571,10 @@ class DataMigrationService
                     $this->validateNetworkRow($row, $rowErrors, $rowWarnings, $mapped, $areasCache, $customersCache, $odpsCache, $options, $rowInfos);
                     break;
                 case 'booking_survey':
-                    $this->validateSurveyRow($row, $rowErrors, $rowWarnings, $mapped, $customersCache, $usersCache, $odpsCache, $odpsNormalizedCache, $odpsStrippedNormCache, $allUsersList, $allEmployeesList, $rowInfos);
+                    $this->validateSurveyRow($row, $rowErrors, $rowWarnings, $mapped, $customersCache, $usersCache, $odpsCache, $odpsNormalizedCache, $odpsStrippedNormCache, $allUsersList, $allEmployeesList, $rowInfos, $userNamesCache, $userPhonesCache, $affiliateCodesCache, $employeesIakCache);
                     break;
                 case 'installation_activation':
-                    $this->validateInstallationRow($row, $rowErrors, $rowWarnings, $mapped, $customersCache, $odpsCache, $odpsNormalizedCache, $odpsStrippedNormCache, $rowInfos);
+                    $this->validateInstallationRow($row, $rowErrors, $rowWarnings, $mapped, $customersCache, $odpsCache, $odpsNormalizedCache, $odpsStrippedNormCache, $rowInfos, $usersCache, $userNamesCache, $userPhonesCache, $affiliateCodesCache, $employeesIakCache, $allUsersList, $allEmployeesList);
                     break;
                 case 'invoices':
                     $this->validateInvoiceRow($row, $rowErrors, $rowWarnings, $mapped, $customersCache, $invoicesCache, $rowInfos);
@@ -1898,11 +1977,19 @@ class DataMigrationService
         $surveyScheduleDate = self::parseFlexibleDate($row['tgl_jadwal_survey'] ?? $row['jadwal_survey'] ?? $row['tgl_survey_jadwal'] ?? null);
         $surveyScheduleTime = trim((string)($row['jam_jadwal_survey'] ?? $row['jam_survey'] ?? '09:00'));
         $rawSurveyTech = trim((string)($row['teknisi_survey'] ?? $row['surveyor'] ?? $row['petugas_survey'] ?? ''));
-        $surveyTechId = null;
-        if (!empty($rawSurveyTech)) {
-            [$resolvedTechId] = self::resolveSalesUser($rawSurveyTech, $usersCache, $userNamesCache, $userPhonesCache, $affiliateCodesCache, $employeesIakCache, $allUsersList, $allEmployeesList);
-            $surveyTechId = $resolvedTechId;
+        $surveyMatchedNames = [];
+        $surveyTechIds = self::resolveMultipleTechnicians(
+            $rawSurveyTech, $usersCache, $userNamesCache, $userPhonesCache,
+            $affiliateCodesCache, $employeesIakCache, $allUsersList, $allEmployeesList, $surveyMatchedNames
+        );
+        $surveyTechId = $surveyTechIds[0] ?? null;
+
+        if (!empty($rawSurveyTech) && empty($surveyTechIds)) {
+            $warnings[] = "Teknisi survey '{$rawSurveyTech}' tidak cocok dengan master karyawan/user.";
+        } elseif (count($surveyTechIds) > 1) {
+            $infos[] = count($surveyTechIds) . " teknisi survey terdeteksi: " . implode(', ', $surveyMatchedNames);
         }
+
         $surveyScheduleStatus = strtolower(trim((string)($row['status_jadwal_survey'] ?? '')));
         if (!in_array($surveyScheduleStatus, ['scheduled', 'on_the_way', 'working', 'done', 'cancelled'])) {
             $surveyScheduleStatus = null;
@@ -1927,11 +2014,19 @@ class DataMigrationService
         $installScheduleDate = self::parseFlexibleDate($row['tgl_jadwal_pasang'] ?? $row['jadwal_pasang'] ?? $row['tgl_pasang_jadwal'] ?? null);
         $installScheduleTime = trim((string)($row['jam_jadwal_pasang'] ?? $row['jam_pasang'] ?? '10:00'));
         $rawInstallTech = trim((string)($row['teknisi_pasang'] ?? $row['teknisi_instalasi'] ?? $row['teknisi'] ?? ''));
-        $installTechId = null;
-        if (!empty($rawInstallTech)) {
-            [$resolvedInstallTechId] = self::resolveSalesUser($rawInstallTech, $usersCache, $userNamesCache, $userPhonesCache, $affiliateCodesCache, $employeesIakCache, $allUsersList, $allEmployeesList);
-            $installTechId = $resolvedInstallTechId;
+        $installMatchedNames = [];
+        $installTechIds = self::resolveMultipleTechnicians(
+            $rawInstallTech, $usersCache, $userNamesCache, $userPhonesCache,
+            $affiliateCodesCache, $employeesIakCache, $allUsersList, $allEmployeesList, $installMatchedNames
+        );
+        $installTechId = $installTechIds[0] ?? null;
+
+        if (!empty($rawInstallTech) && empty($installTechIds)) {
+            $warnings[] = "Teknisi pasang '{$rawInstallTech}' tidak cocok dengan master karyawan/user.";
+        } elseif (count($installTechIds) > 1) {
+            $infos[] = count($installTechIds) . " teknisi pasang terdeteksi: " . implode(', ', $installMatchedNames);
         }
+
         $installScheduleStatus = strtolower(trim((string)($row['status_jadwal_pasang'] ?? '')));
         if (!in_array($installScheduleStatus, ['scheduled', 'on_the_way', 'working', 'done', 'cancelled'])) {
             $installScheduleStatus = null;
@@ -1988,6 +2083,7 @@ class DataMigrationService
             'tgl_jadwal_survey' => $surveyScheduleDate,
             'jam_jadwal_survey' => $surveyScheduleTime,
             'teknisi_survey_id' => $surveyTechId,
+            'teknisi_survey_ids' => $surveyTechIds,
             'status_jadwal_survey' => $surveyScheduleStatus,
             'tgl_survey' => $surveyDate,
             'jarak_tarikan_meter' => $distanceMeters,
@@ -1996,6 +2092,7 @@ class DataMigrationService
             'tgl_jadwal_pasang' => $installScheduleDate,
             'jam_jadwal_pasang' => $installScheduleTime,
             'teknisi_pasang_id' => $installTechId,
+            'teknisi_pasang_ids' => $installTechIds,
             'status_jadwal_pasang' => $installScheduleStatus,
             'catatan_jadwal_pasang' => $installScheduleNotes,
             'jam_mulai_pasang' => $startTime,
@@ -2088,21 +2185,25 @@ class DataMigrationService
         ];
     }
 
-    protected function validateSurveyRow($row, &$errors, &$warnings, &$mapped, $customersCache, $usersCache, $odpsCache, $odpsNormalizedCache = [], $odpsStrippedNormCache = [], $allUsersList = [], $allEmployeesList = [], &$infos = [])
+    protected function validateSurveyRow($row, &$errors, &$warnings, &$mapped, $customersCache, $usersCache, $odpsCache, $odpsNormalizedCache = [], $odpsStrippedNormCache = [], $allUsersList = [], $allEmployeesList = [], &$infos = [], $userNamesCache = [], $userPhonesCache = [], $affiliateCodesCache = [], $employeesIakCache = [])
     {
         $customerCode = $row['kode_pelanggan'] ?? '';
         if (empty($customerCode)) $errors[] = 'Kode Pelanggan wajib diisi.';
         $customerId = $customersCache[$customerCode] ?? null;
         if (!$customerId) $errors[] = "Pelanggan '{$customerCode}' tidak ditemukan di sistem.";
 
-        $surveyorRef = $row['email_petugas_survey'] ?? $row['petugas_survey'] ?? '';
-        $surveyorId = null;
-        if (!empty($surveyorRef)) {
-            [$resolvedSurveyorId] = self::resolveSalesUser($surveyorRef, $usersCache, [], [], [], [], $allUsersList, $allEmployeesList);
-            $surveyorId = $resolvedSurveyorId;
-        }
+        $surveyorRef = $row['email_petugas_survey'] ?? $row['petugas_survey'] ?? $row['teknisi_survey'] ?? '';
+        $surveyorMatchedNames = [];
+        $surveyorIds = self::resolveMultipleTechnicians(
+            $surveyorRef, $usersCache, $userNamesCache, $userPhonesCache,
+            $affiliateCodesCache, $employeesIakCache, $allUsersList, $allEmployeesList, $surveyorMatchedNames
+        );
+        $surveyorId = $surveyorIds[0] ?? null;
+
         if (!$surveyorId && !empty($surveyorRef)) {
             $errors[] = "Petugas survey '{$surveyorRef}' tidak ditemukan.";
+        } elseif (count($surveyorIds) > 1) {
+            $infos[] = count($surveyorIds) . " teknisi survey terdeteksi: " . implode(', ', $surveyorMatchedNames);
         }
 
         $feasibility = strtolower($row['hasil_kelayakan'] ?? 'feasible');
@@ -2128,6 +2229,7 @@ class DataMigrationService
         $mapped = [
             'customer_id' => $customerId,
             'surveyor_id' => $surveyorId,
+            'surveyor_ids' => $surveyorIds,
             'odp_id' => $odpId,
             'odp_name' => $odpName ?: null,
             'port_number' => !empty($row['nomor_port']) ? (int)$row['nomor_port'] : null,
@@ -2139,7 +2241,7 @@ class DataMigrationService
         ];
     }
 
-    protected function validateInstallationRow($row, &$errors, &$warnings, &$mapped, $customersCache, $odpsCache, $odpsNormalizedCache = [], $odpsStrippedNormCache = [], &$infos = [])
+    protected function validateInstallationRow($row, &$errors, &$warnings, &$mapped, $customersCache, $odpsCache, $odpsNormalizedCache = [], $odpsStrippedNormCache = [], &$infos = [], $usersCache = [], $userNamesCache = [], $userPhonesCache = [], $affiliateCodesCache = [], $employeesIakCache = [], $allUsersList = [], $allEmployeesList = [])
     {
         $customerCode = $row['kode_pelanggan'] ?? '';
         if (empty($customerCode)) $errors[] = 'Kode Pelanggan wajib diisi.';
@@ -2148,6 +2250,20 @@ class DataMigrationService
 
         $sn = $row['sn_ont'] ?? '';
         if (empty($sn)) $errors[] = 'Serial Number ONT wajib diisi.';
+
+        $installTechRef = $row['teknisi_pasang'] ?? $row['teknisi_instalasi'] ?? $row['teknisi'] ?? '';
+        $installMatchedNames = [];
+        $installTechIds = self::resolveMultipleTechnicians(
+            $installTechRef, $usersCache, $userNamesCache, $userPhonesCache,
+            $affiliateCodesCache, $employeesIakCache, $allUsersList, $allEmployeesList, $installMatchedNames
+        );
+        $installTechId = $installTechIds[0] ?? null;
+
+        if (!empty($installTechRef) && empty($installTechIds)) {
+            $warnings[] = "Teknisi pasang '{$installTechRef}' tidak cocok dengan master karyawan/user.";
+        } elseif (count($installTechIds) > 1) {
+            $infos[] = count($installTechIds) . " teknisi pasang terdeteksi: " . implode(', ', $installMatchedNames);
+        }
 
         $odpName = trim((string)($row['nama_odp'] ?? ''));
         $odpId = null;
@@ -2168,6 +2284,8 @@ class DataMigrationService
 
         $mapped = [
             'customer_id' => $customerId,
+            'technician_id' => $installTechId,
+            'technician_ids' => $installTechIds,
             'serial_number' => $sn,
             'mac_address' => $row['mac_address'] ?? null,
             'brand' => $row['merk_ont'] ?? 'ZTE',
@@ -2630,32 +2748,42 @@ class DataMigrationService
             $actDate = $targetCust->activation_date ? $targetCust->activation_date->format('Y-m-d') : $regDate;
             $techOrSalesId = $salesId ?: (auth()->id() ?: 1);
 
-            $surveyTechId = !empty($data['teknisi_survey_id']) ? $data['teknisi_survey_id'] : $techOrSalesId;
+            $surveyTechIds = !empty($data['teknisi_survey_ids']) ? $data['teknisi_survey_ids'] : (!empty($data['teknisi_survey_id']) ? [$data['teknisi_survey_id']] : [$techOrSalesId]);
+            $surveyTechId = $surveyTechIds[0] ?? $techOrSalesId;
             $surveySchedDate = !empty($data['tgl_jadwal_survey']) ? $data['tgl_jadwal_survey'] : $regDate;
             $surveySchedTime = !empty($data['jam_jadwal_survey']) ? $data['jam_jadwal_survey'] : '09:00';
             $surveySchedStatus = !empty($data['status_jadwal_survey']) ? $data['status_jadwal_survey'] : (in_array($targetCust->status, ['survey', 'installing', 'active']) ? 'done' : 'scheduled');
 
-            $installTechId = !empty($data['teknisi_pasang_id']) ? $data['teknisi_pasang_id'] : $techOrSalesId;
+            $installTechIds = !empty($data['teknisi_pasang_ids']) ? $data['teknisi_pasang_ids'] : (!empty($data['teknisi_pasang_id']) ? [$data['teknisi_pasang_id']] : [$techOrSalesId]);
+            $installTechId = $installTechIds[0] ?? $techOrSalesId;
             $installSchedDate = !empty($data['tgl_jadwal_pasang']) ? $data['tgl_jadwal_pasang'] : $actDate;
             $installSchedTime = !empty($data['jam_jadwal_pasang']) ? $data['jam_jadwal_pasang'] : '10:00';
             $installSchedStatus = !empty($data['status_jadwal_pasang']) ? $data['status_jadwal_pasang'] : (in_array($targetCust->status, ['active', 'terminated']) ? 'done' : 'scheduled');
 
             // 1. Jadwal Survey (TechnicianSchedule type 'survey')
             if (!empty($data['tgl_jadwal_survey']) || in_array($targetCust->status, ['survey', 'installing', 'active', 'terminated'])) {
-                $surveySched = TechnicianSchedule::where('customer_id', $targetCust->id)->where('type', 'survey')->first();
-                $surveySchedPayload = [
-                    'customer_id' => $targetCust->id,
-                    'technician_id' => $surveyTechId,
-                    'scheduled_date' => $surveySchedDate,
-                    'scheduled_time' => $surveySchedTime,
-                    'type' => 'survey',
-                    'status' => $surveySchedStatus,
-                    'notes' => !empty($data['catatan_jadwal_survey']) ? $data['catatan_jadwal_survey'] : 'Jadwal survey lapangan migrasi sistem',
-                ];
-                if ($surveySched) {
-                    $surveySched->update($surveySchedPayload);
-                } else {
-                    TechnicianSchedule::create($surveySchedPayload);
+                $notesSurvey = !empty($data['catatan_jadwal_survey']) ? $data['catatan_jadwal_survey'] : 'Jadwal survey lapangan migrasi sistem';
+                $existingSurveyScheds = TechnicianSchedule::where('customer_id', $targetCust->id)->where('type', 'survey')->get();
+
+                foreach ($surveyTechIds as $idx => $tId) {
+                    $existingRow = $existingSurveyScheds->firstWhere('technician_id', $tId);
+                    $surveySchedPayload = [
+                        'customer_id' => $targetCust->id,
+                        'technician_id' => $tId,
+                        'scheduled_date' => $surveySchedDate,
+                        'scheduled_time' => $surveySchedTime,
+                        'type' => 'survey',
+                        'status' => $surveySchedStatus,
+                        'notes' => $notesSurvey,
+                    ];
+                    if ($existingRow) {
+                        $existingRow->update($surveySchedPayload);
+                    } elseif ($idx === 0 && $existingSurveyScheds->isNotEmpty()) {
+                        $first = $existingSurveyScheds->first();
+                        $first->update($surveySchedPayload);
+                    } else {
+                        TechnicianSchedule::create($surveySchedPayload);
+                    }
                 }
             }
 
@@ -2682,8 +2810,6 @@ class DataMigrationService
 
             // 3. Jadwal Pasang (TechnicianSchedule type 'installation') - Auto-render ke Card "Riwayat Alokasi Material & ONT"
             if (!empty($data['tgl_jadwal_pasang']) || in_array($targetCust->status, ['installing', 'active', 'terminated'])) {
-                $installSched = TechnicianSchedule::where('customer_id', $targetCust->id)->where('type', 'installation')->first();
-                
                 $schedNotes = [];
                 if (!empty($ontSn)) {
                     $schedNotes[] = "ONT: {$ontBrand} {$ontModel} (SN: {$ontSn})";
@@ -2696,19 +2822,27 @@ class DataMigrationService
                 }
                 $installNotesText = count($schedNotes) > 0 ? implode("\n", $schedNotes) : 'Jadwal pasang historis migrasi sistem';
 
-                $installSchedPayload = [
-                    'customer_id' => $targetCust->id,
-                    'technician_id' => $installTechId,
-                    'scheduled_date' => $installSchedDate,
-                    'scheduled_time' => $installSchedTime,
-                    'type' => 'installation',
-                    'status' => $installSchedStatus,
-                    'notes' => $installNotesText,
-                ];
-                if ($installSched) {
-                    $installSched->update($installSchedPayload);
-                } else {
-                    TechnicianSchedule::create($installSchedPayload);
+                $existingInstallScheds = TechnicianSchedule::where('customer_id', $targetCust->id)->where('type', 'installation')->get();
+
+                foreach ($installTechIds as $idx => $tId) {
+                    $existingRow = $existingInstallScheds->firstWhere('technician_id', $tId);
+                    $installSchedPayload = [
+                        'customer_id' => $targetCust->id,
+                        'technician_id' => $tId,
+                        'scheduled_date' => $installSchedDate,
+                        'scheduled_time' => $installSchedTime,
+                        'type' => 'installation',
+                        'status' => $installSchedStatus,
+                        'notes' => $installNotesText,
+                    ];
+                    if ($existingRow) {
+                        $existingRow->update($installSchedPayload);
+                    } elseif ($idx === 0 && $existingInstallScheds->isNotEmpty()) {
+                        $first = $existingInstallScheds->first();
+                        $first->update($installSchedPayload);
+                    } else {
+                        TechnicianSchedule::create($installSchedPayload);
+                    }
                 }
             }
 
@@ -2991,6 +3125,8 @@ class DataMigrationService
             }
         }
         unset($data['odp_name']);
+        $surveyorIds = $data['surveyor_ids'] ?? [];
+        unset($data['surveyor_ids']);
 
         // Avoid duplicate survey on same customer and same date
         $existing = Survey::where('customer_id', $data['customer_id'])
@@ -3001,7 +3137,35 @@ class DataMigrationService
             return 'skipped';
         }
 
-        Survey::create($data);
+        if ($existing) {
+            $existing->update($data);
+        } else {
+            Survey::create($data);
+        }
+
+        // Also create / sync TechnicianSchedule for each surveyor
+        if (!empty($surveyorIds)) {
+            $existingSurveyScheds = TechnicianSchedule::where('customer_id', $data['customer_id'])->where('type', 'survey')->get();
+            foreach ($surveyorIds as $idx => $tId) {
+                $existingRow = $existingSurveyScheds->firstWhere('technician_id', $tId);
+                $schedPayload = [
+                    'customer_id' => $data['customer_id'],
+                    'technician_id' => $tId,
+                    'scheduled_date' => $data['survey_date'] ?? date('Y-m-d'),
+                    'scheduled_time' => '09:00:00',
+                    'type' => 'survey',
+                    'status' => 'done',
+                    'notes' => $data['notes'] ?? 'Jadwal survey lapangan migrasi sistem',
+                ];
+                if ($existingRow) {
+                    $existingRow->update($schedPayload);
+                } elseif ($idx === 0 && $existingSurveyScheds->isNotEmpty()) {
+                    $existingSurveyScheds->first()->update($schedPayload);
+                } else {
+                    TechnicianSchedule::create($schedPayload);
+                }
+            }
+        }
 
         // Update customer status to survey
         Customer::where('id', $data['customer_id'])->update(['status' => 'survey']);
@@ -3026,6 +3190,8 @@ class DataMigrationService
             }
         }
         unset($data['odp_name']);
+        $technicianIds = $data['technician_ids'] ?? [];
+        unset($data['technician_ids']);
 
         $sn = $data['serial_number'];
         $ont = Ont::where('serial_number', $sn)->first();
@@ -3105,6 +3271,30 @@ class DataMigrationService
             'activation_date' => $data['activation_date'],
             'is_audited' => $data['is_audited'],
         ]);
+
+        // Also create / sync TechnicianSchedule for each installation technician
+        if (!empty($technicianIds)) {
+            $existingInstallScheds = TechnicianSchedule::where('customer_id', $data['customer_id'])->where('type', 'installation')->get();
+            foreach ($technicianIds as $idx => $tId) {
+                $existingRow = $existingInstallScheds->firstWhere('technician_id', $tId);
+                $schedPayload = [
+                    'customer_id' => $data['customer_id'],
+                    'technician_id' => $tId,
+                    'scheduled_date' => $data['activation_date'] ?? date('Y-m-d'),
+                    'scheduled_time' => $data['start_time'] ?? '10:00:00',
+                    'type' => 'installation',
+                    'status' => 'done',
+                    'notes' => "ONT: {$data['brand']} {$data['model']} (SN: {$sn})",
+                ];
+                if ($existingRow) {
+                    $existingRow->update($schedPayload);
+                } elseif ($idx === 0 && $existingInstallScheds->isNotEmpty()) {
+                    $existingInstallScheds->first()->update($schedPayload);
+                } else {
+                    TechnicianSchedule::create($schedPayload);
+                }
+            }
+        }
 
         // Auto-register ONT in CustomerInstalledMaterial & Material Transaction
         if (!empty($sn) && !empty($data['customer_id'])) {
