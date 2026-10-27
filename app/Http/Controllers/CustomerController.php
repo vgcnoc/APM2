@@ -3157,15 +3157,30 @@ class CustomerController extends Controller
                     'tax_uso' => $taxUso,
                 ]);
 
+                $accessMode = $validated['access_mode'] ?? 'PPPOE';
+                $isHotspot = in_array(strtoupper($accessMode), ['HOTSPOT', 'HOTSPOT/MEMBER', 'MEMBER']);
+
+                $pppoeUser = $validated['pppoe_user'] ?? null;
+                $pppoePassword = $validated['pppoe_password'] ?? null;
+                $hotspotUser = $validated['hotspot_user'] ?? null;
+                $hotspotPassword = $validated['hotspot_password'] ?? null;
+
+                if ($isHotspot) {
+                    if (!empty($pppoeUser)) {
+                        $hotspotUser = $pppoeUser;
+                        $hotspotPassword = $pppoePassword;
+                    }
+                }
+
                 $customer->ont->update([
-                    'pppoe_user' => $validated['pppoe_user'],
-                    'pppoe_password' => $validated['pppoe_password'],
+                    'pppoe_user' => $pppoeUser,
+                    'pppoe_password' => $pppoePassword,
                     'vlan_mode' => $validated['vlan_mode'],
                     'vlan_id' => $validated['vlan_id'],
-                    'access_mode' => $validated['access_mode'],
+                    'access_mode' => $accessMode,
                     'free_hotspot' => $validated['free_hotspot'] ?? false,
-                    'hotspot_user' => $validated['hotspot_user'] ?? null,
-                    'hotspot_password' => $validated['hotspot_password'] ?? null,
+                    'hotspot_user' => $hotspotUser,
+                    'hotspot_password' => $hotspotPassword,
                     'hotspot_vlan_id' => $validated['hotspot_vlan_id'] ?? null,
                     'ip_login' => $validated['ip_login'],
                     'login_user' => $validated['login_user'],
@@ -3753,18 +3768,38 @@ class CustomerController extends Controller
         }
 
         if ($ont) {
+            $accessMode = $validated['access_mode'] ?? 'PPPOE';
+            $isHotspot = in_array(strtoupper($accessMode), ['HOTSPOT', 'HOTSPOT/MEMBER', 'MEMBER']);
+
+            $pppoeUser = $validated['pppoe_user'] ?? null;
+            $pppoePassword = $validated['pppoe_password'] ?? null;
+            $hotspotUser = $validated['hotspot_user'] ?? null;
+            $hotspotPassword = $validated['hotspot_password'] ?? null;
+
+            if ($isHotspot) {
+                if (!empty($pppoeUser)) {
+                    $hotspotUser = $pppoeUser;
+                    $hotspotPassword = $pppoePassword;
+                }
+            } else if (strtoupper($accessMode) === 'PPPOE') {
+                if (empty($pppoeUser) && !empty($hotspotUser)) {
+                    $pppoeUser = $hotspotUser;
+                    $pppoePassword = $hotspotPassword;
+                }
+            }
+
             $ont->update([
-                'pppoe_user' => $validated['pppoe_user'],
-                'pppoe_password' => $validated['pppoe_password'],
+                'pppoe_user' => $pppoeUser,
+                'pppoe_password' => $pppoePassword,
                 'vlan_mode' => $validated['vlan_mode'],
                 'vlan_id' => $validated['vlan_id'],
-                'access_mode' => $validated['access_mode'] ?? 'PPPOE',
+                'access_mode' => $accessMode,
                 'ip_login' => $validated['ip_login'],
                 'login_user' => $validated['login_user'],
                 'login_password' => $validated['login_password'],
                 'free_hotspot' => $request->boolean('free_hotspot', false),
-                'hotspot_user' => $validated['hotspot_user'],
-                'hotspot_password' => $validated['hotspot_password'],
+                'hotspot_user' => $hotspotUser,
+                'hotspot_password' => $hotspotPassword,
                 'hotspot_vlan_id' => $validated['hotspot_vlan_id'],
             ]);
 

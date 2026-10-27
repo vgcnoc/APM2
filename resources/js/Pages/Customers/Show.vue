@@ -2896,9 +2896,10 @@
                                     <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Mode Akses</label>
                                     <select v-model="editActivationForm.access_mode" class="w-full text-sm border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500">
                                         <option value="PPPOE">PPPoE</option>
+                                        <option value="HOTSPOT/MEMBER">Hotspot / Member</option>
                                         <option value="STATIC">Static IP</option>
                                         <option value="DHCP">DHCP / Dynamic</option>
-                                        <option value="HOTSPOT">Hotspot</option>
+                                        <option value="Bridge">Bridge</option>
                                     </select>
                                 </div>
                                 <div>
@@ -4986,11 +4987,26 @@ function openEditActivationModal() {
     editActivationForm.billing_cycle = cust.billing_cycle || 'default';
     editActivationForm.billing_day = cust.billing_day || null;
     editActivationForm.package_id = cust.package_id || '';
-    editActivationForm.pppoe_user = ont?.pppoe_user || '';
-    editActivationForm.pppoe_password = ont?.pppoe_password || '';
+    // Normalisasi Mode Akses
+    let mode = (ont?.access_mode || cust.package?.access_mode || 'PPPOE').trim();
+    const upperMode = mode.toUpperCase();
+    if (upperMode.includes('HOTSPOT') || upperMode.includes('MEMBER')) {
+        mode = 'HOTSPOT/MEMBER';
+    } else if (upperMode === 'PPPOE') {
+        mode = 'PPPOE';
+    } else if (upperMode === 'STATIC') {
+        mode = 'STATIC';
+    } else if (upperMode === 'DHCP') {
+        mode = 'DHCP';
+    } else if (upperMode === 'BRIDGE') {
+        mode = 'Bridge';
+    }
+    editActivationForm.access_mode = mode;
+
+    editActivationForm.pppoe_user = ont?.pppoe_user || ont?.hotspot_user || '';
+    editActivationForm.pppoe_password = ont?.pppoe_password || ont?.hotspot_password || '';
     editActivationForm.vlan_mode = ont?.vlan_mode || '';
     editActivationForm.vlan_id = ont?.vlan_id || '';
-    editActivationForm.access_mode = ont?.access_mode || 'PPPOE';
     editActivationForm.ip_login = ont?.ip_login || '192.168.1.1';
     editActivationForm.login_user = ont?.login_user || 'admin';
     editActivationForm.login_password = ont?.login_password || 'admin';
@@ -5002,6 +5018,10 @@ function openEditActivationModal() {
 }
 
 function submitEditActivation() {
+    if (editActivationForm.access_mode === 'HOTSPOT/MEMBER') {
+        editActivationForm.hotspot_user = editActivationForm.pppoe_user;
+        editActivationForm.hotspot_password = editActivationForm.pppoe_password;
+    }
     editActivationForm.post(`/customers/${props.customer.id}/update-activation`, {
         preserveScroll: true,
         onSuccess: () => {

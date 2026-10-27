@@ -217,9 +217,10 @@ class RadiusService
             $accounts[$ont->pppoe_user] = $ont->pppoe_password;
         }
 
-        // Akun hotspot aktif jika paket bertipe hotspot atau fitur free_hotspot aktif
+        // Akun hotspot aktif jika paket bertipe hotspot atau fitur free_hotspot aktif atau access_mode HOTSPOT/MEMBER
         $isHotspotPackage = strtolower($customer->package?->access_mode ?? '') === 'hotspot';
-        if (($ont->free_hotspot || $isHotspotPackage) && $ont->hotspot_user && $ont->hotspot_password) {
+        $isHotspotMode = in_array(strtoupper($ont->access_mode ?? ''), ['HOTSPOT', 'HOTSPOT/MEMBER', 'MEMBER']);
+        if (($ont->free_hotspot || $isHotspotPackage || $isHotspotMode) && $ont->hotspot_user && $ont->hotspot_password) {
             $accounts[$ont->hotspot_user] = $ont->hotspot_password;
         }
 

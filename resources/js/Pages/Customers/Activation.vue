@@ -169,6 +169,12 @@
                                     {{ row.ont.pppoe_user }}
                                 </span>
                             </div>
+                            <div v-else-if="row.ont?.hotspot_user" class="flex items-center gap-1">
+                                <span class="text-[10px] text-purple-600 font-semibold">Member:</span>
+                                <span class="font-mono font-bold text-xs text-purple-700 bg-purple-50/80 px-1.5 py-0.5 rounded border border-purple-100">
+                                    {{ row.ont.hotspot_user }}
+                                </span>
+                            </div>
                             <div v-else class="text-xs text-slate-400 italic">
                                 Belum diset
                             </div>
@@ -607,9 +613,10 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Mode Akses (Catatan)</label>
                                 <select v-model="activationForm.access_mode" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all">
                                     <option value="PPPOE">PPPoE</option>
+                                    <option value="HOTSPOT/MEMBER">Hotspot / Member</option>
                                     <option value="STATIC">Static IP</option>
                                     <option value="DHCP">DHCP / Dynamic</option>
-                                    <option value="Hotspot">Hotspot</option>
+                                    <option value="Bridge">Bridge</option>
                                 </select>
                             </div>
                             
@@ -931,17 +938,21 @@
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
                                         <div class="flex items-center justify-between mb-1">
-                                            <label class="block text-sm font-medium text-gray-700">PPPoE/Member Username</label>
+                                            <label class="block text-sm font-medium text-gray-700">
+                                                {{ editForm.access_mode === 'HOTSPOT/MEMBER' ? 'Username Hotspot / Member' : 'PPPoE / Member Username' }}
+                                            </label>
                                             <button type="button" @click="generateEditPppoe" class="text-[11px] text-purple-600 hover:text-purple-800 font-semibold flex items-center gap-1 cursor-pointer">
                                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                                                 Generate
                                             </button>
                                         </div>
-                                        <input v-model="editForm.pppoe_user" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" placeholder="user@isp" />
+                                        <input v-model="editForm.pppoe_user" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all text-sm font-mono" :placeholder="editForm.access_mode === 'HOTSPOT/MEMBER' ? 'username_member' : 'user@isp'" />
                                     </div>
                                     <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">PPPoE/Member Password</label>
-                                        <input v-model="editForm.pppoe_password" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" placeholder="***" />
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                                            {{ editForm.access_mode === 'HOTSPOT/MEMBER' ? 'Password Hotspot / Member' : 'PPPoE / Member Password' }}
+                                        </label>
+                                        <input v-model="editForm.pppoe_password" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all text-sm font-mono" placeholder="***" />
                                     </div>
                                 </div>
                             </template>
@@ -949,12 +960,12 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Mode Akses (Catatan)</label>
-                                    <select v-model="editForm.access_mode" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all">
+                                    <select v-model="editForm.access_mode" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all text-sm">
                                         <option value="PPPOE">PPPoE</option>
+                                        <option value="HOTSPOT/MEMBER">Hotspot / Member</option>
                                         <option value="STATIC">Static IP</option>
                                         <option value="DHCP">DHCP / Dynamic</option>
                                         <option value="Bridge">Bridge</option>
-                                        <option value="Hotspot">Hotspot</option>
                                     </select>
                                 </div>
                                 
@@ -1241,11 +1252,29 @@ function openEditActivationModal(customer) {
     editForm.billing_cycle = customer.billing_cycle || 'default';
     editForm.billing_day = customer.billing_day || null;
     editForm.package_id = customer.package_id || '';
-    editForm.pppoe_user = customer.ont?.pppoe_user || '';
-    editForm.pppoe_password = customer.ont?.pppoe_password || '';
+
+    // Normalisasi Mode Akses
+    let mode = (customer.ont?.access_mode || customer.package?.access_mode || 'PPPOE').trim();
+    const upperMode = mode.toUpperCase();
+    if (upperMode.includes('HOTSPOT') || upperMode.includes('MEMBER')) {
+        mode = 'HOTSPOT/MEMBER';
+    } else if (upperMode === 'PPPOE') {
+        mode = 'PPPOE';
+    } else if (upperMode === 'STATIC') {
+        mode = 'STATIC';
+    } else if (upperMode === 'DHCP') {
+        mode = 'DHCP';
+    } else if (upperMode === 'BRIDGE') {
+        mode = 'Bridge';
+    }
+    editForm.access_mode = mode;
+
+    // Ambil kredensial akun: jika pppoe_user kosong tapi hotspot_user ada (seperti pada pelanggan Hotspot/Member), ambil dari hotspot_user
+    editForm.pppoe_user = customer.ont?.pppoe_user || customer.ont?.hotspot_user || '';
+    editForm.pppoe_password = customer.ont?.pppoe_password || customer.ont?.hotspot_password || '';
+
     editForm.vlan_mode = customer.ont?.vlan_mode || '';
     editForm.vlan_id = customer.ont?.vlan_id || '';
-    editForm.access_mode = customer.ont?.access_mode || 'PPPOE';
     editForm.ip_login = customer.ont?.ip_login || '192.168.1.1';
     editForm.login_user = customer.ont?.login_user || 'admin';
     editForm.login_password = customer.ont?.login_password || 'admin';
@@ -1262,6 +1291,10 @@ const defaultBillingCycle = computed(() => {
 
 function submitEditActivation() {
     if (!editCustomer.value) return;
+    if (editForm.access_mode === 'HOTSPOT/MEMBER') {
+        editForm.hotspot_user = editForm.pppoe_user;
+        editForm.hotspot_password = editForm.pppoe_password;
+    }
     editForm.post(`/customers/${editCustomer.value.id}/update-activation`, {
         preserveScroll: true,
         onSuccess: () => {
@@ -1276,7 +1309,8 @@ function generateEditPppoe() {
     let pass = '';
     for (let i = 0; i < 6; i++) user += chars.charAt(Math.floor(Math.random() * chars.length));
     for (let i = 0; i < 8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
-    editForm.pppoe_user = 'user_' + user;
+    const prefix = editForm.access_mode === 'HOTSPOT/MEMBER' ? 'hs_' : 'user_';
+    editForm.pppoe_user = prefix + user;
     editForm.pppoe_password = pass;
 }
 
@@ -1501,11 +1535,27 @@ function openActivationModal(customer) {
     activationForm.billing_type = bType;
     activationForm.is_prorata = page.props.billingSettings?.prorata_first_month !== false;
     activationForm.service_status = customer.service_status === 'free_home' ? 'free_home' : (customer.service_status === 'gratis' ? 'gratis' : 'berbayar');
-    activationForm.pppoe_user = customer.ont?.pppoe_user || '';
-    activationForm.pppoe_password = customer.ont?.pppoe_password || '';
+
+    // Normalisasi Mode Akses
+    let mode = (customer.ont?.access_mode || customer.package?.access_mode || 'PPPOE').trim();
+    const upperMode = mode.toUpperCase();
+    if (upperMode.includes('HOTSPOT') || upperMode.includes('MEMBER')) {
+        mode = 'HOTSPOT/MEMBER';
+    } else if (upperMode === 'PPPOE') {
+        mode = 'PPPOE';
+    } else if (upperMode === 'STATIC') {
+        mode = 'STATIC';
+    } else if (upperMode === 'DHCP') {
+        mode = 'DHCP';
+    } else if (upperMode === 'BRIDGE') {
+        mode = 'Bridge';
+    }
+    activationForm.access_mode = mode;
+
+    activationForm.pppoe_user = customer.ont?.pppoe_user || customer.ont?.hotspot_user || '';
+    activationForm.pppoe_password = customer.ont?.pppoe_password || customer.ont?.hotspot_password || '';
     activationForm.vlan_mode = customer.ont?.vlan_mode || '';
     activationForm.vlan_id = customer.ont?.vlan_id || '';
-    activationForm.access_mode = customer.ont?.access_mode || 'PPPOE';
     activationForm.ip_login = customer.ont?.ip_login || '192.168.1.1';
     activationForm.login_user = customer.ont?.login_user || 'admin';
     activationForm.login_password = customer.ont?.login_password || 'admin';
@@ -1535,6 +1585,10 @@ function openActivationModal(customer) {
 }
 
 function submitActivation() {
+    if (activationForm.access_mode === 'HOTSPOT/MEMBER') {
+        activationForm.hotspot_user = activationForm.pppoe_user;
+        activationForm.hotspot_password = activationForm.pppoe_password;
+    }
     activationForm.post(`/customers/${activeCustomer.value.id}/activate`, {
         preserveScroll: true,
         onSuccess: () => {
