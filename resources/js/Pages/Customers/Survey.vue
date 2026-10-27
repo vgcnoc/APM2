@@ -135,15 +135,19 @@
                     <span v-else class="text-gray-600 text-xs">-</span>
                 </td>
                 <td>
-                    <div v-if="row.surveys?.length">
-                        <span class="text-xs text-gray-600">{{ row.surveys[0].surveyor?.name || '-' }}</span>
-                        <p class="text-[10px] text-gray-500">Selesai</p>
+                    <div v-if="row.technician_schedules && row.technician_schedules.length > 0">
+                        <span class="text-xs font-semibold" :class="row.surveys?.length ? 'text-gray-700' : 'text-blue-600'">
+                            {{ row.technician_schedules.map(s => s.technician?.name).filter(Boolean).join(', ') || (row.surveys?.[0]?.surveyor?.name || '-') }}
+                        </span>
+                        <p class="text-[10px]" :class="row.surveys?.length ? 'text-emerald-600 font-medium' : 'text-blue-500/70'">
+                            {{ row.surveys?.length ? 'Selesai Survey' : `${row.technician_schedules[0].scheduled_date || ''} ${row.technician_schedules[0].scheduled_time || ''}` }}
+                        </p>
                     </div>
-                    <div v-else-if="row.technician_schedules?.length">
-                        <span class="text-xs text-blue-500 font-semibold">{{ row.technician_schedules.map(s => s.technician?.name).filter(Boolean).join(', ') || '-' }}</span>
-                        <p class="text-[10px] text-blue-500/70">{{ row.technician_schedules[0].scheduled_date }} {{ row.technician_schedules[0].scheduled_time }}</p>
+                    <div v-else-if="row.surveys && row.surveys.length > 0">
+                        <span class="text-xs text-gray-700 font-medium">{{ row.surveys[0].surveyor?.name || '-' }}</span>
+                        <p class="text-[10px] text-emerald-600 font-medium">Selesai Survey</p>
                     </div>
-                    <span v-else class="text-gray-600 text-xs">Belum ada jadwal</span>
+                    <span v-else class="text-gray-400 text-xs italic">Belum ada jadwal</span>
                 </td>
             </template>
 

@@ -3396,13 +3396,24 @@ class CustomerController extends Controller
      */
     public function updateSurveySchedule(Request $request, Customer $customer): RedirectResponse
     {
+        $techIds = $request->input('technician_ids', []);
+        if (empty($techIds) && $request->filled('technician_id')) {
+            $techIds = [$request->input('technician_id')];
+        }
+
         $validated = $request->validate([
-            'technician_id' => 'required|exists:users,id',
+            'technician_ids' => 'nullable|array',
+            'technician_ids.*' => 'exists:users,id',
+            'technician_id' => 'nullable|exists:users,id',
             'scheduled_date' => 'required|date',
             'scheduled_time' => 'nullable|string',
             'status' => 'required|in:scheduled,on_the_way,working,done,cancelled',
             'notes' => 'nullable|string',
         ]);
+
+        if (empty($techIds) && !empty($validated['technician_id'])) {
+            $techIds = [$validated['technician_id']];
+        }
 
         // Normalisasi format jam HH:mm jika dari input time HTML
         if (!empty($validated['scheduled_time']) && preg_match('/^\d{2}:\d{2}:\d{2}$/', $validated['scheduled_time'])) {
@@ -3415,16 +3426,18 @@ class CustomerController extends Controller
             ->where('status', 'scheduled')
             ->delete();
 
-        \App\Models\TechnicianSchedule::create([
-            'customer_id' => $customer->id,
-            'technician_id' => $validated['technician_id'],
-            'type' => 'survey',
-            'status' => $validated['status'],
-            'scheduled_date' => $validated['scheduled_date'],
-            'scheduled_time' => $validated['scheduled_time'] ?: null,
-            'notes' => $validated['notes'] ?: 'Jadwal survey',
-            'area_id' => $customer->area_id,
-        ]);
+        foreach ($techIds as $tId) {
+            \App\Models\TechnicianSchedule::create([
+                'customer_id' => $customer->id,
+                'technician_id' => $tId,
+                'type' => 'survey',
+                'status' => $validated['status'],
+                'scheduled_date' => $validated['scheduled_date'],
+                'scheduled_time' => $validated['scheduled_time'] ?: null,
+                'notes' => $validated['notes'] ?: 'Jadwal survey',
+                'area_id' => $customer->area_id,
+            ]);
+        }
 
         \App\Models\AuditLog::createLog('Edit Jadwal Survey', $customer, $customer->status, $customer->status, 'Memperbarui jadwal survey teknisi');
 
