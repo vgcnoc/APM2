@@ -1345,33 +1345,68 @@ class DashboardController extends Controller
         $outageDetected = false;
         $outageSummary = '';
 
-        // Kelompokkan pelanggan PPPoE yang DOWN berdasarkan ODP
-        $downPPPoE = array_filter($pppoeItems, fn($item) => $item['status'] === 'down');
-        $odpGroups = [];
-        foreach ($downPPPoE as $item) {
-            $odpKey = $item['odp_name'] ?: 'ODP Default';
-            if ($odpKey !== 'Belum Ada ODP') {
-                $odpGroups[$odpKey][] = $item['name'] . ' (' . $item['customer_code'] . ')';
-            }
-        }
+        // Hindari false alarm jika seluruh sistem / RADIUS belum memiliki sesi aktif sama sekali
+        $isGlobalOutageOrNoRadius = ($pppoeTotal > 20 && $pppoeOnlineCount === 0);
 
-        foreach ($odpGroups as $odpName => $custNames) {
-            if (count($custNames) >= 2) {
-                $outageDetected = true;
-                $downClusters[] = [
-                    'target_type'    => 'ODP',
-                    'target_name'    => $odpName,
-                    'affected_count' => count($custNames),
-                    'customers'      => $custNames,
-                    'message'        => "Potensi putus jalur kabel dropcore/distribusi atau listrik mati di {$odpName}.",
-                ];
-            }
-        }
+        if (!$isGlobalOutageOrNoRadius) {
+            $now = Carbon::now();
+            // Hanya evaluasi pelanggan yang terputus baru-baru ini (maksimal 2 jam terakhir) dengan ODP valid
+            $recentDownPPPoE = array_filter($pppoeItems, function ($item) use ($now) {
+                if ($item['status'] !== 'down') return false;
+                $odp = $item['odp_name'] ?? '';
+                if (empty($odp) || $odp === 'Belum Ada ODP' || $odp === 'ODP Default') return false;
 
-        if ($outageDetected) {
-            $totalAffected = array_sum(array_column($downClusters, 'affected_count'));
-            $odpListStr = implode(', ', array_column($downClusters, 'target_name'));
-            $outageSummary = "⚠️ Terdeteksi {$totalAffected} pelanggan offline bersamaan pada ODP: {$odpListStr}. Segera periksa jalur distribusi.";
+                // Pastikan disconnect baru terjadi (dalam 2 jam terakhir)
+                if (!empty($item['exact_timestamp'])) {
+                    try {
+                        $diffMinutes = $now->diffInMinutes(Carbon::parse($item['exact_timestamp']));
+                        return $diffMinutes <= 120; // 2 jam terakhir
+                    } catch (\Throwable $e) {
+                        return false;
+                    }
+                }
+                return false;
+            });
+
+            // Kelompokkan pelanggan DOWN berdasarkan ODP
+            $odpGroups = [];
+            foreach ($recentDownPPPoE as $item) {
+                $odpKey = $item['odp_name'];
+                $odpGroups[$odpKey][] = $item;
+            }
+
+            foreach ($odpGroups as $odpName => $itemsInOdp) {
+                // Periksa apakah ada minimal 2 pelanggan yang terputus bersamaan dalam selisih <= 30 menit
+                if (count($itemsInOdp) >= 2) {
+                    $timestamps = array_map(fn($it) => Carbon::parse($it['exact_timestamp'])->timestamp, $itemsInOdp);
+                    sort($timestamps);
+                    $hasSimultaneous = false;
+                    for ($i = 0; $i < count($timestamps) - 1; $i++) {
+                        if (($timestamps[$i + 1] - $timestamps[$i]) <= 1800) { // 30 menit
+                            $hasSimultaneous = true;
+                            break;
+                        }
+                    }
+
+                    if ($hasSimultaneous) {
+                        $custNames = array_map(fn($it) => $it['name'] . ' (' . $it['customer_code'] . ')', $itemsInOdp);
+                        $outageDetected = true;
+                        $downClusters[] = [
+                            'target_type'    => 'ODP',
+                            'target_name'    => $odpName,
+                            'affected_count' => count($custNames),
+                            'customers'      => $custNames,
+                            'message'        => "Potensi putus jalur kabel dropcore/distribusi atau listrik padam di {$odpName}.",
+                        ];
+                    }
+                }
+            }
+
+            if ($outageDetected) {
+                $totalAffected = array_sum(array_column($downClusters, 'affected_count'));
+                $odpListStr = implode(', ', array_column($downClusters, 'target_name'));
+                $outageSummary = "⚠️ Terdeteksi {$totalAffected} pelanggan offline bersamaan pada ODP: {$odpListStr}. Segera periksa jalur distribusi.";
+            }
         }
 
         // ── 7. Feed Aktivitas Koneksi UP & DOWN Terkini ──────────────────────────────

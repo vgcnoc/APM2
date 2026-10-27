@@ -10,7 +10,7 @@
             leave-to-class="transform -translate-y-4 opacity-0"
         >
             <div
-                v-if="stats.smart_outage?.detected"
+                v-if="stats.smart_outage?.detected && !isOutageDismissed"
                 class="mb-6 rounded-2xl bg-gradient-to-r from-rose-500 via-red-600 to-amber-600 p-0.5 shadow-lg shadow-rose-500/20"
             >
                 <div class="rounded-[14px] bg-white dark:bg-slate-900 p-4 md:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -36,17 +36,25 @@
                         <button
                             @click="activeModal = 'outage'"
                             type="button"
-                            class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-rose-500/30 active:scale-95"
+                            class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-rose-500/30 active:scale-95 cursor-pointer"
                         >
                             <span>🔍 Investigasi ODP</span>
                         </button>
                         <button
                             @click="copyOutageReport"
                             type="button"
-                            class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+                            class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
                             title="Salin Rincian Gangguan"
                         >
                             <span>📋 Salin</span>
+                        </button>
+                        <button
+                            @click="isOutageDismissed = true"
+                            type="button"
+                            class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
+                            title="Tutup Notifikasi"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                     </div>
                 </div>
@@ -953,11 +961,16 @@
                     </div>
                 </div>
 
-                <div class="p-4 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
-                    <button @click="copyOutageReport" type="button" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200">
-                        📋 Salin Teks Laporan
-                    </button>
-                    <button @click="activeModal = null" type="button" class="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-xs font-bold">
+                <div class="p-4 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center gap-2">
+                    <div class="flex items-center gap-2">
+                        <button @click="copyOutageReport" type="button" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 transition cursor-pointer">
+                            📋 Salin Teks
+                        </button>
+                        <Link :href="route('network-data.index')" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer">
+                            <span>🗺️ Buka Data Jaringan</span>
+                        </Link>
+                    </div>
+                    <button @click="activeModal = null" type="button" class="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-xs font-bold cursor-pointer">
                         Tutup
                     </button>
                 </div>
@@ -1204,7 +1217,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { router, Link } from '@inertiajs/vue3';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import AppLayout from '@/Layouts/AppLayout.vue';
@@ -1268,6 +1281,7 @@ const isRefreshing = ref(false);
 const realtimeWidgetRef = ref(null);
 const lastUpdated = ref(props.realtimeStats?.last_updated || new Date().toLocaleTimeString('id-ID'));
 const activeModal = ref(null);
+const isOutageDismissed = ref(false);
 const expiredSearch = ref('');
 const deletingVoucherId = ref(null);
 const isBulkDeleting = ref(false);
