@@ -3523,25 +3523,9 @@ class DataMigrationService
     {
         $ontDeviceName = self::cleanOntName($brand, $model);
 
-        // Cari berdasarkan nama persis
-        $mat = Material::where('name', $ontDeviceName)->first();
-
-        if (!$mat) {
-            $cleanBrand = trim((string)$brand);
-            if (!empty($cleanBrand) && !in_array(strtoupper($cleanBrand), ['XXX', '-', '?', 'NONE', 'UNKNOWN'])) {
-                $mat = Material::where(function($q) use ($cleanBrand, $ontDeviceName) {
-                    $q->where('name', 'like', "%{$ontDeviceName}%")
-                      ->orWhere(function($sq) use ($cleanBrand) {
-                          $sq->where('category', 'like', '%ont%')
-                             ->where('name', 'like', "%{$cleanBrand}%");
-                      });
-                })->first();
-            }
-        }
-
-        if (!$mat) {
-            $mat = Material::create([
-                'name' => $ontDeviceName,
+        return Material::firstOrCreate(
+            ['name' => $ontDeviceName],
+            [
                 'category' => 'ONT',
                 'unit' => 'unit',
                 'stock' => 0,
@@ -3552,10 +3536,8 @@ class DataMigrationService
                 'requires_mac' => true,
                 'is_active' => true,
                 'description' => "Perangkat Modem ONT {$ontDeviceName} dari hasil migrasi sistem",
-            ]);
-        }
-
-        return $mat;
+            ]
+        );
     }
 
     /**
@@ -3706,10 +3688,12 @@ class DataMigrationService
         $ontMaterialResults = [];
         $ontAreaResults = [];
         $touchedMaterialIds = [];
+        $ontMaterialMap = [];
 
         // 1. Sinkronisasi setiap ONT ke Material, CustomerInstalledMaterial, dan MaterialTransaction (OUT)
         foreach ($allOnts as $ont) {
             $ontMat = self::resolveOrCreateOntMaterial($ont->brand, $ont->model);
+            $ontMaterialMap[$ont->id] = $ontMat;
             $touchedMaterialIds[$ontMat->id] = true;
             $areaId = $ont->area_id ?: ($ont->customer?->area_id ?: 1);
 
@@ -3809,17 +3793,15 @@ class DataMigrationService
                 ]
             );
 
-            $groupedByMat = $areaOnts->groupBy(function($ont) {
-                return self::cleanOntName($ont->brand, $ont->model);
+            $groupedByMat = $areaOnts->groupBy(function($ont) use ($ontMaterialMap) {
+                return $ontMaterialMap[$ont->id]->id;
             });
 
             $areaTotalCost = 0;
             $areaTotalUnits = 0;
 
-            foreach ($groupedByMat as $cleanName => $matOnts) {
-                $mat = Material::where('name', $cleanName)->first();
-                if (!$mat) continue;
-
+            foreach ($groupedByMat as $matId => $matOnts) {
+                $mat = $ontMaterialMap[$matOnts->first()->id];
                 $count = $matOnts->count();
                 $price = (float)($mat->price_per_unit ?: 150000);
                 $totalPrice = $price * $count;
