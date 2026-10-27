@@ -1,5 +1,5 @@
 <template>
-    <AppLayout title="Pelanggan Berbayar" subtitle="Manajemen pelanggan internet reguler, pemantauan tagihan & status pembayaran realtime">
+    <AppLayout title="Pelanggan Berbayar" subtitle="Manajemen pelanggan internet reguler, pemantauan tagihan & status layanan realtime">
         <div class="max-w-7xl mx-auto space-y-6 pb-12 font-sans">
             
             <!-- Alert Flash Messages -->
@@ -26,7 +26,7 @@
                         </span>
                     </h2>
                     <p class="text-xs sm:text-sm text-blue-100 max-w-2xl leading-relaxed">
-                        Pusat kendali pelanggan internet reguler berbayar dengan integrasi status penagihan invoice, audit tunggakan, pemantauan sesi FreeRADIUS, dan aksi pembayaran instan.
+                        Pusat kendali pelanggan internet reguler berbayar dengan integrasi status penagihan invoice, audit tunggakan, dan pemantauan sesi FreeRADIUS.
                     </p>
                 </div>
                 <div class="relative z-10 flex flex-wrap items-center gap-2.5 shrink-0">
@@ -413,7 +413,7 @@
                                 <th class="px-5 py-3.5 text-left">Sesi Jaringan</th>
                                 <th class="px-5 py-3.5 text-left">Status Tagihan (Periode)</th>
                                 <th class="px-5 py-3.5 text-left">Total Tagihan / Tunggakan</th>
-                                <th class="px-5 py-3.5 text-right">Aksi Penagihan</th>
+                                <th class="px-5 py-3.5 text-right">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
@@ -588,19 +588,9 @@
                                     </div>
                                 </td>
 
-                                <!-- 7. Aksi Penagihan Lengkap & Cerdas -->
+                                <!-- 7. Aksi Layanan & Profil -->
                                 <td class="px-5 py-4 whitespace-nowrap text-right">
                                     <div class="flex items-center justify-end gap-1.5">
-                                        <!-- Tombol Bayar Cepat (Jika belum lunas) -->
-                                        <button 
-                                            v-if="customer.current_invoice && customer.current_invoice.status !== 'paid'"
-                                            @click="openPaymentModal(customer)" 
-                                            class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-2xs flex items-center gap-1 transition-all hover:scale-105 active:scale-95 cursor-pointer"
-                                            title="Bayar / Lunasi Tagihan Cepat"
-                                        >
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                                            <span>Bayar</span>
-                                        </button>
 
                                         <!-- Tombol WhatsApp Pengingat Tagihan (Jika belum bayar / overdue) -->
                                         <a 
@@ -703,151 +693,12 @@
 
         </div>
 
-        <!-- ========================================================================= -->
-        <!-- MODAL BAYAR CEPAT (QUICK PAYMENT MODAL)                                   -->
-        <!-- ========================================================================= -->
-        <Teleport to="body">
-            <div 
-                v-if="showPayModal && payingCustomer" 
-                class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-xs animate-fade-in"
-            >
-                <div 
-                    class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden transform transition-all animate-scale-up"
-                    @click.stop
-                >
-                    <!-- Header Modal Bayar -->
-                    <div class="flex justify-between items-center pb-4 border-b border-gray-100 dark:border-slate-800">
-                        <div class="flex items-center gap-3">
-                            <div class="p-2.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 rounded-2xl border border-emerald-200 dark:border-emerald-800 shadow-2xs">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                            </div>
-                            <div>
-                                <h3 class="text-base font-bold text-gray-900 dark:text-white">Catat Pembayaran Tagihan</h3>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">Pelanggan: <span class="font-bold text-gray-900 dark:text-white">{{ payingCustomer.name }}</span> ({{ payingCustomer.customer_code }})</p>
-                            </div>
-                        </div>
-                        <button 
-                            type="button" 
-                            @click="closePaymentModal" 
-                            class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
-                        >
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                        </button>
-                    </div>
-
-                    <!-- Form Pembayaran Cepat -->
-                    <form @submit.prevent="submitPayment" class="mt-5 space-y-4">
-                        
-                        <!-- Ringkasan Invoice -->
-                        <div class="bg-gray-50 dark:bg-slate-800/70 rounded-2xl p-4 border border-gray-200 dark:border-slate-700 flex flex-col gap-2">
-                            <div class="flex items-center justify-between text-xs">
-                                <span class="text-gray-500 dark:text-gray-400 font-medium">Nomor Invoice:</span>
-                                <span class="font-mono font-bold text-blue-700 dark:text-blue-400">{{ payingCustomer.current_invoice?.invoice_number }}</span>
-                            </div>
-                            <div class="flex items-center justify-between text-xs">
-                                <span class="text-gray-500 dark:text-gray-400 font-medium">Paket Layanan:</span>
-                                <span class="font-bold text-gray-800 dark:text-gray-200">{{ payingCustomer.package?.name }} ({{ formatRupiah(payingCustomer.package?.price || 0) }})</span>
-                            </div>
-                            <div class="flex items-center justify-between text-xs border-t border-gray-200/80 dark:border-slate-700 pt-2">
-                                <span class="text-gray-700 dark:text-gray-300 font-bold">Total Sisa Tagihan:</span>
-                                <span class="text-base font-black text-rose-700 dark:text-rose-400 font-mono">
-                                    {{ formatRupiah(payingCustomer.current_invoice?.remaining || payingCustomer.current_invoice?.amount || 0) }}
-                                </span>
-                            </div>
-                        </div>
-
-                        <!-- Nominal Pembayaran -->
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
-                                Jumlah Pembayaran (Rp) <span class="text-red-500">*</span>
-                            </label>
-                            <input 
-                                v-model="payForm.amount" 
-                                type="number" 
-                                class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-xl text-base font-bold font-mono focus:ring-emerald-500 focus:border-emerald-500 shadow-2xs" 
-                                required
-                            >
-                        </div>
-
-                        <!-- Metode Pembayaran -->
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
-                                Metode Pembayaran <span class="text-red-500">*</span>
-                            </label>
-                            <select 
-                                v-model="payForm.method" 
-                                class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-xl text-xs sm:text-sm focus:ring-emerald-500 focus:border-emerald-500 shadow-2xs py-2" 
-                                required
-                            >
-                                <option value="cash">💵 Tunai / Cash (Petugas / Kasir)</option>
-                                <option value="transfer_bca">🏦 Transfer Bank BCA</option>
-                                <option value="transfer_mandiri">🏦 Transfer Bank Mandiri</option>
-                                <option value="transfer_bri">🏦 Transfer Bank BRI</option>
-                                <option value="qris">📱 QRIS / E-Wallet</option>
-                                <option value="collector">🚶 Kolektor Penagihan Lapangan</option>
-                            </select>
-                        </div>
-
-                        <!-- Tanggal Pembayaran -->
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
-                                Tanggal Pembayaran
-                            </label>
-                            <input 
-                                v-model="payForm.payment_date" 
-                                type="date" 
-                                class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-xl text-xs sm:text-sm focus:ring-emerald-500 focus:border-emerald-500 shadow-2xs py-2"
-                            >
-                        </div>
-
-                        <!-- Catatan Pembayaran -->
-                        <div>
-                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
-                                Catatan / Keterangan (Opsional)
-                            </label>
-                            <input 
-                                v-model="payForm.notes" 
-                                type="text" 
-                                placeholder="Contoh: Diterima lunas oleh admin kasir" 
-                                class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-xl text-xs sm:text-sm focus:ring-emerald-500 focus:border-emerald-500 shadow-2xs py-2"
-                            >
-                        </div>
-
-                        <!-- Auto Buka Isolir Info -->
-                        <div v-if="payingCustomer.is_suspended" class="bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-300 p-3 rounded-xl text-xs flex items-center gap-2">
-                            <span>🔓</span>
-                            <span>Pelanggan ini sedang terisolir. Pembayaran otomatis membuka isolir dan mengaktifkan kembali layanan internet di RADIUS!</span>
-                        </div>
-
-                        <!-- Tombol Batal & Simpan Pembayaran -->
-                        <div class="pt-3 border-t border-gray-100 dark:border-slate-800 flex items-center justify-end gap-2">
-                            <button 
-                                type="button" 
-                                @click="closePaymentModal" 
-                                class="px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-xl text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                            >
-                                Batal
-                            </button>
-                            <button 
-                                type="submit" 
-                                :disabled="payForm.processing"
-                                class="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer"
-                            >
-                                <svg v-if="payForm.processing" class="animate-spin -ml-1 mr-1 h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                <span>{{ payForm.processing ? 'Menyimpan...' : 'Simpan Pembayaran & Lunas' }}</span>
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </Teleport>
-
     </AppLayout>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue';
-import { useForm, router, Link } from '@inertiajs/vue3';
+import { router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Swal from 'sweetalert2';
 
@@ -1004,61 +855,7 @@ const getWhatsAppReceiptUrl = (customer) => {
     return `https://wa.me/${p}?text=${encodeURIComponent(text)}`;
 };
 
-// Modal Bayar Cepat (Quick Payment)
-const showPayModal = ref(false);
-const payingCustomer = ref(null);
 
-const payForm = useForm({
-    amount: 0,
-    method: 'cash',
-    internet_action: 'on',
-    payment_date: new Date().toISOString().split('T')[0],
-    notes: '',
-});
-
-const openPaymentModal = (customer) => {
-    if (!customer?.current_invoice) {
-        Swal.fire('Perhatian', 'Belum ada tagihan invoice aktif untuk pelanggan ini di periode terpilih.', 'info');
-        return;
-    }
-    payingCustomer.value = customer;
-    payForm.reset();
-    payForm.clearErrors();
-    const remaining = customer.current_invoice.remaining || customer.current_invoice.amount || 0;
-    payForm.amount = remaining;
-    payForm.method = 'cash';
-    payForm.internet_action = 'on';
-    payForm.payment_date = new Date().toISOString().split('T')[0];
-    payForm.notes = `Pembayaran tagihan periode ${props.currentPeriod?.label || ''}`;
-    showPayModal.value = true;
-};
-
-const closePaymentModal = () => {
-    showPayModal.value = false;
-    payingCustomer.value = null;
-};
-
-const submitPayment = () => {
-    if (!payingCustomer.value?.current_invoice) return;
-    const invId = payingCustomer.value.current_invoice.id;
-
-    payForm.post(route('invoices.pay', invId), {
-        preserveScroll: true,
-        onSuccess: () => {
-            closePaymentModal();
-            Swal.fire({
-                icon: 'success',
-                title: 'Pembayaran Berhasil!',
-                text: 'Tagihan pelanggan berhasil dicatat dan status telah diperbarui.',
-                timer: 2000,
-                showConfirmButton: false
-            });
-        },
-        onError: () => {
-            Swal.fire('Gagal', 'Terjadi kesalahan saat memproses pembayaran.', 'error');
-        }
-    });
-};
 
 // Isolir / Buka Isolir
 const isolirProcessing = ref(null);
