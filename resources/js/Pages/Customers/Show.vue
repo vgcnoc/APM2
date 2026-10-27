@@ -2876,7 +2876,13 @@
                             </h4>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">PPPoE / Member Username</label>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">PPPoE / Member Username</label>
+                                        <button type="button" @click="generateShowPppoe" class="text-[11px] text-purple-600 hover:text-purple-800 font-semibold flex items-center gap-1 cursor-pointer">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                            Generate
+                                        </button>
+                                    </div>
                                     <input v-model="editActivationForm.pppoe_user" type="text" placeholder="user@isp" class="w-full text-sm font-medium border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500" />
                                 </div>
                                 <div>
@@ -5002,5 +5008,15 @@ function submitEditActivation() {
             showEditActivationModal.value = false;
         }
     });
+}
+
+function generateShowPppoe() {
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let user = '';
+    let pass = '';
+    for (let i = 0; i < 6; i++) user += chars.charAt(Math.floor(Math.random() * chars.length));
+    for (let i = 0; i < 8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    editActivationForm.pppoe_user = 'user_' + user;
+    editActivationForm.pppoe_password = pass;
 }
 </script>

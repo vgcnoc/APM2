@@ -737,115 +737,291 @@
         <Teleport to="body">
             <div v-if="showEditModal && editCustomer" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
                 <div class="bg-white border border-gray-200 rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-hidden animate-fade-in-up">
-                    <div class="p-5 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-slate-50 to-white">
-                        <div class="flex items-center gap-2.5">
-                            <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                            </div>
+                    <div class="p-5 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-purple-50 to-purple-100/50">
+                        <div class="flex items-center gap-3">
+                            <span class="text-2xl">⚡</span>
                             <div>
-                                <h3 class="text-base font-bold text-slate-800">Edit Konfigurasi Aktivasi</h3>
-                                <p class="text-xs text-slate-500">{{ editCustomer.name }} ({{ editCustomer.customer_code }})</p>
+                                <h3 class="text-lg font-bold text-purple-900 leading-tight">Edit Konfigurasi Aktivasi</h3>
+                                <p class="text-xs text-purple-700 font-medium">{{ editCustomer.name }} ({{ editCustomer.customer_code }})</p>
                             </div>
                         </div>
-                        <button @click="showEditModal = false" class="text-gray-400 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 p-1.5 rounded-lg transition-colors">
+                        <button @click="showEditModal = false" class="text-gray-500 hover:text-gray-900">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                     </div>
 
                     <form @submit.prevent="submitEditActivation">
-                        <div class="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
-                            <!-- Tanggal Aktivasi -->
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Tanggal Aktivasi</label>
-                                <input v-model="editForm.activation_date" type="date" class="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm" required />
+                        <div class="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+                            <!-- Detail Data ONT & Pelanggan -->
+                            <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Detail Data ONT & Pelanggan</h4>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-4 text-sm">
+                                    <div>
+                                        <span class="text-gray-500 block text-[10px] uppercase font-semibold">Nama Pelanggan</span>
+                                        <span class="font-bold text-gray-900">{{ editCustomer.name }}</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-500 block text-[10px] uppercase font-semibold">Area/Wilayah</span>
+                                        <span class="font-bold text-gray-900">{{ editCustomer.area || '-' }}</span>
+                                    </div>
+                                    <div class="col-span-2 sm:col-span-1">
+                                        <span class="text-gray-500 block text-[10px] uppercase font-semibold">Serial Number ONT</span>
+                                        <span class="font-bold text-gray-900 font-mono">{{ editCustomer.ont?.serial_number || editCustomer.ont?.sn || '-' }}</span>
+                                    </div>
+                                    <div v-if="editCustomer.ont?.odp">
+                                        <span class="text-gray-500 block text-[10px] uppercase font-semibold">ODP & Port</span>
+                                        <span class="font-bold text-gray-900">{{ editCustomer.ont?.odp?.name || '-' }} (Port {{ editCustomer.ont?.port_number || '-' }})</span>
+                                    </div>
+                                </div>
                             </div>
 
-                            <!-- Paket Internet -->
-                            <div>
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Paket Berlangganan</label>
-                                <select v-model="editForm.package_id" class="w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm">
-                                    <option value="">-- Tetap Pakai Paket Saat Ini --</option>
-                                    <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">
-                                        {{ pkg.name }} ({{ formatRupiah(pkg.price) }})
-                                    </option>
-                                </select>
+                            <!-- Status Layanan Pelanggan (3 Radio Cards) -->
+                            <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-2">
+                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center justify-between">
+                                    <span class="flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        Status Layanan Pelanggan <span class="text-red-500">*</span>
+                                    </span>
+                                </label>
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                                    <label :class="['flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all', editForm.service_status === 'berbayar' ? 'border-purple-600 bg-purple-50/50 ring-1 ring-purple-600' : 'border-gray-200 bg-white hover:border-gray-300']">
+                                        <div class="flex items-center gap-2">
+                                            <div :class="['w-4 h-4 rounded-full border flex items-center justify-center shrink-0', editForm.service_status === 'berbayar' ? 'border-purple-600 bg-purple-600' : 'border-gray-300']">
+                                                <div v-if="editForm.service_status === 'berbayar'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                            </div>
+                                            <div>
+                                                <span class="text-xs font-bold text-gray-900 block">Berbayar</span>
+                                                <span class="text-[10px] text-gray-500">Tarif bulanan</span>
+                                            </div>
+                                        </div>
+                                        <input type="radio" value="berbayar" v-model="editForm.service_status" class="sr-only">
+                                    </label>
+                                    
+                                    <label :class="['flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all', editForm.service_status === 'gratis' ? 'border-purple-600 bg-purple-50/50 ring-1 ring-purple-600' : 'border-gray-200 bg-white hover:border-gray-300']">
+                                        <div class="flex items-center gap-2">
+                                            <div :class="['w-4 h-4 rounded-full border flex items-center justify-center shrink-0', editForm.service_status === 'gratis' ? 'border-purple-600 bg-purple-600' : 'border-gray-300']">
+                                                <div v-if="editForm.service_status === 'gratis'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                            </div>
+                                            <div>
+                                                <span class="text-xs font-bold text-gray-900 block">Gratis (Rp 0)</span>
+                                                <span class="text-[10px] text-gray-500">Non-invoice</span>
+                                            </div>
+                                        </div>
+                                        <input type="radio" value="gratis" v-model="editForm.service_status" class="sr-only">
+                                    </label>
+
+                                    <label :class="['flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all', editForm.service_status === 'free_home' ? 'border-amber-600 bg-amber-50/60 ring-1 ring-amber-600' : 'border-gray-200 bg-white hover:border-gray-300']">
+                                        <div class="flex items-center gap-2">
+                                            <div :class="['w-4 h-4 rounded-full border flex items-center justify-center shrink-0', editForm.service_status === 'free_home' ? 'border-amber-600 bg-amber-600' : 'border-gray-300']">
+                                                <div v-if="editForm.service_status === 'free_home'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                            </div>
+                                            <div>
+                                                <span class="text-xs font-bold text-gray-900 block">Free Home</span>
+                                                <span class="text-[10px] text-amber-700 font-semibold">Voucher ONT</span>
+                                            </div>
+                                        </div>
+                                        <input type="radio" value="free_home" v-model="editForm.service_status" class="sr-only">
+                                    </label>
+                                </div>
                             </div>
 
-                            <div class="grid grid-cols-2 gap-3">
-                                <!-- Status Layanan -->
+                            <!-- Siklus Penagihan Invoice (Ditiadakan jika Free Home) -->
+                            <div v-if="editForm.service_status !== 'free_home'" class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                                        Siklus Penagihan Invoice <span class="text-red-500">*</span>
+                                    </label>
+                                    <span class="text-[11px] text-purple-700 bg-purple-100/70 px-2 py-0.5 rounded-md font-semibold">
+                                        Default: {{ formatBillingName(defaultBillingType) }}
+                                    </span>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <label :class="['relative flex flex-col p-3 rounded-xl border cursor-pointer transition-all', editForm.billing_type === 'prabayar' ? 'border-purple-600 bg-purple-50/50 ring-1 ring-purple-600' : 'border-gray-200 bg-white hover:border-gray-300']">
+                                        <input type="radio" value="prabayar" v-model="editForm.billing_type" class="sr-only">
+                                        <div class="flex items-center justify-between mb-1">
+                                            <span class="text-xs font-bold" :class="editForm.billing_type === 'prabayar' ? 'text-purple-900' : 'text-gray-900'">Prabayar</span>
+                                            <div :class="['w-4 h-4 rounded-full border flex items-center justify-center', editForm.billing_type === 'prabayar' ? 'border-purple-600 bg-purple-600' : 'border-gray-300']">
+                                                <div v-if="editForm.billing_type === 'prabayar'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                            </div>
+                                        </div>
+                                        <span class="text-[10px] text-gray-500">Bayar dulu baru pakai (Full 1 bulan di muka)</span>
+                                    </label>
+                                    
+                                    <label :class="['relative flex flex-col p-3 rounded-xl border cursor-pointer transition-all', editForm.billing_type === 'pascabayar' ? 'border-purple-600 bg-purple-50/50 ring-1 ring-purple-600' : 'border-gray-200 bg-white hover:border-gray-300']">
+                                        <input type="radio" value="pascabayar" v-model="editForm.billing_type" class="sr-only">
+                                        <div class="flex items-center justify-between mb-1">
+                                            <span class="text-xs font-bold" :class="editForm.billing_type === 'pascabayar' ? 'text-purple-900' : 'text-gray-900'">Pasca Bayar</span>
+                                            <div :class="['w-4 h-4 rounded-full border flex items-center justify-center', editForm.billing_type === 'pascabayar' ? 'border-purple-600 bg-purple-600' : 'border-gray-300']">
+                                                <div v-if="editForm.billing_type === 'pascabayar'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                            </div>
+                                        </div>
+                                        <span class="text-[10px] text-gray-500">Pakai dulu baru bayar (Postpaid)</span>
+                                    </label>
+                                </div>
+
+                                <!-- Pilihan Siklus Tanggal Tagihan (Billing Cycle) -->
+                                <div class="space-y-1.5 pt-1">
+                                    <div class="flex items-center justify-between">
+                                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                            Siklus Tanggal Tagihan
+                                        </label>
+                                        <span class="text-[10px] text-purple-700 bg-purple-100/70 px-2 py-0.5 rounded-md font-semibold">
+                                            Default: {{ defaultBillingCycle === 'anniversary' ? 'Sesuai Tgl Aktivasi' : 'Kalender Serentak' }}
+                                        </span>
+                                    </div>
+                                    <select v-model="editForm.billing_cycle" class="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:ring-2 focus:ring-purple-500 shadow-sm">
+                                        <option value="default">Ikuti Default Sistem ({{ defaultBillingCycle === 'anniversary' ? 'Sesuai Tgl Aktivasi' : 'Kalender Serentak' }})</option>
+                                        <option value="anniversary">Sesuai Tanggal Aktivasi (Anniversary)</option>
+                                        <option value="calendar">Siklus Kalender (Tanggal Serentak)</option>
+                                        <option value="custom_date">Pilih Tanggal Khusus Sendiri</option>
+                                    </select>
+                                    <div v-if="editForm.billing_cycle === 'custom_date'" class="flex items-center gap-2 mt-2 p-2.5 bg-purple-50/50 border border-purple-200 rounded-xl">
+                                        <span class="text-xs text-purple-900 font-medium">Tanggal Tagihan Rutin:</span>
+                                        <input type="number" v-model="editForm.billing_day" min="1" max="28" class="w-20 px-2.5 py-1 text-xs border border-purple-300 rounded-lg focus:ring-purple-500 font-bold text-purple-800 bg-white" placeholder="1-28" />
+                                        <span class="text-xs text-purple-700">tiap bulan</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Banner Khusus Free Home Tanpa Tagihan -->
+                            <div v-if="editForm.service_status === 'free_home'" class="p-4 bg-gradient-to-r from-amber-50 via-orange-50 to-yellow-50 border border-amber-200 rounded-xl space-y-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xl">🏠</span>
+                                    <div>
+                                        <h4 class="text-xs font-bold text-amber-950 uppercase tracking-wider">Aktivasi Mode Free Home (Voucher Rumahan ONT)</h4>
+                                        <p class="text-[11px] text-amber-800">Pelanggan tidak dikenakan tagihan aktivasi dan tidak membentuk invoice.</p>
+                                    </div>
+                                </div>
+                                <p class="text-[11px] text-amber-900 leading-relaxed">
+                                    Pelanggan menggunakan ONT di rumah khusus untuk koneksi voucher hotspot. Sistem tidak akan membuat invoice tagihan atau piutang bulanan.
+                                </p>
+                            </div>
+
+                            <!-- Detail Paket & Tanggal Aktivasi -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Status Layanan</label>
-                                    <select v-model="editForm.service_status" class="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm">
-                                        <option value="berbayar">Berbayar</option>
-                                        <option value="gratis">Gratis (Rp 0)</option>
-                                        <option value="free_home">Free Home</option>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Aktivasi <span class="text-red-500">*</span></label>
+                                    <input v-model="editForm.activation_date" type="date" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" required />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Paket Berlangganan</label>
+                                    <select v-model="editForm.package_id" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all">
+                                        <option value="">-- Tetap Pakai Paket Saat Ini --</option>
+                                        <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">
+                                            {{ pkg.name }} ({{ formatRupiah(pkg.price) }})
+                                        </option>
                                     </select>
                                 </div>
+                            </div>
 
-                                <!-- Tipe Penagihan -->
+                            <!-- Banner Bypass PPPoE & Hotspot Radius untuk Free Home -->
+                            <div v-if="editForm.service_status === 'free_home'" class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                                <div class="flex items-center gap-2 text-slate-800">
+                                    <svg class="w-4 h-4 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <span class="text-xs font-bold text-slate-900 uppercase tracking-wider">PPPoE & Hotspot Radius Dilewati</span>
+                                </div>
+                                <p class="text-xs text-slate-600 leading-relaxed">
+                                    Karena pelanggan <strong>Free Home</strong> menggunakan voucher hotspot untuk akses internet melalui Wi-Fi ONT rumahan, <strong>akun PPPoE / secret Radius mikrotik tidak dibuat dan tidak disinkronisasi</strong>. ONT siap memancarkan sinyal Wi-Fi login voucher secara stabil.
+                                </p>
+                            </div>
+
+                            <!-- PPPoE / Member Username & Password (Hanya jika bukan Free Home) -->
+                            <template v-else>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <div class="flex items-center justify-between mb-1">
+                                            <label class="block text-sm font-medium text-gray-700">PPPoE/Member Username</label>
+                                            <button type="button" @click="generateEditPppoe" class="text-[11px] text-purple-600 hover:text-purple-800 font-semibold flex items-center gap-1 cursor-pointer">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                                Generate
+                                            </button>
+                                        </div>
+                                        <input v-model="editForm.pppoe_user" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" placeholder="user@isp" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">PPPoE/Member Password</label>
+                                        <input v-model="editForm.pppoe_password" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" placeholder="***" />
+                                    </div>
+                                </div>
+                            </template>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Tipe Penagihan</label>
-                                    <select v-model="editForm.billing_type" class="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm">
-                                        <option value="prabayar">Prabayar</option>
-                                        <option value="pascabayar">Pascabayar</option>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Mode Akses (Catatan)</label>
+                                    <select v-model="editForm.access_mode" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all">
+                                        <option value="PPPOE">PPPoE</option>
+                                        <option value="STATIC">Static IP</option>
+                                        <option value="DHCP">DHCP / Dynamic</option>
+                                        <option value="Bridge">Bridge</option>
+                                        <option value="Hotspot">Hotspot</option>
                                     </select>
                                 </div>
-                            </div>
-
-                            <!-- Siklus Tanggal Tagihan (Billing Cycle) -->
-                            <div class="space-y-1.5 bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
-                                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">Siklus Tanggal Tagihan</label>
-                                <select v-model="editForm.billing_cycle" class="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm">
-                                    <option value="default">Ikuti Default Sistem ({{ defaultBillingCycle === 'anniversary' ? 'Sesuai Tgl Aktivasi' : 'Kalender Serentak' }})</option>
-                                    <option value="anniversary">Sesuai Tanggal Aktivasi (Anniversary)</option>
-                                    <option value="calendar">Siklus Kalender (Tanggal Serentak)</option>
-                                    <option value="custom_date">Pilih Tanggal Khusus Sendiri</option>
-                                </select>
-                                <div v-if="editForm.billing_cycle === 'custom_date'" class="flex items-center gap-2 mt-2 pt-2 border-t border-slate-200">
-                                    <span class="text-xs text-slate-700 font-medium">Tanggal Tagihan Rutin:</span>
-                                    <input type="number" v-model="editForm.billing_day" min="1" max="28" class="w-20 px-2.5 py-1 text-xs border border-gray-300 rounded-lg focus:ring-blue-500 font-bold text-slate-800 bg-white" placeholder="1-28" />
-                                    <span class="text-xs text-slate-500">tiap bulan</span>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">VLAN Mode</label>
+                                    <select v-model="editForm.vlan_mode" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all">
+                                        <option value="">-- Pilih --</option>
+                                        <option value="Route">Route</option>
+                                        <option value="Bridge">Bridge</option>
+                                        <option value="VLAN">VLAN (Tagged)</option>
+                                        <option value="Untagged">Untagged</option>
+                                    </select>
+                                </div>
+                                
+                                <div v-if="editForm.vlan_mode === 'VLAN'" class="col-span-full">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">No VLAN ID</label>
+                                    <input v-model="editForm.vlan_id" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" placeholder="Misal: 100" />
                                 </div>
                             </div>
-
-                            <!-- Konfigurasi PPPoE & ONT -->
-                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
-                                <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                                    <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 004 11a7.978 7.978 0 001.077 3.993"/></svg>
-                                    Akun Jaringan & PPPoE
-                                </h4>
-                                <div class="grid grid-cols-2 gap-3">
+                            
+                            <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Akses Login ONT</h4>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">IP Login ONT</label>
+                                    <input v-model="editForm.ip_login" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" placeholder="192.168.1.1" />
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
-                                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">User PPPoE</label>
-                                        <input v-model="editForm.pppoe_user" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-blue-500 shadow-2xs" />
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Username ONT</label>
+                                        <input v-model="editForm.login_user" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" placeholder="admin" />
                                     </div>
                                     <div>
-                                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Password PPPoE</label>
-                                        <input v-model="editForm.pppoe_password" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs font-mono focus:ring-2 focus:ring-blue-500 shadow-2xs" />
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Password ONT</label>
+                                        <input v-model="editForm.login_password" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" placeholder="admin" />
                                     </div>
                                 </div>
-                                <div class="grid grid-cols-2 gap-3">
+                            </div>
+                            
+                            <!-- Hotspot Gratis (Ditiadakan jika Free Home) -->
+                            <div v-if="editForm.service_status !== 'free_home'" class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" v-model="editForm.free_hotspot" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500 w-4 h-4">
+                                    <span class="text-sm font-semibold text-gray-700">Berikan Gratis 1 User Hotspot</span>
+                                </label>
+
+                                <div v-if="editForm.free_hotspot" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
                                     <div>
-                                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">VLAN Layanan</label>
-                                        <input v-model="editForm.vlan_id" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 shadow-2xs" placeholder="Contoh: 100" />
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">User Hotspot</label>
+                                        <input v-model="editForm.hotspot_user" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" placeholder="user_hotspot" />
                                     </div>
                                     <div>
-                                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Mode Akses</label>
-                                        <select v-model="editForm.access_mode" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 shadow-2xs">
-                                            <option value="PPPOE">PPPoE</option>
-                                            <option value="STATIC">Static IP</option>
-                                            <option value="DHCP">DHCP</option>
-                                        </select>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Password Hotspot</label>
+                                        <input v-model="editForm.hotspot_password" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" placeholder="***" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">VLAN ID Hotspot</label>
+                                        <input v-model="editForm.hotspot_vlan_id" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" placeholder="Misal: 200" />
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="p-4 bg-slate-50 border-t border-gray-200 flex justify-end gap-2.5 rounded-b-2xl">
-                            <button type="button" @click="showEditModal = false" class="px-4 py-2 text-xs font-semibold text-slate-600 bg-white border border-gray-300 rounded-xl hover:bg-gray-100 transition-colors shadow-2xs cursor-pointer">Batal</button>
-                            <button type="submit" :disabled="editForm.processing" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer">
-                                <svg v-if="editForm.processing" class="animate-spin w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                <span>{{ editForm.processing ? 'Menyimpan...' : 'Simpan Perubahan' }}</span>
+                        <div class="p-5 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 rounded-b-2xl">
+                            <button type="button" @click="showEditModal = false" class="px-5 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm">Batal</button>
+                            <button type="submit" :disabled="editForm.processing" class="px-6 py-2.5 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-lg text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                                <svg v-if="editForm.processing" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                {{ editForm.processing ? 'Menyimpan...' : 'Simpan Perubahan' }}
                             </button>
                         </div>
                     </form>
@@ -1092,6 +1268,16 @@ function submitEditActivation() {
             showEditModal.value = false;
         }
     });
+}
+
+function generateEditPppoe() {
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let user = '';
+    let pass = '';
+    for (let i = 0; i < 6; i++) user += chars.charAt(Math.floor(Math.random() * chars.length));
+    for (let i = 0; i < 8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    editForm.pppoe_user = 'user_' + user;
+    editForm.pppoe_password = pass;
 }
 
 const defaultBillingType = computed(() => {
