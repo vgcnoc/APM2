@@ -117,11 +117,11 @@ class InfrastructureWorkOrderController extends Controller
     }
 
     /**
-     * Form Pembuatan Penugasan Baru (Smart Wizard).
+     * Form Pembuatan Penugasan Baru (Smart Wizard & Unified Flow).
      */
-    public function create(): Response
+    public function create(Request $request): Response
     {
-        if (!Auth::user()->can('infrastructure_work_orders_create') && !Auth::user()->hasRole('admin')) {
+        if (!Auth::user()->can('infrastructure_work_orders_create') && !Auth::user()->can('network_odc_create') && !Auth::user()->can('network_odp_create') && !Auth::user()->hasRole('admin')) {
             abort(403, 'Anda tidak memiliki hak akses untuk membuat penugasan pembangunan ODC/ODP.');
         }
 
@@ -145,6 +145,15 @@ class InfrastructureWorkOrderController extends Controller
         $odcQuery = Odc::with('olt')->where('status', 'active');
         DataScopeService::applyOdcScope($odcQuery, $user);
 
+        // Pre-fill parameter jika dibuka dari menu Data ODC, Data ODP, atau Monitoring Kapasitas
+        $initialData = [
+            'type' => $request->query('type') ?: ($request->query('device_type') === 'odc' ? 'odc_deployment' : 'odp_deployment'),
+            'area_id' => $request->query('area_id') ? (int) $request->query('area_id') : null,
+            'odc_id' => $request->query('odc_id') ? (int) $request->query('odc_id') : null,
+            'olt_id' => $request->query('olt_id') ? (int) $request->query('olt_id') : null,
+            'device_type' => $request->query('device_variant') ?: 'Normal',
+        ];
+
         return Inertia::render('Infrastructure/WorkOrders/Create', [
             'areas' => DataScopeService::getScopedAreas($user, 'infrastructure_work_orders'),
             'olts' => $oltQuery->get(['id', 'name', 'area_id', 'total_pon_ports', 'pon_vlans']),
@@ -152,6 +161,7 @@ class InfrastructureWorkOrderController extends Controller
             'technicians' => $this->getEligibleTechnicians(),
             'materials' => $materials,
             'materialTransactions' => $materialTransactions,
+            'initialData' => $initialData,
         ]);
     }
 
@@ -180,11 +190,11 @@ class InfrastructureWorkOrderController extends Controller
     }
 
     /**
-     * Simpan Work Order Baru.
+     * Simpan Work Order Baru / Langsung Aktifkan ke Data ODC & ODP.
      */
     public function store(Request $request)
     {
-        if (!Auth::user()->can('infrastructure_work_orders_create') && !Auth::user()->hasRole('admin')) {
+        if (!Auth::user()->can('infrastructure_work_orders_create') && !Auth::user()->can('network_odc_create') && !Auth::user()->can('network_odp_create') && !Auth::user()->hasRole('admin')) {
             abort(403, 'Anda tidak memiliki hak akses untuk membuat penugasan pembangunan ODC/ODP.');
         }
 
@@ -254,6 +264,14 @@ class InfrastructureWorkOrderController extends Controller
             $validated['materials'],
             Auth::user()
         );
+
+        // Jika user memilih aksi langsung aktifkan ke master data ODC / ODP & GIS
+        if ($request->boolean('direct_commission') || $request->input('action') === 'direct_commission') {
+            InfrastructureWorkOrderService::approveAndCommission($workOrder, Auth::user());
+            $targetRoute = ($workOrder->type === 'odc_deployment') ? 'odcs.index' : 'odps.index';
+            return redirect()->route($targetRoute, ['search' => $workOrder->target_name])
+                ->with('success', "Perangkat {$workOrder->target_name} berhasil dibangun dan langsung terdaftar aktif di Master Data & GIS!");
+        }
 
         return redirect()->route('infrastructure.work-orders.show', $workOrder->id)
             ->with('success', "Penugasan {$workOrder->wo_number} ({$workOrder->target_name}) berhasil diterbitkan!");

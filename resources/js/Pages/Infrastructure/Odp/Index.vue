@@ -30,6 +30,17 @@
                         <span>Hapus Semua</span>
                     </button>
 
+                    <!-- Tombol Rollout Pembangunan ODP Baru (Alur Terpadu) -->
+                    <Link 
+                        v-if="hasPermission('infrastructure_work_orders_create') || hasPermission('network_odp_create')"
+                        :href="route('infrastructure.work-orders.create', { type: 'odp_deployment' })"
+                        class="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-lg text-sm font-semibold shadow-sm flex items-center gap-2 transition-all shadow-amber-500/20"
+                        title="Buat Alur Penugasan / Pembangunan ODP Baru"
+                    >
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        <span>Pembangunan ODP</span>
+                    </Link>
+
                     <!-- Tombol Tambah ODP -->
                     <button 
                         v-if="hasPermission('network_odp_create')"

@@ -31,6 +31,17 @@
                         <span>Hapus Semua</span>
                     </button>
 
+                    <!-- Tombol Rollout Pembangunan ODC Baru (Alur Terpadu) -->
+                    <Link 
+                        v-if="hasPermission('infrastructure_work_orders_create') || hasPermission('network_odc_create')"
+                        :href="route('infrastructure.work-orders.create', { type: 'odc_deployment' })"
+                        class="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-lg text-sm font-semibold shadow-sm flex items-center gap-2 transition-all shadow-amber-500/20"
+                        title="Buat Alur Penugasan / Pembangunan ODC Baru"
+                    >
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        <span>Pembangunan ODC</span>
+                    </Link>
+
                     <!-- Tombol Tambah ODC -->
                     <button 
                         v-if="hasPermission('network_odc_create')"
@@ -454,6 +465,15 @@
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 text-sm text-right whitespace-nowrap">
+                                    <Link 
+                                        v-if="hasPermission('infrastructure_work_orders_create') || hasPermission('network_odp_create')"
+                                        :href="route('infrastructure.work-orders.create', { type: 'odp_deployment', odc_id: odc.id, area_id: odc.area_id })" 
+                                        class="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-900 font-semibold text-xs bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-md border border-emerald-200 mr-2 transition-colors"
+                                        title="Bangun ODP Baru di bawah ODC ini"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                        <span>Bangun ODP</span>
+                                    </Link>
                                     <Link :href="`/odcs/${odc.id}`" class="text-blue-600 hover:text-blue-900 font-medium mr-3">Detail</Link>
                                     <button v-if="hasPermission('network_odc_edit')" @click="openEditModal(odc)" class="text-indigo-600 hover:text-indigo-900 font-medium mr-3">Edit</button>
                                     <button v-if="hasPermission('network_odc_delete')" @click="openDeleteModal('single', odc)" class="text-red-600 hover:text-red-900 font-medium">Hapus</button>

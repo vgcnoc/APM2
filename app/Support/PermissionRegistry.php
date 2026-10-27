@@ -1287,6 +1287,8 @@ class PermissionRegistry
                 'menu_customers_booking', 'customers_booking_card_stats', 'customers_booking_filter_area', 'customers_booking_create', 'customers_booking_view', 'customers_booking_edit', 'customers_booking_print', 'customers_booking_request_survey', 'customers_booking_whatsapp', 'customers_booking_view_all',
                 'menu_customers_survey', 'customers_survey_card_stats', 'customers_survey_filter', 'customers_survey_assign', 'customers_survey_reschedule', 'customers_survey_cancel', 'customers_survey_view_all',
                 'menu_customers_installed', 'customers_installed_card_stats', 'customers_installed_filter', 'customers_installed_assign', 'customers_installed_whatsapp', 'customers_installed_audit', 'customers_installed_cancel', 'customers_installed_view_all',
+                'menu_network_odc', 'network_odc_card_stats', 'network_odc_filter', 'network_odc_create', 'network_odc_view_all',
+                'menu_network_odp', 'network_odp_card_stats', 'network_odp_filter', 'network_odp_create', 'network_odp_view_all',
                 'menu_infrastructure_work_orders', 'infra_wo_card_stats', 'infra_wo_filter', 'infrastructure_work_orders_create', 'infrastructure_work_orders_dispatch', 'infra_wo_btn_print_sj', 'infrastructure_work_orders_view_all',
                 'menu_cbp', 'menu_cbp_jadwal', 'cbp_card_stats', 'cbp_filter', 'cbp_btn_dispatch', 'cbp_btn_assign', 'cbp_view_all',
                 'menu_pgk', 'menu_pgk_jadwal', 'pgk_card_summary', 'pgk_tab_flow', 'pgk_filter', 'pgk_btn_assign', 'pgk_view_all',

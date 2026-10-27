@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, onMounted } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import axios from 'axios';
 
@@ -14,19 +14,25 @@ const props = defineProps({
         type: Array,
         default: () => []
     },
+    initialData: {
+        type: Object,
+        default: () => ({})
+    }
 });
 
+const viewMode = ref('unified'); // 'unified' (single continuous smart flow) | 'wizard' (step by step)
 const currentStep = ref(1);
 const isLoadingBOM = ref(false);
+const submitAction = ref('work_order'); // 'work_order' | 'direct_commission'
 
 const form = useForm({
-    type: 'odp_deployment', // 'odc_deployment' | 'odp_deployment'
-    device_type: 'Normal', // 'Normal', 'Split 2', 'Closure', 'Pedestal' | 'Normal', 'Split', 'Pedestal', 'Pole Mount'
+    type: props.initialData?.type || 'odp_deployment',
+    device_type: props.initialData?.device_type || 'Normal',
     target_name: '',
-    area_id: props.areas[0]?.id || '',
-    olt_id: '',
-    pon_port: 1,
-    odc_id: '',
+    area_id: props.initialData?.area_id || props.areas[0]?.id || '',
+    olt_id: props.initialData?.olt_id || '',
+    pon_port: props.initialData?.pon_port || 1,
+    odc_id: props.initialData?.odc_id || '',
     odc_splitter_port: 1,
     capacity: 8,
     core_capacity: 8,
@@ -43,6 +49,7 @@ const form = useForm({
     cable_length_estimate: 150,
     notes: '',
     materials: [],
+    direct_commission: false,
     split_units: [
         {
             name: '',
@@ -666,9 +673,32 @@ const fetchAutoBOM = async () => {
 };
 
 watch([() => form.type, () => form.device_type, () => form.capacity, () => form.core_capacity, () => form.cable_length_estimate, () => form.area_id], () => {
-    if (currentStep.value >= 2) {
-        fetchAutoBOM();
+    fetchAutoBOM();
+});
+
+const scrollToSection = (id) => {
+    const el = document.getElementById(id);
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+};
+
+onMounted(() => {
+    if (props.initialData?.odc_id) {
+        form.odc_id = props.initialData.odc_id;
+        const matchedOdc = props.odcs?.find(o => o.id == props.initialData.odc_id);
+        if (matchedOdc && matchedOdc.area_id) {
+            form.area_id = matchedOdc.area_id;
+        }
+    }
+    if (props.initialData?.olt_id) {
+        form.olt_id = props.initialData.olt_id;
+        const matchedOlt = props.olts?.find(o => o.id == props.initialData.olt_id);
+        if (matchedOlt && matchedOlt.area_id) {
+            form.area_id = matchedOlt.area_id;
+        }
+    }
+    fetchAutoBOM();
 });
 
 const syncSplitDataIfApplicable = () => {
@@ -780,49 +810,83 @@ const removeMaterialRow = (index) => {
 const submitErrorMessage = ref('');
 const isSubmitting = ref(false);
 
-const submit = () => {
+const submit = (action = 'work_order') => {
     syncSplitDataIfApplicable();
     submitErrorMessage.value = '';
+    submitAction.value = (typeof action === 'string' && action === 'direct_commission') ? 'direct_commission' : 'work_order';
+    form.direct_commission = (submitAction.value === 'direct_commission');
 
     // 1. Validasi / Auto-generate Nama Target
     if (!form.target_name || !form.target_name.trim()) {
         form.target_name = generateTargetName();
     }
 
-    // 2. Validasi Area
+    // 2. Validasi Relasi Induk ODC / OLT
+    if (form.type === 'odp_deployment' && !form.odc_id) {
+        if (viewMode.value === 'wizard') currentStep.value = 1;
+        scrollToSection('section-spesifikasi');
+        submitErrorMessage.value = 'Silakan pilih ODC Induk untuk ODP ini pada Langkah 1.';
+        alert(submitErrorMessage.value);
+        return;
+    }
+    if (form.type === 'odc_deployment' && !form.olt_id) {
+        if (viewMode.value === 'wizard') currentStep.value = 1;
+        scrollToSection('section-spesifikasi');
+        submitErrorMessage.value = 'Silakan pilih OLT Induk untuk ODC ini pada Langkah 1.';
+        alert(submitErrorMessage.value);
+        return;
+    }
+
+    // 3. Validasi Area
     if (!form.area_id) {
-        currentStep.value = 1;
+        if (viewMode.value === 'wizard') currentStep.value = 1;
+        scrollToSection('section-spesifikasi');
         submitErrorMessage.value = 'Silakan pilih Wilayah / Area terlebih dahulu pada Langkah 1.';
         alert(submitErrorMessage.value);
         return;
     }
 
-    // 3. Validasi Material
+    // 4. Validasi Material
     if (!form.materials || form.materials.length === 0) {
-        currentStep.value = 2;
-        submitErrorMessage.value = 'Minimal 1 item material wajib dialokasikan pada Langkah 2.';
-        alert(submitErrorMessage.value);
-        return;
+        if (props.materials && props.materials.length > 0) {
+            form.materials = [
+                {
+                    material_id: props.materials[0].id,
+                    name: form.type === 'odc_deployment' ? 'Box ODC Feeder' : 'Box ODP Solid',
+                    quantity: 1,
+                    unit: 'pcs',
+                    note: 'Auto Standard BOM',
+                }
+            ];
+        } else {
+            if (viewMode.value === 'wizard') currentStep.value = 2;
+            scrollToSection('section-autobom');
+            submitErrorMessage.value = 'Minimal 1 item material wajib dialokasikan pada Langkah 2.';
+            alert(submitErrorMessage.value);
+            return;
+        }
     }
 
     // Validasi setiap baris material
     for (let i = 0; i < form.materials.length; i++) {
         const m = form.materials[i];
         if (!m.material_id) {
-            currentStep.value = 2;
+            if (viewMode.value === 'wizard') currentStep.value = 2;
+            scrollToSection('section-autobom');
             submitErrorMessage.value = `Baris material ke-${i + 1} belum memilih jenis material.`;
             alert(submitErrorMessage.value);
             return;
         }
         if (!m.quantity || parseFloat(m.quantity) <= 0) {
-            currentStep.value = 2;
+            if (viewMode.value === 'wizard') currentStep.value = 2;
+            scrollToSection('section-autobom');
             submitErrorMessage.value = `Jumlah untuk material "${m.name || 'item ' + (i + 1)}" harus lebih dari 0.`;
             alert(submitErrorMessage.value);
             return;
         }
     }
 
-    // 4. Validasi Tim Teknisi (Minimal 1 teknisi)
+    // 5. Validasi Tim Teknisi (Minimal 1 teknisi)
     if (!form.technician_ids || form.technician_ids.length === 0) {
         if (form.technician_id) {
             form.technician_ids = [form.technician_id];
@@ -840,7 +904,7 @@ const submit = () => {
         form.technician_id = form.technician_ids[0];
     }
 
-    // 5. Validasi Tanggal
+    // 6. Validasi Tanggal
     if (!form.scheduled_date) {
         form.scheduled_date = new Date().toISOString().slice(0, 10);
     }
@@ -853,12 +917,14 @@ const submit = () => {
             console.error('Validation errors received:', errors);
             const errorList = Object.values(errors);
             submitErrorMessage.value = errorList.join(' • ');
-            alert('Gagal menerbitkan penugasan karena data belum lengkap:\n\n• ' + errorList.join('\n• '));
+            alert('Gagal memproses data karena data belum lengkap:\n\n• ' + errorList.join('\n• '));
 
-            if (errors.target_name || errors.area_id || errors.odc_id || errors.olt_id || errors.capacity) {
-                currentStep.value = 1;
-            } else if (errors.materials || Object.keys(errors).some(k => k.startsWith('materials'))) {
-                currentStep.value = 2;
+            if (viewMode.value === 'wizard') {
+                if (errors.target_name || errors.area_id || errors.odc_id || errors.olt_id || errors.capacity) {
+                    currentStep.value = 1;
+                } else if (errors.materials || Object.keys(errors).some(k => k.startsWith('materials'))) {
+                    currentStep.value = 2;
+                }
             }
         },
         onFinish: () => {
@@ -888,38 +954,66 @@ const submit = () => {
                 </p>
             </div>
 
-            <!-- Wizard Step Navigation -->
-            <div class="bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs mb-8">
-                <div class="grid grid-cols-3 gap-2 text-center text-xs font-bold">
-                    <div
-                        class="p-3 rounded-2xl transition-all flex items-center justify-center gap-2"
-                        :class="currentStep === 1 ? 'bg-indigo-600 text-white shadow-sm' : (currentStep > 1 ? 'bg-emerald-50 text-emerald-700' : 'text-slate-400 bg-slate-50')"
+            <!-- Wizard Step Navigation & View Mode Switcher -->
+            <div class="bg-white p-3.5 sm:p-4 rounded-3xl border border-slate-200/80 shadow-xs mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="grid grid-cols-3 gap-2 flex-1 text-center text-xs font-bold">
+                    <button
+                        type="button"
+                        @click="viewMode === 'unified' ? scrollToSection('section-spesifikasi') : (currentStep = 1)"
+                        class="p-2.5 sm:p-3 rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                        :class="currentStep === 1 || viewMode === 'unified' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 bg-slate-50 hover:bg-slate-100'"
                     >
-                        <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px]" :class="currentStep === 1 ? 'bg-white/20' : (currentStep > 1 ? 'bg-emerald-200' : 'bg-slate-200')">1</span>
-                        <span>1. Persiapan: Spesifikasi</span>
-                    </div>
+                        <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px]" :class="currentStep === 1 || viewMode === 'unified' ? 'bg-white/20' : 'bg-slate-200'">1</span>
+                        <span>1. Perangkat &amp; Jaringan</span>
+                    </button>
 
-                    <div
-                        class="p-3 rounded-2xl transition-all flex items-center justify-center gap-2"
-                        :class="currentStep === 2 ? 'bg-indigo-600 text-white shadow-sm' : (currentStep > 2 ? 'bg-emerald-50 text-emerald-700' : 'text-slate-400 bg-slate-50')"
+                    <button
+                        type="button"
+                        @click="viewMode === 'unified' ? scrollToSection('section-autobom') : (currentStep = 2)"
+                        class="p-2.5 sm:p-3 rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                        :class="currentStep === 2 || (viewMode === 'unified' && form.materials.length > 0) ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 bg-slate-50 hover:bg-slate-100'"
                     >
-                        <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px]" :class="currentStep === 2 ? 'bg-white/20' : (currentStep > 2 ? 'bg-emerald-200' : 'bg-slate-200')">2</span>
-                        <span>2. Persiapan: Auto-BOM</span>
-                    </div>
+                        <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px]" :class="currentStep === 2 || (viewMode === 'unified' && form.materials.length > 0) ? 'bg-white/20' : 'bg-slate-200'">2</span>
+                        <span>2. Auto-BOM Material</span>
+                    </button>
 
-                    <div
-                        class="p-3 rounded-2xl transition-all flex items-center justify-center gap-2"
-                        :class="currentStep === 3 ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 bg-slate-50'"
+                    <button
+                        type="button"
+                        @click="viewMode === 'unified' ? scrollToSection('section-teknisi') : (currentStep = 3)"
+                        class="p-2.5 sm:p-3 rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                        :class="currentStep === 3 || viewMode === 'unified' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 bg-slate-50 hover:bg-slate-100'"
                     >
-                        <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px]" :class="currentStep === 3 ? 'bg-white/20' : 'bg-slate-200'">3</span>
-                        <span>3. Penugasan Teknisi</span>
-                    </div>
+                        <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px]" :class="currentStep === 3 || viewMode === 'unified' ? 'bg-white/20' : 'bg-slate-200'">3</span>
+                        <span>3. Penugasan &amp; Eksekusi</span>
+                    </button>
+                </div>
+
+                <!-- Mode Switcher: Alur Satuan vs Bertahap -->
+                <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl shrink-0 self-end md:self-auto">
+                    <button
+                        type="button"
+                        @click="viewMode = 'unified'"
+                        class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                        :class="viewMode === 'unified' ? 'bg-white text-indigo-700 shadow-2xs' : 'text-slate-500 hover:text-slate-800'"
+                        title="Tampilkan seluruh alur dalam 1 halaman yang simpel dan terpadu"
+                    >
+                        <span>📋 Alur Satuan (All-in-One)</span>
+                    </button>
+                    <button
+                        type="button"
+                        @click="viewMode = 'wizard'"
+                        class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                        :class="viewMode === 'wizard' ? 'bg-white text-indigo-700 shadow-2xs' : 'text-slate-500 hover:text-slate-800'"
+                        title="Tampilkan form bertahap langkah-demi-langkah"
+                    >
+                        <span>📑 Mode Bertahap</span>
+                    </button>
                 </div>
             </div>
 
-            <form @submit.prevent="submit">
+            <form @submit.prevent="submit('work_order')">
                 <!-- ════ STEP 1: SPESIFIKASI & RELASI JARINGAN ════ -->
-                <div v-show="currentStep === 1" class="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-xs space-y-6">
+                <div id="section-spesifikasi" v-show="viewMode === 'unified' || currentStep === 1" class="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-xs space-y-6 mb-8">
                     <h3 class="text-base font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
                         <span>📡</span>
                         <span>Langkah 1: Tipe Perangkat &amp; Titik Jaringan</span>
@@ -1667,11 +1761,11 @@ const submit = () => {
                         </div>
                     </div>
 
-                    <div class="flex justify-end pt-4 border-t border-slate-100">
+                    <div v-if="viewMode === 'wizard'" class="flex justify-end pt-4 border-t border-slate-100">
                         <button
                             type="button"
                             @click="nextStep"
-                            class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-sm transition-all"
+                            class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
                         >
                             Lanjut ke Auto-BOM Material &rarr;
                         </button>
@@ -1679,7 +1773,7 @@ const submit = () => {
                 </div>
 
                 <!-- ════ STEP 2: AUTO-BOM KALKULATOR MATERIAL ════ -->
-                <div v-show="currentStep === 2" class="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-xs space-y-6">
+                <div id="section-autobom" v-show="viewMode === 'unified' || currentStep === 2" class="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-xs space-y-6 mb-8">
                     <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                         <div>
                             <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
@@ -1837,18 +1931,18 @@ const submit = () => {
                         </button>
                     </div>
 
-                    <div class="flex justify-between pt-4 border-t border-slate-100">
+                    <div v-if="viewMode === 'wizard'" class="flex justify-between pt-4 border-t border-slate-100">
                         <button
                             type="button"
                             @click="prevStep"
-                            class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors"
+                            class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
                         >
                             &larr; Kembali
                         </button>
                         <button
                             type="button"
                             @click="nextStep"
-                            class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-sm transition-all"
+                            class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
                         >
                             Lanjut ke Penugasan &rarr;
                         </button>
@@ -1856,7 +1950,7 @@ const submit = () => {
                 </div>
 
                 <!-- ════ STEP 3: PENUGASAN & JADWAL ════ -->
-                <div v-show="currentStep === 3" class="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-xs space-y-6">
+                <div id="section-teknisi" v-show="viewMode === 'unified' || currentStep === 3" class="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-xs space-y-6 mb-8">
                     <h3 class="text-base font-bold text-slate-900 border-b border-slate-100 pb-3 flex items-center gap-2">
                         <span>👷</span>
                         <span>Langkah 3: Penunjukan Teknisi &amp; Jadwal Pelaksanaan</span>
@@ -1997,26 +2091,53 @@ const submit = () => {
                         </ul>
                     </div>
 
-                    <div class="flex justify-between pt-4 border-t border-slate-100">
+                    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-slate-100">
                         <button
+                            v-if="viewMode === 'wizard'"
                             type="button"
                             @click="prevStep"
-                            class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                            class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer w-full sm:w-auto"
                         >
                             &larr; Kembali
                         </button>
-                        <button
-                            type="button"
-                            @click="submit"
-                            :disabled="form.processing || isSubmitting"
-                            class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                        >
-                            <svg v-if="form.processing || isSubmitting" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                            </svg>
-                            <span>{{ (form.processing || isSubmitting) ? 'Menerbitkan Penugasan...' : '🚀 Terbitkan Work Order Resmi' }}</span>
-                        </button>
+                        <div v-else class="text-xs text-slate-500 flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span>Relasi ODC/ODP, Auto-BOM &amp; Penugasan terintegrasi penuh.</span>
+                        </div>
+
+                        <div class="flex items-center gap-3 w-full sm:w-auto flex-wrap sm:flex-nowrap">
+                            <!-- Opsi 1: Terbitkan Work Order Rollout Lapangan -->
+                            <button
+                                type="button"
+                                @click="submit('work_order')"
+                                :disabled="form.processing || isSubmitting"
+                                class="flex-1 sm:flex-none px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 active:scale-95 text-white text-xs font-black rounded-xl shadow-lg shadow-indigo-600/25 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                                title="Terbitkan surat penugasan resmi untuk dikerjakan teknisi lapangan"
+                            >
+                                <svg v-if="(form.processing || isSubmitting) && submitAction === 'work_order'" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                </svg>
+                                <span v-else>⚡</span>
+                                <span>{{ (form.processing || isSubmitting) && submitAction === 'work_order' ? 'Menerbitkan...' : 'Terbitkan Work Order Resmi' }}</span>
+                            </button>
+
+                            <!-- Opsi 2: Simpan & Langsung Aktifkan ke Data ODC / ODP & GIS -->
+                            <button
+                                type="button"
+                                @click="submit('direct_commission')"
+                                :disabled="form.processing || isSubmitting"
+                                class="flex-1 sm:flex-none px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-95 text-white text-xs font-black rounded-xl shadow-lg shadow-emerald-600/25 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                                title="Langsung daftarkan dan aktifkan perangkat ke master data ODC / ODP & GIS tanpa tunggu proses WO lapangan"
+                            >
+                                <svg v-if="(form.processing || isSubmitting) && submitAction === 'direct_commission'" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                </svg>
+                                <span v-else>✅</span>
+                                <span>{{ (form.processing || isSubmitting) && submitAction === 'direct_commission' ? 'Mengaktifkan...' : 'Simpan & Langsung Aktifkan' }}</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </form>
