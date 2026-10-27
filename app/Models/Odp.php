@@ -91,11 +91,14 @@ class Odp extends Model
             }
 
             // 2. Putuskan relasi dari survey
-            \App\Models\Survey::where('odp_id', $odp->id)->update([
-                'odp_id' => null,
-                'odp_port_id' => null,
-                'port_number' => null,
-            ]);
+            $surveyUpdate = ['odp_id' => null];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('surveys', 'port_number')) {
+                $surveyUpdate['port_number'] = null;
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('surveys', 'odp_port_id')) {
+                $surveyUpdate['odp_port_id'] = null;
+            }
+            \App\Models\Survey::where('odp_id', $odp->id)->update($surveyUpdate);
 
             // 3. Reset parent_odp_id pada ODP anak (jika split)
             static::where('parent_odp_id', $odp->id)->update(['parent_odp_id' => null]);
