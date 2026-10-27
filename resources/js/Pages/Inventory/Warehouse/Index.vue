@@ -22,6 +22,9 @@
                         </div>
 
                         <div class="flex flex-wrap items-center gap-2.5">
+                            <button type="button" @click="openDistributeModal(null)" class="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm hover:shadow transition-all" title="Alokasikan / Tambah Stok Material ke Area Gudang">
+                                <span>➕</span> Alokasikan Stok Area
+                            </button>
                             <button v-can="'warehouse_stocks_btn_status'" type="button" @click="openStatusModal(null)" class="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm hover:shadow transition-all" title="Catat / Buat Status Material (Layak / Rusak / Retur)">
                                 <span>⚡</span> Buat Status Material
                             </button>
@@ -215,7 +218,7 @@
                                         </span>
                                     </td>
                                     <td class="px-6 py-4">
-                                        <div v-if="material.stocks && material.stocks.length > 0" class="flex flex-wrap gap-2">
+                                        <div v-if="material.stocks && material.stocks.length > 0" class="flex flex-wrap items-center gap-2">
                                             <div v-for="stock in material.stocks" :key="stock.id" 
                                                  v-show="!filterAreaId || filterAreaId == stock.area_id"
                                                  class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold border transition"
@@ -223,8 +226,26 @@
                                                 <svg class="w-3.5 h-3.5" :class="filterAreaId && stock.area_id == filterAreaId ? 'text-indigo-200' : 'text-indigo-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                                 <span>{{ stock.area?.name || 'Area ?' }}: <strong :class="filterAreaId && stock.area_id == filterAreaId ? 'text-white' : 'text-indigo-900'">{{ formatNum(stock.stock) }}</strong> {{ material.unit }} <span class="font-bold text-[9px]" :class="filterAreaId && stock.area_id == filterAreaId ? 'text-indigo-100' : 'text-indigo-500'">{{ formatSecondaryUnit(material, stock.stock) }}</span></span>
                                             </div>
+                                            <button 
+                                                type="button" 
+                                                @click="openDistributeModal(material)"
+                                                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 border border-slate-200 transition"
+                                                title="Tambah atau Alokasikan Stok ke Area Lain"
+                                            >
+                                                <span>➕</span> Area
+                                            </button>
                                         </div>
-                                        <span v-else class="text-xs text-gray-400 italic">Belum ada distribusi area</span>
+                                        <div v-else class="flex flex-wrap items-center gap-2">
+                                            <span class="text-xs text-gray-400 italic">Belum ada distribusi area</span>
+                                            <button 
+                                                type="button" 
+                                                @click="openDistributeModal(material)"
+                                                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 hover:border-indigo-300 transition shadow-2xs"
+                                                title="Klik untuk langsung mendistribusikan stok barang ini ke area gudang"
+                                            >
+                                                <span>➕</span> Alokasikan ke Area
+                                            </button>
+                                        </div>
                                     </td>
                                     <td class="px-6 py-4 text-right">
                                         <div class="flex flex-col items-end justify-center">
@@ -252,6 +273,9 @@
                                     </td>
                                     <td class="px-6 py-4 text-center">
                                         <div class="flex items-center justify-center gap-2">
+                                            <button type="button" @click="openDistributeModal(material)" class="p-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors inline-flex items-center justify-center font-bold" title="Alokasikan / Tambah Stok ke Area">
+                                                <span class="text-xs font-black">➕</span>
+                                            </button>
                                             <button v-can="'warehouse_stocks_btn_status'" type="button" @click="openStatusModal(material)" class="p-2 text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-lg transition-colors inline-flex items-center justify-center" title="Set Status Kondisi Material (Layak/Tidak Layak/Rusak)">
                                                 <span class="text-xs font-black">⚡</span>
                                             </button>
@@ -413,6 +437,128 @@
                             <button type="button" @click="isStatusModalOpen = false" class="px-4 py-2 text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition">Batal</button>
                             <button type="submit" :disabled="statusForm.processing" class="px-5 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-sm transition">
                                 Simpan Status Kondisi
+                            </button>
+                        </div>
+                    </form>
+                </DialogPanel>
+            </div>
+        </Dialog>
+
+        <!-- Modal Alokasi / Distribusi Stok ke Area -->
+        <Dialog :open="isDistributeModalOpen" @close="isDistributeModalOpen = false" class="relative z-50">
+            <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" aria-hidden="true" />
+            <div class="fixed inset-0 flex items-center justify-center p-4">
+                <DialogPanel class="w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden transform transition-all">
+                    <div class="px-6 py-4 border-b border-gray-100 bg-indigo-50/70 flex items-center justify-between">
+                        <DialogTitle class="text-base font-black text-indigo-950 flex items-center gap-2">
+                            <span class="p-1.5 rounded-lg bg-indigo-600 text-white text-xs">➕</span>
+                            Alokasikan / Distribusi Stok ke Area
+                        </DialogTitle>
+                        <button type="button" @click="isDistributeModalOpen = false" class="p-2 text-gray-400 hover:text-red-500 rounded-xl">✕</button>
+                    </div>
+
+                    <form @submit.prevent="submitDistributeForm" class="p-6 space-y-4">
+                        <!-- Pilihan / Info Barang -->
+                        <div v-if="distributeMaterial" class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between">
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">Material Terpilih</label>
+                                <p class="text-sm font-black text-gray-900 mt-0.5">{{ distributeMaterial.name }}</p>
+                                <div class="flex items-center gap-3 text-xs text-indigo-700 font-semibold mt-1">
+                                    <span>Kategori: {{ distributeMaterial.category || '-' }}</span>
+                                    <span>•</span>
+                                    <span>Satuan: {{ distributeMaterial.unit }}</span>
+                                </div>
+                            </div>
+                            <button type="button" @click="distributeMaterial = null" class="text-xs text-indigo-600 font-bold hover:underline">
+                                Ganti
+                            </button>
+                        </div>
+                        <div v-else>
+                            <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Pilih Material / Barang <span class="text-red-500">*</span></label>
+                            <select v-model="distributeMaterialId" @change="onDistributeMaterialSelect" class="w-full text-sm px-3.5 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-semibold" required>
+                                <option value="" disabled>-- Pilih Barang --</option>
+                                <option v-for="mat in materials.data" :key="mat.id" :value="mat.id">
+                                    {{ mat.name }} (Total Stok: {{ formatNum(getTotalStock(mat)) }} {{ mat.unit }})
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- Pilih Area Tujuan -->
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Area / Gudang Cabang Tujuan <span class="text-red-500">*</span></label>
+                            <select v-model="distributeForm.area_id" class="w-full text-sm px-3.5 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-semibold bg-white" required>
+                                <option value="" disabled>-- Pilih Area Gudang --</option>
+                                <option v-for="area in areas" :key="area.id" :value="area.id">
+                                    {{ area.name }}
+                                </option>
+                            </select>
+                            <p class="text-[11px] text-gray-400 mt-1">Stok fisik barang ini akan dialokasikan ke gudang area yang dipilih.</p>
+                        </div>
+
+                        <!-- Input Kuantitas Stok (Pintar berdasarkan kategori) -->
+                        <div v-if="(distributeMaterial?.category || '').toLowerCase().includes('kabel')" class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-indigo-50/40 p-3.5 rounded-2xl border border-indigo-100">
+                            <div>
+                                <label class="block text-xs font-bold text-indigo-900 mb-1 uppercase">Tambah Roll Baru *</label>
+                                <div class="flex items-center gap-2">
+                                    <input v-model="distributeForm.added_rolls" @input="calculateCableDistribute" type="number" step="0.01" min="0" class="w-full px-3 py-2 rounded-xl border border-indigo-200 bg-white font-bold text-sm focus:ring-2 focus:ring-indigo-500" placeholder="Jml Roll" required>
+                                    <span class="text-indigo-800 text-xs font-bold">roll</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-indigo-900 mb-1 uppercase">Total Meter (Otomatis)</label>
+                                <div class="flex items-center gap-2">
+                                    <input v-model="distributeForm.added_stock" type="number" step="0.01" min="0.01" class="w-full px-3 py-2 rounded-xl border border-indigo-200 bg-white font-black text-sm text-indigo-950 focus:ring-2 focus:ring-indigo-500" required>
+                                    <span class="text-indigo-800 text-xs font-bold">meter</span>
+                                </div>
+                                <p class="text-[10px] text-indigo-600/70 mt-1">@ {{ distributeMaterial?.meter_per_roll || 1000 }} meter/roll</p>
+                            </div>
+                        </div>
+
+                        <div v-else-if="(distributeMaterial?.category || '').toLowerCase().includes('klem')" class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-indigo-50/40 p-3.5 rounded-2xl border border-indigo-100">
+                            <div>
+                                <label class="block text-xs font-bold text-indigo-900 mb-1 uppercase">Tambah Bungkus Baru *</label>
+                                <div class="flex items-center gap-2">
+                                    <input v-model="distributeForm.added_packs" @input="calculatePackDistribute" type="number" step="0.01" min="0" class="w-full px-3 py-2 rounded-xl border border-indigo-200 bg-white font-bold text-sm" placeholder="Jml Bungkus" required>
+                                    <span class="text-indigo-800 text-xs font-bold">bks</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-indigo-900 mb-1 uppercase">Total Pcs (Otomatis)</label>
+                                <div class="flex items-center gap-2">
+                                    <input v-model="distributeForm.added_stock" type="number" step="0.01" min="0.01" class="w-full px-3 py-2 rounded-xl border border-indigo-200 bg-white font-black text-sm text-indigo-950" required>
+                                    <span class="text-indigo-800 text-xs font-bold">pcs</span>
+                                </div>
+                                <p class="text-[10px] text-indigo-600/70 mt-1">@ {{ distributeMaterial?.pcs_per_pack || 100 }} pcs/bungkus</p>
+                            </div>
+                        </div>
+
+                        <div v-else>
+                            <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Jumlah Stok Masuk <span class="text-red-500">*</span></label>
+                            <div class="flex items-center gap-2">
+                                <input v-model="distributeForm.added_stock" type="number" step="0.01" min="0.01" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 font-bold text-sm focus:ring-2 focus:ring-indigo-500" placeholder="Kuantitas stok masuk..." required>
+                                <span class="text-gray-500 text-xs font-bold uppercase">{{ distributeMaterial?.unit || 'Unit' }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Update Harga (Opsional) -->
+                        <div class="grid grid-cols-2 gap-3 bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-600 mb-1">Harga Beli / Modal (Opsional)</label>
+                                <input v-model="distributeForm.price_per_unit" type="number" min="0" class="w-full px-3 py-1.5 text-xs rounded-xl border border-gray-200 bg-white" placeholder="Rp">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-600 mb-1">Harga Jual (Opsional)</label>
+                                <input v-model="distributeForm.selling_price" type="number" min="0" class="w-full px-3 py-1.5 text-xs rounded-xl border border-gray-200 bg-white" placeholder="Rp">
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="pt-2 flex items-center justify-end gap-2.5">
+                            <button type="button" @click="isDistributeModalOpen = false" class="px-4 py-2 text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition">
+                                Batal
+                            </button>
+                            <button type="submit" :disabled="distributeForm.processing" class="px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-sm transition flex items-center gap-1.5">
+                                <span>{{ distributeForm.processing ? 'Menyimpan...' : 'Simpan & Alokasikan Stok' }}</span>
                             </button>
                         </div>
                     </form>
@@ -620,5 +766,84 @@ const deleteMaterial = (material) => {
             preserveScroll: true,
         });
     }
+};
+
+// ── Modal Alokasi / Distribusi Stok ke Area ────────────────────
+const isDistributeModalOpen = ref(false);
+const distributeMaterial = ref(null);
+const distributeMaterialId = ref('');
+const distributeForm = useForm({
+    area_id: '',
+    added_stock: null,
+    added_rolls: null,
+    added_packs: null,
+    added_pieces: null,
+    price_per_unit: null,
+    selling_price: null,
+    notes: '',
+});
+
+const openDistributeModal = (material) => {
+    distributeMaterial.value = material;
+    distributeMaterialId.value = material ? material.id : (props.materials.data[0]?.id || '');
+    if (!material && props.materials.data.length > 0) {
+        distributeMaterial.value = props.materials.data[0];
+    }
+    distributeForm.area_id = props.areas[0]?.id || '';
+    distributeForm.added_stock = null;
+    distributeForm.added_rolls = null;
+    distributeForm.added_packs = null;
+    distributeForm.added_pieces = null;
+    distributeForm.price_per_unit = distributeMaterial.value?.price_per_unit || null;
+    distributeForm.selling_price = distributeMaterial.value?.selling_price || null;
+    distributeForm.notes = 'Alokasi stok / distribusi area';
+    isDistributeModalOpen.value = true;
+};
+
+const onDistributeMaterialSelect = () => {
+    const found = props.materials.data.find(m => m.id === Number(distributeMaterialId.value) || m.id === distributeMaterialId.value);
+    if (found) {
+        distributeMaterial.value = found;
+        distributeForm.price_per_unit = found.price_per_unit || null;
+        distributeForm.selling_price = found.selling_price || null;
+    }
+};
+
+const calculateCableDistribute = () => {
+    const mpr = Number(distributeMaterial.value?.meter_per_roll) || 0;
+    if (mpr > 0 && distributeForm.added_rolls) {
+        distributeForm.added_stock = parseFloat((Number(distributeForm.added_rolls) * mpr).toFixed(2));
+    }
+};
+
+const calculatePackDistribute = () => {
+    const ppp = Number(distributeMaterial.value?.pcs_per_pack) || 0;
+    if (ppp > 0 && distributeForm.added_packs) {
+        distributeForm.added_stock = parseFloat((Number(distributeForm.added_packs) * ppp).toFixed(2));
+    }
+};
+
+const submitDistributeForm = () => {
+    const target = distributeMaterial.value || props.materials.data.find(m => m.id === Number(distributeMaterialId.value) || m.id === distributeMaterialId.value);
+    if (!target) {
+        alert('Silakan pilih material terlebih dahulu');
+        return;
+    }
+    if (!distributeForm.area_id) {
+        alert('Silakan pilih area gudang tujuan');
+        return;
+    }
+    if (!distributeForm.added_stock || Number(distributeForm.added_stock) <= 0) {
+        alert('Silakan masukkan jumlah stok masuk yang valid (> 0)');
+        return;
+    }
+
+    distributeForm.post(`/materials/${target.id}/add-stock`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            isDistributeModalOpen.value = false;
+            distributeForm.reset();
+        }
+    });
 };
 </script>
