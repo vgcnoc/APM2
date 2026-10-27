@@ -1,6 +1,6 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ref, watch, computed, onMounted } from 'vue';
+import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import axios from 'axios';
 
@@ -932,6 +932,73 @@ const submit = (action = 'work_order') => {
         }
     });
 };
+
+// ── Dropdown Multi-Select Teknisi & Helper ─────────────────────
+const isTechDropdownOpen = ref(false);
+const techSearchQuery = ref('');
+const techDropdownRef = ref(null);
+
+const filteredTechnicians = computed(() => {
+    const list = props.technicians || [];
+    if (!techSearchQuery.value.trim()) return list;
+    const q = techSearchQuery.value.toLowerCase().trim();
+    return list.filter(t => 
+        (t.name && t.name.toLowerCase().includes(q)) || 
+        (t.role && t.role.toLowerCase().includes(q))
+    );
+});
+
+const selectedTechniciansList = computed(() => {
+    const list = props.technicians || [];
+    const ids = form.technician_ids || [];
+    return list.filter(t => ids.includes(t.id));
+});
+
+
+
+const removeTechnician = (id) => {
+    const index = form.technician_ids.indexOf(id);
+    if (index > -1) {
+        if (id === form.technician_id) {
+            const remaining = form.technician_ids.filter(tid => tid !== id);
+            if (remaining.length > 0) {
+                form.technician_id = remaining[0];
+            }
+        }
+        form.technician_ids.splice(index, 1);
+    }
+};
+
+const selectAllFilteredTechnicians = () => {
+    const currentSet = new Set(form.technician_ids);
+    filteredTechnicians.value.forEach(t => currentSet.add(t.id));
+    form.technician_ids = Array.from(currentSet);
+};
+
+const clearSelectedTechnicians = () => {
+    if (form.technician_id) {
+        form.technician_ids = [form.technician_id];
+    } else if (props.technicians && props.technicians.length > 0) {
+        form.technician_ids = [props.technicians[0].id];
+        form.technician_id = props.technicians[0].id;
+    } else {
+        form.technician_ids = [];
+    }
+};
+
+const handleDropdownClickOutside = (event) => {
+    if (techDropdownRef.value && !techDropdownRef.value.contains(event.target)) {
+        isTechDropdownOpen.value = false;
+    }
+};
+
+onMounted(() => {
+    document.addEventListener('click', handleDropdownClickOutside);
+});
+
+onUnmounted(() => {
+    document.removeEventListener('click', handleDropdownClickOutside);
+});
 </script>
 
 <template>
@@ -1986,44 +2053,198 @@ const submit = (action = 'work_order') => {
                             </div>
                         </div>
 
-                        <!-- Multi-Select Tim Teknisi Tambahan -->
-                        <div>
-                            <div class="flex items-center justify-between mb-2">
-                                <label class="block text-xs font-bold text-slate-700 uppercase">
-                                    👷 Anggota Tim Teknisi / Helper (Bisa Pilih Lebih Dari 1)
+                        <!-- Multi-Select Tim Teknisi Dropdown -->
+                        <div ref="techDropdownRef" class="relative">
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="block text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
+                                    <span>👷</span>
+                                    <span>Anggota Tim Teknisi / Helper (Bisa Pilih Lebih Dari 1)</span>
                                 </label>
-                                <span class="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+                                <span class="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-full">
                                     {{ form.technician_ids.length }} Teknisi Terpilih
                                 </span>
                             </div>
 
-                            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
-                                <label
-                                    v-for="t in technicians"
-                                    :key="t.id"
-                                    class="flex items-center gap-2 p-2.5 rounded-xl border text-xs cursor-pointer transition-all select-none"
-                                    :class="form.technician_ids.includes(t.id) 
-                                        ? (form.technician_id === t.id ? 'bg-amber-50/80 border-amber-300 text-amber-900 shadow-xs' : 'bg-white border-indigo-300 text-indigo-900 shadow-xs') 
-                                        : 'bg-white/60 border-slate-200 text-slate-600 hover:bg-white'"
-                                >
-                                    <input
-                                        type="checkbox"
-                                        :value="t.id"
-                                        :checked="form.technician_ids.includes(t.id)"
-                                        @change="toggleTechnician(t.id)"
-                                        class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
-                                    />
-                                    <div class="truncate">
-                                        <div class="font-bold truncate flex items-center gap-1">
-                                            <span>{{ t.name }}</span>
-                                            <span v-if="form.technician_id === t.id" class="text-[10px] text-amber-600" title="Lead Splicer">🌟</span>
+                            <!-- Dropdown Trigger Button -->
+                            <div
+                                @click="isTechDropdownOpen = !isTechDropdownOpen"
+                                class="w-full bg-slate-50 hover:bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs cursor-pointer transition-all flex items-center justify-between shadow-2xs select-none"
+                                :class="{ 'ring-2 ring-indigo-500/20 border-indigo-500 bg-white': isTechDropdownOpen }"
+                            >
+                                <div class="flex items-center gap-2 flex-wrap max-w-[85%] overflow-hidden">
+                                    <span v-if="form.technician_ids.length === 0" class="text-slate-400">
+                                        Klik untuk memilih anggota tim teknisi / helper...
+                                    </span>
+                                    <template v-else>
+                                        <span class="font-semibold text-slate-800 shrink-0">
+                                            {{ form.technician_ids.length }} personil dipilih:
+                                        </span>
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <span 
+                                                v-for="tech in selectedTechniciansList.slice(0, 3)" 
+                                                :key="tech.id"
+                                                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold"
+                                                :class="tech.id === form.technician_id ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-indigo-100 text-indigo-800 border border-indigo-200'"
+                                            >
+                                                <span>{{ tech.name }}</span>
+                                                <span v-if="tech.id === form.technician_id" class="text-[10px]">🌟</span>
+                                            </span>
+                                            <span v-if="selectedTechniciansList.length > 3" class="text-[11px] font-bold text-slate-500 bg-slate-200/80 px-1.5 py-0.5 rounded-md">
+                                                +{{ selectedTechniciansList.length - 3 }} lainnya
+                                            </span>
                                         </div>
-                                        <div class="text-[10px] text-slate-400">
-                                            {{ form.technician_id === t.id ? 'Lead Splicer' : 'Anggota Tim' }}
+                                    </template>
+                                </div>
+
+                                <div class="flex items-center gap-1.5 text-slate-400 shrink-0">
+                                    <svg class="w-4 h-4 transition-transform duration-200" :class="{ 'rotate-180': isTechDropdownOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <!-- Dropdown Menu / Popover Panel -->
+                            <div
+                                v-show="isTechDropdownOpen"
+                                class="absolute z-50 mt-1.5 w-full bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100"
+                            >
+                                <!-- Search Box & Quick Actions -->
+                                <div class="p-3 bg-slate-50/90 border-b border-slate-100 space-y-2">
+                                    <div class="relative">
+                                        <input
+                                            v-model="techSearchQuery"
+                                            type="text"
+                                            placeholder="Cari nama atau role teknisi..."
+                                            class="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs focus:ring-indigo-500 focus:border-indigo-500 placeholder:text-slate-400"
+                                            @click.stop
+                                        />
+                                        <span class="absolute left-2.5 top-2 text-slate-400 text-xs">🔍</span>
+                                        <button
+                                            v-if="techSearchQuery"
+                                            type="button"
+                                            @click.stop="techSearchQuery = ''"
+                                            class="absolute right-2.5 top-1.5 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+
+                                    <div class="flex items-center justify-between text-[11px] px-0.5">
+                                        <span class="text-slate-500">
+                                            Menampilkan {{ filteredTechnicians.length }} dari {{ (technicians || []).length }} teknisi
+                                        </span>
+                                        <div class="flex items-center gap-3">
+                                            <button
+                                                type="button"
+                                                @click.stop="selectAllFilteredTechnicians"
+                                                class="text-indigo-600 hover:text-indigo-800 font-bold transition cursor-pointer"
+                                            >
+                                                Pilih Semua
+                                            </button>
+                                            <span class="text-slate-300">|</span>
+                                            <button
+                                                type="button"
+                                                @click.stop="clearSelectedTechnicians"
+                                                class="text-rose-500 hover:text-rose-700 font-semibold transition cursor-pointer"
+                                            >
+                                                Reset (Lead Only)
+                                            </button>
                                         </div>
                                     </div>
-                                </label>
+                                </div>
+
+                                <!-- List Item Teknisi -->
+                                <div class="max-h-60 overflow-y-auto divide-y divide-slate-100 p-1.5">
+                                    <div
+                                        v-for="t in filteredTechnicians"
+                                        :key="t.id"
+                                        @click.stop="toggleTechnician(t.id)"
+                                        class="flex items-center justify-between p-2 rounded-xl text-xs cursor-pointer transition-colors select-none"
+                                        :class="form.technician_ids.includes(t.id) 
+                                            ? (form.technician_id === t.id ? 'bg-amber-50/90 text-amber-950 font-medium' : 'bg-indigo-50/80 text-indigo-950 font-medium') 
+                                            : 'hover:bg-slate-50 text-slate-700'"
+                                    >
+                                        <div class="flex items-center gap-2.5 truncate">
+                                            <input
+                                                type="checkbox"
+                                                :checked="form.technician_ids.includes(t.id)"
+                                                @click.stop="toggleTechnician(t.id)"
+                                                class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                            />
+                                            <div class="truncate">
+                                                <div class="font-bold flex items-center gap-1.5 truncate">
+                                                    <span>{{ t.name }}</span>
+                                                    <span v-if="form.technician_id === t.id" class="text-[10px] bg-amber-200/80 text-amber-800 px-1.5 py-0.2 rounded font-semibold">
+                                                        🌟 Lead Splicer
+                                                    </span>
+                                                </div>
+                                                <div class="text-[10px] text-slate-400">
+                                                    {{ t.role || (form.technician_id === t.id ? 'Lead Koordinator' : 'Anggota Tim') }}
+                                                    <span v-if="t.phone" class="ml-1">• {{ t.phone }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            v-if="form.technician_id !== t.id && form.technician_ids.includes(t.id)"
+                                            type="button"
+                                            @click.stop="setLeadTechnician(t.id)"
+                                            class="text-[10px] font-bold text-slate-400 hover:text-amber-600 bg-white hover:bg-amber-50 border border-slate-200 hover:border-amber-300 px-2 py-0.5 rounded-lg transition shrink-0 ml-2"
+                                            title="Jadikan sebagai Koordinator / Lead Splicer utama"
+                                        >
+                                            Jadikan Lead 🌟
+                                        </button>
+                                    </div>
+
+                                    <div v-if="filteredTechnicians.length === 0" class="py-6 text-center text-xs text-slate-400">
+                                        Tidak ada teknisi yang cocok dengan pencarian "{{ techSearchQuery }}".
+                                    </div>
+                                </div>
+
+                                <!-- Footer Dropdown -->
+                                <div class="p-2.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs">
+                                    <span class="text-[11px] text-slate-500">
+                                        💡 Klik di luar kotak untuk menutup menu
+                                    </span>
+                                    <button
+                                        type="button"
+                                        @click="isTechDropdownOpen = false"
+                                        class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs transition"
+                                    >
+                                        Selesai
+                                    </button>
+                                </div>
                             </div>
+
+                            <!-- Selected Badges (Pills) Preview di Bawah Dropdown -->
+                            <div v-if="selectedTechniciansList.length > 0" class="mt-2.5 flex flex-wrap items-center gap-1.5">
+                                <span class="text-[11px] font-bold text-slate-400 mr-1">Tim Ditugaskan:</span>
+                                <div
+                                    v-for="tech in selectedTechniciansList"
+                                    :key="tech.id"
+                                    class="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-xl text-xs font-semibold transition border shadow-2xs"
+                                    :class="tech.id === form.technician_id 
+                                        ? 'bg-amber-50 border-amber-200 text-amber-900' 
+                                        : 'bg-indigo-50/70 border-indigo-200 text-indigo-900'"
+                                >
+                                    <span v-if="tech.id === form.technician_id" class="text-amber-600">🌟</span>
+                                    <span>{{ tech.name }}</span>
+                                    <span v-if="tech.id === form.technician_id" class="text-[10px] text-amber-700 font-bold bg-amber-200/60 px-1 py-0.2 rounded">
+                                        Lead
+                                    </span>
+                                    <button
+                                        type="button"
+                                        @click="removeTechnician(tech.id)"
+                                        class="w-4 h-4 rounded-full flex items-center justify-center hover:bg-black/10 text-slate-400 hover:text-slate-700 transition ml-0.5"
+                                        :title="'Hapus ' + tech.name + ' dari tim'"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="text-[11px] text-slate-400 mt-1.5">
+                                Seluruh personil teknisi yang dipilih di dropdown akan otomatis menerima surat tugas pengerjaan infrastruktur ini.
+                            </p>
                         </div>
                     </div>
 
