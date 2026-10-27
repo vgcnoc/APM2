@@ -146,10 +146,77 @@
             <div v-if="viewMode === 'card'" class="space-y-8">
                 <!-- Group by ODC -->
                 <div v-for="odcGroup in odpsGroupedByOdc" :key="odcGroup.odc.id" class="animate-fade-in-up">
-                    <div class="relative overflow-hidden bg-gradient-to-r from-purple-950 via-purple-900 to-purple-950 text-white p-5 rounded-t-xl flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-purple-800/60 shadow-md">
-                        <!-- Decorative background elements -->
-                        <div class="absolute top-0 right-0 -mt-8 -mr-8 w-40 h-40 bg-purple-500/20 rounded-full blur-2xl pointer-events-none"></div>
-                        <div class="absolute bottom-0 left-0 -mb-8 -ml-8 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+                    <div class="relative overflow-hidden bg-gradient-to-r from-[#20053b] via-[#3b0764] to-[#20053b] text-white p-5 rounded-t-xl flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-purple-800/60 shadow-lg">
+                        <!-- Modern Tech Motif & Ambient Glow Pattern -->
+                        <div class="absolute inset-0 pointer-events-none overflow-hidden select-none">
+                            <!-- High-Tech Micro Dot Matrix Grid Overlay -->
+                            <svg class="absolute inset-0 w-full h-full opacity-20" xmlns="http://www.w3.org/2000/svg">
+                                <defs>
+                                    <pattern :id="'odc-dots-' + odcGroup.odc.id" width="22" height="22" patternUnits="userSpaceOnUse">
+                                        <circle cx="2" cy="2" r="1.1" fill="#d8b4fe" />
+                                    </pattern>
+                                </defs>
+                                <rect width="100%" height="100%" :fill="'url(#odc-dots-' + odcGroup.odc.id + ')'" />
+                            </svg>
+
+                            <!-- Fiber-Optic & Circuit Network Constellation Motif (Center & Right Area) -->
+                            <svg class="absolute right-0 top-0 h-full w-full max-w-4xl opacity-50 md:opacity-65 overflow-visible" viewBox="0 0 800 120" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <defs>
+                                    <!-- Linear Gradients for Optical Lines -->
+                                    <linearGradient :id="'odc-line-grad-' + odcGroup.odc.id" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" stop-color="#9333ea" stop-opacity="0" />
+                                        <stop offset="25%" stop-color="#c084fc" stop-opacity="0.85" />
+                                        <stop offset="65%" stop-color="#f472b6" stop-opacity="0.95" />
+                                        <stop offset="100%" stop-color="#a855f7" stop-opacity="0.15" />
+                                    </linearGradient>
+                                    <linearGradient :id="'odc-line-grad2-' + odcGroup.odc.id" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" stop-color="#6366f1" stop-opacity="0" />
+                                        <stop offset="35%" stop-color="#a855f7" stop-opacity="0.8" />
+                                        <stop offset="75%" stop-color="#e879f9" stop-opacity="0.85" />
+                                        <stop offset="100%" stop-color="#c084fc" stop-opacity="0.1" />
+                                    </linearGradient>
+                                    <!-- Soft Glow Filter -->
+                                    <filter :id="'odc-glow-' + odcGroup.odc.id" x="-40%" y="-40%" width="180%" height="180%">
+                                        <feGaussianBlur stdDeviation="3.5" result="glow" />
+                                        <feComposite in="SourceGraphic" in2="glow" operator="over" />
+                                    </filter>
+                                </defs>
+
+                                <!-- Isometric Network & Fiber Traces -->
+                                <path d="M 80 68 L 220 68 L 280 28 L 430 28 L 480 72 L 670 72" 
+                                      :stroke="'url(#odc-line-grad-' + odcGroup.odc.id + ')'" stroke-width="1.8" fill="none" />
+                                <path d="M 180 98 L 300 98 L 350 58 L 500 58 L 550 98 L 710 98" 
+                                      :stroke="'url(#odc-line-grad2-' + odcGroup.odc.id + ')'" stroke-width="1.4" stroke-dasharray="5 3" fill="none" />
+                                <path d="M 330 18 L 440 18 L 490 48 L 620 48" 
+                                      stroke="#f472b6" stroke-width="1.2" stroke-dasharray="3 4" fill="none" opacity="0.5" />
+
+                                <!-- Geometric Optical Nodes (Hexagons & Diamonds) -->
+                                <polygon points="280,20 288,28 280,36 272,28" fill="#c084fc" fill-opacity="0.35" stroke="#f3e8ff" stroke-width="1.2" />
+                                <polygon points="480,64 488,72 480,80 472,72" fill="#f472b6" fill-opacity="0.4" stroke="#ffffff" stroke-width="1.2" />
+                                <polygon points="350,50 358,58 350,66 342,58" fill="#a855f7" fill-opacity="0.3" stroke="#d8b4fe" stroke-width="1" />
+                                <polygon points="500,50 508,58 500,66 492,58" fill="#e879f9" fill-opacity="0.35" stroke="#fdf4ff" stroke-width="1.2" />
+
+                                <!-- Glowing Pulse Nodes -->
+                                <circle cx="220" cy="68" r="4" fill="#ffffff" :filter="'url(#odc-glow-' + odcGroup.odc.id + ')'" />
+                                <circle cx="220" cy="68" r="9" stroke="#c084fc" stroke-width="1.2" stroke-opacity="0.75" fill="none" />
+                                
+                                <circle cx="430" cy="28" r="3.5" fill="#fdf4ff" :filter="'url(#odc-glow-' + odcGroup.odc.id + ')'" />
+                                <circle cx="430" cy="28" r="8" stroke="#f472b6" stroke-width="1" stroke-dasharray="2 2" fill="none" />
+
+                                <circle cx="670" cy="72" r="4.5" fill="#ffffff" :filter="'url(#odc-glow-' + odcGroup.odc.id + ')'" />
+                                <circle cx="670" cy="72" r="11" stroke="#c084fc" stroke-width="1" stroke-opacity="0.65" fill="none" />
+
+                                <!-- Futuristic Concentric Radar / Wave Rings in Center Void -->
+                                <circle cx="390" cy="62" r="30" stroke="#c084fc" stroke-width="1.2" stroke-dasharray="4 4" stroke-opacity="0.4" fill="none" />
+                                <circle cx="390" cy="62" r="52" stroke="#a855f7" stroke-width="1" stroke-dasharray="2 6" stroke-opacity="0.25" fill="none" />
+                                <circle cx="390" cy="62" r="2.5" fill="#e879f9" />
+                            </svg>
+
+                            <!-- Ambient Glowing Light Orbs -->
+                            <div class="absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/4 w-80 h-36 bg-purple-500/25 rounded-full blur-3xl pointer-events-none"></div>
+                            <div class="absolute top-0 right-12 w-64 h-36 bg-fuchsia-600/20 rounded-full blur-2xl pointer-events-none"></div>
+                            <div class="absolute -bottom-6 left-10 w-52 h-32 bg-indigo-600/25 rounded-full blur-3xl pointer-events-none"></div>
+                        </div>
                         
                         <div class="relative z-10">
                             <div class="flex items-center gap-3 mb-2">
@@ -177,8 +244,8 @@
                             <div v-if="getPonVlans(odcGroup.odc).length > 0" class="flex flex-wrap items-center gap-1.5 mt-2.5">
                                 <span class="text-[10px] text-purple-300 font-bold uppercase tracking-wider">VLAN OLT:</span>
                                 <div v-for="(vlan, vIdx) in getPonVlans(odcGroup.odc)" :key="vIdx" class="inline-flex items-center gap-1 bg-black/20 backdrop-blur-xs px-2 py-0.5 rounded text-[11px] font-medium border border-white/10 shadow-xs">
-                                    <span class="font-bold text-white">VLAN {{ vlan.vlan_id || vlan }}</span>
-                                    <span v-if="vlan.name" class="text-purple-200 text-[10px]">({{ vlan.name }})</span>
+                                    <span class="font-bold text-white">VLAN {{ getVlanDisplayId(vlan) }}</span>
+                                    <span v-if="vlan && typeof vlan === 'object' && vlan.name && vlan.name !== getVlanDisplayId(vlan)" class="text-purple-200 text-[10px]">({{ vlan.name }})</span>
                                     <span :class="['px-1.5 py-0.2 text-[9px] font-bold rounded-full uppercase', getModeBadgeClass(getVlanAccessMode(vlan))]">
                                         {{ getVlanAccessMode(vlan) }}
                                     </span>
@@ -497,10 +564,10 @@
 <template v-for="odc in serverGroup.odcs" :key="odc.id">
    │
    ▼
-<span class="text-indigo-400 font-bold">ODC {{ odc.name }}</span> <span class="text-gray-400 text-[11px]">[PON {{ odc.pon_port || '?' }}]</span> <span v-if="getPonVlans(odc.odc).length > 0" class="text-purple-300 text-[11px]">[VLAN: {{ getPonVlans(odc.odc).map(v => (v.vlan_id || v) + ' ' + getVlanAccessMode(v)).join(', ') }}]</span> <span class="text-gray-500">[{{ getOdcTotalPorts(odc.odps).available }} Port Free]</span>
+<span class="text-indigo-400 font-bold">ODC {{ odc.name }}</span> <span class="text-gray-400 text-[11px]">[PON {{ odc.pon_port || '?' }}]</span> <span v-if="getPonVlans(odc.odc).length > 0" class="text-purple-300 text-[11px]">[VLAN: {{ getPonVlans(odc.odc).map(v => getVlanDisplayId(v) + ' ' + getVlanAccessMode(v)).join(', ') }}]</span> <span class="text-gray-500">[{{ getOdcTotalPorts(odc.odps).available }} Port Free]</span>
    │
 <template v-for="(odp, odpIndex) in odc.odps" :key="odp.id">
-   {{ odpIndex === odc.odps.length - 1 ? '└' : '├' }}──────── <button @click="openOdpDetail(odp)" class="text-gray-200 hover:text-white font-bold bg-gray-800 hover:bg-gray-700 px-2 py-0.5 rounded transition-colors cursor-pointer">ODP {{ odp.name }}</button> <span v-if="getOdpPonVlans(odp).length > 0" class="text-indigo-300 text-[10px]">[VLAN: {{ getOdpPonVlans(odp).map(v => (v.vlan_id || v) + ' ' + getVlanAccessMode(v)).join(', ') }}]</span> <span class="text-gray-500 text-[10px]">{{ Math.max(0, odp.total_ports - odp.used_ports) }} Free / {{ odp.total_ports }} Cap</span>
+   {{ odpIndex === odc.odps.length - 1 ? '└' : '├' }}──────── <button @click="openOdpDetail(odp)" class="text-gray-200 hover:text-white font-bold bg-gray-800 hover:bg-gray-700 px-2 py-0.5 rounded transition-colors cursor-pointer">ODP {{ odp.name }}</button> <span v-if="getOdpPonVlans(odp).length > 0" class="text-indigo-300 text-[10px]">[VLAN: {{ getOdpPonVlans(odp).map(v => getVlanDisplayId(v) + ' ' + getVlanAccessMode(v)).join(', ') }}]</span> <span class="text-gray-500 text-[10px]">{{ Math.max(0, odp.total_ports - odp.used_ports) }} Free / {{ odp.total_ports }} Cap</span>
 <template v-for="portNum in odp.total_ports" :key="portNum">
    │              {{ odpIndex === odc.odps.length - 1 ? ' ' : '│' }}
    │              {{ odpIndex === odc.odps.length - 1 ? ' ' : '│' }}  ├── Port {{ portNum.toString().padStart(2, '0') }} <span v-html="renderPortTopology(odp, portNum)"></span>
@@ -787,6 +854,14 @@ const getPonVlans = (odcItem) => {
 const getOdpPonVlans = (odpItem) => {
     if (!odpItem) return [];
     return getPonVlans(odpItem.odc);
+};
+
+const getVlanDisplayId = (vlan) => {
+    if (!vlan) return '-';
+    if (typeof vlan === 'object') {
+        return vlan.vlan_id || vlan.id || vlan.vlan || (vlan.name ? vlan.name : '-');
+    }
+    return String(vlan);
 };
 
 const getVlanAccessMode = (vlan) => {
