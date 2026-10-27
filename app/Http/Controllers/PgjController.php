@@ -16,6 +16,9 @@ use App\Models\MaterialTransactionItem;
 use App\Models\AuditLog;
 use App\Services\DataScopeService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
 
