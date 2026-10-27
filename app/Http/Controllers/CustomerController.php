@@ -3420,10 +3420,10 @@ class CustomerController extends Controller
             $validated['scheduled_time'] = substr($validated['scheduled_time'], 0, 5);
         }
 
-        // Hapus jadwal survey yang masih scheduled agar penugasan akurat sesuai petugas terpilih
+        // Hapus jadwal survey sebelumnya agar penugasan akurat sesuai petugas terpilih
         $customer->technicianSchedules()
             ->where('type', 'survey')
-            ->where('status', 'scheduled')
+            ->whereIn('status', ['scheduled', 'on_the_way', 'working', 'rescheduled'])
             ->delete();
 
         foreach ($techIds as $tId) {
@@ -3579,10 +3579,10 @@ class CustomerController extends Controller
 
         $finalNotes = !empty($customNotes) ? implode("\n", $customNotes) : ($validated['notes'] ?: 'Jadwal pasang');
 
-        // Hapus jadwal instalasi yang masih scheduled agar penugasan akurat sesuai petugas terpilih
+        // Hapus jadwal instalasi sebelumnya agar penugasan akurat sesuai petugas terpilih
         $customer->technicianSchedules()
             ->where('type', 'installation')
-            ->where('status', 'scheduled')
+            ->whereIn('status', ['scheduled', 'on_the_way', 'working', 'rescheduled'])
             ->delete();
 
         foreach ($techIds as $tId) {
@@ -3602,16 +3602,18 @@ class CustomerController extends Controller
         if ($request->boolean('send_wa', false)) {
             try {
                 $waService = app(\App\Services\WhatsAppGatewayService::class);
-                $tech = User::find($validated['technician_id']);
-                if ($tech && !empty($tech->phone)) {
-                    $msg = $this->formatInstallationWaMessage(
-                        $customer,
-                        $tech,
-                        $validated['scheduled_date'],
-                        $validated['scheduled_time'] ?? '10:00',
-                        $finalNotes
-                    );
-                    $waService->sendMessage($tech->phone, $msg);
+                $technicians = User::whereIn('id', $techIds)->get();
+                foreach ($technicians as $tech) {
+                    if (!empty($tech->phone)) {
+                        $msg = $this->formatInstallationWaMessage(
+                            $customer,
+                            $tech,
+                            $validated['scheduled_date'],
+                            $validated['scheduled_time'] ?? '10:00',
+                            $finalNotes
+                        );
+                        $waService->sendMessage($tech->phone, $msg);
+                    }
                 }
             } catch (\Throwable $e) {
                 \Log::warning('[updateInstallationSchedule] WA Error: ' . $e->getMessage());
@@ -4024,10 +4026,10 @@ class CustomerController extends Controller
             }
             $finalNotes = implode("\n\n", $customNotes);
 
-            // Hapus jadwal instalasi yang masih scheduled sebelumnya agar penugasan baru akurat & menggantikan teknisi lama
+            // Hapus jadwal instalasi sebelumnya agar penugasan baru akurat & menggantikan teknisi lama
             $customer->technicianSchedules()
                 ->where('type', 'installation')
-                ->where('status', 'scheduled')
+                ->whereIn('status', ['scheduled', 'on_the_way', 'working', 'rescheduled'])
                 ->delete();
 
             // Create Technician Schedules

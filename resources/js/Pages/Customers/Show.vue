@@ -2185,17 +2185,18 @@
                         <div>
                             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Pilih Teknisi / Surveyor <span class="text-red-500">*</span></label>
                             <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto border border-gray-200 rounded-xl p-2 bg-slate-50">
-                                <label v-for="t in technicians" :key="t.id" :class="['flex items-center justify-between p-2.5 rounded-lg border cursor-pointer transition-all', surveyScheduleForm.technician_id === t.id ? 'bg-indigo-50 border-indigo-300 ring-1 ring-indigo-500 text-indigo-950 font-bold' : 'bg-white border-gray-200 hover:border-gray-300 text-gray-700']">
+                                <label v-for="t in technicians" :key="t.id" :class="['flex items-center justify-between p-2.5 rounded-lg border cursor-pointer transition-all', surveyScheduleForm.technician_ids.includes(t.id) ? 'bg-indigo-50 border-indigo-300 ring-1 ring-indigo-500 text-indigo-950 font-bold' : 'bg-white border-gray-200 hover:border-gray-300 text-gray-700']">
                                     <div class="flex items-center gap-3">
-                                        <input type="radio" :value="t.id" v-model="surveyScheduleForm.technician_id" required class="text-indigo-600 focus:ring-indigo-500 w-4 h-4" />
+                                        <input type="checkbox" :value="t.id" v-model="surveyScheduleForm.technician_ids" class="text-indigo-600 focus:ring-indigo-500 rounded w-4 h-4" />
                                         <div>
                                             <span class="text-sm block">{{ t.name }}</span>
                                             <span class="text-[10px] text-gray-400 font-normal">{{ t.phone || t.role || 'Teknisi' }}</span>
                                         </div>
                                     </div>
-                                    <span v-if="surveyScheduleForm.technician_id === t.id" class="text-xs text-indigo-600 font-bold">Terpilih</span>
+                                    <span v-if="surveyScheduleForm.technician_ids.includes(t.id)" class="text-xs text-indigo-600 font-bold">Terpilih</span>
                                 </label>
                             </div>
+                            <p class="text-[10px] text-slate-400 mt-1.5">Anda dapat memilih lebih dari satu surveyor</p>
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -2442,17 +2443,18 @@
                         <div>
                             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Pilih Teknisi Instalasi <span class="text-red-500">*</span></label>
                             <div class="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto border border-gray-200 rounded-xl p-2 bg-slate-50">
-                                <label v-for="t in technicians" :key="t.id" :class="['flex items-center justify-between p-2.5 rounded-lg border cursor-pointer transition-all', installScheduleForm.technician_id === t.id ? 'bg-amber-50 border-amber-300 ring-1 ring-amber-500 text-amber-950 font-bold' : 'bg-white border-gray-200 hover:border-gray-300 text-gray-700']">
+                                <label v-for="t in technicians" :key="t.id" :class="['flex items-center justify-between p-2.5 rounded-lg border cursor-pointer transition-all', installScheduleForm.technician_ids.includes(t.id) ? 'bg-amber-50 border-amber-300 ring-1 ring-amber-500 text-amber-950 font-bold' : 'bg-white border-gray-200 hover:border-gray-300 text-gray-700']">
                                     <div class="flex items-center gap-3">
-                                        <input type="radio" :value="t.id" v-model="installScheduleForm.technician_id" required class="text-amber-600 focus:ring-amber-500 w-4 h-4" />
+                                        <input type="checkbox" :value="t.id" v-model="installScheduleForm.technician_ids" class="text-amber-600 focus:ring-amber-500 rounded w-4 h-4" />
                                         <div>
                                             <span class="text-sm block">{{ t.name }}</span>
                                             <span class="text-[10px] text-gray-400 font-normal">{{ t.phone || t.role || 'Teknisi' }}</span>
                                         </div>
                                     </div>
-                                    <span v-if="installScheduleForm.technician_id === t.id" class="text-xs text-amber-600 font-bold">Terpilih</span>
+                                    <span v-if="installScheduleForm.technician_ids.includes(t.id)" class="text-xs text-amber-600 font-bold">Terpilih</span>
                                 </label>
                             </div>
+                            <p class="text-[10px] text-slate-400 mt-1.5">Anda dapat memilih lebih dari satu teknisi instalasi</p>
                         </div>
 
                         <!-- 2. Tanggal & Jam Target -->
@@ -4454,6 +4456,7 @@ function submitEditBooking() {
 // ── 2. MODAL EDIT JADWAL SURVEY ─────────────────────────────
 const showEditSurveyScheduleModal = ref(false);
 const surveyScheduleForm = useForm({
+    technician_ids: [],
     technician_id: '',
     scheduled_date: '',
     scheduled_time: '09:00',
@@ -4462,8 +4465,15 @@ const surveyScheduleForm = useForm({
 });
 
 function openEditSurveyScheduleModal() {
-    const sched = props.customer.technician_schedules?.find(s => s.type === 'survey');
-    surveyScheduleForm.technician_id = sched?.technician_id || (props.customer.surveys?.[0]?.surveyor_id || (props.technicians?.[0]?.id || ''));
+    const surveySchedules = (props.customer.technician_schedules || []).filter(s => s.type === 'survey');
+    surveyScheduleForm.technician_ids = surveySchedules.map(s => s.technician_id).filter(Boolean);
+    if (surveyScheduleForm.technician_ids.length === 0) {
+        const surveyorId = props.customer.surveys?.[0]?.surveyor_id || (props.technicians?.[0]?.id || '');
+        if (surveyorId) surveyScheduleForm.technician_ids = [surveyorId];
+    }
+    surveyScheduleForm.technician_id = surveyScheduleForm.technician_ids[0] || '';
+    
+    const sched = surveySchedules[0] || props.customer.technician_schedules?.find(s => s.type === 'survey');
     surveyScheduleForm.scheduled_date = sched?.scheduled_date ? sched.scheduled_date.split('T')[0] : (props.customer.registration_date ? props.customer.registration_date.split('T')[0] : new Date().toISOString().split('T')[0]);
     surveyScheduleForm.scheduled_time = sched?.scheduled_time ? sched.scheduled_time.substring(0, 5) : '09:00';
     surveyScheduleForm.status = sched?.status || 'scheduled';
@@ -4472,6 +4482,11 @@ function openEditSurveyScheduleModal() {
 }
 
 function submitEditSurveySchedule() {
+    if (surveyScheduleForm.technician_ids.length === 0) {
+        alert('Pilih minimal satu teknisi / surveyor.');
+        return;
+    }
+    surveyScheduleForm.technician_id = surveyScheduleForm.technician_ids[0] || '';
     surveyScheduleForm.post(`/customers/${props.customer.id}/update-survey-schedule`, {
         preserveScroll: true,
         onSuccess: () => {
@@ -4617,6 +4632,7 @@ function submitEditSurveyReport() {
 // ── 4. MODAL EDIT JADWAL PASANG & MATERIAL ──────────────────
 const showEditInstallScheduleModal = ref(false);
 const installScheduleForm = useForm({
+    technician_ids: [],
     technician_id: '',
     scheduled_date: '',
     scheduled_time: '10:00',
@@ -4767,8 +4783,14 @@ function validateScheduleMaterialQty(index) {
 }
 
 function openEditInstallScheduleModal() {
-    const sched = props.customer.technician_schedules?.find(s => s.type === 'installation');
-    installScheduleForm.technician_id = sched?.technician_id || (props.technicians?.[0]?.id || '');
+    const installSchedules = (props.customer.technician_schedules || []).filter(s => s.type === 'installation');
+    installScheduleForm.technician_ids = installSchedules.map(s => s.technician_id).filter(Boolean);
+    if (installScheduleForm.technician_ids.length === 0 && props.technicians?.[0]?.id) {
+        installScheduleForm.technician_ids = [props.technicians[0].id];
+    }
+    installScheduleForm.technician_id = installScheduleForm.technician_ids[0] || '';
+    
+    const sched = installSchedules[0] || props.customer.technician_schedules?.find(s => s.type === 'installation');
     installScheduleForm.scheduled_date = sched?.scheduled_date ? sched.scheduled_date.split('T')[0] : (props.customer.activation_date ? props.customer.activation_date.split('T')[0] : new Date().toISOString().split('T')[0]);
     installScheduleForm.scheduled_time = sched?.scheduled_time ? sched.scheduled_time.substring(0, 5) : '10:00';
     installScheduleForm.status = sched?.status || 'scheduled';
@@ -4853,6 +4875,11 @@ function openEditInstallScheduleModal() {
 }
 
 function submitEditInstallSchedule() {
+    if (installScheduleForm.technician_ids.length === 0) {
+        alert('Pilih minimal satu teknisi instalasi.');
+        return;
+    }
+    installScheduleForm.technician_id = installScheduleForm.technician_ids[0] || '';
     installScheduleForm.post(`/customers/${props.customer.id}/update-installation-schedule`, {
         preserveScroll: true,
         onSuccess: () => {

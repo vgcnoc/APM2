@@ -115,6 +115,10 @@
                                 <svg class="w-3 h-3 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                                 <span>Teknisi: {{ getAssignedTechnicians(row, 'installation') }}</span>
                             </div>
+                            <div v-else-if="getCustomerProgressStatus(row) === 'jadwal_pasang'" class="mt-1 flex items-center gap-1 text-[11px] text-amber-600 font-medium bg-amber-50/70 px-1.5 py-0.5 rounded border border-amber-100/60 w-fit">
+                                <svg class="w-3 h-3 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <span>Belum Dijadwalkan</span>
+                            </div>
                         </div>
                     </div>
                 </td>
@@ -263,9 +267,9 @@
 
                     <!-- Grup 1: Alur Kerja & Tindakan Instalasi -->
                     <div class="py-1">
-                        <!-- Jadwal Pasang (Belum dijadwalkan) -->
+                        <!-- Jadwal Pasang / Ubah Jadwal -->
                         <button 
-                            v-if="getCustomerProgressStatus(activeDropdownRow) === 'jadwal_pasang' && hasPermission('customers_installed_assign')"
+                            v-if="['jadwal_pasang', 'laporan_pasang'].includes(getCustomerProgressStatus(activeDropdownRow)) && hasPermission('customers_installed_assign')"
                             type="button"
                             @click="openAssignModal(activeDropdownRow); closeDropdown()"
                             class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-blue-50/80 hover:text-blue-700 transition-colors font-medium group cursor-pointer"
@@ -274,8 +278,8 @@
                                 <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                             </div>
                             <div class="min-w-0 flex-1">
-                                <span class="font-semibold text-xs block text-slate-800 group-hover:text-blue-700">Jadwal Pasang</span>
-                                <p class="text-[10px] text-slate-400 group-hover:text-blue-500 font-normal leading-tight">Pilih teknisi & jadwal instalasi</p>
+                                <span class="font-semibold text-xs block text-slate-800 group-hover:text-blue-700">{{ getCustomerProgressStatus(activeDropdownRow) === 'laporan_pasang' ? 'Ubah Jadwal & Teknisi' : 'Jadwal Pasang' }}</span>
+                                <p class="text-[10px] text-slate-400 group-hover:text-blue-500 font-normal leading-tight">{{ getCustomerProgressStatus(activeDropdownRow) === 'laporan_pasang' ? 'Ganti penugasan teknisi atau jadwal' : 'Pilih teknisi & jadwal instalasi' }}</p>
                             </div>
                         </button>
 
@@ -628,7 +632,7 @@
                                 </div>
                             </div>
 
-                            <div v-else-if="detailCustomer.technician_schedules?.length" class="bg-blue-50/50 rounded-xl p-4 border border-blue-100">
+                            <div v-else-if="detailCustomer.technician_schedules?.filter(s => s.type === 'installation').length" class="bg-blue-50/50 rounded-xl p-4 border border-blue-100">
                                 <div class="flex gap-3 items-start">
                                     <div class="p-2 bg-blue-100 text-blue-600 rounded-lg shrink-0">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
@@ -636,7 +640,7 @@
                                     <div>
                                         <h5 class="text-sm font-semibold text-gray-900 mb-1">Telah Dijadwalkan (Belum Ada Laporan)</h5>
                                         <p class="text-sm text-gray-600">Teknisi: <strong class="text-gray-900">{{ getAssignedTechnicians(detailCustomer, 'installation') }}</strong></p>
-                                        <p class="text-sm text-gray-600">Waktu: <strong class="text-gray-900">{{ detailCustomer.technician_schedules[0].scheduled_date }} {{ detailCustomer.technician_schedules[0].scheduled_time }}</strong></p>
+                                        <p class="text-sm text-gray-600">Waktu: <strong class="text-gray-900">{{ detailCustomer.technician_schedules.find(s => s.type === 'installation')?.scheduled_date }} {{ detailCustomer.technician_schedules.find(s => s.type === 'installation')?.scheduled_time }}</strong></p>
                                     </div>
                                 </div>
                             </div>
@@ -1164,12 +1168,12 @@
                                     <input type="radio" value="all" v-model="waSelectedTechId" @change="updateWaMessagePreview" class="text-emerald-600 focus:ring-emerald-500">
                                     <div>
                                         <span class="text-xs font-bold text-gray-900 block">Kirim ke Semua Teknisi</span>
-                                        <span class="text-[10px] text-gray-500">({{ getAssignedTechnicians(waCustomer).length }} teknisi terdaftar di jadwal)</span>
+                                        <span class="text-[10px] text-gray-500">({{ getAssignedTechnicianObjects(waCustomer, 'installation').length }} teknisi terdaftar di jadwal)</span>
                                     </div>
                                 </label>
 
                                 <label 
-                                    v-for="t in getAssignedTechnicians(waCustomer)" 
+                                    v-for="t in getAssignedTechnicianObjects(waCustomer, 'installation')" 
                                     :key="t.id"
                                     class="flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all"
                                     :class="waSelectedTechId == t.id ? 'border-emerald-600 bg-emerald-50/40 ring-1 ring-emerald-600' : 'border-gray-200 hover:border-gray-300'"
@@ -1241,7 +1245,7 @@
                     <div class="p-4 bg-slate-50 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
                         <div class="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto">
                             <!-- Direct WhatsApp Links per Technician -->
-                            <template v-for="t in getAssignedTechnicians(waCustomer)" :key="t.id">
+                            <template v-for="t in getAssignedTechnicianObjects(waCustomer, 'installation')" :key="t.id">
                                 <button 
                                     v-if="t.phone"
                                     type="button" 
@@ -2031,13 +2035,21 @@ const hardwareItems = computed(() => {
     return items;
 });
 
-const getAssignedTechnicians = (customer, type = null) => {
-    if (!customer?.technician_schedules) return type ? '-' : [];
+const getAssignedTechnicians = (customer, type = 'installation') => {
+    if (!customer?.technician_schedules) return '-';
     let schedules = customer.technician_schedules;
     if (type) {
         schedules = schedules.filter(s => s.type === type);
-        if (schedules.length === 0) return '-';
-        return schedules.map(s => s.technician?.name).filter(Boolean).join(', ') || '-';
+    }
+    if (schedules.length === 0) return '-';
+    return schedules.map(s => s.technician?.name).filter(Boolean).join(', ') || '-';
+};
+
+const getAssignedTechnicianObjects = (customer, type = 'installation') => {
+    if (!customer?.technician_schedules) return [];
+    let schedules = customer.technician_schedules;
+    if (type) {
+        schedules = schedules.filter(s => s.type === type);
     }
     const techMap = new Map();
     schedules.forEach(s => {
@@ -2133,7 +2145,7 @@ function updateWaMessagePreview() {
 
     let techTarget = '{nama_teknisi}';
     if (waSelectedTechId.value !== 'all') {
-        const t = getAssignedTechnicians(c).find(tech => tech.id == waSelectedTechId.value);
+        const t = getAssignedTechnicianObjects(c, 'installation').find(tech => tech.id == waSelectedTechId.value);
         if (t) techTarget = t.name;
     }
 
@@ -2206,7 +2218,7 @@ async function sendWaViaGateway() {
     const payload = {
         custom_message: waCustomMessage.value,
         technician_ids: waSelectedTechId.value === 'all' 
-            ? getAssignedTechnicians(waCustomer.value).map(t => t.id)
+            ? getAssignedTechnicianObjects(waCustomer.value, 'installation').map(t => t.id)
             : [parseInt(waSelectedTechId.value)]
     };
 
