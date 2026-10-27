@@ -1643,6 +1643,11 @@ class DataMigrationService
                 "Batch {$batchId}: Sukses {$insertedCount} baru, {$updatedCount} diperbarui, {$skippedCount} dilewati."
             );
 
+            // Auto-sync material stocks if customer migration affected cables
+            if ($category === 'customers') {
+                self::syncMigrationMaterialStocks();
+            }
+
             DB::commit();
 
             return [
@@ -3319,4 +3324,123 @@ class DataMigrationService
 
         return $isUpdated ? 'updated' : 'inserted';
     }
+
+    /**
+     * Auto-sync Material Stocks & Initial Transactions from Customer Migration Data
+     * Menghitung total pemakaian kabel dari setiap migrasi pelanggan dan mengisikan stok roll/meter per area secara otomatis.
+     */
+    public static function syncMigrationMaterialStocks(): array
+    {
+        $freeconMaterial = Material::where('category', 'like', '%frecon%')
+            ->orWhere('category', 'like', '%kabel%')
+            ->orWhere('name', 'like', '%dropcore%')
+            ->first();
+
+        if (!$freeconMaterial) {
+            return ['status' => 'no_material', 'message' => 'Material kabel dropcore belum ada'];
+        }
+
+        // Cari transaksi migrasi kabel (OUT-MIG-%)
+        $migrationItems = MaterialTransactionItem::where('material_id', $freeconMaterial->id)
+            ->whereHas('transaction', function($q) {
+                $q->where('transaction_number', 'like', 'OUT-MIG-%');
+            })
+            ->with('transaction')
+            ->get();
+
+        if ($migrationItems->isEmpty()) {
+            return ['status' => 'no_data', 'message' => 'Tidak ada data migrasi kabel ditemukan'];
+        }
+
+        // Kelompokkan pemakaian kabel migrasi per area
+        $groupedByArea = $migrationItems->groupBy(function($item) {
+            return $item->transaction ? $item->transaction->area_id : 0;
+        });
+
+        $totalMeterAll = 0;
+        $totalRollAll = 0;
+        $areaResults = [];
+
+        foreach ($groupedByArea as $areaId => $items) {
+            if (!$areaId) continue;
+
+            $totalMeter = (float) $items->sum('quantity');
+            $meterPerRoll = (float) ($freeconMaterial->meter_per_roll ?: 1000);
+            $totalRoll = round($totalMeter / $meterPerRoll, 2);
+            $area = Area::find($areaId);
+            $areaName = $area ? $area->name : "Area #{$areaId}";
+
+            // 1. Buat / update transaksi IN stok awal migrasi untuk area ini
+            $inTransNumber = "IN-MIG-INIT-AREA-{$areaId}";
+            $inTrans = MaterialTransaction::updateOrCreate(
+                ['transaction_number' => $inTransNumber],
+                [
+                    'type' => 'in',
+                    'status' => 'approved',
+                    'date' => '2024-01-01',
+                    'technician_name' => 'Sistem Migrasi',
+                    'purpose' => "Penerimaan Stok Awal Material dari Hasil Migrasi Pelanggan ({$areaName})",
+                    'source_type' => 'migrasi',
+                    'area_id' => $areaId,
+                    'notes' => "Stok material kabel dropcore hasil migrasi {$items->count()} pelanggan: {$totalMeter} meter (~{$totalRoll} Roll)",
+                    'total_cost' => ($freeconMaterial->price_per_unit ?: 1500) * $totalMeter,
+                    'user_id' => 1,
+                ]
+            );
+
+            MaterialTransactionItem::updateOrCreate(
+                [
+                    'material_transaction_id' => $inTrans->id,
+                    'material_id' => $freeconMaterial->id,
+                ],
+                [
+                    'quantity' => $totalMeter,
+                    'unit' => 'meter',
+                    'price_per_unit' => $freeconMaterial->price_per_unit ?: 1500,
+                    'total_price' => ($freeconMaterial->price_per_unit ?: 1500) * $totalMeter,
+                    'stock_before' => 0,
+                    'stock_after' => $totalMeter,
+                    'condition' => 'Layak Pakai',
+                ]
+            );
+
+            // 2. Buat / update record MaterialStock untuk area ini
+            $matStock = MaterialStock::firstOrCreate(
+                ['material_id' => $freeconMaterial->id, 'area_id' => $areaId],
+                ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
+            );
+
+            $matStock->initial_stock = $totalMeter;
+            $matStock->stock = $totalMeter;
+            $matStock->total_rolls = $totalRoll;
+            $matStock->save();
+
+            $totalMeterAll += $totalMeter;
+            $totalRollAll += $totalRoll;
+
+            $areaResults[] = [
+                'area_id' => $areaId,
+                'area_name' => $areaName,
+                'customers_count' => $items->count(),
+                'total_meter' => $totalMeter,
+                'total_rolls' => $totalRoll,
+            ];
+        }
+
+        // 3. Update global material
+        $freeconMaterial->initial_stock = $totalMeterAll;
+        $freeconMaterial->stock = $totalMeterAll;
+        $freeconMaterial->total_rolls = $totalRollAll;
+        $freeconMaterial->save();
+
+        return [
+            'status' => 'success',
+            'material_id' => $freeconMaterial->id,
+            'material_name' => $freeconMaterial->name,
+            'total_meter' => $totalMeterAll,
+            'total_rolls' => $totalRollAll,
+            'areas' => $areaResults,
+        ];
+    }
 }
+
