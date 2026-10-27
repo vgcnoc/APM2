@@ -43,7 +43,7 @@
                         class="inline-flex items-center gap-2 bg-white text-indigo-900 hover:bg-blue-50 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                     >
                         <svg class="w-4 h-4 text-indigo-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                        <span>+ Tambah Pelanggan</span>
+                        <span>Tambah Pelanggan</span>
                     </Link>
                 </div>
             </div>
@@ -52,122 +52,122 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3.5">
                 
                 <!-- Card 1: Total Pelanggan Berbayar -->
-                <div class="bg-white rounded-2xl p-4 border border-blue-100 shadow-xs hover:border-blue-300 transition-all flex flex-col justify-between">
+                <div class="bg-white dark:bg-slate-900/90 rounded-2xl p-4 border border-blue-100 dark:border-slate-800 shadow-xs hover:border-blue-300 dark:hover:border-blue-700 transition-all flex flex-col justify-between">
                     <div>
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-[11px] font-bold uppercase tracking-wider text-blue-700 flex items-center gap-1.5">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
                                 <span class="w-2 h-2 rounded-full bg-blue-500"></span>
                                 Pelanggan Berbayar
                             </span>
-                            <span class="text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-bold">Total</span>
+                            <span class="text-[10px] bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full font-bold">Total</span>
                         </div>
-                        <div class="text-2xl font-black text-gray-900">
+                        <div class="text-2xl font-black text-gray-900 dark:text-white">
                             {{ Number(stats.total || 0).toLocaleString('id-ID') }}
                         </div>
                     </div>
-                    <div class="mt-2 text-[11px] text-gray-500 font-medium border-t border-gray-100 pt-1.5 flex items-center justify-between">
-                        <span>Potensi Omset:</span>
-                        <span class="text-blue-700 font-bold font-mono">{{ formatShortRupiah(stats.total_potential) }}</span>
+                    <div class="mt-2 text-[11px] text-gray-500 dark:text-gray-400 font-medium border-t border-gray-100 dark:border-slate-800 pt-1.5 flex items-center justify-between gap-1">
+                        <span class="truncate">Potensi:</span>
+                        <span class="text-blue-700 dark:text-blue-400 font-bold font-mono whitespace-nowrap">{{ formatShortRupiah(stats.total_potential) }}</span>
                     </div>
                 </div>
 
                 <!-- Card 2: Lunas Periode Ini (Paid) -->
-                <div class="bg-white rounded-2xl p-4 border border-emerald-100 shadow-xs hover:border-emerald-300 transition-all flex flex-col justify-between">
+                <div class="bg-white dark:bg-slate-900/90 rounded-2xl p-4 border border-emerald-100 dark:border-slate-800 shadow-xs hover:border-emerald-300 dark:hover:border-emerald-700 transition-all flex flex-col justify-between">
                     <div>
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-1.5">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
                                 <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                                 Sudah Bayar (Lunas)
                             </span>
-                            <span class="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold">Paid</span>
+                            <span class="text-[10px] bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full font-bold">Paid</span>
                         </div>
-                        <div class="text-2xl font-black text-emerald-700">
+                        <div class="text-2xl font-black text-emerald-600 dark:text-emerald-400">
                             {{ Number(stats.paid_count || 0).toLocaleString('id-ID') }}
                         </div>
                     </div>
-                    <div class="mt-2 text-[11px] text-gray-500 font-medium border-t border-gray-100 pt-1.5 flex items-center justify-between">
-                        <span>Uang Diterima:</span>
-                        <span class="text-emerald-700 font-bold font-mono">{{ formatShortRupiah(stats.paid_amount) }}</span>
+                    <div class="mt-2 text-[11px] text-gray-500 dark:text-gray-400 font-medium border-t border-gray-100 dark:border-slate-800 pt-1.5 flex items-center justify-between gap-1">
+                        <span class="truncate">Diterima:</span>
+                        <span class="text-emerald-700 dark:text-emerald-400 font-bold font-mono whitespace-nowrap">{{ formatShortRupiah(stats.paid_amount) }}</span>
                     </div>
                 </div>
 
                 <!-- Card 3: Belum Bayar (Unpaid) -->
-                <div class="bg-white rounded-2xl p-4 border border-amber-100 shadow-xs hover:border-amber-300 transition-all flex flex-col justify-between">
+                <div class="bg-white dark:bg-slate-900/90 rounded-2xl p-4 border border-amber-100 dark:border-slate-800 shadow-xs hover:border-amber-300 dark:hover:border-amber-700 transition-all flex flex-col justify-between">
                     <div>
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-[11px] font-bold uppercase tracking-wider text-amber-700 flex items-center gap-1.5">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
                                 <span class="w-2 h-2 rounded-full bg-amber-500"></span>
                                 Menunggu Bayar
                             </span>
-                            <span class="text-[10px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full font-bold">Unpaid</span>
+                            <span class="text-[10px] bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full font-bold">Unpaid</span>
                         </div>
-                        <div class="text-2xl font-black text-amber-800">
+                        <div class="text-2xl font-black text-amber-600 dark:text-amber-400">
                             {{ Number(stats.unpaid_count || 0).toLocaleString('id-ID') }}
                         </div>
                     </div>
-                    <div class="mt-2 text-[11px] text-gray-500 font-medium border-t border-gray-100 pt-1.5 flex items-center justify-between">
-                        <span>Nominal:</span>
-                        <span class="text-amber-800 font-bold font-mono">{{ formatShortRupiah(stats.unpaid_amount) }}</span>
+                    <div class="mt-2 text-[11px] text-gray-500 dark:text-gray-400 font-medium border-t border-gray-100 dark:border-slate-800 pt-1.5 flex items-center justify-between gap-1">
+                        <span class="truncate">Nominal:</span>
+                        <span class="text-amber-700 dark:text-amber-400 font-bold font-mono whitespace-nowrap">{{ formatShortRupiah(stats.unpaid_amount) }}</span>
                     </div>
                 </div>
 
                 <!-- Card 4: Menunggak / Overdue -->
-                <div class="bg-white rounded-2xl p-4 border border-rose-100 shadow-xs hover:border-rose-300 transition-all flex flex-col justify-between">
+                <div class="bg-white dark:bg-slate-900/90 rounded-2xl p-4 border border-rose-100 dark:border-slate-800 shadow-xs hover:border-rose-300 dark:hover:border-rose-700 transition-all flex flex-col justify-between">
                     <div>
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-[11px] font-bold uppercase tracking-wider text-rose-700 flex items-center gap-1.5">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
                                 <span class="w-2 h-2 rounded-full bg-rose-500"></span>
                                 Lewat Jatuh Tempo
                             </span>
-                            <span class="text-[10px] bg-rose-50 text-rose-700 px-2 py-0.5 rounded-full font-bold">Overdue</span>
+                            <span class="text-[10px] bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 px-2 py-0.5 rounded-full font-bold">Overdue</span>
                         </div>
-                        <div class="text-2xl font-black text-rose-700">
+                        <div class="text-2xl font-black text-rose-600 dark:text-rose-400">
                             {{ Number(stats.overdue_count || 0).toLocaleString('id-ID') }}
                         </div>
                     </div>
-                    <div class="mt-2 text-[11px] text-gray-500 font-medium border-t border-gray-100 pt-1.5 flex items-center justify-between">
-                        <span>Piutang Macet:</span>
-                        <span class="text-rose-700 font-bold font-mono">{{ formatShortRupiah(stats.overdue_amount) }}</span>
+                    <div class="mt-2 text-[11px] text-gray-500 dark:text-gray-400 font-medium border-t border-gray-100 dark:border-slate-800 pt-1.5 flex items-center justify-between gap-1">
+                        <span class="truncate">Piutang:</span>
+                        <span class="text-rose-700 dark:text-rose-400 font-bold font-mono whitespace-nowrap">{{ formatShortRupiah(stats.overdue_amount) }}</span>
                     </div>
                 </div>
 
                 <!-- Card 5: Terisolir (Suspended) -->
-                <div class="bg-white rounded-2xl p-4 border border-purple-100 shadow-xs hover:border-purple-300 transition-all flex flex-col justify-between">
+                <div class="bg-white dark:bg-slate-900/90 rounded-2xl p-4 border border-purple-100 dark:border-slate-800 shadow-xs hover:border-purple-300 dark:hover:border-purple-700 transition-all flex flex-col justify-between">
                     <div>
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-[11px] font-bold uppercase tracking-wider text-purple-700 flex items-center gap-1.5">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
                                 <span class="w-2 h-2 rounded-full bg-purple-500"></span>
                                 Pelanggan Terisolir
                             </span>
-                            <span class="text-[10px] bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full font-bold">Isolir</span>
+                            <span class="text-[10px] bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full font-bold">Isolir</span>
                         </div>
-                        <div class="text-2xl font-black text-purple-800">
+                        <div class="text-2xl font-black text-purple-600 dark:text-purple-400">
                             {{ Number(stats.suspended_count || 0).toLocaleString('id-ID') }}
                         </div>
                     </div>
-                    <div class="mt-2 text-[11px] text-gray-500 font-medium border-t border-gray-100 pt-1.5 flex items-center justify-between">
-                        <span>Layanan Internet:</span>
-                        <span class="text-purple-700 font-bold">Diblokir</span>
+                    <div class="mt-2 text-[11px] text-gray-500 dark:text-gray-400 font-medium border-t border-gray-100 dark:border-slate-800 pt-1.5 flex items-center justify-between gap-1">
+                        <span class="truncate">Layanan:</span>
+                        <span class="text-purple-700 dark:text-purple-400 font-bold whitespace-nowrap">Diblokir</span>
                     </div>
                 </div>
 
                 <!-- Card 6: Sesi Jaringan (RADIUS) -->
-                <div class="bg-white rounded-2xl p-4 border border-teal-100 shadow-xs hover:border-teal-300 transition-all flex flex-col justify-between">
+                <div class="bg-white dark:bg-slate-900/90 rounded-2xl p-4 border border-teal-100 dark:border-slate-800 shadow-xs hover:border-teal-300 dark:hover:border-teal-700 transition-all flex flex-col justify-between">
                     <div>
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-[11px] font-bold uppercase tracking-wider text-teal-700 flex items-center gap-1.5">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400 flex items-center gap-1.5">
                                 <span class="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></span>
                                 Sesi Online (PPPoE)
                             </span>
-                            <span class="text-[10px] bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full font-bold">Radius</span>
+                            <span class="text-[10px] bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 px-2 py-0.5 rounded-full font-bold">Radius</span>
                         </div>
-                        <div class="text-2xl font-black text-teal-800">
+                        <div class="text-2xl font-black text-teal-600 dark:text-teal-400">
                             {{ Number(stats.online_count || 0).toLocaleString('id-ID') }}
                         </div>
                     </div>
-                    <div class="mt-2 text-[11px] text-gray-500 font-medium border-t border-gray-100 pt-1.5 flex items-center justify-between">
-                        <span>Offline:</span>
-                        <span class="text-rose-600 font-bold font-mono">{{ Number(stats.offline_count || 0).toLocaleString('id-ID') }}</span>
+                    <div class="mt-2 text-[11px] text-gray-500 dark:text-gray-400 font-medium border-t border-gray-100 dark:border-slate-800 pt-1.5 flex items-center justify-between gap-1">
+                        <span class="truncate">Offline:</span>
+                        <span class="text-rose-600 dark:text-rose-400 font-bold font-mono whitespace-nowrap">{{ Number(stats.offline_count || 0).toLocaleString('id-ID') }}</span>
                     </div>
                 </div>
 
@@ -175,20 +175,20 @@
 
             <!-- ── FILTER CERDAS & SEGMENTED TABS STATUS PEMBAYARAN ── -->
             <div class="space-y-3">
-                <!-- Segmented Pills Status Pembayaran -->
-                <div class="flex items-center gap-1.5 p-1 bg-gray-100/90 rounded-2xl border border-gray-200 shadow-2xs overflow-x-auto">
+                <!-- Segmented Pills Status Pembayaran (Scroll Halus Tanpa Scrollbar Kasar) -->
+                <div class="flex items-center gap-1.5 p-1.5 bg-gray-100/90 dark:bg-slate-800/80 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-2xs overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                     <!-- Tab: Semua -->
                     <button 
                         type="button" 
                         @click="setPaymentStatusFilter('')"
                         :class="filters.payment_status === '' 
-                            ? 'bg-white text-indigo-900 shadow-xs font-bold border border-gray-200' 
-                            : 'text-gray-600 hover:text-gray-900 hover:bg-white/60 font-semibold border border-transparent'"
+                            ? 'bg-white dark:bg-slate-900 text-indigo-900 dark:text-blue-300 shadow-xs font-bold border border-gray-200 dark:border-slate-700' 
+                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700/50 font-semibold border border-transparent'"
                         class="px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer"
                     >
                         <span>Semua</span>
                         <span 
-                            :class="filters.payment_status === '' ? 'bg-indigo-100 text-indigo-800' : 'bg-gray-200 text-gray-700'"
+                            :class="filters.payment_status === '' ? 'bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300' : 'bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300'"
                             class="px-2 py-0.5 text-[11px] font-extrabold rounded-full"
                         >
                             {{ Number(stats.total || 0).toLocaleString('id-ID') }}
@@ -200,14 +200,14 @@
                         type="button" 
                         @click="setPaymentStatusFilter('paid')"
                         :class="filters.payment_status === 'paid' 
-                            ? 'bg-emerald-600 text-white shadow-xs font-bold border border-emerald-700' 
-                            : 'text-emerald-800 hover:bg-emerald-100/70 font-semibold border border-transparent'"
+                            ? 'bg-emerald-600 text-white shadow-xs font-bold border border-emerald-700 dark:border-emerald-500' 
+                            : 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100/70 dark:hover:bg-emerald-950/40 font-semibold border border-transparent'"
                         class="px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer"
                     >
                         <span class="w-2 h-2 rounded-full" :class="filters.payment_status === 'paid' ? 'bg-white' : 'bg-emerald-500'"></span>
                         <span>Lunas (Paid)</span>
                         <span 
-                            :class="filters.payment_status === 'paid' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'"
+                            :class="filters.payment_status === 'paid' ? 'bg-white/20 text-white' : 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300'"
                             class="px-2 py-0.5 text-[11px] font-extrabold rounded-full"
                         >
                             {{ Number(stats.paid_count || 0).toLocaleString('id-ID') }}
@@ -219,14 +219,14 @@
                         type="button" 
                         @click="setPaymentStatusFilter('unpaid')"
                         :class="filters.payment_status === 'unpaid' 
-                            ? 'bg-amber-600 text-white shadow-xs font-bold border border-amber-700' 
-                            : 'text-amber-800 hover:bg-amber-100/70 font-semibold border border-transparent'"
+                            ? 'bg-amber-600 text-white shadow-xs font-bold border border-amber-700 dark:border-amber-500' 
+                            : 'text-amber-700 dark:text-amber-400 hover:bg-amber-100/70 dark:hover:bg-amber-950/40 font-semibold border border-transparent'"
                         class="px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer"
                     >
                         <span class="w-2 h-2 rounded-full" :class="filters.payment_status === 'unpaid' ? 'bg-white' : 'bg-amber-500'"></span>
                         <span>Belum Bayar (Unpaid)</span>
                         <span 
-                            :class="filters.payment_status === 'unpaid' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'"
+                            :class="filters.payment_status === 'unpaid' ? 'bg-white/20 text-white' : 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300'"
                             class="px-2 py-0.5 text-[11px] font-extrabold rounded-full"
                         >
                             {{ Number(stats.unpaid_count || 0).toLocaleString('id-ID') }}
@@ -238,14 +238,14 @@
                         type="button" 
                         @click="setPaymentStatusFilter('overdue')"
                         :class="filters.payment_status === 'overdue' 
-                            ? 'bg-rose-600 text-white shadow-xs font-bold border border-rose-700' 
-                            : 'text-rose-800 hover:bg-rose-100/70 font-semibold border border-transparent'"
+                            ? 'bg-rose-600 text-white shadow-xs font-bold border border-rose-700 dark:border-rose-500' 
+                            : 'text-rose-700 dark:text-rose-400 hover:bg-rose-100/70 dark:hover:bg-rose-950/40 font-semibold border border-transparent'"
                         class="px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer"
                     >
                         <span class="w-2 h-2 rounded-full" :class="filters.payment_status === 'overdue' ? 'bg-white' : 'bg-rose-500 animate-pulse'"></span>
                         <span>Lewat Jatuh Tempo (Overdue)</span>
                         <span 
-                            :class="filters.payment_status === 'overdue' ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-800'"
+                            :class="filters.payment_status === 'overdue' ? 'bg-white/20 text-white' : 'bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-300'"
                             class="px-2 py-0.5 text-[11px] font-extrabold rounded-full"
                         >
                             {{ Number(stats.overdue_count || 0).toLocaleString('id-ID') }}
@@ -257,13 +257,13 @@
                         type="button" 
                         @click="setPaymentStatusFilter('isolir')"
                         :class="filters.payment_status === 'isolir' 
-                            ? 'bg-purple-600 text-white shadow-xs font-bold border border-purple-700' 
-                            : 'text-purple-800 hover:bg-purple-100/70 font-semibold border border-transparent'"
+                            ? 'bg-purple-600 text-white shadow-xs font-bold border border-purple-700 dark:border-purple-500' 
+                            : 'text-purple-700 dark:text-purple-400 hover:bg-purple-100/70 dark:hover:bg-purple-950/40 font-semibold border border-transparent'"
                         class="px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer"
                     >
                         <span>Terisolir (Suspended)</span>
                         <span 
-                            :class="filters.payment_status === 'isolir' ? 'bg-white/20 text-white' : 'bg-purple-100 text-purple-800'"
+                            :class="filters.payment_status === 'isolir' ? 'bg-white/20 text-white' : 'bg-purple-100 dark:bg-purple-950/70 text-purple-800 dark:text-purple-300'"
                             class="px-2 py-0.5 text-[11px] font-extrabold rounded-full"
                         >
                             {{ Number(stats.suspended_count || 0).toLocaleString('id-ID') }}
@@ -275,13 +275,13 @@
                         type="button" 
                         @click="setPaymentStatusFilter('partial')"
                         :class="filters.payment_status === 'partial' 
-                            ? 'bg-blue-600 text-white shadow-xs font-bold border border-blue-700' 
-                            : 'text-blue-800 hover:bg-blue-100/70 font-semibold border border-transparent'"
+                            ? 'bg-blue-600 text-white shadow-xs font-bold border border-blue-700 dark:border-blue-500' 
+                            : 'text-blue-700 dark:text-blue-400 hover:bg-blue-100/70 dark:hover:bg-blue-950/40 font-semibold border border-transparent'"
                         class="px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer"
                     >
                         <span>Cicilan / Sebagian</span>
                         <span 
-                            :class="filters.payment_status === 'partial' ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-800'"
+                            :class="filters.payment_status === 'partial' ? 'bg-white/20 text-white' : 'bg-blue-100 dark:bg-blue-950/70 text-blue-800 dark:text-blue-300'"
                             class="px-2 py-0.5 text-[11px] font-extrabold rounded-full"
                         >
                             {{ Number(stats.partial_count || 0).toLocaleString('id-ID') }}
@@ -293,13 +293,13 @@
                         type="button" 
                         @click="setPaymentStatusFilter('no_invoice')"
                         :class="filters.payment_status === 'no_invoice' 
-                            ? 'bg-gray-700 text-white shadow-xs font-bold border border-gray-800' 
-                            : 'text-gray-600 hover:bg-gray-200 font-semibold border border-transparent'"
+                            ? 'bg-gray-700 dark:bg-slate-700 text-white shadow-xs font-bold border border-gray-800 dark:border-slate-600' 
+                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-700/50 font-semibold border border-transparent'"
                         class="px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer"
                     >
                         <span>Belum Ada Tagihan</span>
                         <span 
-                            :class="filters.payment_status === 'no_invoice' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'"
+                            :class="filters.payment_status === 'no_invoice' ? 'bg-white/20 text-white' : 'bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300'"
                             class="px-2 py-0.5 text-[11px] font-extrabold rounded-full"
                         >
                             {{ Number(stats.no_invoice_count || 0).toLocaleString('id-ID') }}
@@ -307,88 +307,105 @@
                     </button>
                 </div>
 
-                <!-- Filter Bar Kontrol (Search, Periode, Area, Paket, Koneksi) -->
-                <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs flex flex-wrap items-center justify-between gap-3">
-                    <div class="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
-                        <!-- Search Input -->
-                        <div class="relative flex-1 min-w-[220px] max-w-sm">
+                <!-- Filter Bar Kontrol 2 Baris Rapih & Elegan -->
+                <div class="bg-white dark:bg-slate-900/90 p-4 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-2xs space-y-3">
+                    <!-- Baris 1: Search Utama + Tombol Terapkan & Reset -->
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                        <div class="relative flex-1">
                             <input 
                                 v-model="formFilters.search" 
                                 type="text" 
-                                placeholder="Cari nama, ID, WA, alamat, user..." 
-                                class="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm shadow-2xs"
+                                placeholder="Cari nama pelanggan, ID pelanggan, no WA, alamat, user PPPoE, nomor invoice..." 
+                                class="w-full pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm shadow-2xs placeholder-gray-400 dark:placeholder-gray-500"
                                 @keyup.enter="applyFilters"
                             >
-                            <svg class="w-4 h-4 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-4 h-4 text-gray-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                             </svg>
                         </div>
 
-                        <!-- Dropdown Periode Bulan -->
-                        <select v-model="formFilters.period_month" @change="applyFilters" class="bg-gray-50 border-gray-300 rounded-xl text-xs sm:text-sm shadow-2xs focus:ring-blue-500 focus:border-blue-500">
-                            <option v-for="(mName, mIdx) in months" :key="mIdx" :value="mIdx + 1">
-                                {{ mName }}
-                            </option>
-                        </select>
-
-                        <!-- Dropdown Periode Tahun -->
-                        <select v-model="formFilters.period_year" @change="applyFilters" class="bg-gray-50 border-gray-300 rounded-xl text-xs sm:text-sm shadow-2xs focus:ring-blue-500 focus:border-blue-500">
-                            <option v-for="yr in yearOptions" :key="yr" :value="yr">
-                                {{ yr }}
-                            </option>
-                        </select>
-
-                        <!-- Dropdown Paket Internet -->
-                        <select v-model="formFilters.package_id" @change="applyFilters" class="bg-gray-50 border-gray-300 rounded-xl text-xs sm:text-sm shadow-2xs focus:ring-blue-500 focus:border-blue-500 max-w-[170px]">
-                            <option value="">Semua Paket</option>
-                            <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">
-                                {{ pkg.name }} ({{ pkg.speed_mbps }}M)
-                            </option>
-                        </select>
-
-                        <!-- Dropdown Area / Wilayah -->
-                        <select v-model="formFilters.area_id" @change="applyFilters" class="bg-gray-50 border-gray-300 rounded-xl text-xs sm:text-sm shadow-2xs focus:ring-blue-500 focus:border-blue-500 max-w-[160px]">
-                            <option value="">Semua Wilayah</option>
-                            <option v-for="ar in areas" :key="ar.id" :value="ar.id">
-                                {{ ar.name }}
-                            </option>
-                        </select>
-
-                        <!-- Dropdown Koneksi Online/Offline -->
-                        <select v-model="formFilters.connection_status" @change="applyFilters" class="bg-gray-50 border-gray-300 rounded-xl text-xs sm:text-sm shadow-2xs focus:ring-blue-500 focus:border-blue-500">
-                            <option value="">Semua Sesi</option>
-                            <option value="online">🟢 Online</option>
-                            <option value="offline">🔴 Offline</option>
-                        </select>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <button 
+                                @click="applyFilters" 
+                                class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                            >
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                                <span>Filter</span>
+                            </button>
+                            <button 
+                                v-if="hasActiveFilter" 
+                                @click="resetFilters" 
+                                class="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
+                                title="Reset Seluruh Filter"
+                            >
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                <span>Reset</span>
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- Tombol Reset Filter & Terapkan -->
-                    <div class="flex items-center gap-2 shrink-0">
-                        <button 
-                            @click="applyFilters" 
-                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
-                        >
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
-                            <span>Filter</span>
-                        </button>
-                        <button 
-                            v-if="hasActiveFilter" 
-                            @click="resetFilters" 
-                            class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
-                            title="Reset Seluruh Filter"
-                        >
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                            <span>Reset</span>
-                        </button>
+                    <!-- Baris 2: 5 Dropdown Filter Spesifik -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 pt-2 border-t border-gray-100 dark:border-slate-800/80">
+                        <!-- Dropdown Periode Bulan -->
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Periode Bulan</label>
+                            <select v-model="formFilters.period_month" @change="applyFilters" class="w-full bg-gray-50 dark:bg-slate-800 border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-xl text-xs shadow-2xs focus:ring-blue-500 focus:border-blue-500 py-2">
+                                <option v-for="(mName, mIdx) in months" :key="mIdx" :value="mIdx + 1">
+                                    {{ mName }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- Dropdown Periode Tahun -->
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Tahun</label>
+                            <select v-model="formFilters.period_year" @change="applyFilters" class="w-full bg-gray-50 dark:bg-slate-800 border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-xl text-xs shadow-2xs focus:ring-blue-500 focus:border-blue-500 py-2">
+                                <option v-for="yr in yearOptions" :key="yr" :value="yr">
+                                    {{ yr }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- Dropdown Paket Internet -->
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Paket Layanan</label>
+                            <select v-model="formFilters.package_id" @change="applyFilters" class="w-full bg-gray-50 dark:bg-slate-800 border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-xl text-xs shadow-2xs focus:ring-blue-500 focus:border-blue-500 py-2">
+                                <option value="">Semua Paket</option>
+                                <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">
+                                    {{ pkg.name }} ({{ pkg.speed_mbps }}M)
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- Dropdown Area / Wilayah -->
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Area / Wilayah</label>
+                            <select v-model="formFilters.area_id" @change="applyFilters" class="w-full bg-gray-50 dark:bg-slate-800 border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-xl text-xs shadow-2xs focus:ring-blue-500 focus:border-blue-500 py-2">
+                                <option value="">Semua Wilayah</option>
+                                <option v-for="ar in areas" :key="ar.id" :value="ar.id">
+                                    {{ ar.name }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- Dropdown Koneksi Online/Offline -->
+                        <div class="col-span-2 sm:col-span-1">
+                            <label class="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Sesi Jaringan</label>
+                            <select v-model="formFilters.connection_status" @change="applyFilters" class="w-full bg-gray-50 dark:bg-slate-800 border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-xl text-xs shadow-2xs focus:ring-blue-500 focus:border-blue-500 py-2">
+                                <option value="">Semua Sesi</option>
+                                <option value="online">🟢 Online</option>
+                                <option value="offline">🔴 Offline</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- ── TABEL DATA PELANGGAN BERBAYAR ── -->
-            <div class="bg-white rounded-3xl shadow-xs border border-gray-200 overflow-hidden">
+            <div class="bg-white dark:bg-slate-900/90 rounded-3xl shadow-xs border border-gray-200 dark:border-slate-800 overflow-hidden">
                 <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 text-xs sm:text-sm">
-                        <thead class="bg-gray-50/90 text-gray-600 uppercase text-[11px] font-bold tracking-wider">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-800 text-xs sm:text-sm">
+                        <thead class="bg-gray-50/90 dark:bg-slate-800/90 text-gray-600 dark:text-gray-300 uppercase text-[11px] font-bold tracking-wider">
                             <tr>
                                 <th class="px-5 py-3.5 text-left">Pelanggan & Kontak</th>
                                 <th class="px-5 py-3.5 text-left">Paket & Tarif</th>
@@ -399,18 +416,18 @@
                                 <th class="px-5 py-3.5 text-right">Aksi Penagihan</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-100 bg-white">
+                        <tbody class="divide-y divide-gray-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
                             <tr 
                                 v-for="customer in customers.data" 
                                 :key="customer.id"
                                 :class="[
                                     customer.is_suspended 
-                                        ? 'bg-purple-50/40 hover:bg-purple-50/70 border-l-4 border-l-purple-500' 
+                                        ? 'bg-purple-50/40 dark:bg-purple-950/20 hover:bg-purple-50/70 dark:hover:bg-purple-950/40 border-l-4 border-l-purple-500' 
                                         : (customer.payment_summary?.status === 'overdue' 
-                                            ? 'bg-rose-50/30 hover:bg-rose-50/60 border-l-4 border-l-rose-500' 
+                                            ? 'bg-rose-50/30 dark:bg-rose-950/20 hover:bg-rose-50/60 dark:hover:bg-rose-950/40 border-l-4 border-l-rose-500' 
                                             : (customer.payment_summary?.status === 'paid' 
-                                                ? 'hover:bg-emerald-50/30 border-l-4 border-l-emerald-500' 
-                                                : 'hover:bg-blue-50/20 border-l-4 border-l-gray-300'))
+                                                ? 'hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20 border-l-4 border-l-emerald-500' 
+                                                : 'hover:bg-blue-50/20 dark:hover:bg-slate-800/50 border-l-4 border-l-gray-300 dark:border-l-slate-700'))
                                 ]"
                                 class="transition-colors"
                             >
@@ -419,18 +436,18 @@
                                     <div class="flex flex-col gap-0.5">
                                         <Link 
                                             :href="route('customers.show', customer.id)"
-                                            class="font-bold text-gray-900 hover:text-blue-700 transition-colors text-sm flex items-center gap-1.5"
+                                            class="font-bold text-gray-900 dark:text-white hover:text-blue-700 dark:hover:text-blue-400 transition-colors text-sm flex items-center gap-1.5"
                                         >
                                             <span>{{ customer.name }}</span>
-                                            <span v-if="customer.is_suspended" class="px-1.5 py-0.2 rounded text-[10px] font-extrabold bg-purple-100 text-purple-800 border border-purple-200">
+                                            <span v-if="customer.is_suspended" class="px-1.5 py-0.2 rounded text-[10px] font-extrabold bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
                                                 ISOLIR
                                             </span>
                                         </Link>
-                                        <div class="flex items-center gap-2 text-xs text-gray-500">
-                                            <span class="font-mono font-bold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200">
+                                        <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                                            <span class="font-mono font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-1.5 py-0.2 rounded border border-blue-200 dark:border-blue-800/60">
                                                 {{ customer.customer_code }}
                                             </span>
-                                            <span v-if="customer.ont?.pppoe_user" class="font-mono text-gray-600 text-[11px]" title="Username PPPoE">
+                                            <span v-if="customer.ont?.pppoe_user" class="font-mono text-gray-600 dark:text-gray-400 text-[11px]" title="Username PPPoE">
                                                 User: {{ customer.ont.pppoe_user }}
                                             </span>
                                         </div>
@@ -438,7 +455,7 @@
                                             <a 
                                                 :href="getWhatsAppUrl(customer)" 
                                                 target="_blank" 
-                                                class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded-lg border border-emerald-200 transition-colors"
+                                                class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 hover:text-emerald-800 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 px-2 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-800/60 transition-colors"
                                                 title="Chat WhatsApp"
                                             >
                                                 <span>📱</span>
@@ -451,14 +468,14 @@
                                 <!-- 2. Paket & Tarif -->
                                 <td class="px-5 py-4 whitespace-nowrap">
                                     <div class="flex flex-col gap-0.5">
-                                        <span class="font-bold text-gray-900 text-sm">
+                                        <span class="font-bold text-gray-900 dark:text-white text-sm">
                                             {{ customer.package?.name || 'Paket Standar' }}
                                         </span>
                                         <div class="flex items-center gap-1.5 text-xs">
-                                            <span class="font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                            <span class="font-mono font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800/60">
                                                 {{ formatRupiah(customer.package?.price || 0) }} / bln
                                             </span>
-                                            <span v-if="customer.package?.speed_mbps" class="font-semibold text-gray-500 text-[11px]">
+                                            <span v-if="customer.package?.speed_mbps" class="font-semibold text-gray-500 dark:text-gray-400 text-[11px]">
                                                 {{ customer.package.speed_mbps }} Mbps
                                             </span>
                                         </div>
@@ -468,10 +485,10 @@
                                 <!-- 3. Wilayah & ODP -->
                                 <td class="px-5 py-4 whitespace-nowrap">
                                     <div class="flex flex-col gap-0.5 text-xs">
-                                        <span class="font-bold text-gray-800">
+                                        <span class="font-bold text-gray-800 dark:text-gray-200">
                                             {{ customer.areaModel?.name || customer.area || '-' }}
                                         </span>
-                                        <span v-if="customer.ont?.odp?.name" class="text-[11px] text-gray-500 flex items-center gap-1">
+                                        <span v-if="customer.ont?.odp?.name" class="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
                                             <span>📍</span> ODP: {{ customer.ont.odp.name }}
                                         </span>
                                         <span v-else class="text-[11px] text-gray-400">
@@ -483,16 +500,16 @@
                                 <!-- 4. Sesi Jaringan (RADIUS) -->
                                 <td class="px-5 py-4 whitespace-nowrap">
                                     <div v-if="customer.is_online" class="flex flex-col gap-1">
-                                        <span class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 w-max shadow-2xs">
+                                        <span class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/70 px-2.5 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-700 w-max shadow-2xs">
                                             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                                             ONLINE
                                         </span>
-                                        <div v-if="customer.online_session?.ip && customer.online_session.ip !== '-'" class="text-[10px] font-mono text-gray-600">
-                                            IP: <span class="font-bold text-gray-800">{{ customer.online_session.ip }}</span>
+                                        <div v-if="customer.online_session?.ip && customer.online_session.ip !== '-'" class="text-[10px] font-mono text-gray-600 dark:text-gray-400">
+                                            IP: <span class="font-bold text-gray-800 dark:text-gray-200">{{ customer.online_session.ip }}</span>
                                         </div>
                                     </div>
                                     <div v-else>
-                                        <span class="inline-flex items-center gap-1.5 text-xs font-bold text-rose-800 bg-rose-100 px-2.5 py-0.5 rounded-full border border-rose-300 w-max shadow-2xs">
+                                        <span class="inline-flex items-center gap-1.5 text-xs font-bold text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 px-2.5 py-0.5 rounded-full border border-rose-300 dark:border-rose-700 w-max shadow-2xs">
                                             <span class="w-2 h-2 rounded-full bg-rose-500"></span>
                                             OFFLINE
                                         </span>
@@ -552,7 +569,7 @@
                                 <!-- 6. Total Tagihan / Akumulasi Tunggakan -->
                                 <td class="px-5 py-4 whitespace-nowrap">
                                     <div class="flex flex-col items-start gap-1">
-                                        <div class="font-bold text-sm font-mono" :class="customer.payment_summary?.status === 'paid' ? 'text-gray-400 line-through' : 'text-gray-900'">
+                                        <div class="font-bold text-sm font-mono" :class="customer.payment_summary?.status === 'paid' ? 'text-gray-400 line-through' : 'text-gray-900 dark:text-white'">
                                             {{ formatRupiah(customer.payment_summary?.total_bill || 0) }}
                                         </div>
 
@@ -665,9 +682,9 @@
                 </div>
 
                 <!-- Pagination -->
-                <div v-if="customers.links && customers.links.length > 3" class="px-5 py-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-600">
+                <div v-if="customers.links && customers.links.length > 3" class="px-5 py-4 border-t border-gray-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-600 dark:text-gray-400">
                     <div>
-                        Menampilkan <span class="font-bold text-gray-900">{{ customers.from || 0 }}</span> - <span class="font-bold text-gray-900">{{ customers.to || 0 }}</span> dari <span class="font-bold text-gray-900">{{ customers.total || 0 }}</span> pelanggan
+                        Menampilkan <span class="font-bold text-gray-900 dark:text-white">{{ customers.from || 0 }}</span> - <span class="font-bold text-gray-900 dark:text-white">{{ customers.to || 0 }}</span> dari <span class="font-bold text-gray-900 dark:text-white">{{ customers.total || 0 }}</span> pelanggan
                     </div>
                     <div class="flex items-center gap-1">
                         <Link 
@@ -675,7 +692,7 @@
                             :key="idx" 
                             :href="link.url || '#'" 
                             :class="[
-                                link.active ? 'bg-blue-600 text-white font-bold' : (link.url ? 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200' : 'text-gray-400 opacity-50 cursor-not-allowed'),
+                                link.active ? 'bg-blue-600 text-white font-bold' : (link.url ? 'bg-white dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-slate-700' : 'text-gray-400 opacity-50 cursor-not-allowed'),
                                 'px-3 py-1.5 rounded-xl text-xs transition-colors'
                             ]"
                             v-html="link.label"
@@ -695,24 +712,24 @@
                 class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-xs animate-fade-in"
             >
                 <div 
-                    class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 overflow-hidden transform transition-all animate-scale-up"
+                    class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden transform transition-all animate-scale-up"
                     @click.stop
                 >
                     <!-- Header Modal Bayar -->
-                    <div class="flex justify-between items-center pb-4 border-b border-gray-100">
+                    <div class="flex justify-between items-center pb-4 border-b border-gray-100 dark:border-slate-800">
                         <div class="flex items-center gap-3">
-                            <div class="p-2.5 bg-emerald-50 text-emerald-700 rounded-2xl border border-emerald-200 shadow-2xs">
+                            <div class="p-2.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 rounded-2xl border border-emerald-200 dark:border-emerald-800 shadow-2xs">
                                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                             </div>
                             <div>
-                                <h3 class="text-base font-bold text-gray-900">Catat Pembayaran Tagihan</h3>
-                                <p class="text-xs text-gray-500">Pelanggan: <span class="font-bold text-gray-900">{{ payingCustomer.name }}</span> ({{ payingCustomer.customer_code }})</p>
+                                <h3 class="text-base font-bold text-gray-900 dark:text-white">Catat Pembayaran Tagihan</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Pelanggan: <span class="font-bold text-gray-900 dark:text-white">{{ payingCustomer.name }}</span> ({{ payingCustomer.customer_code }})</p>
                             </div>
                         </div>
                         <button 
                             type="button" 
                             @click="closePaymentModal" 
-                            class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+                            class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
                         >
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
@@ -722,18 +739,18 @@
                     <form @submit.prevent="submitPayment" class="mt-5 space-y-4">
                         
                         <!-- Ringkasan Invoice -->
-                        <div class="bg-gray-50 rounded-2xl p-4 border border-gray-200 flex flex-col gap-2">
+                        <div class="bg-gray-50 dark:bg-slate-800/70 rounded-2xl p-4 border border-gray-200 dark:border-slate-700 flex flex-col gap-2">
                             <div class="flex items-center justify-between text-xs">
-                                <span class="text-gray-500 font-medium">Nomor Invoice:</span>
-                                <span class="font-mono font-bold text-blue-700">{{ payingCustomer.current_invoice?.invoice_number }}</span>
+                                <span class="text-gray-500 dark:text-gray-400 font-medium">Nomor Invoice:</span>
+                                <span class="font-mono font-bold text-blue-700 dark:text-blue-400">{{ payingCustomer.current_invoice?.invoice_number }}</span>
                             </div>
                             <div class="flex items-center justify-between text-xs">
-                                <span class="text-gray-500 font-medium">Paket Layanan:</span>
-                                <span class="font-bold text-gray-800">{{ payingCustomer.package?.name }} ({{ formatRupiah(payingCustomer.package?.price || 0) }})</span>
+                                <span class="text-gray-500 dark:text-gray-400 font-medium">Paket Layanan:</span>
+                                <span class="font-bold text-gray-800 dark:text-gray-200">{{ payingCustomer.package?.name }} ({{ formatRupiah(payingCustomer.package?.price || 0) }})</span>
                             </div>
-                            <div class="flex items-center justify-between text-xs border-t border-gray-200/80 pt-2">
-                                <span class="text-gray-700 font-bold">Total Sisa Tagihan:</span>
-                                <span class="text-base font-black text-rose-700 font-mono">
+                            <div class="flex items-center justify-between text-xs border-t border-gray-200/80 dark:border-slate-700 pt-2">
+                                <span class="text-gray-700 dark:text-gray-300 font-bold">Total Sisa Tagihan:</span>
+                                <span class="text-base font-black text-rose-700 dark:text-rose-400 font-mono">
                                     {{ formatRupiah(payingCustomer.current_invoice?.remaining || payingCustomer.current_invoice?.amount || 0) }}
                                 </span>
                             </div>
@@ -741,25 +758,25 @@
 
                         <!-- Nominal Pembayaran -->
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
                                 Jumlah Pembayaran (Rp) <span class="text-red-500">*</span>
                             </label>
                             <input 
                                 v-model="payForm.amount" 
                                 type="number" 
-                                class="w-full border-gray-300 rounded-xl text-base font-bold font-mono focus:ring-emerald-500 focus:border-emerald-500 shadow-2xs" 
+                                class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-xl text-base font-bold font-mono focus:ring-emerald-500 focus:border-emerald-500 shadow-2xs" 
                                 required
                             >
                         </div>
 
                         <!-- Metode Pembayaran -->
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
                                 Metode Pembayaran <span class="text-red-500">*</span>
                             </label>
                             <select 
-                                v-model="payForm.payment_method" 
-                                class="w-full border-gray-300 rounded-xl text-xs sm:text-sm focus:ring-emerald-500 focus:border-emerald-500 shadow-2xs" 
+                                v-model="payForm.method" 
+                                class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-xl text-xs sm:text-sm focus:ring-emerald-500 focus:border-emerald-500 shadow-2xs py-2" 
                                 required
                             >
                                 <option value="cash">💵 Tunai / Cash (Petugas / Kasir)</option>
@@ -773,41 +790,41 @@
 
                         <!-- Tanggal Pembayaran -->
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
                                 Tanggal Pembayaran
                             </label>
                             <input 
                                 v-model="payForm.payment_date" 
                                 type="date" 
-                                class="w-full border-gray-300 rounded-xl text-xs sm:text-sm focus:ring-emerald-500 focus:border-emerald-500 shadow-2xs"
+                                class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-xl text-xs sm:text-sm focus:ring-emerald-500 focus:border-emerald-500 shadow-2xs py-2"
                             >
                         </div>
 
                         <!-- Catatan Pembayaran -->
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                            <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
                                 Catatan / Keterangan (Opsional)
                             </label>
                             <input 
                                 v-model="payForm.notes" 
                                 type="text" 
                                 placeholder="Contoh: Diterima lunas oleh admin kasir" 
-                                class="w-full border-gray-300 rounded-xl text-xs sm:text-sm focus:ring-emerald-500 focus:border-emerald-500 shadow-2xs"
+                                class="w-full bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-700 text-gray-900 dark:text-white rounded-xl text-xs sm:text-sm focus:ring-emerald-500 focus:border-emerald-500 shadow-2xs py-2"
                             >
                         </div>
 
                         <!-- Auto Buka Isolir Info -->
-                        <div v-if="payingCustomer.is_suspended" class="bg-purple-50 border border-purple-200 text-purple-800 p-3 rounded-xl text-xs flex items-center gap-2">
+                        <div v-if="payingCustomer.is_suspended" class="bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-300 p-3 rounded-xl text-xs flex items-center gap-2">
                             <span>🔓</span>
                             <span>Pelanggan ini sedang terisolir. Pembayaran otomatis membuka isolir dan mengaktifkan kembali layanan internet di RADIUS!</span>
                         </div>
 
                         <!-- Tombol Batal & Simpan Pembayaran -->
-                        <div class="pt-3 border-t border-gray-100 flex items-center justify-end gap-2">
+                        <div class="pt-3 border-t border-gray-100 dark:border-slate-800 flex items-center justify-end gap-2">
                             <button 
                                 type="button" 
                                 @click="closePaymentModal" 
-                                class="px-4 py-2.5 border border-gray-300 rounded-xl text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
+                                class="px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-xl text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                             >
                                 Batal
                             </button>
@@ -993,7 +1010,8 @@ const payingCustomer = ref(null);
 
 const payForm = useForm({
     amount: 0,
-    payment_method: 'cash',
+    method: 'cash',
+    internet_action: 'on',
     payment_date: new Date().toISOString().split('T')[0],
     notes: '',
 });
@@ -1008,7 +1026,8 @@ const openPaymentModal = (customer) => {
     payForm.clearErrors();
     const remaining = customer.current_invoice.remaining || customer.current_invoice.amount || 0;
     payForm.amount = remaining;
-    payForm.payment_method = 'cash';
+    payForm.method = 'cash';
+    payForm.internet_action = 'on';
     payForm.payment_date = new Date().toISOString().split('T')[0];
     payForm.notes = `Pembayaran tagihan periode ${props.currentPeriod?.label || ''}`;
     showPayModal.value = true;

@@ -481,7 +481,16 @@ class CustomerController extends Controller
                 } else {
                     $q->where('sales_id', auth()->id());
                 }
-            });
+            })
+            ->when($request->filled('area_id'), function ($q) use ($request) {
+                $areaId = $request->area_id;
+                $q->where(function ($sub) use ($areaId) {
+                    $sub->where('area_id', $areaId);
+                    $areaName = \App\Models\Area::where('id', $areaId)->value('name');
+                    if ($areaName) $sub->orWhere('area', $areaName);
+                });
+            })
+            ->when($request->filled('package_id'), fn ($q) => $q->where('package_id', $request->package_id));
 
         // 1. Online Usernames & Sessions dari FreeRADIUS
         $onlineSessions = collect();
@@ -589,21 +598,6 @@ class CustomerController extends Controller
 
         // 3. Query Data Pelanggan Berbayar dengan Filter & Pagination
         $query = (clone $baseQuery)->with(['package', 'areaModel', 'ont.odp', 'user', 'sales']);
-
-        // Filter Area
-        if ($request->filled('area_id')) {
-            $areaId = $request->area_id;
-            $query->where(function ($sub) use ($areaId) {
-                $sub->where('area_id', $areaId);
-                $areaName = \App\Models\Area::where('id', $areaId)->value('name');
-                if ($areaName) $sub->orWhere('area', $areaName);
-            });
-        }
-
-        // Filter Paket
-        if ($request->filled('package_id')) {
-            $query->where('package_id', $request->package_id);
-        }
 
         // Filter Koneksi Online / Offline
         if ($request->filled('connection_status') && in_array($request->connection_status, ['online', 'offline'])) {
