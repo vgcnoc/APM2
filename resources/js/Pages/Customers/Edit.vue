@@ -599,7 +599,7 @@ const form = useForm({
     tax_ppn: props.customer.tax_ppn,
     tax_bhp: props.customer.tax_bhp,
     tax_uso: props.customer.tax_uso,
-    billing_type: (props.customer.billing_type === 'pascabayar' || (!props.customer.billing_type && page.props.billingSettings?.billing_type === 'pascabayar')) ? 'pascabayar' : 'prabayar',
+    billing_type: props.customer.billing_type || page.props.billingSettings?.billing_type || 'prabayar',
     billing_cycle: props.customer.billing_cycle || 'default',
     billing_day: props.customer.billing_day || null,
 });

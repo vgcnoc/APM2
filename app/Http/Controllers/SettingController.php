@@ -549,7 +549,9 @@ class SettingController extends Controller
             Setting::set('billing_cycle', $request->billing_cycle);
         }
         if ($request->has('billing_type')) {
-            Setting::set('billing_type', $request->billing_type);
+            $newBillingType = $request->billing_type;
+            Setting::set('billing_type', $newBillingType);
+            \App\Models\Customer::query()->update(['billing_type' => $newBillingType]);
         }
         if ($request->has('prorata_formula')) {
             Setting::set('prorata_formula', $request->prorata_formula);

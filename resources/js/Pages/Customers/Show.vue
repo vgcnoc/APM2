@@ -4004,7 +4004,7 @@ if (custPpn !== null && custPpn === 0) {
 
 const activationForm = useForm({
     activation_date: new Date().toISOString().split('T')[0],
-    billing_type: (props.customer?.billing_type === 'pascabayar' || (usePage().props.billingSettings?.billing_type === 'pascabayar' && !props.customer?.billing_type)) ? 'pascabayar' : 'prabayar',
+    billing_type: props.customer?.billing_type || defaultBillingType.value || 'prabayar',
     is_prorata: usePage().props.billingSettings?.prorata_first_month !== false,
     service_status: props.customer?.service_status || 'berbayar',
     enable_tax: initialTaxEnabled,
@@ -4953,7 +4953,7 @@ const showEditActivationModal = ref(false);
 const editActivationForm = useForm({
     activation_date: '',
     service_status: 'berbayar',
-    billing_type: 'prabayar',
+    billing_type: defaultBillingType.value || 'prabayar',
     billing_cycle: 'default',
     billing_day: null,
     package_id: '',
@@ -4976,7 +4976,7 @@ function openEditActivationModal() {
     const ont = cust.ont;
     editActivationForm.activation_date = cust.activation_date ? cust.activation_date.split('T')[0] : (cust.registration_date ? cust.registration_date.split('T')[0] : new Date().toISOString().split('T')[0]);
     editActivationForm.service_status = cust.service_status || 'berbayar';
-    editActivationForm.billing_type = cust.billing_type || 'prabayar';
+    editActivationForm.billing_type = cust.billing_type || defaultBillingType.value || 'prabayar';
     editActivationForm.billing_cycle = cust.billing_cycle || 'default';
     editActivationForm.billing_day = cust.billing_day || null;
     editActivationForm.package_id = cust.package_id || '';

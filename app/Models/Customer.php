@@ -108,6 +108,17 @@ class Customer extends Model
         return $this->customer_code;
     }
 
+    /**
+     * Resolves billing_type defaulting to the system setting if empty
+     */
+    public function getBillingTypeAttribute(?string $value): string
+    {
+        if (empty($value)) {
+            return Setting::get('billing_type', 'prabayar');
+        }
+        return $value;
+    }
+
     // ── Relationships ──────────────────────────────────────────
 
     public function user(): BelongsTo

@@ -1039,7 +1039,7 @@ const editCustomer = ref(null);
 const editForm = useForm({
     activation_date: '',
     service_status: 'berbayar',
-    billing_type: 'prabayar',
+    billing_type: (page.props.billingSettings?.billing_type === 'pascabayar') ? 'pascabayar' : 'prabayar',
     billing_cycle: 'default',
     billing_day: null,
     package_id: '',
@@ -1061,7 +1061,7 @@ function openEditActivationModal(customer) {
     editCustomer.value = customer;
     editForm.activation_date = customer.activation_date || new Date().toISOString().split('T')[0];
     editForm.service_status = customer.service_status || 'berbayar';
-    editForm.billing_type = customer.billing_type || 'prabayar';
+    editForm.billing_type = customer.billing_type || defaultBillingType.value;
     editForm.billing_cycle = customer.billing_cycle || 'default';
     editForm.billing_day = customer.billing_day || null;
     editForm.package_id = customer.package_id || '';
@@ -1132,7 +1132,7 @@ const activeCustomer = ref(null);
 const showActivationModal = ref(false);
 const activationForm = useForm({
     activation_date: '',
-    billing_type: 'prabayar',
+    billing_type: (page.props.billingSettings?.billing_type === 'pascabayar') ? 'pascabayar' : 'prabayar',
     billing_cycle: 'default',
     billing_day: null,
     is_prorata: true,
