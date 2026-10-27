@@ -1643,8 +1643,8 @@ class DataMigrationService
                 "Batch {$batchId}: Sukses {$insertedCount} baru, {$updatedCount} diperbarui, {$skippedCount} dilewati."
             );
 
-            // Auto-sync material stocks if customer migration affected cables
-            if ($category === 'customers') {
+            // Auto-sync material stocks if migration affected cables or ONTs
+            if (in_array($category, ['customers', 'network', 'installation', 'onts'], true)) {
                 self::syncMigrationMaterialStocks();
             }
 
@@ -2531,13 +2531,9 @@ class DataMigrationService
                 );
             }
 
+            $ontMat = null;
             if (!empty($ontSn)) {
-                $ontDeviceName = "ONT {$ontBrand} {$ontModel}";
-                $ontMat = Material::where(function($q) use ($ontBrand) {
-                    $q->where('category', 'like', '%ont%')
-                      ->orWhere('category', 'like', '%modem%')
-                      ->orWhere('name', 'like', "%{$ontBrand}%");
-                })->first();
+                $ontMat = self::resolveOrCreateOntMaterial($ontBrand, $ontModel);
 
                 CustomerInstalledMaterial::updateOrCreate(
                     [
@@ -2545,8 +2541,8 @@ class DataMigrationService
                         'serial_number' => $ontSn,
                     ],
                     [
-                        'material_id' => $ontMat?->id,
-                        'item_name' => $ontDeviceName,
+                        'material_id' => $ontMat->id,
+                        'item_name' => $ontMat->name,
                         'quantity' => 1,
                         'unit' => 'unit',
                         'installed_at' => $instDate,
@@ -2559,8 +2555,11 @@ class DataMigrationService
         }
 
         // ── E. Auto-fill MaterialTransaction & Item (Menu Gudang & Riwayat Alokasi Material) ───
-        if ($cableDistance > 0 && $targetCust) {
+        if ($targetCust && ($cableDistance > 0 || !empty($ontSn))) {
             $transNumber = 'OUT-MIG-' . ($targetCust->customer_code ?: 'CUS-' . $targetCust->id);
+            $totalCost = ($cableDistance > 0 && $freeconMaterial ? (float)$freeconMaterial->price_per_unit * $cableDistance : 0)
+                + (!empty($ontSn) && $ontMat ? (float)($ontMat->price_per_unit ?: 150000) : 0);
+
             $matTrans = MaterialTransaction::updateOrCreate(
                 ['transaction_number' => $transNumber],
                 [
@@ -2568,19 +2567,19 @@ class DataMigrationService
                     'status' => 'approved',
                     'date' => $targetCust->activation_date ? $targetCust->activation_date->format('Y-m-d') : now()->toDateString(),
                     'technician_name' => !empty($data['sales_name']) ? $data['sales_name'] : 'Teknisi Migrasi',
-                    'purpose' => "Pemakaian Material Tarikan Kabel Migrasi Pelanggan {$targetCust->name}",
+                    'purpose' => "Pemakaian Material Tarikan Kabel & Modem ONT Migrasi Pelanggan {$targetCust->name}",
                     'source_type' => 'instalasi',
                     'source_id' => $targetCust->id,
                     'source_reference' => $targetCust->customer_code,
                     'user_id' => $salesId ?: 1,
                     'customer_id' => $targetCust->id,
                     'area_id' => $targetCust->area_id,
-                    'notes' => "Material migrasi terpasang:\n- {$cableItemName}: {$cableDistance} meter" . (!empty($ontSn) ? "\n- ONT: {$ontBrand} {$ontModel} (SN: {$ontSn})" : ""),
-                    'total_cost' => ($freeconMaterial ? (float)$freeconMaterial->price_per_unit : 0) * $cableDistance,
+                    'notes' => "Material migrasi terpasang:" . ($cableDistance > 0 ? "\n- {$cableItemName}: {$cableDistance} meter" : "") . (!empty($ontSn) && $ontMat ? "\n- ONT: {$ontMat->name} (SN: {$ontSn})" : ""),
+                    'total_cost' => $totalCost,
                 ]
             );
 
-            if ($freeconMaterial) {
+            if ($freeconMaterial && $cableDistance > 0) {
                 MaterialTransactionItem::updateOrCreate(
                     [
                         'material_transaction_id' => $matTrans->id,
@@ -2594,8 +2593,34 @@ class DataMigrationService
                         'stock_before' => $freeconMaterial->stock ?? 0,
                         'stock_after' => $freeconMaterial->stock ?? 0,
                         'condition' => 'Terpasang/Digunakan',
+                        'is_registered_to_ont' => false,
                     ]
                 );
+            }
+
+            if (!empty($ontSn) && $ontMat) {
+                $ontPrice = (float)($ontMat->price_per_unit ?: 150000);
+                $ontTrxItem = MaterialTransactionItem::updateOrCreate(
+                    [
+                        'material_transaction_id' => $matTrans->id,
+                        'material_id' => $ontMat->id,
+                    ],
+                    [
+                        'quantity' => 1,
+                        'unit' => 'unit',
+                        'price_per_unit' => $ontPrice,
+                        'total_price' => $ontPrice,
+                        'stock_before' => $ontMat->stock ?? 0,
+                        'stock_after' => $ontMat->stock ?? 0,
+                        'condition' => 'Terpasang/Digunakan',
+                        'is_registered_to_ont' => true,
+                    ]
+                );
+
+                if (!empty($ont)) {
+                    $ont->material_transaction_item_id = $ontTrxItem->id;
+                    $ont->save();
+                }
             }
         }
 
@@ -2841,6 +2866,10 @@ class DataMigrationService
                     ['status' => 'used']
                 );
             }
+            $ontBrand = $data['brand'] ?? 'ZTE';
+            $ontModel = $data['model'] ?? 'F609';
+            $ontMat = self::resolveOrCreateOntMaterial($ontBrand, $ontModel);
+
             $ont = Ont::where('serial_number', $data['serial_number'])->first();
             if ($ont) {
                 $ont->update([
@@ -2850,10 +2879,12 @@ class DataMigrationService
                     'port_number' => $portToUse,
                     'mac_address' => self::sanitizeMacAddress($data['mac_address'] ?? null) ?: $ont->mac_address,
                     'vlan_id' => $data['vlan_id'] ?: $ont->vlan_id,
+                    'brand' => $ontBrand ?: ($ont->brand ?: 'ZTE'),
+                    'model' => $ontModel ?: ($ont->model ?: 'F609'),
                     'status' => 'active',
                 ]);
             } else {
-                Ont::create([
+                $ont = Ont::create([
                     'customer_id' => $data['customer_id'],
                     'serial_number' => $data['serial_number'],
                     'mac_address' => self::sanitizeMacAddress($data['mac_address'] ?? null),
@@ -2862,10 +2893,71 @@ class DataMigrationService
                     'port_number' => $portToUse,
                     'area_id' => $area->id,
                     'vlan_id' => $data['vlan_id'],
-                    'brand' => 'ZTE',
-                    'model' => 'F609',
+                    'brand' => $ontBrand ?: 'ZTE',
+                    'model' => $ontModel ?: 'F609',
                     'status' => 'active',
                 ]);
+            }
+
+            CustomerInstalledMaterial::updateOrCreate(
+                [
+                    'customer_id' => $data['customer_id'],
+                    'serial_number' => $data['serial_number'],
+                ],
+                [
+                    'material_id' => $ontMat->id,
+                    'item_name' => $ontMat->name,
+                    'quantity' => 1,
+                    'unit' => 'unit',
+                    'installed_at' => now(),
+                    'installation_source' => 'migration',
+                    'status' => 'installed',
+                    'notes' => "Modem ONT aktif pelanggan (SN: {$data['serial_number']}) dari migrasi network",
+                ]
+            );
+
+            $targetCust = Customer::find($data['customer_id']);
+            if ($targetCust) {
+                $transNumber = 'OUT-MIG-' . ($targetCust->customer_code ?: 'CUS-' . $targetCust->id);
+                $ontPrice = (float)($ontMat->price_per_unit ?: 150000);
+                $matTrans = MaterialTransaction::firstOrCreate(
+                    ['transaction_number' => $transNumber],
+                    [
+                        'type' => 'out',
+                        'status' => 'approved',
+                        'date' => $targetCust->activation_date ? $targetCust->activation_date->format('Y-m-d') : now()->toDateString(),
+                        'technician_name' => 'Teknisi Migrasi',
+                        'purpose' => "Pemakaian Modem ONT Migrasi Pelanggan {$targetCust->name}",
+                        'source_type' => 'instalasi',
+                        'source_id' => $targetCust->id,
+                        'source_reference' => $targetCust->customer_code,
+                        'user_id' => 1,
+                        'customer_id' => $targetCust->id,
+                        'area_id' => $targetCust->area_id ?: $area->id,
+                        'notes' => "Material migrasi terpasang:\n- ONT: {$ontMat->name} (SN: {$data['serial_number']})",
+                        'total_cost' => $ontPrice,
+                    ]
+                );
+
+                $ontTrxItem = MaterialTransactionItem::updateOrCreate(
+                    [
+                        'material_transaction_id' => $matTrans->id,
+                        'material_id' => $ontMat->id,
+                    ],
+                    [
+                        'quantity' => 1,
+                        'unit' => 'unit',
+                        'price_per_unit' => $ontPrice,
+                        'total_price' => $ontPrice,
+                        'condition' => 'Terpasang/Digunakan',
+                        'is_registered_to_ont' => true,
+                    ]
+                );
+
+                if ($ont->material_transaction_item_id !== $ontTrxItem->id) {
+                    $ont->material_transaction_item_id = $ontTrxItem->id;
+                    $ont->save();
+                }
             }
         }
 
@@ -3014,17 +3106,11 @@ class DataMigrationService
             'is_audited' => $data['is_audited'],
         ]);
 
-        // Auto-register ONT in CustomerInstalledMaterial
+        // Auto-register ONT in CustomerInstalledMaterial & Material Transaction
         if (!empty($sn) && !empty($data['customer_id'])) {
             $brand = trim($data['brand'] ?? 'ONT');
             $model = trim($data['model'] ?? 'Modem');
-            $ontDeviceName = "ONT {$brand} {$model}";
-
-            $ontMat = Material::where(function($q) use ($brand) {
-                $q->where('category', 'like', '%ont%')
-                  ->orWhere('category', 'like', '%modem%')
-                  ->orWhere('name', 'like', "%{$brand}%");
-            })->first();
+            $ontMat = self::resolveOrCreateOntMaterial($brand, $model);
 
             CustomerInstalledMaterial::updateOrCreate(
                 [
@@ -3032,8 +3118,8 @@ class DataMigrationService
                     'serial_number' => $sn,
                 ],
                 [
-                    'material_id' => $ontMat?->id,
-                    'item_name' => $ontDeviceName,
+                    'material_id' => $ontMat->id,
+                    'item_name' => $ontMat->name,
                     'quantity' => 1,
                     'unit' => 'unit',
                     'installed_at' => $data['activation_date'] ?? now(),
@@ -3042,6 +3128,50 @@ class DataMigrationService
                     'notes' => "Modem ONT aktif pelanggan (SN: {$sn}) dari migrasi instalasi",
                 ]
             );
+
+            $targetCust = Customer::find($data['customer_id']);
+            if ($targetCust) {
+                $transNumber = 'OUT-MIG-' . ($targetCust->customer_code ?: 'CUS-' . $targetCust->id);
+                $ontPrice = (float)($ontMat->price_per_unit ?: 150000);
+                $matTrans = MaterialTransaction::firstOrCreate(
+                    ['transaction_number' => $transNumber],
+                    [
+                        'type' => 'out',
+                        'status' => 'approved',
+                        'date' => $targetCust->activation_date ? $targetCust->activation_date->format('Y-m-d') : now()->toDateString(),
+                        'technician_name' => 'Teknisi Migrasi',
+                        'purpose' => "Pemakaian Modem ONT Migrasi Pelanggan {$targetCust->name}",
+                        'source_type' => 'instalasi',
+                        'source_id' => $targetCust->id,
+                        'source_reference' => $targetCust->customer_code,
+                        'user_id' => 1,
+                        'customer_id' => $targetCust->id,
+                        'area_id' => $targetCust->area_id,
+                        'notes' => "Material migrasi terpasang:\n- ONT: {$ontMat->name} (SN: {$sn})",
+                        'total_cost' => $ontPrice,
+                    ]
+                );
+
+                $ontTrxItem = MaterialTransactionItem::updateOrCreate(
+                    [
+                        'material_transaction_id' => $matTrans->id,
+                        'material_id' => $ontMat->id,
+                    ],
+                    [
+                        'quantity' => 1,
+                        'unit' => 'unit',
+                        'price_per_unit' => $ontPrice,
+                        'total_price' => $ontPrice,
+                        'condition' => 'Terpasang/Digunakan',
+                        'is_registered_to_ont' => true,
+                    ]
+                );
+
+                if (!empty($ont)) {
+                    $ont->material_transaction_item_id = $ontTrxItem->id;
+                    $ont->save();
+                }
+            }
         }
 
         return 'inserted';
@@ -3326,10 +3456,134 @@ class DataMigrationService
     }
 
     /**
-     * Auto-sync Material Stocks & Initial Transactions from Customer Migration Data
-     * Menghitung total pemakaian kabel dari setiap migrasi pelanggan dan mengisikan stok roll/meter per area secara otomatis.
+     * Bersihkan dan standarisasi nama modem ONT untuk katalog produk & material
+     */
+    public static function cleanOntName(?string $brand, ?string $model): string
+    {
+        $brand = trim((string)$brand);
+        $model = trim((string)$model);
+
+        // Filter placeholder umum
+        if (in_array(strtoupper($brand), ['XXX', '-', '?', 'NONE', 'UNKNOWN', 'ONT', 'MODEM', 'LAINNYA'])) $brand = '';
+        if (in_array(strtoupper($model), ['XXX', '-', '?', 'NONE', 'UNKNOWN', 'LAINNYA', 'ONT', 'MODEM'])) $model = '';
+
+        // Normalisasi merk umum
+        if (stripos($brand, 'huawey') !== false || stripos($brand, 'huawei') !== false) {
+            $brand = preg_replace('/huawey/i', 'Huawei', $brand);
+        }
+        if (preg_match('/^zimmlink/i', $brand)) {
+            $brand = preg_replace('/^zimmlink/i', 'Zimm Link', $brand);
+        }
+        if (preg_match('/^zvolin/i', $brand)) {
+            $brand = preg_replace('/^zvolin/i', 'Zvolin', $brand);
+        }
+        if (strtoupper($brand) === 'ZTE') {
+            $brand = 'ZTE';
+        }
+
+        // Hapus merk jika berulang di awal model (misal merk "Zvolin", model "Zvolin / F613" atau "Zvolin F613")
+        if (!empty($brand) && !empty($model)) {
+            $cleanModel = preg_replace('/^' . preg_quote($brand, '/') . '[\s\/\-]*/i', '', $model);
+            if (!empty($cleanModel)) {
+                $model = $cleanModel;
+            }
+        }
+
+        // Hapus model jika berulang di akhir merk
+        if (!empty($brand) && !empty($model)) {
+            $cleanBrand = preg_replace('/[\s\/\-]*' . preg_quote($model, '/') . '$/i', '', $brand);
+            if (!empty($cleanBrand)) {
+                $brand = $cleanBrand;
+            }
+        }
+
+        // Standarisasi akronim teknologi ONT (XPON, EPON, GPON)
+        $model = preg_replace('/\bxpon\b/i', 'XPON', $model);
+        $model = preg_replace('/\bepon\b/i', 'EPON', $model);
+        $model = preg_replace('/\bgpon\b/i', 'GPON', $model);
+        $brand = preg_replace('/\bxpon\b/i', 'XPON', $brand);
+        $brand = preg_replace('/\bepon\b/i', 'EPON', $brand);
+        $brand = preg_replace('/\bgpon\b/i', 'GPON', $brand);
+
+        $parts = [];
+        if (!empty($brand)) $parts[] = $brand;
+        if (!empty($model) && (empty($brand) || strcasecmp($brand, $model) !== 0)) $parts[] = $model;
+
+        $combined = implode(' ', $parts);
+        $combined = preg_replace('/\s+/', ' ', trim($combined));
+        if (empty($combined)) return 'ONT XPON / EPON';
+        if (!preg_match('/^ONT\b/i', $combined)) $combined = 'ONT ' . $combined;
+        return preg_replace('/\s+/', ' ', trim($combined));
+    }
+
+    /**
+     * Cari atau otomatis buatkan data Material ONT di tabel materials (Menu Material & Logistik)
+     */
+    public static function resolveOrCreateOntMaterial(?string $brand, ?string $model): Material
+    {
+        $ontDeviceName = self::cleanOntName($brand, $model);
+
+        // Cari berdasarkan nama persis
+        $mat = Material::where('name', $ontDeviceName)->first();
+
+        if (!$mat) {
+            $cleanBrand = trim((string)$brand);
+            if (!empty($cleanBrand) && !in_array(strtoupper($cleanBrand), ['XXX', '-', '?', 'NONE', 'UNKNOWN'])) {
+                $mat = Material::where(function($q) use ($cleanBrand, $ontDeviceName) {
+                    $q->where('name', 'like', "%{$ontDeviceName}%")
+                      ->orWhere(function($sq) use ($cleanBrand) {
+                          $sq->where('category', 'like', '%ont%')
+                             ->where('name', 'like', "%{$cleanBrand}%");
+                      });
+                })->first();
+            }
+        }
+
+        if (!$mat) {
+            $mat = Material::create([
+                'name' => $ontDeviceName,
+                'category' => 'ONT',
+                'unit' => 'unit',
+                'stock' => 0,
+                'initial_stock' => 0,
+                'price_per_unit' => 150000,
+                'selling_price' => 200000,
+                'requires_sn' => true,
+                'requires_mac' => true,
+                'is_active' => true,
+                'description' => "Perangkat Modem ONT {$ontDeviceName} dari hasil migrasi sistem",
+            ]);
+        }
+
+        return $mat;
+    }
+
+    /**
+     * Auto-sync Material Stocks & Initial Transactions from Migration Data
+     * Menggabungkan sinkronisasi kabel dropcore dan perangkat Modem ONT hasil migrasi.
      */
     public static function syncMigrationMaterialStocks(): array
+    {
+        $cableResult = self::syncMigrationCableStocks();
+        $ontResult = self::syncMigrationOntStocks();
+
+        return [
+            'status' => 'success',
+            'cable' => $cableResult,
+            'ont' => $ontResult,
+            // Field kompatibilitas dengan command/UI lama
+            'material_id' => $cableResult['material_id'] ?? null,
+            'material_name' => $cableResult['material_name'] ?? null,
+            'total_meter' => $cableResult['total_meter'] ?? 0,
+            'total_rolls' => $cableResult['total_rolls'] ?? 0,
+            'areas' => $cableResult['areas'] ?? [],
+        ];
+    }
+
+    /**
+     * Auto-sync stok kabel dropcore per area dan global
+     */
+    public static function syncMigrationCableStocks(): array
     {
         $freeconMaterial = Material::where('category', 'like', '%frecon%')
             ->orWhere('category', 'like', '%kabel%')
@@ -3340,7 +3594,6 @@ class DataMigrationService
             return ['status' => 'no_material', 'message' => 'Material kabel dropcore belum ada'];
         }
 
-        // Cari transaksi migrasi kabel (OUT-MIG-%)
         $migrationItems = MaterialTransactionItem::where('material_id', $freeconMaterial->id)
             ->whereHas('transaction', function($q) {
                 $q->where('transaction_number', 'like', 'OUT-MIG-%');
@@ -3352,7 +3605,6 @@ class DataMigrationService
             return ['status' => 'no_data', 'message' => 'Tidak ada data migrasi kabel ditemukan'];
         }
 
-        // Kelompokkan pemakaian kabel migrasi per area
         $groupedByArea = $migrationItems->groupBy(function($item) {
             return $item->transaction ? $item->transaction->area_id : 0;
         });
@@ -3370,7 +3622,6 @@ class DataMigrationService
             $area = Area::find($areaId);
             $areaName = $area ? $area->name : "Area #{$areaId}";
 
-            // 1. Buat / update transaksi IN stok awal migrasi untuk area ini
             $inTransNumber = "IN-MIG-INIT-AREA-{$areaId}";
             $inTrans = MaterialTransaction::updateOrCreate(
                 ['transaction_number' => $inTransNumber],
@@ -3404,7 +3655,6 @@ class DataMigrationService
                 ]
             );
 
-            // 2. Buat / update record MaterialStock untuk area ini
             $matStock = MaterialStock::firstOrCreate(
                 ['material_id' => $freeconMaterial->id, 'area_id' => $areaId],
                 ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
@@ -3427,7 +3677,6 @@ class DataMigrationService
             ];
         }
 
-        // 3. Update global material
         $freeconMaterial->initial_stock = $totalMeterAll;
         $freeconMaterial->stock = $totalMeterAll;
         $freeconMaterial->total_rolls = $totalRollAll;
@@ -3440,6 +3689,204 @@ class DataMigrationService
             'total_meter' => $totalMeterAll,
             'total_rolls' => $totalRollAll,
             'areas' => $areaResults,
+        ];
+    }
+
+    /**
+     * Auto-sync stok modem ONT hasil migrasi ke Material, Gudang (MaterialStock), dan Transaksi
+     */
+    public static function syncMigrationOntStocks(): array
+    {
+        $allOnts = Ont::with('customer')->get();
+        if ($allOnts->isEmpty()) {
+            return ['status' => 'no_data', 'message' => 'Tidak ada data perangkat ONT ditemukan'];
+        }
+
+        $totalOntUnitsAll = 0;
+        $ontMaterialResults = [];
+        $ontAreaResults = [];
+        $touchedMaterialIds = [];
+
+        // 1. Sinkronisasi setiap ONT ke Material, CustomerInstalledMaterial, dan MaterialTransaction (OUT)
+        foreach ($allOnts as $ont) {
+            $ontMat = self::resolveOrCreateOntMaterial($ont->brand, $ont->model);
+            $touchedMaterialIds[$ontMat->id] = true;
+            $areaId = $ont->area_id ?: ($ont->customer?->area_id ?: 1);
+
+            // A. Update CustomerInstalledMaterial
+            if (!empty($ont->serial_number)) {
+                $instDate = $ont->customer?->activation_date ?: ($ont->customer?->registration_date ?: ($ont->created_at ?: now()));
+                CustomerInstalledMaterial::updateOrCreate(
+                    [
+                        'customer_id' => $ont->customer_id,
+                        'serial_number' => $ont->serial_number,
+                    ],
+                    [
+                        'material_id' => $ontMat->id,
+                        'item_name' => $ontMat->name,
+                        'quantity' => 1,
+                        'unit' => 'unit',
+                        'installed_at' => $instDate,
+                        'installation_source' => 'migration',
+                        'status' => 'installed',
+                        'notes' => "Modem ONT aktif pelanggan (SN: {$ont->serial_number}) dari migrasi sistem",
+                    ]
+                );
+            }
+
+            // B. Hubungkan ke MaterialTransaction & MaterialTransactionItem (OUT-MIG-...)
+            if ($ont->customer) {
+                $targetCust = $ont->customer;
+                $transNumber = 'OUT-MIG-' . ($targetCust->customer_code ?: 'CUS-' . $targetCust->id);
+                $ontPrice = (float)($ontMat->price_per_unit ?: 150000);
+
+                $matTrans = MaterialTransaction::firstOrCreate(
+                    ['transaction_number' => $transNumber],
+                    [
+                        'type' => 'out',
+                        'status' => 'approved',
+                        'date' => $targetCust->activation_date ? $targetCust->activation_date->format('Y-m-d') : now()->toDateString(),
+                        'technician_name' => 'Teknisi Migrasi',
+                        'purpose' => "Pemakaian Material Tarikan Kabel & Modem ONT Migrasi Pelanggan {$targetCust->name}",
+                        'source_type' => 'instalasi',
+                        'source_id' => $targetCust->id,
+                        'source_reference' => $targetCust->customer_code,
+                        'user_id' => 1,
+                        'customer_id' => $targetCust->id,
+                        'area_id' => $areaId,
+                        'notes' => "Material migrasi terpasang:\n- ONT: {$ontMat->name} (SN: {$ont->serial_number})",
+                        'total_cost' => $ontPrice,
+                    ]
+                );
+
+                $ontTrxItem = MaterialTransactionItem::updateOrCreate(
+                    [
+                        'material_transaction_id' => $matTrans->id,
+                        'material_id' => $ontMat->id,
+                    ],
+                    [
+                        'quantity' => 1,
+                        'unit' => 'unit',
+                        'price_per_unit' => $ontPrice,
+                        'total_price' => $ontPrice,
+                        'condition' => 'Terpasang/Digunakan',
+                        'is_registered_to_ont' => true,
+                    ]
+                );
+
+                if ($ont->material_transaction_item_id !== $ontTrxItem->id) {
+                    $ont->material_transaction_item_id = $ontTrxItem->id;
+                    $ont->save();
+                }
+            }
+        }
+
+        // 2. Kelompokkan ONT per area untuk penerimaan stok awal gudang (IN-MIG-ONT-AREA-{$areaId})
+        $groupedByArea = $allOnts->groupBy(function($ont) {
+            return $ont->area_id ?: ($ont->customer?->area_id ?: 1);
+        });
+
+        foreach ($groupedByArea as $areaId => $areaOnts) {
+            if (!$areaId) continue;
+
+            $area = Area::find($areaId);
+            $areaName = $area ? $area->name : "Area #{$areaId}";
+            $inOntTransNumber = "IN-MIG-ONT-AREA-{$areaId}";
+
+            $inOntTrans = MaterialTransaction::updateOrCreate(
+                ['transaction_number' => $inOntTransNumber],
+                [
+                    'type' => 'in',
+                    'status' => 'approved',
+                    'date' => '2024-01-01',
+                    'technician_name' => 'Sistem Migrasi',
+                    'purpose' => "Penerimaan Stok Awal Modem ONT dari Hasil Migrasi ({$areaName})",
+                    'source_type' => 'migrasi',
+                    'area_id' => $areaId,
+                    'notes' => "Stok awal perangkat modem ONT hasil migrasi area {$areaName}: {$areaOnts->count()} unit",
+                    'total_cost' => 0,
+                    'user_id' => 1,
+                ]
+            );
+
+            $groupedByMat = $areaOnts->groupBy(function($ont) {
+                return self::cleanOntName($ont->brand, $ont->model);
+            });
+
+            $areaTotalCost = 0;
+            $areaTotalUnits = 0;
+
+            foreach ($groupedByMat as $cleanName => $matOnts) {
+                $mat = Material::where('name', $cleanName)->first();
+                if (!$mat) continue;
+
+                $count = $matOnts->count();
+                $price = (float)($mat->price_per_unit ?: 150000);
+                $totalPrice = $price * $count;
+                $areaTotalCost += $totalPrice;
+                $areaTotalUnits += $count;
+
+                MaterialTransactionItem::updateOrCreate(
+                    [
+                        'material_transaction_id' => $inOntTrans->id,
+                        'material_id' => $mat->id,
+                    ],
+                    [
+                        'quantity' => $count,
+                        'unit' => 'unit',
+                        'price_per_unit' => $price,
+                        'total_price' => $totalPrice,
+                        'stock_before' => 0,
+                        'stock_after' => $count,
+                        'condition' => 'Layak Pakai',
+                        'is_registered_to_ont' => true,
+                    ]
+                );
+
+                $matStock = MaterialStock::firstOrCreate(
+                    ['material_id' => $mat->id, 'area_id' => $areaId],
+                    ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
+                );
+                $matStock->initial_stock = $count;
+                $matStock->stock = $count;
+                $matStock->save();
+            }
+
+            $inOntTrans->total_cost = $areaTotalCost;
+            $inOntTrans->save();
+
+            $ontAreaResults[] = [
+                'area_id' => $areaId,
+                'area_name' => $areaName,
+                'total_units' => $areaTotalUnits,
+                'distinct_models' => $groupedByMat->count(),
+            ];
+
+            $totalOntUnitsAll += $areaTotalUnits;
+        }
+
+        // 3. Update stok global untuk semua material ONT yang terlibat
+        $ontMaterials = Material::whereIn('id', array_keys($touchedMaterialIds))->get();
+        foreach ($ontMaterials as $ontMat) {
+            $sumStock = MaterialStock::where('material_id', $ontMat->id)->sum('stock');
+            $ontMat->initial_stock = $sumStock;
+            $ontMat->stock = $sumStock;
+            $ontMat->save();
+
+            $ontMaterialResults[] = [
+                'id' => $ontMat->id,
+                'name' => $ontMat->name,
+                'stock' => $sumStock,
+                'category' => $ontMat->category,
+            ];
+        }
+
+        return [
+            'status' => 'success',
+            'total_onts' => $totalOntUnitsAll,
+            'distinct_models' => count($ontMaterialResults),
+            'materials' => $ontMaterialResults,
+            'areas' => $ontAreaResults,
         ];
     }
 }
