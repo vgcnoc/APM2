@@ -123,8 +123,10 @@
                     <div class="mt-2 text-2xl font-black text-slate-900 dark:text-white tracking-tight">
                         {{ summary.gangguan || 0 }}
                     </div>
-                    <div class="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                    <div class="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 mt-1 flex-wrap">
                         <span class="text-emerald-600 font-bold">✓ {{ summary.gangguan_done || 0 }} Selesai</span>
+                        <span v-if="summary.gangguan_in_progress > 0" class="text-blue-600 font-bold">· 🛠️ {{ summary.gangguan_in_progress }} Proses</span>
+                        <span v-if="summary.gangguan_rescheduled > 0" class="text-purple-600 font-bold">· 🗓️ {{ summary.gangguan_rescheduled }} Reschedule</span>
                         <span>·</span>
                         <span class="text-amber-600 font-bold">⏳ {{ summary.gangguan_pending || 0 }} Pending</span>
                     </div>
@@ -145,10 +147,12 @@
                     <div class="mt-2 text-2xl font-black text-slate-900 dark:text-white tracking-tight">
                         {{ summary.pemasangan || 0 }}
                     </div>
-                    <div class="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                    <div class="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 mt-1 flex-wrap">
                         <span class="text-emerald-600 font-bold">✓ {{ summary.pemasangan_done || 0 }} Selesai</span>
+                        <span v-if="summary.pemasangan_in_progress > 0" class="text-blue-600 font-bold">· 🛠️ {{ summary.pemasangan_in_progress }} Proses</span>
+                        <span v-if="summary.pemasangan_rescheduled > 0" class="text-purple-600 font-bold">· 🗓️ {{ summary.pemasangan_rescheduled }} Reschedule</span>
                         <span>·</span>
-                        <span class="text-amber-600 font-bold">⏳ {{ summary.pemasangan_pending || 0 }} Proses</span>
+                        <span class="text-amber-600 font-bold">⏳ {{ summary.pemasangan_pending || 0 }} Pending</span>
                     </div>
                 </div>
 
@@ -167,8 +171,8 @@
                     <div class="mt-2 text-2xl font-black text-slate-900 dark:text-white tracking-tight">
                         {{ summary.survey || 0 }}
                     </div>
-                    <div class="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 mt-1">
-                        <span class="text-emerald-600 font-bold">✓ {{ summary.survey_feasible || 0 }} Layak</span>
+                    <div class="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 mt-1 flex-wrap">
+                        <span class="text-emerald-600 font-bold">✓ {{ summary.survey_feasible || 0 }} Selesai</span>
                         <span>·</span>
                         <span class="text-amber-600 font-bold">⏳ {{ summary.survey_pending || 0 }} Tunggu</span>
                     </div>
@@ -189,10 +193,11 @@
                     <div class="mt-2 text-2xl font-black text-slate-900 dark:text-white tracking-tight">
                         {{ summary.cbp || 0 }}
                     </div>
-                    <div class="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                    <div class="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 mt-1 flex-wrap">
                         <span class="text-emerald-600 font-bold">✓ {{ summary.cbp_done || 0 }} Selesai</span>
+                        <span v-if="summary.cbp_in_progress > 0" class="text-blue-600 font-bold">· 🛠️ {{ summary.cbp_in_progress }} Proses</span>
                         <span>·</span>
-                        <span class="text-amber-600 font-bold">⏳ {{ summary.cbp_pending || 0 }} Dijadwal</span>
+                        <span class="text-amber-600 font-bold">⏳ {{ summary.cbp_pending || 0 }} Pending</span>
                     </div>
                 </div>
 
@@ -272,18 +277,30 @@
                                         {{ idx + 1 }}
                                     </span>
                                     <div>
-                                        <h4 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                            {{ item.customer_name }}
-                                            <span class="px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider" :class="item.source === 'PGS' ? 'bg-amber-100 text-amber-800' : (item.source === 'PGK' ? 'bg-rose-100 text-rose-800' : 'bg-purple-100 text-purple-800')">
-                                                {{ item.source }}
+                                        <h4 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
+                                            <span>{{ item.customer_name }}</span>
+                                            <span 
+                                                class="px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider" 
+                                                :class="(item.type || item.source) === 'PGS' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300' : ((item.type || item.source) === 'PGK' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300' : 'bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border border-purple-300')"
+                                            >
+                                                {{ item.type || item.source }}
                                             </span>
                                         </h4>
-                                        <div class="text-[11px] text-slate-400 font-mono">{{ item.ticket_number }}</div>
+                                        <div class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5 flex-wrap">
+                                            <span class="font-mono font-bold">{{ item.ticket_number }}</span>
+                                            <span class="text-slate-300">·</span>
+                                            <span 
+                                                class="font-semibold flex items-center gap-1"
+                                                :class="item.technicians === 'Belum Ditugaskan' ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-slate-700 dark:text-slate-300'"
+                                            >
+                                                👷 {{ item.technicians }}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                                 <span 
-                                    class="px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5 shrink-0"
-                                    :class="item.is_done ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800'"
+                                    class="px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5 shrink-0 border"
+                                    :class="item.is_done ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' : (item.is_in_progress ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800' : (item.is_rescheduled ? 'bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800' : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800'))"
                                 >
                                     {{ item.status_label }}
                                 </span>
@@ -303,8 +320,11 @@
                                     <span class="text-slate-900 dark:text-slate-100 font-medium">{{ item.issue || '-' }}</span>
                                 </div>
                                 <div>
-                                    <span class="text-slate-400 text-[10px] font-bold block uppercase">Petugas Teknisi</span>
-                                    <span class="text-slate-900 dark:text-white font-bold flex items-center gap-1">
+                                    <span class="text-slate-400 text-[10px] font-bold block uppercase">Petugas Teknisi Ditugaskan</span>
+                                    <span 
+                                        class="font-bold flex items-center gap-1 text-xs"
+                                        :class="item.technicians === 'Belum Ditugaskan' ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-white'"
+                                    >
                                         👷 {{ item.technicians || '-' }}
                                     </span>
                                 </div>
@@ -353,12 +373,21 @@
                                     </span>
                                     <div>
                                         <h4 class="text-sm font-bold text-slate-900 dark:text-white">{{ item.customer_name }}</h4>
-                                        <div class="text-[11px] text-slate-400 font-mono">{{ item.customer_code }}</div>
+                                        <div class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5 flex-wrap">
+                                            <span class="font-mono font-bold">{{ item.customer_code }}</span>
+                                            <span class="text-slate-300">·</span>
+                                            <span 
+                                                class="font-semibold flex items-center gap-1"
+                                                :class="item.technicians === 'Belum Ditugaskan' ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-slate-700 dark:text-slate-300'"
+                                            >
+                                                👷 {{ item.technicians }}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                                 <span 
-                                    class="px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5 shrink-0"
-                                    :class="item.is_done ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800'"
+                                    class="px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5 shrink-0 border"
+                                    :class="item.is_done ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' : (item.is_in_progress ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800' : (item.is_rescheduled ? 'bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800' : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800'))"
                                 >
                                     {{ item.status_label }}
                                 </span>
@@ -374,12 +403,15 @@
                                     <span class="text-slate-700 dark:text-slate-300 font-semibold">{{ item.odp || '-' }}</span>
                                 </div>
                                 <div>
-                                    <span class="text-slate-400 text-[10px] font-bold block uppercase">Durasi Pengerjaan</span>
+                                    <span class="text-slate-400 text-[10px] font-bold block uppercase">Waktu / Jadwal Pengerjaan</span>
                                     <span class="text-slate-700 dark:text-slate-300 font-mono">{{ item.duration || '-' }}</span>
                                 </div>
                                 <div class="sm:col-span-2">
-                                    <span class="text-slate-400 text-[10px] font-bold block uppercase">Petugas Teknisi</span>
-                                    <span class="text-slate-900 dark:text-white font-bold flex items-center gap-1">
+                                    <span class="text-slate-400 text-[10px] font-bold block uppercase">Petugas Teknisi Ditugaskan</span>
+                                    <span 
+                                        class="font-bold flex items-center gap-1 text-xs"
+                                        :class="item.technicians === 'Belum Ditugaskan' ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-white'"
+                                    >
                                         👷 {{ item.technicians || '-' }}
                                     </span>
                                 </div>
@@ -424,12 +456,16 @@
                                     </span>
                                     <div>
                                         <h4 class="text-sm font-bold text-slate-900 dark:text-white">{{ item.customer_name }}</h4>
-                                        <div class="text-[11px] text-slate-400">Calon Pelanggan Baru</div>
+                                        <div class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5 flex-wrap">
+                                            <span>Calon Pelanggan Baru</span>
+                                            <span class="text-slate-300">·</span>
+                                            <span class="font-semibold text-slate-700 dark:text-slate-300">👷 {{ item.technicians }}</span>
+                                        </div>
                                     </div>
                                 </div>
                                 <span 
-                                    class="px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5 shrink-0"
-                                    :class="item.feasibility === 'feasible' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800'"
+                                    class="px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5 shrink-0 border"
+                                    :class="item.is_done ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' : (item.is_rescheduled ? 'bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800' : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800')"
                                 >
                                     {{ item.status_label }}
                                 </span>
@@ -445,7 +481,7 @@
                                     <span class="text-slate-700 dark:text-slate-300 font-semibold">{{ item.odp || '-' }}</span>
                                 </div>
                                 <div>
-                                    <span class="text-slate-400 text-[10px] font-bold block uppercase">Petugas Survey</span>
+                                    <span class="text-slate-400 text-[10px] font-bold block uppercase">Petugas Survey Ditugaskan</span>
                                     <span class="text-slate-900 dark:text-white font-bold flex items-center gap-1">
                                         👷 {{ item.technicians || '-' }}
                                     </span>
@@ -490,12 +526,16 @@
                                     </span>
                                     <div>
                                         <h4 class="text-sm font-bold text-slate-900 dark:text-white">{{ item.customer_name }}</h4>
-                                        <div class="text-[11px] text-slate-400 font-mono">{{ item.customer_code }}</div>
+                                        <div class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5 flex-wrap">
+                                            <span class="font-mono font-bold">{{ item.customer_code || 'CBP' }}</span>
+                                            <span class="text-slate-300">·</span>
+                                            <span class="font-semibold text-slate-700 dark:text-slate-300">👷 {{ item.technicians }}</span>
+                                        </div>
                                     </div>
                                 </div>
                                 <span 
-                                    class="px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5 shrink-0"
-                                    :class="item.is_done ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800'"
+                                    class="px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5 shrink-0 border"
+                                    :class="item.is_done ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' : (item.is_in_progress ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800' : (item.is_rescheduled ? 'bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800' : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800'))"
                                 >
                                     {{ item.status_label }}
                                 </span>
@@ -503,8 +543,8 @@
 
                             <div class="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl text-xs space-y-1">
                                 <div><strong class="text-slate-400 text-[10px] block uppercase">Data Detail</strong> {{ item.detail }}</div>
-                                <div class="text-slate-600 dark:text-slate-400 pt-1 flex items-center justify-between">
-                                    <span>👷 Petugas: <strong class="text-slate-900 dark:text-white">{{ item.technicians || '-' }}</strong></span>
+                                <div class="text-slate-600 dark:text-slate-400 pt-1 flex items-center justify-between flex-wrap gap-2">
+                                    <span>👷 Petugas Ditugaskan: <strong class="text-slate-900 dark:text-white">{{ item.technicians || '-' }}</strong></span>
                                     <span v-if="item.phone && item.phone !== '-'">📞 {{ item.phone }}</span>
                                 </div>
                             </div>

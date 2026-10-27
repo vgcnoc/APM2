@@ -63,26 +63,45 @@ class OperationalDailyProgressController extends Controller
         // 4. DATA PENCABUTAN / CBP
         $cbpList = $this->getCbpData($date, $targetAreaIds);
 
-        // 5. STATUS TEKNISI (On Duty, Libur, Masuk Malam)
-        $technicianStatus = $this->getTechnicianStatus($date, $targetAreaIds);
+        // Kumpulkan teknisi aktif dari seluruh penugasan operasional hari ini
+        $activeJobTechNames = [];
+        foreach (array_merge($gangguanList, $pemasanganList, $surveyList, $cbpList) as $taskItem) {
+            if (!empty($taskItem['technicians'])) {
+                foreach (explode(',', $taskItem['technicians']) as $tName) {
+                    $trimmed = trim($tName);
+                    if ($trimmed && !in_array($trimmed, ['Belum Ditugaskan', 'Tim Maintenance Jalur', 'Petugas Survey', 'Petugas CBP', 'Teknisi Instalasi', '-'])) {
+                        $activeJobTechNames[] = $trimmed;
+                    }
+                }
+            }
+        }
+        $activeJobTechNames = array_unique($activeJobTechNames);
 
-        // 6. RINGKASAN DATA
+        // 5. STATUS TEKNISI (On Duty, Libur, Masuk Malam)
+        $technicianStatus = $this->getTechnicianStatus($date, $targetAreaIds, $activeJobTechNames);
+
+        // 6. RINGKASAN DATA CERDAS & AUTO
         $summary = [
             'gangguan' => count($gangguanList),
             'gangguan_done' => collect($gangguanList)->where('is_done', true)->count(),
-            'gangguan_pending' => collect($gangguanList)->where('is_done', false)->count(),
+            'gangguan_in_progress' => collect($gangguanList)->where('is_in_progress', true)->count(),
+            'gangguan_rescheduled' => collect($gangguanList)->where('is_rescheduled', true)->count(),
+            'gangguan_pending' => collect($gangguanList)->where('is_done', false)->where('is_in_progress', false)->count(),
 
             'pemasangan' => count($pemasanganList),
             'pemasangan_done' => collect($pemasanganList)->where('is_done', true)->count(),
-            'pemasangan_pending' => collect($pemasanganList)->where('is_done', false)->count(),
+            'pemasangan_in_progress' => collect($pemasanganList)->where('is_in_progress', true)->count(),
+            'pemasangan_rescheduled' => collect($pemasanganList)->where('is_rescheduled', true)->count(),
+            'pemasangan_pending' => collect($pemasanganList)->where('is_done', false)->where('is_in_progress', false)->count(),
 
             'survey' => count($surveyList),
-            'survey_feasible' => collect($surveyList)->where('feasibility', 'feasible')->count(),
-            'survey_pending' => collect($surveyList)->where('feasibility', 'pending')->count(),
+            'survey_feasible' => collect($surveyList)->where('is_done', true)->count(),
+            'survey_pending' => collect($surveyList)->where('is_done', false)->count(),
 
             'cbp' => count($cbpList),
             'cbp_done' => collect($cbpList)->where('is_done', true)->count(),
-            'cbp_pending' => collect($cbpList)->where('is_done', false)->count(),
+            'cbp_in_progress' => collect($cbpList)->where('is_in_progress', true)->count(),
+            'cbp_pending' => collect($cbpList)->where('is_done', false)->where('is_in_progress', false)->count(),
         ];
 
         // 7. HASILKAN FORMAT TEKS WHATSAPP SESUAI TEMPLATE
@@ -202,22 +221,32 @@ class OperationalDailyProgressController extends Controller
     }
 
     /**
-     * Ambil Data Gangguan (PGS, PGK, PGJ)
+     * Ambil Data Gangguan (PGS, PGK, PGJ) secara Cerdas & Otomatis
      */
     private function getGangguanData(string $date, string|array|null $areaId): array
     {
         $items = [];
         $areaIds = is_array($areaId) ? $areaId : ($areaId ? [$areaId] : []);
+        $isToday = ($date === Carbon::today()->toDateString());
 
         // 1. PGS
-        $pgsQuery = PgsTicket::with(['customer.ont.odp', 'technicians', 'leadTechnician', 'area'])
-            ->where(function ($q) use ($date) {
+        $pgsQuery = PgsTicket::with(['customer.ont.odp', 'technicians', 'leadTechnician', 'resolvedByUser', 'area'])
+            ->where(function ($q) use ($date, $isToday) {
                 $q->whereDate('scheduled_date', $date)
-                  ->orWhereDate('resolved_at', $date)
-                  ->orWhere(function ($sq) use ($date) {
-                      $sq->whereIn('status', ['in_progress', 'scheduled', 'admin_handling'])
-                         ->whereDate('created_at', '<=', $date);
-                  });
+                  ->orWhereDate('resolved_at', $date);
+
+                if ($isToday) {
+                    $q->orWhere(function ($sq) use ($date) {
+                        $sq->whereDate('created_at', $date);
+                    })->orWhere(function ($sq) use ($date) {
+                        $sq->whereIn('status', ['in_progress', 'scheduled', 'admin_handling', 'reported', 'open'])
+                           ->whereNull('resolved_at')
+                           ->where(function ($ssq) use ($date) {
+                               $ssq->whereNull('scheduled_date')
+                                   ->orWhereDate('scheduled_date', '<=', $date);
+                           });
+                    });
+                }
             });
 
         if (!empty($areaIds)) {
@@ -229,43 +258,89 @@ class OperationalDailyProgressController extends Controller
             if (empty($techNames) && $pgs->leadTechnician) {
                 $techNames[] = $pgs->leadTechnician->name;
             }
+            if (empty($techNames) && $pgs->resolvedByUser) {
+                $techNames[] = $pgs->resolvedByUser->name;
+            }
+            $techniciansStr = !empty($techNames) ? implode(', ', array_unique($techNames)) : 'Belum Ditugaskan';
 
-            $isDone = in_array($pgs->status, ['resolved', 'closed']);
-            $statusLabel = $isDone ? '✅ Selesai' : (in_array($pgs->status, ['in_progress']) ? '🛠️ Sedang Dikerjakan' : '⏳ Pending');
+            // Evaluasi Status Cerdas & Auto
+            $isDone = in_array($pgs->status, ['completed', 'resolved', 'closed'])
+                || !empty($pgs->resolved_at)
+                || (!empty($pgs->action_taken) && !empty($pgs->end_time));
+
+            $isInProgress = in_array($pgs->status, ['in_progress', 'working'])
+                || (!empty($pgs->start_time) && empty($pgs->end_time) && !$isDone);
+
+            // Cek apakah di-reschedule ke tanggal lain
+            $isRescheduled = ($pgs->status === 'rescheduled');
+            $schedDateStr = $pgs->scheduled_date ? Carbon::parse($pgs->scheduled_date)->toDateString() : null;
+            if ($schedDateStr && $schedDateStr !== $date && $schedDateStr > $date) {
+                $isRescheduled = true;
+            }
+
+            if ($isDone) {
+                $statusLabel = '✅ Selesai';
+                $statusClass = 'completed';
+            } elseif ($isInProgress) {
+                $statusLabel = '🛠️ Sedang Dikerjakan';
+                $statusClass = 'in_progress';
+            } elseif ($isRescheduled) {
+                $reschedDateFmt = $schedDateStr ? Carbon::parse($schedDateStr)->format('d/m') : '';
+                $statusLabel = '🗓️ Reschedule' . ($reschedDateFmt ? " ({$reschedDateFmt})" : '');
+                $statusClass = 'rescheduled';
+            } else {
+                $statusLabel = '⏳ Pending';
+                $statusClass = 'pending';
+            }
 
             $duration = '-';
             if ($pgs->start_time && $pgs->end_time) {
                 $duration = substr($pgs->start_time, 0, 5) . ' - ' . substr($pgs->end_time, 0, 5);
             } elseif ($pgs->start_time) {
                 $duration = 'Mulai ' . substr($pgs->start_time, 0, 5);
+            } elseif ($pgs->scheduled_time) {
+                $duration = 'Jadwal ' . substr((string)$pgs->scheduled_time, 0, 5);
             }
 
             $odpName = $pgs->customer?->ont?->odp?->name ?? '-';
 
             $items[] = [
                 'type' => 'PGS',
+                'source' => 'PGS',
                 'ticket_number' => $pgs->ticket_number,
                 'customer_name' => $pgs->customer?->name ?? 'Non-Pelanggan (Temuan Sigap)',
                 'address' => $pgs->customer?->address ?? ($pgs->area?->name ?? '-'),
                 'odp' => $odpName,
                 'issue' => $pgs->reported_issue ?: ($pgs->category ?: 'Gangguan Sigap'),
                 'phone' => $pgs->customer?->phone ?? '-',
-                'technicians' => !empty($techNames) ? implode(', ', $techNames) : 'Belum Ditugaskan',
+                'technicians' => $techniciansStr,
                 'duration' => $duration,
                 'status_label' => $statusLabel,
+                'status_class' => $statusClass,
                 'is_done' => $isDone,
+                'is_in_progress' => $isInProgress,
+                'is_rescheduled' => $isRescheduled,
             ];
         }
 
         // 2. PGK (Komplain Pelanggan)
-        $pgkQuery = PgkTicket::with(['customer.ont.odp', 'technicians', 'leadTechnician', 'area'])
-            ->where(function ($q) use ($date) {
+        $pgkQuery = PgkTicket::with(['customer.ont.odp', 'technicians', 'leadTechnician', 'resolvedByUser', 'area'])
+            ->where(function ($q) use ($date, $isToday) {
                 $q->whereDate('scheduled_date', $date)
-                  ->orWhereDate('resolved_at', $date)
-                  ->orWhere(function ($sq) use ($date) {
-                      $sq->whereIn('status', ['in_progress', 'scheduled', 'admin_handling'])
-                         ->whereDate('created_at', '<=', $date);
-                  });
+                  ->orWhereDate('resolved_at', $date);
+
+                if ($isToday) {
+                    $q->orWhere(function ($sq) use ($date) {
+                        $sq->whereDate('created_at', $date);
+                    })->orWhere(function ($sq) use ($date) {
+                        $sq->whereIn('status', ['in_progress', 'scheduled', 'admin_handling', 'reported', 'open'])
+                           ->whereNull('resolved_at')
+                           ->where(function ($ssq) use ($date) {
+                               $ssq->whereNull('scheduled_date')
+                                   ->orWhereDate('scheduled_date', '<=', $date);
+                           });
+                    });
+                }
             });
 
         if (!empty($areaIds)) {
@@ -277,43 +352,89 @@ class OperationalDailyProgressController extends Controller
             if (empty($techNames) && $pgk->leadTechnician) {
                 $techNames[] = $pgk->leadTechnician->name;
             }
+            if (empty($techNames) && $pgk->resolvedByUser) {
+                $techNames[] = $pgk->resolvedByUser->name;
+            }
+            $techniciansStr = !empty($techNames) ? implode(', ', array_unique($techNames)) : 'Belum Ditugaskan';
 
-            $isDone = in_array($pgk->status, ['resolved', 'closed']);
-            $statusLabel = $isDone ? '✅ Selesai' : (in_array($pgk->status, ['in_progress']) ? '🛠️ Sedang Dikerjakan' : '⏳ Pending');
+            // Evaluasi Status Cerdas & Auto
+            $isDone = in_array($pgk->status, ['completed', 'resolved', 'closed'])
+                || !empty($pgk->resolved_at)
+                || (!empty($pgk->action_taken) && !empty($pgk->end_time));
+
+            $isInProgress = in_array($pgk->status, ['in_progress', 'working'])
+                || (!empty($pgk->start_time) && empty($pgk->end_time) && !$isDone);
+
+            // Cek apakah di-reschedule ke tanggal lain
+            $isRescheduled = ($pgk->status === 'rescheduled');
+            $schedDateStr = $pgk->scheduled_date ? Carbon::parse($pgk->scheduled_date)->toDateString() : null;
+            if ($schedDateStr && $schedDateStr !== $date && $schedDateStr > $date) {
+                $isRescheduled = true;
+            }
+
+            if ($isDone) {
+                $statusLabel = '✅ Selesai';
+                $statusClass = 'completed';
+            } elseif ($isInProgress) {
+                $statusLabel = '🛠️ Sedang Dikerjakan';
+                $statusClass = 'in_progress';
+            } elseif ($isRescheduled) {
+                $reschedDateFmt = $schedDateStr ? Carbon::parse($schedDateStr)->format('d/m') : '';
+                $statusLabel = '🗓️ Reschedule' . ($reschedDateFmt ? " ({$reschedDateFmt})" : '');
+                $statusClass = 'rescheduled';
+            } else {
+                $statusLabel = '⏳ Pending';
+                $statusClass = 'pending';
+            }
 
             $duration = '-';
             if ($pgk->start_time && $pgk->end_time) {
                 $duration = substr($pgk->start_time, 0, 5) . ' - ' . substr($pgk->end_time, 0, 5);
             } elseif ($pgk->start_time) {
                 $duration = 'Mulai ' . substr($pgk->start_time, 0, 5);
+            } elseif ($pgk->scheduled_time) {
+                $duration = 'Jadwal ' . substr((string)$pgk->scheduled_time, 0, 5);
             }
 
             $odpName = $pgk->customer?->ont?->odp?->name ?? '-';
 
             $items[] = [
                 'type' => 'PGK',
+                'source' => 'PGK',
                 'ticket_number' => $pgk->ticket_number,
                 'customer_name' => $pgk->customer?->name ?? ($pgk->complainant_name ?: 'Pelanggan'),
                 'address' => $pgk->customer?->address ?? ($pgk->area?->name ?? '-'),
                 'odp' => $odpName,
                 'issue' => $pgk->reported_issue ?: ($pgk->category ?: 'Komplain Layanan'),
                 'phone' => $pgk->complainant_phone ?: ($pgk->customer?->phone ?? '-'),
-                'technicians' => !empty($techNames) ? implode(', ', $techNames) : 'Belum Ditugaskan',
+                'technicians' => $techniciansStr,
                 'duration' => $duration,
                 'status_label' => $statusLabel,
+                'status_class' => $statusClass,
                 'is_done' => $isDone,
+                'is_in_progress' => $isInProgress,
+                'is_rescheduled' => $isRescheduled,
             ];
         }
 
         // 3. PGJ (Gangguan Jalur / Backbone / ODC)
-        $pgjQuery = PgjTicket::with(['area', 'olt', 'odc', 'odp'])
-            ->where(function ($q) use ($date) {
+        $pgjQuery = PgjTicket::with(['area', 'olt', 'odc', 'odp', 'technicians', 'leadTechnician', 'resolvedByUser'])
+            ->where(function ($q) use ($date, $isToday) {
                 $q->whereDate('scheduled_date', $date)
-                  ->orWhereDate('resolved_at', $date)
-                  ->orWhere(function ($sq) use ($date) {
-                      $sq->whereIn('status', ['in_progress', 'scheduled', 'admin_handling'])
-                         ->whereDate('created_at', '<=', $date);
-                  });
+                  ->orWhereDate('resolved_at', $date);
+
+                if ($isToday) {
+                    $q->orWhere(function ($sq) use ($date) {
+                        $sq->whereDate('created_at', $date);
+                    })->orWhere(function ($sq) use ($date) {
+                        $sq->whereIn('status', ['in_progress', 'scheduled', 'admin_handling', 'reported', 'open'])
+                           ->whereNull('resolved_at')
+                           ->where(function ($ssq) use ($date) {
+                               $ssq->whereNull('scheduled_date')
+                                   ->orWhereDate('scheduled_date', '<=', $date);
+                           });
+                    });
+                }
             });
 
         if (!empty($areaIds)) {
@@ -321,28 +442,64 @@ class OperationalDailyProgressController extends Controller
         }
 
         foreach ($pgjQuery->get() as $pgj) {
-            $isDone = in_array($pgj->status, ['resolved', 'closed']);
-            $statusLabel = $isDone ? '✅ Selesai' : (in_array($pgj->status, ['in_progress']) ? '🛠️ Sedang Dikerjakan' : '⏳ Pending');
+            $techNames = $pgj->technicians->pluck('name')->toArray();
+            if (empty($techNames) && $pgj->leadTechnician) {
+                $techNames[] = $pgj->leadTechnician->name;
+            }
+            if (empty($techNames) && $pgj->resolvedByUser) {
+                $techNames[] = $pgj->resolvedByUser->name;
+            }
+            $techniciansStr = !empty($techNames) ? implode(', ', array_unique($techNames)) : 'Tim Maintenance Jalur';
+
+            $isDone = in_array($pgj->status, ['completed', 'resolved', 'closed']) || !empty($pgj->resolved_at);
+            $isInProgress = in_array($pgj->status, ['in_progress', 'working']) || (!empty($pgj->start_time) && empty($pgj->end_time) && !$isDone);
+
+            $isRescheduled = ($pgj->status === 'rescheduled');
+            $schedDateStr = $pgj->scheduled_date ? Carbon::parse($pgj->scheduled_date)->toDateString() : null;
+            if ($schedDateStr && $schedDateStr !== $date && $schedDateStr > $date) {
+                $isRescheduled = true;
+            }
+
+            if ($isDone) {
+                $statusLabel = '✅ Selesai';
+                $statusClass = 'completed';
+            } elseif ($isInProgress) {
+                $statusLabel = '🛠️ Sedang Dikerjakan';
+                $statusClass = 'in_progress';
+            } elseif ($isRescheduled) {
+                $reschedDateFmt = $schedDateStr ? Carbon::parse($schedDateStr)->format('d/m') : '';
+                $statusLabel = '🗓️ Reschedule' . ($reschedDateFmt ? " ({$reschedDateFmt})" : '');
+                $statusClass = 'rescheduled';
+            } else {
+                $statusLabel = '⏳ Pending';
+                $statusClass = 'pending';
+            }
 
             $duration = '-';
             if ($pgj->start_time && $pgj->end_time) {
                 $duration = substr($pgj->start_time, 0, 5) . ' - ' . substr($pgj->end_time, 0, 5);
+            } elseif ($pgj->start_time) {
+                $duration = 'Mulai ' . substr($pgj->start_time, 0, 5);
             }
 
             $infraName = $pgj->odp?->name ?: ($pgj->odc?->name ?: ($pgj->olt?->name ?: ($pgj->location_name ?: '-')));
 
             $items[] = [
                 'type' => 'PGJ',
+                'source' => 'PGJ',
                 'ticket_number' => $pgj->ticket_number,
                 'customer_name' => '⚠️ Jalur/Infra: ' . ($pgj->location_name ?: $pgj->segment_type),
                 'address' => $pgj->area?->name ?? 'Wilayah Jalur',
                 'odp' => $infraName,
                 'issue' => $pgj->reported_issue ?: 'Gangguan Jalur FTTH',
                 'phone' => '-',
-                'technicians' => 'Tim Maintenance Jalur',
+                'technicians' => $techniciansStr,
                 'duration' => $duration,
                 'status_label' => $statusLabel,
+                'status_class' => $statusClass,
                 'is_done' => $isDone,
+                'is_in_progress' => $isInProgress,
+                'is_rescheduled' => $isRescheduled,
             ];
         }
 
@@ -350,14 +507,14 @@ class OperationalDailyProgressController extends Controller
     }
 
     /**
-     * Ambil Data Pemasangan Baru (Instalasi)
+     * Ambil Data Pemasangan Baru (Instalasi) secara Cerdas & Otomatis
      */
     private function getPemasanganData(string $date, string|array|null $areaId): array
     {
         $items = [];
         $areaIds = is_array($areaId) ? $areaId : ($areaId ? [$areaId] : []);
 
-        // Ambil dari TechnicianSchedule type = 'installation'
+        // 1. Ambil dari TechnicianSchedule type = 'installation'
         $scheduleQuery = TechnicianSchedule::with(['customer.ont.odp', 'customer.package', 'technician'])
             ->where('type', 'installation')
             ->whereDate('scheduled_date', $date);
@@ -366,42 +523,78 @@ class OperationalDailyProgressController extends Controller
             $scheduleQuery->whereHas('customer', fn($q) => $q->whereIn('area_id', $areaIds));
         }
 
+        // Grouping berdasarkan customer_id agar bila 1 pelanggan ditugaskan 2 teknisi (misal: Ruli & Saepul),
+        // tidak menjadi 2 item duplikat melainkan digabung teknisinya!
+        $groupedSchedules = $scheduleQuery->get()->groupBy('customer_id');
         $seenCustomerIds = [];
 
-        foreach ($scheduleQuery->get() as $sched) {
-            $cust = $sched->customer;
+        foreach ($groupedSchedules as $customerId => $schedules) {
+            $firstSched = $schedules->first();
+            $cust = $firstSched->customer;
             if (!$cust) continue;
 
             $seenCustomerIds[$cust->id] = true;
-            $isDone = in_array($sched->status, ['done', 'completed']) || $cust->status === 'active';
-            $statusLabel = $isDone ? '✅ Selesai' : (in_array($sched->status, ['working', 'on_the_way']) ? '🛠️ Sedang Dipasang' : '⏳ Pending');
+
+            // Gabungkan seluruh teknisi yang ditugaskan
+            $techNames = $schedules->pluck('technician.name')->filter()->unique()->toArray();
+            $techniciansStr = !empty($techNames) ? implode(', ', $techNames) : 'Belum Ditugaskan';
+
+            // Cek apakah ada schedule yang selesai atau customer sudah aktif
+            $isAnyDone = $schedules->contains(fn($s) => in_array($s->status, ['done', 'completed']));
+            $isCustActive = in_array($cust->status, ['active', 'installed']) 
+                || (!empty($cust->activation_date) && Carbon::parse($cust->activation_date)->toDateString() <= $date);
+            $isDone = $isAnyDone || $isCustActive;
+
+            $isAnyWorking = $schedules->contains(fn($s) => in_array($s->status, ['working', 'in_progress', 'on_the_way']));
+            $isInProgress = !$isDone && ($isAnyWorking || $cust->status === 'installing');
+
+            $isRescheduled = $schedules->contains(fn($s) => $s->status === 'rescheduled');
+
+            if ($isDone) {
+                $statusLabel = '✅ Selesai';
+                $statusClass = 'completed';
+            } elseif ($isInProgress) {
+                $statusLabel = '🛠️ Sedang Dipasang';
+                $statusClass = 'in_progress';
+            } elseif ($isRescheduled) {
+                $statusLabel = '🗓️ Reschedule';
+                $statusClass = 'rescheduled';
+            } else {
+                $statusLabel = '⏳ Pending';
+                $statusClass = 'pending';
+            }
 
             $pkgName = $cust->package?->name ?? 'Paket Internet';
             $detail = "{$pkgName} - {$cust->address}";
             $odpName = $cust->ont?->odp?->name ?? '-';
 
-            $duration = $sched->scheduled_time ? substr((string)$sched->scheduled_time, 0, 5) : '-';
+            // Ambil waktu dari schedule pertama yang memiliki scheduled_time
+            $duration = '-';
+            $schedWithTime = $schedules->first(fn($s) => !empty($s->scheduled_time));
+            if ($schedWithTime) {
+                $duration = substr((string)$schedWithTime->scheduled_time, 0, 5);
+            }
 
             $items[] = [
+                'customer_id' => $cust->id,
                 'customer_name' => $cust->name,
+                'customer_code' => $cust->customer_id ?? $cust->code ?? '-',
                 'detail' => $detail,
                 'odp' => $odpName,
                 'phone' => $cust->phone,
-                'technicians' => $sched->technician?->name ?? 'Belum Ditugaskan',
+                'technicians' => $techniciansStr,
                 'duration' => $duration,
                 'status_label' => $statusLabel,
+                'status_class' => $statusClass,
                 'is_done' => $isDone,
+                'is_in_progress' => $isInProgress,
+                'is_rescheduled' => $isRescheduled,
             ];
         }
 
-        // Tambahkan juga Customer yang aktivasi hari ini jika belum tercakup di jadwal
-        $activeQuery = Customer::with(['ont.odp', 'package'])
-            ->where(function ($q) use ($date) {
-                $q->whereDate('activation_date', $date)
-                  ->orWhere(function ($sq) use ($date) {
-                      $sq->where('status', 'installing')->whereDate('registration_date', $date);
-                  });
-            });
+        // Tambahkan juga Customer yang aktivasi hari ini jika belum tercakup di jadwal di atas
+        $activeQuery = Customer::with(['ont.odp', 'package', 'technicianSchedules.technician'])
+            ->whereDate('activation_date', $date);
 
         if (!empty($areaIds)) {
             $activeQuery->whereIn('area_id', $areaIds);
@@ -410,19 +603,26 @@ class OperationalDailyProgressController extends Controller
         foreach ($activeQuery->get() as $cust) {
             if (isset($seenCustomerIds[$cust->id])) continue;
 
-            $isDone = $cust->status === 'active';
-            $statusLabel = $isDone ? '✅ Selesai' : '⏳ Pending';
+            $installScheds = $cust->technicianSchedules->where('type', 'installation');
+            $techNames = $installScheds->pluck('technician.name')->filter()->unique()->toArray();
+            $techniciansStr = !empty($techNames) ? implode(', ', $techNames) : 'Teknisi Instalasi';
+
             $pkgName = $cust->package?->name ?? 'Paket Internet';
 
             $items[] = [
+                'customer_id' => $cust->id,
                 'customer_name' => $cust->name,
+                'customer_code' => $cust->customer_id ?? $cust->code ?? '-',
                 'detail' => "{$pkgName} - {$cust->address}",
                 'odp' => $cust->ont?->odp?->name ?? '-',
                 'phone' => $cust->phone,
-                'technicians' => 'Teknisi Instalasi',
+                'technicians' => $techniciansStr,
                 'duration' => '-',
-                'status_label' => $statusLabel,
-                'is_done' => $isDone,
+                'status_label' => '✅ Selesai',
+                'status_class' => 'completed',
+                'is_done' => true,
+                'is_in_progress' => false,
+                'is_rescheduled' => false,
             ];
         }
 
@@ -430,15 +630,16 @@ class OperationalDailyProgressController extends Controller
     }
 
     /**
-     * Ambil Data Survey Pelanggan Baru
+     * Ambil Data Survey Pelanggan Baru secara Cerdas & Otomatis
      */
     private function getSurveyData(string $date, string|array|null $areaId): array
     {
         $items = [];
         $areaIds = is_array($areaId) ? $areaId : ($areaId ? [$areaId] : []);
+        $seenCustomerIds = [];
 
-        // 1. Dari model Survey
-        $surveyQuery = Survey::with(['customer.package', 'odp', 'surveyor'])
+        // 1. Dari model Survey (hasil survey lapangan)
+        $surveyQuery = Survey::with(['customer.package', 'odp', 'surveyor', 'customer.technicianSchedules.technician'])
             ->whereDate('survey_date', $date);
 
         if (!empty($areaIds)) {
@@ -448,8 +649,6 @@ class OperationalDailyProgressController extends Controller
             });
         }
 
-        $seenCustomerIds = [];
-
         foreach ($surveyQuery->get() as $srv) {
             $cust = $srv->customer;
             if (!$cust) continue;
@@ -458,15 +657,30 @@ class OperationalDailyProgressController extends Controller
             $pkgName = $cust->package?->name ?? 'Paket Internet';
             $detail = "{$pkgName} - {$cust->address}";
 
+            // Petugas survey
+            $techNames = [];
+            if ($srv->surveyor) {
+                $techNames[] = $srv->surveyor->name;
+            }
+            $schedTechs = $cust->technicianSchedules->where('type', 'survey')->pluck('technician.name')->filter()->toArray();
+            $allTechs = array_unique(array_merge($techNames, $schedTechs));
+            $techniciansStr = !empty($allTechs) ? implode(', ', $allTechs) : 'Petugas Survey';
+
             $feasibility = $srv->feasibility;
+            $isDone = in_array($feasibility, ['feasible', 'not_feasible', 'conditional']);
+
             if ($feasibility === 'feasible') {
-                $statusLabel = '✅ Feasible (Layak)';
+                $statusLabel = '✅ Layak (Feasible)';
+                $statusClass = 'completed';
             } elseif ($feasibility === 'not_feasible') {
                 $statusLabel = '❌ Tidak Layak' . ($srv->notes ? " ({$srv->notes})" : '');
+                $statusClass = 'rejected';
             } elseif ($feasibility === 'conditional') {
                 $statusLabel = '⚠️ Bersyarat';
+                $statusClass = 'conditional';
             } else {
                 $statusLabel = '⏳ Pending';
+                $statusClass = 'pending';
             }
 
             $items[] = [
@@ -474,37 +688,66 @@ class OperationalDailyProgressController extends Controller
                 'detail' => $detail,
                 'odp' => $srv->odp?->name ?? '-',
                 'phone' => $cust->phone,
-                'technicians' => $srv->surveyor?->name ?? 'Petugas Survey',
+                'technicians' => $techniciansStr,
                 'feasibility' => $feasibility,
                 'status_label' => $statusLabel,
+                'status_class' => $statusClass,
+                'is_done' => $isDone,
+                'is_in_progress' => false,
+                'is_rescheduled' => false,
             ];
         }
 
-        // 2. Dari TechnicianSchedule type = 'survey'
+        // 2. Dari TechnicianSchedule type = 'survey' yang terjadwal pada $date
         $schedQuery = TechnicianSchedule::with(['customer.package', 'technician'])
             ->where('type', 'survey')
             ->whereDate('scheduled_date', $date);
 
-        if ($areaId) {
-            $schedQuery->whereHas('customer', fn($q) => $q->where('area_id', $areaId));
+        if (!empty($areaIds)) {
+            $schedQuery->whereHas('customer', fn($q) => $q->whereIn('area_id', $areaIds));
         }
 
-        foreach ($schedQuery->get() as $sched) {
-            $cust = $sched->customer;
+        $groupedScheds = $schedQuery->get()->groupBy('customer_id');
+
+        foreach ($groupedScheds as $customerId => $schedules) {
+            $firstSched = $schedules->first();
+            $cust = $firstSched->customer;
             if (!$cust || isset($seenCustomerIds[$cust->id])) continue;
 
+            $techNames = $schedules->pluck('technician.name')->filter()->unique()->toArray();
+            $techniciansStr = !empty($techNames) ? implode(', ', $techNames) : 'Petugas Survey';
+
+            $isDone = $schedules->contains(fn($s) => in_array($s->status, ['done', 'completed']));
+            $isRescheduled = $schedules->contains(fn($s) => $s->status === 'rescheduled');
+
+            if ($isDone) {
+                $statusLabel = '✅ Selesai Survey';
+                $statusClass = 'completed';
+                $feasibility = 'feasible';
+            } elseif ($isRescheduled) {
+                $statusLabel = '🗓️ Reschedule';
+                $statusClass = 'rescheduled';
+                $feasibility = 'pending';
+            } else {
+                $statusLabel = '⏳ Menunggu Survey';
+                $statusClass = 'pending';
+                $feasibility = 'pending';
+            }
+
             $pkgName = $cust->package?->name ?? 'Paket Internet';
-            $isDone = in_array($sched->status, ['done', 'completed']);
-            $statusLabel = $isDone ? '✅ Selesai Survey' : '⏳ Pending';
 
             $items[] = [
                 'customer_name' => $cust->name,
                 'detail' => "{$pkgName} - {$cust->address}",
                 'odp' => '-',
                 'phone' => $cust->phone,
-                'technicians' => $sched->technician?->name ?? 'Petugas Survey',
-                'feasibility' => $isDone ? 'feasible' : 'pending',
+                'technicians' => $techniciansStr,
+                'feasibility' => $feasibility,
                 'status_label' => $statusLabel,
+                'status_class' => $statusClass,
+                'is_done' => $isDone,
+                'is_in_progress' => false,
+                'is_rescheduled' => $isRescheduled,
             ];
         }
 
@@ -512,18 +755,18 @@ class OperationalDailyProgressController extends Controller
     }
 
     /**
-     * Ambil Data Pencabutan / CBP
+     * Ambil Data Pencabutan / CBP secara Cerdas & Otomatis
      */
     private function getCbpData(string $date, string|array|null $areaId): array
     {
         $items = [];
         $areaIds = is_array($areaId) ? $areaId : ($areaId ? [$areaId] : []);
 
-        $cbpQuery = CbpRequest::with(['customer.ont.odp', 'technicians'])
+        $cbpQuery = CbpRequest::with(['customer.ont.odp', 'technicians', 'creator', 'dispatcher'])
             ->where(function ($q) use ($date) {
-                $q->whereDate('created_at', $date)
-                  ->orWhereDate('completed_at', $date)
-                  ->orWhereDate('sent_to_schedule_at', $date);
+                $q->whereDate('completed_at', $date)
+                  ->orWhereDate('sent_to_schedule_at', $date)
+                  ->orWhereDate('created_at', $date);
             });
 
         if (!empty($areaIds)) {
@@ -533,8 +776,29 @@ class OperationalDailyProgressController extends Controller
         foreach ($cbpQuery->get() as $cbp) {
             $cust = $cbp->customer;
             $techNames = $cbp->technicians->pluck('name')->toArray();
-            $isDone = $cbp->status === 'completed';
-            $statusLabel = $isDone ? '✅ Selesai' : '⏳ Pending';
+            if (empty($techNames) && !empty($cbp->assigned_to)) {
+                $assignedUser = User::find($cbp->assigned_to);
+                if ($assignedUser) $techNames[] = $assignedUser->name;
+            }
+            $techniciansStr = !empty($techNames) ? implode(', ', array_unique($techNames)) : 'Petugas CBP';
+
+            $isDone = ($cbp->status === 'completed') || !empty($cbp->completed_at);
+            $isInProgress = ($cbp->status === 'in_progress');
+            $isRescheduled = ($cbp->status === 'rescheduled');
+
+            if ($isDone) {
+                $statusLabel = '✅ Selesai';
+                $statusClass = 'completed';
+            } elseif ($isInProgress) {
+                $statusLabel = '🛠️ Sedang Dikerjakan';
+                $statusClass = 'in_progress';
+            } elseif ($isRescheduled) {
+                $statusLabel = '🗓️ Reschedule';
+                $statusClass = 'rescheduled';
+            } else {
+                $statusLabel = '⏳ Pending';
+                $statusClass = 'pending';
+            }
 
             $odpName = $cust?->ont?->odp?->name ?? '-';
             $custName = $cust?->name ?? "Pelanggan #{$cbp->customer_id}";
@@ -548,9 +812,12 @@ class OperationalDailyProgressController extends Controller
                 'odp' => $odpName,
                 'reason' => $reason,
                 'phone' => $cust?->phone ?? '-',
-                'technicians' => !empty($techNames) ? implode(', ', $techNames) : 'Petugas CBP',
+                'technicians' => $techniciansStr,
                 'status_label' => $statusLabel,
+                'status_class' => $statusClass,
                 'is_done' => $isDone,
+                'is_in_progress' => $isInProgress,
+                'is_rescheduled' => $isRescheduled,
             ];
         }
 
@@ -558,9 +825,9 @@ class OperationalDailyProgressController extends Controller
     }
 
     /**
-     * Ambil Status Teknisi (On Duty, Libur, Masuk Malam)
+     * Ambil Status Teknisi (On Duty, Libur, Masuk Malam) secara Cerdas
      */
-    private function getTechnicianStatus(string $date, string|array|null $areaId): array
+    private function getTechnicianStatus(string $date, string|array|null $areaId, array $activeJobTechNames = []): array
     {
         $areaIds = is_array($areaId) ? $areaId : ($areaId ? [$areaId] : []);
 
@@ -624,10 +891,17 @@ class OperationalDailyProgressController extends Controller
             }
         }
 
+        // Tambahkan juga teknisi yang memiliki tugas aktif di hari ini (bila belum tercantum)
+        foreach ($activeJobTechNames as $aName) {
+            if ($aName && $aName !== '-' && $aName !== 'Belum Ditugaskan' && $aName !== 'Tim Maintenance Jalur' && !in_array($aName, $offList)) {
+                $onDutyList[] = $aName;
+            }
+        }
+
         return [
-            'on_duty' => array_values(array_unique($onDutyList)),
-            'off' => array_values(array_unique($offList)),
-            'night' => array_values(array_unique($nightList)),
+            'on_duty' => array_values(array_unique(array_filter($onDutyList))),
+            'off' => array_values(array_unique(array_filter($offList))),
+            'night' => array_values(array_unique(array_filter($nightList))),
         ];
     }
 
@@ -760,10 +1034,10 @@ class OperationalDailyProgressController extends Controller
 
         // 5. RINGKASAN HARI INI
         $lines[] = "📊 *RINGKASAN HARI INI*";
-        $lines[] = "* Gangguan: {$summary['gangguan']}";
-        $lines[] = "* Pemasangan: {$summary['pemasangan']}";
-        $lines[] = "* Survey: {$summary['survey']}";
-        $lines[] = "* Pencabutan: {$summary['cbp']}";
+        $lines[] = "* Gangguan: {$summary['gangguan']} ({$summary['gangguan_done']} Selesai, {$summary['gangguan_pending']} Pending)";
+        $lines[] = "* Pemasangan: {$summary['pemasangan']} ({$summary['pemasangan_done']} Selesai, {$summary['pemasangan_pending']} Pending)";
+        $lines[] = "* Survey: {$summary['survey']} ({$summary['survey_feasible']} Selesai, {$summary['survey_pending']} Tunggu)";
+        $lines[] = "* Pencabutan: {$summary['cbp']} ({$summary['cbp_done']} Selesai, {$summary['cbp_pending']} Pending)";
         $lines[] = "";
 
         // 6. STATUS TEKNISI
