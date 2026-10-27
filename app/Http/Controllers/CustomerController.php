@@ -3496,8 +3496,15 @@ class CustomerController extends Controller
      */
     public function updateInstallationSchedule(Request $request, Customer $customer): RedirectResponse
     {
+        $techIds = $request->input('technician_ids', []);
+        if (empty($techIds) && $request->filled('technician_id')) {
+            $techIds = [$request->input('technician_id')];
+        }
+
         $validated = $request->validate([
-            'technician_id' => 'required|exists:users,id',
+            'technician_ids' => 'nullable|array',
+            'technician_ids.*' => 'exists:users,id',
+            'technician_id' => 'nullable|exists:users,id',
             'scheduled_date' => 'required|date',
             'scheduled_time' => 'nullable|string',
             'status' => 'required|in:scheduled,on_the_way,working,done,cancelled',
@@ -3510,6 +3517,10 @@ class CustomerController extends Controller
             'material_items.*.trx_number' => 'nullable|string',
             'send_wa' => 'nullable|boolean',
         ]);
+
+        if (empty($techIds) && !empty($validated['technician_id'])) {
+            $techIds = [$validated['technician_id']];
+        }
 
         if (!empty($validated['scheduled_time']) && preg_match('/^\d{2}:\d{2}:\d{2}$/', $validated['scheduled_time'])) {
             $validated['scheduled_time'] = substr($validated['scheduled_time'], 0, 5);
@@ -3561,16 +3572,18 @@ class CustomerController extends Controller
             ->where('status', 'scheduled')
             ->delete();
 
-        \App\Models\TechnicianSchedule::create([
-            'customer_id' => $customer->id,
-            'technician_id' => $validated['technician_id'],
-            'type' => 'installation',
-            'status' => $validated['status'],
-            'scheduled_date' => $validated['scheduled_date'],
-            'scheduled_time' => $validated['scheduled_time'] ?: null,
-            'notes' => $finalNotes,
-            'area_id' => $customer->area_id,
-        ]);
+        foreach ($techIds as $tId) {
+            \App\Models\TechnicianSchedule::create([
+                'customer_id' => $customer->id,
+                'technician_id' => $tId,
+                'type' => 'installation',
+                'status' => $validated['status'],
+                'scheduled_date' => $validated['scheduled_date'],
+                'scheduled_time' => $validated['scheduled_time'] ?: null,
+                'notes' => $finalNotes,
+                'area_id' => $customer->area_id,
+            ]);
+        }
 
         // Kirim notifikasi WA ke teknisi jika diminta
         if ($request->boolean('send_wa', false)) {
