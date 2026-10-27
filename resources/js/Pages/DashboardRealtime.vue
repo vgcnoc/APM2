@@ -15,8 +15,13 @@
             >
                 <div class="rounded-[14px] bg-white dark:bg-slate-900 p-4 md:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div class="flex items-start sm:items-center gap-3.5 min-w-0">
-                        <div class="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xl shrink-0 animate-bounce">
-                            ⚠️
+                        <div class="relative w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xl shrink-0">
+                            <span :class="isAlarmSoundEnabled ? 'animate-bounce' : ''">⚠️</span>
+                            <!-- Alarm Pulse Indicator -->
+                            <span v-if="isAlarmSoundEnabled" class="absolute -top-1 -right-1 flex h-3.5 w-3.5" title="Alarm Suara Aktif">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-rose-600 border border-white text-[8px] text-white font-bold items-center justify-center">🔔</span>
+                            </span>
                         </div>
                         <div class="min-w-0">
                             <div class="flex items-center gap-2 flex-wrap">
@@ -32,9 +37,30 @@
                             </p>
                         </div>
                     </div>
-                    <div class="flex items-center gap-2 shrink-0">
+                    <div class="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
+                        <!-- Toggle Suara Alarm -->
                         <button
-                            @click="activeModal = 'outage'"
+                            @click="toggleAlarmSound"
+                            type="button"
+                            :class="isAlarmSoundEnabled ? 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800' : 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'"
+                            class="px-3 py-2 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 cursor-pointer shadow-2xs hover:scale-105 active:scale-95"
+                            :title="isAlarmSoundEnabled ? 'Klik untuk membisukan alarm suara' : 'Klik untuk menyalakan alarm suara'"
+                        >
+                            <span>{{ isAlarmSoundEnabled ? '🔔 Alarm: Nyala' : '🔕 Alarm: Bisu' }}</span>
+                        </button>
+
+                        <!-- Tombol Tes Suara Alarm -->
+                        <button
+                            @click="testAlarmSound"
+                            type="button"
+                            class="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                            title="Uji coba dengarkan bunyi alarm di browser"
+                        >
+                            <span>🔊 Tes</span>
+                        </button>
+
+                        <button
+                            @click="openOutageModal"
                             type="button"
                             class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-rose-500/30 active:scale-95 cursor-pointer"
                         >
@@ -49,10 +75,10 @@
                             <span>📋 Salin</span>
                         </button>
                         <button
-                            @click="isOutageDismissed = true"
+                            @click="dismissOutage"
                             type="button"
                             class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
-                            title="Tutup Notifikasi"
+                            title="Tutup Notifikasi & Matikan Alarm"
                         >
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
@@ -123,6 +149,17 @@
                         <span class="w-1.5 h-1.5 rounded-full bg-purple-600 animate-pulse"></span>
                         <span>{{ countdown }}s</span>
                     </div>
+
+                    <!-- Quick Alarm Sound Toggle Button -->
+                    <button
+                        @click="toggleAlarmSound"
+                        type="button"
+                        :class="isAlarmSoundEnabled ? 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800' : 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700'"
+                        class="p-2 rounded-xl border text-xs font-bold transition flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 shadow-2xs"
+                        :title="isAlarmSoundEnabled ? 'Alarm Suara Gangguan: AKTIF (Klik untuk Bisu)' : 'Alarm Suara Gangguan: BISU (Klik untuk Nyalakan)'"
+                    >
+                        <span>{{ isAlarmSoundEnabled ? '🔔' : '🔕' }}</span>
+                    </button>
 
                     <!-- Manual Refresh Button -->
                     <button
@@ -1282,6 +1319,10 @@ const realtimeWidgetRef = ref(null);
 const lastUpdated = ref(props.realtimeStats?.last_updated || new Date().toLocaleTimeString('id-ID'));
 const activeModal = ref(null);
 const isOutageDismissed = ref(false);
+const isAlarmSoundEnabled = ref(true);
+let audioCtx = null;
+let alarmIntervalTimer = null;
+let unlockAudioGesture = null;
 const expiredSearch = ref('');
 const deletingVoucherId = ref(null);
 const isBulkDeleting = ref(false);
@@ -1547,11 +1588,153 @@ const triggerManualRefresh = async () => {
     }
 };
 
+// ═══ AUDIO ALARM ENGINE (Web Audio API Synthesizer) ═══
+const initAudioContext = () => {
+    if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+            audioCtx = new AudioContextClass();
+        }
+    }
+    if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+    return audioCtx;
+};
+
+// Play a short acoustic chime (for test/feedback)
+const playChime = (frequency = 880, duration = 0.15) => {
+    try {
+        const ctx = initAudioContext();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(frequency, now);
+
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.2, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + duration + 0.05);
+    } catch (e) {
+        console.warn('Audio chime error:', e);
+    }
+};
+
+// Play dual-tone NOC incident warning siren alert
+const playAlertSound = () => {
+    try {
+        const ctx = initAudioContext();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+
+        // Sequence of acoustic alert tones (Hz)
+        // High alert (880Hz) -> Lower alert (698Hz) -> High alert (880Hz) -> Peak warning (1046Hz)
+        const beeps = [
+            { freq: 880, start: 0.00, dur: 0.14 },
+            { freq: 698.46, start: 0.18, dur: 0.14 },
+            { freq: 880, start: 0.36, dur: 0.14 },
+            { freq: 1046.50, start: 0.54, dur: 0.32 },
+        ];
+
+        beeps.forEach(({ freq, start, dur }) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + start);
+
+            gain.gain.setValueAtTime(0.0001, now + start);
+            gain.gain.exponentialRampToValueAtTime(0.3, now + start + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + start + dur);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start(now + start);
+            osc.stop(now + start + dur + 0.05);
+        });
+    } catch (e) {
+        console.warn('Play alert sound error:', e);
+    }
+};
+
+const startAlarmLoop = () => {
+    stopAlarmLoop();
+    if (!isAlarmSoundEnabled.value) return;
+
+    // Play immediate alert
+    playAlertSound();
+
+    // Loop every 12 seconds while outage persists & unacknowledged
+    alarmIntervalTimer = setInterval(() => {
+        if (stats.value.smart_outage?.detected && !isOutageDismissed.value && isAlarmSoundEnabled.value) {
+            playAlertSound();
+        } else {
+            stopAlarmLoop();
+        }
+    }, 12000);
+};
+
+const stopAlarmLoop = () => {
+    if (alarmIntervalTimer) {
+        clearInterval(alarmIntervalTimer);
+        alarmIntervalTimer = null;
+    }
+};
+
+const toggleAlarmSound = () => {
+    isAlarmSoundEnabled.value = !isAlarmSoundEnabled.value;
+    try {
+        localStorage.setItem('noc_smart_outage_sound', isAlarmSoundEnabled.value ? '1' : '0');
+    } catch (e) {}
+
+    if (isAlarmSoundEnabled.value) {
+        playChime(880, 0.15);
+        if (stats.value.smart_outage?.detected && !isOutageDismissed.value) {
+            startAlarmLoop();
+        }
+    } else {
+        stopAlarmLoop();
+    }
+};
+
+const testAlarmSound = () => {
+    initAudioContext();
+    playAlertSound();
+};
+
+const openOutageModal = () => {
+    stopAlarmLoop(); // Mute alarm as operator investigates the ODP
+    activeModal.value = 'outage';
+};
+
+const dismissOutage = () => {
+    stopAlarmLoop();
+    isOutageDismissed.value = true;
+};
+
 const copyOutageReport = () => {
     const summary = stats.value.smart_outage?.summary || 'Tidak ada gangguan massal.';
     navigator.clipboard.writeText(summary);
     alert('Laporan gangguan berhasil disalin ke clipboard!');
 };
+
+// Auto start/stop alarm on live outage state change
+watch(() => stats.value.smart_outage?.detected, (isDetected) => {
+    if (isDetected && !isOutageDismissed.value && isAlarmSoundEnabled.value) {
+        startAlarmLoop();
+    } else if (!isDetected) {
+        stopAlarmLoop();
+    }
+});
 
 const deleteFeedVoucher = async (item) => {
     const result = await Swal.fire({
@@ -1675,6 +1858,32 @@ const deleteAllExpiredVouchers = async () => {
 
 // Lifecycle
 onMounted(() => {
+    // Load stored sound preference from browser localStorage
+    try {
+        const savedSound = localStorage.getItem('noc_smart_outage_sound');
+        if (savedSound !== null) {
+            isAlarmSoundEnabled.value = savedSound === '1';
+        }
+    } catch (e) {}
+
+    // Setup browser gesture unlock for Web Audio API
+    unlockAudioGesture = () => {
+        initAudioContext();
+        if (stats.value.smart_outage?.detected && !isOutageDismissed.value && isAlarmSoundEnabled.value) {
+            startAlarmLoop();
+        }
+        window.removeEventListener('click', unlockAudioGesture);
+        window.removeEventListener('keydown', unlockAudioGesture);
+        window.removeEventListener('touchstart', unlockAudioGesture);
+    };
+    window.addEventListener('click', unlockAudioGesture, { passive: true });
+    window.addEventListener('keydown', unlockAudioGesture, { passive: true });
+    window.addEventListener('touchstart', unlockAudioGesture, { passive: true });
+
+    if (stats.value.smart_outage?.detected && !isOutageDismissed.value && isAlarmSoundEnabled.value) {
+        startAlarmLoop();
+    }
+
     timerInterval = setInterval(() => {
         if (pollInterval.value <= 0) return;
         if (countdown.value > 1) {
@@ -1687,6 +1896,12 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+    stopAlarmLoop();
     if (timerInterval) clearInterval(timerInterval);
+    if (unlockAudioGesture) {
+        window.removeEventListener('click', unlockAudioGesture);
+        window.removeEventListener('keydown', unlockAudioGesture);
+        window.removeEventListener('touchstart', unlockAudioGesture);
+    }
 });
 </script>
