@@ -137,7 +137,8 @@ class NetworkRadarController extends Controller
         $lat = (float) $request->lat;
         $lng = (float) $request->lng;
         $rawRadius = (float) ($request->radius ?? 5000);
-        $radiusKm = $rawRadius > 50 ? ($rawRadius / 1000) : $rawRadius;
+        // Radius dikirim dalam satuan meter dari frontend
+        $radiusKm = max(0.01, $rawRadius / 1000);
         $type = $request->type ?? 'all';
         $areaId = $request->area_id ? (int) $request->area_id : null;
 
@@ -210,7 +211,7 @@ class NetworkRadarController extends Controller
                 ->having('distance_km', '<=', $radiusKm)
                 ->orderBy('distance_km')
                 ->limit(50)
-                ->with(['areaModel:id,name', 'ont.odp:id,name']);
+                ->with(['areaModel:id,name', 'ont.odp:id,name,odc_id']);
 
             if ($areaId) {
                 $customerQuery->where('area_id', $areaId);
@@ -223,8 +224,12 @@ class NetworkRadarController extends Controller
                 $arr = $item->toArray();
                 $arr['_type'] = $subType;
                 $arr['distance_meters'] = round($item->distance_km * 1000);
-                $arr['odp_name'] = $item->ont?->odp?->name ?? '-';
-                $arr['area_name'] = $item->areaModel?->name ?? $item->area ?? '-';
+                $odp = $item->ont ? $item->ont->odp : null;
+                $arr['odp'] = $odp ? ['id' => $odp->id, 'name' => $odp->name, 'odc_id' => $odp->odc_id] : null;
+                $arr['odp_id'] = $odp ? $odp->id : null;
+                $arr['odc_id'] = $odp ? $odp->odc_id : null;
+                $arr['odp_name'] = $odp ? $odp->name : '-';
+                $arr['area_name'] = $item->areaModel ? $item->areaModel->name : ($item->area ?: '-');
                 unset($arr['ont']);
                 return $arr;
             });
