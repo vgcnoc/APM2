@@ -146,9 +146,9 @@
             <div v-if="viewMode === 'card'" class="space-y-8">
                 <!-- Group by ODC -->
                 <div v-for="odcGroup in odpsGroupedByOdc" :key="odcGroup.odc.id" class="animate-fade-in-up">
-                    <div class="relative overflow-hidden bg-gradient-to-r from-indigo-600 to-blue-600 text-white p-5 rounded-t-xl flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-indigo-200 shadow-sm">
+                    <div class="relative overflow-hidden bg-gradient-to-r from-purple-950 via-purple-900 to-purple-950 text-white p-5 rounded-t-xl flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-purple-800/60 shadow-md">
                         <!-- Decorative background elements -->
-                        <div class="absolute top-0 right-0 -mt-8 -mr-8 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+                        <div class="absolute top-0 right-0 -mt-8 -mr-8 w-40 h-40 bg-purple-500/20 rounded-full blur-2xl pointer-events-none"></div>
                         <div class="absolute bottom-0 left-0 -mb-8 -ml-8 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
                         
                         <div class="relative z-10">
@@ -159,7 +159,7 @@
                                 </span>
                                 <h3 class="text-xl font-black tracking-tight text-white">{{ odcGroup.odc.name }}</h3>
                             </div>
-                            <div class="flex items-center gap-5 text-xs text-indigo-100 font-medium">
+                            <div class="flex items-center gap-5 text-xs text-purple-200 font-medium">
                                 <span class="flex items-center gap-1.5 hover:text-white transition-colors cursor-default">
                                     <svg class="w-3.5 h-3.5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg> 
                                     {{ odcGroup.odc.address || 'Tanpa Alamat' }}
@@ -175,10 +175,10 @@
 
                             <!-- VLAN & Mode Akses ODC dari OLT -->
                             <div v-if="getPonVlans(odcGroup.odc).length > 0" class="flex flex-wrap items-center gap-1.5 mt-2.5">
-                                <span class="text-[10px] text-indigo-200 font-bold uppercase tracking-wider">VLAN OLT:</span>
+                                <span class="text-[10px] text-purple-300 font-bold uppercase tracking-wider">VLAN OLT:</span>
                                 <div v-for="(vlan, vIdx) in getPonVlans(odcGroup.odc)" :key="vIdx" class="inline-flex items-center gap-1 bg-black/20 backdrop-blur-xs px-2 py-0.5 rounded text-[11px] font-medium border border-white/10 shadow-xs">
                                     <span class="font-bold text-white">VLAN {{ vlan.vlan_id || vlan }}</span>
-                                    <span v-if="vlan.name" class="text-indigo-200 text-[10px]">({{ vlan.name }})</span>
+                                    <span v-if="vlan.name" class="text-purple-200 text-[10px]">({{ vlan.name }})</span>
                                     <span :class="['px-1.5 py-0.2 text-[9px] font-bold rounded-full uppercase', getModeBadgeClass(getVlanAccessMode(vlan))]">
                                         {{ getVlanAccessMode(vlan) }}
                                     </span>
@@ -186,13 +186,13 @@
                             </div>
                         </div>
                         <div class="flex gap-3 relative z-10">
-                            <div class="flex flex-col items-center justify-center bg-black/10 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 shadow-inner min-w-[75px]">
+                            <div class="flex flex-col items-center justify-center bg-black/20 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 shadow-inner min-w-[75px]">
                                 <span class="block text-2xl font-black text-white leading-none mb-1">{{ odcGroup.odps.length }}</span>
-                                <span class="block text-[9px] font-bold text-indigo-100 uppercase tracking-[0.2em]">ODP</span>
+                                <span class="block text-[9px] font-bold text-purple-200 uppercase tracking-[0.2em]">ODP</span>
                             </div>
-                            <div class="flex flex-col items-center justify-center bg-black/10 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 shadow-inner min-w-[75px]">
+                            <div class="flex flex-col items-center justify-center bg-black/20 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 shadow-inner min-w-[75px]">
                                 <span class="block text-2xl font-black text-white leading-none mb-1">{{ getOdcTotalPorts(odcGroup.odps).available }}</span>
-                                <span class="block text-[9px] font-bold text-indigo-100 uppercase tracking-[0.2em]">Free Port</span>
+                                <span class="block text-[9px] font-bold text-purple-200 uppercase tracking-[0.2em]">Free Port</span>
                             </div>
                         </div>
                     </div>
