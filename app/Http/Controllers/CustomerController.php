@@ -1208,28 +1208,48 @@ class CustomerController extends Controller
             ->withQueryString();
 
         // Auto-heal ghost reserved ports (marked reserved but have no active customer in survey/installing)
-        \App\Models\OdpPort::where('status', 'reserved')
-            ->whereNotExists(function ($query) {
-                $query->select(\Illuminate\Support\Facades\DB::raw(1))
-                    ->from('surveys')
-                    ->join('customers', 'surveys.customer_id', '=', 'customers.id')
-                    ->whereColumn('surveys.odp_id', 'odp_ports.odp_id')
-                    ->whereColumn('surveys.port_number', 'odp_ports.port_number')
-                    ->whereIn('customers.status', ['survey', 'installing']);
-            })
-            ->update(['status' => 'available']);
+        try {
+            $hasReserved = \App\Models\OdpPort::where('status', 'reserved')->exists();
+            if ($hasReserved) {
+                $ghostReservedIds = \App\Models\OdpPort::where('status', 'reserved')
+                    ->whereNotExists(function ($query) {
+                        $query->select(\Illuminate\Support\Facades\DB::raw(1))
+                            ->from('surveys')
+                            ->join('customers', 'surveys.customer_id', '=', 'customers.id')
+                            ->whereColumn('surveys.odp_id', 'odp_ports.odp_id')
+                            ->whereColumn('surveys.port_number', 'odp_ports.port_number')
+                            ->whereIn('customers.status', ['survey', 'installing']);
+                    })
+                    ->pluck('id');
 
-        // Auto-heal ghost used ports (marked used but have no active ONT)
-        \App\Models\OdpPort::where('status', 'used')
-            ->whereNotExists(function ($query) {
-                $query->select(\Illuminate\Support\Facades\DB::raw(1))
-                    ->from('onts')
-                    ->whereColumn('onts.odp_id', 'odp_ports.odp_id')
-                    ->whereColumn('onts.port_number', 'odp_ports.port_number')
-                    ->whereNotNull('onts.customer_id')
-                    ->where('onts.status', '!=', 'inactive');
-            })
-            ->update(['status' => 'available']);
+                if ($ghostReservedIds->isNotEmpty()) {
+                    \App\Models\OdpPort::whereIn('id', $ghostReservedIds)->update(['status' => 'available']);
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[CustomerController::surveyIndex] Auto-heal reserved ports skipped: ' . $e->getMessage());
+        }
+
+        // Auto-heal ghost used ports (marked used but have no active ONT) safely by primary key
+        try {
+            $ghostUsedIds = \App\Models\OdpPort::where('status', 'used')
+                ->whereNotExists(function ($query) {
+                    $query->select(\Illuminate\Support\Facades\DB::raw(1))
+                        ->from('onts')
+                        ->whereColumn('onts.odp_id', 'odp_ports.odp_id')
+                        ->whereColumn('onts.port_number', 'odp_ports.port_number')
+                        ->whereNotNull('onts.customer_id')
+                        ->where('onts.status', '!=', 'inactive');
+                })
+                ->limit(20)
+                ->pluck('id');
+
+            if ($ghostUsedIds->isNotEmpty()) {
+                \App\Models\OdpPort::whereIn('id', $ghostUsedIds)->update(['status' => 'available']);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[CustomerController::surveyIndex] Auto-heal used ports skipped: ' . $e->getMessage());
+        }
 
         $availableOdps = Odp::active()
             ->with('odc.olt')
