@@ -35,11 +35,12 @@ class SyncMigrationStocks extends Command
             $cable = $result['cable'] ?? [];
             if (($cable['status'] ?? '') === 'success') {
                 $this->line("- Material: {$cable['material_name']} (ID: {$cable['material_id']})");
-                $this->line("- Total Meter: " . number_format($cable['total_meter'], 2, ',', '.') . " meter");
-                $this->line("- Total Roll: " . number_format($cable['total_rolls'], 2, ',', '.') . " Roll");
+                $this->line("- Total Tarikan Terpasang: " . number_format($cable['total_meter'], 2, ',', '.') . " meter (~" . number_format($cable['total_rolls'], 2, ',', '.') . " Roll)");
+                $this->line("- Stok Awal Masuk: " . number_format($cable['total_meter'], 2, ',', '.') . " meter");
+                $this->line("- Sisa Stok di Gudang: 0,00 meter (0 Roll) [Telah terpakai seluruhnya ke pelanggan migrasi]");
                 $this->info("Distribusi Area Kabel:");
                 foreach ($cable['areas'] as $area) {
-                    $this->line("  * Area {$area['area_name']}: " . number_format($area['total_meter'], 2, ',', '.') . " m (~{$area['total_rolls']} Roll) dari {$area['customers_count']} pelanggan migrasi.");
+                    $this->line("  * Area {$area['area_name']}: " . number_format($area['total_meter'], 2, ',', '.') . " m (~{$area['total_rolls']} Roll) terpasang pada {$area['customers_count']} pelanggan migrasi (Sisa stok: 0 m).");
                 }
             } else {
                 $this->warn("  " . ($cable['message'] ?? 'Tidak ada data kabel migrasi.'));
@@ -50,13 +51,15 @@ class SyncMigrationStocks extends Command
             if (($ont['status'] ?? '') === 'success') {
                 $this->line("- Total Perangkat ONT: {$ont['total_onts']} unit");
                 $this->line("- Jumlah Model Material Unik: {$ont['distinct_models']} model");
+                $this->line("- Stok Awal Masuk: {$ont['total_onts']} unit");
+                $this->line("- Sisa Stok di Gudang: 0 unit [Telah terpasang seluruhnya ke pelanggan migrasi]");
                 $this->info("Distribusi Area ONT:");
                 foreach ($ont['areas'] as $area) {
-                    $this->line("  * Area {$area['area_name']}: {$area['total_units']} unit ONT ({$area['distinct_models']} tipe model).");
+                    $this->line("  * Area {$area['area_name']}: {$area['total_units']} unit ONT ({$area['distinct_models']} model) terpasang ke pelanggan (Sisa stok: 0 unit).");
                 }
-                $this->info("Daftar Material ONT Terdaftar:");
+                $this->info("Daftar Material ONT Terdaftar (Katalog Logistik):");
                 foreach (array_slice($ont['materials'], 0, 10) as $mat) {
-                    $this->line("  * {$mat['name']}: {$mat['stock']} unit");
+                    $this->line("  * {$mat['name']}: Stok Awal {$mat['initial_stock']} unit (Sisa Stok: 0 unit)");
                 }
                 if (count($ont['materials']) > 10) {
                     $this->line("  * ... dan " . (count($ont['materials']) - 10) . " model ONT lainnya.");
@@ -65,7 +68,7 @@ class SyncMigrationStocks extends Command
                 $this->warn("  " . ($ont['message'] ?? 'Tidak ada data ONT migrasi.'));
             }
 
-            $this->info("\nSemua stok berhasil disinkronkan ke Material/Logistik, Stok Gudang per Area, dan Riwayat Transaksi!");
+            $this->info("\nSemua stok berhasil disinkronkan ke Material/Logistik, Stok Gudang per Area, dan Riwayat Transaksi (Sisa Stok = 0)!");
             return Command::SUCCESS;
         }
 

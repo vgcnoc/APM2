@@ -3643,8 +3643,8 @@ class DataMigrationService
             );
 
             $matStock->initial_stock = $totalMeter;
-            $matStock->stock = $totalMeter;
-            $matStock->total_rolls = $totalRoll;
+            $matStock->stock = 0; // Sisa stok nol karena seluruh kabel migrasi sudah terpasang ke pelanggan
+            $matStock->total_rolls = 0;
             $matStock->save();
 
             $totalMeterAll += $totalMeter;
@@ -3656,12 +3656,13 @@ class DataMigrationService
                 'customers_count' => $items->count(),
                 'total_meter' => $totalMeter,
                 'total_rolls' => $totalRoll,
+                'remaining_stock' => 0,
             ];
         }
 
         $freeconMaterial->initial_stock = $totalMeterAll;
-        $freeconMaterial->stock = $totalMeterAll;
-        $freeconMaterial->total_rolls = $totalRollAll;
+        $freeconMaterial->stock = 0; // Sisa stok nol karena seluruh kabel sudah terpasang ke pelanggan
+        $freeconMaterial->total_rolls = 0;
         $freeconMaterial->save();
 
         return [
@@ -3670,6 +3671,7 @@ class DataMigrationService
             'material_name' => $freeconMaterial->name,
             'total_meter' => $totalMeterAll,
             'total_rolls' => $totalRollAll,
+            'remaining_stock' => 0,
             'areas' => $areaResults,
         ];
     }
@@ -3830,7 +3832,7 @@ class DataMigrationService
                     ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
                 );
                 $matStock->initial_stock = $count;
-                $matStock->stock = $count;
+                $matStock->stock = 0; // Sisa stok nol karena seluruh unit ONT migrasi sudah terpasang ke pelanggan
                 $matStock->save();
             }
 
@@ -3842,6 +3844,7 @@ class DataMigrationService
                 'area_name' => $areaName,
                 'total_units' => $areaTotalUnits,
                 'distinct_models' => $groupedByMat->count(),
+                'remaining_stock' => 0,
             ];
 
             $totalOntUnitsAll += $areaTotalUnits;
@@ -3850,15 +3853,16 @@ class DataMigrationService
         // 3. Update stok global untuk semua material ONT yang terlibat
         $ontMaterials = Material::whereIn('id', array_keys($touchedMaterialIds))->get();
         foreach ($ontMaterials as $ontMat) {
-            $sumStock = MaterialStock::where('material_id', $ontMat->id)->sum('stock');
-            $ontMat->initial_stock = $sumStock;
-            $ontMat->stock = $sumStock;
+            $sumInitial = MaterialStock::where('material_id', $ontMat->id)->sum('initial_stock');
+            $ontMat->initial_stock = $sumInitial;
+            $ontMat->stock = 0; // Sisa stok nol karena seluruh unit ONT migrasi sudah terpasang ke pelanggan
             $ontMat->save();
 
             $ontMaterialResults[] = [
                 'id' => $ontMat->id,
                 'name' => $ontMat->name,
-                'stock' => $sumStock,
+                'initial_stock' => $sumInitial,
+                'stock' => 0,
                 'category' => $ontMat->category,
             ];
         }
@@ -3866,6 +3870,7 @@ class DataMigrationService
         return [
             'status' => 'success',
             'total_onts' => $totalOntUnitsAll,
+            'remaining_stock' => 0,
             'distinct_models' => count($ontMaterialResults),
             'materials' => $ontMaterialResults,
             'areas' => $ontAreaResults,
