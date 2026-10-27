@@ -1035,18 +1035,7 @@ class CustomerController extends Controller
                         ->orWhereDate('created_at', $date);
                 });
             })
-            ->when($request->area || $request->area_id, function ($q) use ($request) {
-                $areaVal = $request->area ?? $request->area_id;
-                $areaName = is_numeric($areaVal) ? \App\Models\Area::where('id', $areaVal)->value('name') : $areaVal;
-                $q->where(function($sub) use ($areaVal, $areaName) {
-                    $sub->where('area_id', $areaVal)
-                        ->orWhere('area', $areaVal);
-                    if ($areaName) {
-                        $sub->orWhereHas('areaModel', fn($q2) => $q2->where('name', $areaName))
-                            ->orWhere('area', $areaName);
-                    }
-                });
-            })
+            ->when($request->area || $request->area_id, fn($q) => $this->applyAreaFilter($q, $request->area_id ?: $request->area))
             ->when($request->status, function ($q, $status) {
                 $q->where('status', $status);
             })
@@ -1072,7 +1061,7 @@ class CustomerController extends Controller
             'customers' => $customers,
             'areas' => $areas,
             'stats' => $stats,
-            'filters' => $request->only(['search', 'date', 'area', 'status']),
+            'filters' => $request->only(['search', 'date', 'area', 'area_id', 'status']),
         ]);
     }
 
@@ -1159,18 +1148,7 @@ class CustomerController extends Controller
             ->when($request->date, function ($q, $date) {
                 $q->whereDate('created_at', $date);
             })
-            ->when($request->area || $request->area_id, function ($q) use ($request) {
-                $areaVal = $request->area ?? $request->area_id;
-                $areaName = is_numeric($areaVal) ? \App\Models\Area::where('id', $areaVal)->value('name') : $areaVal;
-                $q->where(function($sub) use ($areaVal, $areaName) {
-                    $sub->where('area_id', $areaVal)
-                        ->orWhere('area', $areaVal);
-                    if ($areaName) {
-                        $sub->orWhereHas('areaModel', fn($q2) => $q2->where('name', $areaName))
-                            ->orWhere('area', $areaName);
-                    }
-                });
-            })
+            ->when($request->area || $request->area_id, fn($q) => $this->applyAreaFilter($q, $request->area_id ?: $request->area))
             ->search($request->search);
 
         // Calculate statistics based on the base query
@@ -1386,18 +1364,7 @@ class CustomerController extends Controller
                     $sub->where('scheduled_date', '<=', $dateTo)->where('type', 'installation');
                 });
             })
-            ->when($request->area || $request->area_id, function ($q) use ($request) {
-                $areaVal = $request->area ?? $request->area_id;
-                $areaName = is_numeric($areaVal) ? \App\Models\Area::where('id', $areaVal)->value('name') : $areaVal;
-                $q->where(function($sub) use ($areaVal, $areaName) {
-                    $sub->where('area_id', $areaVal)
-                        ->orWhere('area', $areaVal);
-                    if ($areaName) {
-                        $sub->orWhereHas('areaModel', fn($q2) => $q2->where('name', $areaName))
-                            ->orWhere('area', $areaName);
-                    }
-                });
-            })
+            ->when($request->area || $request->area_id, fn($q) => $this->applyAreaFilter($q, $request->area_id ?: $request->area))
             ->with(['package', 'surveys.odp', 'ont.odp.odc.olt', 'sales', 'technicianSchedules' => function ($q) {
                 $q->where('type', 'installation')->with('technician');
             }])
@@ -1497,18 +1464,7 @@ class CustomerController extends Controller
             ->with(['package', 'surveys.odp', 'ont.odp.odc.olt', 'technicianSchedules' => function ($q) {
                 $q->where('type', 'installation')->with('technician');
             }])
-            ->when($request->area || $request->area_id, function ($q) use ($request) {
-                $val = $request->area_id ?: $request->area;
-                $q->where(function ($sub) use ($val) {
-                    if (is_numeric($val)) {
-                        $sub->where('area_id', $val);
-                        $name = \App\Models\Area::where('id', $val)->value('name');
-                        if ($name) $sub->orWhere('area', $name);
-                    } else {
-                        $sub->where('area', $val)->orWhereHas('areaModel', fn ($aq) => $aq->where('name', $val));
-                    }
-                });
-            })
+            ->when($request->area || $request->area_id, fn($q) => $this->applyAreaFilter($q, $request->area_id ?: $request->area))
             ->when($request->date_from, function ($q, $dateFrom) use ($currentTab) {
                 if ($currentTab === 'riwayat') {
                     $q->whereDate('activation_date', '>=', $dateFrom);
@@ -4784,6 +4740,38 @@ class CustomerController extends Controller
         \App\Models\AuditLog::createLog('Buka Isolir', $customer, 'suspended', 'active', 'Membuka isolir pelanggan');
 
         return redirect()->back()->with('success', "Isolir pelanggan {$customer->name} berhasil dibuka.");
+    }
+
+    /**
+     * Helper untuk filter query Customer berdasarkan Area (id, nama, variasi hyphen/space)
+     */
+    private function applyAreaFilter($query, $areaVal)
+    {
+        if (!$areaVal) return $query;
+
+        $areaId = is_numeric($areaVal) ? (int)$areaVal : \App\Models\Area::where('name', $areaVal)->orWhere('name', str_replace('-', ' ', $areaVal))->value('id');
+        $areaName = !is_numeric($areaVal) ? $areaVal : \App\Models\Area::where('id', $areaVal)->value('name');
+
+        $variants = array_unique(array_filter([
+            $areaVal,
+            $areaName,
+            str_replace(' ', '-', $areaVal),
+            str_replace('-', ' ', $areaVal),
+            $areaName ? str_replace(' ', '-', $areaName) : null,
+            $areaName ? str_replace('-', ' ', $areaName) : null,
+        ]));
+
+        return $query->where(function ($sub) use ($areaId, $variants, $areaName) {
+            if ($areaId) {
+                $sub->where('area_id', $areaId);
+            }
+            if (!empty($variants)) {
+                $sub->orWhereIn('area', $variants);
+            }
+            if ($areaName) {
+                $sub->orWhereHas('areaModel', fn($q2) => $q2->where('name', $areaName)->orWhere('name', str_replace('-', ' ', $areaName)));
+            }
+        });
     }
 }
 

@@ -157,7 +157,14 @@ function onSearch() {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
         if (props.searchRoute) {
-            router.get(props.searchRoute, { search: searchQuery.value }, {
+            const queryParams = typeof window !== 'undefined' ? Object.fromEntries(new URLSearchParams(window.location.search)) : {};
+            delete queryParams.page;
+            if (searchQuery.value) {
+                queryParams.search = searchQuery.value;
+            } else {
+                delete queryParams.search;
+            }
+            router.get(props.searchRoute, queryParams, {
                 preserveState: true,
                 preserveScroll: true,
             });

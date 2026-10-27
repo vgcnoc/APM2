@@ -60,16 +60,16 @@
             <template #filters>
                 <div v-can="'customers_survey_filter'" class="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 w-full">
                     <!-- Filter Teknisi -->
-                    <select v-model="selectedTechnician" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all pr-8">
+                    <select v-model="selectedTechnician" @change="applyFilters" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all pr-8">
                         <option value="">Semua Teknisi / Surveyor</option>
                         <option v-for="tech in technicians" :key="tech.id" :value="tech.id">{{ tech.name }}</option>
                     </select>
                     
                     <!-- Filter Tanggal -->
-                    <input type="date" v-model="selectedDate" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all" />
+                    <input type="date" v-model="selectedDate" @change="applyFilters" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all" />
                     
                     <!-- Filter Area / Wilayah -->
-                    <select v-model="selectedArea" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all pr-8">
+                    <select v-model="selectedArea" @change="applyFilters" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all pr-8">
                         <option value="">Semua Area / Wilayah</option>
                         <option v-for="area in areas" :key="typeof area === 'object' && area !== null ? area.id : area" :value="typeof area === 'object' && area !== null ? area.name : area">
                             {{ typeof area === 'object' && area !== null ? area.name : area }}

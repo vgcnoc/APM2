@@ -60,14 +60,14 @@
         >
             <template #filters>
                 <div v-can="'customers_booking_filter_area'" class="flex flex-wrap items-center gap-2.5 w-full">
-                    <input type="date" v-model="filterDate" class="form-input w-full sm:w-40 text-sm bg-white" title="Tanggal Daftar" />
-                    <select v-model="filterArea" class="form-select w-full sm:w-44 md:w-48 text-sm bg-white">
+                    <input type="date" v-model="filterDate" @change="applyFilters" class="form-input w-full sm:w-40 text-sm bg-white" title="Tanggal Daftar" />
+                    <select v-model="filterArea" @change="applyFilters" class="form-select w-full sm:w-44 md:w-48 text-sm bg-white">
                         <option value="">Semua Area</option>
                         <option v-for="area in areas" :key="typeof area === 'object' && area !== null ? area.id : area" :value="typeof area === 'object' && area !== null ? area.name : area">
                             {{ typeof area === 'object' && area !== null ? area.name : area }}
                         </option>
                     </select>
-                    <select v-model="filterStatus" class="form-select w-full sm:w-44 md:w-48 text-sm bg-white">
+                    <select v-model="filterStatus" @change="applyFilters" class="form-select w-full sm:w-44 md:w-48 text-sm bg-white">
                         <option value="">Semua Status</option>
                         <option value="booking">Baru (Booking)</option>
                         <option value="survey">Disurvey</option>
@@ -610,7 +610,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
@@ -660,11 +660,19 @@ const canDelete = computed(() => {
 });
 
 const filterDate = ref(props.filters?.date || '');
-const filterArea = ref(props.filters?.area || '');
+const filterArea = ref(props.filters?.area || props.filters?.area_id || '');
 const filterStatus = ref(props.filters?.status || '');
 
+watch(() => props.filters, (newFilters) => {
+    filterDate.value = newFilters?.date || '';
+    filterArea.value = newFilters?.area || newFilters?.area_id || '';
+    filterStatus.value = newFilters?.status || '';
+}, { deep: true });
+
 function applyFilters() {
+    const currentSearch = typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('search') || undefined) : undefined;
     router.get('/customers/booking', {
+        search: currentSearch,
         date: filterDate.value || undefined,
         area: filterArea.value || undefined,
         status: filterStatus.value || undefined,
@@ -675,7 +683,10 @@ function resetFilters() {
     filterDate.value = '';
     filterArea.value = '';
     filterStatus.value = '';
-    router.get('/customers/booking', {}, { preserveState: true, preserveScroll: true });
+    const currentSearch = typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('search') || undefined) : undefined;
+    router.get('/customers/booking', {
+        search: currentSearch,
+    }, { preserveState: true, preserveScroll: true });
 }
 
 function formatDate(dateStr) {
