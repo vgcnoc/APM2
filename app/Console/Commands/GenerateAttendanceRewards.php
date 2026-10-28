@@ -386,7 +386,7 @@ class GenerateAttendanceRewards extends Command
                     }
                 }
 
-                // C. Reward Divisi Maintenance / Lapangan (Top 3)
+                // C. Reward Divisi Maintenance (Top 3 khusus jabatan Maintenance)
                 if (Setting::get('attendance_reward_maintenance_enabled', '1') === '1') {
                     $maintNominals = [
                         1 => (float) Setting::get('attendance_reward_maint_1', 200000),
@@ -400,7 +400,7 @@ class GenerateAttendanceRewards extends Command
                         $type = strtolower($emp->employee_type ?? '');
                         $isSpecial = str_contains($pos, 'khusus') || str_contains($pos, 'special') || str_contains($pos, 'serbu') || str_contains($type, 'khusus');
                         if ($isSpecial) return false;
-                        return str_contains($pos, 'maint') || str_contains($pos, 'teknisi') || str_contains($pos, 'field');
+                        return str_contains($pos, 'maint');
                     })->sortByDesc('score')->values();
 
                     for ($rank = 1; $rank <= min(3, $maintSorted->count()); $rank++) {
@@ -414,7 +414,7 @@ class GenerateAttendanceRewards extends Command
                                 ],
                                 [
                                     'type' => 'auto',
-                                    'description' => "Reward Absen Maintenance (Juara {$rank} Global) Periode {$month}",
+                                    'description' => "Reward Absen Terbaik (Juara {$rank} Maintenance) Periode {$month}",
                                     'amount' => $nominal,
                                     'incentive_date' => $monthEnd->format('Y-m-d'),
                                     'status' => 'pending',

@@ -23,7 +23,7 @@
                                     Peringkat kedisiplinan dan absensi terbaik tingkat cabang — Top 3 mendapat reward cabang
                                 </span>
                                 <span v-else-if="currentScope === 'maintenance'">
-                                    Nominasi khusus divisi Maintenance & Teknisi Reguler (Tim Khusus & Tim Serbu tidak masuk) — Top 3 mendapat reward maintenance
+                                    Nominasi khusus karyawan jabatan Maintenance — Top 3 mendapat reward maintenance
                                 </span>
                             </p>
                         </div>
@@ -747,7 +747,7 @@
                                         v-if="emp.is_maintenance"
                                         class="inline-block px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-[10px] font-bold mt-0.5"
                                     >
-                                        Teknisi / Maint
+                                        Maintenance
                                     </span>
                                 </td>
 
@@ -1139,7 +1139,7 @@ const currentRewards = computed(() => {
 });
 
 const printScopeSubtitle = computed(() => {
-    if (currentScope.value === 'maintenance') return 'KATEGORI KHUSUS DIVISI MAINTENANCE & TEKNISI LAPANGAN';
+    if (currentScope.value === 'maintenance') return 'KATEGORI KHUSUS DIVISI MAINTENANCE';
     if (currentScope.value === 'branch') {
         const area = props.areas.find(a => a.id === selectedAreaId.value);
         return area ? `TINGKAT CABANG: ${area.name.toUpperCase()}` : 'TINGKAT PER CABANG';

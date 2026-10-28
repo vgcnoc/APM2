@@ -222,8 +222,8 @@ class BestAttendanceController extends Controller
                 continue;
             }
 
-            // 2. Identifikasi apakah karyawan adalah Maintenance / Teknisi Reguler
-            $isMaintenance = (bool) preg_match('/(teknisi|maintenance|jaringan|lapangan|field|fiber|fo)/i', $position);
+            // 2. Identifikasi apakah karyawan adalah Maintenance (khusus jabatan Maintenance, bukan Teknisi umum)
+            $isMaintenance = (bool) preg_match('/maintenance/i', $position);
 
             $calculatedEmployees[] = [
                 'id' => $emp->id,
@@ -359,7 +359,7 @@ class BestAttendanceController extends Controller
             $leaderboard = $rankedLeaderboard;
 
         } elseif ($scope === 'maintenance') {
-            // "Reward Maintenance: Top 3 Karyawan Maintenance & Teknisi Lapangan"
+            // "Reward Maintenance: Top 3 Karyawan Maintenance"
             $podiumList = [];
             for ($i = 0; $i < min(3, $qualifiedEmployees->count()); $i++) {
                 $winner = $qualifiedEmployees[$i];
