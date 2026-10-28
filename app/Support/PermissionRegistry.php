@@ -1106,6 +1106,9 @@ class PermissionRegistry
                     ['name' => 'operational_progress_filter_date', 'type' => 'filter', 'label' => 'Filter Tanggal Laporan Operasional'],
                     ['name' => 'operational_progress_copy_wa', 'type' => 'button', 'label' => 'Salin Format Teks WhatsApp'],
                     ['name' => 'operational_progress_send_wa', 'type' => 'button', 'label' => 'Kirim Laporan Otomatis via WA Gateway'],
+                    ['name' => 'network_maintenance_create', 'type' => 'button', 'label' => 'Tambah Kegiatan Perapihan & Pengecekan Jalur'],
+                    ['name' => 'network_maintenance_update', 'type' => 'button', 'label' => 'Update Status & Laporan Perapihan Jalur'],
+                    ['name' => 'network_maintenance_delete', 'type' => 'button', 'label' => 'Hapus Data Perapihan & Pengecekan Jalur'],
                 ],
             ],
 
@@ -1181,7 +1184,7 @@ class PermissionRegistry
                 'menu_customers_booking', 'customers_booking_card_stats', 'customers_booking_filter_area', 'customers_booking_create', 'customers_booking_view', 'customers_booking_edit', 'customers_booking_print', 'customers_booking_whatsapp', 'customers_booking_view_all',
                 'menu_whatsapp_blast', 'whatsapp_card_gateway_status', 'whatsapp_card_blast_summary', 'whatsapp_tab_device', 'whatsapp_btn_scan_qr', 'whatsapp_btn_restart',
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_btn_export', 'monitoring_teknisi_view_all',
-                'menu_operational_progress', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'operational_progress_send_wa',
+                'menu_operational_progress', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'operational_progress_send_wa', 'network_maintenance_create', 'network_maintenance_update',
                 'menu_vouchers_free', 'voucher_free_card_stats', 'voucher_free_tab_generated', 'voucher_free_tab_customers', 'vouchers_free_create', 'vouchers_free_print', 'vouchers_free_delete', 'vouchers_free_toggle', 'vouchers_free_sync_customer', 'voucher_free_filter_connection', 'voucher_free_color_indicator',
                 'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
             ],
@@ -1212,7 +1215,7 @@ class PermissionRegistry
                 'menu_attendances', 'attendance_tab_reguler', 'attendance_select_type', 'attendance_tab_field', 'attendance_tab_special', 'attendance_tab_best', 'attendances_view_own',
                 'menu_payroll', 'payroll_view_own', 'payroll_btn_print_slip',
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_area', 'monitoring_teknisi_view_own',
-                'menu_operational_progress', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa',
+                'menu_operational_progress', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'network_maintenance_create', 'network_maintenance_update',
                 'menu_vouchers_free', 'voucher_free_card_stats', 'voucher_free_tab_customers', 'vouchers_free_sync_customer', 'voucher_free_filter_connection', 'voucher_free_color_indicator',
                 'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
             ],
@@ -1245,7 +1248,7 @@ class PermissionRegistry
                 'menu_attendances', 'attendance_tab_reguler', 'attendance_select_type', 'attendance_tab_field', 'attendance_tab_special', 'attendance_tab_best', 'attendances_view_own',
                 'menu_payroll', 'payroll_view_own', 'payroll_btn_print_slip',
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_area', 'monitoring_teknisi_view_own',
-                'menu_operational_progress', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa',
+                'menu_operational_progress', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'network_maintenance_create', 'network_maintenance_update',
                 'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
             ],
             'kepala teknisi' => [
@@ -1276,7 +1279,7 @@ class PermissionRegistry
                 'menu_attendances', 'attendance_card_stats', 'attendance_tab_reguler', 'attendance_select_type', 'attendance_recap_link', 'attendance_btn_set_shift_holiday', 'attendance_tab_field', 'attendances_field_create', 'attendances_field_export', 'attendance_tab_special', 'attendance_tab_best', 'attendance_btn_export', 'attendances_view_all',
                 'menu_payroll', 'payroll_view_own', 'payroll_btn_print_slip',
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_export', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_all',
-                'menu_operational_progress', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'operational_progress_send_wa',
+                'menu_operational_progress', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'operational_progress_send_wa', 'network_maintenance_create', 'network_maintenance_update',
                 'menu_vouchers_free', 'voucher_free_card_stats', 'voucher_free_tab_customers', 'vouchers_free_sync_customer', 'voucher_free_filter_connection', 'voucher_free_color_indicator',
                 'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
             ],
@@ -1295,7 +1298,7 @@ class PermissionRegistry
                 'menu_pgj', 'menu_pgj_jadwal', 'pgj_card_summary', 'pgj_tab_flow', 'pgj_filter', 'pgj_btn_assign', 'pgj_btn_view', 'pgj_view_all',
                 'menu_pgs', 'menu_pgs_jadwal', 'pgs_card_summary', 'pgs_tab_flow', 'pgs_filter', 'pgs_btn_assign', 'pgs_view_all',
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_all',
-                'menu_operational_progress', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'operational_progress_send_wa',
+                'menu_operational_progress', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'operational_progress_send_wa', 'network_maintenance_create', 'network_maintenance_update',
             ],
             'cs' => [
                 'menu_dashboard', 'menu_dashboard_realtime', 'dashboard_card_realtime', 'dashboard_realtime_btn_unpaid', 'dashboard_realtime_btn_isolir', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_revenue', 'dashboard_filter_area', 'dashboard_btn_quick_action', 'dashboard_btn_refresh',
@@ -1325,7 +1328,7 @@ class PermissionRegistry
                 'menu_vouchers_free', 'voucher_free_card_stats', 'voucher_free_tab_generated', 'voucher_free_tab_customers', 'vouchers_free_create', 'vouchers_free_print', 'vouchers_free_delete', 'vouchers_free_sync_customer', 'vouchers_free_toggle', 'voucher_free_filter_connection', 'voucher_free_color_indicator',
                 'menu_monitoring_pelanggan', 'monitoring_pelanggan_card_stats', 'monitoring_pelanggan_tab_menunggak', 'monitoring_pelanggan_tab_janji_bayar', 'monitoring_pelanggan_tab_stop_sementara', 'monitoring_pelanggan_filter', 'monitoring_pelanggan_btn_whatsapp', 'monitoring_pelanggan_btn_action',
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_all',
-                'menu_operational_progress', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa',
+                'menu_operational_progress', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'network_maintenance_create', 'network_maintenance_update',
             ],
             'admin cs' => [
                 'menu_dashboard', 'menu_dashboard_realtime', 'dashboard_card_realtime', 'dashboard_realtime_btn_unpaid', 'dashboard_realtime_btn_isolir', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_revenue', 'dashboard_filter_area', 'dashboard_btn_quick_action', 'dashboard_btn_refresh',
@@ -1356,7 +1359,7 @@ class PermissionRegistry
                 'menu_vouchers_free', 'voucher_free_card_stats', 'voucher_free_tab_generated', 'voucher_free_tab_customers', 'vouchers_free_create', 'vouchers_free_print', 'vouchers_free_delete', 'vouchers_free_sync_customer', 'vouchers_free_toggle', 'voucher_free_filter_connection', 'voucher_free_color_indicator',
                 'menu_monitoring_pelanggan', 'monitoring_pelanggan_card_stats', 'monitoring_pelanggan_tab_menunggak', 'monitoring_pelanggan_tab_janji_bayar', 'monitoring_pelanggan_tab_stop_sementara', 'monitoring_pelanggan_filter', 'monitoring_pelanggan_btn_whatsapp', 'monitoring_pelanggan_btn_action',
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_all',
-                'menu_operational_progress', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'operational_progress_send_wa',
+                'menu_operational_progress', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'operational_progress_send_wa', 'network_maintenance_create', 'network_maintenance_update',
             ],
             'sales' => [
                 'menu_dashboard', 'dashboard_card_stats', 'dashboard_filter_area',
@@ -1525,7 +1528,7 @@ class PermissionRegistry
             'menu_attendances', 'attendance_tab_reguler', 'attendance_select_type', 'attendance_tab_field', 'attendances_view_own',
             'menu_payroll', 'payroll_view_own', 'payroll_btn_print_slip',
             'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_area', 'monitoring_teknisi_view_own',
-            'menu_operational_progress', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa',
+            'menu_operational_progress', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'network_maintenance_create', 'network_maintenance_update',
             'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
         ];
 
@@ -1556,7 +1559,7 @@ class PermissionRegistry
             'menu_attendances', 'attendance_tab_reguler', 'attendance_select_type', 'attendance_tab_field', 'attendance_tab_special', 'attendance_tab_best', 'attendances_view_own',
             'menu_payroll', 'payroll_view_own', 'payroll_btn_print_slip',
             'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_view_area', 'monitoring_teknisi_view_own',
-            'menu_operational_progress', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa',
+            'menu_operational_progress', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'network_maintenance_create', 'network_maintenance_update',
         ];
 
         // Role alias / turunan jabatan agar sinkron otomatis saat sinkronisasi izin

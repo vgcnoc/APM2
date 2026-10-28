@@ -1,5 +1,5 @@
 <template>
-    <AppLayout title="Progress Harian Operasional" subtitle="Laporan Terpadu Gangguan PGS/PGK/PGJ, Instalasi, Survey, CBP & Shift Teknisi">
+    <AppLayout title="Progress Harian Operasional" subtitle="Laporan Terpadu Gangguan PGS/PGK/PGJ, Instalasi, Survey, CBP, Pemeliharaan Jalur & Shift Teknisi">
         <div class="space-y-6 max-w-7xl mx-auto pb-12">
             
             <!-- TOP BAR: FILTER & ACTION CONTROLS -->
@@ -29,6 +29,7 @@
 
                     <!-- Filters & Form -->
                     <div class="flex flex-wrap items-center gap-2.5">
+                        
                         <!-- Quick Date Buttons -->
                         <div class="inline-flex rounded-xl p-1 bg-slate-100 dark:bg-slate-800 text-xs font-semibold">
                             <button
@@ -97,6 +98,18 @@
                             </svg>
                         </div>
 
+                        <!-- Tombol Tambah Kegiatan Perapihan / Cek Jalur Baru -->
+                        <button
+                            type="button"
+                            @click="openCreateModal"
+                            class="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-md shadow-amber-500/20 transition-all cursor-pointer active:scale-98"
+                            title="Tambah Kegiatan Perapihan atau Pengecekan Jalur ODP, ODC, Jalur Utama"
+                        >
+                            <span>🛠️</span>
+                            <span class="hidden sm:inline">+ Jadwal Pemeliharaan Jalur</span>
+                            <span class="sm:hidden">+ Jalur</span>
+                        </button>
+
                         <!-- Refresh Button -->
                         <button
                             type="button"
@@ -114,8 +127,8 @@
                 </div>
             </div>
 
-            <!-- STATS KPI SUMMARY CARDS -->
-            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+            <!-- STATS KPI SUMMARY CARDS (6 KOLOM) -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 
                 <!-- 1. Gangguan Card -->
                 <div 
@@ -135,7 +148,6 @@
                     <div class="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 mt-1 flex-wrap">
                         <span class="text-emerald-600 font-bold">✓ {{ summary.gangguan_done || 0 }} Selesai</span>
                         <span v-if="summary.gangguan_in_progress > 0" class="text-blue-600 font-bold">· 🛠️ {{ summary.gangguan_in_progress }} Proses</span>
-                        <span v-if="summary.gangguan_rescheduled > 0" class="text-purple-600 font-bold">· 🗓️ {{ summary.gangguan_rescheduled }} Reschedule</span>
                         <span>·</span>
                         <span class="text-amber-600 font-bold">⏳ {{ summary.gangguan_pending || 0 }} Pending</span>
                     </div>
@@ -158,8 +170,7 @@
                     </div>
                     <div class="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 mt-1 flex-wrap">
                         <span class="text-emerald-600 font-bold">✓ {{ summary.pemasangan_done || 0 }} Selesai</span>
-                        <span v-if="summary.pemasangan_in_progress > 0" class="text-blue-600 font-bold">· 🛠️ {{ summary.pemasangan_in_progress }} Proses</span>
-                        <span v-if="summary.pemasangan_rescheduled > 0" class="text-purple-600 font-bold">· 🗓️ {{ summary.pemasangan_rescheduled }} Reschedule</span>
+                        <span v-if="summary.pemasangan_in_progress > 0" class="text-blue-600 font-bold">· 🛠️ {{ summary.pemasangan_in_progress }}</span>
                         <span>·</span>
                         <span class="text-amber-600 font-bold">⏳ {{ summary.pemasangan_pending || 0 }} Pending</span>
                     </div>
@@ -204,13 +215,35 @@
                     </div>
                     <div class="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 mt-1 flex-wrap">
                         <span class="text-emerald-600 font-bold">✓ {{ summary.cbp_done || 0 }} Selesai</span>
-                        <span v-if="summary.cbp_in_progress > 0" class="text-blue-600 font-bold">· 🛠️ {{ summary.cbp_in_progress }} Proses</span>
                         <span>·</span>
                         <span class="text-amber-600 font-bold">⏳ {{ summary.cbp_pending || 0 }} Pending</span>
                     </div>
                 </div>
 
-                <!-- 5. Status Teknisi Card -->
+                <!-- 5. PERAPIHAN & PEMELIHARAAN JALUR CARD (BARU) -->
+                <div 
+                    @click="activeTab = 'maintenance'"
+                    class="p-4 rounded-2xl border transition-all cursor-pointer group hover:shadow-md"
+                    :class="activeTab === 'maintenance' 
+                        ? 'bg-teal-50/70 dark:bg-teal-950/40 border-teal-400 dark:border-teal-700 ring-2 ring-teal-200 dark:ring-teal-900' 
+                        : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-teal-300'"
+                >
+                    <div class="flex items-center justify-between text-teal-600 dark:text-teal-400">
+                        <span class="text-[11px] font-black uppercase tracking-wider">🛠️ Pemeliharaan Jalur</span>
+                        <span class="text-xs font-bold px-1.5 py-0.5 rounded-md bg-teal-100 dark:bg-teal-900/60">{{ summary.maintenance || 0 }}</span>
+                    </div>
+                    <div class="mt-2 text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                        {{ summary.maintenance || 0 }}
+                    </div>
+                    <div class="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 mt-1 flex-wrap">
+                        <span class="text-emerald-600 font-bold">✓ {{ summary.maintenance_done || 0 }} Selesai</span>
+                        <span v-if="summary.maintenance_in_progress > 0" class="text-blue-600 font-bold">· 🛠️ {{ summary.maintenance_in_progress }}</span>
+                        <span>·</span>
+                        <span class="text-amber-600 font-bold">⏳ {{ summary.maintenance_pending || 0 }} Tunggu</span>
+                    </div>
+                </div>
+
+                <!-- 6. Status Teknisi Card -->
                 <div 
                     @click="activeTab = 'teknisi'"
                     class="p-4 rounded-2xl border transition-all cursor-pointer group hover:shadow-md col-span-2 sm:col-span-1"
@@ -248,7 +281,7 @@
                             @click="activeTab = t.key"
                             type="button"
                             :class="[
-                                'flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl whitespace-nowrap transition-all duration-200',
+                                'flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl whitespace-nowrap transition-all duration-200 cursor-pointer',
                                 activeTab === t.key 
                                     ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm' 
                                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -561,7 +594,138 @@
                         </div>
                     </div>
 
-                    <!-- TAB 5: STATUS TEKNISI & ROSTER SHIFT -->
+                    <!-- TAB 5: PERAPIHAN & PENGECEKAN JALUR (BARU) -->
+                    <div v-if="activeTab === 'maintenance'" class="space-y-3">
+                        <div v-if="maintenanceList.length === 0" class="bg-white dark:bg-slate-900 rounded-3xl p-10 text-center border border-slate-200/80 dark:border-slate-800">
+                            <div class="w-16 h-16 mx-auto rounded-2xl bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400 flex items-center justify-center text-3xl mb-3">
+                                🛠️
+                            </div>
+                            <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">Nihil Pemeliharaan & Perapihan Jalur Hari Ini</h3>
+                            <p class="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                                Belum ada jadwal pemeliharaan rutin, perapihan kabel kendur, atau inspeksi jalur ODP/ODC/Jalur Utama pada tanggal ini.
+                            </p>
+                            <div class="mt-4">
+                                <button
+                                    type="button"
+                                    @click="openCreateModal"
+                                    class="px-4 py-2 text-xs font-bold rounded-xl bg-teal-600 hover:bg-teal-700 text-white shadow-md shadow-teal-600/20 transition-all cursor-pointer inline-flex items-center gap-1.5"
+                                >
+                                    <span>+</span>
+                                    <span>Tambah Kegiatan Jalur Sekarang</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div 
+                            v-for="(item, idx) in maintenanceList" 
+                            :key="'maintenance-' + idx"
+                            class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 hover:shadow-md transition-all space-y-2.5"
+                        >
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-6 h-6 rounded-lg bg-teal-100 dark:bg-teal-950/70 text-teal-700 dark:text-teal-300 text-xs font-black flex items-center justify-center">
+                                        {{ idx + 1 }}
+                                    </span>
+                                    <div>
+                                        <h4 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
+                                            <span>{{ item.title }}</span>
+                                            <span 
+                                                class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider border"
+                                                :class="getCategoryBadgeClass(item.category)"
+                                            >
+                                                {{ item.category_icon }} {{ item.category_label }}
+                                            </span>
+                                        </h4>
+                                        <div class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5 flex-wrap">
+                                            <span class="font-mono font-bold text-slate-700 dark:text-slate-300">{{ item.maintenance_number }}</span>
+                                            <span class="text-slate-300">·</span>
+                                            <span class="font-semibold text-slate-700 dark:text-slate-300">
+                                                👷 {{ item.technicians }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <span 
+                                    class="px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1.5 shrink-0 border"
+                                    :class="item.is_done ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' : (item.is_in_progress ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800' : (item.is_rescheduled ? 'bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800' : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800'))"
+                                >
+                                    {{ item.status_label }}
+                                </span>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl">
+                                <div>
+                                    <span class="text-slate-400 text-[10px] font-bold block uppercase">Wilayah / Lokasi Rute</span>
+                                    <span class="text-slate-700 dark:text-slate-300 font-semibold">{{ item.location || '-' }}</span>
+                                    <span v-if="item.area_name && item.area_name !== '-'" class="text-[10px] text-slate-400 block">({{ item.area_name }})</span>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 text-[10px] font-bold block uppercase">Waktu / Jadwal Pengerjaan</span>
+                                    <span class="text-slate-700 dark:text-slate-300 font-mono font-semibold">{{ item.duration || '-' }}</span>
+                                </div>
+                                <div v-if="item.odp && item.odp !== '-'" class="sm:col-span-1">
+                                    <span class="text-slate-400 text-[10px] font-bold block uppercase">Target ODP</span>
+                                    <span class="text-blue-600 dark:text-blue-400 font-bold font-mono">📦 {{ item.odp }}</span>
+                                </div>
+                                <div v-if="item.odc && item.odc !== '-'" class="sm:col-span-1">
+                                    <span class="text-slate-400 text-[10px] font-bold block uppercase">Target ODC</span>
+                                    <span class="text-purple-600 dark:text-purple-400 font-bold font-mono">🗄️ {{ item.odc }}</span>
+                                </div>
+                                <div v-if="item.optical_power_after || item.optical_power_before" class="sm:col-span-2">
+                                    <span class="text-slate-400 text-[10px] font-bold block uppercase">Hasil Pengukuran Redaman (OPM)</span>
+                                    <span class="text-emerald-700 dark:text-emerald-300 font-bold font-mono bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
+                                        ⚡ {{ item.optical_power_after || item.optical_power_before }}
+                                    </span>
+                                </div>
+                                <div v-if="item.description" class="sm:col-span-2">
+                                    <span class="text-slate-400 text-[10px] font-bold block uppercase">Rencana Kerja / Instruksi</span>
+                                    <span class="text-slate-700 dark:text-slate-300">{{ item.description }}</span>
+                                </div>
+                                <div v-if="item.action_taken" class="sm:col-span-2 bg-emerald-50/50 dark:bg-emerald-950/30 p-2 rounded-lg border border-emerald-100 dark:border-emerald-900/40">
+                                    <span class="text-emerald-800 dark:text-emerald-300 text-[10px] font-bold block uppercase">Tindakan Lapangan / Hasil</span>
+                                    <span class="text-slate-800 dark:text-slate-200 font-medium">{{ item.action_taken }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Actions Row -->
+                            <div class="flex items-center justify-between pt-1 text-xs flex-wrap gap-2">
+                                <div class="flex items-center gap-1.5">
+                                    <button
+                                        v-if="item.photo_before || item.photo_after"
+                                        type="button"
+                                        @click="viewPhotos(item)"
+                                        class="px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                                    >
+                                        <span>📷</span>
+                                        <span>Lihat Foto</span>
+                                    </button>
+                                </div>
+                                
+                                <div class="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        @click="openQuickUpdateModal(item)"
+                                        class="px-3 py-1 text-[11px] font-bold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/50 hover:bg-teal-100 rounded-lg transition-colors flex items-center gap-1 cursor-pointer border border-teal-200 dark:border-teal-800"
+                                    >
+                                        <span>📝</span>
+                                        <span>Update Status / Laporan</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        @click="deleteMaintenance(item)"
+                                        class="p-1 text-slate-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
+                                        title="Hapus Kegiatan"
+                                    >
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 6: STATUS TEKNISI & ROSTER SHIFT -->
                     <div v-if="activeTab === 'teknisi'" class="space-y-4">
                         <div class="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 space-y-4">
                             <h3 class="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
@@ -741,7 +905,471 @@
 
         </div>
 
-        <!-- MODAL: KIRIM OTOMATIS VIA GATEWAY WA -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- MODAL 1: TAMBAH KEGIATAN PERAPIHAN & CEK JALUR BARU             -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <div 
+            v-if="showCreateModal" 
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto"
+            @click.self="showCreateModal = false"
+        >
+            <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 my-8 animate-in fade-in zoom-in-95 duration-200">
+                
+                <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold text-lg">
+                            🛠️
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-900 dark:text-white">Tambah Kegiatan Pemeliharaan & Jalur</h3>
+                            <p class="text-[11px] text-slate-400">Jadwalkan perapihan kabel, inspeksi ODP, ODC, atau jalur utama</p>
+                        </div>
+                    </div>
+                    <button 
+                        @click="showCreateModal = false"
+                        class="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                    >
+                        ✕
+                    </button>
+                </div>
+
+                <form @submit.prevent="submitCreateMaintenance" class="space-y-3.5">
+                    
+                    <!-- 1. Kategori Kegiatan -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                            Jenis Kegiatan Pemeliharaan <span class="text-rose-500">*</span>:
+                        </label>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <label 
+                                class="p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all"
+                                :class="createForm.category === 'perapihan_jalur' ? 'bg-amber-50 dark:bg-amber-950/50 border-amber-500 font-bold text-amber-900 dark:text-amber-200' : 'border-slate-200 dark:border-slate-700'"
+                            >
+                                <input type="radio" v-model="createForm.category" value="perapihan_jalur" class="sr-only" />
+                                <span>🧹 Perapihan Jalur & Kabel</span>
+                            </label>
+                            <label 
+                                class="p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all"
+                                :class="createForm.category === 'pengecekan_odp' ? 'bg-blue-50 dark:bg-blue-950/50 border-blue-500 font-bold text-blue-900 dark:text-blue-200' : 'border-slate-200 dark:border-slate-700'"
+                            >
+                                <input type="radio" v-model="createForm.category" value="pengecekan_odp" class="sr-only" />
+                                <span>📦 Pengecekan Jalur ODP</span>
+                            </label>
+                            <label 
+                                class="p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all"
+                                :class="createForm.category === 'pengecekan_odc' ? 'bg-purple-50 dark:bg-purple-950/50 border-purple-500 font-bold text-purple-900 dark:text-purple-200' : 'border-slate-200 dark:border-slate-700'"
+                            >
+                                <input type="radio" v-model="createForm.category" value="pengecekan_odc" class="sr-only" />
+                                <span>🗄️ Pengecekan Jalur ODC</span>
+                            </label>
+                            <label 
+                                class="p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all"
+                                :class="createForm.category === 'pengecekan_jalur_utama' ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-500 font-bold text-emerald-900 dark:text-emerald-200' : 'border-slate-200 dark:border-slate-700'"
+                            >
+                                <input type="radio" v-model="createForm.category" value="pengecekan_jalur_utama" class="sr-only" />
+                                <span>🛣️ Pengecekan Jalur Utama</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 2. Judul Tugas -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                            Judul / Deskripsi Singkat Pekerjaan <span class="text-rose-500">*</span>:
+                        </label>
+                        <input
+                            type="text"
+                            v-model="createForm.title"
+                            placeholder="Contoh: Perapihan kabel kendur di depan Pasar Sirnajaya"
+                            required
+                            class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                        />
+                    </div>
+
+                    <!-- 3. Tanggal & Jam Jadwal -->
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                Tanggal Pelaksanaan:
+                            </label>
+                            <input
+                                type="date"
+                                v-model="createForm.scheduled_date"
+                                required
+                                class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                Jam Jadwal (Opsional):
+                            </label>
+                            <input
+                                type="time"
+                                v-model="createForm.scheduled_time"
+                                placeholder="09:00"
+                                class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- 4. Wilayah & Target Aset -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                Wilayah / Area:
+                            </label>
+                            <select
+                                v-model="createForm.area_id"
+                                class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                            >
+                                <option value="">Semua Wilayah</option>
+                                <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
+                            </select>
+                        </div>
+
+                        <!-- Dropdown ODP jika kategori pengecekan ODP -->
+                        <div v-if="createForm.category === 'pengecekan_odp'">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                Target ODP Terkait:
+                            </label>
+                            <select
+                                v-model="createForm.odp_id"
+                                class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                            >
+                                <option value="">Pilih ODP (Opsional)</option>
+                                <option v-for="o in filteredOdps" :key="o.id" :value="o.id">{{ o.name }}</option>
+                            </select>
+                        </div>
+
+                        <!-- Dropdown ODC jika kategori pengecekan ODC -->
+                        <div v-else-if="createForm.category === 'pengecekan_odc'">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                Target ODC Terkait:
+                            </label>
+                            <select
+                                v-model="createForm.odc_id"
+                                class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                            >
+                                <option value="">Pilih ODC (Opsional)</option>
+                                <option v-for="c in filteredOdcs" :key="c.id" :value="c.id">{{ c.name }}</option>
+                            </select>
+                        </div>
+
+                        <!-- Lokasi / Rute Patokan jika Jalur Utama atau Perapihan -->
+                        <div v-else>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                Segmen Rute / Patokan Lokasi:
+                            </label>
+                            <input
+                                type="text"
+                                v-model="createForm.location_name"
+                                placeholder="Contoh: Rute Sirnajaya KM 2 - 4"
+                                class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- 5. Pilih Teknisi Lapangan -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                            Petugas Teknisi Ditugaskan:
+                        </label>
+                        <div class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 max-h-32 overflow-y-auto space-y-1">
+                            <div class="grid grid-cols-2 gap-1.5">
+                                <label 
+                                    v-for="tech in availableTechnicians" 
+                                    :key="tech.id"
+                                    class="flex items-center gap-1.5 p-1.5 rounded-lg text-xs cursor-pointer hover:bg-white dark:hover:bg-slate-700"
+                                >
+                                    <input 
+                                        type="checkbox" 
+                                        :value="tech.id" 
+                                        v-model="createForm.technician_ids"
+                                        class="rounded text-amber-600 focus:ring-amber-500"
+                                    />
+                                    <span class="truncate">{{ tech.name }}</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 6. Status Awal & Prioritas -->
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                Status Awal:
+                            </label>
+                            <select
+                                v-model="createForm.status"
+                                class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                            >
+                                <option value="scheduled">⏳ Terjadwal</option>
+                                <option value="in_progress">🛠️ Sedang Dikerjakan</option>
+                                <option value="completed">✅ Langsung Selesai</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                Prioritas:
+                            </label>
+                            <select
+                                v-model="createForm.priority"
+                                class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                            >
+                                <option value="low">Rendah</option>
+                                <option value="normal">Normal</option>
+                                <option value="high">Tinggi</option>
+                                <option value="urgent">Mendesak</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 7. Keterangan / Rencana Kerja -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                            Keterangan / Instruksi Kerja Lapangan:
+                        </label>
+                        <textarea
+                            v-model="createForm.description"
+                            rows="2"
+                            placeholder="Detail kabel kendur, tiang miring, port ODP yang perlu diperiksa, atau kabel yang perlu diikat slacknya..."
+                            class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                        ></textarea>
+                    </div>
+
+                    <!-- Modal Actions -->
+                    <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                        <button
+                            type="button"
+                            @click="showCreateModal = false"
+                            class="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all cursor-pointer"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            type="submit"
+                            :disabled="isSubmitting"
+                            class="px-5 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50 rounded-xl transition-all flex items-center gap-2 shadow-md shadow-amber-600/20 cursor-pointer"
+                        >
+                            <svg v-if="isSubmitting" class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                            <span>{{ isSubmitting ? 'Menyimpan...' : 'Simpan Kegiatan 🚀' }}</span>
+                        </button>
+                    </div>
+
+                </form>
+
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- MODAL 2: UPDATE STATUS & LAPORAN PENGERJAAN CEPAT              -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <div 
+            v-if="showUpdateModal && activeMaintenanceItem" 
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto"
+            @click.self="showUpdateModal = false"
+        >
+            <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 my-8 animate-in fade-in zoom-in-95 duration-200">
+                
+                <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-2xl bg-teal-500 text-white flex items-center justify-center font-bold text-lg">
+                            📝
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-900 dark:text-white">Update Status & Laporan Hasil Kerja</h3>
+                            <p class="text-[11px] text-slate-400 font-mono">{{ activeMaintenanceItem.maintenance_number }} · {{ activeMaintenanceItem.title }}</p>
+                        </div>
+                    </div>
+                    <button 
+                        @click="showUpdateModal = false"
+                        class="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                    >
+                        ✕
+                    </button>
+                </div>
+
+                <form @submit.prevent="submitUpdateMaintenance" class="space-y-3.5">
+                    
+                    <!-- 1. Pilihan Status -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                            Pilih Status Saat Ini:
+                        </label>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <label 
+                                class="p-2.5 rounded-xl border flex items-center gap-1.5 cursor-pointer"
+                                :class="updateForm.status === 'in_progress' ? 'bg-blue-50 border-blue-500 text-blue-900 font-bold' : 'border-slate-200 dark:border-slate-700'"
+                            >
+                                <input type="radio" v-model="updateForm.status" value="in_progress" class="sr-only" />
+                                <span>🛠️ Sedang Dikerjakan</span>
+                            </label>
+                            <label 
+                                class="p-2.5 rounded-xl border flex items-center gap-1.5 cursor-pointer"
+                                :class="updateForm.status === 'completed' ? 'bg-emerald-50 border-emerald-500 text-emerald-900 font-bold' : 'border-slate-200 dark:border-slate-700'"
+                            >
+                                <input type="radio" v-model="updateForm.status" value="completed" class="sr-only" />
+                                <span>✅ Selesai Dikerjakan</span>
+                            </label>
+                            <label 
+                                class="p-2.5 rounded-xl border flex items-center gap-1.5 cursor-pointer"
+                                :class="updateForm.status === 'rescheduled' ? 'bg-purple-50 border-purple-500 text-purple-900 font-bold' : 'border-slate-200 dark:border-slate-700'"
+                            >
+                                <input type="radio" v-model="updateForm.status" value="rescheduled" class="sr-only" />
+                                <span>🗓️ Reschedule</span>
+                            </label>
+                            <label 
+                                class="p-2.5 rounded-xl border flex items-center gap-1.5 cursor-pointer"
+                                :class="updateForm.status === 'scheduled' ? 'bg-amber-50 border-amber-500 text-amber-900 font-bold' : 'border-slate-200 dark:border-slate-700'"
+                            >
+                                <input type="radio" v-model="updateForm.status" value="scheduled" class="sr-only" />
+                                <span>⏳ Pending / Jadwal</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Jika Reschedule: Tanggal Baru -->
+                    <div v-if="updateForm.status === 'rescheduled'">
+                        <label class="block text-xs font-bold text-purple-700 dark:text-purple-300 mb-1">
+                            Pindahkan Tanggal Pelaksanaan ke:
+                        </label>
+                        <input
+                            type="date"
+                            v-model="updateForm.scheduled_date"
+                            class="w-full px-3 py-2 text-xs rounded-xl bg-purple-50/50 dark:bg-slate-800 border border-purple-300 text-slate-900 dark:text-white"
+                        />
+                    </div>
+
+                    <!-- 2. Jam Mulai & Jam Selesai -->
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                Jam Mulai:
+                            </label>
+                            <input
+                                type="time"
+                                v-model="updateForm.start_time"
+                                class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                            />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                Jam Selesai:
+                            </label>
+                            <input
+                                type="time"
+                                v-model="updateForm.end_time"
+                                class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- 3. Redaman Optik (OPM dBm) -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                            Pengukuran Redaman Optik (OPM dBm) (Opsional):
+                        </label>
+                        <input
+                            type="text"
+                            v-model="updateForm.optical_power_after"
+                            placeholder="Contoh: -18.4 dBm (Normal)"
+                            class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-mono"
+                        />
+                    </div>
+
+                    <!-- 4. Tindakan & Hasil Pengerjaan -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                            Tindakan Lapangan / Hasil Pekerjaan:
+                        </label>
+                        <textarea
+                            v-model="updateForm.action_taken"
+                            rows="3"
+                            placeholder="Kabel kendur telah dirapikan dan diikat slack di tiang 14. ODP telah dibersihkan dan konektor dipastikan kencang."
+                            class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                        ></textarea>
+                    </div>
+
+                    <!-- 5. Upload Foto Sesudah -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                            Upload Foto Dokumentasi Lapangan (Opsional):
+                        </label>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            @change="handlePhotoAfterUpload"
+                            class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer"
+                        />
+                    </div>
+
+                    <!-- Modal Actions -->
+                    <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                        <button
+                            type="button"
+                            @click="showUpdateModal = false"
+                            class="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all cursor-pointer"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            type="submit"
+                            :disabled="isSubmitting"
+                            class="px-5 py-2 text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50 rounded-xl transition-all flex items-center gap-2 shadow-md shadow-teal-600/20 cursor-pointer"
+                        >
+                            <svg v-if="isSubmitting" class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                            <span>{{ isSubmitting ? 'Menyimpan...' : 'Simpan Update 🚀' }}</span>
+                        </button>
+                    </div>
+
+                </form>
+
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- MODAL 3: PREVIEW FOTO DOKUMENTASI                              -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <div 
+            v-if="showPhotoModal && selectedPhotoItem" 
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-xs p-4"
+            @click.self="showPhotoModal = false"
+        >
+            <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                    <h3 class="text-sm font-bold text-slate-900 dark:text-white">Foto Dokumentasi Lapangan</h3>
+                    <button @click="showPhotoModal = false" class="p-1 rounded-lg text-slate-400 hover:text-slate-600 cursor-pointer">✕</button>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div v-if="selectedPhotoItem.photo_before" class="space-y-1 text-center">
+                        <span class="text-xs font-bold text-slate-500 uppercase">Foto Sebelum / Kondisi Awal</span>
+                        <img :src="selectedPhotoItem.photo_before" alt="Foto Sebelum" class="w-full h-56 object-cover rounded-2xl border border-slate-200 shadow-sm" />
+                    </div>
+                    <div v-if="selectedPhotoItem.photo_after" class="space-y-1 text-center">
+                        <span class="text-xs font-bold text-emerald-600 uppercase">Foto Sesudah / Hasil Rapih</span>
+                        <img :src="selectedPhotoItem.photo_after" alt="Foto Sesudah" class="w-full h-56 object-cover rounded-2xl border border-slate-200 shadow-sm" />
+                    </div>
+                </div>
+
+                <div class="text-right pt-2">
+                    <button 
+                        @click="showPhotoModal = false"
+                        class="px-4 py-2 text-xs font-bold bg-slate-900 text-white rounded-xl cursor-pointer"
+                    >
+                        Tutup
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════════ -->
+        <!-- MODAL 4: KIRIM OTOMATIS VIA GATEWAY WA                         -->
+        <!-- ═══════════════════════════════════════════════════════════════ -->
         <div 
             v-if="showSendModal" 
             class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4"
@@ -761,7 +1389,7 @@
                     </div>
                     <button 
                         @click="showSendModal = false"
-                        class="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                        class="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
                     >
                         ✕
                     </button>
@@ -789,14 +1417,14 @@
                             <button
                                 type="button"
                                 @click="targetPhone = '120363024823901234@g.us'"
-                                class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                                class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 cursor-pointer"
                             >
                                 👥 Grup Teknisi
                             </button>
                             <button
                                 type="button"
                                 @click="targetPhone = '120363024823909999@g.us'"
-                                class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                                class="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 cursor-pointer"
                             >
                                 🛡️ Grup NOC & Helpdesk
                             </button>
@@ -814,7 +1442,7 @@
                     <button
                         type="button"
                         @click="showSendModal = false"
-                        class="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
+                        class="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all cursor-pointer"
                     >
                         Batal
                     </button>
@@ -852,7 +1480,11 @@ const props = defineProps({
     pemasanganList: { type: Array, default: () => [] },
     surveyList: { type: Array, default: () => [] },
     cbpList: { type: Array, default: () => [] },
+    maintenanceList: { type: Array, default: () => [] },
     technicianStatus: { type: Object, default: () => ({}) },
+    availableTechnicians: { type: Array, default: () => [] },
+    availableOdps: { type: Array, default: () => [] },
+    availableOdcs: { type: Array, default: () => [] },
     summary: { type: Object, default: () => ({}) },
     waText: { type: String, default: '' },
     waGatewayStatus: { type: Boolean, default: false },
@@ -882,12 +1514,12 @@ const tabs = computed(() => [
     { key: 'pemasangan', label: 'Pemasangan Baru', icon: '🛜', count: props.summary?.pemasangan || 0 },
     { key: 'survey', label: 'Survey PSB', icon: '🔎', count: props.summary?.survey || 0 },
     { key: 'cbp', label: 'Cabut Perangkat', icon: '🔌', count: props.summary?.cbp || 0 },
+    { key: 'maintenance', label: 'Perapihan & Jalur', icon: '🛠️', count: props.summary?.maintenance || 0 },
     { key: 'teknisi', label: 'Status Shift', icon: '👷', count: props.technicianStatus?.on_duty?.length || 0 },
 ]);
 
 // Dynamic WhatsApp message text calculation
 const activeWaText = computed(() => {
-    // If user edited custom note, replace or append note to original text seamlessly
     const baseText = props.waText || '';
     if (!baseText) return '';
     
@@ -918,6 +1550,22 @@ function applyFilter() {
             isLoading.value = false;
         }
     });
+}
+
+// Category Badge Helper
+function getCategoryBadgeClass(cat) {
+    switch (cat) {
+        case 'perapihan_jalur':
+            return 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border-amber-300';
+        case 'pengecekan_odp':
+            return 'bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border-blue-300';
+        case 'pengecekan_odc':
+            return 'bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border-purple-300';
+        case 'pengecekan_jalur_utama':
+            return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-300';
+        default:
+            return 'bg-teal-100 text-teal-800 dark:bg-teal-950/80 dark:text-teal-300 border-teal-300';
+    }
 }
 
 // Clean phone helper
@@ -969,7 +1617,187 @@ function triggerCopySuccess() {
     }, 2500);
 }
 
-// WhatsApp Gateway Modal & Execution
+// ══════════════════════════════════════════════════════════════════
+// MODAL & HANDLERS: TAMBAH KEGIATAN PEMELIHARAAN JALUR
+// ══════════════════════════════════════════════════════════════════
+const showCreateModal = ref(false);
+const isSubmitting = ref(false);
+
+const createForm = ref({
+    category: 'perapihan_jalur',
+    title: '',
+    area_id: '',
+    odp_id: '',
+    odc_id: '',
+    location_name: '',
+    scheduled_date: getLocalDateString(0),
+    scheduled_time: '09:00',
+    priority: 'normal',
+    status: 'scheduled',
+    description: '',
+    technician_ids: [],
+});
+
+const filteredOdps = computed(() => {
+    if (!createForm.value.area_id) return props.availableOdps;
+    return props.availableOdps.filter(o => String(o.area_id) === String(createForm.value.area_id));
+});
+
+const filteredOdcs = computed(() => {
+    if (!createForm.value.area_id) return props.availableOdcs;
+    return props.availableOdcs.filter(c => String(c.area_id) === String(createForm.value.area_id));
+});
+
+function openCreateModal() {
+    createForm.value = {
+        category: 'perapihan_jalur',
+        title: '',
+        area_id: filterArea.value || '',
+        odp_id: '',
+        odc_id: '',
+        location_name: '',
+        scheduled_date: filterDate.value || getLocalDateString(0),
+        scheduled_time: '09:00',
+        priority: 'normal',
+        status: 'scheduled',
+        description: '',
+        technician_ids: [],
+    };
+    showCreateModal.value = true;
+}
+
+async function submitCreateMaintenance() {
+    isSubmitting.value = true;
+    try {
+        const payload = new FormData();
+        payload.append('category', createForm.value.category);
+        payload.append('title', createForm.value.title);
+        payload.append('scheduled_date', createForm.value.scheduled_date);
+        if (createForm.value.scheduled_time) payload.append('scheduled_time', createForm.value.scheduled_time);
+        if (createForm.value.area_id) payload.append('area_id', createForm.value.area_id);
+        if (createForm.value.odp_id) payload.append('odp_id', createForm.value.odp_id);
+        if (createForm.value.odc_id) payload.append('odc_id', createForm.value.odc_id);
+        if (createForm.value.location_name) payload.append('location_name', createForm.value.location_name);
+        payload.append('priority', createForm.value.priority);
+        payload.append('status', createForm.value.status);
+        if (createForm.value.description) payload.append('description', createForm.value.description);
+
+        createForm.value.technician_ids.forEach(id => {
+            payload.append('technician_ids[]', id);
+        });
+
+        const res = await axios.post('/operational/network-maintenance', payload);
+        if (res.data && res.data.success) {
+            alert('✓ ' + (res.data.message || 'Kegiatan pemeliharaan berhasil ditambahkan!'));
+            showCreateModal.value = false;
+            activeTab.value = 'maintenance';
+            applyFilter();
+        } else {
+            alert('⚠️ ' + (res.data?.message || 'Gagal menambahkan kegiatan.'));
+        }
+    } catch (err) {
+        const msg = err.response?.data?.message || err.message || 'Terjadi kesalahan saat menyimpan data.';
+        alert('❌ Error: ' + msg);
+    } finally {
+        isSubmitting.value = false;
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MODAL & HANDLERS: UPDATE STATUS & LAPORAN KERJA CEPAT
+// ══════════════════════════════════════════════════════════════════
+const showUpdateModal = ref(false);
+const activeMaintenanceItem = ref(null);
+const updatePhotoAfterFile = ref(null);
+
+const updateForm = ref({
+    status: 'completed',
+    start_time: '',
+    end_time: '',
+    optical_power_after: '',
+    action_taken: '',
+    scheduled_date: '',
+});
+
+function openQuickUpdateModal(item) {
+    activeMaintenanceItem.value = item;
+    updatePhotoAfterFile.value = null;
+    updateForm.value = {
+        status: item.is_done ? 'completed' : (item.is_in_progress ? 'completed' : 'in_progress'),
+        start_time: item.start_time || '',
+        end_time: item.end_time || '',
+        optical_power_after: item.optical_power_after || '',
+        action_taken: item.action_taken || '',
+        scheduled_date: item.scheduled_date || filterDate.value,
+    };
+    showUpdateModal.value = true;
+}
+
+function handlePhotoAfterUpload(e) {
+    const file = e.target.files?.[0];
+    if (file) {
+        updatePhotoAfterFile.value = file;
+    }
+}
+
+async function submitUpdateMaintenance() {
+    if (!activeMaintenanceItem.value) return;
+    isSubmitting.value = true;
+    try {
+        const payload = new FormData();
+        payload.append('status', updateForm.value.status);
+        if (updateForm.value.action_taken) payload.append('action_taken', updateForm.value.action_taken);
+        if (updateForm.value.optical_power_after) payload.append('optical_power_after', updateForm.value.optical_power_after);
+        if (updateForm.value.start_time) payload.append('start_time', updateForm.value.start_time);
+        if (updateForm.value.end_time) payload.append('end_time', updateForm.value.end_time);
+        if (updateForm.value.scheduled_date) payload.append('scheduled_date', updateForm.value.scheduled_date);
+        if (updatePhotoAfterFile.value) payload.append('photo_after', updatePhotoAfterFile.value);
+
+        const res = await axios.post(`/operational/network-maintenance/${activeMaintenanceItem.value.id}/quick-update`, payload);
+        if (res.data && res.data.success) {
+            alert('✓ ' + (res.data.message || 'Status berhasil diperbarui!'));
+            showUpdateModal.value = false;
+            applyFilter();
+        } else {
+            alert('⚠️ ' + (res.data?.message || 'Gagal memperbarui status.'));
+        }
+    } catch (err) {
+        const msg = err.response?.data?.message || err.message || 'Terjadi kesalahan saat update status.';
+        alert('❌ Error: ' + msg);
+    } finally {
+        isSubmitting.value = false;
+    }
+}
+
+async function deleteMaintenance(item) {
+    if (!confirm(`Apakah Anda yakin ingin menghapus kegiatan "${item.title}" (${item.maintenance_number})?`)) return;
+    try {
+        const res = await axios.delete(`/operational/network-maintenance/${item.id}`);
+        if (res.data && res.data.success) {
+            alert('✓ Kegiatan berhasil dihapus.');
+            applyFilter();
+        } else {
+            alert('⚠️ ' + (res.data?.message || 'Gagal menghapus data.'));
+        }
+    } catch (err) {
+        alert('❌ Error: ' + (err.response?.data?.message || err.message));
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MODAL FOTO DOKUMENTASI
+// ══════════════════════════════════════════════════════════════════
+const showPhotoModal = ref(false);
+const selectedPhotoItem = ref(null);
+
+function viewPhotos(item) {
+    selectedPhotoItem.value = item;
+    showPhotoModal.value = true;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MODAL WHATSAPP GATEWAY
+// ══════════════════════════════════════════════════════════════════
 const showSendModal = ref(false);
 const targetPhone = ref('');
 const isSending = ref(false);

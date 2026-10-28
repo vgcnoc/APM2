@@ -6,6 +6,9 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\User;
 use App\Models\Area;
+use App\Models\Odp;
+use App\Models\Odc;
+use App\Models\NetworkMaintenance;
 use App\Models\PgsTicket;
 use App\Models\PgkTicket;
 use App\Models\PgjTicket;
@@ -19,6 +22,7 @@ use App\Models\Attendance;
 use App\Services\WhatsAppGatewayService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class OperationalDailyProgressController extends Controller
 {
@@ -63,9 +67,12 @@ class OperationalDailyProgressController extends Controller
         // 4. DATA PENCABUTAN / CBP
         $cbpList = $this->getCbpData($date, $targetAreaIds);
 
+        // 5. DATA PEMELIHARAAN & PERAPIHAN JALUR (ODP, ODC, JALUR UTAMA - MANDIRI TANPA PGS/PGK/PGJ)
+        $maintenanceList = $this->getMaintenanceData($date, $targetAreaIds);
+
         // Kumpulkan teknisi aktif dari seluruh penugasan operasional hari ini
         $activeJobTechNames = [];
-        foreach (array_merge($gangguanList, $pemasanganList, $surveyList, $cbpList) as $taskItem) {
+        foreach (array_merge($gangguanList, $pemasanganList, $surveyList, $cbpList, $maintenanceList) as $taskItem) {
             if (!empty($taskItem['technicians'])) {
                 foreach (explode(',', $taskItem['technicians']) as $tName) {
                     $trimmed = trim($tName);
@@ -77,10 +84,10 @@ class OperationalDailyProgressController extends Controller
         }
         $activeJobTechNames = array_unique($activeJobTechNames);
 
-        // 5. STATUS TEKNISI (On Duty, Libur, Masuk Malam)
+        // 6. STATUS TEKNISI (On Duty, Libur, Masuk Malam)
         $technicianStatus = $this->getTechnicianStatus($date, $targetAreaIds, $activeJobTechNames);
 
-        // 6. RINGKASAN DATA CERDAS & AUTO
+        // 7. RINGKASAN DATA CERDAS & AUTO
         $summary = [
             'gangguan' => count($gangguanList),
             'gangguan_done' => collect($gangguanList)->where('is_done', true)->count(),
@@ -102,9 +109,15 @@ class OperationalDailyProgressController extends Controller
             'cbp_done' => collect($cbpList)->where('is_done', true)->count(),
             'cbp_in_progress' => collect($cbpList)->where('is_in_progress', true)->count(),
             'cbp_pending' => collect($cbpList)->where('is_done', false)->where('is_in_progress', false)->count(),
+
+            'maintenance' => count($maintenanceList),
+            'maintenance_done' => collect($maintenanceList)->where('is_done', true)->count(),
+            'maintenance_in_progress' => collect($maintenanceList)->where('is_in_progress', true)->count(),
+            'maintenance_rescheduled' => collect($maintenanceList)->where('is_rescheduled', true)->count(),
+            'maintenance_pending' => collect($maintenanceList)->where('is_done', false)->where('is_in_progress', false)->count(),
         ];
 
-        // 7. HASILKAN FORMAT TEKS WHATSAPP SESUAI TEMPLATE
+        // 8. HASILKAN FORMAT TEKS WHATSAPP SESUAI TEMPLATE
         $waText = $this->buildWhatsAppTemplate(
             $areaLabel,
             $indonesianDayDate,
@@ -113,6 +126,7 @@ class OperationalDailyProgressController extends Controller
             $pemasanganList,
             $surveyList,
             $cbpList,
+            $maintenanceList,
             $summary,
             $customNote
         );
@@ -127,6 +141,15 @@ class OperationalDailyProgressController extends Controller
             $waGatewayStatus = false;
         }
 
+        // Ambil Daftar Teknisi Lapangan untuk Penugasan Cepat
+        $availableTechnicians = User::where(function ($q) {
+            $q->whereHas('roles', fn($r) => $r->whereIn('name', ['teknisi', 'kepala teknisi', 'maintenance', 'teknisi lapangan']))
+              ->orWhereIn('role', ['teknisi', 'kepala teknisi', 'maintenance']);
+        })->orderBy('name')->get(['id', 'name', 'phone']);
+
+        $availableOdps = Odp::select('id', 'name', 'area_id')->orderBy('name')->limit(500)->get();
+        $availableOdcs = Odc::select('id', 'name', 'area_id')->orderBy('name')->limit(150)->get();
+
         return Inertia::render('Operational/DailyProgress', [
             'filters' => [
                 'date' => $date,
@@ -140,7 +163,11 @@ class OperationalDailyProgressController extends Controller
             'pemasanganList' => $pemasanganList,
             'surveyList' => $surveyList,
             'cbpList' => $cbpList,
+            'maintenanceList' => $maintenanceList,
             'technicianStatus' => $technicianStatus,
+            'availableTechnicians' => $availableTechnicians,
+            'availableOdps' => $availableOdps,
+            'availableOdcs' => $availableOdcs,
             'summary' => $summary,
             'waText' => $waText,
             'waGatewayStatus' => $waGatewayStatus,
@@ -848,6 +875,116 @@ class OperationalDailyProgressController extends Controller
     }
 
     /**
+     * Ambil Data Pemeliharaan & Perapihan Jalur (ODP, ODC, Jalur Utama) secara Cerdas
+     * Berjalan mandiri tanpa harus melalui tiket gangguan PGS/PGK/PGJ
+     */
+    private function getMaintenanceData(string $date, string|array|null $areaId): array
+    {
+        $items = [];
+        $areaIds = is_array($areaId) ? $areaId : ($areaId ? [$areaId] : []);
+        $isToday = ($date === Carbon::today()->toDateString());
+
+        $query = NetworkMaintenance::with(['area', 'odp', 'odc', 'technicians', 'creator'])
+            ->where(function ($q) use ($date, $isToday) {
+                $q->whereDate('scheduled_date', $date)
+                  ->orWhereDate('completed_at', $date);
+
+                if ($isToday) {
+                    $q->orWhere(function ($sq) use ($date) {
+                        $sq->whereIn('status', ['in_progress', 'scheduled'])
+                           ->whereNull('completed_at')
+                           ->where(function ($ssq) use ($date) {
+                               $ssq->whereNull('scheduled_date')
+                                   ->orWhereDate('scheduled_date', '<=', $date);
+                           });
+                    });
+                }
+            });
+
+        if (!empty($areaIds)) {
+            $query->where(function ($q) use ($areaIds) {
+                $q->whereIn('area_id', $areaIds)
+                  ->orWhereHas('odp', fn($oq) => $oq->whereIn('area_id', $areaIds))
+                  ->orWhereHas('odc', fn($cq) => $cq->whereIn('area_id', $areaIds));
+            });
+        }
+
+        foreach ($query->orderBy('scheduled_time')->orderBy('id', 'desc')->get() as $m) {
+            $techNames = $m->technicians->pluck('name')->toArray();
+            $techniciansStr = !empty($techNames) ? implode(', ', array_unique($techNames)) : 'Tim Maintenance Jalur';
+
+            $isDone = ($m->status === 'completed') || !empty($m->completed_at);
+            $isInProgress = ($m->status === 'in_progress') || (!empty($m->start_time) && empty($m->end_time) && !$isDone);
+
+            $isRescheduled = ($m->status === 'rescheduled');
+            $schedDateStr = $m->scheduled_date ? Carbon::parse($m->scheduled_date)->toDateString() : null;
+            if ($schedDateStr && $schedDateStr !== $date && $schedDateStr > $date) {
+                $isRescheduled = true;
+            }
+
+            if ($isDone) {
+                $statusLabel = '✅ Selesai';
+                $statusClass = 'completed';
+            } elseif ($isInProgress) {
+                $statusLabel = '🛠️ Sedang Dikerjakan';
+                $statusClass = 'in_progress';
+            } elseif ($isRescheduled) {
+                $reschedDateFmt = $schedDateStr ? Carbon::parse($schedDateStr)->format('d/m') : '';
+                $statusLabel = '🗓️ Reschedule' . ($reschedDateFmt ? " ({$reschedDateFmt})" : '');
+                $statusClass = 'rescheduled';
+            } else {
+                $statusLabel = '⏳ Pending';
+                $statusClass = 'pending';
+            }
+
+            $duration = '-';
+            if ($m->start_time && $m->end_time) {
+                $duration = substr($m->start_time, 0, 5) . ' - ' . substr($m->end_time, 0, 5);
+            } elseif ($m->start_time) {
+                $duration = 'Mulai ' . substr($m->start_time, 0, 5);
+            } elseif ($m->scheduled_time) {
+                $duration = 'Jadwal ' . substr((string)$m->scheduled_time, 0, 5);
+            }
+
+            $location = $m->location_name ?: ($m->odp?->name ?: ($m->odc?->name ?: ($m->area?->name ?? 'Wilayah Lapangan')));
+
+            $items[] = [
+                'id' => $m->id,
+                'maintenance_number' => $m->maintenance_number,
+                'category' => $m->category,
+                'category_label' => $m->category_label,
+                'category_icon' => $m->category_icon,
+                'title' => $m->title,
+                'location' => $location,
+                'area_name' => $m->area?->name ?? '-',
+                'odp' => $m->odp?->name ?? '-',
+                'odc' => $m->odc?->name ?? '-',
+                'technicians' => $techniciansStr,
+                'technician_ids' => $m->technicians->pluck('id')->toArray(),
+                'duration' => $duration,
+                'start_time' => $m->start_time,
+                'end_time' => $m->end_time,
+                'scheduled_time' => $m->scheduled_time,
+                'scheduled_date' => $schedDateStr,
+                'status' => $m->status,
+                'status_label' => $statusLabel,
+                'status_class' => $statusClass,
+                'is_done' => $isDone,
+                'is_in_progress' => $isInProgress,
+                'is_rescheduled' => $isRescheduled,
+                'description' => $m->description,
+                'action_taken' => $m->action_taken,
+                'optical_power_before' => $m->optical_power_before,
+                'optical_power_after' => $m->optical_power_after,
+                'photo_before' => $m->photo_before ? Storage::url($m->photo_before) : null,
+                'photo_after' => $m->photo_after ? Storage::url($m->photo_after) : null,
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
      * Ambil Status Teknisi (On Duty, Libur, Masuk Malam) secara Cerdas
      */
     private function getTechnicianStatus(string $date, string|array|null $areaId, array $activeJobTechNames = []): array
@@ -969,6 +1106,7 @@ class OperationalDailyProgressController extends Controller
         array $pemasanganList,
         array $surveyList,
         array $cbpList,
+        array $maintenanceList,
         array $summary,
         string $customNote
     ): string {
@@ -1089,16 +1227,48 @@ class OperationalDailyProgressController extends Controller
             $lines[] = "(Nihil / Belum ada pencabutan)";
         }
         $lines[] = "";
+        $lines[] = "";
 
-        // 5. RINGKASAN HARI INI
+        // 5. PERAPIHAN & PENGECEKAN JALUR (ODP / ODC / JALUR UTAMA)
+        $lines[] = "🛠️ *PERAPIHAN & PENGECEKAN JALUR (ODP/ODC/JALUR UTAMA)*";
+        if (!empty($maintenanceList)) {
+            $groupedMnt = collect($maintenanceList)->groupBy('technicians');
+            foreach ($groupedMnt as $techName => $mItems) {
+                $lines[] = "";
+                $lines[] = "👷 *Petugas Teknisi :* {$techName}";
+                $idx = 1;
+                foreach ($mItems as $m) {
+                    $lines[] = "{$idx}. Kegiatan : {$m['category_label']}";
+                    $lines[] = "   Target/Lokasi: {$m['title']}" . ($m['location'] ? " - {$m['location']}" : '');
+                    if (!empty($m['optical_power_after']) || !empty($m['optical_power_before'])) {
+                        $lines[] = "   Redaman: " . ($m['optical_power_after'] ?: $m['optical_power_before']);
+                    }
+                    if (!empty($m['action_taken'])) {
+                        $lines[] = "   Tindakan: {$m['action_taken']}";
+                    } elseif (!empty($m['description'])) {
+                        $lines[] = "   Rencana : {$m['description']}";
+                    }
+                    $lines[] = "   Durasi  : {$m['duration']}";
+                    $lines[] = "   Status  : {$m['status_label']}";
+                    $idx++;
+                }
+            }
+        } else {
+            $lines[] = "👷 Petugas Teknisi : -";
+            $lines[] = "(Nihil / Belum ada perapihan & pengecekan jalur)";
+        }
+        $lines[] = "";
+
+        // 6. RINGKASAN HARI INI
         $lines[] = "📊 *RINGKASAN HARI INI*";
         $lines[] = "* Gangguan: {$summary['gangguan']} ({$summary['gangguan_done']} Selesai, {$summary['gangguan_pending']} Pending)";
         $lines[] = "* Pemasangan: {$summary['pemasangan']} ({$summary['pemasangan_done']} Selesai, {$summary['pemasangan_pending']} Pending)";
         $lines[] = "* Survey: {$summary['survey']} ({$summary['survey_feasible']} Selesai, {$summary['survey_pending']} Tunggu)";
         $lines[] = "* Pencabutan: {$summary['cbp']} ({$summary['cbp_done']} Selesai, {$summary['cbp_pending']} Pending)";
+        $lines[] = "* Perapihan/Cek Jalur: {$summary['maintenance']} ({$summary['maintenance_done']} Selesai, {$summary['maintenance_pending']} Pending)";
         $lines[] = "";
 
-        // 6. STATUS TEKNISI
+        // 7. STATUS TEKNISI
         $lines[] = "👷 *STATUS TEKNISI*";
         $liburStr = !empty($technicianStatus['off']) ? implode(', ', $technicianStatus['off']) : '-';
         $malamStr = !empty($technicianStatus['night']) ? implode(', ', $technicianStatus['night']) : '-';
@@ -1106,7 +1276,7 @@ class OperationalDailyProgressController extends Controller
         $lines[] = "Teknisi Masuk Malam: {$malamStr}";
         $lines[] = "";
 
-        // 7. NOTE
+        // 8. NOTE
         $lines[] = "📝 *NOTE*";
         $lines[] = $customNote ?: "Tetap semangat dan jaga keselamatan kerja! 💪";
 

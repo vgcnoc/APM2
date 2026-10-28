@@ -529,10 +529,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/monitoring-teknisi/detail/{technician}', [\App\Http\Controllers\TechnicianMonitoringController::class, 'technicianDetail'])->name('technician-monitoring.detail');
     });
 
-    // ── Progress Harian Operasional (PGS, PGK, PGJ, CBP, Instalasi, Survey & Teknisi) ──
-    Route::middleware(['permission:menu_operational_progress'])->group(function () {
+    // ── Progress Harian Operasional & Pemeliharaan Jalur ──
+    Route::middleware(['permission:menu_operational_progress|operational_progress_view'])->group(function () {
         Route::get('/operational/daily-progress', [\App\Http\Controllers\OperationalDailyProgressController::class, 'index'])->name('operational.daily-progress.index');
         Route::post('/operational/daily-progress/send-wa', [\App\Http\Controllers\OperationalDailyProgressController::class, 'sendWa'])->name('operational.daily-progress.send-wa');
+        Route::post('/operational/network-maintenance', [\App\Http\Controllers\NetworkMaintenanceController::class, 'store'])->name('operational.network-maintenance.store');
+        Route::post('/operational/network-maintenance/{maintenance}/quick-update', [\App\Http\Controllers\NetworkMaintenanceController::class, 'quickUpdate'])->name('operational.network-maintenance.quick-update');
+        Route::delete('/operational/network-maintenance/{maintenance}', [\App\Http\Controllers\NetworkMaintenanceController::class, 'destroy'])->name('operational.network-maintenance.destroy');
+        Route::get('/operational/network-maintenance/assets', [\App\Http\Controllers\NetworkMaintenanceController::class, 'getAssets'])->name('operational.network-maintenance.assets');
     });
 
     // ── Customer Billing (Terima Setoran Lapangan) ─────────────────────
