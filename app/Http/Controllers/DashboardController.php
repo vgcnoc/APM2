@@ -27,6 +27,7 @@ use App\Models\Radius\Nas;
 use App\Models\User;
 use App\Models\Setting;
 use App\Models\Deduction;
+use App\Models\NetworkMaintenance;
 use App\Services\RouterTrafficService;
 use App\Services\RouterCapacityService;
 use Carbon\Carbon;
@@ -39,7 +40,11 @@ class DashboardController extends Controller
 {
     public function index(Request $request)
     {
-        if (auth()->check() && auth()->user()->role === 'teknisi') {
+        $currentUser = auth()->user();
+        if ($currentUser && (
+            in_array($currentUser->role, ['teknisi', 'maintenance', 'teknisi tim serbu', 'maintenance-1']) ||
+            (method_exists($currentUser, 'hasAnyRole') && $currentUser->hasAnyRole(['teknisi', 'maintenance', 'teknisi tim serbu', 'Maintenance-1', 'maintenance-1']))
+        )) {
             return $this->teknisiDashboard($request);
         }
 
@@ -419,7 +424,39 @@ class DashboardController extends Controller
                 })->count(),
             'tickets_assigned' => Ticket::where('assigned_to', $userId)
                 ->where('status', '!=', 'closed')->count(),
+            'maintenance_assigned' => NetworkMaintenance::whereHas('technicians', function($q) use ($userId) {
+                    $q->where('users.id', $userId);
+                })
+                ->whereIn('status', ['scheduled', 'in_progress'])
+                ->count(),
         ];
+
+        // ── Tugas Pemeliharaan & Perapihan Jalur (Maintenance ODP/ODC/Jalur) ──
+        $maintenanceTasks = NetworkMaintenance::whereHas('technicians', function($q) use ($userId) {
+                $q->where('users.id', $userId);
+            })
+            ->where(function($q) {
+                $q->where('status', '!=', 'completed')
+                  ->orWhereDate('scheduled_date', Carbon::today())
+                  ->orWhereDate('completed_at', Carbon::today());
+            })
+            ->with(['area', 'odp', 'odc'])
+            ->orderBy('scheduled_date', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(fn($m) => [
+                'id' => $m->id,
+                'maintenance_number' => $m->maintenance_number,
+                'category' => $m->category,
+                'category_label' => $m->category_label,
+                'category_icon' => $m->category_icon,
+                'title' => $m->title,
+                'location' => $m->location_name ?: ($m->odp?->name ?: ($m->odc?->name ?: ($m->area?->name ?? '-'))),
+                'area_name' => $m->area?->name ?? '-',
+                'status' => $m->status,
+                'priority' => $m->priority,
+                'scheduled_date' => $m->scheduled_date ? Carbon::parse($m->scheduled_date)->format('Y-m-d') : null,
+            ]);
 
         // ── Daftar Tugas Survey ──────────────────────────────
         $surveyTasks = Customer::where('status', 'survey')
@@ -479,6 +516,7 @@ class DashboardController extends Controller
             'surveyTasks' => $surveyTasks,
             'installationTasks' => $installationTasks,
             'ticketTasks' => $ticketTasks,
+            'maintenanceTasks' => $maintenanceTasks,
             'attendanceData' => $attendanceData,
         ]);
     }
