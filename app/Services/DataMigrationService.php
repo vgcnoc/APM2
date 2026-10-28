@@ -678,8 +678,8 @@ class DataMigrationService
             return [];
         }
 
-        // Split by delimiter: comma, semicolon, slash, &, or ' dan ' (case-insensitive)
-        $tokens = preg_split('/[,;\/&]|\bdan\b/i', $trimmed);
+        // Split by delimiter: comma, semicolon, slash, backslash, ampersand, plus, pipe, newline, ' - ', ' – ', 'dan', 'and', 'bersama', 'with'
+        $tokens = preg_split('/[,;\/\\\\&+|]|\s+[-–—]\s+|\r?\n|\b(?:dan|and|bersama|with)\b/iu', $trimmed);
         $resolvedIds = [];
         $matchedNames = [];
 
@@ -689,8 +689,16 @@ class DataMigrationService
                 continue;
             }
 
+            // Clean token: strip numbering ("1. ", "- ") and role prefixes ("Teknisi: ", "Helper: ")
+            $cleanToken = preg_replace('/^\s*[\d\.\-\)\*]+\s*/', '', $token);
+            $cleanToken = preg_replace('/^(?:teknisi|helper|petugas|surveyor)\s*[:\-]\s*/i', '', $cleanToken);
+            $cleanToken = trim($cleanToken);
+            if ($cleanToken === '') {
+                $cleanToken = $token;
+            }
+
             [$uid, $method, $mName] = self::resolveSalesUser(
-                $token,
+                $cleanToken,
                 $usersCache,
                 $userNamesCache,
                 $userPhonesCache,
@@ -1426,44 +1434,45 @@ class DataMigrationService
         $bom = pack('H*', 'EFBBBF');
         $content = preg_replace("/^$bom/", '', $content);
 
-        $lines = explode("\n", str_replace(["\r\n", "\r"], "\n", $content));
-        if (empty($lines)) return [];
-
-        // Check if first line specifies Excel separator directive "sep=," or "sep=;"
-        if (preg_match('/^sep=([;,|\t])/i', trim($lines[0]), $m)) {
+        // Detect delimiter and check sep= directive
+        $firstLine = strtok($content, "\r\n");
+        $delimiter = ',';
+        if (preg_match('/^sep=([;,|\t])/i', trim((string)$firstLine), $m)) {
             $delimiter = $m[1];
-            array_shift($lines);
+            $content = substr($content, strlen($firstLine));
+            $content = ltrim($content, "\r\n");
         } else {
-            // Detect delimiter: check first line
-            $firstLine = $lines[0] ?? '';
-            $delimiter = (substr_count($firstLine, ';') > substr_count($firstLine, ',')) ? ';' : ',';
+            $delimiter = (substr_count((string)$firstLine, ';') > substr_count((string)$firstLine, ',')) ? ';' : ',';
         }
+
+        $stream = fopen('php://memory', 'r+');
+        fwrite($stream, $content);
+        rewind($stream);
 
         $data = [];
         $headers = null;
 
-        foreach ($lines as $lineIndex => $line) {
-            $trimmed = trim($line);
-            if ($trimmed === '') continue;
+        while (($row = fgetcsv($stream, 0, $delimiter)) !== false) {
+            if (empty($row) || (count($row) === 1 && trim((string)$row[0]) === '')) {
+                continue;
+            }
 
-            $row = str_getcsv($trimmed, $delimiter);
             if (!$headers) {
                 $headers = array_map(function ($h) {
-                    return trim(strtolower(str_replace([' ', '-', '.'], '_', $h)));
+                    return trim(strtolower(str_replace([' ', '-', '.'], '_', (string)$h)));
                 }, $row);
                 continue;
             }
 
             if (count($row) === count($headers)) {
-                $combined = array_combine($headers, array_map('trim', $row));
-                $data[] = $combined;
+                $data[] = array_combine($headers, array_map('trim', $row));
             } elseif (count($row) > 1) {
-                // Pad or slice
                 $padded = array_pad($row, count($headers), '');
                 $data[] = array_combine($headers, array_slice($padded, 0, count($headers)));
             }
         }
 
+        fclose($stream);
         return $data;
     }
 
@@ -1976,7 +1985,20 @@ class DataMigrationService
         // ── 2. JADWAL SURVEY FIELDS ─────────────────────────────────
         $surveyScheduleDate = self::parseFlexibleDate($row['tgl_jadwal_survey'] ?? $row['jadwal_survey'] ?? $row['tgl_survey_jadwal'] ?? null);
         $surveyScheduleTime = trim((string)($row['jam_jadwal_survey'] ?? $row['jam_survey'] ?? '09:00'));
-        $rawSurveyTech = trim((string)($row['teknisi_survey'] ?? $row['surveyor'] ?? $row['petugas_survey'] ?? ''));
+
+        $surveyTechParts = [];
+        if (!empty($row['teknisi_survey'])) $surveyTechParts[] = $row['teknisi_survey'];
+        elseif (!empty($row['surveyor'])) $surveyTechParts[] = $row['surveyor'];
+        elseif (!empty($row['petugas_survey'])) $surveyTechParts[] = $row['petugas_survey'];
+        elseif (!empty($row['teknisi_survey_1'])) $surveyTechParts[] = $row['teknisi_survey_1'];
+        elseif (!empty($row['surveyor_1'])) $surveyTechParts[] = $row['surveyor_1'];
+
+        if (!empty($row['teknisi_survey_2'])) $surveyTechParts[] = $row['teknisi_survey_2'];
+        if (!empty($row['surveyor_2'])) $surveyTechParts[] = $row['surveyor_2'];
+        if (!empty($row['helper_survey'])) $surveyTechParts[] = $row['helper_survey'];
+        if (!empty($row['petugas_survey_2'])) $surveyTechParts[] = $row['petugas_survey_2'];
+
+        $rawSurveyTech = trim(implode(', ', array_filter(array_map('trim', $surveyTechParts))));
         $surveyMatchedNames = [];
         $surveyTechIds = self::resolveMultipleTechnicians(
             $rawSurveyTech, $usersCache, $userNamesCache, $userPhonesCache,
@@ -2013,7 +2035,22 @@ class DataMigrationService
         // ── 4. JADWAL PASANG FIELDS ─────────────────────────────────
         $installScheduleDate = self::parseFlexibleDate($row['tgl_jadwal_pasang'] ?? $row['jadwal_pasang'] ?? $row['tgl_pasang_jadwal'] ?? null);
         $installScheduleTime = trim((string)($row['jam_jadwal_pasang'] ?? $row['jam_pasang'] ?? '10:00'));
-        $rawInstallTech = trim((string)($row['teknisi_pasang'] ?? $row['teknisi_instalasi'] ?? $row['teknisi'] ?? ''));
+
+        $installTechParts = [];
+        if (!empty($row['teknisi_pasang'])) $installTechParts[] = $row['teknisi_pasang'];
+        elseif (!empty($row['teknisi_instalasi'])) $installTechParts[] = $row['teknisi_instalasi'];
+        elseif (!empty($row['teknisi'])) $installTechParts[] = $row['teknisi'];
+        elseif (!empty($row['teknisi_1'])) $installTechParts[] = $row['teknisi_1'];
+        elseif (!empty($row['teknisi_pasang_1'])) $installTechParts[] = $row['teknisi_pasang_1'];
+
+        if (!empty($row['teknisi_pasang_2'])) $installTechParts[] = $row['teknisi_pasang_2'];
+        if (!empty($row['teknisi_2'])) $installTechParts[] = $row['teknisi_2'];
+        if (!empty($row['helper'])) $installTechParts[] = $row['helper'];
+        if (!empty($row['helper_pasang'])) $installTechParts[] = $row['helper_pasang'];
+        if (!empty($row['teknisi_pendamping'])) $installTechParts[] = $row['teknisi_pendamping'];
+        if (!empty($row['asisten'])) $installTechParts[] = $row['asisten'];
+
+        $rawInstallTech = trim(implode(', ', array_filter(array_map('trim', $installTechParts))));
         $installMatchedNames = [];
         $installTechIds = self::resolveMultipleTechnicians(
             $rawInstallTech, $usersCache, $userNamesCache, $userPhonesCache,
@@ -2192,7 +2229,20 @@ class DataMigrationService
         $customerId = $customersCache[$customerCode] ?? null;
         if (!$customerId) $errors[] = "Pelanggan '{$customerCode}' tidak ditemukan di sistem.";
 
-        $surveyorRef = $row['email_petugas_survey'] ?? $row['petugas_survey'] ?? $row['teknisi_survey'] ?? '';
+        $surveyTechParts = [];
+        if (!empty($row['email_petugas_survey'])) $surveyTechParts[] = $row['email_petugas_survey'];
+        elseif (!empty($row['petugas_survey'])) $surveyTechParts[] = $row['petugas_survey'];
+        elseif (!empty($row['teknisi_survey'])) $surveyTechParts[] = $row['teknisi_survey'];
+        elseif (!empty($row['surveyor'])) $surveyTechParts[] = $row['surveyor'];
+        elseif (!empty($row['surveyor_1'])) $surveyTechParts[] = $row['surveyor_1'];
+
+        if (!empty($row['petugas_survey_2'])) $surveyTechParts[] = $row['petugas_survey_2'];
+        if (!empty($row['teknisi_survey_2'])) $surveyTechParts[] = $row['teknisi_survey_2'];
+        if (!empty($row['surveyor_2'])) $surveyTechParts[] = $row['surveyor_2'];
+        if (!empty($row['helper_survey'])) $surveyTechParts[] = $row['helper_survey'];
+        if (!empty($row['helper'])) $surveyTechParts[] = $row['helper'];
+
+        $surveyorRef = trim(implode(', ', array_filter(array_map('trim', $surveyTechParts))));
         $surveyorMatchedNames = [];
         $surveyorIds = self::resolveMultipleTechnicians(
             $surveyorRef, $usersCache, $userNamesCache, $userPhonesCache,
@@ -2251,7 +2301,21 @@ class DataMigrationService
         $sn = $row['sn_ont'] ?? '';
         if (empty($sn)) $errors[] = 'Serial Number ONT wajib diisi.';
 
-        $installTechRef = $row['teknisi_pasang'] ?? $row['teknisi_instalasi'] ?? $row['teknisi'] ?? '';
+        $installTechParts = [];
+        if (!empty($row['teknisi_pasang'])) $installTechParts[] = $row['teknisi_pasang'];
+        elseif (!empty($row['teknisi_instalasi'])) $installTechParts[] = $row['teknisi_instalasi'];
+        elseif (!empty($row['teknisi'])) $installTechParts[] = $row['teknisi'];
+        elseif (!empty($row['teknisi_1'])) $installTechParts[] = $row['teknisi_1'];
+        elseif (!empty($row['teknisi_pasang_1'])) $installTechParts[] = $row['teknisi_pasang_1'];
+
+        if (!empty($row['teknisi_pasang_2'])) $installTechParts[] = $row['teknisi_pasang_2'];
+        if (!empty($row['teknisi_2'])) $installTechParts[] = $row['teknisi_2'];
+        if (!empty($row['helper'])) $installTechParts[] = $row['helper'];
+        if (!empty($row['helper_pasang'])) $installTechParts[] = $row['helper_pasang'];
+        if (!empty($row['teknisi_pendamping'])) $installTechParts[] = $row['teknisi_pendamping'];
+        if (!empty($row['asisten'])) $installTechParts[] = $row['asisten'];
+
+        $installTechRef = trim(implode(', ', array_filter(array_map('trim', $installTechParts))));
         $installMatchedNames = [];
         $installTechIds = self::resolveMultipleTechnicians(
             $installTechRef, $usersCache, $userNamesCache, $userPhonesCache,
@@ -2761,6 +2825,11 @@ class DataMigrationService
             // 1. Jadwal Survey (TechnicianSchedule type 'survey') - Hanya jika ada penugasan teknisi survey
             if (!empty($surveyTechIds)) {
                 $notesSurvey = !empty($data['catatan_jadwal_survey']) ? $data['catatan_jadwal_survey'] : 'Jadwal survey lapangan migrasi sistem';
+                TechnicianSchedule::where('customer_id', $targetCust->id)
+                    ->where('type', 'survey')
+                    ->whereNotIn('technician_id', $surveyTechIds)
+                    ->delete();
+
                 $existingSurveyScheds = TechnicianSchedule::where('customer_id', $targetCust->id)->where('type', 'survey')->get();
 
                 foreach ($surveyTechIds as $idx => $tId) {
@@ -2776,9 +2845,6 @@ class DataMigrationService
                     ];
                     if ($existingRow) {
                         $existingRow->update($surveySchedPayload);
-                    } elseif ($idx === 0 && $existingSurveyScheds->isNotEmpty()) {
-                        $first = $existingSurveyScheds->first();
-                        $first->update($surveySchedPayload);
                     } else {
                         TechnicianSchedule::create($surveySchedPayload);
                     }
@@ -2820,6 +2886,11 @@ class DataMigrationService
                 }
                 $installNotesText = count($schedNotes) > 0 ? implode("\n", $schedNotes) : 'Jadwal pasang historis migrasi sistem';
 
+                TechnicianSchedule::where('customer_id', $targetCust->id)
+                    ->where('type', 'installation')
+                    ->whereNotIn('technician_id', $installTechIds)
+                    ->delete();
+
                 $existingInstallScheds = TechnicianSchedule::where('customer_id', $targetCust->id)->where('type', 'installation')->get();
 
                 foreach ($installTechIds as $idx => $tId) {
@@ -2835,9 +2906,6 @@ class DataMigrationService
                     ];
                     if ($existingRow) {
                         $existingRow->update($installSchedPayload);
-                    } elseif ($idx === 0 && $existingInstallScheds->isNotEmpty()) {
-                        $first = $existingInstallScheds->first();
-                        $first->update($installSchedPayload);
                     } else {
                         TechnicianSchedule::create($installSchedPayload);
                     }
@@ -3143,6 +3211,11 @@ class DataMigrationService
 
         // Also create / sync TechnicianSchedule for each surveyor
         if (!empty($surveyorIds)) {
+            TechnicianSchedule::where('customer_id', $data['customer_id'])
+                ->where('type', 'survey')
+                ->whereNotIn('technician_id', $surveyorIds)
+                ->delete();
+
             $existingSurveyScheds = TechnicianSchedule::where('customer_id', $data['customer_id'])->where('type', 'survey')->get();
             foreach ($surveyorIds as $idx => $tId) {
                 $existingRow = $existingSurveyScheds->firstWhere('technician_id', $tId);
@@ -3157,8 +3230,6 @@ class DataMigrationService
                 ];
                 if ($existingRow) {
                     $existingRow->update($schedPayload);
-                } elseif ($idx === 0 && $existingSurveyScheds->isNotEmpty()) {
-                    $existingSurveyScheds->first()->update($schedPayload);
                 } else {
                     TechnicianSchedule::create($schedPayload);
                 }
@@ -3272,6 +3343,11 @@ class DataMigrationService
 
         // Also create / sync TechnicianSchedule for each installation technician
         if (!empty($technicianIds)) {
+            TechnicianSchedule::where('customer_id', $data['customer_id'])
+                ->where('type', 'installation')
+                ->whereNotIn('technician_id', $technicianIds)
+                ->delete();
+
             $existingInstallScheds = TechnicianSchedule::where('customer_id', $data['customer_id'])->where('type', 'installation')->get();
             foreach ($technicianIds as $idx => $tId) {
                 $existingRow = $existingInstallScheds->firstWhere('technician_id', $tId);
@@ -3286,8 +3362,6 @@ class DataMigrationService
                 ];
                 if ($existingRow) {
                     $existingRow->update($schedPayload);
-                } elseif ($idx === 0 && $existingInstallScheds->isNotEmpty()) {
-                    $existingInstallScheds->first()->update($schedPayload);
                 } else {
                     TechnicianSchedule::create($schedPayload);
                 }
