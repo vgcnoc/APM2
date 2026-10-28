@@ -1225,3 +1225,4 @@ function getCategoryBadgeClass(category) {
 
     </AppLayout>
 </template>
+

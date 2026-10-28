@@ -183,7 +183,7 @@ class NetworkMaintenanceController extends Controller
             'canDelete' => $user ? ($user->can('network_maintenance_delete') || $user->hasRole('admin') || $user->hasRole('super admin') || $user->hasRole('kepala teknisi')) : false,
         ]);
     }
-{
+
     /**
      * Simpan Kegiatan Pemeliharaan & Perapihan Jalur Baru
      */
