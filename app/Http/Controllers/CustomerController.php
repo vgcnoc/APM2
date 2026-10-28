@@ -256,7 +256,7 @@ class CustomerController extends Controller
 
         // 4. Transformasi Data Baris
         $rows = $customers->map(function (Customer $c) use ($onlineSessions, $lastOfflineSessions) {
-            $mode = mb_strtolower($c->package?->access_mode ?? $c->ont?->access_mode ?? 'pppoe');
+            $mode = mb_strtolower((string) ($c->package?->access_mode ?? $c->ont?->access_mode ?? 'pppoe'));
             $isHotspot = str_contains($mode, 'hotspot');
             $username = $isHotspot
                 ? ($c->ont?->hotspot_user ?: $c->ont?->pppoe_user)
@@ -303,7 +303,7 @@ class CustomerController extends Controller
                 'disconnect_cause' => $lastSession?->terminate_cause ?? null,
                 'customer_status' => $c->status,
                 'odp_name' => $c->ont?->odp?->name,
-                'ont_sn' => $c->ont?->sn,
+                'ont_sn' => $c->ont?->serial_number ?: $c->ont?->sn,
             ];
         });
 
@@ -411,7 +411,7 @@ class CustomerController extends Controller
             'packages' => InternetPackage::where('access_mode', '!=', 'voucher')->orderBy('name')->get(['id', 'name']),
             'filters' => [
                 'search' => $request->search,
-                'area_id' => $request->area_id,
+                'area_id' => $request->area_id ?: $request->area,
                 'package_id' => $request->package_id,
                 'status' => $statusTab,
                 'mode' => $modeFilter ?: 'all',

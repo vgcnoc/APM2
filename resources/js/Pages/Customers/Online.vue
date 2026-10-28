@@ -59,7 +59,7 @@
         <div v-can="'customers_card_summary'" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mb-6">
             <!-- Card 1: Status Online -->
             <div
-                @click="filterStatusTab('online')"
+                @click="filterCardStatus('online')"
                 :class="[
                     'group relative rounded-2xl p-4 border transition-all duration-200 cursor-pointer overflow-hidden',
                     filterStatus === 'online'
@@ -93,7 +93,7 @@
 
             <!-- Card 2: Status Offline -->
             <div
-                @click="filterStatusTab('offline')"
+                @click="filterCardStatus('offline')"
                 :class="[
                     'group relative rounded-2xl p-4 border transition-all duration-200 cursor-pointer overflow-hidden',
                     filterStatus === 'offline'
@@ -124,7 +124,7 @@
 
             <!-- Card 3: PPPoE Count -->
             <div
-                @click="filterModePill('pppoe')"
+                @click="filterCardMode('pppoe')"
                 :class="[
                     'group relative rounded-2xl p-4 border transition-all duration-200 cursor-pointer overflow-hidden',
                     filterMode === 'pppoe'
@@ -155,7 +155,7 @@
 
             <!-- Card 4: Hotspot Count -->
             <div
-                @click="filterModePill('hotspot')"
+                @click="filterCardMode('hotspot')"
                 :class="[
                     'group relative rounded-2xl p-4 border transition-all duration-200 cursor-pointer overflow-hidden',
                     filterMode === 'hotspot'
@@ -189,7 +189,7 @@
                 @click="resetAllFilters"
                 :class="[
                     'group relative rounded-2xl p-4 border transition-all duration-200 cursor-pointer overflow-hidden col-span-2 sm:col-span-1',
-                    filterStatus === 'all' && filterMode === 'all'
+                    filterStatus === 'all' && filterMode === 'all' && !filterArea && !filterPackage
                         ? 'bg-gradient-to-br from-slate-50 to-blue-50 border-blue-400 ring-2 ring-blue-300/60 shadow-md shadow-blue-50'
                         : 'bg-white hover:bg-slate-50 border-gray-200 hover:border-blue-300 hover:shadow-sm'
                 ]"
@@ -333,50 +333,64 @@
             <!-- Dropdown Filters Slot -->
             <template #filters>
                 <!-- Area -->
-                <div class="relative flex items-center bg-white border border-gray-200 rounded-xl pl-3 pr-2 py-1 shadow-xs w-full sm:w-auto sm:min-w-[160px]">
+                <div class="relative flex items-center bg-white border border-gray-200 rounded-xl pl-3 pr-2 py-1 shadow-xs w-full sm:w-auto sm:min-w-[170px]">
                     <div class="shrink-0 mr-2 text-gray-400">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                         </svg>
                     </div>
                     <div class="flex flex-col flex-1 min-w-0">
-                        <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5 leading-none mt-0.5">Area</span>
+                        <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5 leading-none mt-0.5">Area / Wilayah</span>
                         <select v-model="filterArea" @change="applyFilters" class="form-select border-0 pt-0 pb-0.5 pl-0 !pr-7 h-auto text-xs bg-transparent focus:ring-0 text-gray-700 font-semibold w-full cursor-pointer truncate">
-                            <option value="">Semua Area</option>
+                            <option value="">Semua Area / Wilayah</option>
                             <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
                         </select>
                     </div>
                 </div>
 
                 <!-- Paket -->
-                <div class="relative flex items-center bg-white border border-gray-200 rounded-xl pl-3 pr-2 py-1 shadow-xs w-full sm:w-auto sm:min-w-[170px]">
+                <div class="relative flex items-center bg-white border border-gray-200 rounded-xl pl-3 pr-2 py-1 shadow-xs w-full sm:w-auto sm:min-w-[180px]">
                     <div class="shrink-0 mr-2 text-gray-400">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                         </svg>
                     </div>
                     <div class="flex flex-col flex-1 min-w-0">
-                        <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5 leading-none mt-0.5">Paket</span>
+                        <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5 leading-none mt-0.5">Paket Layanan</span>
                         <select v-model="filterPackage" @change="applyFilters" class="form-select border-0 pt-0 pb-0.5 pl-0 !pr-7 h-auto text-xs bg-transparent focus:ring-0 text-gray-700 font-semibold w-full cursor-pointer truncate">
-                            <option value="">Semua Paket</option>
+                            <option value="">Semua Paket Layanan</option>
                             <option v-for="p in packages" :key="p.id" :value="p.id">{{ p.name }}</option>
                         </select>
                     </div>
                 </div>
 
-                <!-- Reset Active Filter Button -->
-                <button
-                    type="button"
-                    v-if="hasActiveFilter"
-                    @click="resetAllFilters"
-                    class="px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 transition-colors flex items-center gap-1.5 focus:outline-none focus:ring-0 select-none"
-                    title="Reset semua filter ke kondisi awal"
-                >
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                    Reset Filter
-                </button>
+                <!-- Tombol Tampilkan & Reset -->
+                <div class="flex items-center gap-2">
+                    <button
+                        type="button"
+                        @click="applyFilters"
+                        class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition-all flex items-center gap-1.5 focus:outline-none select-none cursor-pointer"
+                        title="Terapkan filter"
+                    >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                        </svg>
+                        <span>Tampilkan</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        v-if="hasActiveFilter"
+                        @click="resetAllFilters"
+                        class="px-3.5 py-2 rounded-xl text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 transition-colors flex items-center gap-1.5 focus:outline-none select-none cursor-pointer"
+                        title="Reset semua filter ke kondisi awal"
+                    >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                        <span>Reset</span>
+                    </button>
+                </div>
             </template>
 
             <!-- Table Rows -->
@@ -599,7 +613,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
@@ -683,6 +697,7 @@ onUnmounted(() => {
     stopAutoRefreshTimer();
 });
 
+// Watch props.filters to keep reactive state in sync
 // Dynamic Columns Definition
 const columns = computed(() => {
     let modeLabel = 'AKUN & MODE';
@@ -696,12 +711,19 @@ const columns = computed(() => {
         { key: 'package_area', label: 'PAKET & AREA' },
         { key: 'credentials', label: modeLabel },
         { key: 'uptime_activity', label: 'METRIK / SESI TERAKHIR' },
+        { key: 'actions', label: 'AKSI', class: 'text-right pr-6 w-28' },
     ];
 });
 
-// Search Route
+// Search Route with contextual query params
 const currentSearchRoute = computed(() => {
-    return '/customers/online';
+    const params = new URLSearchParams();
+    if (filterArea.value) params.set('area_id', filterArea.value);
+    if (filterPackage.value) params.set('package_id', filterPackage.value);
+    if (filterStatus.value && filterStatus.value !== 'all') params.set('status', filterStatus.value);
+    if (filterMode.value && filterMode.value !== 'all') params.set('mode', filterMode.value);
+    const qs = params.toString();
+    return qs ? `/customers/online?${qs}` : '/customers/online';
 });
 
 // Table Filters passed to DataTable search query
@@ -726,8 +748,11 @@ const hasActiveFilter = computed(() => {
 
 // Filter Handlers
 function applyFilters() {
+    const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+    const currentSearch = urlParams.get('search') || props.filters?.search || undefined;
+
     router.get('/customers/online', {
-        search: props.filters?.search || undefined,
+        search: currentSearch || undefined,
         area_id: filterArea.value || undefined,
         package_id: filterPackage.value || undefined,
         status: filterStatus.value || 'all',
@@ -738,13 +763,41 @@ function applyFilters() {
     });
 }
 
+function filterCardStatus(status) {
+    if (filterStatus.value === status) {
+        filterStatus.value = 'all';
+    } else {
+        filterStatus.value = status;
+        filterMode.value = 'all';
+    }
+    applyFilters();
+}
+
+function filterCardMode(mode) {
+    if (filterMode.value === mode) {
+        filterMode.value = 'all';
+    } else {
+        filterMode.value = mode;
+        filterStatus.value = 'all';
+    }
+    applyFilters();
+}
+
 function filterStatusTab(status) {
-    filterStatus.value = status;
+    if (filterStatus.value === status && status !== 'all') {
+        filterStatus.value = 'all';
+    } else {
+        filterStatus.value = status;
+    }
     applyFilters();
 }
 
 function filterModePill(mode) {
-    filterMode.value = mode;
+    if (filterMode.value === mode && mode !== 'all') {
+        filterMode.value = 'all';
+    } else {
+        filterMode.value = mode;
+    }
     applyFilters();
 }
 
@@ -758,6 +811,14 @@ function resetAllFilters() {
         preserveScroll: true,
     });
 }
+
+// Watch props.filters to sync local state
+watch(() => props.filters, (newFilters) => {
+    filterArea.value = newFilters?.area_id || '';
+    filterPackage.value = newFilters?.package_id || '';
+    filterStatus.value = newFilters?.status || 'all';
+    filterMode.value = newFilters?.mode || 'all';
+}, { deep: true });
 
 // Refresh Data
 function refreshData(silent = false) {
