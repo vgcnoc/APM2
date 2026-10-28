@@ -12,8 +12,177 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
 
 class NetworkMaintenanceController extends Controller
+{
+    /**
+     * Halaman Utama Khusus Pemeliharaan Jalur (ODP, ODC, Jalur Utama)
+     * Didesain khusus & bersih untuk teknisi & maintenance lapangan
+     */
+    public function index(Request $request)
+    {
+        $date = $request->input('date', Carbon::today()->toDateString());
+        $areaId = $request->input('area_id');
+        $status = $request->input('status');
+        $category = $request->input('category');
+        $search = $request->input('search');
+        $myTasksOnly = $request->boolean('my_tasks');
+
+        $user = auth()->user();
+        $isGlobal = $user && ($user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->can('operational_progress_view_all'));
+        $accessibleAreaIds = (!$isGlobal && $user) ? $user->getAccessibleAreaIds() : null;
+
+        $targetAreaIds = null;
+        if ($areaId) {
+            $targetAreaIds = [(int) $areaId];
+        } elseif ($accessibleAreaIds !== null) {
+            $targetAreaIds = $accessibleAreaIds;
+        }
+
+        $areas = \App\Services\DataScopeService::getScopedAreas($user, 'operational_progress');
+
+        // Query data pemeliharaan
+        $query = NetworkMaintenance::with(['area', 'odp', 'odc', 'technicians', 'creator']);
+
+        // Filter Tanggal
+        $query->whereDate('scheduled_date', $date);
+
+        // Filter Wilayah
+        if (!empty($targetAreaIds)) {
+            $query->where(function ($q) use ($targetAreaIds) {
+                $q->whereIn('area_id', $targetAreaIds)
+                  ->orWhereHas('odp', fn($oq) => $oq->whereIn('area_id', $targetAreaIds))
+                  ->orWhereHas('odc', fn($cq) => $cq->whereIn('area_id', $targetAreaIds));
+            });
+        }
+
+        // Filter Status
+        if ($status && $status !== 'all') {
+            $query->where('status', $status);
+        }
+
+        // Filter Kategori
+        if ($category && $category !== 'all') {
+            $query->where('category', $category);
+        }
+
+        // Filter Pencarian
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('maintenance_number', 'like', "%{$search}%")
+                  ->orWhere('location_name', 'like', "%{$search}%")
+                  ->orWhereHas('odp', fn($oq) => $oq->where('name', 'like', "%{$search}%"))
+                  ->orWhereHas('odc', fn($cq) => $cq->where('name', 'like', "%{$search}%"))
+                  ->orWhereHas('technicians', fn($tq) => $tq->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        $allItems = $query->orderBy('scheduled_time')->orderBy('id', 'desc')->get();
+
+        $maintenanceList = [];
+        $userId = $user ? $user->id : 0;
+        $userName = $user ? strtolower($user->name) : '';
+
+        foreach ($allItems as $m) {
+            $techNames = $m->technicians->pluck('name')->toArray();
+            $techniciansStr = !empty($techNames) ? implode(', ', array_unique($techNames)) : 'Tim Maintenance Jalur';
+            $techIds = $m->technicians->pluck('id')->toArray();
+
+            $isDone = ($m->status === 'completed') || !empty($m->completed_at);
+            $isInProgress = ($m->status === 'in_progress') || (!empty($m->start_time) && empty($m->end_time) && !$isDone);
+            $isRescheduled = ($m->status === 'rescheduled');
+
+            $duration = '-';
+            if ($m->start_time && $m->end_time) {
+                $duration = substr($m->start_time, 0, 5) . ' - ' . substr($m->end_time, 0, 5);
+            } elseif ($m->start_time) {
+                $duration = 'Mulai ' . substr($m->start_time, 0, 5);
+            } elseif ($m->scheduled_time) {
+                $duration = 'Jadwal ' . substr((string)$m->scheduled_time, 0, 5);
+            }
+
+            $location = $m->location_name ?: ($m->odp?->name ?: ($m->odc?->name ?: ($m->area?->name ?? 'Wilayah Lapangan')));
+
+            $isMyTask = in_array($userId, $techIds) || (str_contains(strtolower($techniciansStr), $userName));
+
+            $maintenanceList[] = [
+                'id' => $m->id,
+                'maintenance_number' => $m->maintenance_number,
+                'category' => $m->category,
+                'category_label' => $m->category_label,
+                'category_icon' => $m->category_icon,
+                'title' => $m->title,
+                'location' => $location,
+                'area_name' => $m->area?->name ?? '-',
+                'odp' => $m->odp?->name ?? '-',
+                'odc' => $m->odc?->name ?? '-',
+                'technicians' => $techniciansStr,
+                'technician_ids' => $techIds,
+                'duration' => $duration,
+                'start_time' => $m->start_time,
+                'end_time' => $m->end_time,
+                'scheduled_time' => $m->scheduled_time,
+                'scheduled_date' => $m->scheduled_date ? Carbon::parse($m->scheduled_date)->toDateString() : null,
+                'status' => $m->status,
+                'is_done' => $isDone,
+                'is_in_progress' => $isInProgress,
+                'is_rescheduled' => $isRescheduled,
+                'priority' => $m->priority,
+                'description' => $m->description,
+                'action_taken' => $m->action_taken,
+                'optical_power_before' => $m->optical_power_before,
+                'optical_power_after' => $m->optical_power_after,
+                'photo_before' => $m->photo_before ? Storage::url($m->photo_before) : null,
+                'photo_after' => $m->photo_after ? Storage::url($m->photo_after) : null,
+                'created_by' => $m->created_by,
+                'is_my_task' => $isMyTask,
+            ];
+        }
+
+        // Summary counts
+        $summary = [
+            'total' => count($maintenanceList),
+            'done' => collect($maintenanceList)->where('is_done', true)->count(),
+            'in_progress' => collect($maintenanceList)->where('is_in_progress', true)->count(),
+            'rescheduled' => collect($maintenanceList)->where('is_rescheduled', true)->count(),
+            'pending' => collect($maintenanceList)->where('is_done', false)->where('is_in_progress', false)->where('is_rescheduled', false)->count(),
+            'my_tasks' => collect($maintenanceList)->where('is_my_task', true)->count(),
+        ];
+
+        // Daftar teknisi lapangan untuk form create
+        $availableTechnicians = User::where(function ($q) {
+            $q->whereHas('roles', fn($r) => $r->whereIn('name', ['teknisi', 'kepala teknisi', 'maintenance', 'teknisi lapangan']))
+              ->orWhereIn('role', ['teknisi', 'kepala teknisi', 'maintenance']);
+        })->orderBy('name')->get(['id', 'name', 'phone']);
+
+        $availableOdps = Odp::select('id', 'name', 'area_id')->orderBy('name')->limit(500)->get();
+        $availableOdcs = Odc::select('id', 'name', 'area_id')->orderBy('name')->limit(150)->get();
+
+        $carbonDate = Carbon::parse($date)->locale('id');
+        $indonesianDate = $carbonDate->isoFormat('dddd, D MMMM Y');
+
+        return Inertia::render('Operational/NetworkMaintenance', [
+            'maintenanceList' => $maintenanceList,
+            'summary' => $summary,
+            'areas' => $areas,
+            'filters' => [
+                'date' => $date,
+                'area_id' => $areaId ? (int) $areaId : null,
+                'status' => $status ?: 'all',
+                'category' => $category ?: 'all',
+                'search' => $search ?: '',
+                'my_tasks' => $myTasksOnly,
+            ],
+            'availableTechnicians' => $availableTechnicians,
+            'availableOdps' => $availableOdps,
+            'availableOdcs' => $availableOdcs,
+            'indonesianDate' => $indonesianDate,
+            'canCreate' => $user ? ($user->can('network_maintenance_create') || $user->hasRole('admin') || $user->hasRole('super admin') || $user->hasRole('kepala teknisi')) : true,
+            'canDelete' => $user ? ($user->can('network_maintenance_delete') || $user->hasRole('admin') || $user->hasRole('super admin') || $user->hasRole('kepala teknisi')) : false,
+        ]);
+    }
 {
     /**
      * Simpan Kegiatan Pemeliharaan & Perapihan Jalur Baru
