@@ -168,17 +168,16 @@
                         <span>Terkirim</span>
                     </span>
 
-                    <!-- WA Permintaan Jadwal Survey (Tetap di Halaman) -->
+                    <!-- WA Permintaan Jadwal Survey (Ikon WA Saja) -->
                     <button 
                         type="button" 
                         @click="openSurveyScheduleWaModal(row)"
-                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-800 border border-emerald-300 hover:border-emerald-400 rounded-lg text-xs font-bold transition-all shadow-2xs hover:shadow-xs cursor-pointer focus:outline-none"
-                        title="Kirim Permintaan Jadwal Survey via WhatsApp (Pilih Nama Petugas)"
+                        class="w-7 h-7 inline-flex items-center justify-center bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white border border-emerald-300 hover:border-emerald-600 rounded-lg transition-all shadow-2xs hover:shadow-xs cursor-pointer focus:outline-none"
+                        title="Minta Jadwal Survey via WhatsApp (Pilih CS On Duty)"
                     >
-                        <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.885-9.89 9.885m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.455 5.712 1.457h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.415z"/>
                         </svg>
-                        <span>Minta Jadwal Survey</span>
                     </button>
 
                     <!-- Tombol Dropdown Menu Aksi -->
@@ -601,8 +600,8 @@
                                 </svg>
                             </div>
                             <div>
-                                <h3 class="text-base font-bold leading-tight">Permintaan Jadwal Survey</h3>
-                                <p class="text-xs text-emerald-100/90 mt-0.5">Ke siapa minta jadwal survey? Tinggal pilih namanya di bawah</p>
+                                <h3 class="text-base font-bold leading-tight">Permintaan Jadwal Survey ke CS</h3>
+                                <p class="text-xs text-emerald-100/90 mt-0.5">Pilih Customer Service (CS) yang bertugas menurut jadwal kerja hari ini</p>
                             </div>
                         </div>
                         <button type="button" @click="closeSurveyScheduleWaModal" class="text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-xl transition-colors cursor-pointer">
@@ -638,7 +637,7 @@
                             <span class="text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded">Status Terkirim</span>
                         </div>
 
-                        <!-- Search Box for Recipients -->
+                        <!-- Search Box for CS Officers -->
                         <div class="relative">
                             <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -646,41 +645,54 @@
                             <input 
                                 type="text" 
                                 v-model="recipientSearchQuery" 
-                                placeholder="Cari nama teknisi, surveyor, atau petugas..." 
+                                placeholder="Cari nama CS, shift, atau nomor WhatsApp..." 
                                 class="form-input !pl-9 w-full rounded-xl border-slate-200 text-xs shadow-2xs focus:ring-emerald-500 focus:border-emerald-500" 
                             />
                         </div>
 
-                        <!-- Recipients List: "Tinggal Pilih Namanya Saja Untuk Diklik" -->
+                        <!-- CS List: "Pilih CS Bertugas Menurut Jadwal Kerja" -->
                         <div>
                             <div class="flex items-center justify-between mb-2">
-                                <label class="text-xs font-bold text-slate-700">Pilih Nama Petugas / Teknisi:</label>
-                                <span class="text-[11px] text-slate-400 font-medium">{{ filteredTechnicians.length }} nama tersedia</span>
+                                <label class="text-xs font-bold text-slate-700">Pilih CS On Duty (Jadwal Kerja):</label>
+                                <span class="text-[11px] text-slate-400 font-medium">{{ filteredCsOfficers.length }} CS tersedia</span>
                             </div>
 
-                            <div v-if="filteredTechnicians.length > 0" class="space-y-2 max-h-64 overflow-y-auto pr-1">
+                            <div v-if="filteredCsOfficers.length > 0" class="space-y-2 max-h-64 overflow-y-auto pr-1">
                                 <button 
-                                    v-for="tech in filteredTechnicians" 
-                                    :key="tech.id"
+                                    v-for="cs in filteredCsOfficers" 
+                                    :key="cs.id"
                                     type="button"
-                                    @click="selectRecipientAndSend(tech)"
-                                    class="w-full text-left p-3 rounded-xl border border-slate-200 hover:border-emerald-500 bg-white hover:bg-emerald-50/50 transition-all shadow-2xs hover:shadow-sm flex items-center justify-between gap-3 group cursor-pointer"
+                                    @click="selectRecipientAndSend(cs)"
+                                    class="w-full text-left p-3 rounded-xl border transition-all shadow-2xs hover:shadow-sm flex items-center justify-between gap-3 group cursor-pointer"
+                                    :class="cs.is_current_shift ? 'border-emerald-300 bg-emerald-50/40 hover:bg-emerald-50/80 hover:border-emerald-500' : (cs.is_scheduled_today ? 'border-slate-200 bg-white hover:bg-emerald-50/40 hover:border-emerald-400' : 'border-slate-200/80 bg-slate-50/60 opacity-80 hover:opacity-100 hover:bg-white')"
                                 >
                                     <div class="flex items-center gap-3 min-w-0">
-                                        <div :class="['w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-2xs', getAvatarColor(tech.name)]">
-                                            {{ (tech.name || 'T').charAt(0).toUpperCase() }}
+                                        <div :class="['w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-2xs', getAvatarColor(cs.name)]">
+                                            {{ (cs.name || 'C').charAt(0).toUpperCase() }}
                                         </div>
                                         <div class="min-w-0">
-                                            <div class="flex items-center gap-2">
-                                                <span class="text-xs font-bold text-slate-800 group-hover:text-emerald-700 truncate">{{ tech.name }}</span>
-                                                <span v-if="tech.is_on_duty" class="px-1.5 py-0.2 bg-emerald-100 text-emerald-700 text-[10px] font-semibold rounded flex items-center gap-1">
-                                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> On Duty
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <span class="text-xs font-bold text-slate-800 group-hover:text-emerald-700 truncate">{{ cs.name }}</span>
+                                                
+                                                <!-- Status Shift Hari Ini -->
+                                                <span v-if="cs.is_current_shift" class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-md flex items-center gap-1 border border-emerald-300 shadow-2xs">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
+                                                    <span>Bertugas Sekarang</span>
+                                                </span>
+                                                <span v-else-if="cs.is_scheduled_today" class="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-semibold rounded-md flex items-center gap-1 border border-amber-300">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                                    <span>Shift Hari Ini</span>
+                                                </span>
+                                                <span v-else class="px-1.5 py-0.2 bg-slate-100 text-slate-500 text-[10px] font-medium rounded border border-slate-200">
+                                                    Libur / Off
                                                 </span>
                                             </div>
-                                            <div class="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5 truncate">
-                                                <span class="capitalize text-slate-500 font-medium">{{ tech.role || 'Teknisi' }}</span>
+                                            <div class="flex items-center gap-2 text-[11px] text-slate-500 mt-1 truncate">
+                                                <span class="font-medium text-slate-700">{{ cs.shift_name || cs.role || 'CS' }}</span>
+                                                <span v-if="cs.shift_time">&bull;</span>
+                                                <span v-if="cs.shift_time" class="font-mono text-emerald-700 font-semibold">{{ cs.shift_time }}</span>
                                                 <span>&bull;</span>
-                                                <span class="font-mono">{{ tech.phone || 'Belum ada nomor' }}</span>
+                                                <span class="font-mono text-slate-500">{{ cs.phone || 'Belum ada nomor' }}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -694,7 +706,7 @@
                                 </button>
                             </div>
                             <div v-else class="text-center py-8 px-4 bg-slate-50 rounded-xl border border-slate-200">
-                                <p class="text-xs text-slate-500">Tidak ada teknisi atau petugas yang cocok dengan kata kunci.</p>
+                                <p class="text-xs text-slate-500">Tidak ada Customer Service (CS) yang cocok dengan pencarian.</p>
                             </div>
                         </div>
 
@@ -721,7 +733,7 @@
                                 </div>
                             </button>
                             <div v-if="showWaPreview" class="p-3 bg-slate-100/70 border-t border-slate-200 text-[11px] font-mono text-slate-700 whitespace-pre-wrap leading-relaxed select-all">
-                                {{ generateWaMessage(waCustomer, '{nama_petugas}') }}
+                                {{ generateWaMessage(waCustomer, '{nama_cs}') }}
                             </div>
                         </div>
                     </div>
@@ -729,7 +741,7 @@
                     <!-- Footer -->
                     <div class="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
                         <span class="flex items-center gap-1 text-[11px]">
-                            ⚡ Klik nama petugas untuk membuka WhatsApp secara otomatis.
+                            ⚡ Klik nama CS untuk membuka WhatsApp secara otomatis.
                         </span>
                         <button type="button" @click="closeSurveyScheduleWaModal" class="btn-secondary py-1.5 px-3 text-xs">
                             Tutup
@@ -748,7 +760,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import PipelineGuideCard from '@/Components/Customers/PipelineGuideCard.vue';
 import DataTable from '@/Components/DataTable.vue';
 
-const props = defineProps({ customers: Object, filters: Object, areas: Array, stats: Object, technicians: Array });
+const props = defineProps({ customers: Object, filters: Object, areas: Array, stats: Object, technicians: Array, cs_officers: Array });
 const page = usePage();
 
 // ── WA Permintaan Jadwal Survey Logic ──────────────────────
@@ -790,10 +802,10 @@ function generateWaMessage(customer, recipientName = '') {
     const pkgName = customer.package ? customer.package.name : '-';
     const area = customer.area || 'Tanpa Area';
     const address = customer.address || '-';
-    const greeting = recipientName ? `Halo Rekan *${recipientName}*,` : 'Halo Rekan,';
+    const greeting = recipientName ? `Halo CS *${recipientName}*,` : 'Halo CS,';
     
     let msg = `${greeting}\n\n`;
-    msg += `Mohon bantuan konfirmasi ketersediaan *Jadwal Survey Lapangan* untuk calon pelanggan baru berikut:\n\n`;
+    msg += `Mohon bantuan koordinasi *Jadwal Survey Lapangan* untuk calon pelanggan baru berikut:\n\n`;
     msg += `📋 *DATA CALON PELANGGAN*\n`;
     msg += `• Nama: *${customer.name || '-'}*\n`;
     msg += `• No. HP / WA: ${cleanPhone}\n`;
@@ -809,50 +821,53 @@ function generateWaMessage(customer, recipientName = '') {
         msg += `• Sales / Pendaftar: ${customer.sales.name}\n`;
     }
 
-    msg += `\nMohon diinfokan apakah rekan bersedia dan estimasi tanggal serta jam berapa survey dapat dilaksanakan. Terima kasih! 🙏⚡`;
+    msg += `\nMohon dibantu infokan jadwal survey dan teknisi yang ditugaskan ya. Terima kasih! 🙏⚡`;
 
     return msg;
 }
 
-const allTechniciansList = computed(() => {
-    const fromProps = props.technicians || [];
-    const fromOfficers = page.props?.officers || [];
-    
-    const map = new Map();
-    fromProps.forEach(t => map.set(t.id, { ...t }));
-    fromOfficers.forEach(o => {
-        if (map.has(o.id)) {
-            map.get(o.id).is_on_duty = true;
-        } else {
-            map.set(o.id, { ...o, is_on_duty: true });
-        }
-    });
+const allCsList = computed(() => {
+    // Utamakan daftar CS dari props backend yang sudah difilter berdasarkan jadwal kerja
+    const rawList = (props.cs_officers && props.cs_officers.length > 0)
+        ? props.cs_officers
+        : (props.technicians || []);
 
-    return Array.from(map.values()).sort((a, b) => {
+    return [...rawList].sort((a, b) => {
+        // 1. Shift yang sedang berjalan saat ini
+        if (a.is_current_shift && !b.is_current_shift) return -1;
+        if (!a.is_current_shift && b.is_current_shift) return 1;
+
+        // 2. Terjadwal masuk hari ini
+        if (a.is_scheduled_today && !b.is_scheduled_today) return -1;
+        if (!a.is_scheduled_today && b.is_scheduled_today) return 1;
+
+        // 3. Status on duty umum
         if (a.is_on_duty && !b.is_on_duty) return -1;
         if (!a.is_on_duty && b.is_on_duty) return 1;
+
         return (a.name || '').localeCompare(b.name || '');
     });
 });
 
-const filteredTechnicians = computed(() => {
-    if (!recipientSearchQuery.value) return allTechniciansList.value;
+const filteredCsOfficers = computed(() => {
+    if (!recipientSearchQuery.value) return allCsList.value;
     const q = recipientSearchQuery.value.toLowerCase().trim();
-    return allTechniciansList.value.filter(t => 
-        (t.name && t.name.toLowerCase().includes(q)) ||
-        (t.role && t.role.toLowerCase().includes(q)) ||
-        (t.phone && String(t.phone).includes(q))
+    return allCsList.value.filter(cs => 
+        (cs.name && cs.name.toLowerCase().includes(q)) ||
+        (cs.role && cs.role.toLowerCase().includes(q)) ||
+        (cs.shift_name && cs.shift_name.toLowerCase().includes(q)) ||
+        (cs.phone && String(cs.phone).includes(q))
     );
 });
 
-function selectRecipientAndSend(tech) {
-    if (!tech?.phone) {
-        alert(`Petugas ${tech?.name || ''} belum memiliki nomor HP/WhatsApp yang terdaftar.`);
+function selectRecipientAndSend(cs) {
+    if (!cs?.phone) {
+        alert(`CS ${cs?.name || ''} belum memiliki nomor HP/WhatsApp yang terdaftar.`);
         return;
     }
 
-    const message = generateWaMessage(waCustomer.value, tech.name);
-    const cleanPhone = cleanPhoneNumber(tech.phone);
+    const message = generateWaMessage(waCustomer.value, cs.name);
+    const cleanPhone = cleanPhoneNumber(cs.phone);
     const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
 
     // Buka WhatsApp
@@ -870,7 +885,7 @@ function selectRecipientAndSend(tech) {
 
 async function copyWaPreview() {
     if (!waCustomer.value) return;
-    const msg = generateWaMessage(waCustomer.value, '{nama_petugas}');
+    const msg = generateWaMessage(waCustomer.value, '{nama_cs}');
     try {
         await navigator.clipboard.writeText(msg);
         copiedWaText.value = true;

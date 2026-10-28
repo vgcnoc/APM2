@@ -1096,19 +1096,97 @@ class CustomerController extends Controller
             'disurvey' => (clone $query)->where('status', 'survey')->count(),
         ];
 
-        // Ambil semua user/teknisi/karyawan aktif untuk permintaan jadwal survey WA
-        $technicians = User::where(function ($q) {
+        // Ambil data Customer Service (CS) yang bertugas menurut jadwal kerja (shift hari ini)
+        $today = now()->toDateString();
+        $currentTime = now()->format('H:i');
+
+        $csOfficers = User::where(function ($q) {
+                $q->where('role', 'cs')
+                    ->orWhere('role', 'like', '%cs%')
+                    ->orWhere('role', 'like', '%customer%')
+                    ->orWhereHas('roles', fn ($rq) => $rq->where('name', 'like', '%cs%'))
+                    ->orWhereHas('employee', function ($eq) {
+                        $eq->where('position', 'like', '%cs%')
+                            ->orWhere('position', 'like', '%customer%');
+                    });
+            })
+            ->where(function ($q) {
                 $q->where('is_active', true)->orWhereNull('is_active');
             })
-            ->with('employee')
-            ->orderBy('name')
-            ->get(['id', 'name', 'phone', 'email', 'role', 'is_on_duty']);
+            ->with(['employee.schedules' => function ($sq) use ($today) {
+                $sq->whereDate('date', $today)->with('shift');
+            }])
+            ->get(['id', 'name', 'phone', 'email', 'role', 'is_on_duty'])
+            ->map(function ($u) use ($currentTime) {
+                $todaySched = $u->employee?->schedules?->first();
+                $shift = $todaySched?->shift;
+                $isOff = !$todaySched || in_array(strtolower((string) $todaySched->status), ['off', 'libur', 'cuti', 'izin', 'sakit']) || ($shift && (stripos($shift->name, 'libur') !== false || stripos($shift->name, 'off') !== false));
+
+                $isCurrentShift = false;
+                if ($shift && !$isOff && $shift->start_time && $shift->end_time) {
+                    $start = substr($shift->start_time, 0, 5);
+                    $end = substr($shift->end_time, 0, 5);
+                    if ($start <= $end) {
+                        $isCurrentShift = ($currentTime >= $start && $currentTime <= $end);
+                    } else {
+                        // Shift malam yang melewati pergantian hari
+                        $isCurrentShift = ($currentTime >= $start || $currentTime <= $end);
+                    }
+                }
+
+                $phone = $u->phone ?: ($u->employee?->phone ?: '');
+
+                return [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'phone' => $phone,
+                    'email' => $u->email,
+                    'role' => $u->employee?->position ?: ($u->role ?: 'CS'),
+                    'is_on_duty' => (bool) ($u->is_on_duty || (!$isOff && $todaySched)),
+                    'is_scheduled_today' => (bool) (!$isOff && $todaySched),
+                    'is_current_shift' => (bool) $isCurrentShift,
+                    'shift_name' => $shift?->name ?: ($isOff ? 'Libur / Off' : '-'),
+                    'shift_time' => $shift?->formatted_time ?: '',
+                    'schedule_status' => $todaySched?->status ?: 'off',
+                ];
+            })
+            ->filter(fn ($item) => !empty($item['phone']))
+            ->values();
+
+        // Fallback jika belum ada CS dengan nomor telepon (ambil CS/admin yang ada)
+        if ($csOfficers->isEmpty()) {
+            $csOfficers = User::where(function ($q) {
+                    $q->where('role', 'cs')
+                        ->orWhere('role', 'like', '%cs%')
+                        ->orWhere('role', 'admin');
+                })
+                ->where(function ($q) {
+                    $q->where('is_active', true)->orWhereNull('is_active');
+                })
+                ->get(['id', 'name', 'phone', 'email', 'role', 'is_on_duty'])
+                ->map(fn ($u) => [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'phone' => $u->phone ?: '',
+                    'email' => $u->email,
+                    'role' => $u->role ?: 'CS',
+                    'is_on_duty' => (bool) $u->is_on_duty,
+                    'is_scheduled_today' => false,
+                    'is_current_shift' => false,
+                    'shift_name' => '-',
+                    'shift_time' => '',
+                    'schedule_status' => 'standby',
+                ])
+                ->filter(fn ($item) => !empty($item['phone']))
+                ->values();
+        }
 
         return Inertia::render('Customers/Booking', [
             'customers' => $customers,
             'areas' => $areas,
             'stats' => $stats,
-            'technicians' => $technicians,
+            'technicians' => $csOfficers,
+            'cs_officers' => $csOfficers,
             'filters' => $request->only(['search', 'date', 'area', 'area_id', 'status']),
         ]);
     }
