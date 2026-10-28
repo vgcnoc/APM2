@@ -4581,33 +4581,7 @@ class CustomerController extends Controller
             ->where('status', 'scheduled')
             ->update(['status' => 'done']);
 
-        // Auto Incentive: Fee Survey
-        $surveyFee = (float) (\App\Models\MasterFee::where('type', 'Fee Survey')->where('is_active', true)->value('nominal') ?? 15000);
-        if ($surveyFee > 0 && !empty($validated['surveyor_id'])) {
-            $refSurvey = 'survey_cust_' . $customer->id . '_user_' . $validated['surveyor_id'];
-            $codeLabel = ($customer->customer_code && !preg_match('/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i', $customer->customer_code))
-                ? " ({$customer->customer_code})"
-                : '';
-            $alreadySurvey = \App\Models\Incentive::where('reference_id', $refSurvey)
-                ->orWhere(function($sub) use ($customer, $validated) {
-                    $sub->where('user_id', $validated['surveyor_id'])
-                        ->where('type', 'auto')
-                        ->where('description', 'like', 'Fee Survey Pelanggan: ' . $customer->name . '%');
-                })
-                ->exists();
-
-            if (!$alreadySurvey) {
-                \App\Models\Incentive::create([
-                    'user_id' => $validated['surveyor_id'],
-                    'amount' => $surveyFee,
-                    'type' => 'auto',
-                    'description' => "Fee Survey Pelanggan: {$customer->name}{$codeLabel}",
-                    'reference_id' => $refSurvey,
-                    'incentive_date' => now(),
-                    'status' => 'pending'
-                ]);
-            }
-        }
+        // Catatan: Seluruh insentif (Fee Survey, Fee Booking, Fee Pasang) hanya dibentuk saat pelanggan selesai AKTIVASI di CustomerController::activate
 
         if ($validated['feasibility'] === 'feasible') {
             \App\Models\AuditLog::createLog('Laporan Survey', $customer, 'survey', 'survey', 'Mengisi laporan survey (feasible)');

@@ -469,7 +469,8 @@ class Customer extends Model
                 }
             }
 
-            if (!static::$isMigrating && !$customer->is_migrated && $customer->sales_id && !in_array($customer->service_status, ['gratis', 'free_home'])) {
+            // Seluruh insentif (Booking, Survey, Pasang) hanya dibentuk saat pelanggan selesai AKTIVASI
+            if (false && !static::$isMigrating && !$customer->is_migrated && $customer->sales_id && !in_array($customer->service_status, ['gratis', 'free_home'])) {
                 try {
                     \App\Services\AffiliateService::recordBookingCommission($customer);
                 } catch (\Throwable $e) {
@@ -480,7 +481,7 @@ class Customer extends Model
 
         static::updated(function (Customer $customer) {
             // 1. Sinkronisasi Affiliate Booking Commission jika sales_id berubah
-            if (!static::$isMigrating && !$customer->is_migrated && $customer->wasChanged('sales_id') && $customer->sales_id && !in_array($customer->service_status, ['gratis', 'free_home'])) {
+            if ($customer->status === 'active' && !static::$isMigrating && !$customer->is_migrated && $customer->wasChanged('sales_id') && $customer->sales_id && !in_array($customer->service_status, ['gratis', 'free_home'])) {
                 try {
                     \App\Services\AffiliateService::recordBookingCommission($customer);
                 } catch (\Throwable $e) {
