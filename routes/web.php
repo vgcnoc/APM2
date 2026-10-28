@@ -530,8 +530,9 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ── Progress Harian Operasional & Pemeliharaan Jalur ──
-    Route::middleware(['permission:menu_operational_progress|operational_progress_view'])->group(function () {
+    Route::middleware(['permission:menu_operational_progress|operational_progress_view|menu_network_maintenance|network_maintenance_update'])->group(function () {
         Route::get('/operational/daily-progress', [\App\Http\Controllers\OperationalDailyProgressController::class, 'index'])->name('operational.daily-progress.index');
+        Route::get('/operational/network-maintenance', [\App\Http\Controllers\OperationalDailyProgressController::class, 'networkMaintenanceIndex'])->name('operational.network-maintenance.index');
         Route::post('/operational/daily-progress/send-wa', [\App\Http\Controllers\OperationalDailyProgressController::class, 'sendWa'])->name('operational.daily-progress.send-wa');
         Route::post('/operational/network-maintenance', [\App\Http\Controllers\NetworkMaintenanceController::class, 'store'])->name('operational.network-maintenance.store');
         Route::post('/operational/network-maintenance/{maintenance}/quick-update', [\App\Http\Controllers\NetworkMaintenanceController::class, 'quickUpdate'])->name('operational.network-maintenance.quick-update');

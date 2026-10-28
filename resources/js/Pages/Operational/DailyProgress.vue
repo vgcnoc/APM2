@@ -596,15 +596,51 @@
 
                     <!-- TAB 5: PERAPIHAN & PENGECEKAN JALUR (BARU) -->
                     <div v-if="activeTab === 'maintenance'" class="space-y-3">
-                        <div v-if="maintenanceList.length === 0" class="bg-white dark:bg-slate-900 rounded-3xl p-10 text-center border border-slate-200/80 dark:border-slate-800">
+                        <!-- Sub-filter: Semua Tugas vs Tugas Saya -->
+                        <div class="flex items-center justify-between gap-2 pb-1 flex-wrap">
+                            <div class="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-semibold">
+                                <button
+                                    type="button"
+                                    @click="filterOnlyMyTasks = false"
+                                    class="px-3 py-1.5 rounded-lg transition-all cursor-pointer"
+                                    :class="!filterOnlyMyTasks ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-400 font-bold shadow-xs' : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'"
+                                >
+                                    👥 Semua Petugas ({{ maintenanceList.length }})
+                                </button>
+                                <button
+                                    type="button"
+                                    @click="filterOnlyMyTasks = true"
+                                    class="px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                                    :class="filterOnlyMyTasks ? 'bg-teal-600 text-white font-bold shadow-xs' : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'"
+                                >
+                                    <span>👤 Tugas Saya</span>
+                                    <span class="px-1.5 py-0.2 rounded-full text-[10px]" :class="filterOnlyMyTasks ? 'bg-white/20' : 'bg-slate-200 dark:bg-slate-700'">
+                                        {{ myMaintenanceList.length }}
+                                    </span>
+                                </button>
+                            </div>
+
+                            <button
+                                type="button"
+                                @click="openCreateModal"
+                                class="px-3.5 py-1.5 text-xs font-bold rounded-xl bg-teal-600 hover:bg-teal-700 text-white shadow-xs transition-all cursor-pointer inline-flex items-center gap-1"
+                            >
+                                <span>+</span>
+                                <span>Jadwal Jalur Baru</span>
+                            </button>
+                        </div>
+
+                        <div v-if="filteredMaintenanceList.length === 0" class="bg-white dark:bg-slate-900 rounded-3xl p-10 text-center border border-slate-200/80 dark:border-slate-800">
                             <div class="w-16 h-16 mx-auto rounded-2xl bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400 flex items-center justify-center text-3xl mb-3">
                                 🛠️
                             </div>
-                            <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">Nihil Pemeliharaan & Perapihan Jalur Hari Ini</h3>
+                            <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">
+                                {{ filterOnlyMyTasks ? 'Tidak Ada Tugas Pemeliharaan yang Ditugaskan ke Anda' : 'Nihil Pemeliharaan & Perapihan Jalur Hari Ini' }}
+                            </h3>
                             <p class="text-xs text-slate-400 mt-1 max-w-md mx-auto">
-                                Belum ada jadwal pemeliharaan rutin, perapihan kabel kendur, atau inspeksi jalur ODP/ODC/Jalur Utama pada tanggal ini.
+                                {{ filterOnlyMyTasks ? 'Anda tidak memiliki penugasan perapihan kabel kendur, ODP, ODC, atau jalur utama pada tanggal ini.' : 'Belum ada jadwal pemeliharaan rutin, perapihan kabel kendur, atau inspeksi jalur ODP/ODC/Jalur Utama pada tanggal ini.' }}
                             </p>
-                            <div class="mt-4">
+                            <div class="mt-4" v-if="!filterOnlyMyTasks">
                                 <button
                                     type="button"
                                     @click="openCreateModal"
@@ -617,7 +653,7 @@
                         </div>
 
                         <div 
-                            v-for="(item, idx) in maintenanceList" 
+                            v-for="(item, idx) in filteredMaintenanceList" 
                             :key="'maintenance-' + idx"
                             class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 hover:shadow-md transition-all space-y-2.5"
                         >
@@ -1502,12 +1538,15 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { ref, computed, onMounted } from 'vue';
+import { router, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
+const page = usePage();
+
 const props = defineProps({
+    defaultTab: { type: String, default: 'gangguan' },
     filters: { type: Object, default: () => ({}) },
     areas: { type: Array, default: () => [] },
     indonesianDate: { type: String, default: '' },
@@ -1542,8 +1581,49 @@ const filterArea = ref(props.filters?.area_id || '');
 const customNote = ref(props.filters?.note || 'Tetap semangat dan jaga keselamatan kerja! 💪');
 const isLoading = ref(false);
 
+// Filter Tugas Saya vs Semua Petugas
+const filterOnlyMyTasks = ref(false);
+const currentUserId = computed(() => page.props.auth?.user?.id);
+const currentUserName = computed(() => (page.props.auth?.user?.name || '').toLowerCase());
+
+const myMaintenanceList = computed(() => {
+    return (props.maintenanceList || []).filter(item => {
+        if (item.technician_ids && Array.isArray(item.technician_ids) && item.technician_ids.includes(currentUserId.value)) {
+            return true;
+        }
+        if (item.technicians && currentUserName.value && item.technicians.toLowerCase().includes(currentUserName.value)) {
+            return true;
+        }
+        return false;
+    });
+});
+
+const filteredMaintenanceList = computed(() => {
+    if (filterOnlyMyTasks.value) {
+        return myMaintenanceList.value;
+    }
+    return props.maintenanceList || [];
+});
+
 // Active Tab
-const activeTab = ref('gangguan');
+const activeTab = ref(
+    (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab')) ||
+    (typeof window !== 'undefined' && window.location.pathname.includes('network-maintenance') ? 'maintenance' : (props.defaultTab || 'gangguan'))
+);
+
+onMounted(() => {
+    if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const tabParam = urlParams.get('tab');
+        if (tabParam && ['gangguan', 'pemasangan', 'survey', 'cbp', 'maintenance', 'teknisi'].includes(tabParam)) {
+            activeTab.value = tabParam;
+        } else if (window.location.pathname.includes('network-maintenance')) {
+            activeTab.value = 'maintenance';
+        } else if (props.defaultTab) {
+            activeTab.value = props.defaultTab;
+        }
+    }
+});
 
 const tabs = computed(() => [
     { key: 'gangguan', label: 'Gangguan PGS/PGK/PGJ', icon: '🆘', count: props.summary?.gangguan || 0 },

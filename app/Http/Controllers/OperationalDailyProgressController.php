@@ -29,6 +29,15 @@ class OperationalDailyProgressController extends Controller
     /**
      * Tampilkan Halaman Progress Harian Operasional (PGS, PGK, PGJ, CBP, Instalasi, Survey & Shift Teknisi)
      */
+    /**
+     * Halaman Khusus Menu Pemeliharaan Jalur (ODP, ODC, Jalur Utama)
+     */
+    public function networkMaintenanceIndex(Request $request)
+    {
+        $request->merge(['tab' => 'maintenance']);
+        return $this->index($request);
+    }
+
     public function index(Request $request)
     {
         $date = $request->input('date', Carbon::today()->toDateString());
@@ -151,6 +160,7 @@ class OperationalDailyProgressController extends Controller
         $availableOdcs = Odc::select('id', 'name', 'area_id')->orderBy('name')->limit(150)->get();
 
         return Inertia::render('Operational/DailyProgress', [
+            'defaultTab' => $request->input('tab', 'gangguan'),
             'filters' => [
                 'date' => $date,
                 'area_id' => $areaId ? (int) $areaId : null,
