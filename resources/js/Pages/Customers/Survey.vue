@@ -327,7 +327,7 @@
                             </div>
                             <div class="min-w-0 flex-1">
                                 <span class="font-semibold text-xs block text-slate-800 group-hover:text-emerald-700">Isi Laporan Survey</span>
-                                <p class="text-[10px] text-slate-400 group-hover:text-emerald-500 font-normal leading-tight">Input ODP, redaman & foto survey</p>
+                                <p class="text-[10px] text-slate-400 group-hover:text-emerald-500 font-normal leading-tight">Input ODP, jarak kabel & foto survey</p>
                             </div>
                         </button>
 

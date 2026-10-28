@@ -194,23 +194,23 @@ const guides = {
     survey: {
         icon: '🔎',
         title: 'Tahap 2: Data Survey & Kelayakan Jalur ODP',
-        subtitle: 'Pengecekan fisik tiang, ketersediaan port ODP kosong, pengukuran redaman optik (OPM), dan penentuan kelayakan teknis.',
+        subtitle: 'Pengecekan rute tiang, ketersediaan port ODP kosong, estimasi jarak kabel, dan penentuan kelayakan teknis.',
         steps: [
             {
                 title: '1. Penjadwalan Surveyor',
                 desc: 'Tentukan petugas teknisi/surveyor dan tanggal jadwal pada tab "Belum Dijadwalkan". Notifikasi dapat dikirim ke teknisi.',
             },
             {
-                title: '2. Pengukuran Lapangan',
-                desc: 'Cari ODP terdekat (< 250m), pastikan ada port kosong, dan ukur nilai redaman optik menggunakan OPM (Optical Power Meter).',
+                title: '2. Pengecekan Titik ODP & Jalur',
+                desc: 'Cari ODP terdekat (< 250m), pastikan fisik tiang aman, ada port kosong yang siap digunakan, dan rute tarikan kabel memungkinkan.',
             },
             {
                 title: '3. Input Hasil & Foto Bukti',
-                desc: 'Pilih nama ODP, nomor port, redaman (dBm), estimasi kabel (meter), koordinat GPS, dan unggah foto tampak rumah & box ODP.',
+                desc: 'Pilih nama ODP, nomor port, estimasi panjang kabel (meter), koordinat GPS, dan unggah foto tampak rumah & box ODP.',
             },
             {
                 title: '4. Keputusan Kelayakan',
-                desc: 'Tandai "Feasible" jika port & redaman baik agar otomatis masuk antrean Instalasi. Jika ODP penuh, tandai "Unfeasible".',
+                desc: 'Tandai "Feasible" jika port tersedia dan jalur kabel aman agar otomatis masuk antrean Instalasi. Jika ODP penuh atau rute tidak memungkinkan, tandai "Unfeasible".',
             },
         ],
         warnings: [
@@ -219,8 +219,8 @@ const guides = {
                 text: 'Dilarang keras memakai port ODP yang sudah terpakai pelanggan lain. Ini memicu insiden salah cabut dan komplain pelanggan putus.',
             },
             {
-                highlight: 'Batas Redaman ODP Wajib <-24 dBm!',
-                text: 'Toleransi redaman port ODP wajib berada di rentang -16 dBm s/d -24 dBm. Jika lebih buruk dari -25 dBm, ODP wajib dilaporkan untuk maintenance.',
+                highlight: 'Batas Jarak Tarik Kabel Maksimal 250 Meter!',
+                text: 'Jarak tarikan kabel dropcore dari ODP ke rumah pelanggan wajib di bawah 250 meter. Jika jarak melebihi batas atau tidak ada tiang perlintasan, tandai Unfeasible.',
             },
             {
                 highlight: 'Wajib Foto Rumah & Box ODP!',
@@ -228,8 +228,8 @@ const guides = {
             },
         ],
         qcList: [
-            'Nomor ODP & port tercatat akurat',
-            'Redaman optik terukur OPM (-16 s/d -24 dBm)',
+            'Nomor ODP & ketersediaan port tercatat akurat',
+            'Estimasi panjang kabel terukur (< 250 meter)',
             'Koordinat GPS & foto dokumentasi lengkap',
         ],
     },
