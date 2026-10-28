@@ -60,6 +60,7 @@ class Customer extends Model
         'installation_fee',
         'sales_id',
         'referral_code',
+        'is_migrated',
         'is_audited',
         'area_id',
         'tax_ppn',
@@ -83,6 +84,7 @@ class Customer extends Model
             'suspend_start' => 'date:Y-m-d',
             'suspend_end' => 'date:Y-m-d',
             'is_audited' => 'boolean',
+            'is_migrated' => 'boolean',
             'connection_disabled' => 'boolean',
             'connection_access_pending' => 'boolean',
             'connection_disable_state' => 'array',
@@ -442,6 +444,9 @@ class Customer extends Model
     protected static function booted(): void
     {
         static::creating(function (Customer $customer) {
+            if (static::$isMigrating) {
+                $customer->is_migrated = true;
+            }
             if (empty($customer->customer_code)) {
                 $lastCode = static::orderByDesc('id')->value('customer_code');
                 $nextNumber = $lastCode
@@ -464,7 +469,7 @@ class Customer extends Model
                 }
             }
 
-            if (!static::$isMigrating && $customer->sales_id && !in_array($customer->service_status, ['gratis', 'free_home'])) {
+            if (!static::$isMigrating && !$customer->is_migrated && $customer->sales_id && !in_array($customer->service_status, ['gratis', 'free_home'])) {
                 try {
                     \App\Services\AffiliateService::recordBookingCommission($customer);
                 } catch (\Throwable $e) {
@@ -475,7 +480,7 @@ class Customer extends Model
 
         static::updated(function (Customer $customer) {
             // 1. Sinkronisasi Affiliate Booking Commission jika sales_id berubah
-            if (!static::$isMigrating && $customer->wasChanged('sales_id') && $customer->sales_id && !in_array($customer->service_status, ['gratis', 'free_home'])) {
+            if (!static::$isMigrating && !$customer->is_migrated && $customer->wasChanged('sales_id') && $customer->sales_id && !in_array($customer->service_status, ['gratis', 'free_home'])) {
                 try {
                     \App\Services\AffiliateService::recordBookingCommission($customer);
                 } catch (\Throwable $e) {

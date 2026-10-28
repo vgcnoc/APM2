@@ -2567,6 +2567,7 @@ class DataMigrationService
                 'longitude' => self::parseCoordinate($data['longitude'] ?? null, 'lng') ?: $existing->longitude,
                 'identity_photo' => $identityPhoto ?: $existing->identity_photo,
                 'notes' => $data['notes'] ?: $existing->notes,
+                'is_migrated' => true,
             ]);
             $targetCust = $existing;
         } else {
@@ -2594,6 +2595,7 @@ class DataMigrationService
                 'longitude' => self::parseCoordinate($data['longitude'] ?? null, 'lng'),
                 'identity_photo' => $identityPhoto,
                 'notes' => $data['notes'],
+                'is_migrated' => true,
             ]);
             $targetCust = $customer;
         }

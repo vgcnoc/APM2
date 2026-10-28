@@ -65,6 +65,10 @@ class AffiliateProfile extends Model
      */
     public function customers(): HasMany
     {
-        return $this->hasMany(Customer::class, 'sales_id', 'user_id');
+        $rel = $this->hasMany(Customer::class, 'sales_id', 'user_id');
+        if (\Illuminate\Support\Facades\Schema::hasColumn('customers', 'is_migrated')) {
+            $rel->where('customers.is_migrated', false);
+        }
+        return $rel;
     }
 }

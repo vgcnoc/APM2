@@ -17,6 +17,10 @@ class TargetMarketService
      */
     public static function processCustomerActivation(Customer $customer): void
     {
+        if (Customer::$isMigrating || $customer->is_migrated) {
+            return;
+        }
+
         if (!$customer->sales_id) {
             return;
         }
@@ -172,6 +176,7 @@ class TargetMarketService
 
         // Cari pelanggan aktif di periode ini yang memiliki sales_id
         $customers = Customer::where('status', 'active')
+            ->when(\Illuminate\Support\Facades\Schema::hasColumn('customers', 'is_migrated'), fn($q) => $q->where('is_migrated', false))
             ->whereNotNull('sales_id')
             ->where(function ($q) use ($month, $year) {
                 $q->where(function ($sub) use ($month, $year) {

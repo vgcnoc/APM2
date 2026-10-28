@@ -176,7 +176,7 @@ class AffiliateService
      */
     public static function recordBookingCommission(Customer $customer): ?AffiliateCommission
     {
-        if (\App\Models\Customer::$isMigrating) {
+        if (\App\Models\Customer::$isMigrating || $customer->is_migrated) {
             return null;
         }
 
@@ -290,6 +290,9 @@ class AffiliateService
      */
     public static function handleEarlyTerminationPenalty(Customer $customer, ?string $cancelDate = null): ?array
     {
+        if ($customer->is_migrated) {
+            return null;
+        }
         // 1. Hitung masa aktif pelanggan
         $startDate = $customer->activation_date 
             ? \Carbon\Carbon::parse($customer->activation_date) 
@@ -550,7 +553,7 @@ class AffiliateService
         }
 
         $customer = $invoice->customer;
-        if (!$customer || !$customer->sales_id) {
+        if (!$customer || !$customer->sales_id || $customer->is_migrated) {
             return [];
         }
 
@@ -745,6 +748,7 @@ class AffiliateService
     public static function getUnpaidCustomersForAffiliate(User $user)
     {
         return Customer::where('sales_id', $user->id)
+            ->when(\Illuminate\Support\Facades\Schema::hasColumn('customers', 'is_migrated'), fn($q) => $q->where('is_migrated', false))
             ->whereHas('invoices', function ($q) {
                 $q->whereIn('status', ['unpaid', 'partial']);
             })
