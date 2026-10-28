@@ -88,7 +88,7 @@
                         <span>Pencarian otomatis berjalan saat Anda mengetik minimal 2 huruf.</span>
                     </span>
                     <span v-if="areaId && areaId !== 'all'" class="text-blue-600 font-medium">
-                        Wilayah aktif: {{ areaId }}
+                        Wilayah aktif: {{ activeAreaName }}
                     </span>
                 </div>
             </div>
@@ -96,6 +96,14 @@
 
         <!-- ═══ Search Content Area ═══ -->
         <div class="p-5">
+            <!-- Error State -->
+            <div v-if="errorMessage && !isLoading" class="mb-4 text-center">
+                <div class="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold max-w-md mx-auto flex items-center justify-center gap-2">
+                    <span>⚠️</span>
+                    <span>{{ errorMessage }}</span>
+                </div>
+            </div>
+
             <!-- 1. Loading State -->
             <div v-if="isLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 <div v-for="i in 4" :key="i" class="bg-gray-50 rounded-2xl border border-gray-200/60 overflow-hidden animate-pulse">
@@ -579,7 +587,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 
 const props = defineProps({
@@ -587,14 +595,25 @@ const props = defineProps({
         type: [String, Number],
         default: 'all',
     },
+    availableAreas: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const searchQuery = ref('');
 const areaId = ref(props.initialAreaId);
 const isLoading = ref(false);
 const hasSearched = ref(false);
+const errorMessage = ref('');
 const results = ref([]);
 let debounceTimeout = null;
+
+const activeAreaName = computed(() => {
+    if (!areaId.value || areaId.value === 'all') return 'Semua Wilayah';
+    const found = props.availableAreas?.find(a => String(a.id) === String(areaId.value));
+    return found ? found.name : `Wilayah #${areaId.value}`;
+});
 
 // Modal States
 const activeCustomerModal = ref(null);
@@ -632,6 +651,7 @@ async function executeSearch() {
     if (query.length < 2) return;
 
     isLoading.value = true;
+    errorMessage.value = '';
     try {
         const response = await axios.get('/dashboard/search-customer', {
             params: {
@@ -643,9 +663,12 @@ async function executeSearch() {
         if (response.data && response.data.success) {
             results.value = response.data.customers || [];
             hasSearched.value = true;
+        } else {
+            errorMessage.value = response.data?.message || 'Gagal memuat hasil pencarian.';
         }
     } catch (error) {
         console.error('Failed to search customer:', error);
+        errorMessage.value = 'Terjadi kesalahan saat mencari data pelanggan. Silakan coba lagi.';
     } finally {
         isLoading.value = false;
     }
@@ -655,6 +678,7 @@ function clearInput() {
     searchQuery.value = '';
     results.value = [];
     hasSearched.value = false;
+    errorMessage.value = '';
 }
 
 function resetSearch() {

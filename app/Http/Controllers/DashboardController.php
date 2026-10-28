@@ -839,8 +839,8 @@ class DashboardController extends Controller
             ->with([
                 'package:id,name,price,speed_mbps',
                 'areaModel:id,name',
-                'surveys' => fn($q) => $q->latest()->select('id', 'customer_id', 'photos', 'survey_date', 'notes'),
-                'ont' => fn($q) => $q->select('id', 'customer_id', 'odp_id', 'port_number', 'photo_odp', 'photo_installation', 'photo_ont', 'photo_customer', 'photo_redaman')->with('odp:id,name,code'),
+                'surveys' => fn($q) => $q->latest()->select('id', 'customer_id', 'odp_id', 'photos', 'survey_date', 'notes')->with('odp:id,name'),
+                'ont' => fn($q) => $q->select('id', 'customer_id', 'odp_id', 'port_number', 'photo_odp', 'photo_installation', 'photo_ont', 'photo_customer', 'photo_redaman')->with('odp:id,name'),
             ]);
 
         $canViewAllAreas = $user && (
@@ -996,7 +996,7 @@ class DashboardController extends Controller
                 'latitude' => $cust->latitude,
                 'longitude' => $cust->longitude,
                 'maps_url' => $mapsUrl,
-                'odp_name' => $cust->ont?->odp?->name ?? $cust->ont?->odp?->code ?? null,
+                'odp_name' => $cust->ont?->odp?->name ?? ($cust->surveys?->first()?->odp?->name ?? null),
                 'port_number' => $cust->ont?->port_number ?? null,
                 'registration_date' => $cust->registration_date ? \Carbon\Carbon::parse($cust->registration_date)->translatedFormat('d M Y') : null,
                 'activation_date' => $cust->activation_date ? \Carbon\Carbon::parse($cust->activation_date)->translatedFormat('d M Y') : null,

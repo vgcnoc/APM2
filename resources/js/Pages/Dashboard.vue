@@ -169,7 +169,7 @@
         />
 
         <!-- ═══ Pencarian Cepat Pelanggan & Foto Rumah (Tampil untuk Semua User) ═══ -->
-        <CustomerSearchWidget class="mb-6" :initial-area-id="selectedAreaId" />
+        <CustomerSearchWidget class="mb-6" :initial-area-id="selectedAreaId" :available-areas="availableAreas" />
 
         <!-- ═══ Realtime Live Monitoring Widget ═══ -->
         <div v-can="'dashboard_card_realtime'" class="mb-6">
