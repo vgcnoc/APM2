@@ -34,7 +34,10 @@
                             <button
                                 type="button"
                                 @click="setQuickDate(-1)"
-                                class="px-2.5 py-1 rounded-lg transition-colors hover:text-slate-900 dark:hover:text-white text-slate-600 dark:text-slate-400"
+                                class="px-2.5 py-1 rounded-lg transition-all"
+                                :class="filterDate === getLocalDateString(-1) 
+                                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-bold' 
+                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'"
                                 title="Kemarin"
                             >
                                 Kemarin
@@ -42,7 +45,10 @@
                             <button
                                 type="button"
                                 @click="setQuickDate(0)"
-                                class="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-bold transition-all"
+                                class="px-2.5 py-1 rounded-lg transition-all"
+                                :class="filterDate === getLocalDateString(0) 
+                                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-bold' 
+                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'"
                                 title="Hari Ini"
                             >
                                 Hari Ini
@@ -50,7 +56,10 @@
                             <button
                                 type="button"
                                 @click="setQuickDate(1)"
-                                class="px-2.5 py-1 rounded-lg transition-colors hover:text-slate-900 dark:hover:text-white text-slate-600 dark:text-slate-400"
+                                class="px-2.5 py-1 rounded-lg transition-all"
+                                :class="filterDate === getLocalDateString(1) 
+                                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-bold' 
+                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'"
                                 title="Besok"
                             >
                                 Besok
@@ -545,6 +554,7 @@
                                 <div><strong class="text-slate-400 text-[10px] block uppercase">Data Detail</strong> {{ item.detail }}</div>
                                 <div class="text-slate-600 dark:text-slate-400 pt-1 flex items-center justify-between flex-wrap gap-2">
                                     <span>👷 Petugas Ditugaskan: <strong class="text-slate-900 dark:text-white">{{ item.technicians || '-' }}</strong></span>
+                                    <span v-if="item.duration && item.duration !== '-'">⏱️ Durasi: <strong class="font-mono text-slate-800 dark:text-slate-200">{{ item.duration }}</strong></span>
                                     <span v-if="item.phone && item.phone !== '-'">📞 {{ item.phone }}</span>
                                 </div>
                             </div>
@@ -848,8 +858,18 @@ const props = defineProps({
     waGatewayStatus: { type: Boolean, default: false },
 });
 
+// Helper Local Date (WIB / Browser Local timezone, bebas dari bug UTC)
+function getLocalDateString(offsetDays = 0) {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 // Filters State
-const filterDate = ref(props.filters?.date || new Date().toISOString().slice(0, 10));
+const filterDate = ref(props.filters?.date || getLocalDateString(0));
 const filterArea = ref(props.filters?.area_id || '');
 const customNote = ref(props.filters?.note || 'Tetap semangat dan jaga keselamatan kerja! 💪');
 const isLoading = ref(false);
@@ -858,7 +878,7 @@ const isLoading = ref(false);
 const activeTab = ref('gangguan');
 
 const tabs = computed(() => [
-    { key: 'gangguan', label: 'Gangguan PGS/PGK', icon: '🆘', count: props.summary?.gangguan || 0 },
+    { key: 'gangguan', label: 'Gangguan PGS/PGK/PGJ', icon: '🆘', count: props.summary?.gangguan || 0 },
     { key: 'pemasangan', label: 'Pemasangan Baru', icon: '🛜', count: props.summary?.pemasangan || 0 },
     { key: 'survey', label: 'Survey PSB', icon: '🔎', count: props.summary?.survey || 0 },
     { key: 'cbp', label: 'Cabut Perangkat', icon: '🔌', count: props.summary?.cbp || 0 },
@@ -881,9 +901,7 @@ const activeWaText = computed(() => {
 
 // Quick Date Change
 function setQuickDate(offsetDays) {
-    const d = new Date();
-    d.setDate(d.getDate() + offsetDays);
-    filterDate.value = d.toISOString().slice(0, 10);
+    filterDate.value = getLocalDateString(offsetDays);
     applyFilter();
 }
 

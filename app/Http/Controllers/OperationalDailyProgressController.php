@@ -164,7 +164,8 @@ class OperationalDailyProgressController extends Controller
             $waService = app(WhatsAppGatewayService::class);
             $rawPhone = trim($validated['phone']);
 
-            // Format nomor jika personal (08xxx -> 628xxx)
+            // Bersihkan karakter selain angka, @, dan titik (untuk group ID WA atau no telepon)
+            $rawPhone = preg_replace('/[^\d@\.a-zA-Z_-]/', '', $rawPhone);
             if (str_starts_with($rawPhone, '08')) {
                 $rawPhone = '628' . substr($rawPhone, 2);
             }
@@ -233,12 +234,11 @@ class OperationalDailyProgressController extends Controller
         $pgsQuery = PgsTicket::with(['customer.ont.odp', 'technicians', 'leadTechnician', 'resolvedByUser', 'area'])
             ->where(function ($q) use ($date, $isToday) {
                 $q->whereDate('scheduled_date', $date)
-                  ->orWhereDate('resolved_at', $date);
+                  ->orWhereDate('resolved_at', $date)
+                  ->orWhereDate('created_at', $date);
 
                 if ($isToday) {
                     $q->orWhere(function ($sq) use ($date) {
-                        $sq->whereDate('created_at', $date);
-                    })->orWhere(function ($sq) use ($date) {
                         $sq->whereIn('status', ['in_progress', 'scheduled', 'admin_handling', 'reported', 'open'])
                            ->whereNull('resolved_at')
                            ->where(function ($ssq) use ($date) {
@@ -250,7 +250,10 @@ class OperationalDailyProgressController extends Controller
             });
 
         if (!empty($areaIds)) {
-            $pgsQuery->whereIn('area_id', $areaIds);
+            $pgsQuery->where(function ($q) use ($areaIds) {
+                $q->whereIn('area_id', $areaIds)
+                  ->orWhereHas('customer', fn($cq) => $cq->whereIn('area_id', $areaIds));
+            });
         }
 
         foreach ($pgsQuery->get() as $pgs) {
@@ -327,12 +330,11 @@ class OperationalDailyProgressController extends Controller
         $pgkQuery = PgkTicket::with(['customer.ont.odp', 'technicians', 'leadTechnician', 'resolvedByUser', 'area'])
             ->where(function ($q) use ($date, $isToday) {
                 $q->whereDate('scheduled_date', $date)
-                  ->orWhereDate('resolved_at', $date);
+                  ->orWhereDate('resolved_at', $date)
+                  ->orWhereDate('created_at', $date);
 
                 if ($isToday) {
                     $q->orWhere(function ($sq) use ($date) {
-                        $sq->whereDate('created_at', $date);
-                    })->orWhere(function ($sq) use ($date) {
                         $sq->whereIn('status', ['in_progress', 'scheduled', 'admin_handling', 'reported', 'open'])
                            ->whereNull('resolved_at')
                            ->where(function ($ssq) use ($date) {
@@ -344,7 +346,10 @@ class OperationalDailyProgressController extends Controller
             });
 
         if (!empty($areaIds)) {
-            $pgkQuery->whereIn('area_id', $areaIds);
+            $pgkQuery->where(function ($q) use ($areaIds) {
+                $q->whereIn('area_id', $areaIds)
+                  ->orWhereHas('customer', fn($cq) => $cq->whereIn('area_id', $areaIds));
+            });
         }
 
         foreach ($pgkQuery->get() as $pgk) {
@@ -421,12 +426,11 @@ class OperationalDailyProgressController extends Controller
         $pgjQuery = PgjTicket::with(['area', 'olt', 'odc', 'odp', 'technicians', 'leadTechnician', 'resolvedByUser'])
             ->where(function ($q) use ($date, $isToday) {
                 $q->whereDate('scheduled_date', $date)
-                  ->orWhereDate('resolved_at', $date);
+                  ->orWhereDate('resolved_at', $date)
+                  ->orWhereDate('created_at', $date);
 
                 if ($isToday) {
                     $q->orWhere(function ($sq) use ($date) {
-                        $sq->whereDate('created_at', $date);
-                    })->orWhere(function ($sq) use ($date) {
                         $sq->whereIn('status', ['in_progress', 'scheduled', 'admin_handling', 'reported', 'open'])
                            ->whereNull('resolved_at')
                            ->where(function ($ssq) use ($date) {
@@ -438,7 +442,12 @@ class OperationalDailyProgressController extends Controller
             });
 
         if (!empty($areaIds)) {
-            $pgjQuery->whereIn('area_id', $areaIds);
+            $pgjQuery->where(function ($q) use ($areaIds) {
+                $q->whereIn('area_id', $areaIds)
+                  ->orWhereHas('odp', fn($oq) => $oq->whereIn('area_id', $areaIds))
+                  ->orWhereHas('odc', fn($oq) => $oq->whereIn('area_id', $areaIds))
+                  ->orWhereHas('olt', fn($oq) => $oq->whereIn('area_id', $areaIds));
+            });
         }
 
         foreach ($pgjQuery->get() as $pgj) {
@@ -515,12 +524,15 @@ class OperationalDailyProgressController extends Controller
         $areaIds = is_array($areaId) ? $areaId : ($areaId ? [$areaId] : []);
 
         // 1. Ambil dari TechnicianSchedule type = 'installation'
-        $scheduleQuery = TechnicianSchedule::with(['customer.ont.odp', 'customer.package', 'technician'])
+        $scheduleQuery = TechnicianSchedule::with(['customer.ont.odp', 'customer.package', 'customer.surveys.odp', 'technician'])
             ->where('type', 'installation')
             ->whereDate('scheduled_date', $date);
 
         if (!empty($areaIds)) {
-            $scheduleQuery->whereHas('customer', fn($q) => $q->whereIn('area_id', $areaIds));
+            $scheduleQuery->where(function ($q) use ($areaIds) {
+                $q->whereIn('area_id', $areaIds)
+                  ->orWhereHas('customer', fn($cq) => $cq->whereIn('area_id', $areaIds));
+            });
         }
 
         // Grouping berdasarkan customer_id agar bila 1 pelanggan ditugaskan 2 teknisi (misal: Ruli & Saepul),
@@ -566,7 +578,7 @@ class OperationalDailyProgressController extends Controller
 
             $pkgName = $cust->package?->name ?? 'Paket Internet';
             $detail = "{$pkgName} - {$cust->address}";
-            $odpName = $cust->ont?->odp?->name ?? '-';
+            $odpName = $cust->ont?->odp?->name ?? ($cust->surveys?->last()?->odp?->name ?? '-');
 
             // Ambil waktu dari schedule pertama yang memiliki scheduled_time
             $duration = '-';
@@ -704,7 +716,10 @@ class OperationalDailyProgressController extends Controller
             ->whereDate('scheduled_date', $date);
 
         if (!empty($areaIds)) {
-            $schedQuery->whereHas('customer', fn($q) => $q->whereIn('area_id', $areaIds));
+            $schedQuery->where(function ($q) use ($areaIds) {
+                $q->whereIn('area_id', $areaIds)
+                  ->orWhereHas('customer', fn($cq) => $cq->whereIn('area_id', $areaIds));
+            });
         }
 
         $groupedScheds = $schedQuery->get()->groupBy('customer_id');
@@ -805,6 +820,13 @@ class OperationalDailyProgressController extends Controller
             $address = $cust?->address ?? '-';
             $reason = $cbp->reason ?: ($cbp->notes ?: 'Putus Berlangganan');
 
+            $duration = '-';
+            if ($cbp->start_time && $cbp->end_time) {
+                $duration = substr($cbp->start_time, 0, 5) . ' - ' . substr($cbp->end_time, 0, 5);
+            } elseif ($cbp->start_time) {
+                $duration = 'Mulai ' . substr($cbp->start_time, 0, 5);
+            }
+
             $items[] = [
                 'customer_name' => $custName,
                 'detail' => "{$custName} - {$address} (ODP: {$odpName}, Alasan: {$reason})",
@@ -813,6 +835,7 @@ class OperationalDailyProgressController extends Controller
                 'reason' => $reason,
                 'phone' => $cust?->phone ?? '-',
                 'technicians' => $techniciansStr,
+                'duration' => $duration,
                 'status_label' => $statusLabel,
                 'status_class' => $statusClass,
                 'is_done' => $isDone,
@@ -845,10 +868,20 @@ class OperationalDailyProgressController extends Controller
         }
 
         $techUsers = $allTechnicians->get(['id', 'name', 'phone', 'is_on_duty', 'area_id']);
+        $techNamesList = $techUsers->pluck('name')->toArray();
 
-        // 2. Ambil WorkSchedule hari ini
+        // 2. Ambil WorkSchedule hari ini KHUSUS teknisi & maintenance
         $schedules = WorkSchedule::with(['employee', 'shift'])
             ->whereDate('date', $date)
+            ->whereHas('employee', function ($eq) {
+                $eq->where(function ($sq) {
+                    $sq->where('position', 'LIKE', '%teknisi%')
+                       ->orWhere('position', 'LIKE', '%maintenance%')
+                       ->orWhere('position', 'LIKE', '%lapangan%')
+                       ->orWhere('position', 'LIKE', '%jaringan%')
+                       ->orWhere('position', 'LIKE', '%serbu%');
+                });
+            })
             ->get();
 
         $offList = [];
@@ -870,16 +903,25 @@ class OperationalDailyProgressController extends Controller
             }
         }
 
-        // Cek juga dari data Attendance jika ada status off / leave
-        $attendances = Attendance::with('user')
+        // Cek juga dari data Attendance jika ada status off / leave KHUSUS teknisi & maintenance
+        $attendances = Attendance::with('employee')
             ->whereDate('date', $date)
             ->whereIn('status', ['leave', 'sick', 'off'])
+            ->whereHas('employee', function ($eq) {
+                $eq->where(function ($sq) {
+                    $sq->where('position', 'LIKE', '%teknisi%')
+                       ->orWhere('position', 'LIKE', '%maintenance%')
+                       ->orWhere('position', 'LIKE', '%lapangan%')
+                       ->orWhere('position', 'LIKE', '%jaringan%')
+                       ->orWhere('position', 'LIKE', '%serbu%');
+                });
+            })
             ->get();
 
         foreach ($attendances as $att) {
-            $uName = $att->user?->name;
-            if ($uName && !in_array($uName, $offList)) {
-                $offList[] = $uName;
+            $eName = $att->employee?->name;
+            if ($eName && !in_array($eName, $offList)) {
+                $offList[] = $eName;
             }
         }
 
@@ -892,9 +934,20 @@ class OperationalDailyProgressController extends Controller
         }
 
         // Tambahkan juga teknisi yang memiliki tugas aktif di hari ini (bila belum tercantum)
+        // HANYA jika ia terdaftar sebagai teknisi/maintenance, bukan staff non-lapangan
         foreach ($activeJobTechNames as $aName) {
-            if ($aName && $aName !== '-' && $aName !== 'Belum Ditugaskan' && $aName !== 'Tim Maintenance Jalur' && !in_array($aName, $offList)) {
-                $onDutyList[] = $aName;
+            if ($aName && !in_array($aName, ['-', 'Belum Ditugaskan', 'Tim Maintenance Jalur', 'Petugas Survey', 'Petugas CBP', 'Teknisi Instalasi'])) {
+                if (!in_array($aName, $offList) && !in_array($aName, $onDutyList)) {
+                    $isTechStaff = User::where('name', $aName)
+                        ->where(function ($uq) {
+                            $uq->whereHas('roles', fn($r) => $r->whereIn('name', ['teknisi', 'kepala teknisi', 'maintenance', 'teknisi lapangan']))
+                               ->orWhereIn('role', ['teknisi', 'kepala teknisi', 'maintenance']);
+                        })->exists();
+
+                    if ($isTechStaff || in_array($aName, $techNamesList)) {
+                        $onDutyList[] = $aName;
+                    }
+                }
             }
         }
 
@@ -1019,15 +1072,20 @@ class OperationalDailyProgressController extends Controller
             $groupedCbp = collect($cbpList)->groupBy('technicians');
             foreach ($groupedCbp as $techName => $cItems) {
                 $lines[] = "";
-                $lines[] = "👷 *Petugas Survey/Teknisi :* {$techName}";
+                $lines[] = "👷 *Petugas Teknisi/CBP :* {$techName}";
                 $idx = 1;
                 foreach ($cItems as $c) {
-                    $lines[] = "{$idx}. Data detail: {$c['detail']} - Status: {$c['status_label']}";
+                    $lines[] = "{$idx}. Nama Pelanggan : {$c['customer_name']}";
+                    $lines[] = "   Alamat : {$c['address']}";
+                    $lines[] = "   ODP\t  : {$c['odp']}";
+                    $lines[] = "   Alasan : {$c['reason']}";
+                    $lines[] = "   HP: {$c['phone']}";
+                    $lines[] = "   Status: {$c['status_label']}";
                     $idx++;
                 }
             }
         } else {
-            $lines[] = "👷 Petugas Survey/Teknisi : -";
+            $lines[] = "👷 Petugas Teknisi/CBP : -";
             $lines[] = "(Nihil / Belum ada pencabutan)";
         }
         $lines[] = "";
