@@ -148,11 +148,21 @@ const escapeHtmlAttr = (str) => {
     return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
 };
 
-// State for Nearby API
+// State for Nearby API & Results Display
 const isSearchingNearby = ref(false);
 const nearbyResults = ref(null);
 const closestOdp = ref(null);
+const closestOdc = ref(null);
+const closestCustomer = ref(null);
 const closestLineLayer = ref(null);
+
+// Category Selection in Results: 'odp' | 'odc' | 'customer' | 'all'
+const resultActiveTab = ref('odp');
+const resultsSearchQuery = ref('');
+const displayLimit = ref(12);
+
+// Map of markers for instant popup opening on click
+const markersMap = new Map();
 
 // Filtered Lists (using nearby API results if search was performed, otherwise props)
 const visibleOdcs = computed(() => {
@@ -244,6 +254,174 @@ const visibleEmployees = computed(() => {
     });
 });
 
+// ─── DAFTAR PERANGKAT & PELANGGAN TERDEKAT (SORTED BY DISTANCE) ───
+const nearbyOdpsList = computed(() => {
+    if (!myLocation.value) return [];
+    const source = (nearbyResults.value && nearbyResults.value.odps && nearbyResults.value.odps.length > 0)
+        ? nearbyResults.value.odps
+        : props.odps;
+
+    return source.map(item => {
+        const lat = parseFloat(item.latitude);
+        const lng = parseFloat(item.longitude);
+        if (isNaN(lat) || isNaN(lng) || !isFinite(lat) || !isFinite(lng)) return null;
+
+        const dist = item.distance_meters !== undefined
+            ? item.distance_meters
+            : Math.round(calculateDistanceMeters(myLocation.value.lat, myLocation.value.lng, lat, lng));
+
+        const totalPorts = parseInt(item.total_ports ?? 8, 10);
+        const usedPorts = parseInt(item.used_ports ?? 0, 10);
+        const availablePorts = item.available_ports !== undefined
+            ? item.available_ports
+            : Math.max(0, totalPorts - usedPorts);
+
+        return {
+            ...item,
+            _type: 'odp',
+            latitude: lat,
+            longitude: lng,
+            distance_meters: dist,
+            total_ports: totalPorts,
+            used_ports: usedPorts,
+            available_ports: availablePorts,
+            odc_name: item.odc_name || item.odc?.name || '-',
+            area_name: item.area_name || item.area?.name || '-',
+            address: item.address || 'Tanpa Alamat',
+            status: item.status || 'active',
+        };
+    })
+    .filter(item => {
+        if (!item) return false;
+        if (filterCabang.value && item.area_id != filterCabang.value) return false;
+        if (filterOdc.value && item.odc_id != filterOdc.value) return false;
+        if (filterOdp.value && item.id != filterOdp.value) return false;
+        if (searchRadiusMeters.value && item.distance_meters > searchRadiusMeters.value) return false;
+        return true;
+    })
+    .sort((a, b) => a.distance_meters - b.distance_meters);
+});
+
+const nearbyOdcsList = computed(() => {
+    if (!myLocation.value) return [];
+    const source = (nearbyResults.value && nearbyResults.value.odcs && nearbyResults.value.odcs.length > 0)
+        ? nearbyResults.value.odcs
+        : props.odcs;
+
+    return source.map(item => {
+        const lat = parseFloat(item.latitude);
+        const lng = parseFloat(item.longitude);
+        if (isNaN(lat) || isNaN(lng) || !isFinite(lat) || !isFinite(lng)) return null;
+
+        const dist = item.distance_meters !== undefined
+            ? item.distance_meters
+            : Math.round(calculateDistanceMeters(myLocation.value.lat, myLocation.value.lng, lat, lng));
+
+        return {
+            ...item,
+            _type: 'odc',
+            latitude: lat,
+            longitude: lng,
+            distance_meters: dist,
+            odps_count: item.odps_count ?? (props.odps.filter(o => o.odc_id == item.id).length),
+            area_name: item.area_name || item.area?.name || '-',
+            address: item.address || item.location || 'Tanpa Alamat',
+            status: item.status || 'active',
+        };
+    })
+    .filter(item => {
+        if (!item) return false;
+        if (filterCabang.value && item.area_id != filterCabang.value) return false;
+        if (filterOdc.value && item.id != filterOdc.value) return false;
+        if (searchRadiusMeters.value && item.distance_meters > searchRadiusMeters.value) return false;
+        return true;
+    })
+    .sort((a, b) => a.distance_meters - b.distance_meters);
+});
+
+const nearbyCustomersList = computed(() => {
+    if (!myLocation.value) return [];
+    const source = (nearbyResults.value && nearbyResults.value.customers && nearbyResults.value.customers.length > 0)
+        ? nearbyResults.value.customers
+        : props.customers;
+
+    return source.map(item => {
+        const lat = parseFloat(item.latitude);
+        const lng = parseFloat(item.longitude);
+        if (isNaN(lat) || isNaN(lng) || !isFinite(lat) || !isFinite(lng)) return null;
+
+        const dist = item.distance_meters !== undefined
+            ? item.distance_meters
+            : Math.round(calculateDistanceMeters(myLocation.value.lat, myLocation.value.lng, lat, lng));
+
+        return {
+            ...item,
+            _type: 'customer',
+            latitude: lat,
+            longitude: lng,
+            distance_meters: dist,
+            odp_name: item.odp_name || item.odp?.name || '-',
+            area_name: item.area_name || item.areaModel?.name || item.area || '-',
+            address: item.address || 'Tanpa Alamat',
+            status: item.status || 'active',
+        };
+    })
+    .filter(item => {
+        if (!item) return false;
+        if (filterCabang.value && item.area_id != filterCabang.value) return false;
+        if (filterOdc.value && item.odc_id != filterOdc.value) return false;
+        if (filterOdp.value && item.odp_id != filterOdp.value) return false;
+        if (filterStatusPelanggan.value) {
+            if (filterStatusPelanggan.value === 'gratis') {
+                if (item.service_status !== 'gratis') return false;
+            } else if (filterStatusPelanggan.value === 'free_home') {
+                if (item.service_status !== 'free_home') return false;
+            } else if (filterStatusPelanggan.value === 'terminated') {
+                if (!['terminated', 'canceled', 'inactive'].includes(item.status)) return false;
+            } else {
+                if (item.status !== filterStatusPelanggan.value) return false;
+            }
+        }
+        if (searchRadiusMeters.value && item.distance_meters > searchRadiusMeters.value) return false;
+        return true;
+    })
+    .sort((a, b) => a.distance_meters - b.distance_meters);
+});
+
+// Item yang aktif ditampilkan di card Hasil Radar
+const activeTabItems = computed(() => {
+    let list = [];
+    if (resultActiveTab.value === 'odp') {
+        list = nearbyOdpsList.value;
+    } else if (resultActiveTab.value === 'odc') {
+        list = nearbyOdcsList.value;
+    } else if (resultActiveTab.value === 'customer') {
+        list = nearbyCustomersList.value;
+    } else {
+        list = [...nearbyOdpsList.value, ...nearbyOdcsList.value, ...nearbyCustomersList.value]
+            .sort((a, b) => a.distance_meters - b.distance_meters);
+    }
+    return list;
+});
+
+const filteredActiveTabItems = computed(() => {
+    const list = activeTabItems.value;
+    if (!resultsSearchQuery.value) return list;
+    const q = resultsSearchQuery.value.toLowerCase().trim();
+    return list.filter(item =>
+        (item.name && item.name.toLowerCase().includes(q)) ||
+        (item.customer_code && item.customer_code.toLowerCase().includes(q)) ||
+        (item.address && item.address.toLowerCase().includes(q)) ||
+        (item.odc_name && item.odc_name.toLowerCase().includes(q)) ||
+        (item.odp_name && item.odp_name.toLowerCase().includes(q)) ||
+        (item.area_name && item.area_name.toLowerCase().includes(q))
+    );
+});
+
+const displayedNearbyItems = computed(() => {
+    return filteredActiveTabItems.value.slice(0, displayLimit.value);
+});
+
 // Stats Counts
 const stats = computed(() => {
     return {
@@ -306,14 +484,35 @@ const drawDirectLineToClosestOdp = () => {
     closestLineLayer.value = L.layerGroup([polyline, labelMarker]).addTo(map);
 };
 
-// Focus map to specific ODP
-const focusToOdp = (odp) => {
-    if (!map || !odp || !odp.latitude || !odp.longitude) return;
-    const lat = parseFloat(odp.latitude);
-    const lng = parseFloat(odp.longitude);
+// Focus map to specific Item (ODP / ODC / Pelanggan)
+const focusToItem = (item) => {
+    if (!map || !item || !item.latitude || !item.longitude) return;
+    const lat = parseFloat(item.latitude);
+    const lng = parseFloat(item.longitude);
     if (!isFinite(lat) || !isFinite(lng)) return;
-    map.flyTo([lat, lng], 17, { duration: 1.2 });
+
+    map.flyTo([lat, lng], 18, { duration: 1.2 });
+
+    const type = item._type || 'odp';
+    const key = `${type}-${item.id}`;
+
+    setTimeout(() => {
+        if (markersMap.has(key)) {
+            const marker = markersMap.get(key);
+            if (clusterGroup && clusterGroup.hasLayer(marker)) {
+                clusterGroup.zoomToShowLayer(marker, () => {
+                    marker.openPopup();
+                });
+            } else {
+                marker.openPopup();
+            }
+        }
+    }, 600);
 };
+
+const focusToOdp = (odp) => focusToItem({ ...odp, _type: 'odp' });
+const focusToOdc = (odc) => focusToItem({ ...odc, _type: 'odc' });
+const focusToCustomer = (c) => focusToItem({ ...c, _type: 'customer' });
 
 // GPS Location Detection
 const getMyLocation = () => {
@@ -369,6 +568,8 @@ const handleSearchNearby = async () => {
 
         nearbyResults.value = response.data;
         closestOdp.value = response.data.closest_odp || null;
+        closestOdc.value = response.data.closest_odc || null;
+        closestCustomer.value = response.data.closest_customer || null;
 
         drawDirectLineToClosestOdp();
         refreshMapMarkers();
@@ -581,6 +782,7 @@ const refreshMapMarkers = () => {
     if (!map || !L || !clusterGroup) return;
 
     clusterGroup.clearLayers();
+    markersMap.clear();
 
     if (activeTab.value === 'karyawan') {
         // Plot Employees
@@ -613,6 +815,7 @@ const refreshMapMarkers = () => {
                 </div>
             `);
             clusterGroup.addLayer(marker);
+            markersMap.set(`emp-${emp.id}`, marker);
         });
         return;
     }
@@ -650,6 +853,7 @@ const refreshMapMarkers = () => {
             </div>
         `);
         clusterGroup.addLayer(marker);
+        markersMap.set(`odc-${odc.id}`, marker);
     });
 
     // 2. Plot ODPs (Teal/Green dot #10b981)
@@ -700,6 +904,7 @@ const refreshMapMarkers = () => {
             </div>
         `);
         clusterGroup.addLayer(marker);
+        markersMap.set(`odp-${odp.id}`, marker);
     });
 
     // 3. Plot Customers
@@ -758,14 +963,33 @@ const refreshMapMarkers = () => {
             </div>
         `);
         clusterGroup.addLayer(marker);
+        markersMap.set(`customer-${c.id}`, marker);
+        markersMap.set(`cust-${c.id}`, marker);
     });
 
     updateConnections();
 };
 
 // Watchers
-watch([checkOdc, checkOdp, checkPelanggan, filterStatusPelanggan, activeTab], () => {
+watch([checkOdc, checkOdp, checkPelanggan, filterOdp, filterStatusPelanggan, activeTab], () => {
     refreshMapMarkers();
+});
+
+// Auto-switch resultActiveTab if the selected category is disabled
+watch([checkOdp, checkOdc, checkPelanggan], () => {
+    if (resultActiveTab.value === 'odp' && !checkOdp.value) {
+        if (checkOdc.value) resultActiveTab.value = 'odc';
+        else if (checkPelanggan.value) resultActiveTab.value = 'customer';
+        else resultActiveTab.value = 'all';
+    } else if (resultActiveTab.value === 'odc' && !checkOdc.value) {
+        if (checkOdp.value) resultActiveTab.value = 'odp';
+        else if (checkPelanggan.value) resultActiveTab.value = 'customer';
+        else resultActiveTab.value = 'all';
+    } else if (resultActiveTab.value === 'customer' && !checkPelanggan.value) {
+        if (checkOdp.value) resultActiveTab.value = 'odp';
+        else if (checkOdc.value) resultActiveTab.value = 'odc';
+        else resultActiveTab.value = 'all';
+    }
 });
 
 watch(filterCabang, () => {
@@ -778,10 +1002,35 @@ watch(filterCabang, () => {
     }
 });
 
-watch(filterOdc, () => {
+watch(filterOdc, (newVal) => {
     filterOdp.value = '';
     refreshMapMarkers();
+    if (newVal) {
+        const targetOdc = props.odcs.find(o => o.id == newVal);
+        if (targetOdc) {
+            focusToOdc(targetOdc);
+        }
+    }
 });
+
+watch(filterOdp, (newVal) => {
+    refreshMapMarkers();
+    if (newVal) {
+        const targetOdp = props.odps.find(o => o.id == newVal);
+        if (targetOdp) {
+            focusToOdp(targetOdp);
+        }
+    }
+});
+
+const resetAllFilters = () => {
+    filterCabang.value = '';
+    filterOdc.value = '';
+    filterOdp.value = '';
+    filterStatusPelanggan.value = '';
+    resultsSearchQuery.value = '';
+    refreshMapMarkers();
+};
 
 watch(showConnections, (val) => {
     updateConnections();
@@ -1068,75 +1317,385 @@ onUnmounted(() => {
             </div>
 
             <!-- ═══ CARD: HASIL RADAR TIKOR TERDEKAT ═══ -->
-            <div v-if="closestOdp" class="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-2xl p-5 text-white shadow-lg border border-blue-700/60 transition-all">
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div class="space-y-1.5">
-                        <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/25 text-blue-200 border border-blue-400/30">
-                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                            ODP Terdekat Ditemukan
-                        </div>
-                        <h3 class="text-xl font-extrabold tracking-tight flex items-center gap-2">
-                            <span>{{ closestOdp.name }}</span>
-                            <span class="text-xs px-2.5 py-0.5 rounded-md font-bold bg-emerald-500/25 text-emerald-300 border border-emerald-500/40">
-                                {{ closestOdp.available_ports }} Port Kosong
+            <div class="bg-white dark:bg-slate-900/90 rounded-2xl border border-gray-200/80 dark:border-slate-800 p-5 shadow-xs space-y-4">
+                <!-- Header Card & Category Filter Tabs -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-slate-800">
+                    <div>
+                        <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse"></span>
+                            <span>Hasil Radar Terdekat</span>
+                            <span class="text-[11px] font-medium text-gray-500 dark:text-slate-400">
+                                (Radius: {{ formatDistance(searchRadiusMeters) }})
                             </span>
                         </h3>
-                        <div class="text-xs text-blue-200 flex flex-wrap items-center gap-x-4 gap-y-1 font-medium">
-                            <span>📍 Jarak: <strong class="text-white font-black">{{ formatDistance(closestOdp.distance_meters) }}</strong></span>
-                            <span>🏢 ODC: <strong class="text-white">{{ closestOdp.odc_name || '-' }}</strong></span>
-                            <span>🌐 Cabang: <strong class="text-white">{{ closestOdp.area_name || '-' }}</strong></span>
-                            <span>🔌 Terpakai: <strong class="text-white">{{ closestOdp.used_ports || 0 }} / {{ closestOdp.total_ports || 0 }}</strong></span>
+                        <p class="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                            Pilih kategori untuk melihat daftar perangkat atau pelanggan terdekat beserta status dan port detail.
+                        </p>
+                    </div>
+
+                    <!-- Category Tabs Pill -->
+                    <div class="inline-flex p-1 bg-gray-100 dark:bg-slate-800 rounded-xl text-xs font-semibold">
+                        <button
+                            type="button"
+                            @click="resultActiveTab = 'odp'"
+                            :class="[
+                                'px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer',
+                                resultActiveTab === 'odp'
+                                    ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-2xs font-bold'
+                                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
+                            ]"
+                        >
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            <span>ODP</span>
+                            <span class="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 font-bold">
+                                {{ nearbyOdpsList.length }}
+                            </span>
+                        </button>
+                        <button
+                            type="button"
+                            @click="resultActiveTab = 'odc'"
+                            :class="[
+                                'px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer',
+                                resultActiveTab === 'odc'
+                                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-2xs font-bold'
+                                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
+                            ]"
+                        >
+                            <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+                            <span>ODC</span>
+                            <span class="px-1.5 py-0.2 rounded-full text-[10px] bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 font-bold">
+                                {{ nearbyOdcsList.length }}
+                            </span>
+                        </button>
+                        <button
+                            type="button"
+                            @click="resultActiveTab = 'customer'"
+                            :class="[
+                                'px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer',
+                                resultActiveTab === 'customer'
+                                    ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-2xs font-bold'
+                                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
+                            ]"
+                        >
+                            <span class="w-2 h-2 rounded-full bg-purple-600"></span>
+                            <span>Pelanggan</span>
+                            <span class="px-1.5 py-0.2 rounded-full text-[10px] bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 font-bold">
+                                {{ nearbyCustomersList.length }}
+                            </span>
+                        </button>
+                        <button
+                            type="button"
+                            @click="resultActiveTab = 'all'"
+                            :class="[
+                                'px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer',
+                                resultActiveTab === 'all'
+                                    ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-2xs font-bold'
+                                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
+                            ]"
+                        >
+                            <span>Semua</span>
+                            <span class="px-1.5 py-0.2 rounded-full text-[10px] bg-gray-200 dark:bg-slate-600 text-gray-700 dark:text-slate-200 font-bold">
+                                {{ activeTabItems.length }}
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- SPOTLIGHT BANNER: TERDEKAT #1 UNTUK KATEGORI AKTIF -->
+                <div v-if="filteredActiveTabItems.length > 0" class="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-2xl p-5 text-white shadow-lg border border-blue-700/60 transition-all">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div class="space-y-1.5">
+                            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/25 text-blue-200 border border-blue-400/30">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                <span>
+                                    {{ filteredActiveTabItems[0]._type === 'odp' ? 'ODP Terdekat Ditemukan (#1)' :
+                                       filteredActiveTabItems[0]._type === 'odc' ? 'ODC Terdekat Ditemukan (#1)' :
+                                       filteredActiveTabItems[0]._type === 'customer' ? 'Pelanggan Terdekat Ditemukan (#1)' : 'Posisi Terdekat (#1)' }}
+                                </span>
+                            </div>
+                            <h3 class="text-xl font-extrabold tracking-tight flex items-center gap-2">
+                                <span>{{ filteredActiveTabItems[0].name }}</span>
+                                <span v-if="filteredActiveTabItems[0]._type === 'odp'" class="text-xs px-2.5 py-0.5 rounded-md font-bold bg-emerald-500/25 text-emerald-300 border border-emerald-500/40">
+                                    {{ filteredActiveTabItems[0].available_ports }} Port Kosong
+                                </span>
+                                <span v-else-if="filteredActiveTabItems[0]._type === 'odc'" class="text-xs px-2.5 py-0.5 rounded-md font-bold bg-blue-500/25 text-blue-300 border border-blue-500/40">
+                                    {{ filteredActiveTabItems[0].odps_count || 0 }} ODP Terhubung
+                                </span>
+                                <span v-else-if="filteredActiveTabItems[0]._type === 'customer'" class="text-xs px-2.5 py-0.5 rounded-md font-bold bg-purple-500/25 text-purple-300 border border-purple-500/40">
+                                    {{ filteredActiveTabItems[0].status || 'Aktif' }}
+                                </span>
+                            </h3>
+                            <div class="text-xs text-blue-200 flex flex-wrap items-center gap-x-4 gap-y-1 font-medium">
+                                <span>📍 Jarak: <strong class="text-white font-black">{{ formatDistance(filteredActiveTabItems[0].distance_meters) }}</strong></span>
+                                <span v-if="filteredActiveTabItems[0]._type === 'odp'">🏢 ODC: <strong class="text-white">{{ filteredActiveTabItems[0].odc_name || '-' }}</strong></span>
+                                <span v-if="filteredActiveTabItems[0]._type === 'odp'">🔌 Terpakai: <strong class="text-white">{{ filteredActiveTabItems[0].used_ports || 0 }} / {{ filteredActiveTabItems[0].total_ports || 0 }}</strong></span>
+                                <span v-if="filteredActiveTabItems[0]._type === 'customer'">🔌 ODP: <strong class="text-white">{{ filteredActiveTabItems[0].odp_name || '-' }}</strong></span>
+                                <span>🌐 Cabang: <strong class="text-white">{{ filteredActiveTabItems[0].area_name || '-' }}</strong></span>
+                                <span>🏠 Alamat: <span class="text-slate-300">{{ filteredActiveTabItems[0].address || '-' }}</span></span>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button
+                                type="button"
+                                @click="focusToItem(filteredActiveTabItems[0])"
+                                class="px-3.5 py-2 bg-white/15 hover:bg-white/25 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors border border-white/20 cursor-pointer"
+                            >
+                                <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <circle cx="12" cy="12" r="9" stroke-width="2"/>
+                                    <circle cx="12" cy="12" r="3" stroke-width="2"/>
+                                </svg>
+                                <span>Fokus di Peta</span>
+                            </button>
+                            <button
+                                type="button"
+                                @click="drawRoadRoute(filteredActiveTabItems[0].latitude, filteredActiveTabItems[0].longitude, filteredActiveTabItems[0].name)"
+                                class="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+                            >
+                                <span>🚗 Rute Jalan</span>
+                            </button>
+                            <a
+                                :href="getGoogleMapsUrl(filteredActiveTabItems[0].latitude, filteredActiveTabItems[0].longitude)"
+                                target="_blank"
+                                class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
+                            >
+                                <span>🗺️ Google Maps</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DAFTAR ITEM TERDEKAT (GRID LIST) -->
+                <div v-if="filteredActiveTabItems.length > 0" class="pt-2">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-gray-800 dark:text-slate-200">
+                                Daftar {{ resultActiveTab === 'odp' ? 'ODP' : resultActiveTab === 'odc' ? 'ODC' : resultActiveTab === 'customer' ? 'Pelanggan' : 'Semua Titik' }} Terdekat
+                            </span>
+                            <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300">
+                                {{ filteredActiveTabItems.length }} Ditemukan
+                            </span>
+                        </div>
+
+                        <!-- In-List Search Filter -->
+                        <div class="relative w-full sm:w-64">
+                            <input
+                                type="text"
+                                v-model="resultsSearchQuery"
+                                placeholder="Cari nama, kode, alamat..."
+                                class="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                            />
+                            <svg class="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <circle cx="11" cy="11" r="8" stroke-width="2" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35" />
+                            </svg>
+                            <button
+                                v-if="resultsSearchQuery"
+                                @click="resultsSearchQuery = ''"
+                                class="absolute right-2.5 top-2 text-gray-400 hover:text-gray-600 text-xs font-bold cursor-pointer"
+                            >
+                                ✕
+                            </button>
                         </div>
                     </div>
 
-                    <div class="flex flex-wrap items-center gap-2">
+                    <!-- Items Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                        <div
+                            v-for="(item, idx) in displayedNearbyItems"
+                            :key="`${item._type}-${item.id}`"
+                            class="p-3.5 rounded-xl border border-gray-200/90 dark:border-slate-800 bg-gray-50/40 dark:bg-slate-800/40 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm hover:border-blue-300 dark:hover:border-blue-700 transition-all flex flex-col justify-between"
+                        >
+                            <!-- Card Header: Rank, Type Badge & Name, Distance -->
+                            <div>
+                                <div class="flex items-start justify-between gap-2 mb-1.5">
+                                    <div class="flex items-center gap-1.5 min-w-0">
+                                        <span class="px-1.5 py-0.5 rounded text-[10px] font-black bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
+                                            #{{ idx + 1 }}
+                                        </span>
+                                        <span
+                                            :class="[
+                                                'px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider',
+                                                item._type === 'odp' ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300' :
+                                                item._type === 'odc' ? 'bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300' :
+                                                'bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300'
+                                            ]"
+                                        >
+                                            {{ item._type }}
+                                        </span>
+                                        <h4 class="font-extrabold text-gray-900 dark:text-white text-xs truncate" :title="item.name">
+                                            {{ item.name }}
+                                        </h4>
+                                    </div>
+                                    <span class="shrink-0 text-xs font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-lg border border-blue-200/60 dark:border-blue-800/40">
+                                        📍 {{ formatDistance(item.distance_meters) }}
+                                    </span>
+                                </div>
+
+                                <!-- Detail Khusus ODP: Port Status & Availability -->
+                                <div v-if="item._type === 'odp'" class="space-y-1.5 mb-2.5">
+                                    <div class="flex items-center justify-between text-[11px]">
+                                        <span class="text-gray-500 dark:text-slate-400 font-medium">
+                                            Port: <strong class="text-gray-700 dark:text-slate-200">{{ item.used_ports }}/{{ item.total_ports }}</strong>
+                                        </span>
+                                        <span
+                                            :class="[
+                                                'font-bold px-1.5 py-0.2 rounded text-[10px]',
+                                                item.available_ports > 0
+                                                    ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300'
+                                                    : 'bg-red-100 dark:bg-red-950/80 text-red-700 dark:text-red-300'
+                                            ]"
+                                        >
+                                            {{ item.available_ports > 0 ? `${item.available_ports} Port Kosong` : 'Port Penuh' }}
+                                        </span>
+                                    </div>
+                                    <div class="w-full h-1.5 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                        <div
+                                            class="h-full rounded-full transition-all"
+                                            :class="item.available_ports > 0 ? 'bg-emerald-500' : 'bg-red-500'"
+                                            :style="{ width: `${item.total_ports ? Math.round((item.used_ports / item.total_ports) * 100) : 0}%` }"
+                                        ></div>
+                                    </div>
+                                    <div class="text-[10px] text-gray-500 dark:text-slate-400 flex flex-wrap gap-x-2">
+                                        <span>🏢 ODC: <strong class="text-gray-700 dark:text-slate-300">{{ item.odc_name || '-' }}</strong></span>
+                                        <span>🌐 Cabang: <strong class="text-gray-700 dark:text-slate-300">{{ item.area_name || '-' }}</strong></span>
+                                    </div>
+                                </div>
+
+                                <!-- Detail Khusus ODC -->
+                                <div v-else-if="item._type === 'odc'" class="space-y-1 mb-2.5">
+                                    <div class="flex items-center justify-between text-[11px]">
+                                        <span class="text-blue-600 dark:text-blue-400 font-bold">
+                                            🔌 {{ item.odps_count || 0 }} ODP Terhubung
+                                        </span>
+                                        <span class="text-[10px] font-semibold text-gray-500 dark:text-slate-400 uppercase">
+                                            {{ item.status || 'Active' }}
+                                        </span>
+                                    </div>
+                                    <div class="text-[10px] text-gray-500 dark:text-slate-400">
+                                        <span>🌐 Cabang: <strong class="text-gray-700 dark:text-slate-300">{{ item.area_name || '-' }}</strong></span>
+                                    </div>
+                                </div>
+
+                                <!-- Detail Khusus Pelanggan -->
+                                <div v-else-if="item._type === 'customer'" class="space-y-1 mb-2.5">
+                                    <div class="flex items-center justify-between text-[11px]">
+                                        <span class="font-mono text-gray-500 dark:text-slate-400 text-[10px]">
+                                            {{ item.customer_code || '-' }}
+                                        </span>
+                                        <span class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 uppercase">
+                                            {{ item.service_status === 'gratis' ? 'Gratis' : item.service_status === 'free_home' ? 'Freehome' : item.status || 'Aktif' }}
+                                        </span>
+                                    </div>
+                                    <div class="text-[10px] text-gray-500 dark:text-slate-400 flex flex-wrap gap-x-2">
+                                        <span>🔌 ODP: <strong class="text-gray-700 dark:text-slate-300">{{ item.odp_name || '-' }}</strong></span>
+                                        <span>🌐 Cabang: <strong class="text-gray-700 dark:text-slate-300">{{ item.area_name || '-' }}</strong></span>
+                                    </div>
+                                </div>
+
+                                <!-- Alamat -->
+                                <p class="text-[11px] text-gray-500 dark:text-slate-400 line-clamp-1 mb-3" :title="item.address">
+                                    📍 {{ item.address || 'Tanpa Alamat' }}
+                                </p>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="pt-2 border-t border-gray-100 dark:border-slate-800 flex items-center justify-between gap-1.5">
+                                <button
+                                    type="button"
+                                    @click="focusToItem(item)"
+                                    class="px-2.5 py-1.5 bg-gray-100 dark:bg-slate-700/80 hover:bg-blue-50 dark:hover:bg-blue-950/60 text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                                    title="Fokuskan peta pada titik ini"
+                                >
+                                    <svg class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <circle cx="12" cy="12" r="9" stroke-width="2"/>
+                                        <circle cx="12" cy="12" r="3" stroke-width="2"/>
+                                    </svg>
+                                    <span>Fokus</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    @click="drawRoadRoute(item.latitude, item.longitude, item.name)"
+                                    class="px-2.5 py-1.5 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                                    title="Tampilkan rute jalan dari lokasi Anda"
+                                >
+                                    <span>🚗 Rute</span>
+                                </button>
+                                <a
+                                    :href="getGoogleMapsUrl(item.latitude, item.longitude)"
+                                    target="_blank"
+                                    class="px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors"
+                                    title="Buka rute navigasi di Google Maps"
+                                >
+                                    <span>🗺️ Maps</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tampilkan Lebih Banyak Pagination Button -->
+                    <div v-if="filteredActiveTabItems.length > displayLimit" class="text-center pt-3">
                         <button
                             type="button"
-                            @click="focusToOdp(closestOdp)"
-                            class="px-3.5 py-2 bg-white/15 hover:bg-white/25 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors border border-white/20 cursor-pointer"
+                            @click="displayLimit += 12"
+                            class="px-4 py-2 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-800 dark:text-slate-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
                         >
-                            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <circle cx="12" cy="12" r="9" stroke-width="2"/>
-                                <circle cx="12" cy="12" r="3" stroke-width="2"/>
-                            </svg>
-                            <span>Fokus di Peta</span>
+                            Tampilkan Lebih Banyak (Sisa {{ filteredActiveTabItems.length - displayLimit }} titik)
                         </button>
-                        <button
-                            type="button"
-                            @click="drawRoadRoute(closestOdp.latitude, closestOdp.longitude, closestOdp.name)"
-                            class="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
-                        >
-                            <span>🚗 Rute Jalan</span>
-                        </button>
-                        <a
-                            :href="getGoogleMapsUrl(closestOdp.latitude, closestOdp.longitude)"
-                            target="_blank"
-                            class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
-                        >
-                            <span>🗺️ Google Maps</span>
-                        </a>
                     </div>
                 </div>
-            </div>
 
-            <!-- Notice jika pencarian tidak menemukan ODP -->
-            <div v-else-if="nearbyResults && nearbyResults.odps && nearbyResults.odps.length === 0" class="bg-amber-50 dark:bg-amber-950/40 rounded-2xl p-4 border border-amber-200 dark:border-amber-800/60 text-amber-800 dark:text-amber-200 flex items-center gap-3">
-                <svg class="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <div class="text-xs">
-                    <strong class="font-bold">Tidak ada ODP dalam radius {{ formatDistance(searchRadiusMeters) }}.</strong>
-                    <span class="text-amber-700 dark:text-amber-300 ml-1">Silakan perbesar nilai radius pencarian atau sesuaikan filter Cabang.</span>
+                <!-- Empty State jika kategori aktif kosong -->
+                <div v-else class="bg-amber-50 dark:bg-amber-950/40 rounded-2xl p-4 border border-amber-200 dark:border-amber-800/60 text-amber-800 dark:text-amber-200">
+                    <div class="flex items-center gap-3">
+                        <svg class="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <div class="text-xs">
+                            <strong class="font-bold">
+                                Tidak ada {{ resultActiveTab === 'odp' ? 'ODP' : resultActiveTab === 'odc' ? 'ODC' : resultActiveTab === 'customer' ? 'Pelanggan' : 'data' }} dalam radius {{ formatDistance(searchRadiusMeters) }}.
+                            </strong>
+                            <span class="text-amber-700 dark:text-amber-300 ml-1">Silakan perbesar nilai radius pencarian atau sesuaikan filter Cabang.</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 mt-3 pl-8">
+                        <button
+                            type="button"
+                            @click="searchRadiusMeters = 1000; handleSearchNearby()"
+                            class="px-3 py-1 bg-amber-200 dark:bg-amber-900/60 hover:bg-amber-300 text-amber-900 dark:text-amber-200 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                        >
+                            Perbesar ke 1.000 Meter (1 KM)
+                        </button>
+                        <button
+                            type="button"
+                            @click="searchRadiusMeters = 5000; handleSearchNearby()"
+                            class="px-3 py-1 bg-amber-200 dark:bg-amber-900/60 hover:bg-amber-300 text-amber-900 dark:text-amber-200 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                        >
+                            Perbesar ke 5.000 Meter (5 KM)
+                        </button>
+                    </div>
                 </div>
             </div>
 
             <!-- ═══ CARD 2: FILTER DATA ═══ -->
             <div class="bg-white dark:bg-slate-900/90 rounded-2xl border border-gray-200/80 dark:border-slate-800 p-5 shadow-xs">
-                <div class="flex items-center gap-2 text-xs font-bold text-gray-700 dark:text-slate-300 mb-3.5">
-                    <svg class="w-3.5 h-3.5 text-gray-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                    </svg>
-                    <span>Filter Data</span>
+                <div class="flex items-center justify-between text-xs font-bold text-gray-700 dark:text-slate-300 mb-3.5">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-3.5 h-3.5 text-gray-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                        </svg>
+                        <span>Filter Data</span>
+                    </div>
+
+                    <button
+                        v-if="filterCabang || filterOdc || filterOdp || filterStatusPelanggan"
+                        type="button"
+                        @click="resetAllFilters"
+                        class="text-xs text-red-600 dark:text-red-400 hover:text-red-700 font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                        <span>✕</span>
+                        <span>Reset Filter</span>
+                    </button>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">

@@ -147,8 +147,8 @@ class NetworkRadarController extends Controller
         $odcsList = [];
         $customersList = [];
 
-        // Haversine formula in raw SQL (km)
-        $haversine = "(6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude))))";
+        // Haversine formula in raw SQL (km) dengan pengaman LEAST/GREATEST agar tidak menghasilkan acos NaN/NULL
+        $haversine = "(6371 * acos(LEAST(1.0, GREATEST(-1.0, cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude))))))";
 
         if ($type === 'all' || $type === 'odp') {
             $odpQuery = Odp::select('id', 'name', 'latitude', 'longitude', 'address', 'odc_id', 'area_id', 'total_ports', 'used_ports', 'status')
@@ -157,7 +157,7 @@ class NetworkRadarController extends Controller
                 ->whereNotNull('longitude')
                 ->having('distance_km', '<=', $radiusKm)
                 ->orderBy('distance_km')
-                ->limit(50)
+                ->limit(100)
                 ->with(['odc:id,name', 'area:id,name']);
 
             if ($areaId) {
@@ -168,7 +168,11 @@ class NetworkRadarController extends Controller
                 $arr = $item->toArray();
                 $arr['_type'] = 'odp';
                 $arr['distance_meters'] = round($item->distance_km * 1000);
-                $arr['available_ports'] = max(0, ($item->total_ports ?? 0) - ($item->used_ports ?? 0));
+                $total = (int) ($item->total_ports ?? 8);
+                $used = (int) ($item->used_ports ?? 0);
+                $arr['total_ports'] = $total;
+                $arr['used_ports'] = $used;
+                $arr['available_ports'] = max(0, $total - $used);
                 $arr['odc_name'] = $item->odc?->name ?? '-';
                 $arr['area_name'] = $item->area?->name ?? '-';
                 return $arr;
@@ -184,7 +188,7 @@ class NetworkRadarController extends Controller
                 ->whereNotNull('longitude')
                 ->having('distance_km', '<=', $radiusKm)
                 ->orderBy('distance_km')
-                ->limit(30)
+                ->limit(60)
                 ->with(['area:id,name'])
                 ->withCount('odps');
 
@@ -210,7 +214,7 @@ class NetworkRadarController extends Controller
                 ->whereNotNull('longitude')
                 ->having('distance_km', '<=', $radiusKm)
                 ->orderBy('distance_km')
-                ->limit(50)
+                ->limit(100)
                 ->with(['areaModel:id,name', 'ont.odp:id,name,odc_id']);
 
             if ($areaId) {
@@ -241,13 +245,17 @@ class NetworkRadarController extends Controller
         usort($results, fn($a, $b) => ($a['distance_km'] ?? 0) <=> ($b['distance_km'] ?? 0));
 
         $closestOdp = !empty($odpsList) ? $odpsList[0] : null;
+        $closestOdc = !empty($odcsList) ? $odcsList[0] : null;
+        $closestCustomer = !empty($customersList) ? $customersList[0] : null;
 
         return response()->json([
-            'results' => array_slice($results, 0, 50),
+            'results' => array_slice($results, 0, 100),
             'odps' => $odpsList,
             'odcs' => $odcsList,
             'customers' => $customersList,
             'closest_odp' => $closestOdp,
+            'closest_odc' => $closestOdc,
+            'closest_customer' => $closestCustomer,
             'center' => ['lat' => $lat, 'lng' => $lng],
             'radius_meters' => round($radiusKm * 1000),
             'radius_km' => $radiusKm,
