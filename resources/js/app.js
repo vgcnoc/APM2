@@ -1,5 +1,6 @@
 import { createApp, h } from 'vue';
 import { createInertiaApp, router } from '@inertiajs/vue3';
+import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import '../css/app.css';
 import '../css/dark.css';
 import '../css/workspace.css';
@@ -38,10 +39,7 @@ import Can from './Components/Can.vue';
 
 createInertiaApp({
     title: (title) => `${title} - ISP Management`,
-    resolve: (name) => {
-        const pages = import.meta.glob('./Pages/**/*.vue', { eager: true });
-        return pages[`./Pages/${name}.vue`];
-    },
+    resolve: (name) => resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
     setup({ el, App, props, plugin }) {
         window.__pageProps = props.initialPage.props;
         applyDeviceScale(props.initialPage.component, props.initialPage.props);

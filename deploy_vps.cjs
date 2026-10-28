@@ -8,19 +8,22 @@ git fetch origin
 git reset --hard origin/main
 git clean -fd
 php artisan migrate --force
-composer dump-autoload
+composer dump-autoload -o
 php artisan permissions:sync
 npm install --legacy-peer-deps
 npm run build
 php artisan optimize:clear
-php artisan view:clear
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
 chown -R www-data:www-data storage bootstrap/cache public/build
 chmod -R 775 storage bootstrap/cache public/build
-systemctl restart php8.2-fpm || true
-systemctl restart php8.3-fpm || true
-systemctl restart php8.4-fpm || true
+sed -i 's/# gzip_vary on;/gzip_vary on;/' /etc/nginx/nginx.conf
+sed -i 's/# gzip_proxied any;/gzip_proxied any;/' /etc/nginx/nginx.conf
+sed -i 's/# gzip_comp_level 6;/gzip_comp_level 6;/' /etc/nginx/nginx.conf
+sed -i 's/# gzip_types /gzip_types /' /etc/nginx/nginx.conf
+nginx -t && systemctl reload nginx
 systemctl restart php8.5-fpm || true
-systemctl reload nginx || true
 `;
 
 conn.on('ready', () => {

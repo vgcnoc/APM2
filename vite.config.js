@@ -23,4 +23,21 @@ export default defineConfig({
             '@': path.resolve(__dirname, 'resources/js'),
         },
     },
+    build: {
+        chunkSizeWarningLimit: 1200,
+        rollupOptions: {
+            output: {
+                manualChunks(id) {
+                    if (id.includes('node_modules')) {
+                        if (id.includes('apexcharts') || id.includes('vue3-apexcharts')) {
+                            return 'vendor-charts';
+                        }
+                        if (id.includes('leaflet') || id.includes('leaflet.markercluster')) {
+                            return 'vendor-maps';
+                        }
+                    }
+                },
+            },
+        },
+    },
 });
