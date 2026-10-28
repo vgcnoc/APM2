@@ -2746,22 +2746,20 @@ class DataMigrationService
         if ($targetCust) {
             $regDate = $targetCust->registration_date ? $targetCust->registration_date->format('Y-m-d') : ($targetCust->created_at ? $targetCust->created_at->format('Y-m-d') : date('Y-m-d'));
             $actDate = $targetCust->activation_date ? $targetCust->activation_date->format('Y-m-d') : $regDate;
-            $techOrSalesId = $salesId ?: (auth()->id() ?: 1);
-
-            $surveyTechIds = !empty($data['teknisi_survey_ids']) ? $data['teknisi_survey_ids'] : (!empty($data['teknisi_survey_id']) ? [$data['teknisi_survey_id']] : [$techOrSalesId]);
-            $surveyTechId = $surveyTechIds[0] ?? $techOrSalesId;
+            $surveyTechIds = !empty($data['teknisi_survey_ids']) ? $data['teknisi_survey_ids'] : (!empty($data['teknisi_survey_id']) ? [$data['teknisi_survey_id']] : []);
+            $surveyTechId = $surveyTechIds[0] ?? null;
             $surveySchedDate = !empty($data['tgl_jadwal_survey']) ? $data['tgl_jadwal_survey'] : $regDate;
             $surveySchedTime = !empty($data['jam_jadwal_survey']) ? $data['jam_jadwal_survey'] : '09:00';
             $surveySchedStatus = !empty($data['status_jadwal_survey']) ? $data['status_jadwal_survey'] : (in_array($targetCust->status, ['survey', 'installing', 'active']) ? 'done' : 'scheduled');
 
-            $installTechIds = !empty($data['teknisi_pasang_ids']) ? $data['teknisi_pasang_ids'] : (!empty($data['teknisi_pasang_id']) ? [$data['teknisi_pasang_id']] : [$techOrSalesId]);
-            $installTechId = $installTechIds[0] ?? $techOrSalesId;
+            $installTechIds = !empty($data['teknisi_pasang_ids']) ? $data['teknisi_pasang_ids'] : (!empty($data['teknisi_pasang_id']) ? [$data['teknisi_pasang_id']] : []);
+            $installTechId = $installTechIds[0] ?? null;
             $installSchedDate = !empty($data['tgl_jadwal_pasang']) ? $data['tgl_jadwal_pasang'] : $actDate;
             $installSchedTime = !empty($data['jam_jadwal_pasang']) ? $data['jam_jadwal_pasang'] : '10:00';
             $installSchedStatus = !empty($data['status_jadwal_pasang']) ? $data['status_jadwal_pasang'] : (in_array($targetCust->status, ['active', 'terminated']) ? 'done' : 'scheduled');
 
-            // 1. Jadwal Survey (TechnicianSchedule type 'survey')
-            if (!empty($data['tgl_jadwal_survey']) || in_array($targetCust->status, ['survey', 'installing', 'active', 'terminated'])) {
+            // 1. Jadwal Survey (TechnicianSchedule type 'survey') - Hanya jika ada penugasan teknisi survey
+            if (!empty($surveyTechIds)) {
                 $notesSurvey = !empty($data['catatan_jadwal_survey']) ? $data['catatan_jadwal_survey'] : 'Jadwal survey lapangan migrasi sistem';
                 $existingSurveyScheds = TechnicianSchedule::where('customer_id', $targetCust->id)->where('type', 'survey')->get();
 
@@ -2808,8 +2806,8 @@ class DataMigrationService
                 }
             }
 
-            // 3. Jadwal Pasang (TechnicianSchedule type 'installation') - Auto-render ke Card "Riwayat Alokasi Material & ONT"
-            if (!empty($data['tgl_jadwal_pasang']) || in_array($targetCust->status, ['installing', 'active', 'terminated'])) {
+            // 3. Jadwal Pasang (TechnicianSchedule type 'installation') - Hanya jika ada penugasan teknisi pasang
+            if (!empty($installTechIds)) {
                 $schedNotes = [];
                 if (!empty($ontSn)) {
                     $schedNotes[] = "ONT: {$ontBrand} {$ontModel} (SN: {$ontSn})";
