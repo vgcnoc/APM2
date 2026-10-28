@@ -4,6 +4,7 @@ import { Head, Link } from '@inertiajs/vue3';
 import StatCard from '@/Components/StatCard.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 import DashboardAttendanceWidget from '@/Components/Attendance/DashboardAttendanceWidget.vue';
+import DashboardWorstAttendanceWidget from '@/Components/Attendance/DashboardWorstAttendanceWidget.vue';
 import CustomerSearchWidget from '@/Components/Dashboard/CustomerSearchWidget.vue';
 
 defineProps({
@@ -13,6 +14,7 @@ defineProps({
     ticketTasks: Array,
     maintenanceTasks: { type: Array, default: () => [] },
     attendanceData: { type: Object, default: () => ({}) },
+    worstAttendanceData: { type: Object, default: () => ({}) },
 });
 
 const formatDate = (dateStr) => {
@@ -31,6 +33,9 @@ const formatDate = (dateStr) => {
     <AppLayout title="Dashboard Teknisi & Maintenance" subtitle="Ringkasan tugas lapangan, pemeliharaan jalur, dan jadwal kerja Anda">
         <!-- Presensi Reguler Teknisi Widget -->
         <DashboardAttendanceWidget :attendance-data="attendanceData" class="mb-6" />
+
+        <!-- ═══ Evaluasi Pelanggaran Presensi, Absen Terburuk & Potongan Denda ═══ -->
+        <DashboardWorstAttendanceWidget :data="worstAttendanceData" class="mb-6" />
 
         <!-- ═══ BANNER UTAMA: PUSAT EKSEKUSI & LAPORAN LAPANGAN ═══ -->
         <div class="mb-6 bg-gradient-to-r from-teal-600 via-teal-700 to-emerald-800 rounded-3xl p-5 md:p-6 text-white shadow-xl shadow-teal-900/10 flex flex-col md:flex-row items-center justify-between gap-5 border border-teal-500/30">

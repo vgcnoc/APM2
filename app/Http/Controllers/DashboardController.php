@@ -411,6 +411,7 @@ class DashboardController extends Controller
     {
         $userId = auth()->id();
         $attendanceData = $this->getAttendanceDashboardData($request->input('employee_id'));
+        $worstAttendanceData = $this->getWorstAttendanceData('all');
 
         // ── Statistik Tugas ─────────────────────────────────
         $stats = [
@@ -518,6 +519,7 @@ class DashboardController extends Controller
             'ticketTasks' => $ticketTasks,
             'maintenanceTasks' => $maintenanceTasks,
             'attendanceData' => $attendanceData,
+            'worstAttendanceData' => $worstAttendanceData,
         ]);
     }
 
@@ -1719,7 +1721,10 @@ class DashboardController extends Controller
             });
 
         if ($selectedAreaId && $selectedAreaId !== 'all') {
-            $empQuery->where('area_id', $selectedAreaId);
+            $hasAreaEmployees = (clone $empQuery)->where('area_id', $selectedAreaId)->exists();
+            if ($hasAreaEmployees) {
+                $empQuery->where('area_id', $selectedAreaId);
+            }
         }
 
         $employees = $empQuery->get();
@@ -1912,9 +1917,20 @@ class DashboardController extends Controller
         // Ambil Top 5 karyawan dengan pelanggaran terbanyak
         $topWorstEmployees = $rankedWorst->take(5)->all();
 
+        // Cari data presensi / disiplin user yang sedang login
+        $currentEmpStat = null;
+        $currentUser = auth()->user();
+        if ($currentUser) {
+            $currentEmpStat = $rankedWorst->first(function ($item) use ($currentUser) {
+                return (isset($item['email']) && !empty($item['email']) && strtolower($item['email']) === strtolower($currentUser->email))
+                    || (isset($item['name']) && !empty($item['name']) && strtolower(trim($item['name'])) === strtolower(trim($currentUser->name)));
+            });
+        }
+
         return [
             'summary' => $summary,
             'worst_employees' => $topWorstEmployees,
+            'my_infraction_stat' => $currentEmpStat,
             'all_infractions_count' => $rankedWorst->where('infractions_count', '>', 0)->count(),
         ];
     }

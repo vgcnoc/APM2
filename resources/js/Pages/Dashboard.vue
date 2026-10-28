@@ -163,7 +163,7 @@
 
         <!-- ═══ Evaluasi Pelanggaran Presensi, Absen Terburuk & Potongan Denda ═══ -->
         <DashboardWorstAttendanceWidget 
-            v-if="$page.props.auth?.user?.role !== 'customer'"
+            v-if="!['customer', 'reseller'].includes($page.props.auth?.user?.role)"
             :data="worstAttendanceData" 
             class="mb-6" 
         />
