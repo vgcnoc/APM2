@@ -507,36 +507,87 @@
                             <input v-model="activationForm.activation_date" type="date" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" required />
                         </div>
 
-                        <!-- Insentif Teknisi Pasang Otomatis -->
-                        <div v-if="assignedInstallationTechnicians.length > 0" class="bg-gradient-to-br from-emerald-50/80 via-teal-50/40 to-slate-50 p-4 rounded-xl border border-emerald-200 shadow-xs space-y-2.5">
-                            <div class="flex items-center justify-between border-b border-emerald-100 pb-2">
+                        <!-- Rincian Insentif Otomatis (Booking, Survey, Pasang) -->
+                        <div v-if="customerIncentivesPreview.hasAny" class="bg-gradient-to-br from-emerald-50/90 via-teal-50/50 to-slate-50 p-4 rounded-xl border border-emerald-200 shadow-xs space-y-3">
+                            <div class="flex items-center justify-between border-b border-emerald-100 pb-2.5">
                                 <div class="flex items-center gap-2">
                                     <div class="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-sm shadow-xs font-bold">
                                         ⚡
                                     </div>
                                     <div>
-                                        <h4 class="text-xs font-bold text-emerald-950 uppercase tracking-wider">Insentif Teknisi Pasang</h4>
-                                        <p class="text-[10px] text-emerald-700">Diberikan penuh untuk setiap teknisi pelaksana</p>
+                                        <h4 class="text-xs font-bold text-emerald-950 uppercase tracking-wider">Rincian Insentif Terbentuk</h4>
+                                        <p class="text-[10px] text-emerald-700">Fee Booking, Survey, & Pasang otomatis masuk Insentif</p>
                                     </div>
                                 </div>
-                                <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                    {{ assignedInstallationTechnicians.length }} Teknisi Bertugas
-                                </span>
-                            </div>
-                            <div class="space-y-1.5 text-xs">
-                                <div v-for="t in assignedInstallationTechnicians" :key="t.id" class="flex justify-between items-center py-1 border-b border-emerald-100/60 last:border-0">
-                                    <div class="flex items-center gap-1.5">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                        <span class="font-bold text-slate-800">{{ t.name }}</span>
-                                        <span class="text-[10px] text-slate-400">({{ t.role || 'Teknisi' }})</span>
-                                    </div>
-                                    <span class="font-mono font-bold text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-200 shadow-2xs">
-                                        Rp {{ formatRupiah(t.fee) }}
+                                <div class="text-right">
+                                    <span class="text-[11px] font-extrabold px-2.5 py-1 rounded-lg bg-emerald-600 text-white shadow-2xs">
+                                        Total: Rp {{ formatRupiah(customerIncentivesPreview.totalAmount) }}
                                     </span>
                                 </div>
                             </div>
+
+                            <div class="space-y-2 text-xs">
+                                <!-- 1. Fee Booking (Sales) -->
+                                <div class="p-2 rounded-lg bg-white/80 border border-emerald-100 space-y-1">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-[11px] font-bold text-emerald-900 flex items-center gap-1.5">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                            Fee Booking (Sales / Referral)
+                                        </span>
+                                        <span v-if="customerIncentivesPreview.booking" class="font-mono font-bold text-emerald-700">
+                                            Rp {{ formatRupiah(customerIncentivesPreview.booking.amount) }}
+                                        </span>
+                                        <span v-else class="text-[10px] text-slate-400 font-semibold italic">Rp 0 (Tanpa Sales)</span>
+                                    </div>
+                                    <div v-if="customerIncentivesPreview.booking" class="flex items-center justify-between text-[11px] text-slate-600 pl-3">
+                                        <span>{{ customerIncentivesPreview.booking.name }} <span class="text-[10px] text-slate-400">({{ customerIncentivesPreview.booking.role || 'Sales' }})</span></span>
+                                        <span class="text-[10px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Siap Ditambahkan</span>
+                                    </div>
+                                </div>
+
+                                <!-- 2. Fee Survey (Surveyor) -->
+                                <div class="p-2 rounded-lg bg-white/80 border border-emerald-100 space-y-1">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-[11px] font-bold text-emerald-900 flex items-center gap-1.5">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                            Fee Survey
+                                        </span>
+                                        <span v-if="customerIncentivesPreview.surveys.length > 0" class="font-mono font-bold text-emerald-700">
+                                            Rp {{ formatRupiah(customerIncentivesPreview.surveys.reduce((sum, s) => sum + s.amount, 0)) }}
+                                        </span>
+                                        <span v-else class="text-[10px] text-slate-400 font-semibold italic">Rp 0 (Tanpa Survey)</span>
+                                    </div>
+                                    <div v-if="customerIncentivesPreview.surveys.length > 0" class="space-y-1 pl-3">
+                                        <div v-for="s in customerIncentivesPreview.surveys" :key="'srv-' + s.id" class="flex items-center justify-between text-[11px] text-slate-600">
+                                            <span>{{ s.name }} <span class="text-[10px] text-slate-400">({{ s.role || 'Surveyor' }})</span></span>
+                                            <span class="font-mono text-emerald-700 font-semibold">Rp {{ formatRupiah(s.amount) }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 3. Fee Instalasi / Pasang (Teknisi) -->
+                                <div class="p-2 rounded-lg bg-white/80 border border-emerald-100 space-y-1">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-[11px] font-bold text-emerald-900 flex items-center gap-1.5">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                            Fee Instalasi (Teknisi)
+                                        </span>
+                                        <span v-if="customerIncentivesPreview.installers.length > 0" class="font-mono font-bold text-emerald-700">
+                                            Rp {{ formatRupiah(customerIncentivesPreview.installers.reduce((sum, i) => sum + i.amount, 0)) }}
+                                        </span>
+                                        <span v-else class="text-[10px] text-slate-400 font-semibold italic">Rp 0 (Belum ada Teknisi)</span>
+                                    </div>
+                                    <div v-if="customerIncentivesPreview.installers.length > 0" class="space-y-1 pl-3">
+                                        <div v-for="t in customerIncentivesPreview.installers" :key="'inst-' + t.id" class="flex items-center justify-between text-[11px] text-slate-600">
+                                            <span>{{ t.name }} <span class="text-[10px] text-slate-400">({{ t.role || 'Teknisi' }})</span></span>
+                                            <span class="font-mono text-emerald-700 font-semibold">Rp {{ formatRupiah(t.amount) }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <p class="text-[10px] text-emerald-800 leading-tight">
-                                💡 <em>Setiap teknisi menerima insentif penuh masing-masing (misal 2 orang = masing-masing Rp {{ formatRupiah(props.masterFeePasang || 35000) }}). Otomatis tercatat saat aktivasi.</em>
+                                💡 <em>Setiap teknisi instalasi menerima insentif penuh masing-masing (misal 2 teknisi = masing-masing Rp {{ formatRupiah(props.masterFees?.pasang || props.masterFeePasang || 35000) }}). Seluruh fee booking, survey, dan pasang otomatis masuk ke menu Insentif & Potongan saat aktivasi.</em>
                             </p>
                         </div>
 
@@ -1123,6 +1174,10 @@ const props = defineProps({
     taxSettings: Object,
     billingSettings: Object,
     masterFeePasang: { type: Number, default: 35000 },
+    masterFees: {
+        type: Object,
+        default: () => ({ booking: 35000, survey: 15000, pasang: 35000 })
+    },
 });
 
 const currentTab = ref(props.filters?.tab || 'menunggu');
@@ -1416,23 +1471,86 @@ watch(() => activationForm.enable_tax, (val) => {
     }
 });
 
-const assignedInstallationTechnicians = computed(() => {
+const customerIncentivesPreview = computed(() => {
     const cust = activeCustomer.value;
-    if (!cust || !cust.technician_schedules) return [];
-    const schedules = cust.technician_schedules.filter(s => s.type === 'installation' && s.technician);
-    const map = new Map();
-    schedules.forEach(s => {
-        if (!map.has(s.technician_id)) {
-            map.set(s.technician_id, {
-                id: s.technician.id,
-                name: s.technician.name,
-                role: s.technician.role || 'Teknisi',
-                fee: Number(s.technician.installation_fee) > 0 ? Number(s.technician.installation_fee) : Number(props.masterFeePasang || 35000)
-            });
-        }
-    });
-    return Array.from(map.values());
+    if (!cust) return { booking: null, surveys: [], installers: [], totalAmount: 0, hasAny: false };
+
+    const masterBooking = Number(props.masterFees?.booking || 35000);
+    const masterSurvey = Number(props.masterFees?.survey || 15000);
+    const masterPasang = Number(props.masterFees?.pasang || props.masterFeePasang || 35000);
+
+    // 1. Fee Booking (Sales)
+    let booking = null;
+    if (cust.sales) {
+        const fee = Number(cust.sales.booking_fee) > 0 ? Number(cust.sales.booking_fee) : masterBooking;
+        booking = {
+            id: cust.sales.id,
+            name: cust.sales.name,
+            role: cust.sales.role || 'Sales',
+            amount: fee,
+        };
+    }
+
+    // 2. Fee Survey (Surveyor)
+    const surveyMap = new Map();
+    if (Array.isArray(cust.surveys)) {
+        cust.surveys.forEach(s => {
+            if (s.surveyor && !surveyMap.has(s.surveyor.id)) {
+                surveyMap.set(s.surveyor.id, {
+                    id: s.surveyor.id,
+                    name: s.surveyor.name,
+                    role: s.surveyor.role || 'Surveyor',
+                    amount: masterSurvey,
+                });
+            }
+        });
+    }
+    if (Array.isArray(cust.technician_schedules)) {
+        cust.technician_schedules.filter(s => s.type === 'survey' && s.technician).forEach(s => {
+            if (!surveyMap.has(s.technician_id)) {
+                surveyMap.set(s.technician_id, {
+                    id: s.technician.id,
+                    name: s.technician.name,
+                    role: s.technician.role || 'Surveyor',
+                    amount: masterSurvey,
+                });
+            }
+        });
+    }
+    const surveys = Array.from(surveyMap.values());
+
+    // 3. Fee Instalasi / Pasang (Teknisi)
+    const installMap = new Map();
+    if (Array.isArray(cust.technician_schedules)) {
+        cust.technician_schedules.filter(s => s.type === 'installation' && s.technician).forEach(s => {
+            if (!installMap.has(s.technician_id)) {
+                const fee = Number(s.technician.installation_fee) > 0 ? Number(s.technician.installation_fee) : masterPasang;
+                installMap.set(s.technician_id, {
+                    id: s.technician.id,
+                    name: s.technician.name,
+                    role: s.technician.role || 'Teknisi',
+                    amount: fee,
+                });
+            }
+        });
+    }
+    const installers = Array.from(installMap.values());
+
+    let totalAmount = 0;
+    if (booking) totalAmount += booking.amount;
+    surveys.forEach(s => totalAmount += s.amount);
+    installers.forEach(i => totalAmount += i.amount);
+
+    return {
+        booking,
+        surveys,
+        installers,
+        totalAmount,
+        hasAny: Boolean(booking || surveys.length > 0 || installers.length > 0)
+    };
 });
+
+const assignedInstallationTechnicians = computed(() => customerIncentivesPreview.value.installers);
 
 const invoiceSimulation = computed(() => {
     const cust = activeCustomer.value;

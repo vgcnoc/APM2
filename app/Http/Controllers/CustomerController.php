@@ -1507,9 +1507,14 @@ class CustomerController extends Controller
         $activeQuery = ($currentTab === 'riwayat') ? clone $historyQuery : clone $waitingQuery;
 
         $customers = $activeQuery
-            ->with(['package', 'surveys.odp', 'ont.odp.odc.olt', 'technicianSchedules' => function ($q) {
-                $q->where('type', 'installation')->with('technician');
-            }])
+            ->with([
+                'package',
+                'sales:id,name,role,booking_fee',
+                'surveys.odp',
+                'surveys.surveyor:id,name,role',
+                'ont.odp.odc.olt',
+                'technicianSchedules.technician:id,name,role,installation_fee,booking_fee',
+            ])
             ->when($request->area || $request->area_id, fn($q) => $this->applyAreaFilter($q, $request->area_id ?: $request->area))
             ->when($request->date_from, function ($q, $dateFrom) use ($currentTab) {
                 if ($currentTab === 'riwayat') {
@@ -1567,6 +1572,11 @@ class CustomerController extends Controller
                 'isolate_day' => \App\Models\Setting::get('isolate_day'),
                 'isolate_time' => \App\Models\Setting::get('isolate_time', '00:00'),
                 'prorata_formula' => \App\Models\Setting::get('prorata_formula', 'exact_days'),
+            ],
+            'masterFees' => [
+                'booking' => (float) (\App\Models\MasterFee::where('type', 'Fee Booking')->where('is_active', true)->value('nominal') ?? 35000),
+                'survey' => (float) (\App\Models\MasterFee::where('type', 'Fee Survey')->where('is_active', true)->value('nominal') ?? 15000),
+                'pasang' => (float) (\App\Models\MasterFee::where('type', 'Fee Pasang')->where('is_active', true)->value('nominal') ?? 35000),
             ],
             'masterFeePasang' => (float) (\App\Models\MasterFee::where('type', 'Fee Pasang')->where('is_active', true)->value('nominal') ?? 35000),
         ]);
@@ -3339,17 +3349,111 @@ class CustomerController extends Controller
                     ]);
                 }
 
-                // Fee Market/Booking for Sales (Otomatis deteksi Karyawan -> Insentif Payroll atau Mitra Luar -> Saldo Afiliasi)
-                if ($customer->sales_id && !in_array($customer->service_status, ['gratis', 'free_home'])) {
-                    try {
-                        \App\Services\AffiliateService::recordBookingCommission($customer);
-                    } catch (\Throwable $e) {
-                        \Illuminate\Support\Facades\Log::warning('[Affiliate] Activation booking fee error: ' . $e->getMessage());
+                // =========================================================================
+                // AUTO INCENTIVES UPON ACTIVATION: Fee Booking, Fee Survey, Fee Instalasi
+                // =========================================================================
+                $codeLabel = ($customer->customer_code && !preg_match('/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i', $customer->customer_code))
+                    ? " ({$customer->customer_code})"
+                    : '';
+
+                // 1. Fee Booking (Sales / Referral)
+                if ($customer->sales_id) {
+                    $salesUser = \App\Models\User::find($customer->sales_id);
+                    if ($salesUser) {
+                        $masterBooking = (float) (\App\Models\MasterFee::where('type', 'Fee Booking')->where('is_active', true)->value('nominal') ?? 35000);
+                        $bookingAmount = ($salesUser->booking_fee && (float)$salesUser->booking_fee > 0)
+                            ? (float) $salesUser->booking_fee
+                            : $masterBooking;
+
+                        if ($bookingAmount > 0) {
+                            $bookingRef = 'booking_cust_' . $customer->id;
+                            $alreadyBooking = \App\Models\Incentive::where('reference_id', $bookingRef)
+                                ->orWhere(function($sub) use ($customer, $salesUser) {
+                                    $sub->where('user_id', $salesUser->id)
+                                        ->where('type', 'auto')
+                                        ->where('description', 'like', 'Fee Booking Pelanggan: ' . $customer->name . '%');
+                                })
+                                ->exists();
+
+                            if (!$alreadyBooking) {
+                                \App\Models\Incentive::create([
+                                    'user_id' => $salesUser->id,
+                                    'amount' => $bookingAmount,
+                                    'type' => 'auto',
+                                    'description' => "Fee Booking Pelanggan: {$customer->name}{$codeLabel}",
+                                    'reference_id' => $bookingRef,
+                                    'incentive_date' => now(),
+                                    'status' => 'pending',
+                                ]);
+                            }
+                        }
+
+                        // Catat juga di AffiliateCommission untuk modul afiliasi
+                        if (!in_array($customer->service_status, ['gratis', 'free_home'])) {
+                            try {
+                                \App\Services\AffiliateService::recordBookingCommission($customer);
+                            } catch (\Throwable $e) {
+                                \Illuminate\Support\Facades\Log::warning('[Affiliate] Activation booking fee error: ' . $e->getMessage());
+                            }
+                        }
                     }
                 }
 
-                // Auto Incentives: Fee Pasang for Technician
-                // Cerdas: Setiap teknisi yang bertugas dalam instalasi pelanggan mendapatkan insentif penuh masing-masing (misal 2 teknisi = masing-masing Rp 35.000)
+                // 2. Fee Survey (Surveyor / Teknisi Survey)
+                $surveyorIds = collect();
+                if ($customer->surveys) {
+                    foreach ($customer->surveys as $survey) {
+                        if ($survey->surveyor_id) {
+                            $surveyorIds->push($survey->surveyor_id);
+                        }
+                    }
+                }
+                $surveySchedules = $customer->technicianSchedules()
+                    ->where('type', 'survey')
+                    ->get();
+                foreach ($surveySchedules as $sched) {
+                    if ($sched->technician_id) {
+                        $surveyorIds->push($sched->technician_id);
+                    }
+                }
+                $surveyorIds = $surveyorIds->unique()->filter()->values();
+                $masterFeeSurvey = (float) (\App\Models\MasterFee::where('type', 'Fee Survey')->where('is_active', true)->value('nominal') ?? 15000);
+
+                foreach ($surveyorIds as $srvId) {
+                    $surveyorUser = \App\Models\User::find($srvId);
+                    if (!$surveyorUser) continue;
+
+                    if ($masterFeeSurvey > 0) {
+                        $surveyRef = 'survey_cust_' . $customer->id . '_user_' . $surveyorUser->id;
+                        $alreadySurvey = \App\Models\Incentive::where('reference_id', $surveyRef)
+                            ->orWhere(function($sub) use ($customer, $surveyorUser) {
+                                $sub->where('user_id', $surveyorUser->id)
+                                    ->where('type', 'auto')
+                                    ->where('description', 'like', 'Fee Survey Pelanggan: ' . $customer->name . '%');
+                            })
+                            ->exists();
+
+                        if (!$alreadySurvey) {
+                            \App\Models\Incentive::create([
+                                'user_id' => $surveyorUser->id,
+                                'amount' => $masterFeeSurvey,
+                                'type' => 'auto',
+                                'description' => "Fee Survey Pelanggan: {$customer->name}{$codeLabel}",
+                                'reference_id' => $surveyRef,
+                                'incentive_date' => now(),
+                                'status' => 'pending',
+                            ]);
+                        }
+                    }
+                }
+
+                // Selesaikan status seluruh jadwal teknisi survey
+                $customer->technicianSchedules()
+                    ->where('type', 'survey')
+                    ->whereIn('status', ['scheduled', 'on_the_way', 'working'])
+                    ->update(['status' => 'done']);
+
+                // 3. Fee Pasang / Instalasi (Setiap Teknisi yang bertugas mendapatkan insentif penuh masing-masing)
                 $installSchedules = $customer->technicianSchedules()
                     ->where('type', 'installation')
                     ->whereIn('status', ['scheduled', 'on_the_way', 'working', 'done'])
@@ -3374,12 +3478,15 @@ class CustomerController extends Controller
                         : $masterFeePasang;
 
                     if ($feeAmount > 0) {
-                        // Pencegahan duplikasi jika aktivasi dijalankan ulang
-                        $alreadyExists = \App\Models\Incentive::where('user_id', $techUser->id)
-                            ->where('type', 'auto')
-                            ->where(function($q) use ($customer) {
-                                $q->where('description', 'like', 'Fee Pasang Pelanggan: ' . $customer->name . '%')
-                                  ->orWhere('description', 'like', '%' . ($customer->customer_code ?? '---') . '%');
+                        $installRef = 'install_cust_' . $customer->id . '_user_' . $techUser->id;
+                        $alreadyExists = \App\Models\Incentive::where('reference_id', $installRef)
+                            ->orWhere(function($sub) use ($customer, $techUser) {
+                                $sub->where('user_id', $techUser->id)
+                                    ->where('type', 'auto')
+                                    ->where(function($q) use ($customer) {
+                                        $q->where('description', 'like', 'Fee Pasang Pelanggan: ' . $customer->name . '%')
+                                          ->orWhere('description', 'like', '%' . ($customer->customer_code ?? '---') . '%');
+                                    });
                             })
                             ->exists();
 
@@ -3388,7 +3495,8 @@ class CustomerController extends Controller
                                 'user_id' => $techUser->id,
                                 'amount' => $feeAmount,
                                 'type' => 'auto',
-                                'description' => 'Fee Pasang Pelanggan: ' . $customer->name . ($customer->customer_code ? ' (' . $customer->customer_code . ')' : ''),
+                                'description' => "Fee Pasang Pelanggan: {$customer->name}{$codeLabel}",
+                                'reference_id' => $installRef,
                                 'incentive_date' => now(),
                                 'status' => 'pending'
                             ]);
@@ -4466,16 +4574,31 @@ class CustomerController extends Controller
             ->update(['status' => 'done']);
 
         // Auto Incentive: Fee Survey
-        $surveyFee = \App\Models\MasterFee::where('type', 'Fee Survey')->where('is_active', true)->value('nominal');
-        if ($surveyFee > 0) {
-            \App\Models\Incentive::create([
-                'user_id' => $validated['surveyor_id'],
-                'amount' => $surveyFee,
-                'type' => 'auto',
-                'description' => 'Fee Survey Pelanggan: ' . $customer->name,
-                'incentive_date' => now(),
-                'status' => 'pending'
-            ]);
+        $surveyFee = (float) (\App\Models\MasterFee::where('type', 'Fee Survey')->where('is_active', true)->value('nominal') ?? 15000);
+        if ($surveyFee > 0 && !empty($validated['surveyor_id'])) {
+            $refSurvey = 'survey_cust_' . $customer->id . '_user_' . $validated['surveyor_id'];
+            $codeLabel = ($customer->customer_code && !preg_match('/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i', $customer->customer_code))
+                ? " ({$customer->customer_code})"
+                : '';
+            $alreadySurvey = \App\Models\Incentive::where('reference_id', $refSurvey)
+                ->orWhere(function($sub) use ($customer, $validated) {
+                    $sub->where('user_id', $validated['surveyor_id'])
+                        ->where('type', 'auto')
+                        ->where('description', 'like', 'Fee Survey Pelanggan: ' . $customer->name . '%');
+                })
+                ->exists();
+
+            if (!$alreadySurvey) {
+                \App\Models\Incentive::create([
+                    'user_id' => $validated['surveyor_id'],
+                    'amount' => $surveyFee,
+                    'type' => 'auto',
+                    'description' => "Fee Survey Pelanggan: {$customer->name}{$codeLabel}",
+                    'reference_id' => $refSurvey,
+                    'incentive_date' => now(),
+                    'status' => 'pending'
+                ]);
+            }
         }
 
         if ($validated['feasibility'] === 'feasible') {
