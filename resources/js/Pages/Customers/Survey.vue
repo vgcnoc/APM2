@@ -8,24 +8,32 @@
                 :value="stats?.jadwalkan || 0" 
                 icon="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" 
                 color="blue" 
+                class="cursor-pointer transition-all hover:scale-[1.01]"
+                @click="selectedStatus = 'jadwalkan'; applyFilters()"
             />
             <StatCard 
                 title="Menunggu Laporan" 
                 :value="stats?.laporan || 0" 
                 icon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
                 color="indigo" 
+                class="cursor-pointer transition-all hover:scale-[1.01]"
+                @click="selectedStatus = 'laporan'; applyFilters()"
             />
             <StatCard 
                 title="Ready Install (Feasible)" 
                 :value="stats?.ready || 0" 
                 icon="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" 
                 color="emerald" 
+                class="cursor-pointer transition-all hover:scale-[1.01]"
+                @click="selectedStatus = 'ready'; applyFilters()"
             />
             <StatCard 
                 title="Unfeasible" 
                 :value="stats?.unfeasible || 0" 
                 icon="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" 
                 color="rose" 
+                class="cursor-pointer transition-all hover:scale-[1.01]"
+                @click="selectedStatus = 'unfeasible'; applyFilters()"
             />
         </div>
 
@@ -81,7 +89,7 @@
                         <button @click="applyFilters" class="w-full md:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-xl transition-colors shadow-sm shadow-blue-200 whitespace-nowrap">
                             Tampilkan
                         </button>
-                        <button @click="resetFilters" class="w-full md:w-auto px-4 py-2 bg-gray-50 text-gray-700 hover:bg-gray-100 font-medium text-sm rounded-xl transition-colors whitespace-nowrap">
+                        <button @click="resetFilters" class="w-full md:w-auto px-4 py-2 bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 font-medium text-sm rounded-xl transition-colors shadow-sm whitespace-nowrap">
                             Reset
                         </button>
                     </div>

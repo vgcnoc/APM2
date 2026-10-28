@@ -408,7 +408,14 @@ class Customer extends Model
 
     public function scopeSurvey($query)
     {
-        return $query->whereIn('status', ['survey', 'installing', 'active']);
+        return $query->where(function ($q) {
+            $q->whereIn('status', ['survey', 'installing', 'active'])
+              ->orWhere(function ($sub) {
+                  $sub->where('status', 'terminated')
+                      ->where('cancel_stage', 'survey')
+                      ->whereHas('surveys', fn($sq) => $sq->where('feasibility', 'not_feasible'));
+              });
+        });
     }
 
     public function scopeInstalled($query)

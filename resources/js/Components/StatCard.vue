@@ -60,24 +60,45 @@ const iconPaths = {
     server: 'M5 12H3l9-9 9 9h-2M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7',
 };
 
-const iconPath = computed(() => iconPaths[props.icon] || iconPaths.chart);
+const iconPath = computed(() => {
+    if (props.icon && (props.icon.startsWith('M') || props.icon.includes(' '))) {
+        return props.icon;
+    }
+    return iconPaths[props.icon] || iconPaths.chart;
+});
 
 const bgColors = {
-    blue: 'bg-blue-500/10',
-    green: 'bg-emerald-500/10',
-    yellow: 'bg-yellow-500/10',
-    red: 'bg-red-500/10',
-    purple: 'bg-purple-500/10',
-    indigo: 'bg-indigo-500/10',
+    blue: 'bg-blue-500/10 dark:bg-blue-500/20',
+    indigo: 'bg-indigo-500/10 dark:bg-indigo-500/20',
+    green: 'bg-emerald-500/10 dark:bg-emerald-500/20',
+    emerald: 'bg-emerald-500/10 dark:bg-emerald-500/20',
+    teal: 'bg-teal-500/10 dark:bg-teal-500/20',
+    cyan: 'bg-cyan-500/10 dark:bg-cyan-500/20',
+    yellow: 'bg-yellow-500/10 dark:bg-yellow-500/20',
+    amber: 'bg-amber-500/10 dark:bg-amber-500/20',
+    orange: 'bg-orange-500/10 dark:bg-orange-500/20',
+    red: 'bg-red-500/10 dark:bg-red-500/20',
+    rose: 'bg-rose-500/10 dark:bg-rose-500/20',
+    purple: 'bg-purple-500/10 dark:bg-purple-500/20',
+    slate: 'bg-slate-500/10 dark:bg-slate-500/20',
+    gray: 'bg-gray-500/10 dark:bg-gray-500/20',
 };
 
 const textColors = {
-    blue: 'text-blue-400',
-    green: 'text-emerald-400',
-    yellow: 'text-yellow-400',
-    red: 'text-red-400',
-    purple: 'text-purple-400',
-    indigo: 'text-indigo-400',
+    blue: 'text-blue-500 dark:text-blue-400',
+    indigo: 'text-indigo-500 dark:text-indigo-400',
+    green: 'text-emerald-500 dark:text-emerald-400',
+    emerald: 'text-emerald-500 dark:text-emerald-400',
+    teal: 'text-teal-500 dark:text-teal-400',
+    cyan: 'text-cyan-500 dark:text-cyan-400',
+    yellow: 'text-yellow-600 dark:text-yellow-400',
+    amber: 'text-amber-500 dark:text-amber-400',
+    orange: 'text-orange-500 dark:text-orange-400',
+    red: 'text-red-500 dark:text-red-400',
+    rose: 'text-rose-500 dark:text-rose-400',
+    purple: 'text-purple-500 dark:text-purple-400',
+    slate: 'text-slate-500 dark:text-slate-400',
+    gray: 'text-gray-500 dark:text-gray-400',
 };
 
 const iconBgClass = computed(() => bgColors[props.color] || bgColors.blue);
