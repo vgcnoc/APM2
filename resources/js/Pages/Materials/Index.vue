@@ -1,112 +1,198 @@
 <template>
     <AppLayout title="Data Material / Barang" subtitle="Kelola persediaan material infrastruktur jaringan">
         <div class="space-y-6">
-            <!-- Summary Cards -->
-            <div v-can="'materials_card_stats'" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                <div class="glass-card p-5 border-2 border-blue-500/10 hover:border-blue-500/30 transition-all">
+            <!-- Summary Cards (Interaktif & Indikator Status) -->
+            <div v-can="'materials_card_stats'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <!-- Total Item -->
+                <div 
+                    @click="setQuickStockStatus('')"
+                    class="glass-card p-5 border-2 transition-all duration-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5"
+                    :class="!filterStockStatus ? 'border-blue-500/50 ring-2 ring-blue-500/30 bg-blue-50/20 shadow-sm' : 'border-blue-500/10 hover:border-blue-500/30'"
+                    title="Klik untuk tampilkan semua material"
+                >
                     <div class="flex items-center gap-4">
                         <div class="p-3 bg-blue-100 text-blue-600 rounded-xl">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Total Item</p>
+                            <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider">Total Item</p>
                             <p class="text-2xl font-bold text-gray-900">{{ summary?.total_items || 0 }}</p>
                         </div>
                     </div>
                 </div>
+
+                <!-- Total Nilai Aset -->
                 <div v-can="'materials_field_price'" class="glass-card p-5 border-2 border-emerald-500/10 hover:border-emerald-500/30 transition-all">
                     <div class="flex items-center gap-4">
                         <div class="p-3 bg-emerald-100 text-emerald-600 rounded-xl">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Total Nilai Aset</p>
+                            <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider">Total Nilai Aset</p>
                             <p class="text-xl font-bold text-gray-900">Rp {{ formatNumber(summary?.total_value || 0) }}</p>
                         </div>
                     </div>
                 </div>
-                <div class="glass-card p-5 border-2 border-amber-500/10 hover:border-amber-500/30 transition-all">
+
+                <!-- Stok Menipis -->
+                <div 
+                    @click="setQuickStockStatus('low')"
+                    class="glass-card p-5 border-2 transition-all duration-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5"
+                    :class="filterStockStatus === 'low' ? 'border-amber-500/50 ring-2 ring-amber-500/30 bg-amber-50/20 shadow-sm' : 'border-amber-500/10 hover:border-amber-500/30'"
+                    title="Klik untuk filter stok menipis (1-10)"
+                >
                     <div class="flex items-center gap-4">
                         <div class="p-3 bg-amber-100 text-amber-600 rounded-xl">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Stok Menipis</p>
+                            <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider">Stok Menipis</p>
                             <p class="text-2xl font-bold text-gray-900">{{ summary?.low_stock || 0 }}</p>
                         </div>
                     </div>
                 </div>
-                <div class="glass-card p-5 border-2 border-red-500/10 hover:border-red-500/30 transition-all">
+
+                <!-- Stok Habis -->
+                <div 
+                    @click="setQuickStockStatus('empty')"
+                    class="glass-card p-5 border-2 transition-all duration-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5"
+                    :class="filterStockStatus === 'empty' ? 'border-red-500/50 ring-2 ring-red-500/30 bg-red-50/20 shadow-sm' : 'border-red-500/10 hover:border-red-500/30'"
+                    title="Klik untuk filter stok habis (0)"
+                >
                     <div class="flex items-center gap-4">
                         <div class="p-3 bg-red-100 text-red-600 rounded-xl">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-500 font-medium uppercase tracking-wider">Stok Habis</p>
+                            <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider">Stok Habis</p>
                             <p class="text-2xl font-bold text-gray-900">{{ summary?.out_of_stock || 0 }}</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Header Actions & Filters -->
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-2">
-                <div class="w-full md:w-auto flex flex-col sm:flex-row gap-3 flex-1">
-                    <div class="relative w-full sm:w-80">
+            <!-- Header Actions & Filters (Rapi, Terstruktur & Responsif Dua Baris) -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3.5 mb-3">
+                <!-- Baris 1: Pencarian & Tombol Aksi Utama -->
+                <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+                    <!-- Search Input -->
+                    <div class="relative flex-1 max-w-md">
                         <input 
                             type="text" 
                             v-model="search" 
-                            placeholder="Cari nama barang..." 
-                            class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-sm"
+                            placeholder="Cari nama barang, kategori, supplier..." 
+                            class="w-full pl-10 pr-9 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-sm transition-all shadow-2xs"
                             @keyup.enter="performSearch"
                         >
-                        <svg class="w-5 h-5 text-gray-400 absolute left-3.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                         </svg>
+                        <button 
+                            v-if="search" 
+                            @click="search = ''; performSearch()" 
+                            type="button" 
+                            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                            title="Hapus pencarian"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
                     </div>
-                    
-                    <select v-can="'materials_filter_category'" v-model="filterCategory" @change="performSearch" class="w-full sm:w-48 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm bg-gray-50/50">
-                        <option value="all">Semua Kategori</option>
-                        <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
-                    </select>
 
-                    <select v-can="'materials_filter_area'" v-model="filterArea" @change="performSearch" class="w-full sm:w-48 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm bg-gray-50/50">
-                        <option value="">Semua Gudang / Area</option>
-                        <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
-                    </select>
+                    <!-- Action Buttons -->
+                    <div class="flex items-center gap-2.5 flex-wrap justify-end">
+                        <button 
+                            v-can="'materials_delete'"
+                            v-if="selectedItems.length > 0"
+                            @click="deleteSelected"
+                            class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-rose-200 text-rose-600 bg-rose-50 hover:bg-rose-100 font-semibold text-xs shadow-2xs transition-all cursor-pointer"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            Hapus ({{ selectedItems.length }})
+                        </button>
 
-                    <select v-can="'materials_filter_category'" v-model="filterStockStatus" @change="performSearch" class="w-full sm:w-48 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm bg-gray-50/50">
-                        <option value="">Status Stok</option>
-                        <option value="available">Stok Tersedia (>10)</option>
-                        <option value="low">Stok Menipis (1-10)</option>
-                        <option value="empty">Stok Habis (0)</option>
-                    </select>
+                        <button 
+                            type="button" 
+                            @click="openQuickStatusModal()" 
+                            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-amber-300 text-amber-900 bg-amber-50 hover:bg-amber-100 font-bold text-xs shadow-xs hover:shadow-sm transition-all whitespace-nowrap cursor-pointer"
+                            title="Catat Status Material (Layak Pakai / Rusak / Retur)"
+                        >
+                            <span class="text-amber-600 font-black text-sm">⚡</span>
+                            <span>Buat Status Material</span>
+                        </button>
+
+                        <button 
+                            v-can="'materials_create'" 
+                            type="button"
+                            @click="openModal()" 
+                            class="btn-primary inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold shadow-xs whitespace-nowrap cursor-pointer"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            <span>Tambah Material</span>
+                        </button>
+                    </div>
                 </div>
 
-                <div class="w-full md:w-auto flex flex-col sm:flex-row gap-3 shrink-0">
+                <!-- Baris 2: Toolbar Filter Dropdown (Kategori, Area/Gudang, Status Stok, Reset) -->
+                <div class="pt-3 border-t border-gray-100 flex flex-wrap items-center gap-2.5">
+                    <!-- Filter Kategori -->
+                    <div v-can="'materials_filter_category'" class="relative flex items-center bg-gray-50 border border-gray-200/80 rounded-xl pl-3 pr-2 py-1 shadow-2xs min-w-[170px] flex-1 sm:flex-initial">
+                        <div class="shrink-0 mr-2 text-gray-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+                        </div>
+                        <div class="flex flex-col flex-1 min-w-0">
+                            <span class="text-[9px] text-gray-400 font-bold uppercase tracking-wider leading-none mt-0.5">Kategori</span>
+                            <select v-model="filterCategory" @change="performSearch" class="form-select border-0 pt-0 pb-0.5 pl-0 !pr-6 h-auto text-xs bg-transparent focus:ring-0 text-gray-700 font-semibold w-full cursor-pointer truncate">
+                                <option value="all">Semua Kategori</option>
+                                <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Filter Gudang / Area -->
+                    <div v-can="'materials_filter_area'" class="relative flex items-center bg-gray-50 border border-gray-200/80 rounded-xl pl-3 pr-2 py-1 shadow-2xs min-w-[175px] flex-1 sm:flex-initial">
+                        <div class="shrink-0 mr-2 text-gray-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        </div>
+                        <div class="flex flex-col flex-1 min-w-0">
+                            <span class="text-[9px] text-gray-400 font-bold uppercase tracking-wider leading-none mt-0.5">Gudang / Area</span>
+                            <select v-model="filterArea" @change="performSearch" class="form-select border-0 pt-0 pb-0.5 pl-0 !pr-6 h-auto text-xs bg-transparent focus:ring-0 text-gray-700 font-semibold w-full cursor-pointer truncate">
+                                <option value="">Semua Gudang / Area</option>
+                                <option v-for="area in areas" :key="area.id" :value="String(area.id)">{{ area.name }}</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Filter Status Stok -->
+                    <div v-can="'materials_filter_category'" class="relative flex items-center bg-gray-50 border border-gray-200/80 rounded-xl pl-3 pr-2 py-1 shadow-2xs min-w-[175px] flex-1 sm:flex-initial">
+                        <div class="shrink-0 mr-2 text-gray-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                        </div>
+                        <div class="flex flex-col flex-1 min-w-0">
+                            <span class="text-[9px] text-gray-400 font-bold uppercase tracking-wider leading-none mt-0.5">Status Stok</span>
+                            <select v-model="filterStockStatus" @change="performSearch" class="form-select border-0 pt-0 pb-0.5 pl-0 !pr-6 h-auto text-xs bg-transparent focus:ring-0 text-gray-700 font-semibold w-full cursor-pointer truncate">
+                                <option value="">Semua Status Stok</option>
+                                <option value="available">🟢 Stok Tersedia (>10)</option>
+                                <option value="low">🟡 Stok Menipis (1-10)</option>
+                                <option value="empty">🔴 Stok Habis (0)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Spacer -->
+                    <div class="hidden sm:block flex-1"></div>
+
+                    <!-- Reset Filters Button -->
                     <button 
-                        v-can="'materials_delete'"
-                        v-if="selectedItems.length > 0"
-                        @click="deleteSelected"
-                        class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 font-medium text-sm transition-all"
+                        v-if="search || (filterCategory && filterCategory !== 'all') || filterStockStatus || filterArea"
+                        @click="resetFilters" 
+                        type="button"
+                        class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 font-medium text-xs shadow-2xs hover:text-gray-900 transition-all cursor-pointer"
+                        title="Reset Semua Filter"
                     >
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                        Hapus ({{ selectedItems.length }})
-                    </button>
-                    <button 
-                        type="button" 
-                        @click="openQuickStatusModal()" 
-                        class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 font-bold text-sm shadow-sm transition-all"
-                        title="Catat Status Material (Layak Pakai / Rusak / Retur)"
-                    >
-                        <span class="text-amber-600 font-black">⚡</span>
-                        Buat Status Material
-                    </button>
-                    <button v-can="'materials_create'" @click="openModal()" class="btn-primary w-full md:w-auto flex items-center justify-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                        </svg>
-                        Tambah Material
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        <span>Reset Filter</span>
                     </button>
                 </div>
             </div>
@@ -915,12 +1001,40 @@ const hargaJualPerCm = computed(() => {
 
 const performSearch = () => {
     router.get('/materials', { 
-        search: search.value,
-        category: filterCategory.value,
-        stock_status: filterStockStatus.value,
-        area_id: filterArea.value || ''
+        search: search.value ? search.value.trim() : undefined,
+        category: (filterCategory.value && filterCategory.value !== 'all') ? filterCategory.value : undefined,
+        stock_status: filterStockStatus.value || undefined,
+        area_id: filterArea.value || undefined
     }, { preserveState: true, preserveScroll: true });
 };
+
+const setQuickStockStatus = (status) => {
+    if (filterStockStatus.value === status) {
+        filterStockStatus.value = '';
+    } else {
+        filterStockStatus.value = status;
+    }
+    performSearch();
+};
+
+const resetFilters = () => {
+    search.value = '';
+    filterCategory.value = 'all';
+    filterStockStatus.value = '';
+    filterArea.value = '';
+    router.get('/materials', {}, {
+        replace: true,
+        preserveState: false,
+        preserveScroll: false
+    });
+};
+
+watch(() => props.filters, (newFilters) => {
+    search.value = newFilters?.search || '';
+    filterCategory.value = newFilters?.category || 'all';
+    filterStockStatus.value = newFilters?.stock_status || '';
+    filterArea.value = newFilters?.area_id ? String(newFilters.area_id) : '';
+}, { deep: true });
 
 const calculateUnitPrice = (type) => {
     const stock = parseFloat(form.stock) || 0;
