@@ -507,6 +507,18 @@
                             <input v-model="activationForm.activation_date" type="date" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" required />
                         </div>
 
+                        <!-- Info Khusus Migrasi -->
+                        <div v-if="customerIncentivesPreview.isMigrated" class="p-3 bg-amber-50/80 rounded-xl border border-amber-200/80 text-amber-900 text-xs flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm">ℹ️</span>
+                                <div>
+                                    <span class="font-bold">Pelanggan Hasil Migrasi:</span>
+                                    <span class="text-amber-800 ml-1">Insentif internal teknisi & sales dinonaktifkan (hanya fee market affiliate luar yang berlaku).</span>
+                                </div>
+                            </div>
+                            <span v-if="customerIncentivesPreview.hasAny" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-200 text-amber-900">Affiliate Luar Aktif</span>
+                        </div>
+
                         <!-- Rincian Insentif Otomatis (Booking, Survey, Pasang) -->
                         <div v-if="customerIncentivesPreview.hasAny" class="bg-gradient-to-br from-emerald-50/90 via-teal-50/50 to-slate-50 p-4 rounded-xl border border-emerald-200 shadow-xs space-y-3">
                             <div class="flex items-center justify-between border-b border-emerald-100 pb-2.5">
@@ -1473,7 +1485,32 @@ watch(() => activationForm.enable_tax, (val) => {
 
 const customerIncentivesPreview = computed(() => {
     const cust = activeCustomer.value;
-    if (!cust) return { booking: null, surveys: [], installers: [], totalAmount: 0, hasAny: false };
+    if (!cust) return { booking: null, surveys: [], installers: [], totalAmount: 0, hasAny: false, isMigrated: false };
+
+    const isMigrated = Boolean(cust.is_migrated);
+    if (isMigrated) {
+        // Khusus migrasi: insentif teknisi (pasang, survey) dan booking karyawan tidak dimunculkan.
+        // Hanya fee market affiliate orang luar yang diperbolehkan.
+        const masterBooking = Number(props.masterFees?.booking || 35000);
+        let booking = null;
+        if (cust.sales && cust.sales.role === 'affiliate') {
+            const fee = Number(cust.sales.booking_fee) > 0 ? Number(cust.sales.booking_fee) : masterBooking;
+            booking = {
+                id: cust.sales.id,
+                name: cust.sales.name,
+                role: 'Mitra Afiliasi Luar',
+                amount: fee,
+            };
+        }
+        return {
+            booking,
+            surveys: [],
+            installers: [],
+            totalAmount: booking ? booking.amount : 0,
+            hasAny: Boolean(booking),
+            isMigrated: true
+        };
+    }
 
     const masterBooking = Number(props.masterFees?.booking || 35000);
     const masterSurvey = Number(props.masterFees?.survey || 15000);
@@ -1546,7 +1583,8 @@ const customerIncentivesPreview = computed(() => {
         surveys,
         installers,
         totalAmount,
-        hasAny: Boolean(booking || surveys.length > 0 || installers.length > 0)
+        hasAny: Boolean(booking || surveys.length > 0 || installers.length > 0),
+        isMigrated: false
     };
 });
 

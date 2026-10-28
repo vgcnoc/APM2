@@ -176,7 +176,12 @@ class AffiliateService
      */
     public static function recordBookingCommission(Customer $customer): ?AffiliateCommission
     {
-        if (\App\Models\Customer::$isMigrating || $customer->is_migrated) {
+        if (\App\Models\Customer::$isMigrating) {
+            return null;
+        }
+
+        // Aturan: Hanya boleh dibentuk SETELAH AKTIVASI
+        if ($customer->status !== 'active') {
             return null;
         }
 
@@ -189,6 +194,15 @@ class AffiliateService
             return null;
         }
 
+        $isEmployee = self::isInternalEmployee($user);
+
+        // Khusus migrasi:
+        // - Insentif booking karyawan internal JANGAN DIMUNCULKAN
+        // - Fee market affiliate orang luar yang 35.000 BOLEH DIMUNCULKAN setelah aktivasi
+        if ($customer->is_migrated && $isEmployee) {
+            return null;
+        }
+
         // Cek apakah komisi booking sudah pernah dicatat di tabel AffiliateCommission
         $alreadyRecorded = AffiliateCommission::where('affiliate_id', $customer->sales_id)
             ->where('customer_id', $customer->id)
@@ -198,8 +212,6 @@ class AffiliateService
         if ($alreadyRecorded) {
             return null;
         }
-
-        $isEmployee = self::isInternalEmployee($user);
 
         // Jika karyawan, cek juga apakah sudah ada di tabel incentives
         if ($isEmployee) {
@@ -553,7 +565,7 @@ class AffiliateService
         }
 
         $customer = $invoice->customer;
-        if (!$customer || !$customer->sales_id || $customer->is_migrated) {
+        if (!$customer || !$customer->sales_id) {
             return [];
         }
 
@@ -748,7 +760,6 @@ class AffiliateService
     public static function getUnpaidCustomersForAffiliate(User $user)
     {
         return Customer::where('sales_id', $user->id)
-            ->when(\Illuminate\Support\Facades\Schema::hasColumn('customers', 'is_migrated'), fn($q) => $q->where('is_migrated', false))
             ->whereHas('invoices', function ($q) {
                 $q->whereIn('status', ['unpaid', 'partial']);
             })

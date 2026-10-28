@@ -2938,6 +2938,53 @@ class DataMigrationService
                     'cancel_date' => $targetCust->activation_date ? $targetCust->activation_date->format('Y-m-d') : date('Y-m-d'),
                 ]);
             }
+
+            // 5. Otomatis terbitkan Invoice Prorate jika pelanggan berstatus aktif dan aktivasi pada bulan ini
+            if ($targetCust->status === 'active' && !in_array($targetCust->service_status, ['gratis', 'free_home']) && $targetCust->activation_date) {
+                $actDate = \Carbon\Carbon::parse($targetCust->activation_date);
+                $now = now();
+                if ($actDate->month === $now->month && $actDate->year === $now->year) {
+                    $invExists = Invoice::where('customer_id', $targetCust->id)
+                        ->where('period_month', $actDate->month)
+                        ->where('period_year', $actDate->year)
+                        ->exists();
+
+                    if (!$invExists) {
+                        $endOfMonth = $actDate->copy()->endOfMonth();
+                        $totalDays = (int) $actDate->daysInMonth;
+                        $daysUsed = (int) ($endOfMonth->day - $actDate->day + 1);
+                        $basePrice = $targetCust->base_amount > 0 ? (float) $targetCust->base_amount : ($targetCust->package ? (float) $targetCust->package->price : 0);
+                        $prorataAmount = ($totalDays > 0) ? ($basePrice / $totalDays) * $daysUsed : $basePrice;
+                        $prorataAmount = (int) round($prorataAmount);
+
+                        $dueDateTime = app(\App\Services\BillingIsolationSchedule::class)->forIssueDate($actDate)
+                            ->setTimezone(config('billing.timezone', 'Asia/Jakarta'));
+
+                        Invoice::create([
+                            'customer_id' => $targetCust->id,
+                            'period_month' => $actDate->month,
+                            'period_year' => $actDate->year,
+                            'amount' => $prorataAmount,
+                            'due_date' => $dueDateTime,
+                            'issued_date' => $actDate,
+                            'status' => 'unpaid',
+                            'is_prorata' => true,
+                            'billing_type' => 'prorata',
+                            'billing_cycle' => $targetCust->billing_cycle ?: 'calendar',
+                            'notes' => 'Tagihan Pertama (Prorata s/d Akhir Bulan: ' . $actDate->format('d M') . ' - ' . $endOfMonth->format('d M Y') . ')',
+                        ]);
+                    }
+                }
+            }
+
+            // 6. Fee market affiliate orang luar yang 35.000 dimunculkan setelah aktivasi
+            if ($targetCust->status === 'active' && $targetCust->sales_id && !in_array($targetCust->service_status, ['gratis', 'free_home'])) {
+                try {
+                    \App\Services\AffiliateService::recordBookingCommission($targetCust);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[DataMigrationService] Affiliate booking commission error: ' . $e->getMessage());
+                }
+            }
         }
 
         return $existing ? 'updated' : 'inserted';
