@@ -62,7 +62,7 @@
             <div 
                 @click="setQuickStatus('pending')" 
                 class="glass-card p-5 flex items-center justify-between cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 group"
-                :class="filterStatus === 'pending' ? 'ring-2 ring-yellow-500/40 border-yellow-400 bg-yellow-50/20 shadow-sm' : 'hover:border-yellow-200'"
+                :class="isPendingActive ? 'ring-2 ring-yellow-500/40 border-yellow-400 bg-yellow-50/20 shadow-sm' : 'hover:border-yellow-200'"
                 title="Filter Pelanggan Pending (Booking/Survey/Pasang)"
             >
                 <div class="flex items-center gap-3">
@@ -90,7 +90,7 @@
             <div 
                 @click="setQuickStatus('inactive')"
                 class="glass-card p-5 flex items-center justify-between cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 group"
-                :class="filterStatus === 'inactive' ? 'ring-2 ring-red-500/40 border-red-400 bg-red-50/20 shadow-sm' : 'hover:border-red-200'"
+                :class="isInactiveActive ? 'ring-2 ring-red-500/40 border-red-400 bg-red-50/20 shadow-sm' : 'hover:border-red-200'"
                 title="Filter Pelanggan Nonaktif (Isolir / Disable)"
             >
                 <div class="flex items-center gap-3">
@@ -165,7 +165,7 @@
                         <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5 leading-none mt-1">Paket</span>
                         <select v-model="filterPackage" @change="applyFilters" class="form-select border-0 pt-0 pb-1 pl-0 !pr-7 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full cursor-pointer truncate">
                             <option value="">Semua Paket</option>
-                            <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">{{ pkg.name }}</option>
+                            <option v-for="pkg in packages" :key="pkg.id" :value="String(pkg.id)">{{ pkg.name }}</option>
                         </select>
                     </div>
                 </div>
@@ -177,9 +177,9 @@
                     </div>
                     <div class="flex flex-col flex-1 min-w-0">
                         <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5 leading-none mt-1">Area</span>
-                        <select v-model="filterArea" @change="applyFilters" class="form-select border-0 pt-0 pb-1 pl-0 !pr-7 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full cursor-pointer truncate">
+                        <select v-model="filterArea" @change="onAreaChange" class="form-select border-0 pt-0 pb-1 pl-0 !pr-7 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full cursor-pointer truncate">
                             <option value="">Semua Area</option>
-                            <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
+                            <option v-for="area in areas" :key="area.id" :value="String(area.id)">{{ area.name }}</option>
                         </select>
                     </div>
                 </div>
@@ -193,7 +193,7 @@
                         <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5 leading-none mt-1">ODP</span>
                         <select v-model="filterOdp" @change="applyFilters" class="form-select border-0 pt-0 pb-1 pl-0 !pr-7 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full cursor-pointer truncate">
                             <option value="">Semua ODP</option>
-                            <option v-for="odp in odps" :key="odp.id" :value="odp.id">{{ odp.name }}</option>
+                            <option v-for="odp in filteredOdps" :key="odp.id" :value="String(odp.id)">{{ odp.name }}</option>
                         </select>
                     </div>
                 </div>
@@ -210,6 +210,8 @@
                             <option value="terlama">Terlama (Tgl Daftar)</option>
                             <option value="nama_asc">Nama (A-Z)</option>
                             <option value="nama_desc">Nama (Z-A)</option>
+                            <option value="kode_asc">ID / Kode (A-Z)</option>
+                            <option value="kode_desc">ID / Kode (Z-A)</option>
                         </select>
                     </div>
                 </div>
@@ -866,27 +868,48 @@ function getAvatarColor(name) {
     return colors[Math.abs(hash) % colors.length];
 }
 
-const filterStatus = ref(props.filters?.status || '');
-const filterServiceStatus = ref(props.filters?.service_status || '');
-const filterPackage = ref(props.filters?.package_id || '');
-const filterArea = ref(props.filters?.area_id || props.filters?.area || '');
-const filterOdp = ref(props.filters?.odp_id || '');
-const filterSort = ref(props.filters?.sort_by || '');
+const filterStatus = ref(props.filters?.status ? String(props.filters.status) : '');
+const filterServiceStatus = ref(props.filters?.service_status ? String(props.filters.service_status) : '');
+const filterPackage = ref(props.filters?.package_id ? String(props.filters.package_id) : '');
+const filterArea = ref(props.filters?.area_id ? String(props.filters.area_id) : (props.filters?.area ? String(props.filters.area) : ''));
+const filterOdp = ref(props.filters?.odp_id ? String(props.filters.odp_id) : '');
+const filterSort = ref(props.filters?.sort_by ? String(props.filters.sort_by) : '');
 const customerListRoute = computed(() => props.isolirOnly ? '/customers/isolir' : '/customers');
 
+// Status aktif untuk cards
+const isPendingActive = computed(() => ['pending', 'booking', 'survey', 'installing'].includes(filterStatus.value));
+const isInactiveActive = computed(() => ['inactive', 'suspended', 'disabled'].includes(filterStatus.value));
+
+// ODP Cascading: menyaring ODP berdasarkan Area yang dipilih
+const filteredOdps = computed(() => {
+    if (!props.odps || !Array.isArray(props.odps)) return [];
+    if (!filterArea.value) return props.odps;
+    return props.odps.filter(o => String(o.area_id) === String(filterArea.value));
+});
+
+function onAreaChange() {
+    if (filterArea.value && filterOdp.value) {
+        const odpExists = filteredOdps.value.some(o => String(o.id) === String(filterOdp.value));
+        if (!odpExists) {
+            filterOdp.value = '';
+        }
+    }
+    applyFilters();
+}
+
 watch(() => props.filters, (newFilters) => {
-    filterStatus.value = newFilters?.status || '';
-    filterServiceStatus.value = newFilters?.service_status || '';
-    filterPackage.value = newFilters?.package_id || '';
-    filterArea.value = newFilters?.area_id || newFilters?.area || '';
-    filterOdp.value = newFilters?.odp_id || '';
-    filterSort.value = newFilters?.sort_by || '';
+    filterStatus.value = newFilters?.status ? String(newFilters.status) : '';
+    filterServiceStatus.value = newFilters?.service_status ? String(newFilters.service_status) : '';
+    filterPackage.value = newFilters?.package_id ? String(newFilters.package_id) : '';
+    filterArea.value = newFilters?.area_id ? String(newFilters.area_id) : (newFilters?.area ? String(newFilters.area) : '');
+    filterOdp.value = newFilters?.odp_id ? String(newFilters.odp_id) : '';
+    filterSort.value = newFilters?.sort_by ? String(newFilters.sort_by) : '';
 }, { deep: true });
 
 function applyFilters() {
     const currentSearch = typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('search') || props.filters?.search || undefined) : props.filters?.search;
     router.get(customerListRoute.value, {
-        status: props.isolirOnly ? undefined : filterStatus.value || undefined,
+        status: props.isolirOnly ? undefined : (filterStatus.value || undefined),
         search: currentSearch || undefined,
         service_status: filterServiceStatus.value || undefined,
         package_id: filterPackage.value || undefined,
@@ -897,7 +920,12 @@ function applyFilters() {
 }
 
 function setQuickStatus(status) {
-    if (filterStatus.value === status) {
+    if (
+        (status === '' && !filterStatus.value) ||
+        (status === 'active' && filterStatus.value === 'active') ||
+        (status === 'pending' && isPendingActive.value) ||
+        (status === 'inactive' && isInactiveActive.value)
+    ) {
         filterStatus.value = '';
     } else {
         filterStatus.value = status;
@@ -912,7 +940,11 @@ function resetFilters() {
     filterArea.value = '';
     filterOdp.value = '';
     filterSort.value = '';
-    router.get(customerListRoute.value, {}, { preserveState: true, preserveScroll: true });
+    router.get(customerListRoute.value, {}, {
+        replace: true,
+        preserveState: false,
+        preserveScroll: false,
+    });
 }
 
 // ── Delete Modal ───────────────────────────────────────────

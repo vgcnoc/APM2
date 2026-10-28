@@ -77,37 +77,50 @@ class CustomerController extends Controller
                             });
                     });
                 }
-            })
+            });
+
+        // Query konteks filter untuk statistik dan data (area, paket, layanan, ODP)
+        $filterQuery = (clone $baseQuery)
             ->when($request->area || $request->area_id, fn($q) => $this->applyAreaFilter($q, $request->area_id ?: $request->area))
             ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg))
-            ->when($request->service_status, fn ($q, $ss) => $q->where('service_status', $ss));
+            ->when($request->service_status, function ($q, $ss) {
+                if ($ss === 'berbayar') {
+                    $q->where(fn ($sub) => $sub->where('service_status', 'berbayar')->orWhereNull('service_status')->orWhere('service_status', ''));
+                } else {
+                    $q->where('service_status', $ss);
+                }
+            })
+            ->when($request->odp_id, fn ($q, $odp) => $q->where(fn ($sub) =>
+                $sub->whereHas('ont', fn ($oq) => $oq->where('odp_id', $odp))
+                    ->orWhereHas('surveys', fn ($sq) => $sq->where('odp_id', $odp))
+            ));
 
-        // 1. Calculate Stats
+        // 1. Hitung Statistik secara Kontekstual mengikuti filter aktif
         $now = now();
-        $lastMonth = now()->subMonth();
+        $startOfMonth = $now->copy()->startOfMonth();
 
-        $totalCustomers = (clone $baseQuery)->count();
-        $lastMonthTotal = (clone $baseQuery)->where('created_at', '<', $now->copy()->startOfMonth())->count();
+        $totalCustomers = (clone $filterQuery)->count();
+        $lastMonthTotal = (clone $filterQuery)->where('created_at', '<', $startOfMonth)->count();
         $totalGrowth = $lastMonthTotal > 0 ? round((($totalCustomers - $lastMonthTotal) / $lastMonthTotal) * 100, 1) : ($totalCustomers > 0 ? 100 : 0);
 
-        $activeCustomers = (clone $baseQuery)->where('status', 'active')->where('connection_disabled', false)->count();
-        $lastMonthActive = (clone $baseQuery)->where('status', 'active')->where('connection_disabled', false)->where('created_at', '<', $now->copy()->startOfMonth())->count();
+        $activeCustomers = (clone $filterQuery)->where('status', 'active')->where('connection_disabled', false)->count();
+        $lastMonthActive = (clone $filterQuery)->where('status', 'active')->where('connection_disabled', false)->where('created_at', '<', $startOfMonth)->count();
         $activeGrowth = $lastMonthActive > 0 ? round((($activeCustomers - $lastMonthActive) / $lastMonthActive) * 100, 1) : ($activeCustomers > 0 ? 100 : 0);
         $activePercentage = $totalCustomers > 0 ? round(($activeCustomers / $totalCustomers) * 100, 1) : 0;
 
-        $pendingCustomers = (clone $baseQuery)->whereIn('status', ['booking', 'survey', 'installing'])->count();
-        $lastMonthPending = (clone $baseQuery)->whereIn('status', ['booking', 'survey', 'installing'])->where('created_at', '<', $now->copy()->startOfMonth())->count();
+        $pendingCustomers = (clone $filterQuery)->whereIn('status', ['booking', 'survey', 'installing'])->count();
+        $lastMonthPending = (clone $filterQuery)->whereIn('status', ['booking', 'survey', 'installing'])->where('created_at', '<', $startOfMonth)->count();
         $pendingGrowth = $lastMonthPending > 0 ? round((($pendingCustomers - $lastMonthPending) / $lastMonthPending) * 100, 1) : ($pendingCustomers > 0 ? 100 : 0);
         $pendingPercentage = $totalCustomers > 0 ? round(($pendingCustomers / $totalCustomers) * 100, 1) : 0;
 
-        $inactiveQuery = (clone $baseQuery)->where(fn ($q) => $q->where('status', 'suspended')->orWhere('connection_disabled', true));
+        $inactiveQuery = (clone $filterQuery)->where(fn ($q) => $q->where('status', 'suspended')->orWhere('connection_disabled', true));
         $inactiveCustomers = (clone $inactiveQuery)->count();
-        $lastMonthInactive = (clone $inactiveQuery)->where('created_at', '<', $now->copy()->startOfMonth())->count();
+        $lastMonthInactive = (clone $inactiveQuery)->where('created_at', '<', $startOfMonth)->count();
         $inactiveGrowth = $lastMonthInactive > 0 ? round((($inactiveCustomers - $lastMonthInactive) / $lastMonthInactive) * 100, 1) : ($inactiveCustomers > 0 ? 100 : 0);
         $inactivePercentage = $totalCustomers > 0 ? round(($inactiveCustomers / $totalCustomers) * 100, 1) : 0;
 
-        // 2. Fetch Data
-        $customers = (clone $baseQuery)
+        // 2. Fetch Data Pelanggan
+        $customers = (clone $filterQuery)
             ->with([
                 'package', 
                 'ont.odp', 
@@ -132,18 +145,13 @@ class CustomerController extends Controller
                     $q->where('status', $status);
                 }
             })
-            ->when($request->service_status, fn ($q, $ss) => $q->where('service_status', $ss))
-            ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg))
-            ->when($request->area || $request->area_id, fn($q) => $this->applyAreaFilter($q, $request->area_id ?: $request->area))
-            ->when($request->odp_id, fn ($q, $odp) => $q->where(fn ($sub) =>
-                $sub->whereHas('ont', fn ($oq) => $oq->where('odp_id', $odp))
-                    ->orWhereHas('surveys', fn ($sq) => $sq->where('odp_id', $odp))
-            ))
             ->when($request->sort_by, function ($q, $sort) {
                 return match($sort) {
                     'terlama' => $q->orderByRaw('COALESCE(registration_date, created_at) ASC, id ASC'),
                     'nama_asc' => $q->orderBy('name', 'asc'),
                     'nama_desc' => $q->orderBy('name', 'desc'),
+                    'kode_asc' => $q->orderBy('customer_code', 'asc'),
+                    'kode_desc' => $q->orderBy('customer_code', 'desc'),
                     default => $q->orderByRaw('COALESCE(registration_date, created_at) DESC, id DESC'),
                 };
             }, fn ($q) => $q->orderByRaw('COALESCE(registration_date, created_at) DESC, id DESC'))
@@ -165,7 +173,15 @@ class CustomerController extends Controller
             'areas' => DataScopeService::getScopedAreas($request->user(), 'customers_all'),
             'odps' => $odpsList,
             'officers' => \App\Models\User::where('is_on_duty', true)->get(['id', 'name', 'phone', 'role']),
-            'filters' => $request->only(['search', 'status', 'service_status', 'package_id', 'area_id', 'odp_id', 'sort_by']),
+            'filters' => [
+                'search' => $request->search ? (string) $request->search : '',
+                'status' => $request->status ? (string) $request->status : '',
+                'service_status' => $request->service_status ? (string) $request->service_status : '',
+                'package_id' => $request->package_id ? (string) $request->package_id : '',
+                'area_id' => $request->area_id ? (string) $request->area_id : ($request->area ? (string) $request->area : ''),
+                'odp_id' => $request->odp_id ? (string) $request->odp_id : '',
+                'sort_by' => $request->sort_by ? (string) $request->sort_by : '',
+            ],
             'stats' => [
                 'total' => ['value' => $totalCustomers, 'growth' => $totalGrowth],
                 'active' => ['value' => $activeCustomers, 'percentage' => $activePercentage, 'growth' => $activeGrowth],
@@ -173,14 +189,14 @@ class CustomerController extends Controller
                 'inactive' => ['value' => $inactiveCustomers, 'percentage' => $inactivePercentage, 'growth' => $inactiveGrowth],
             ],
             'statusOptions' => [
-                'disabled' => 'Disable Koneksi',
-                'inactive' => 'Nonaktif (Isolir / Disable)',
                 'active' => 'Aktif',
+                'pending' => 'Pending (Semua Tahap PSB)',
+                'booking' => '• Tahap Booking',
+                'survey' => '• Tahap Survey',
+                'installing' => '• Tahap Pasang / Instalasi',
                 'suspended' => 'Isolir',
-                'pending' => 'Pending (PSB)',
-                'booking' => 'Booking',
-                'survey' => 'Survey',
-                'installing' => 'Proses Pasang',
+                'disabled' => 'Disable Koneksi',
+                'inactive' => 'Nonaktif (Semua Isolir & Disable)',
             ],
             'onlineUsernames' => (function() {
                 try {

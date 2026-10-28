@@ -428,14 +428,48 @@ class Customer extends Model
 
     public function scopeSearch($query, ?string $search)
     {
-        if (!$search) return $query;
+        $term = trim((string) $search);
+        if ($term === '') return $query;
 
-        return $query->where(function ($q) use ($search) {
-            $q->where('name', 'like', "%{$search}%")
-              ->orWhere('customer_code', 'like', "%{$search}%")
-              ->orWhere('phone', 'like', "%{$search}%")
-              ->orWhere('email', 'like', "%{$search}%")
-              ->orWhere('address', 'like', "%{$search}%");
+        // Clean digits for smart phone matching
+        $digits = preg_replace('/[^0-9]/', '', $term);
+        $phoneSuffix = '';
+        if (strlen($digits) >= 6) {
+            $phoneSuffix = preg_replace('/^(62|0)/', '', $digits);
+        }
+
+        return $query->where(function ($q) use ($term, $digits, $phoneSuffix) {
+            $q->where('name', 'like', "%{$term}%")
+              ->orWhere('customer_code', 'like', "%{$term}%")
+              ->orWhere('email', 'like', "%{$term}%")
+              ->orWhere('address', 'like', "%{$term}%")
+              ->orWhere('phone', 'like', "%{$term}%");
+
+            // Smart phone number matching (stripping symbols +, -, space, etc.)
+            if ($phoneSuffix !== '') {
+                $q->orWhereRaw("REPLACE(REPLACE(REPLACE(REPLACE(phone, '+', ''), '-', ''), ' ', ''), '.', '') LIKE ?", ["%{$phoneSuffix}%"]);
+            } elseif ($digits !== '' && strlen($digits) >= 4) {
+                $q->orWhereRaw("REPLACE(REPLACE(REPLACE(REPLACE(phone, '+', ''), '-', ''), ' ', ''), '.', '') LIKE ?", ["%{$digits}%"]);
+            }
+
+            // Search by Area name
+            $q->orWhere('area', 'like', "%{$term}%")
+              ->orWhereHas('areaModel', fn ($aq) => $aq->where('name', 'like', "%{$term}%"));
+
+            // Search by Package name
+            $q->orWhereHas('package', fn ($pq) => $pq->where('name', 'like', "%{$term}%"));
+
+            // Search by ONT info (PPPoE user, serial number, IP, MAC)
+            $q->orWhereHas('ont', function ($oq) use ($term) {
+                $oq->where('pppoe_user', 'like', "%{$term}%")
+                   ->orWhere('serial_number', 'like', "%{$term}%")
+                   ->orWhere('ip_login', 'like', "%{$term}%")
+                   ->orWhere('mac_address', 'like', "%{$term}%");
+            });
+
+            // Search by ODP name (assigned ONT ODP or Survey ODP)
+            $q->orWhereHas('ont.odp', fn ($odpq) => $odpq->where('name', 'like', "%{$term}%"))
+              ->orWhereHas('surveys.odp', fn ($sodpq) => $sodpq->where('name', 'like', "%{$term}%"));
         });
     }
 
