@@ -40,7 +40,16 @@
             <div v-can="'customers_card_summary'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 
                 <!-- Card 1: Total Pelanggan Free Home -->
-                <div class="bg-white rounded-2xl p-5 border border-amber-100 shadow-sm hover:border-amber-300 transition-all">
+                <div 
+                    @click="filterCard('all')"
+                    :class="[
+                        'rounded-2xl p-5 border shadow-sm transition-all cursor-pointer select-none',
+                        !filterForm.status && !filterForm.has_ont && !filterForm.has_odp
+                            ? 'bg-gradient-to-br from-amber-50 to-orange-50/60 border-amber-400 ring-2 ring-amber-300/70 shadow-amber-50'
+                            : 'bg-white hover:border-amber-300 hover:shadow-sm'
+                    ]"
+                    title="Klik untuk tampilkan semua pelanggan Free Home"
+                >
                     <div class="flex items-center justify-between mb-3">
                         <span class="text-[11px] font-bold uppercase tracking-wider text-amber-800 flex items-center gap-1.5">
                             <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
@@ -58,7 +67,16 @@
                 </div>
 
                 <!-- Card 2: Layanan Aktif -->
-                <div class="bg-white rounded-2xl p-5 border border-amber-100 shadow-sm hover:border-amber-300 transition-all">
+                <div 
+                    @click="filterCard('active')"
+                    :class="[
+                        'rounded-2xl p-5 border shadow-sm transition-all cursor-pointer select-none',
+                        filterForm.status === 'active'
+                            ? 'bg-gradient-to-br from-emerald-50 to-emerald-100/60 border-emerald-400 ring-2 ring-emerald-300/70 shadow-emerald-50'
+                            : 'bg-white hover:border-emerald-300 hover:shadow-sm'
+                    ]"
+                    title="Klik untuk filter pelanggan Aktif (klik lagi untuk reset)"
+                >
                     <div class="flex items-center justify-between mb-3">
                         <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-1.5">
                             <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
@@ -76,7 +94,16 @@
                 </div>
 
                 <!-- Card 3: Terpasang ONT -->
-                <div class="bg-white rounded-2xl p-5 border border-amber-100 shadow-sm hover:border-amber-300 transition-all">
+                <div 
+                    @click="filterCard('ont')"
+                    :class="[
+                        'rounded-2xl p-5 border shadow-sm transition-all cursor-pointer select-none',
+                        filterForm.has_ont === 'yes'
+                            ? 'bg-gradient-to-br from-blue-50 to-blue-100/60 border-blue-400 ring-2 ring-blue-300/70 shadow-blue-50'
+                            : 'bg-white hover:border-blue-300 hover:shadow-sm'
+                    ]"
+                    title="Klik untuk filter yang terpasang ONT (klik lagi untuk reset)"
+                >
                     <div class="flex items-center justify-between mb-3">
                         <span class="text-[11px] font-bold uppercase tracking-wider text-blue-700 flex items-center gap-1.5">
                             <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
@@ -94,7 +121,16 @@
                 </div>
 
                 <!-- Card 4: Terhubung ODP -->
-                <div class="bg-white rounded-2xl p-5 border border-amber-100 shadow-sm hover:border-amber-300 transition-all">
+                <div 
+                    @click="filterCard('odp')"
+                    :class="[
+                        'rounded-2xl p-5 border shadow-sm transition-all cursor-pointer select-none',
+                        filterForm.has_odp === 'yes'
+                            ? 'bg-gradient-to-br from-indigo-50 to-indigo-100/60 border-indigo-400 ring-2 ring-indigo-300/70 shadow-indigo-50'
+                            : 'bg-white hover:border-indigo-300 hover:shadow-sm'
+                    ]"
+                    title="Klik untuk filter yang terhubung ke ODP (klik lagi untuk reset)"
+                >
                     <div class="flex items-center justify-between mb-3">
                         <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-700 flex items-center gap-1.5">
                             <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
@@ -129,11 +165,20 @@
                                 @input="onSearchInput"
                                 @keyup.enter="applyFilters"
                                 placeholder="Cari nama, kode pelanggan, no HP, SN / model ONT..." 
-                                class="block w-full text-xs rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500 pl-8 pr-3 py-2 transition-colors"
+                                class="block w-full text-xs rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500 pl-8 pr-7 py-2 transition-colors"
                             />
                             <svg class="w-4 h-4 text-gray-400 absolute left-2.5 top-2.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
+                            <button 
+                                v-if="filterForm.search" 
+                                @click="filterForm.search = ''; applyFilters()" 
+                                type="button" 
+                                class="absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-600 text-xs p-0.5 rounded-full hover:bg-gray-100 cursor-pointer"
+                                title="Hapus pencarian"
+                            >
+                                ✕
+                            </button>
                         </div>
                     </div>
 
@@ -270,12 +315,12 @@
                                             <span>📟 {{ c.ont.model || 'ONT Standar' }}</span>
                                         </div>
                                         <div class="text-xs text-gray-500 font-mono mt-0.5">
-                                            SN: <span class="font-bold text-gray-700">{{ c.ont.sn || '-' }}</span>
+                                            SN: <span class="font-bold text-gray-700">{{ c.ont.serial_number || c.ont.sn || '-' }}</span>
                                         </div>
                                         <div class="text-[11px] text-indigo-600 font-medium mt-1 flex items-center gap-1">
                                             <span>📦 ODP:</span>
                                             <span class="font-bold">{{ c.ont.odp?.name || 'Belum terhubung ODP' }}</span>
-                                            <span v-if="c.ont.odp_port" class="text-gray-500 font-mono">(Port {{ c.ont.odp_port }})</span>
+                                            <span v-if="c.ont.port_number || c.ont.odp_port" class="text-gray-500 font-mono">(Port {{ c.ont.port_number || c.ont.odp_port }})</span>
                                         </div>
                                     </div>
                                     <div v-else class="text-xs text-amber-600 italic flex items-center gap-1">
@@ -516,7 +561,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue';
+import { ref, reactive, computed, watch } from 'vue';
 import { router, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
@@ -533,18 +578,50 @@ const filterForm = reactive({
     search: props.filters?.search || '',
     area_id: props.filters?.area_id || '',
     status: props.filters?.status || '',
+    has_ont: props.filters?.has_ont || '',
+    has_odp: props.filters?.has_odp || '',
 });
 
 const hasActiveFilters = computed(() => {
-    return !!(filterForm.search || filterForm.area_id || filterForm.status);
+    return !!(filterForm.search || filterForm.area_id || filterForm.status || filterForm.has_ont || filterForm.has_odp);
 });
+
+// Watch props.filters to sync local state
+watch(() => props.filters, (newFilters) => {
+    filterForm.search = newFilters?.search || '';
+    filterForm.area_id = newFilters?.area_id || '';
+    filterForm.status = newFilters?.status || '';
+    filterForm.has_ont = newFilters?.has_ont || '';
+    filterForm.has_odp = newFilters?.has_odp || '';
+}, { deep: true });
 
 let searchTimeout = null;
 const onSearchInput = () => {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
         applyFilters();
-    }, 450);
+    }, 400);
+};
+
+const filterCard = (type) => {
+    if (type === 'all') {
+        filterForm.status = '';
+        filterForm.has_ont = '';
+        filterForm.has_odp = '';
+    } else if (type === 'active') {
+        filterForm.status = filterForm.status === 'active' ? '' : 'active';
+        filterForm.has_ont = '';
+        filterForm.has_odp = '';
+    } else if (type === 'ont') {
+        filterForm.has_ont = filterForm.has_ont === 'yes' ? '' : 'yes';
+        filterForm.status = '';
+        filterForm.has_odp = '';
+    } else if (type === 'odp') {
+        filterForm.has_odp = filterForm.has_odp === 'yes' ? '' : 'yes';
+        filterForm.status = '';
+        filterForm.has_ont = '';
+    }
+    applyFilters();
 };
 
 const applyFilters = () => {
@@ -552,6 +629,8 @@ const applyFilters = () => {
         search: filterForm.search || undefined,
         area_id: filterForm.area_id || undefined,
         status: filterForm.status || undefined,
+        has_ont: filterForm.has_ont || undefined,
+        has_odp: filterForm.has_odp || undefined,
     }, {
         preserveState: true,
         preserveScroll: true,
@@ -563,6 +642,8 @@ const resetFilters = () => {
     filterForm.search = '';
     filterForm.area_id = '';
     filterForm.status = '';
+    filterForm.has_ont = '';
+    filterForm.has_odp = '';
     applyFilters();
 };
 
@@ -571,7 +652,8 @@ const formatRupiah = (val) => {
 };
 
 const isCustomerOnline = (c) => {
-    return !!(c.ont?.pppoe_user && props.onlineUsernames?.includes(c.ont.pppoe_user));
+    const user = c.ont?.pppoe_user || c.ont?.hotspot_user;
+    return !!(user && props.onlineUsernames?.includes(user));
 };
 
 // Modal switch status ke berbayar

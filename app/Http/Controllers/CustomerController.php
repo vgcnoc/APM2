@@ -885,16 +885,8 @@ class CustomerController extends Controller
             }
         })();
 
-        // Statistik Ringkasan Cerdas Free Home
-        $totalFreeHome = (clone $baseQuery)->count();
-        $activeFreeHome = (clone $baseQuery)->where('status', 'active')->count();
-        $installedOnt = (clone $baseQuery)->has('ont')->count();
-        $withOdp = (clone $baseQuery)->whereHas('ont', fn($q) => $q->whereNotNull('odp_id'))->count();
-        $onlineFreeHome = (clone $baseQuery)->whereHas('ont', fn($q) => $q->whereIn('pppoe_user', $onlineUsernames))->count();
-
-        // Data Pelanggan Free Home dengan filter & pagination
-        $customers = (clone $baseQuery)
-            ->with(['ont.odp.odc.olt', 'areaModel', 'user', 'sales'])
+        // Filtered base query (mengikuti pencarian dan wilayah)
+        $filteredBaseQuery = (clone $baseQuery)
             ->when($request->filled('search'), function($q) use ($request) {
                 $search = trim($request->search);
                 $q->where(function($sq) use ($search) {
@@ -902,18 +894,40 @@ class CustomerController extends Controller
                        ->orWhere('customer_code', 'like', "%{$search}%")
                        ->orWhere('phone', 'like', "%{$search}%")
                        ->orWhere('address', 'like', "%{$search}%")
-                       ->orWhereHas('ont', fn($oq) => $oq->where('sn', 'like', "%{$search}%")->orWhere('model', 'like', "%{$search}%"));
+                       ->orWhereHas('ont', fn($oq) => $oq->where('serial_number', 'like', "%{$search}%")->orWhere('model', 'like', "%{$search}%"));
                 });
             })
-            ->when($request->filled('area_id'), function ($q) use ($request) {
-                $areaId = $request->area_id;
-                $q->where(function ($sub) use ($areaId) {
-                    $sub->where('area_id', $areaId);
-                    $areaName = \App\Models\Area::where('id', $areaId)->value('name');
-                    if ($areaName) $sub->orWhere('area', $areaName);
-                });
-            })
+            ->when($request->filled('area_id') || $request->filled('area'), function ($q) use ($request) {
+                $this->applyAreaFilter($q, $request->area_id ?: $request->area);
+            });
+
+        // Statistik Ringkasan Cerdas Free Home (mengikuti area & search yang dipilih)
+        $totalFreeHome = (clone $filteredBaseQuery)->count();
+        $activeFreeHome = (clone $filteredBaseQuery)->where('status', 'active')->count();
+        $installedOnt = (clone $filteredBaseQuery)->has('ont')->count();
+        $withOdp = (clone $filteredBaseQuery)->whereHas('ont', fn($q) => $q->whereNotNull('odp_id'))->count();
+        $onlineFreeHome = !empty($onlineUsernames) ? (clone $filteredBaseQuery)->whereHas('ont', fn($q) => $q->whereIn('pppoe_user', $onlineUsernames)->orWhereIn('hotspot_user', $onlineUsernames))->count() : 0;
+
+        // Data Pelanggan Free Home dengan filter lanjutan (status, has_ont, has_odp) & pagination
+        $customers = (clone $filteredBaseQuery)
+            ->with(['ont.odp.odc.olt', 'areaModel', 'user', 'sales'])
             ->when($request->filled('status'), fn($q) => $q->where('status', $request->status))
+            ->when($request->filled('has_ont'), function ($q) use ($request) {
+                if ($request->has_ont === 'yes') {
+                    $q->has('ont');
+                } else {
+                    $q->doesntHave('ont');
+                }
+            })
+            ->when($request->filled('has_odp'), function ($q) use ($request) {
+                if ($request->has_odp === 'yes') {
+                    $q->whereHas('ont', fn($oq) => $oq->whereNotNull('odp_id'));
+                } else {
+                    $q->where(function ($sub) {
+                        $sub->doesntHave('ont')->orWhereHas('ont', fn($oq) => $oq->whereNull('odp_id'));
+                    });
+                }
+            })
             ->latest('id')
             ->paginate($request->per_page ?? 12)
             ->withQueryString();
@@ -922,7 +936,7 @@ class CustomerController extends Controller
             'customers' => $customers,
             'packages' => InternetPackage::active()->get(['id', 'name', 'speed_mbps', 'price']),
             'areas' => DataScopeService::getScopedAreas($request->user(), 'customers_all'),
-            'filters' => $request->only(['search', 'area_id', 'status']),
+            'filters' => $request->only(['search', 'area_id', 'status', 'has_ont', 'has_odp']),
             'onlineUsernames' => $onlineUsernames,
             'stats' => [
                 'total' => $totalFreeHome,
