@@ -780,34 +780,8 @@ class CustomerController extends Controller
             }
         })();
 
-        // Statistik Ringkasan Cerdas
-        $totalGratis = (clone $baseQuery)->count();
-        $activeGratis = (clone $baseQuery)->where('status', 'active')->count();
-        $totalBandwidthMbps = (clone $baseQuery)->with('package')->get()->sum(fn($c) => $c->package?->speed_mbps ?? 0);
-        $totalCsrValue = (clone $baseQuery)->with('package')->get()->sum(fn($c) => $c->package?->price ?? 0);
-        $onlineGratis = (clone $baseQuery)->whereHas('ont', fn($q) => $q->whereIn('pppoe_user', $onlineUsernames))->count();
-        $offlineGratis = max(0, $totalGratis - $onlineGratis);
-
-        // Data Pelanggan Gratis dengan filter & pagination
-        $customers = (clone $baseQuery)
-            ->with(['package', 'ont.odp', 'areaModel', 'user', 'sales'])
-            ->when($request->filled('connection_status') && in_array($request->connection_status, ['online', 'offline']), function($q) use ($request, $onlineUsernames) {
-                if ($request->connection_status === 'online') {
-                    $q->whereHas('ont', fn($oq) => $oq->whereIn('pppoe_user', $onlineUsernames));
-                } elseif ($request->connection_status === 'offline') {
-                    $q->where(function($sq) use ($onlineUsernames) {
-                        $sq->whereDoesntHave('ont')
-                           ->orWhereHas('ont', fn($oq) => $oq->whereNotIn('pppoe_user', $onlineUsernames)->orWhereNull('pppoe_user'));
-                    });
-                }
-            })
-            ->when($request->filled('access_mode') && $request->access_mode !== '', function($q) use ($request) {
-                $mode = strtolower(trim($request->access_mode));
-                $q->where(function($sq) use ($mode) {
-                    $sq->whereHas('package', fn($pq) => $pq->where('access_mode', $mode))
-                       ->orWhereHas('ont', fn($oq) => $oq->where('access_mode', $mode));
-                });
-            })
+        // Filtered base query (sebelum connection_status dan status spesifik agar card & pill stats sinkron dengan filter pencarian / wilayah / paket)
+        $filteredBaseQuery = (clone $baseQuery)
             ->when($request->filled('search'), function($q) use ($request) {
                 $search = trim($request->search);
                 $q->where(function($sq) use ($search) {
@@ -818,15 +792,45 @@ class CustomerController extends Controller
                        ->orWhereHas('ont', fn($oq) => $oq->where('pppoe_user', 'like', "%{$search}%"));
                 });
             })
-            ->when($request->filled('area_id'), function ($q) use ($request) {
-                $areaId = $request->area_id;
-                $q->where(function ($sub) use ($areaId) {
-                    $sub->where('area_id', $areaId);
-                    $areaName = \App\Models\Area::where('id', $areaId)->value('name');
-                    if ($areaName) $sub->orWhere('area', $areaName);
-                });
+            ->when($request->filled('area_id') || $request->filled('area'), function ($q) use ($request) {
+                $this->applyAreaFilter($q, $request->area_id ?: $request->area);
             })
             ->when($request->filled('package_id'), fn($q) => $q->where('package_id', $request->package_id))
+            ->when($request->filled('access_mode') && $request->access_mode !== '', function($q) use ($request) {
+                $mode = strtolower(trim($request->access_mode));
+                $q->where(function($sq) use ($mode) {
+                    $sq->whereHas('package', fn($pq) => $pq->where('access_mode', $mode))
+                       ->orWhereHas('ont', fn($oq) => $oq->where('access_mode', $mode));
+                });
+            });
+
+        // Statistik Ringkasan Cerdas (mengikuti filter yang sedang aktif)
+        $totalGratis = (clone $filteredBaseQuery)->count();
+        $activeGratis = (clone $filteredBaseQuery)->where('status', 'active')->count();
+        $totalBandwidthMbps = (clone $filteredBaseQuery)->with('package')->get()->sum(fn($c) => $c->package?->speed_mbps ?? 0);
+        $totalCsrValue = (clone $filteredBaseQuery)->with('package')->get()->sum(fn($c) => $c->package?->price ?? 0);
+        $onlineGratis = !empty($onlineUsernames) ? (clone $filteredBaseQuery)->whereHas('ont', fn($q) => $q->whereIn('pppoe_user', $onlineUsernames))->count() : 0;
+        $offlineGratis = max(0, $totalGratis - $onlineGratis);
+
+        // Data Pelanggan Gratis dengan filter lanjutan (connection_status & status) & pagination
+        $customers = (clone $filteredBaseQuery)
+            ->with(['package', 'ont.odp', 'areaModel', 'user', 'sales'])
+            ->when($request->filled('connection_status') && in_array($request->connection_status, ['online', 'offline']), function($q) use ($request, $onlineUsernames) {
+                if ($request->connection_status === 'online') {
+                    if (empty($onlineUsernames)) {
+                        $q->whereRaw('0 = 1');
+                    } else {
+                        $q->whereHas('ont', fn($oq) => $oq->whereIn('pppoe_user', $onlineUsernames));
+                    }
+                } elseif ($request->connection_status === 'offline') {
+                    if (!empty($onlineUsernames)) {
+                        $q->where(function($sq) use ($onlineUsernames) {
+                            $sq->whereDoesntHave('ont')
+                               ->orWhereHas('ont', fn($oq) => $oq->whereNotIn('pppoe_user', $onlineUsernames)->orWhereNull('pppoe_user'));
+                        });
+                    }
+                }
+            })
             ->when($request->filled('status'), fn($q) => $q->where('status', $request->status))
             ->latest('id')
             ->paginate($request->per_page ?? 12)
@@ -836,7 +840,14 @@ class CustomerController extends Controller
             'customers' => $customers,
             'packages' => InternetPackage::active()->get(['id', 'name', 'speed_mbps', 'price', 'access_mode']),
             'areas' => DataScopeService::getScopedAreas($request->user(), 'customers_all'),
-            'filters' => $request->only(['search', 'area_id', 'package_id', 'status', 'connection_status', 'access_mode']),
+            'filters' => [
+                'search' => $request->search ?? '',
+                'area_id' => $request->area_id ?? ($request->area ?? ''),
+                'package_id' => $request->package_id ?? '',
+                'status' => $request->status ?? '',
+                'connection_status' => $request->connection_status ?? '',
+                'access_mode' => $request->access_mode ?? '',
+            ],
             'onlineUsernames' => $onlineUsernames,
             'stats' => [
                 'total' => $totalGratis,
@@ -4822,7 +4833,7 @@ class CustomerController extends Controller
             if ($areaId) {
                 $sub->where('area_id', $areaId);
             }
-            if (!empty($variants)) {
+            if (!empty($variants) && \Illuminate\Support\Facades\Schema::hasColumn('customers', 'area')) {
                 $sub->orWhereIn('area', $variants);
             }
             if ($areaName) {

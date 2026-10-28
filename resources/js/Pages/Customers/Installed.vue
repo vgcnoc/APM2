@@ -8,24 +8,32 @@
                 :value="stats?.jadwal_pasang || 0" 
                 icon="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" 
                 color="blue" 
+                class="cursor-pointer transition-all hover:scale-[1.01]"
+                @click="filterState.tab = 'jadwal_pasang'; applyFilter()"
             />
             <StatCard 
                 title="Laporan Pasang" 
                 :value="stats?.laporan_pasang || 0" 
                 icon="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" 
                 color="amber" 
+                class="cursor-pointer transition-all hover:scale-[1.01]"
+                @click="filterState.tab = 'laporan_pasang'; applyFilter()"
             />
             <StatCard 
                 title="Menunggu Audit" 
                 :value="stats?.audit || 0" 
                 icon="M15 12a3 3 0 11-6 0 3 3 0 016 0z" 
                 color="purple" 
+                class="cursor-pointer transition-all hover:scale-[1.01]"
+                @click="filterState.tab = 'audit'; applyFilter()"
             />
             <StatCard 
                 title="Selesai Instalasi" 
                 :value="stats?.selesai_instalasi || 0" 
                 icon="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
                 color="emerald" 
+                class="cursor-pointer transition-all hover:scale-[1.01]"
+                @click="filterState.tab = 'selesai_instalasi'; applyFilter()"
             />
         </div>
 

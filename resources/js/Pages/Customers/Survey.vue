@@ -108,43 +108,50 @@
             </template>
             
             <template #row="{ row }">
-                <td>
+                <td class="min-w-[200px] max-w-[280px] whitespace-normal">
                     <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-sm font-bold text-gray-900 shrink-0">
-                            {{ row.name.charAt(0) }}
+                        <div class="w-9 h-9 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-xs">
+                            {{ (row.name || 'P').charAt(0).toUpperCase() }}
                         </div>
-                        <div>
-                            <Link :href="`/customers/${row.id}`" class="text-gray-900 font-medium hover:text-blue-400 transition-colors">
-                                {{ row.name }}
-                            </Link>
-                            <p class="text-xs text-gray-500">{{ row.address }}</p>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <Link :href="`/customers/${row.id}`" class="text-gray-900 font-bold hover:text-blue-600 transition-colors text-sm truncate max-w-[180px] block" :title="row.name">
+                                    {{ row.name }}
+                                </Link>
+                                <span v-if="row.customer_code" class="text-[10px] font-mono px-1.5 py-0.2 bg-gray-100 text-gray-600 rounded">
+                                    {{ row.customer_code }}
+                                </span>
+                            </div>
+                            <p class="text-xs text-gray-500 line-clamp-2 mt-0.5 leading-snug break-words" :title="row.address">
+                                {{ row.address }}
+                            </p>
                         </div>
                     </div>
                 </td>
-                <td>
-                    <span v-if="row.surveys?.length" class="text-xs text-cyan-400 font-mono">
+                <td class="whitespace-nowrap">
+                    <span v-if="row.surveys?.length" class="text-xs text-cyan-600 font-mono font-semibold">
                         {{ row.surveys[0]?.odp?.name || '-' }}
                     </span>
-                    <span v-else class="text-xs text-gray-600">Belum survey</span>
+                    <span v-else class="text-xs text-gray-400 italic">Belum survey</span>
                 </td>
-                <td>
+                <td class="whitespace-nowrap text-center">
                     <span v-if="row.surveys?.length && row.surveys[0]?.distance_meters" class="text-xs text-gray-700 font-medium">
                         {{ Math.round(row.surveys[0].distance_meters) }} m
                     </span>
-                    <span v-else class="text-gray-600 text-xs">-</span>
+                    <span v-else class="text-gray-400 text-xs">-</span>
                 </td>
-                <td>
+                <td class="whitespace-nowrap">
                     <span v-if="row.surveys?.length && row.surveys[0]?.port_available" class="badge badge-active">Tersedia</span>
                     <span v-else-if="row.surveys?.length" class="badge badge-terminated">Penuh</span>
-                    <span v-else class="text-gray-600 text-xs">-</span>
+                    <span v-else class="text-gray-400 text-xs">-</span>
                 </td>
-                <td>
+                <td class="whitespace-nowrap">
                     <StatusBadge v-if="row.surveys?.length" :status="row.surveys[0]?.feasibility || 'feasible'" />
-                    <span v-else class="text-gray-600 text-xs">-</span>
+                    <span v-else class="text-gray-400 text-xs">-</span>
                 </td>
-                <td>
+                <td class="whitespace-nowrap">
                     <div v-if="row.technician_schedules && row.technician_schedules.length > 0">
-                        <span class="text-xs font-semibold" :class="row.surveys?.length ? 'text-gray-700' : 'text-blue-600'">
+                        <span class="text-xs font-semibold block truncate max-w-[140px]" :class="row.surveys?.length ? 'text-gray-700' : 'text-blue-600'" :title="row.technician_schedules.map(s => s.technician?.name).filter(Boolean).join(', ')">
                             {{ row.technician_schedules.map(s => s.technician?.name).filter(Boolean).join(', ') || (row.surveys?.[0]?.surveyor?.name || '-') }}
                         </span>
                         <p class="text-[10px]" :class="row.surveys?.length ? 'text-emerald-600 font-medium' : 'text-blue-500/70'">
@@ -152,7 +159,7 @@
                         </p>
                     </div>
                     <div v-else-if="row.surveys && row.surveys.length > 0">
-                        <span class="text-xs text-gray-700 font-medium">{{ row.surveys[0].surveyor?.name || '-' }}</span>
+                        <span class="text-xs text-gray-700 font-medium block truncate max-w-[140px]">{{ row.surveys[0].surveyor?.name || '-' }}</span>
                         <p class="text-[10px] text-emerald-600 font-medium">Selesai Survey</p>
                     </div>
                     <span v-else class="text-gray-400 text-xs italic">Belum ada jadwal</span>
@@ -160,7 +167,7 @@
             </template>
 
             <template #rowActions="{ row }">
-                <div class="flex items-center justify-end gap-2">
+                <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
                     <template v-if="row.status === 'survey'">
                         <!-- Belum Dijadwalkan -->
                         <button v-if="!row.surveys?.length && !row.technician_schedules?.length && hasPermission('customers_survey_assign')" 
@@ -979,12 +986,12 @@ function bulkDelete() {
 }
 
 const columns = [
-    { key: 'name', label: 'Pelanggan' },
-    { key: 'odp', label: 'ODP Terdekat' },
-    { key: 'distance', label: 'Jarak Kabel' },
-    { key: 'port', label: 'Port ODP' },
-    { key: 'feasibility', label: 'Kelayakan' },
-    { key: 'surveyor', label: 'Surveyor / Jadwal' },
+    { key: 'name', label: 'Pelanggan', class: 'min-w-[200px] max-w-[280px]' },
+    { key: 'odp', label: 'ODP Terdekat', class: 'whitespace-nowrap' },
+    { key: 'distance', label: 'Jarak Kabel', class: 'whitespace-nowrap text-center' },
+    { key: 'port', label: 'Port ODP', class: 'whitespace-nowrap' },
+    { key: 'feasibility', label: 'Kelayakan', class: 'whitespace-nowrap' },
+    { key: 'surveyor', label: 'Surveyor / Jadwal', class: 'whitespace-nowrap min-w-[130px]' },
 ];
 
 const showViewModal = ref(false);

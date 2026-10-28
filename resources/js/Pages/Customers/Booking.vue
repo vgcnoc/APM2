@@ -4,7 +4,7 @@
         <!-- Statistik -->
         <div v-can="'customers_booking_card_stats'" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <!-- Total Booking -->
-            <div class="glass-card p-6 animate-fade-in-up" style="animation-delay: 0.1s">
+            <div @click="filterStatus = ''; applyFilters()" class="glass-card p-6 animate-fade-in-up cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all" :class="!filterStatus ? 'ring-2 ring-blue-500 border-blue-400 bg-blue-50/20' : ''" style="animation-delay: 0.1s">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-500 mb-1">Total Pendaftar</p>
@@ -19,7 +19,7 @@
             </div>
 
             <!-- Menunggu Survey -->
-            <div class="glass-card p-6 animate-fade-in-up" style="animation-delay: 0.2s">
+            <div @click="filterStatus = 'booking'; applyFilters()" class="glass-card p-6 animate-fade-in-up cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all" :class="filterStatus === 'booking' ? 'ring-2 ring-yellow-500 border-yellow-400 bg-yellow-50/20' : ''" style="animation-delay: 0.2s">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-500 mb-1">Baru (Menunggu Survey)</p>
@@ -34,7 +34,7 @@
             </div>
 
             <!-- Telah Disurvey -->
-            <div class="glass-card p-6 animate-fade-in-up" style="animation-delay: 0.3s">
+            <div @click="filterStatus = 'survey'; applyFilters()" class="glass-card p-6 animate-fade-in-up cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all" :class="filterStatus === 'survey' ? 'ring-2 ring-green-500 border-green-400 bg-green-50/20' : ''" style="animation-delay: 0.3s">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-500 mb-1">Terkirim (Data Survey)</p>

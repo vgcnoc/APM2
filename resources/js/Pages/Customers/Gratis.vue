@@ -40,7 +40,11 @@
             <div v-can="'customers_card_summary'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 
                 <!-- Card 1: Total Pelanggan Gratis -->
-                <div class="bg-white rounded-2xl p-5 border border-emerald-100 shadow-sm hover:border-emerald-300 transition-all">
+                <div 
+                    @click="selectCardFilter('all')"
+                    class="bg-white rounded-2xl p-5 border transition-all cursor-pointer hover:shadow-md hover:scale-[1.01]"
+                    :class="!filterForm.status && !filterForm.connection_status ? 'ring-2 ring-emerald-500 border-emerald-400 bg-emerald-50/20' : 'border-emerald-100 hover:border-emerald-300'"
+                >
                     <div class="flex items-center justify-between mb-3">
                         <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-1.5">
                             <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
@@ -58,7 +62,11 @@
                 </div>
 
                 <!-- Card 2: Layanan Aktif -->
-                <div class="bg-white rounded-2xl p-5 border border-emerald-100 shadow-sm hover:border-emerald-300 transition-all">
+                <div 
+                    @click="selectCardFilter('active')"
+                    class="bg-white rounded-2xl p-5 border transition-all cursor-pointer hover:shadow-md hover:scale-[1.01]"
+                    :class="filterForm.status === 'active' ? 'ring-2 ring-teal-500 border-teal-400 bg-teal-50/20' : 'border-emerald-100 hover:border-emerald-300'"
+                >
                     <div class="flex items-center justify-between mb-3">
                         <span class="text-[11px] font-bold uppercase tracking-wider text-teal-700 flex items-center gap-1.5">
                             <span class="w-2.5 h-2.5 rounded-full bg-teal-500"></span>
@@ -76,7 +84,7 @@
                 </div>
 
                 <!-- Card 3: Total Bandwidth -->
-                <div class="bg-white rounded-2xl p-5 border border-emerald-100 shadow-sm hover:border-emerald-300 transition-all">
+                <div class="bg-white rounded-2xl p-5 border border-emerald-100 shadow-sm transition-all">
                     <div class="flex items-center justify-between mb-3">
                         <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-700 flex items-center gap-1.5">
                             <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
@@ -94,7 +102,7 @@
                 </div>
 
                 <!-- Card 4: Nilai CSR Bulanan -->
-                <div class="bg-white rounded-2xl p-5 border border-emerald-100 shadow-sm hover:border-emerald-300 transition-all">
+                <div class="bg-white rounded-2xl p-5 border border-emerald-100 shadow-sm transition-all">
                     <div class="flex items-center justify-between mb-3">
                         <span class="text-[11px] font-bold uppercase tracking-wider text-purple-700 flex items-center gap-1.5">
                             <span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
@@ -116,19 +124,19 @@
             <!-- ── 2. TABS STATUS KONEKSI (SEMUA / ONLINE / OFFLINE) ── -->
             <div class="flex items-center gap-2 bg-white p-2 rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
                 <button 
-                    @click="setConnectionTab('')"
+                    @click="selectCardFilter('all')"
                     class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer"
-                    :class="!filterForm.connection_status ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'"
+                    :class="!filterForm.connection_status && !filterForm.status ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'"
                 >
                     <span>📋</span> Semua Pelanggan Gratis
                     <span class="px-2 py-0.5 rounded-full text-[11px] font-black"
-                        :class="!filterForm.connection_status ? 'bg-white text-emerald-700' : 'bg-gray-100 text-gray-700'">
+                        :class="!filterForm.connection_status && !filterForm.status ? 'bg-white text-emerald-700' : 'bg-gray-100 text-gray-700'">
                         {{ stats.total || 0 }}
                     </span>
                 </button>
 
                 <button 
-                    @click="setConnectionTab('online')"
+                    @click="selectCardFilter('online')"
                     class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer"
                     :class="filterForm.connection_status === 'online' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'"
                 >
@@ -141,7 +149,7 @@
                 </button>
 
                 <button 
-                    @click="setConnectionTab('offline')"
+                    @click="selectCardFilter('offline')"
                     class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer"
                     :class="filterForm.connection_status === 'offline' ? 'bg-rose-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'"
                 >
@@ -170,11 +178,20 @@
                                 @input="onSearchInput"
                                 @keyup.enter="applyFilters"
                                 placeholder="Cari nama, kode, HP, user PPPoE..." 
-                                class="block w-full text-xs rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 pl-8 pr-3 py-2 transition-colors"
+                                class="block w-full text-xs rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 pl-8 pr-7 py-2 transition-colors"
                             />
                             <svg class="w-4 h-4 text-gray-400 absolute left-2.5 top-2.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
+                            <button 
+                                v-if="filterForm.search" 
+                                @click="filterForm.search = ''; applyFilters()" 
+                                type="button" 
+                                class="absolute right-2 top-2 text-gray-400 hover:text-gray-600 text-xs p-0.5 rounded-full hover:bg-gray-100 cursor-pointer"
+                                title="Hapus pencarian"
+                            >
+                                ✕
+                            </button>
                         </div>
                     </div>
 
@@ -240,10 +257,9 @@
                             Filter
                         </button>
                         <button 
-                            v-if="hasActiveFilters"
                             @click="resetFilters" 
                             type="button" 
-                            title="Reset Filter"
+                            title="Reset Semua Filter"
                             class="inline-flex items-center justify-center bg-gray-100 hover:bg-rose-50 hover:text-rose-600 text-gray-600 text-xs font-bold py-2 px-3 rounded-xl transition border border-gray-200 cursor-pointer"
                         >
                             Reset
@@ -542,7 +558,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue';
+import { ref, reactive, computed, watch } from 'vue';
 import { router, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
@@ -564,8 +580,37 @@ const filterForm = reactive({
     access_mode: props.filters?.access_mode || '',
 });
 
+// Sinkronkan form jika ada perubahan props dari router / browser navigation
+watch(() => props.filters, (newFilters) => {
+    if (newFilters) {
+        filterForm.search = newFilters.search || '';
+        filterForm.area_id = newFilters.area_id || '';
+        filterForm.package_id = newFilters.package_id || '';
+        filterForm.status = newFilters.status || '';
+        filterForm.connection_status = newFilters.connection_status || '';
+        filterForm.access_mode = newFilters.access_mode || '';
+    }
+}, { deep: true });
+
+const selectCardFilter = (type) => {
+    if (type === 'all') {
+        filterForm.status = '';
+        filterForm.connection_status = '';
+    } else if (type === 'active') {
+        filterForm.status = filterForm.status === 'active' ? '' : 'active';
+        filterForm.connection_status = '';
+    } else if (type === 'online') {
+        filterForm.connection_status = filterForm.connection_status === 'online' ? '' : 'online';
+        filterForm.status = '';
+    } else if (type === 'offline') {
+        filterForm.connection_status = filterForm.connection_status === 'offline' ? '' : 'offline';
+        filterForm.status = '';
+    }
+    applyFilters();
+};
+
 const setConnectionTab = (status) => {
-    filterForm.connection_status = status;
+    filterForm.connection_status = filterForm.connection_status === status ? '' : status;
     applyFilters();
 };
 
@@ -578,11 +623,11 @@ const onSearchInput = () => {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
         applyFilters();
-    }, 450);
+    }, 400);
 };
 
 const applyFilters = () => {
-    router.get(route('customers.gratis'), {
+    router.get('/customers/gratis', {
         search: filterForm.search || undefined,
         area_id: filterForm.area_id || undefined,
         package_id: filterForm.package_id || undefined,
@@ -603,7 +648,11 @@ const resetFilters = () => {
     filterForm.status = '';
     filterForm.connection_status = '';
     filterForm.access_mode = '';
-    applyFilters();
+    router.get('/customers/gratis', {}, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    });
 };
 
 const formatRupiah = (val) => {

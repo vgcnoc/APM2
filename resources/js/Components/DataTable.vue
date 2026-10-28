@@ -31,10 +31,10 @@
 
         <!-- Table -->
         <div class="overflow-x-auto">
-            <table class="data-table">
+            <table class="data-table min-w-full">
                 <thead>
                     <tr>
-                        <th v-if="selectable" class="w-12 text-center px-4">
+                        <th v-if="selectable" class="w-10 text-center px-3">
                             <input type="checkbox" 
                                 class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 shadow-sm" 
                                 :checked="isAllSelected" 
@@ -43,12 +43,12 @@
                         <th v-for="col in columns" :key="col.key" :class="col.class">
                             {{ col.label }}
                         </th>
-                        <th v-if="$slots.rowActions" class="text-right">Aksi</th>
+                        <th v-if="$slots.rowActions" class="text-right pr-6 whitespace-nowrap min-w-[140px]">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr v-if="!data || data.length === 0">
-                        <td :colspan="columns.length + ($slots.rowActions ? 1 : 0)" class="text-center py-16">
+                        <td :colspan="columns.length + (selectable ? 1 : 0) + ($slots.rowActions ? 1 : 0)" class="text-center py-16">
                             <div class="flex flex-col items-center gap-4">
                                 <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
                                     <svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -60,14 +60,14 @@
                         </td>
                     </tr>
                     <tr v-else v-for="(row, index) in data" :key="row.id || index" class="animate-fade-in-up" :style="{ animationDelay: `${index * 0.03}s` }">
-                        <td v-if="selectable" class="w-12 text-center px-4">
+                        <td v-if="selectable" class="w-10 text-center px-3">
                             <input type="checkbox" 
                                 class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 shadow-sm" 
                                 :value="row.id" 
                                 v-model="localSelected" />
                         </td>
                         <slot name="row" :row="row" :index="index" />
-                        <td v-if="$slots.rowActions" class="text-right">
+                        <td v-if="$slots.rowActions" class="text-right pr-6 whitespace-nowrap min-w-[140px]">
                             <slot name="rowActions" :row="row" />
                         </td>
                     </tr>
