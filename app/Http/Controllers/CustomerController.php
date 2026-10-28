@@ -3371,7 +3371,11 @@ class CustomerController extends Controller
                                 ->orWhere(function($sub) use ($customer, $salesUser) {
                                     $sub->where('user_id', $salesUser->id)
                                         ->where('type', 'auto')
-                                        ->where('description', 'like', 'Fee Booking Pelanggan: ' . $customer->name . '%');
+                                        ->where('description', 'like', 'Fee Booking Pelanggan:%')
+                                        ->where(function($q) use ($customer) {
+                                            $q->where('description', 'like', '%' . $customer->name . '%')
+                                              ->orWhere('description', 'like', '%' . ($customer->customer_code ?? '---') . '%');
+                                        });
                                 })
                                 ->exists();
 
@@ -3428,7 +3432,11 @@ class CustomerController extends Controller
                             ->orWhere(function($sub) use ($customer, $surveyorUser) {
                                 $sub->where('user_id', $surveyorUser->id)
                                     ->where('type', 'auto')
-                                    ->where('description', 'like', 'Fee Survey Pelanggan: ' . $customer->name . '%');
+                                    ->where('description', 'like', 'Fee Survey Pelanggan:%')
+                                    ->where(function($q) use ($customer) {
+                                        $q->where('description', 'like', '%' . $customer->name . '%')
+                                          ->orWhere('description', 'like', '%' . ($customer->customer_code ?? '---') . '%');
+                                    });
                             })
                             ->exists();
 
@@ -3482,8 +3490,9 @@ class CustomerController extends Controller
                             ->orWhere(function($sub) use ($customer, $techUser) {
                                 $sub->where('user_id', $techUser->id)
                                     ->where('type', 'auto')
+                                    ->where('description', 'like', 'Fee Pasang Pelanggan:%')
                                     ->where(function($q) use ($customer) {
-                                        $q->where('description', 'like', 'Fee Pasang Pelanggan: ' . $customer->name . '%')
+                                        $q->where('description', 'like', '%' . $customer->name . '%')
                                           ->orWhere('description', 'like', '%' . ($customer->customer_code ?? '---') . '%');
                                     });
                             })
