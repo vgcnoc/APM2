@@ -119,18 +119,19 @@
                     
                     <!-- ── A. HEADER CARD ──────────────────────────── -->
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 lg:p-6 transition-all">
-                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div class="flex items-center gap-3.5">
+                        <!-- Top Row: Role Identity + Primary Save Button -->
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
+                            <div class="flex items-center gap-3.5 min-w-0">
                                 <div :class="[
-                                    'w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg shadow-sm',
-                                    selectedRole.name === 'admin' ? 'bg-amber-500 text-white' : 'bg-blue-600 text-white'
+                                    'w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl shadow-sm shrink-0',
+                                    selectedRole.name === 'admin' ? 'bg-amber-500 text-white shadow-amber-500/20' : 'bg-blue-600 text-white shadow-blue-500/20'
                                 ]">
                                     {{ selectedRole.name.charAt(0).toUpperCase() }}
                                 </div>
-                                <div>
+                                <div class="min-w-0">
                                     <div class="flex items-center gap-2 flex-wrap">
-                                        <h3 class="text-xl font-extrabold text-gray-900 capitalize">{{ selectedRole.name }}</h3>
-                                        <span v-if="selectedRole.name === 'admin'" class="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-200">
+                                        <h3 class="text-xl font-extrabold text-gray-900 capitalize truncate">{{ selectedRole.name }}</h3>
+                                        <span v-if="selectedRole.name === 'admin'" class="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-200">
                                             Super Admin (Akses Penuh)
                                         </span>
                                         <span v-else-if="hasUnsavedChanges" class="inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full animate-pulse">
@@ -138,24 +139,46 @@
                                             Ada perubahan belum disimpan
                                         </span>
                                     </div>
-                                    <div class="mt-2 flex flex-wrap items-center gap-2">
-                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                                    <div class="mt-1.5 flex flex-wrap items-center gap-2">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
                                             Aktif: <b class="ml-1 font-bold">{{ checkedCount }}</b> / {{ totalCount }} izin
                                         </span>
-                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
                                             Persentase: <b class="ml-1 font-bold">{{ Math.round((checkedCount / totalCount) * 100) }}%</b>
                                         </span>
-                                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                                             Ditugaskan ke: <b class="ml-1 font-bold">{{ selectedRole.users_count }} user</b>
                                         </span>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Action Buttons -->
-                            <div class="flex items-center gap-2 shrink-0 flex-wrap">
+                            <!-- Primary Save & Reset Buttons (Always unclipped & prominent) -->
+                            <div v-if="selectedRole.name !== 'admin'" class="flex items-center gap-2 shrink-0 self-start sm:self-center">
+                                <button v-if="hasUnsavedChanges" @click="resetChanges"
+                                    class="px-3.5 py-2 text-xs font-bold text-gray-600 hover:text-gray-900 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-all shadow-xs active:scale-95 whitespace-nowrap">
+                                    Reset
+                                </button>
+
+                                <button @click="savePermissions" :disabled="isSaving || !hasUnsavedChanges"
+                                    :class="[
+                                        'px-5 py-2.5 font-bold text-xs rounded-xl transition-all shadow-sm flex items-center gap-2 active:scale-95 whitespace-nowrap',
+                                        hasUnsavedChanges 
+                                            ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/25 ring-2 ring-blue-400/30' 
+                                            : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+                                    ]">
+                                    <svg v-if="isSaving" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
+                                    <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <span>{{ isSaving ? 'Menyimpan...' : 'Simpan Perubahan' }}</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Second Row: Utility Action Toolbar (Duplikasi, Template, Toggle All) -->
+                        <div class="pt-3.5 flex flex-wrap items-center justify-between gap-3">
+                            <div class="flex flex-wrap items-center gap-2">
                                 <button @click="openCloneModal(selectedRole)"
-                                    class="px-3 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all flex items-center gap-1.5 shadow-sm active:scale-95">
+                                    class="px-3 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all flex items-center gap-1.5 shadow-xs active:scale-95 whitespace-nowrap">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"/></svg>
                                     Duplikasi Role
                                 </button>
@@ -163,14 +186,14 @@
                                 <template v-if="selectedRole.name !== 'admin'">
                                     <button @click="openPresetModal"
                                         type="button"
-                                        class="px-3 py-2 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+                                        class="px-3 py-2 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all flex items-center gap-1.5 shadow-xs active:scale-95 whitespace-nowrap"
                                         title="Pilih dan terapkan template hak akses standar untuk role ini">
                                         <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                                         Template Standar
                                     </button>
 
                                     <button @click="toggleAll" 
-                                        class="px-3 py-2 text-xs font-bold rounded-xl border transition-all active:scale-95 flex items-center gap-1.5"
+                                        class="px-3 py-2 text-xs font-bold rounded-xl border transition-all active:scale-95 flex items-center gap-1.5 whitespace-nowrap"
                                         :class="isAllChecked 
                                             ? 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200' 
                                             : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'">
@@ -179,24 +202,12 @@
                                         </svg>
                                         {{ isAllChecked ? 'Nonaktifkan Semua' : 'Aktifkan Semua' }}
                                     </button>
-
-                                    <button @click="resetChanges" v-if="hasUnsavedChanges"
-                                        class="px-3 py-2 text-xs font-bold text-gray-600 hover:text-gray-900 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-all">
-                                        Reset
-                                    </button>
-
-                                    <button @click="savePermissions" :disabled="isSaving || !hasUnsavedChanges"
-                                        :class="[
-                                            'px-4 py-2 font-bold text-xs rounded-xl transition-all shadow-sm flex items-center gap-2 active:scale-95',
-                                            hasUnsavedChanges 
-                                                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20' 
-                                                : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
-                                        ]">
-                                        <svg v-if="isSaving" class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
-                                        <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                        {{ isSaving ? 'Menyimpan...' : 'Simpan Perubahan' }}
-                                    </button>
                                 </template>
+                            </div>
+
+                            <div v-if="hasUnsavedChanges" class="text-xs text-amber-600 font-bold flex items-center gap-1.5 animate-pulse">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                <span>Ada perubahan belum disimpan</span>
                             </div>
                         </div>
 
@@ -265,11 +276,11 @@
 
                     <!-- ── B. SEARCH & FILTER TOOLBAR ──────────────── -->
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3.5">
-                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
                             <!-- Live Search Input -->
-                            <div class="relative flex-1">
+                            <div class="relative flex-1 min-w-[240px]">
                                 <input v-model="searchQuery" type="text"
-                                    placeholder="Cari izin berdasarkan nama, tipe, atau kode (misal: invoice, tambah, odp, hapus, card)..."
+                                    placeholder="Cari izin, modul, tombol, atau kode (misal: invoice, tambah, odp)..."
                                     class="w-full pl-9 pr-9 py-2 text-xs md:text-sm rounded-xl border-gray-200 bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 placeholder-gray-400" />
                                 <svg class="w-4 h-4 text-gray-400 absolute left-3 top-2.5 md:top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -280,7 +291,7 @@
                             </div>
 
                             <!-- Filter & Tool Actions -->
-                            <div class="flex items-center gap-2 shrink-0 flex-wrap">
+                            <div class="flex items-center gap-2 flex-wrap">
                                 <!-- Type Filter Pill -->
                                 <select v-model="typeFilter" class="text-xs rounded-xl border-gray-200 py-2 pl-3 pr-8 bg-gray-50 font-medium focus:ring-blue-500">
                                     <option value="all">Semua Tipe Izin</option>
@@ -301,12 +312,14 @@
                                 </select>
 
                                 <!-- Expand / Collapse All -->
-                                <button @click="expandAll" class="px-2.5 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors" title="Buka Semua Modul">
-                                    Buka Semua
-                                </button>
-                                <button @click="collapseAll" class="px-2.5 py-2 text-xs font-medium text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors" title="Tutup Semua Modul">
-                                    Tutup Semua
-                                </button>
+                                <div class="inline-flex rounded-xl shadow-2xs border border-gray-200 overflow-hidden bg-gray-50">
+                                    <button @click="expandAll" class="px-2.5 py-2 text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors border-r border-gray-200 whitespace-nowrap" title="Buka Semua Modul">
+                                        Buka Semua
+                                    </button>
+                                    <button @click="collapseAll" class="px-2.5 py-2 text-xs font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors whitespace-nowrap" title="Tutup Semua Modul">
+                                        Tutup Semua
+                                    </button>
+                                </div>
                             </div>
                         </div>
 

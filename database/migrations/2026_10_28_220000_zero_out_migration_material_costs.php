@@ -45,3 +45,4 @@ return new class extends Migration
         // Data nominal migrasi tidak perlu dikembalikan karena memang tidak memiliki tagihan riil
     }
 };
+

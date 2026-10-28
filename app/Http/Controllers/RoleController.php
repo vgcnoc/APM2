@@ -63,6 +63,7 @@ class RoleController extends Controller
 
     public function store(Request $request)
     {
+        $this->syncPermissionsToDb();
         $request->merge(['name' => strtolower(trim($request->name))]);
 
         $request->validate([
@@ -83,6 +84,7 @@ class RoleController extends Controller
 
     public function update(Request $request, Role $role)
     {
+        $this->syncPermissionsToDb();
         $request->merge(['name' => strtolower(trim($request->name))]);
 
         $request->validate([
@@ -103,6 +105,8 @@ class RoleController extends Controller
 
         if ($request->has('permissions')) {
             $role->syncPermissions($request->permissions);
+        } else {
+            $role->syncPermissions([]);
         }
 
         // Clear permission cache
