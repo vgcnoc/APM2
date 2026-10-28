@@ -507,6 +507,39 @@
                             <input v-model="activationForm.activation_date" type="date" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" required />
                         </div>
 
+                        <!-- Insentif Teknisi Pasang Otomatis -->
+                        <div v-if="assignedInstallationTechnicians.length > 0" class="bg-gradient-to-br from-emerald-50/80 via-teal-50/40 to-slate-50 p-4 rounded-xl border border-emerald-200 shadow-xs space-y-2.5">
+                            <div class="flex items-center justify-between border-b border-emerald-100 pb-2">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-sm shadow-xs font-bold">
+                                        ⚡
+                                    </div>
+                                    <div>
+                                        <h4 class="text-xs font-bold text-emerald-950 uppercase tracking-wider">Insentif Teknisi Pasang</h4>
+                                        <p class="text-[10px] text-emerald-700">Diberikan penuh untuk setiap teknisi pelaksana</p>
+                                    </div>
+                                </div>
+                                <span class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                    {{ assignedInstallationTechnicians.length }} Teknisi Bertugas
+                                </span>
+                            </div>
+                            <div class="space-y-1.5 text-xs">
+                                <div v-for="t in assignedInstallationTechnicians" :key="t.id" class="flex justify-between items-center py-1 border-b border-emerald-100/60 last:border-0">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                        <span class="font-bold text-slate-800">{{ t.name }}</span>
+                                        <span class="text-[10px] text-slate-400">({{ t.role || 'Teknisi' }})</span>
+                                    </div>
+                                    <span class="font-mono font-bold text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-200 shadow-2xs">
+                                        Rp {{ formatRupiah(t.fee) }}
+                                    </span>
+                                </div>
+                            </div>
+                            <p class="text-[10px] text-emerald-800 leading-tight">
+                                💡 <em>Setiap teknisi menerima insentif penuh masing-masing (misal 2 orang = masing-masing Rp {{ formatRupiah(props.masterFeePasang || 35000) }}). Otomatis tercatat saat aktivasi.</em>
+                            </p>
+                        </div>
+
                         <!-- Simulasi Tagihan Invoice Pertama (Hanya Berbayar & Gratis) -->
                         <div v-if="invoiceSimulation && activationForm.service_status !== 'free_home'" class="bg-gradient-to-br from-slate-50 via-purple-50/40 to-slate-50 p-4 rounded-xl border border-purple-200/90 shadow-sm space-y-3">
                             <div class="flex items-center justify-between border-b border-purple-100 pb-2.5">
@@ -1089,6 +1122,7 @@ const props = defineProps({
     filters: Object,
     taxSettings: Object,
     billingSettings: Object,
+    masterFeePasang: { type: Number, default: 35000 },
 });
 
 const currentTab = ref(props.filters?.tab || 'menunggu');
@@ -1380,6 +1414,24 @@ watch(() => activationForm.enable_tax, (val) => {
     if (val && !activationForm.tax_ppn) {
         activationForm.tax_ppn = page.props.taxSettings?.tax_ppn || 11;
     }
+});
+
+const assignedInstallationTechnicians = computed(() => {
+    const cust = activeCustomer.value;
+    if (!cust || !cust.technician_schedules) return [];
+    const schedules = cust.technician_schedules.filter(s => s.type === 'installation' && s.technician);
+    const map = new Map();
+    schedules.forEach(s => {
+        if (!map.has(s.technician_id)) {
+            map.set(s.technician_id, {
+                id: s.technician.id,
+                name: s.technician.name,
+                role: s.technician.role || 'Teknisi',
+                fee: Number(s.technician.installation_fee) > 0 ? Number(s.technician.installation_fee) : Number(props.masterFeePasang || 35000)
+            });
+        }
+    });
+    return Array.from(map.values());
 });
 
 const invoiceSimulation = computed(() => {

@@ -746,6 +746,10 @@
                                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                     Anda dapat memilih lebih dari satu teknisi/karyawan (tidak dibatasi area)
                                 </p>
+                                <p v-if="assignForm.technician_ids.length > 0" class="text-[11px] text-emerald-700 font-semibold mt-1.5 flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                                    <span>⚡</span>
+                                    <span>Insentif Pasang: Masing-masing dari <b>{{ assignForm.technician_ids.length }} teknisi</b> mendapatkan insentif penuh (Rp 35.000 / orang).</span>
+                                </p>
                             </div>
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">

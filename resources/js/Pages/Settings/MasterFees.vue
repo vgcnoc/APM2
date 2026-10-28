@@ -452,6 +452,9 @@
                                         class="block w-full text-xs sm:text-sm border-slate-300 rounded-xl shadow-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-bold font-mono text-slate-900" 
                                         required
                                     >
+                                    <p v-if="form.type === 'Fee Pasang'" class="mt-1.5 text-[11px] text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                                        ⚡ <b>Ketentuan Insentif:</b> Jika pemasangan dilakukan oleh lebih dari 1 teknisi (misal 2 orang), nominal ini diberikan penuh untuk masing-masing teknisi (Rp {{ formatCurrency(form.nominal) }} per orang).
+                                    </p>
                                     <p v-if="form.errors.nominal" class="mt-1 text-xs text-rose-600 font-medium">{{ form.errors.nominal }}</p>
                                 </div>
 

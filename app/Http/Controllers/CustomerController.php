@@ -1568,6 +1568,7 @@ class CustomerController extends Controller
                 'isolate_time' => \App\Models\Setting::get('isolate_time', '00:00'),
                 'prorata_formula' => \App\Models\Setting::get('prorata_formula', 'exact_days'),
             ],
+            'masterFeePasang' => (float) (\App\Models\MasterFee::where('type', 'Fee Pasang')->where('is_active', true)->value('nominal') ?? 35000),
         ]);
     }
 
@@ -3348,23 +3349,58 @@ class CustomerController extends Controller
                 }
 
                 // Auto Incentives: Fee Pasang for Technician
-                $installationSchedule = $customer->technicianSchedules()->where('type', 'installation')->latest()->first();
-                if ($installationSchedule && $installationSchedule->technician_id) {
-                    $techUser = \App\Models\User::find($installationSchedule->technician_id);
-                    if ($techUser) {
-                        $feeAmount = $techUser->installation_fee > 0 ? $techUser->installation_fee : \App\Models\MasterFee::where('type', 'Fee Pasang')->where('is_active', true)->value('nominal');
-                        if ($feeAmount > 0) {
+                // Cerdas: Setiap teknisi yang bertugas dalam instalasi pelanggan mendapatkan insentif penuh masing-masing (misal 2 teknisi = masing-masing Rp 35.000)
+                $installSchedules = $customer->technicianSchedules()
+                    ->where('type', 'installation')
+                    ->whereIn('status', ['scheduled', 'on_the_way', 'working', 'done'])
+                    ->get();
+
+                if ($installSchedules->isEmpty()) {
+                    $installSchedules = $customer->technicianSchedules()
+                        ->where('type', 'installation')
+                        ->get();
+                }
+
+                $technicianIds = $installSchedules->pluck('technician_id')->unique()->filter()->values();
+                $masterFeePasang = (float) (\App\Models\MasterFee::where('type', 'Fee Pasang')->where('is_active', true)->value('nominal') ?? 35000);
+
+                foreach ($technicianIds as $techId) {
+                    $techUser = \App\Models\User::find($techId);
+                    if (!$techUser) continue;
+
+                    // Nominal tarif insentif: custom per teknisi jika ada (> 0), jika tidak gunakan Master Fee Pasang (Rp 35.000)
+                    $feeAmount = ($techUser->installation_fee && (float)$techUser->installation_fee > 0)
+                        ? (float) $techUser->installation_fee
+                        : $masterFeePasang;
+
+                    if ($feeAmount > 0) {
+                        // Pencegahan duplikasi jika aktivasi dijalankan ulang
+                        $alreadyExists = \App\Models\Incentive::where('user_id', $techUser->id)
+                            ->where('type', 'auto')
+                            ->where(function($q) use ($customer) {
+                                $q->where('description', 'like', 'Fee Pasang Pelanggan: ' . $customer->name . '%')
+                                  ->orWhere('description', 'like', '%' . ($customer->customer_code ?? '---') . '%');
+                            })
+                            ->exists();
+
+                        if (!$alreadyExists) {
                             \App\Models\Incentive::create([
                                 'user_id' => $techUser->id,
                                 'amount' => $feeAmount,
                                 'type' => 'auto',
-                                'description' => 'Fee Pasang Pelanggan: ' . $customer->name,
+                                'description' => 'Fee Pasang Pelanggan: ' . $customer->name . ($customer->customer_code ? ' (' . $customer->customer_code . ')' : ''),
                                 'incentive_date' => now(),
                                 'status' => 'pending'
                             ]);
                         }
                     }
                 }
+
+                // Selesaikan status seluruh jadwal teknisi instalasi untuk pelanggan ini
+                $customer->technicianSchedules()
+                    ->where('type', 'installation')
+                    ->whereIn('status', ['scheduled', 'on_the_way', 'working'])
+                    ->update(['status' => 'done']);
             });
 
             // Sinkronisasi RADIUS PPPoE (dilewati jika mode free_home voucher ONT)
