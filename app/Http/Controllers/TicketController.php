@@ -39,7 +39,13 @@ class TicketController extends Controller
         $tickets = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
         
         $activeCustomers = Customer::where('status', 'active')->select('id', 'name', 'customer_code', 'address')->get();
-        $technicians = User::role('teknisi')->select('id', 'name')->get();
+        $technicians = User::where(function($q) {
+            $q->whereHas('roles', fn($r) => $r->whereIn('name', ['teknisi', 'kepala teknisi', 'maintenance', 'teknisi lapangan']))
+              ->orWhereIn('role', ['teknisi', 'kepala teknisi', 'maintenance', 'teknisi lapangan']);
+        })->select('id', 'name')->orderBy('name')->get();
+        if ($technicians->isEmpty()) {
+            $technicians = User::where('is_active', true)->select('id', 'name')->orderBy('name')->get();
+        }
 
         return Inertia::render('Tickets/Index', [
             'tickets' => $tickets,

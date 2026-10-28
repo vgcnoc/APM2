@@ -193,12 +193,16 @@ class DataScopeService
 
         if ($level === 'area') {
             $accessibleAreas = $user->getAccessibleAreaIds();
-            return $query->where(function ($q) use ($accessibleAreas) {
+            return $query->where(function ($q) use ($accessibleAreas, $user) {
                 $q->whereIn('area_id', $accessibleAreas);
                 $areaNames = Area::whereIn('id', $accessibleAreas)->pluck('name')->filter()->toArray();
                 if (!empty($areaNames)) {
                     $q->orWhereIn('area', $areaNames);
                 }
+                // Bebas di semua area/wilayah sesuai penugasan (Booking, Survey, Instalasi):
+                $q->orWhere('sales_id', $user->id)
+                  ->orWhereHas('technicianSchedules', fn($ts) => $ts->where('technician_id', $user->id))
+                  ->orWhereHas('surveys', fn($sq) => $sq->where('surveyor_id', $user->id));
             });
         }
 
@@ -248,8 +252,13 @@ class DataScopeService
 
         if ($level === 'area') {
             $accessibleAreas = $user->getAccessibleAreaIds();
-            return $query->whereHas('customer', function ($cq) use ($accessibleAreas) {
-                $cq->whereIn('area_id', $accessibleAreas);
+            return $query->where(function ($q) use ($accessibleAreas, $user) {
+                $q->whereHas('customer', function ($cq) use ($accessibleAreas) {
+                    $cq->whereIn('area_id', $accessibleAreas);
+                })
+                // Bebas di semua area/wilayah sesuai penugasan tiket:
+                ->orWhere('assigned_to', $user->id)
+                ->orWhereHas('schedules', fn($sq) => $sq->where('technician_id', $user->id));
             });
         }
 
@@ -278,8 +287,14 @@ class DataScopeService
 
         if ($level === 'area') {
             $accessibleAreas = $user->getAccessibleAreaIds();
-            return $query->whereHas('customer', function ($cq) use ($accessibleAreas) {
-                $cq->whereIn('area_id', $accessibleAreas);
+            return $query->where(function ($q) use ($accessibleAreas, $user) {
+                $q->whereHas('customer', function ($cq) use ($accessibleAreas) {
+                    $cq->whereIn('area_id', $accessibleAreas);
+                })
+                // Bebas di semua area/wilayah sesuai penugasan CBP:
+                ->orWhere('created_by', $user->id)
+                ->orWhere('assigned_to', $user->id)
+                ->orWhereHas('technicians', fn($tq) => $tq->where('users.id', $user->id));
             });
         }
 
@@ -309,11 +324,15 @@ class DataScopeService
 
         if ($level === 'area') {
             $accessibleAreas = $user->getAccessibleAreaIds();
-            return $query->where(function ($q) use ($accessibleAreas) {
+            return $query->where(function ($q) use ($accessibleAreas, $user) {
                 $q->whereIn('area_id', $accessibleAreas)
                   ->orWhereHas('olt', fn($oq) => $oq->whereIn('area_id', $accessibleAreas))
                   ->orWhereHas('odc', fn($odcq) => $odcq->whereIn('area_id', $accessibleAreas))
-                  ->orWhereHas('odp', fn($odpq) => $odpq->whereIn('area_id', $accessibleAreas));
+                  ->orWhereHas('odp', fn($odpq) => $odpq->whereIn('area_id', $accessibleAreas))
+                  // Bebas di semua area/wilayah sesuai penugasan PGJ:
+                  ->orWhere('created_by', $user->id)
+                  ->orWhere('lead_technician_id', $user->id)
+                  ->orWhereHas('technicians', fn($tq) => $tq->where('users.id', $user->id));
             });
         }
 
@@ -344,14 +363,18 @@ class DataScopeService
         if ($level === 'area') {
             $accessibleAreas = $user->getAccessibleAreaIds();
             $areaNames = Area::whereIn('id', $accessibleAreas)->pluck('name')->filter()->toArray();
-            return $query->where(function ($q) use ($accessibleAreas, $areaNames) {
+            return $query->where(function ($q) use ($accessibleAreas, $areaNames, $user) {
                 $q->whereIn('area_id', $accessibleAreas)
                   ->orWhereHas('customer', function ($cq) use ($accessibleAreas, $areaNames) {
                       $cq->whereIn('area_id', $accessibleAreas);
                       if (!empty($areaNames)) {
                           $cq->orWhereIn('area', $areaNames);
                       }
-                  });
+                  })
+                  // Bebas di semua area/wilayah sesuai penugasan PGS:
+                  ->orWhere('created_by', $user->id)
+                  ->orWhere('lead_technician_id', $user->id)
+                  ->orWhereHas('technicians', fn($tq) => $tq->where('users.id', $user->id));
             });
         }
 
@@ -382,14 +405,18 @@ class DataScopeService
         if ($level === 'area') {
             $accessibleAreas = $user->getAccessibleAreaIds();
             $areaNames = Area::whereIn('id', $accessibleAreas)->pluck('name')->filter()->toArray();
-            return $query->where(function ($q) use ($accessibleAreas, $areaNames) {
+            return $query->where(function ($q) use ($accessibleAreas, $areaNames, $user) {
                 $q->whereIn('area_id', $accessibleAreas)
                   ->orWhereHas('customer', function ($cq) use ($accessibleAreas, $areaNames) {
                       $cq->whereIn('area_id', $accessibleAreas);
                       if (!empty($areaNames)) {
                           $cq->orWhereIn('area', $areaNames);
                       }
-                  });
+                  })
+                  // Bebas di semua area/wilayah sesuai penugasan PGK:
+                  ->orWhere('created_by', $user->id)
+                  ->orWhere('lead_technician_id', $user->id)
+                  ->orWhereHas('technicians', fn($tq) => $tq->where('users.id', $user->id));
             });
         }
 
@@ -521,8 +548,9 @@ class DataScopeService
 
         if ($level === 'area') {
             $accessibleAreas = $user->getAccessibleAreaIds();
-            return $query->whereHas('customer', function ($cq) use ($accessibleAreas) {
-                $cq->whereIn('area_id', $accessibleAreas);
+            return $query->whereHas('customer', function ($cq) use ($accessibleAreas, $user) {
+                $cq->whereIn('area_id', $accessibleAreas)
+                   ->orWhere('sales_id', $user->id);
             });
         }
 
@@ -550,7 +578,11 @@ class DataScopeService
 
         if ($level === 'area') {
             $accessibleAreas = $user->getAccessibleAreaIds();
-            return $query->whereIn('area_id', $accessibleAreas);
+            return $query->where(function ($q) use ($accessibleAreas, $user) {
+                $q->whereIn('area_id', $accessibleAreas)
+                  ->orWhere('technician_id', $user->id)
+                  ->orWhereHas('technicians', fn($t) => $t->where('users.id', $user->id));
+            });
         }
 
         // Level: 'own' / 'assigned' (Ditugaskan sebagai teknisi utama atau anggota tim teknisi)

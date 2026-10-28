@@ -65,7 +65,17 @@ class CustomerController extends Controller
             ->when($isolirOnly, fn ($q) => $q->where('status', 'suspended'))
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function($q) {
                 if (auth()->user()->can('customers_all_view_area')) {
-                    $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+                    $accessibleAreas = auth()->user()->getAccessibleAreaIds();
+                    $q->where(function($sub) use ($accessibleAreas) {
+                        $sub->whereIn('area_id', $accessibleAreas)
+                            ->orWhere('sales_id', auth()->id())
+                            ->orWhereHas('technicianSchedules', function($sq) {
+                                $sq->where('technician_id', auth()->id());
+                            })
+                            ->orWhereHas('surveys', function($sq) {
+                                $sq->where('surveyor_id', auth()->id());
+                            });
+                    });
                 } else {
                     $q->where(function($sub) {
                         $sub->where('sales_id', auth()->id())
@@ -1043,9 +1053,19 @@ class CustomerController extends Controller
         $query = Customer::booking()
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_booking_view_all'), function($q) {
                 if (auth()->user()->can('customers_booking_view_area')) {
-                    $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+                    $accessibleAreas = auth()->user()->getAccessibleAreaIds();
+                    $q->where(function($sub) use ($accessibleAreas) {
+                        $sub->whereIn('area_id', $accessibleAreas)
+                            ->orWhere('sales_id', auth()->id())
+                            ->orWhereHas('technicianSchedules', fn($ts) => $ts->where('technician_id', auth()->id()))
+                            ->orWhereHas('surveys', fn($sq) => $sq->where('surveyor_id', auth()->id()));
+                    });
                 } else {
-                    $q->where('sales_id', auth()->id());
+                    $q->where(function($sub) {
+                        $sub->where('sales_id', auth()->id())
+                            ->orWhereHas('technicianSchedules', fn($ts) => $ts->where('technician_id', auth()->id()))
+                            ->orWhereHas('surveys', fn($sq) => $sq->where('surveyor_id', auth()->id()));
+                    });
                 }
             })
             ->when($request->date, function ($q, $date) {
@@ -1066,8 +1086,8 @@ class CustomerController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        // Get scoped areas for dropdown
-        $areas = DataScopeService::getScopedAreaNames($request->user(), 'customers_all');
+        // Get all areas for dropdown
+        $areas = \App\Models\Area::orderBy('name')->pluck('name')->all();
 
         // Calculate statistics based on the current filtered view
         $stats = [
@@ -1089,9 +1109,19 @@ class CustomerController extends Controller
         $query = Customer::where('status', 'canceled')
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_booking_view_all'), function($q) {
                 if (auth()->user()->can('customers_booking_view_area')) {
-                    $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+                    $accessibleAreas = auth()->user()->getAccessibleAreaIds();
+                    $q->where(function($sub) use ($accessibleAreas) {
+                        $sub->whereIn('area_id', $accessibleAreas)
+                            ->orWhere('sales_id', auth()->id())
+                            ->orWhereHas('technicianSchedules', fn($ts) => $ts->where('technician_id', auth()->id()))
+                            ->orWhereHas('surveys', fn($sq) => $sq->where('surveyor_id', auth()->id()));
+                    });
                 } else {
-                    $q->where('sales_id', auth()->id());
+                    $q->where(function($sub) {
+                        $sub->where('sales_id', auth()->id())
+                            ->orWhereHas('technicianSchedules', fn($ts) => $ts->where('technician_id', auth()->id()))
+                            ->orWhereHas('surveys', fn($sq) => $sq->where('surveyor_id', auth()->id()));
+                    });
                 }
             })
             ->when($request->search, function ($q, $search) {
@@ -1133,7 +1163,17 @@ class CustomerController extends Controller
             }])
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_survey_view_all'), function($q) {
                 if (auth()->user()->can('customers_survey_view_area')) {
-                    $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+                    $accessibleAreas = auth()->user()->getAccessibleAreaIds();
+                    $q->where(function($sub) use ($accessibleAreas) {
+                        $sub->whereIn('area_id', $accessibleAreas)
+                            ->orWhereHas('technicianSchedules', function($sq) {
+                                $sq->where('technician_id', auth()->id())->where('type', 'survey');
+                            })
+                            ->orWhereHas('surveys', function($sq) {
+                                $sq->where('surveyor_id', auth()->id());
+                            })
+                            ->orWhere('sales_id', auth()->id());
+                    });
                 } elseif (auth()->user()->can('customers_survey_view_assigned') || auth()->user()->hasRole('teknisi')) {
                     $q->where(function($sub) {
                         $sub->whereHas('technicianSchedules', function($sq) {
@@ -1269,8 +1309,8 @@ class CustomerController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'phone', 'email', 'role']);
 
-        // Get scoped areas for dropdown
-        $areas = DataScopeService::getScopedAreaNames($request->user(), 'customers_all');
+        // Get all areas for dropdown
+        $areas = \App\Models\Area::orderBy('name')->pluck('name')->all();
 
         $openCustomer = null;
         if ($request->filled('open_report')) {
@@ -1279,7 +1319,16 @@ class CustomerController extends Controller
             }]);
             if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_survey_view_all')) {
                 if (auth()->user()->can('customers_survey_view_area')) {
-                    $openCustomerQuery->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+                    $accessibleAreas = auth()->user()->getAccessibleAreaIds();
+                    $openCustomerQuery->where(function($sub) use ($accessibleAreas) {
+                        $sub->whereIn('area_id', $accessibleAreas)
+                            ->orWhereHas('technicianSchedules', function($sq) {
+                                $sq->where('technician_id', auth()->id())->where('type', 'survey');
+                            })
+                            ->orWhereHas('surveys', function($sq) {
+                                $sq->where('surveyor_id', auth()->id());
+                            });
+                    });
                 } elseif (auth()->user()->can('customers_survey_view_assigned') || auth()->user()->hasRole('teknisi')) {
                     $openCustomerQuery->where(function($sub) {
                         $sub->whereHas('technicianSchedules', function($sq) {
@@ -1314,7 +1363,14 @@ class CustomerController extends Controller
         
         if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_installed_view_all')) {
             if (auth()->user()->can('customers_installed_view_area')) {
-                $baseQuery->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+                $accessibleAreas = auth()->user()->getAccessibleAreaIds();
+                $baseQuery->where(function($sub) use ($accessibleAreas) {
+                    $sub->whereIn('area_id', $accessibleAreas)
+                        ->orWhereHas('technicianSchedules', function ($sq) {
+                            $sq->where('technician_id', auth()->id())->where('type', 'installation');
+                        })
+                        ->orWhere('sales_id', auth()->id());
+                });
             } elseif (auth()->user()->can('customers_installed_view_assigned') || auth()->user()->hasRole('teknisi')) {
                 $baseQuery->whereHas('technicianSchedules', function ($sq) {
                     $sq->where('technician_id', auth()->id())->where('type', 'installation');
@@ -1449,7 +1505,7 @@ class CustomerController extends Controller
             ->orderBy('name')
             ->get();
 
-        $areas = DataScopeService::getScopedAreas($request->user(), 'customers_all');
+        $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('Customers/Installed', [
             'customers' => $customers,
@@ -1477,7 +1533,14 @@ class CustomerController extends Controller
         $applyAreaScope = function ($query) {
             if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_activation_view_all')) {
                 if (auth()->user()->can('customers_activation_view_area')) {
-                    $query->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+                    $accessibleAreas = auth()->user()->getAccessibleAreaIds();
+                    $query->where(function($sub) use ($accessibleAreas) {
+                        $sub->whereIn('area_id', $accessibleAreas)
+                            ->orWhere('sales_id', auth()->id())
+                            ->orWhereHas('technicianSchedules', function ($sq) {
+                                $sq->where('technician_id', auth()->id());
+                            });
+                    });
                 } else {
                     $query->where(function($q) {
                         $q->where('sales_id', auth()->id())
@@ -1946,9 +2009,8 @@ class CustomerController extends Controller
         if ($isAffiliatePortal) {
             abort_unless(\App\Services\AffiliateService::ensureAffiliateProfile(auth()->user())->status === 'active', 403, 'Profil afiliasi Anda belum aktif.');
         }
-        $areas = $isAffiliatePortal
-            ? \App\Models\Area::orderBy('name')->pluck('name')->all()
-            : DataScopeService::getScopedAreaNames(request()->user(), 'customers_all');
+        // Seluruh karyawan bebas booking di semua area/wilayah
+        $areas = \App\Models\Area::orderBy('name')->pluck('name')->all();
         
         $sales = User::where('is_active', true)
             ->whereNotIn('role', ['customer'])
@@ -2281,7 +2343,7 @@ class CustomerController extends Controller
             'availableOnts' => Ont::where('status', 'Sudah Set')->whereNull('customer_id')->get(),
             'technicians' => User::where('is_active', true)->orderBy('name')->get(['id', 'name', 'phone', 'role']),
             'packages' => InternetPackage::active()->get(),
-            'areas' => DataScopeService::getScopedAreas(request()->user(), 'customers_all'),
+            'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
             'salesUsers' => User::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'materials' => \App\Models\Material::orderBy('name')->get(),
             'materialRequests' => $materialRequests,
@@ -2402,7 +2464,7 @@ class CustomerController extends Controller
     {
         $customer->load(['ont.odp', 'package']);
         
-        $areas = DataScopeService::getScopedAreaNames(request()->user(), 'customers_all');
+        $areas = \App\Models\Area::orderBy('name')->pluck('name')->all();
 
         $sales = User::where('is_active', true)
             ->whereNotIn('role', ['customer'])
