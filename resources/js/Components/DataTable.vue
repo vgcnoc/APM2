@@ -13,8 +13,19 @@
                         v-model="searchQuery"
                         @input="onSearch"
                         :placeholder="searchPlaceholder"
-                        class="form-input !pl-9 w-full rounded-lg border-gray-200 text-sm focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                        class="form-input !pl-9 !pr-8 w-full rounded-lg border-gray-200 text-sm focus:ring-blue-500 focus:border-blue-500 shadow-sm"
                     />
+                    <button
+                        v-if="searchQuery"
+                        @click="clearSearch"
+                        type="button"
+                        class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5 rounded-full hover:bg-gray-100 transition-colors"
+                        title="Hapus pencarian"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
                 </div>
 
                 <!-- Action Buttons Slot -->
@@ -162,6 +173,11 @@ watch(() => page.url, () => {
         }
     }
 }, { immediate: true });
+
+function clearSearch() {
+    searchQuery.value = '';
+    onSearch();
+}
 
 function onSearch() {
     clearTimeout(searchTimeout);

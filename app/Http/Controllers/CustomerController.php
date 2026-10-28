@@ -1603,23 +1603,39 @@ class CustomerController extends Controller
         }
 
         $tab = $request->query('tab', 'all');
+        $period = $request->query('period');
+        $card = $request->query('card');
+        $areaId = $request->query('area_id') ?: $request->query('area');
+        $packageId = $request->query('package_id');
+        $ontStatus = $request->query('ont_status');
+        $billingStatus = $request->query('billing_status');
+        $search = $request->query('search');
 
-        // Stats
-        $totalTerminated = (clone $baseQuery)->count();
-        $thisMonthTerminated = (clone $baseQuery)->whereMonth('cancel_date', now()->month)
+        // Stats kontekstual berdasarkan Area & Search
+        $statsQuery = clone $baseQuery;
+        if ($areaId) {
+            $this->applyAreaFilter($statsQuery, $areaId);
+        }
+        if ($search) {
+            $statsQuery->search($search);
+        }
+
+        $totalTerminated = (clone $statsQuery)->count();
+        $thisMonthTerminated = (clone $statsQuery)->whereMonth('cancel_date', now()->month)
                                                  ->whereYear('cancel_date', now()->year)->count();
         
-        $pendingOntCount = (clone $baseQuery)->whereHas('ont')->count();
+        $pendingOntCount = (clone $statsQuery)->whereHas('ont')->count();
 
-        $totalPiutang = (float) Invoice::whereHas('customer', function($q) {
-            $q->where('status', 'terminated');
-        })->whereIn('status', ['unpaid', 'partial'])->where('is_reseller_balance', false)->sum('amount');
+        $totalPiutang = (float) Invoice::whereIn('customer_id', (clone $statsQuery)->select('id'))
+            ->whereIn('status', ['unpaid', 'partial'])
+            ->where('is_reseller_balance', false)
+            ->sum('amount');
 
-        $under4MonthsCount = (clone $baseQuery)
+        $under4MonthsCount = (clone $statsQuery)
             ->whereRaw('TIMESTAMPDIFF(MONTH, COALESCE(activation_date, registration_date, created_at), COALESCE(cancel_date, NOW())) < 4')
             ->count();
 
-        $above4MonthsCount = (clone $baseQuery)
+        $above4MonthsCount = (clone $statsQuery)
             ->whereRaw('TIMESTAMPDIFF(MONTH, COALESCE(activation_date, registration_date, created_at), COALESCE(cancel_date, NOW())) >= 4')
             ->count();
 
@@ -1653,13 +1669,24 @@ class CustomerController extends Controller
             ->withSum(['invoices as total_unpaid_amount' => function ($q) {
                 $q->whereIn('status', ['unpaid', 'partial'])->where('is_reseller_balance', false);
             }], 'amount')
-            ->search($request->search)
-            ->when($request->area || $request->area_id, fn($q) => $this->applyAreaFilter($q, $request->area_id ?: $request->area))
-            ->when($request->package_id, fn($q, $pkg) => $q->where('package_id', $pkg))
-            ->when($request->ont_status === 'pending', fn($q) => $q->whereHas('ont'))
-            ->when($request->ont_status === 'returned', fn($q) => $q->whereDoesntHave('ont'))
-            ->when($request->billing_status === 'unpaid', fn($q) => $q->has('invoices'))
-            ->when($request->billing_status === 'paid', fn($q) => $q->doesntHave('invoices'))
+            ->search($search)
+            ->when($areaId, fn($q) => $this->applyAreaFilter($q, $areaId))
+            ->when($packageId, fn($q, $pkg) => $q->where('package_id', $pkg))
+            ->when($period === 'this_month' || $card === 'this_month', function($q) {
+                $q->whereMonth('cancel_date', now()->month)->whereYear('cancel_date', now()->year);
+            })
+            ->when($ontStatus === 'pending', fn($q) => $q->whereHas('ont'))
+            ->when($ontStatus === 'returned', fn($q) => $q->whereDoesntHave('ont'))
+            ->when($billingStatus === 'unpaid', function($q) {
+                $q->whereHas('invoices', function($iq) {
+                    $iq->whereIn('status', ['unpaid', 'partial'])->where('is_reseller_balance', false);
+                });
+            })
+            ->when($billingStatus === 'paid', function($q) {
+                $q->whereDoesntHave('invoices', function($iq) {
+                    $iq->whereIn('status', ['unpaid', 'partial'])->where('is_reseller_balance', false);
+                });
+            })
             ->when($tab === 'under_4_months', function ($q) {
                 $q->whereRaw('TIMESTAMPDIFF(MONTH, COALESCE(activation_date, registration_date, created_at), COALESCE(cancel_date, NOW())) < 4');
             })
@@ -1680,7 +1707,15 @@ class CustomerController extends Controller
             'packages' => InternetPackage::active()->get(['id', 'name', 'price']),
             'areas' => DataScopeService::getScopedAreas($request->user(), 'customers_all'),
             'stats' => $stats,
-            'filters' => array_merge($request->only(['search', 'area_id', 'package_id', 'ont_status', 'billing_status']), ['tab' => $tab]),
+            'filters' => [
+                'search' => $search,
+                'area_id' => $areaId,
+                'package_id' => $packageId,
+                'ont_status' => $ontStatus,
+                'billing_status' => $billingStatus,
+                'period' => $period,
+                'tab' => $tab,
+            ],
             'company' => [
                 'name' => Setting::get('company_name', config('app.name', 'ISP Provider')),
                 'phone' => Setting::get('company_phone', ''),
