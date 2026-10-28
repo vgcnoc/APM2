@@ -118,28 +118,100 @@ const parseCoordinate = (val) => {
     return isNaN(num) || !isFinite(num) ? null : num;
 };
 
-// Smart coordinate paste handler (Google Maps format, comma/space pair)
+// Robust coordinate pair parser (supports Google Maps URL, Indonesian 3-comma format, space, and auto-swap)
+const parseCoordPair = (raw) => {
+    if (!raw) return null;
+    const str = String(raw).trim();
+
+    // 1. Google Maps URL or query parameter
+    const urlMatch = str.match(/@(-?\d+(?:[.,]\d+)?),(-?\d+(?:[.,]\d+)?)/) ||
+                     str.match(/[?&]q=(-?\d+(?:[.,]\d+)?),(-?\d+(?:[.,]\d+)?)/);
+    if (urlMatch) {
+        let lat = parseFloat(urlMatch[1].replace(',', '.'));
+        let lng = parseFloat(urlMatch[2].replace(',', '.'));
+        if (Math.abs(lat) > 90 || (lat > 20 && lng <= 20)) { const t = lat; lat = lng; lng = t; }
+        if (lat > 5.0 && lat < 12.0 && lng >= 95.0 && lng <= 145.0) lat = -Math.abs(lat);
+        if (lng < 0 && Math.abs(lng) >= 95.0 && Math.abs(lng) <= 145.0) lng = Math.abs(lng);
+        return { lat, lng };
+    }
+
+    // 2. Pair of coordinates separated by comma, space, slash, semicolon, or pipe
+    const pairMatch = str.match(/^(-?\d+(?:[.,]\d+)?)\s*[,/ ;|]\s*(-?\d+(?:[.,]\d+)?)$/);
+    if (pairMatch) {
+        let lat = parseFloat(pairMatch[1].replace(',', '.'));
+        let lng = parseFloat(pairMatch[2].replace(',', '.'));
+        if (!isNaN(lat) && !isNaN(lng)) {
+            if (Math.abs(lat) > 90 || (lat > 20 && lng <= 20)) { const t = lat; lat = lng; lng = t; }
+            if (lat > 5.0 && lat < 12.0 && lng >= 95.0 && lng <= 145.0) lat = -Math.abs(lat);
+            if (lng < 0 && Math.abs(lng) >= 95.0 && Math.abs(lng) <= 145.0) lng = Math.abs(lng);
+            return { lat, lng };
+        }
+    }
+
+    return null;
+};
+
+// Set location coordinates directly (from click, drag, or input paste)
+const setLocationCoordinates = (lat, lng, triggerSearch = true) => {
+    let cleanLat = typeof lat === 'number' ? lat : parseFloat(String(lat).replace(',', '.'));
+    let cleanLng = typeof lng === 'number' ? lng : parseFloat(String(lng).replace(',', '.'));
+
+    if (isNaN(cleanLat) || isNaN(cleanLng)) return;
+
+    // Auto-swap if swapped
+    if (Math.abs(cleanLat) > 90 || (cleanLat > 20 && cleanLng <= 20)) {
+        const tmp = cleanLat;
+        cleanLat = cleanLng;
+        cleanLng = tmp;
+    }
+
+    // Auto-fix Indonesia missing negative latitude
+    if (cleanLat > 5.0 && cleanLat < 12.0 && cleanLng >= 95.0 && cleanLng <= 145.0) {
+        cleanLat = -Math.abs(cleanLat);
+    }
+
+    // Auto-fix Indonesia negative longitude
+    if (cleanLng < 0 && Math.abs(cleanLng) >= 95.0 && Math.abs(cleanLng) <= 145.0) {
+        cleanLng = Math.abs(cleanLng);
+    }
+
+    inputLat.value = cleanLat.toFixed(14);
+    inputLng.value = cleanLng.toFixed(6);
+    myLocation.value = { lat: cleanLat, lng: cleanLng, accuracy: 10 };
+
+    updateUserMarkerAndCircle(cleanLat, cleanLng, false);
+
+    if (triggerSearch) {
+        handleSearchNearby();
+    }
+};
+
+// Smart coordinate paste & input handler for Latitude
 const handleLatPasteOrInput = () => {
     if (!inputLat.value) return;
-    const raw = String(inputLat.value).trim();
-    // Check if contains Google Maps URL (e.g. @-6.998482,106.717579 or ?q=-6.998482,106.717579)
-    const urlMatch = raw.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/) || raw.match(/q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-    if (urlMatch) {
-        inputLat.value = urlMatch[1];
-        inputLng.value = urlMatch[2];
+    const pair = parseCoordPair(inputLat.value);
+    if (pair) {
+        setLocationCoordinates(pair.lat, pair.lng, true);
         return;
     }
-    // Check if contains comma or space separating two coordinates
-    if (raw.includes(',') || raw.includes(' ')) {
-        const parts = raw.split(/[\s,]+/).filter(Boolean);
-        if (parts.length >= 2) {
-            const p0 = parseFloat(parts[0].replace(',', '.'));
-            const p1 = parseFloat(parts[1].replace(',', '.'));
-            if (!isNaN(p0) && !isNaN(p1) && isFinite(p0) && isFinite(p1)) {
-                inputLat.value = p0.toFixed(14);
-                inputLng.value = p1.toFixed(6);
-            }
-        }
+    // Single number comma normalization
+    const raw = String(inputLat.value).trim();
+    if (raw.includes(',')) {
+        inputLat.value = raw.replace(',', '.');
+    }
+};
+
+// Smart coordinate paste & input handler for Longitude
+const handleLngPasteOrInput = () => {
+    if (!inputLng.value) return;
+    const pair = parseCoordPair(inputLng.value);
+    if (pair) {
+        setLocationCoordinates(pair.lat, pair.lng, true);
+        return;
+    }
+    const raw = String(inputLng.value).trim();
+    if (raw.includes(',')) {
+        inputLng.value = raw.replace(',', '.');
     }
 };
 
@@ -626,17 +698,26 @@ const updateUserMarkerAndCircle = (lat, lng, flyTo = false) => {
     myLocationMarker = L.marker([lat, lng], {
         icon: createUserLocationIcon(),
         zIndexOffset: 9999,
+        draggable: true,
     }).addTo(map);
 
+    myLocationMarker.on('dragend', (e) => {
+        const pos = e.target.getLatLng();
+        setLocationCoordinates(pos.lat, pos.lng, true);
+    });
+
     myLocationMarker.bindPopup(`
-        <div class="font-sans text-xs">
+        <div class="font-sans text-xs min-w-[190px]">
             <div class="font-bold text-red-600 mb-0.5 flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-red-600 inline-block"></span>
-                <span>Lokasi Anda</span>
+                <span class="w-2 h-2 rounded-full bg-red-600 inline-block animate-pulse"></span>
+                <span>Pusat Radar (Bisa Digeser)</span>
             </div>
-            <div class="text-gray-500 text-[11px] mb-1">Koordinat Pusat Radar</div>
-            <div class="bg-gray-50 p-1.5 rounded font-mono text-[11px] text-gray-700 border border-gray-100">
+            <div class="text-gray-500 text-[11px] mb-1">Titik Acuan Pencarian Terdekat</div>
+            <div class="bg-gray-50 dark:bg-slate-800 p-1.5 rounded font-mono text-[11px] text-gray-700 dark:text-slate-300 border border-gray-100 dark:border-slate-700">
                 ${lat.toFixed(6)}, ${lng.toFixed(6)}
+            </div>
+            <div class="text-[10px] text-blue-600 dark:text-blue-400 font-semibold mt-1.5">
+                💡 Geser pin ini atau klik peta untuk pindah posisi radar
             </div>
         </div>
     `);
@@ -651,7 +732,7 @@ const updateUserMarkerAndCircle = (lat, lng, flyTo = false) => {
     }).addTo(map);
 
     if (flyTo) {
-        map.flyTo([lat, lng], 13, { duration: 1 });
+        map.flyTo([lat, lng], 14, { duration: 1 });
     }
 };
 
@@ -1117,6 +1198,11 @@ onMounted(async () => {
     myLocation.value = { lat: defaultLat, lng: defaultLng, accuracy: 50 };
     updateUserMarkerAndCircle(defaultLat, defaultLng, false);
 
+    // Map Click: Set radar coordinates dynamically anywhere the user clicks
+    map.on('click', (e) => {
+        setLocationCoordinates(e.latlng.lat, e.latlng.lng, true);
+    });
+
     // If initial query params provided, trigger search nearby immediately
     if (props.initLat && props.initLng) {
         map.setView([defaultLat, defaultLng], 14);
@@ -1222,6 +1308,7 @@ onUnmounted(() => {
                         <input
                             type="text"
                             v-model="inputLng"
+                            @input="handleLngPasteOrInput"
                             @keydown.enter="handleSearchNearby"
                             placeholder="106.717579"
                             class="flex-1 px-3.5 py-2 text-xs rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
@@ -1241,6 +1328,10 @@ onUnmounted(() => {
                             </svg>
                             <span>Auto GPS</span>
                         </button>
+                    </div>
+                    <div class="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-blue-600 dark:text-blue-400 font-semibold bg-blue-50/80 dark:bg-blue-950/40 px-3 py-1.5 rounded-xl border border-blue-200/60 dark:border-blue-800/40">
+                        <span>💡</span>
+                        <span>Tips: Klik langsung di area peta mana saja atau geser pin merah untuk memindahkan titik koordinat radar secara instan.</span>
                     </div>
                     <p v-if="gpsError" class="text-[11px] text-red-500 font-medium mt-1">{{ gpsError }}</p>
                 </div>

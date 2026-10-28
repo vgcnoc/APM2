@@ -125,7 +125,7 @@
                                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                                     <span class="text-[10px] font-bold text-gray-400">LAT</span>
                                                 </div>
-                                                <input v-model="form.latitude" type="text" class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all font-mono" placeholder="-6.200000" />
+                                                <input v-model="form.latitude" @input="handleCoordinatePaste('lat')" type="text" class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all font-mono" placeholder="-6.200000" />
                                             </div>
                                         </div>
                                         <div class="flex-1">
@@ -133,7 +133,7 @@
                                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                                     <span class="text-[10px] font-bold text-gray-400">LNG</span>
                                                 </div>
-                                                <input v-model="form.longitude" type="text" class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all font-mono" placeholder="106.816666" />
+                                                <input v-model="form.longitude" @input="handleCoordinatePaste('lng')" type="text" class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all font-mono" placeholder="106.816666" />
                                             </div>
                                         </div>
                                         <button type="button" @click="getLocation" class="w-full sm:w-auto px-4 py-2.5 bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-lg text-sm font-semibold hover:bg-yellow-100 transition-colors flex justify-center items-center gap-2 shadow-sm shrink-0">
@@ -655,6 +655,46 @@ watch(() => form.package_id, (newId) => {
         form.base_amount = pkg.price;
     }
 });
+
+function handleCoordinatePaste(field) {
+    const raw = String(field === 'lat' ? form.latitude : form.longitude).trim();
+    if (!raw) return;
+
+    // Check Google Maps URL
+    const urlMatch = raw.match(/@(-?\d+(?:[.,]\d+)?),(-?\d+(?:[.,]\d+)?)/) ||
+                     raw.match(/[?&]q=(-?\d+(?:[.,]\d+)?),(-?\d+(?:[.,]\d+)?)/);
+    if (urlMatch) {
+        let lat = parseFloat(urlMatch[1].replace(',', '.'));
+        let lng = parseFloat(urlMatch[2].replace(',', '.'));
+        if (Math.abs(lat) > 90 || (lat > 20 && lng <= 20)) { const t = lat; lat = lng; lng = t; }
+        if (lat > 5.0 && lat < 12.0 && lng >= 95.0 && lng <= 145.0) lat = -Math.abs(lat);
+        if (lng < 0 && Math.abs(lng) >= 95.0 && Math.abs(lng) <= 145.0) lng = Math.abs(lng);
+        form.latitude = lat.toFixed(6);
+        form.longitude = lng.toFixed(6);
+        return;
+    }
+
+    // Check paired coordinates
+    const pairMatch = raw.match(/^(-?\d+(?:[.,]\d+)?)\s*[,/ ;|]\s*(-?\d+(?:[.,]\d+)?)$/);
+    if (pairMatch) {
+        let lat = parseFloat(pairMatch[1].replace(',', '.'));
+        let lng = parseFloat(pairMatch[2].replace(',', '.'));
+        if (!isNaN(lat) && !isNaN(lng)) {
+            if (Math.abs(lat) > 90 || (lat > 20 && lng <= 20)) { const t = lat; lat = lng; lng = t; }
+            if (lat > 5.0 && lat < 12.0 && lng >= 95.0 && lng <= 145.0) lat = -Math.abs(lat);
+            if (lng < 0 && Math.abs(lng) >= 95.0 && Math.abs(lng) <= 145.0) lng = Math.abs(lng);
+            form.latitude = lat.toFixed(6);
+            form.longitude = lng.toFixed(6);
+            return;
+        }
+    }
+
+    // Single number comma normalization
+    if (raw.includes(',')) {
+        if (field === 'lat') form.latitude = raw.replace(',', '.');
+        else form.longitude = raw.replace(',', '.');
+    }
+}
 
 function getLocation() {
     if (navigator.geolocation) {
