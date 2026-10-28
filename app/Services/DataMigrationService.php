@@ -2957,7 +2957,15 @@ class DataMigrationService
                         $prorataAmount = ($totalDays > 0) ? ($basePrice / $totalDays) * $daysUsed : $basePrice;
                         $prorataAmount = (int) round($prorataAmount);
 
-                        $dueDateTime = app(\App\Services\BillingIsolationSchedule::class)->forIssueDate($actDate)
+                        $issueDateSetting = (int) Setting::get('invoice_issue_date', '1');
+                        $nextBillingDate = $actDate->copy();
+                        if ($actDate->day >= $issueDateSetting) {
+                            $nextBillingDate->startOfMonth()->addMonthNoOverflow()->day($issueDateSetting);
+                        } else {
+                            $nextBillingDate->day($issueDateSetting);
+                        }
+                        $invoiceIssuedDate = ($targetCust->billing_type ?? 'pascabayar') === 'pascabayar' ? $nextBillingDate : $actDate;
+                        $dueDateTime = app(\App\Services\BillingIsolationSchedule::class)->forIssueDate($invoiceIssuedDate)
                             ->setTimezone(config('billing.timezone', 'Asia/Jakarta'));
 
                         Invoice::create([
@@ -2966,12 +2974,12 @@ class DataMigrationService
                             'period_year' => $actDate->year,
                             'amount' => $prorataAmount,
                             'due_date' => $dueDateTime,
-                            'issued_date' => $actDate,
+                            'issued_date' => $invoiceIssuedDate,
                             'status' => 'unpaid',
                             'is_prorata' => true,
                             'billing_type' => 'prorata',
                             'billing_cycle' => $targetCust->billing_cycle ?: 'calendar',
-                            'notes' => 'Tagihan Pertama (Prorata s/d Akhir Bulan: ' . $actDate->format('d M') . ' - ' . $endOfMonth->format('d M Y') . ')',
+                            'notes' => 'Tagihan Pertama (Prorata Periode ' . $actDate->translatedFormat('F Y') . ': ' . $actDate->format('d M') . ' - ' . $endOfMonth->format('d M Y') . ')',
                         ]);
                     }
                 }

@@ -89,7 +89,16 @@ class GenerateMissingInvoices extends Command
                     $amount = (int) round($amount);
                 }
                 
-                $dueDateTime = app(\App\Services\BillingIsolationSchedule::class)->forIssueDate($activationDate)
+                $issueDateSetting = (int) \App\Models\Setting::get('invoice_issue_date', '1');
+                $nextBillingDate = $activationDate->copy();
+                if ($activationDate->day >= $issueDateSetting) {
+                    $nextBillingDate->startOfMonth()->addMonthNoOverflow()->day($issueDateSetting);
+                } else {
+                    $nextBillingDate->day($issueDateSetting);
+                }
+                
+                $invoiceIssuedDate = ($billingType === 'pascabayar' || $isProrata) ? $nextBillingDate : $activationDate;
+                $dueDateTime = app(\App\Services\BillingIsolationSchedule::class)->forIssueDate($invoiceIssuedDate)
                     ->setTimezone(config('billing.timezone', 'Asia/Jakarta'));
 
                 Invoice::create([
@@ -100,7 +109,7 @@ class GenerateMissingInvoices extends Command
                     'period_year' => $activationDate->year,
                     'amount' => $amount,
                     'due_date' => $dueDateTime,
-                    'issued_date' => $activationDate,
+                    'issued_date' => $invoiceIssuedDate,
                     'status' => 'unpaid',
                     'is_prorata' => $isProrata,
                     'notes' => $notes,
