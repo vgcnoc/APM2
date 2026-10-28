@@ -589,7 +589,7 @@ class Customer extends Model
                         if (\Illuminate\Support\Facades\Schema::hasTable('pgs_tickets') && \Illuminate\Support\Facades\Schema::hasColumn('pgs_tickets', 'area_id')) {
                             \App\Models\PgsTicket::where('customer_id', $customer->id)->update(['area_id' => $newAreaId]);
                         }
-                        // 6. Tiket PGK (Penanganan Gangguan Kabel / Lapangan)
+                        // 6. Tiket PGK (Penanganan Gangguan Komplain)
                         if (\Illuminate\Support\Facades\Schema::hasTable('pgk_tickets') && \Illuminate\Support\Facades\Schema::hasColumn('pgk_tickets', 'area_id')) {
                             \App\Models\PgkTicket::where('customer_id', $customer->id)->update(['area_id' => $newAreaId]);
                         }
