@@ -78,15 +78,7 @@ class CustomerController extends Controller
                     });
                 }
             })
-            ->when($request->area_id, function ($q, $areaId) {
-                $q->where(function ($sub) use ($areaId) {
-                    $sub->where('area_id', $areaId);
-                    $areaName = \App\Models\Area::where('id', $areaId)->value('name');
-                    if ($areaName) {
-                        $sub->orWhere('area', $areaName);
-                    }
-                });
-            })
+            ->when($request->area || $request->area_id, fn($q) => $this->applyAreaFilter($q, $request->area_id ?: $request->area))
             ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg))
             ->when($request->service_status, fn ($q, $ss) => $q->where('service_status', $ss));
 
@@ -142,15 +134,7 @@ class CustomerController extends Controller
             })
             ->when($request->service_status, fn ($q, $ss) => $q->where('service_status', $ss))
             ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg))
-            ->when($request->area_id, function ($q, $areaId) {
-                $q->where(function ($sub) use ($areaId) {
-                    $sub->where('area_id', $areaId);
-                    $areaName = \App\Models\Area::where('id', $areaId)->value('name');
-                    if ($areaName) {
-                        $sub->orWhere('area', $areaName);
-                    }
-                });
-            })
+            ->when($request->area || $request->area_id, fn($q) => $this->applyAreaFilter($q, $request->area_id ?: $request->area))
             ->when($request->odp_id, fn ($q, $odp) => $q->where(fn ($sub) =>
                 $sub->whereHas('ont', fn ($oq) => $oq->where('odp_id', $odp))
                     ->orWhereHas('surveys', fn ($sq) => $sq->where('odp_id', $odp))
@@ -238,13 +222,7 @@ class CustomerController extends Controller
                     $q->where('sales_id', auth()->id());
                 }
             })
-            ->when($request->area_id, function ($q, $areaId) {
-                $q->where(function ($sub) use ($areaId) {
-                    $sub->where('area_id', $areaId);
-                    $areaName = \App\Models\Area::where('id', $areaId)->value('name');
-                    if ($areaName) $sub->orWhere('area', $areaName);
-                });
-            })
+            ->when($request->area || $request->area_id, fn($q) => $this->applyAreaFilter($q, $request->area_id ?: $request->area))
             ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg));
 
         $customers = $customersQuery->get();
@@ -1146,7 +1124,16 @@ class CustomerController extends Controller
                 });
             })
             ->when($request->date, function ($q, $date) {
-                $q->whereDate('created_at', $date);
+                $q->where(function($sub) use ($date) {
+                    $sub->whereDate('created_at', $date)
+                        ->orWhereDate('registration_date', $date)
+                        ->orWhereHas('technicianSchedules', function($sq) use ($date) {
+                            $sq->whereDate('scheduled_date', $date)->where('type', 'survey');
+                        })
+                        ->orWhereHas('surveys', function($sq) use ($date) {
+                            $sq->whereDate('created_at', $date);
+                        });
+                });
             })
             ->when($request->area || $request->area_id, fn($q) => $this->applyAreaFilter($q, $request->area_id ?: $request->area))
             ->search($request->search);
@@ -1301,17 +1288,53 @@ class CustomerController extends Controller
             }
         }
         
+        $filteredBaseQuery = clone $baseQuery;
+        if ($request->area || $request->area_id) {
+            $this->applyAreaFilter($filteredBaseQuery, $request->area_id ?: $request->area);
+        }
+        if ($request->technician_id) {
+            $techId = $request->technician_id;
+            $filteredBaseQuery->whereHas('technicianSchedules', function($sq) use ($techId) {
+                $sq->where('technician_id', $techId)->where('type', 'installation');
+            });
+        }
+        if ($request->date_from) {
+            $dateFrom = $request->date_from;
+            $filteredBaseQuery->where(function($sub) use ($dateFrom) {
+                $sub->whereHas('technicianSchedules', function($ts) use ($dateFrom) {
+                    $ts->where('scheduled_date', '>=', $dateFrom)->where('type', 'installation');
+                })
+                ->orWhereDate('registration_date', '>=', $dateFrom)
+                ->orWhereDate('activation_date', '>=', $dateFrom)
+                ->orWhereDate('created_at', '>=', $dateFrom);
+            });
+        }
+        if ($request->date_to) {
+            $dateTo = $request->date_to;
+            $filteredBaseQuery->where(function($sub) use ($dateTo) {
+                $sub->whereHas('technicianSchedules', function($ts) use ($dateTo) {
+                    $ts->where('scheduled_date', '<=', $dateTo)->where('type', 'installation');
+                })
+                ->orWhereDate('registration_date', '<=', $dateTo)
+                ->orWhereDate('activation_date', '<=', $dateTo)
+                ->orWhereDate('created_at', '<=', $dateTo);
+            });
+        }
+        if ($request->search) {
+            $filteredBaseQuery->search($request->search);
+        }
+
         $stats = [
-            'semua' => (clone $baseQuery)->count(),
-            'jadwal_pasang' => (clone $baseQuery)
+            'semua' => (clone $filteredBaseQuery)->count(),
+            'jadwal_pasang' => (clone $filteredBaseQuery)
                 ->where('status', 'installing')
                 ->whereDoesntHave('technicianSchedules', fn($q) => $q->where('type', 'installation'))->count(),
-            'laporan_pasang' => (clone $baseQuery)
+            'laporan_pasang' => (clone $filteredBaseQuery)
                 ->where('status', 'installing')
                 ->whereHas('technicianSchedules', function($q) {
                     $q->where('type', 'installation')->where('status', 'scheduled');
                 })->count(),
-            'audit' => (clone $baseQuery)
+            'audit' => (clone $filteredBaseQuery)
                 ->where('status', 'installing')
                 ->where('is_audited', false)
                 ->whereDoesntHave('technicianSchedules', function($q) {
@@ -1320,7 +1343,7 @@ class CustomerController extends Controller
                 ->whereHas('ont', function ($q) {
                     $q->whereNotNull('rx_power');
                 })->count(),
-            'selesai_instalasi' => (clone $baseQuery)
+            'selesai_instalasi' => (clone $filteredBaseQuery)
                 ->where(function($q) {
                     $q->where('status', 'installing')->where('is_audited', true)
                       ->orWhere('status', 'active');
@@ -1328,7 +1351,7 @@ class CustomerController extends Controller
                 ->count(),
         ];
 
-        $customerQuery = clone $baseQuery;
+        $customerQuery = clone $filteredBaseQuery;
         
         $currentTab = $request->tab;
         
@@ -1354,21 +1377,9 @@ class CustomerController extends Controller
         }
 
         $customers = $customerQuery
-            ->when($request->date_from, function($q, $dateFrom) {
-                $q->whereHas('technicianSchedules', function($sub) use ($dateFrom) {
-                    $sub->where('scheduled_date', '>=', $dateFrom)->where('type', 'installation');
-                });
-            })
-            ->when($request->date_to, function($q, $dateTo) {
-                $q->whereHas('technicianSchedules', function($sub) use ($dateTo) {
-                    $sub->where('scheduled_date', '<=', $dateTo)->where('type', 'installation');
-                });
-            })
-            ->when($request->area || $request->area_id, fn($q) => $this->applyAreaFilter($q, $request->area_id ?: $request->area))
             ->with(['package', 'surveys.odp', 'ont.odp.odc.olt', 'sales', 'technicianSchedules' => function ($q) {
                 $q->where('type', 'installation')->with('technician');
             }])
-            ->search($request->search)
             ->orderByRaw('COALESCE(registration_date, created_at) DESC, id DESC')
             ->paginate(15)
             ->withQueryString();
@@ -1408,7 +1419,7 @@ class CustomerController extends Controller
             'packages' => \App\Models\InternetPackage::active()->get(),
             'areas' => $areas,
             'stats' => $stats,
-            'filters' => $request->only(['search', 'tab', 'date_from', 'date_to', 'area']),
+            'filters' => array_merge(['tab' => $currentTab ?: ''], $request->only(['search', 'tab', 'date_from', 'date_to', 'area', 'area_id', 'technician_id'])),
             'taxSettings' => [
                 'tax_ppn' => \App\Models\Setting::get('tax_ppn', '0'),
                 'tax_bhp' => \App\Models\Setting::get('tax_bhp', '0'),
@@ -1448,9 +1459,19 @@ class CustomerController extends Controller
         })->whereNotIn('status', ['installing', 'terminated', 'canceled']);
         $applyAreaScope($historyQuery);
 
+        $statsWaiting = clone $waitingQuery;
+        $statsHistory = clone $historyQuery;
+        if ($request->area || $request->area_id) {
+            $this->applyAreaFilter($statsWaiting, $request->area_id ?: $request->area);
+            $this->applyAreaFilter($statsHistory, $request->area_id ?: $request->area);
+        }
+        if ($request->search) {
+            $statsWaiting->search($request->search);
+            $statsHistory->search($request->search);
+        }
         $stats = [
-            'aktivasi' => (clone $waitingQuery)->count(),
-            'riwayat' => (clone $historyQuery)->count(),
+            'aktivasi' => $statsWaiting->count(),
+            'riwayat' => $statsHistory->count(),
         ];
 
         $currentTab = $request->input('tab', 'menunggu');
@@ -1467,16 +1488,30 @@ class CustomerController extends Controller
             ->when($request->area || $request->area_id, fn($q) => $this->applyAreaFilter($q, $request->area_id ?: $request->area))
             ->when($request->date_from, function ($q, $dateFrom) use ($currentTab) {
                 if ($currentTab === 'riwayat') {
-                    $q->whereDate('activation_date', '>=', $dateFrom);
+                    $q->where(function($sub) use ($dateFrom) {
+                        $sub->whereDate('activation_date', '>=', $dateFrom)
+                            ->orWhereDate('updated_at', '>=', $dateFrom)
+                            ->orWhereDate('created_at', '>=', $dateFrom);
+                    });
                 } else {
-                    $q->whereDate('registration_date', '>=', $dateFrom);
+                    $q->where(function($sub) use ($dateFrom) {
+                        $sub->whereDate('registration_date', '>=', $dateFrom)
+                            ->orWhereDate('created_at', '>=', $dateFrom);
+                    });
                 }
             })
             ->when($request->date_to, function ($q, $dateTo) use ($currentTab) {
                 if ($currentTab === 'riwayat') {
-                    $q->whereDate('activation_date', '<=', $dateTo);
+                    $q->where(function($sub) use ($dateTo) {
+                        $sub->whereDate('activation_date', '<=', $dateTo)
+                            ->orWhereDate('updated_at', '<=', $dateTo)
+                            ->orWhereDate('created_at', '<=', $dateTo);
+                    });
                 } else {
-                    $q->whereDate('registration_date', '<=', $dateTo);
+                    $q->where(function($sub) use ($dateTo) {
+                        $sub->whereDate('registration_date', '<=', $dateTo)
+                            ->orWhereDate('created_at', '<=', $dateTo);
+                    });
                 }
             })
             ->search($request->search)
@@ -1594,13 +1629,7 @@ class CustomerController extends Controller
                 $q->whereIn('status', ['unpaid', 'partial'])->where('is_reseller_balance', false);
             }], 'amount')
             ->search($request->search)
-            ->when($request->area_id, function ($q, $areaId) {
-                $q->where(function ($sub) use ($areaId) {
-                    $sub->where('area_id', $areaId);
-                    $areaName = \App\Models\Area::where('id', $areaId)->value('name');
-                    if ($areaName) $sub->orWhere('area', $areaName);
-                });
-            })
+            ->when($request->area || $request->area_id, fn($q) => $this->applyAreaFilter($q, $request->area_id ?: $request->area))
             ->when($request->package_id, fn($q, $pkg) => $q->where('package_id', $pkg))
             ->when($request->ont_status === 'pending', fn($q) => $q->whereHas('ont'))
             ->when($request->ont_status === 'returned', fn($q) => $q->whereDoesntHave('ont'))

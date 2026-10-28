@@ -53,7 +53,7 @@
             :data="customers.data"
             :pagination="customers"
             searchPlaceholder="Cari pelanggan..."
-            :searchRoute="buildSearchRoute()"
+            searchRoute="/customers/survey"
             selectable
             v-model:selected="selectedIds"
         >
@@ -994,26 +994,26 @@ function closeViewModal() {
     }, 300);
 }
 
-const selectedTechnician = ref(props.filters.technician_id || '');
-const selectedDate = ref(props.filters.date || '');
-const selectedArea = ref(props.filters.area || '');
-const selectedStatus = ref(props.filters.tab || 'semua');
+const selectedTechnician = ref(props.filters?.technician_id || '');
+const selectedDate = ref(props.filters?.date || '');
+const selectedArea = ref(props.filters?.area || props.filters?.area_id || '');
+const selectedStatus = ref(props.filters?.tab || 'semua');
+
+watch(() => props.filters, (newFilters) => {
+    selectedTechnician.value = newFilters?.technician_id || '';
+    selectedDate.value = newFilters?.date || '';
+    selectedArea.value = newFilters?.area || newFilters?.area_id || '';
+    selectedStatus.value = newFilters?.tab || 'semua';
+}, { deep: true });
 
 const buildSearchRoute = () => {
-    let route = '/customers/survey';
-    let query = [];
-    if (selectedStatus.value && selectedStatus.value !== 'semua') query.push('tab=' + selectedStatus.value);
-    if (selectedTechnician.value) query.push('technician_id=' + selectedTechnician.value);
-    if (selectedDate.value) query.push('date=' + selectedDate.value);
-    if (selectedArea.value) query.push('area=' + encodeURIComponent(selectedArea.value));
-    if (query.length) route += '?' + query.join('&');
-    return route;
+    return '/customers/survey';
 };
 
 const getTabUrl = (tab) => {
     let query = [];
     if (tab && tab !== 'semua') query.push('tab=' + tab);
-    if (props.filters.search) query.push('search=' + encodeURIComponent(props.filters.search));
+    if (props.filters?.search) query.push('search=' + encodeURIComponent(props.filters.search));
     if (selectedTechnician.value) query.push('technician_id=' + selectedTechnician.value);
     if (selectedDate.value) query.push('date=' + selectedDate.value);
     if (selectedArea.value) query.push('area=' + encodeURIComponent(selectedArea.value));
@@ -1021,8 +1021,9 @@ const getTabUrl = (tab) => {
 };
 
 function applyFilters() {
+    const currentSearch = typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('search') || props.filters?.search || undefined) : props.filters?.search;
     router.get('/customers/survey', {
-        search: props.filters.search,
+        search: currentSearch || undefined,
         tab: selectedStatus.value === 'semua' ? undefined : selectedStatus.value,
         technician_id: selectedTechnician.value || undefined,
         date: selectedDate.value || undefined,
@@ -1034,8 +1035,9 @@ function resetFilters() {
     selectedTechnician.value = '';
     selectedDate.value = '';
     selectedArea.value = '';
-    selectedStatus.value = 'semua';
-    router.get('/customers/survey', {}, { preserveState: true, preserveScroll: true });
+    router.get('/customers/survey', {
+        tab: selectedStatus.value === 'semua' ? undefined : selectedStatus.value,
+    }, { preserveState: true, preserveScroll: true });
 }
 
 // Assignment Modal Logic

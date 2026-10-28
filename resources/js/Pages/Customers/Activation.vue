@@ -63,7 +63,7 @@
             :data="customers.data"
             :pagination="customers"
             searchPlaceholder="Cari nama, ID, PPPoE..."
-            :searchRoute="buildSearchRoute()"
+            searchRoute="/customers/activation"
             selectable
             v-model:selected="selectedIds"
         >
@@ -71,15 +71,17 @@
                 <div class="flex flex-wrap items-center gap-2.5 w-full">
                     <select v-model="filterArea" @change="applyFilters" class="form-select w-full sm:w-44 md:w-48 text-sm bg-white">
                         <option value="">Semua Area</option>
-                        <option v-for="area in areas" :key="area" :value="area">{{ area }}</option>
+                        <option v-for="area in areas" :key="typeof area === 'object' && area !== null ? (area.name || area.id) : area" :value="typeof area === 'object' && area !== null ? (area.name || area.id) : area">
+                            {{ typeof area === 'object' && area !== null ? area.name : area }}
+                        </option>
                     </select>
 
                     <!-- Filter Rentang Tanggal -->
                     <div class="flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 shadow-2xs">
                         <span class="text-gray-400 font-medium">{{ currentTab === 'riwayat' ? 'Tgl Aktif:' : 'Tgl Daftar:' }}</span>
-                        <input v-model="filterDateFrom" type="date" class="border-0 p-0 text-xs text-slate-700 focus:ring-0" />
+                        <input v-model="filterDateFrom" @change="applyFilters" type="date" class="border-0 p-0 text-xs text-slate-700 focus:ring-0" />
                         <span class="text-gray-300">s/d</span>
-                        <input v-model="filterDateTo" type="date" class="border-0 p-0 text-xs text-slate-700 focus:ring-0" />
+                        <input v-model="filterDateTo" @change="applyFilters" type="date" class="border-0 p-0 text-xs text-slate-700 focus:ring-0" />
                     </div>
 
                     <button @click="applyFilters" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs rounded-lg transition-colors shadow-2xs cursor-pointer">
@@ -1090,13 +1092,16 @@ const props = defineProps({
 });
 
 const currentTab = ref(props.filters?.tab || 'menunggu');
-const filterArea = ref(props.filters?.area || '');
+const filterArea = ref(props.filters?.area || props.filters?.area_id || '');
 const filterDateFrom = ref(props.filters?.date_from || '');
 const filterDateTo = ref(props.filters?.date_to || '');
 
-watch(() => props.filters?.tab, (newTab) => {
-    if (newTab) currentTab.value = newTab;
-});
+watch(() => props.filters, (newFilters) => {
+    if (newFilters?.tab) currentTab.value = newFilters.tab;
+    filterArea.value = newFilters?.area || newFilters?.area_id || '';
+    filterDateFrom.value = newFilters?.date_from || '';
+    filterDateTo.value = newFilters?.date_to || '';
+}, { deep: true });
 
 function switchTab(tab) {
     currentTab.value = tab;
@@ -1110,13 +1115,14 @@ function switchTab(tab) {
 }
 
 function applyFilters() {
+    const currentSearch = typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('search') || props.filters?.search || undefined) : props.filters?.search;
     router.get('/customers/activation', {
         tab: currentTab.value,
-        search: props.filters?.search || undefined,
+        search: currentSearch || undefined,
         area: filterArea.value || undefined,
         date_from: filterDateFrom.value || undefined,
         date_to: filterDateTo.value || undefined,
-    }, { preserveState: true, replace: true });
+    }, { preserveState: true, preserveScroll: true, replace: true });
 }
 
 function resetFilters() {
@@ -1125,17 +1131,11 @@ function resetFilters() {
     filterDateTo.value = '';
     router.get('/customers/activation', {
         tab: currentTab.value
-    }, { preserveState: true, replace: true });
+    }, { preserveState: true, preserveScroll: true, replace: true });
 }
 
 const buildSearchRoute = () => {
-    let route = '/customers/activation';
-    let query = [];
-    if (currentTab.value) query.push('tab=' + currentTab.value);
-    if (filterArea.value) query.push('area=' + encodeURIComponent(filterArea.value));
-    if (filterDateFrom.value) query.push('date_from=' + filterDateFrom.value);
-    if (filterDateTo.value) query.push('date_to=' + filterDateTo.value);
-    return query.length > 0 ? `${route}?${query.join('&')}` : route;
+    return '/customers/activation';
 };
 
 const page = usePage();

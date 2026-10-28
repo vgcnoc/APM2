@@ -708,7 +708,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { usePermission } from '@/Composables/usePermission';
@@ -733,13 +733,42 @@ const showTerminated = ref(false);
 const selectedDetailOdp = ref(null);
 
 const form = useForm({
-    olt_id: props.filters.olt_id || '',
-    odc_id: props.filters.odc_id || '',
-    odp_id: props.filters.odp_id || '',
-    area_id: props.filters.area_id || '',
-    status: props.filters.status || '',
-    search: props.filters.search || '',
+    olt_id: props.filters?.olt_id || '',
+    odc_id: props.filters?.odc_id || '',
+    odp_id: props.filters?.odp_id || '',
+    area_id: props.filters?.area_id || '',
+    status: props.filters?.status || '',
+    search: props.filters?.search || '',
 });
+
+watch(() => form.olt_id, (newVal) => {
+    if (form.odc_id) {
+        const odcExists = props.odcs?.some(o => o.id == form.odc_id && (!newVal || o.olt_id == newVal));
+        if (!odcExists) {
+            form.odc_id = '';
+            form.odp_id = '';
+        }
+    }
+});
+
+watch(() => form.odc_id, (newVal) => {
+    if (form.odp_id) {
+        const odpExists = props.odps_filter?.some(o => o.id == form.odp_id && (!newVal || o.odc_id == newVal));
+        if (!odpExists) {
+            form.odp_id = '';
+        }
+    }
+});
+
+watch(() => props.filters, (newFilters) => {
+    if (!newFilters) return;
+    form.olt_id = newFilters.olt_id || '';
+    form.odc_id = newFilters.odc_id || '';
+    form.odp_id = newFilters.odp_id || '';
+    form.area_id = newFilters.area_id || '';
+    form.status = newFilters.status || '';
+    form.search = newFilters.search || '';
+}, { deep: true });
 
 const refreshData = () => {
     isRefreshing.value = true;
@@ -765,7 +794,7 @@ const resetFilters = () => {
     form.area_id = '';
     form.status = '';
     form.search = '';
-    applyFilters();
+    router.get(route('network-data.index'), {}, { preserveState: true, preserveScroll: true });
 };
 
 const filteredOdcs = computed(() => {

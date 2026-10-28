@@ -760,7 +760,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { Link, router , usePage, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
@@ -869,15 +869,25 @@ function getAvatarColor(name) {
 const filterStatus = ref(props.filters?.status || '');
 const filterServiceStatus = ref(props.filters?.service_status || '');
 const filterPackage = ref(props.filters?.package_id || '');
-const filterArea = ref(props.filters?.area_id || '');
+const filterArea = ref(props.filters?.area_id || props.filters?.area || '');
 const filterOdp = ref(props.filters?.odp_id || '');
 const filterSort = ref(props.filters?.sort_by || '');
 const customerListRoute = computed(() => props.isolirOnly ? '/customers/isolir' : '/customers');
 
+watch(() => props.filters, (newFilters) => {
+    filterStatus.value = newFilters?.status || '';
+    filterServiceStatus.value = newFilters?.service_status || '';
+    filterPackage.value = newFilters?.package_id || '';
+    filterArea.value = newFilters?.area_id || newFilters?.area || '';
+    filterOdp.value = newFilters?.odp_id || '';
+    filterSort.value = newFilters?.sort_by || '';
+}, { deep: true });
+
 function applyFilters() {
+    const currentSearch = typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('search') || props.filters?.search || undefined) : props.filters?.search;
     router.get(customerListRoute.value, {
         status: props.isolirOnly ? undefined : filterStatus.value || undefined,
-        search: props.filters?.search || undefined,
+        search: currentSearch || undefined,
         service_status: filterServiceStatus.value || undefined,
         package_id: filterPackage.value || undefined,
         area_id: filterArea.value || undefined,
@@ -902,7 +912,7 @@ function resetFilters() {
     filterArea.value = '';
     filterOdp.value = '';
     filterSort.value = '';
-    applyFilters();
+    router.get(customerListRoute.value, {}, { preserveState: true, preserveScroll: true });
 }
 
 // ── Delete Modal ───────────────────────────────────────────

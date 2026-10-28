@@ -59,17 +59,24 @@
         >
             <template #filters>
                 <form v-can="'customers_installed_filter'" @submit.prevent="applyFilter" class="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 w-full">
+                    <!-- Filter Teknisi -->
+                    <select v-model="filterState.technician_id" @change="applyFilter" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all pr-8">
+                        <option value="">Semua Teknisi</option>
+                        <option v-for="tech in technicians" :key="tech.id" :value="tech.id">{{ tech.name }}</option>
+                    </select>
+
+                    <!-- Filter Area -->
                     <select v-model="filterState.area" @change="applyFilter" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all pr-8">
                         <option value="">Semua Area</option>
-                        <option v-for="area in areas" :key="typeof area === 'object' && area !== null ? area.id : area" :value="typeof area === 'object' && area !== null ? area.name : area">
+                        <option v-for="area in areas" :key="typeof area === 'object' && area !== null ? (area.name || area.id) : area" :value="typeof area === 'object' && area !== null ? (area.name || area.id) : area">
                             {{ typeof area === 'object' && area !== null ? area.name : area }}
                         </option>
                     </select>
                     
                     <div class="flex items-center gap-2 w-full md:w-auto">
-                        <input type="date" v-model="filterState.date_from" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all" title="Tanggal Dari">
+                        <input type="date" v-model="filterState.date_from" @change="applyFilter" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all" title="Tanggal Dari">
                         <span class="text-xs text-gray-500 font-medium px-1">s/d</span>
-                        <input type="date" v-model="filterState.date_to" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all" title="Tanggal Sampai">
+                        <input type="date" v-model="filterState.date_to" @change="applyFilter" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all" title="Tanggal Sampai">
                     </div>
 
                     <div class="flex items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
@@ -1752,9 +1759,18 @@ function getTransactionLabel(trx) {
 const filterState = ref({
     date_from: props.filters?.date_from || '',
     date_to: props.filters?.date_to || '',
-    area: props.filters?.area || '',
+    area: props.filters?.area || props.filters?.area_id || '',
     tab: props.filters?.tab || '',
+    technician_id: props.filters?.technician_id || '',
 });
+
+watch(() => props.filters, (newFilters) => {
+    filterState.value.date_from = newFilters?.date_from || '';
+    filterState.value.date_to = newFilters?.date_to || '';
+    filterState.value.area = newFilters?.area || newFilters?.area_id || '';
+    filterState.value.tab = newFilters?.tab || '';
+    filterState.value.technician_id = newFilters?.technician_id || '';
+}, { deep: true });
 
 function getTabUrl(tab) {
     const params = new URLSearchParams();
@@ -1762,15 +1778,21 @@ function getTabUrl(tab) {
     if (filterState.value.date_from) params.append('date_from', filterState.value.date_from);
     if (filterState.value.date_to) params.append('date_to', filterState.value.date_to);
     if (filterState.value.area) params.append('area', filterState.value.area);
+    if (filterState.value.technician_id) params.append('technician_id', filterState.value.technician_id);
     if (props.filters?.search) params.append('search', props.filters.search);
     
     return `/customers/installed?${params.toString()}`;
 }
 
 function applyFilter() {
+    const currentSearch = typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('search') || props.filters?.search || undefined) : props.filters?.search;
     router.get('/customers/installed', {
-        ...filterState.value,
-        search: props.filters?.search || undefined
+        tab: filterState.value.tab || undefined,
+        area: filterState.value.area || undefined,
+        technician_id: filterState.value.technician_id || undefined,
+        date_from: filterState.value.date_from || undefined,
+        date_to: filterState.value.date_to || undefined,
+        search: currentSearch || undefined,
     }, { preserveState: true, preserveScroll: true });
 }
 
@@ -1778,8 +1800,10 @@ function resetFilter() {
     filterState.value.date_from = '';
     filterState.value.date_to = '';
     filterState.value.area = '';
-    filterState.value.tab = '';
-    applyFilter();
+    filterState.value.technician_id = '';
+    router.get('/customers/installed', {
+        tab: filterState.value.tab || undefined,
+    }, { preserveState: true, preserveScroll: true });
 }
 
 function signalClass(rx) {

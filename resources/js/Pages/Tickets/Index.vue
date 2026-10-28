@@ -17,7 +17,7 @@
                         </svg>
                     </div>
                     
-                    <select v-can="'tickets_filter_priority'" v-model="filterStatus" @change="performSearch" class="w-full sm:w-48 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm bg-gray-50/50">
+                    <select v-model="filterStatus" @change="performSearch" class="w-full sm:w-48 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm bg-gray-50/50">
                         <option value="">Semua Status</option>
                         <option value="open">Open</option>
                         <option value="in_progress">In Progress</option>
@@ -25,13 +25,17 @@
                         <option value="closed">Closed</option>
                     </select>
 
-                    <select v-can="'tickets_filter_priority'" v-model="filterPriority" @change="performSearch" class="w-full sm:w-48 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm bg-gray-50/50">
+                    <select v-model="filterPriority" @change="performSearch" class="w-full sm:w-48 px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-sm bg-gray-50/50">
                         <option value="">Semua Prioritas</option>
                         <option value="low">Low</option>
                         <option value="medium">Medium</option>
                         <option value="high">High</option>
                         <option value="critical">Critical</option>
                     </select>
+
+                    <button v-if="search || filterStatus || filterPriority" @click="search = ''; filterStatus = ''; filterPriority = ''; performSearch()" class="px-3.5 py-2.5 text-xs font-semibold text-gray-500 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors whitespace-nowrap">
+                        Reset Filter
+                    </button>
                 </div>
 
                 <button v-can="'tickets_create'" @click="openModal()" class="btn-primary w-full md:w-auto shrink-0 flex items-center justify-center gap-2">
@@ -242,7 +246,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { Link, useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
@@ -253,15 +257,21 @@ const props = defineProps({
     filters: Object
 });
 
-const search = ref(props.filters.search || '');
-const filterStatus = ref(props.filters.status || '');
-const filterPriority = ref(props.filters.priority || '');
+const search = ref(props.filters?.search || '');
+const filterStatus = ref(props.filters?.status || '');
+const filterPriority = ref(props.filters?.priority || '');
+
+watch(() => props.filters, (newFilters) => {
+    search.value = newFilters?.search || '';
+    filterStatus.value = newFilters?.status || '';
+    filterPriority.value = newFilters?.priority || '';
+}, { deep: true });
 
 const performSearch = () => {
     router.get('/tickets', { 
-        search: search.value,
-        status: filterStatus.value,
-        priority: filterPriority.value
+        search: search.value || undefined,
+        status: filterStatus.value || undefined,
+        priority: filterPriority.value || undefined
     }, {
         preserveState: true,
         preserveScroll: true

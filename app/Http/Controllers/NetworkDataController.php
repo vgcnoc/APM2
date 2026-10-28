@@ -47,7 +47,16 @@ class NetworkDataController extends Controller
             $odpQuery->where('id', $odpId);
         }
         if ($areaId) {
-            $odpQuery->where('area_id', $areaId);
+            $odpQuery->where(function ($q) use ($areaId) {
+                if (is_numeric($areaId)) {
+                    $q->where('area_id', $areaId)
+                      ->orWhereHas('odc', fn($odcq) => $odcq->where('area_id', $areaId))
+                      ->orWhereHas('area', fn($aq) => $aq->where('id', $areaId));
+                } else {
+                    $q->whereHas('area', fn($aq) => $aq->where('name', $areaId))
+                      ->orWhereHas('odc.area', fn($aq) => $aq->where('name', $areaId));
+                }
+            });
         }
         if ($status) {
             $odpQuery->where('status', $status);
@@ -56,7 +65,9 @@ class NetworkDataController extends Controller
             $odpQuery->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('address', 'like', "%{$search}%")
-                  ->orWhere('kode_odp', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%")
+                  ->orWhere('start_point', 'like', "%{$search}%")
+                  ->orWhere('end_point', 'like', "%{$search}%")
                   ->orWhereHas('onts', function ($oq) use ($search) {
                       $oq->where('vlan_id', 'like', "%{$search}%")
                          ->orWhere('hotspot_vlan_id', 'like', "%{$search}%")
@@ -77,10 +88,34 @@ class NetworkDataController extends Controller
         // Analytics/Stats with data scope
         $baseOdcQuery = Odc::query();
         DataScopeService::applyOdcScope($baseOdcQuery, $user);
+        if ($oltId) {
+            $baseOdcQuery->where('olt_id', $oltId);
+        }
+        if ($areaId) {
+            $baseOdcQuery->where(function ($q) use ($areaId) {
+                if (is_numeric($areaId)) $q->where('area_id', $areaId);
+                else $q->whereHas('area', fn($aq) => $aq->where('name', $areaId));
+            });
+        }
         $totalOdc = $baseOdcQuery->count();
 
         $baseOdpQuery = Odp::query();
         DataScopeService::applyOdpScope($baseOdpQuery, $user);
+        if ($oltId) {
+            $baseOdpQuery->whereHas('odc', fn($q) => $q->where('olt_id', $oltId));
+        }
+        if ($odcId) {
+            $baseOdpQuery->where('odc_id', $odcId);
+        }
+        if ($areaId) {
+            $baseOdpQuery->where(function ($q) use ($areaId) {
+                if (is_numeric($areaId)) {
+                    $q->where('area_id', $areaId)->orWhereHas('odc', fn($odcq) => $odcq->where('area_id', $areaId));
+                } else {
+                    $q->whereHas('area', fn($aq) => $aq->where('name', $areaId))->orWhereHas('odc.area', fn($aq) => $aq->where('name', $areaId));
+                }
+            });
+        }
         $totalOdp = (clone $baseOdpQuery)->count();
         $totalPort = (clone $baseOdpQuery)->sum('total_ports');
         $portTerpakai = (clone $baseOdpQuery)->sum('used_ports');
@@ -88,6 +123,15 @@ class NetworkDataController extends Controller
 
         $baseCustomerQuery = Customer::query();
         DataScopeService::applyCustomerScope($baseCustomerQuery, $user, 'network_data');
+        if ($areaId) {
+            $baseCustomerQuery->where(function ($q) use ($areaId) {
+                if (is_numeric($areaId)) {
+                    $q->where('area_id', $areaId)->orWhere('area', \App\Models\Area::where('id', $areaId)->value('name'));
+                } else {
+                    $q->where('area', $areaId)->orWhereHas('areaModel', fn($aq) => $aq->where('name', $areaId));
+                }
+            });
+        }
 
         $pelangganAktif = (clone $baseCustomerQuery)->where('status', 'active')->count();
         $pelangganGratis = (clone $baseCustomerQuery)->where('service_status', 'gratis')->where('status', 'active')->count();

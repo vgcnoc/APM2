@@ -108,8 +108,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { Link, router } from '@inertiajs/vue3';
+import { ref, computed, watch } from 'vue';
+import { Link, router, usePage } from '@inertiajs/vue3';
 
 const props = defineProps({
     columns: { type: Array, required: true },
@@ -123,7 +123,7 @@ const props = defineProps({
 
 const emit = defineEmits(['update:selected']);
 
-import { computed } from 'vue';
+
 
 const localSelected = computed({
     get: () => props.selected,
@@ -150,21 +150,41 @@ function toggleAll(e) {
     }
 }
 
+const page = usePage();
 const searchQuery = ref(typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('search') || '') : '');
 let searchTimeout = null;
+
+watch(() => page.url, () => {
+    if (typeof window !== 'undefined') {
+        const currentUrlSearch = new URLSearchParams(window.location.search).get('search') || '';
+        if (searchQuery.value !== currentUrlSearch) {
+            searchQuery.value = currentUrlSearch;
+        }
+    }
+}, { immediate: true });
 
 function onSearch() {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
         if (props.searchRoute) {
-            const queryParams = typeof window !== 'undefined' ? Object.fromEntries(new URLSearchParams(window.location.search)) : {};
+            const [baseRoute, existingQuery] = props.searchRoute.split('?');
+            const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+            if (existingQuery) {
+                const parsedExisting = new URLSearchParams(existingQuery);
+                for (const [k, v] of parsedExisting.entries()) {
+                    if (!urlParams.has(k)) {
+                        urlParams.set(k, v);
+                    }
+                }
+            }
+            const queryParams = Object.fromEntries(urlParams);
             delete queryParams.page;
             if (searchQuery.value) {
                 queryParams.search = searchQuery.value;
             } else {
                 delete queryParams.search;
             }
-            router.get(props.searchRoute, queryParams, {
+            router.get(baseRoute, queryParams, {
                 preserveState: true,
                 preserveScroll: true,
             });

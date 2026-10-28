@@ -50,7 +50,14 @@ class OdcController extends Controller
 
         // Area Filter
         if ($request->filled('area_id')) {
-            $query->where('area_id', $request->area_id);
+            $areaVal = $request->area_id;
+            $query->where(function ($sub) use ($areaVal) {
+                if (is_numeric($areaVal)) {
+                    $sub->where('area_id', $areaVal);
+                } else {
+                    $sub->whereHas('area', fn ($aq) => $aq->where('name', $areaVal));
+                }
+            });
         }
 
         // OLT Filter
