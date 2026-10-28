@@ -20,24 +20,6 @@
                     Disiplin Normal
                 </span>
             </div>
-
-            <div class="flex items-center gap-3">
-                <a 
-                    href="/settings/attendance" 
-                    class="text-xs font-bold text-slate-400 hover:text-slate-200 flex items-center gap-1 transition"
-                    title="Buka Pengaturan Aturan & Denda Potongan Absensi"
-                >
-                    <span>⚙️ Aturan Denda</span>
-                </a>
-                <span class="text-slate-700">|</span>
-                <a 
-                    href="/attendances" 
-                    class="text-xs font-bold text-rose-400 hover:text-rose-300 hover:underline flex items-center gap-1 transition"
-                >
-                    <span>Rekap Lengkap Absensi</span>
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                </a>
-            </div>
         </div>
 
         <!-- MAIN BODY -->
