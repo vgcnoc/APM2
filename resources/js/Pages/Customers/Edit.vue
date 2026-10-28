@@ -97,6 +97,9 @@
                                             Batal
                                         </button>
                                     </div>
+                                    <p class="text-[11px] text-amber-800 mt-1.5 flex items-center gap-1.5 font-medium bg-amber-50/80 p-2 rounded-lg border border-amber-200/60">
+                                        <span>⚡</span> <span><strong>Auto Sync:</strong> Mengubah area akan otomatis memperbarui perangkat ONT, jadwal teknisi, surat jalan material gudang, survey, tiket, & akun pelanggan.</span>
+                                    </p>
                                 </div>
                                 <div>
                                     <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Kecamatan</label>

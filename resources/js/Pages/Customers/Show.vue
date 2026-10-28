@@ -23,6 +23,24 @@
 
                     <div class="px-6 pb-6 space-y-4">
                         <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3">
+                            <div class="flex items-center justify-between text-xs py-0.5">
+                                <span class="text-slate-500 flex items-center gap-1.5 font-medium">
+                                    <span>🌐</span> Wilayah / Area:
+                                </span>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2 py-0.5 rounded-md">
+                                        {{ customer.areaModel?.name || customer.area || 'Belum Diset' }}
+                                    </span>
+                                    <button 
+                                        type="button" 
+                                        @click="openEditBookingModal" 
+                                        class="text-indigo-600 hover:text-indigo-800 p-1 hover:bg-indigo-100/60 rounded transition-colors"
+                                        title="Ubah Area / Wilayah Pelanggan"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                    </button>
+                                </div>
+                            </div>
                             <InfoRow icon="📞" label="Telepon" :value="customer.phone" />
                             <InfoRow icon="📧" label="Email" :value="customer.email || '-'" />
                             <InfoRow icon="📍" label="Alamat" :value="customer.address" />
@@ -2080,6 +2098,9 @@
                                         <option value="">-- Pilih Area Wilayah --</option>
                                         <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
                                     </select>
+                                    <p class="text-[11px] text-indigo-700 mt-1.5 flex items-center gap-1.5 font-medium bg-indigo-50/80 p-2.5 rounded-lg border border-indigo-100">
+                                        <span>⚡</span> <span><strong>Sinkronisasi Otomatis:</strong> Mengubah area di sini akan otomatis memperbarui perangkat ONT, jadwal teknisi, surat jalan material gudang, data survey, tiket penanganan, dan akun portal pelanggan.</span>
+                                    </p>
                                 </div>
                                 <div class="sm:col-span-2">
                                     <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Alamat Lengkap Pemasangan <span class="text-red-500">*</span></label>

@@ -473,10 +473,34 @@ class Customer extends Model
         });
     }
 
-    // ── Auto-generate customer code ────────────────────────────
+    // ── Auto-generate customer code & Area Sync ────────────────
 
     protected static function booted(): void
     {
+        static::saving(function (Customer $customer) {
+            // Sinkronisasi otomatis dua arah antara area_id dan area string
+            if ($customer->isDirty('area_id') && !empty($customer->area_id)) {
+                $areaName = \App\Models\Area::where('id', $customer->area_id)->value('name');
+                if ($areaName) {
+                    $customer->area = $areaName;
+                }
+            } elseif ($customer->isDirty('area') && !empty($customer->area)) {
+                $trimmed = trim($customer->area);
+                $areaModel = \App\Models\Area::firstOrCreate(['name' => $trimmed]);
+                $customer->area_id = $areaModel->id;
+                $customer->area = $areaModel->name;
+            } elseif (empty($customer->area_id) && !empty($customer->area)) {
+                $trimmed = trim($customer->area);
+                $areaModel = \App\Models\Area::firstOrCreate(['name' => $trimmed]);
+                $customer->area_id = $areaModel->id;
+                $customer->area = $areaModel->name;
+            } elseif (!empty($customer->area_id) && empty($customer->area)) {
+                $areaName = \App\Models\Area::where('id', $customer->area_id)->value('name');
+                if ($areaName) {
+                    $customer->area = $areaName;
+                }
+            }
+        });
         static::creating(function (Customer $customer) {
             if (static::$isMigrating) {
                 $customer->is_migrated = true;
@@ -523,32 +547,63 @@ class Customer extends Model
                 }
             }
 
-            // 2. Sinkronisasi Area ke ONT, Jadwal Teknisi, Survey, PGS, & PGK
-            if ($customer->wasChanged('area_id')) {
+            // 2. Sinkronisasi Menyeluruh Area ke ONT, Jadwal Teknisi, Survey, PGS, PGK, Transaksi Material, Reseller, & User
+            if ($customer->wasChanged('area_id') || $customer->wasChanged('area')) {
                 try {
-                    if ($customer->area_id) {
-                        $areaName = \App\Models\Area::where('id', $customer->area_id)->value('name');
-                        if ($areaName && $customer->area !== $areaName) {
-                            $customer->newQuery()->where('id', $customer->id)->update(['area' => $areaName]);
+                    $newAreaId = $customer->area_id;
+                    $areaName = $customer->area;
+                    if (!$newAreaId && $areaName) {
+                        $newAreaId = \App\Models\Area::where('name', $areaName)->value('id');
+                    }
+                    if (!$areaName && $newAreaId) {
+                        $areaName = \App\Models\Area::where('id', $newAreaId)->value('name');
+                    }
+
+                    if ($newAreaId) {
+                        // 1. Perangkat ONT Pelanggan
+                        if (\Illuminate\Support\Facades\Schema::hasColumn('onts', 'area_id')) {
+                            \App\Models\Ont::where('customer_id', $customer->id)->update(['area_id' => $newAreaId]);
+                        }
+                        // 2. Jadwal Kerja Teknisi
+                        if (\Illuminate\Support\Facades\Schema::hasColumn('technician_schedules', 'area_id')) {
+                            \App\Models\TechnicianSchedule::where('customer_id', $customer->id)->update(['area_id' => $newAreaId]);
+                        }
+                        // 3. Data Survey Lokasi Pelanggan
+                        if (\Illuminate\Support\Facades\Schema::hasColumn('surveys', 'area_id')) {
+                            \App\Models\Survey::where('customer_id', $customer->id)->update(['area_id' => $newAreaId]);
+                        }
+                        // 4. Riwayat Transaksi Material & Surat Jalan Gudang
+                        if (\Illuminate\Support\Facades\Schema::hasTable('material_transactions')) {
+                            $mtUpdates = ['area_id' => $newAreaId];
+                            if (\Illuminate\Support\Facades\Schema::hasColumn('material_transactions', 'area') && $areaName) {
+                                $mtUpdates['area'] = $areaName;
+                            }
+                            \App\Models\MaterialTransaction::where(function ($q) use ($customer) {
+                                $q->where('customer_id', $customer->id)
+                                  ->orWhere(function ($sub) use ($customer) {
+                                      $sub->where('source_type', 'instalasi')->where('source_id', $customer->id);
+                                  });
+                            })->update($mtUpdates);
+                        }
+                        // 5. Tiket PGS (Penanganan Sigap)
+                        if (\Illuminate\Support\Facades\Schema::hasTable('pgs_tickets') && \Illuminate\Support\Facades\Schema::hasColumn('pgs_tickets', 'area_id')) {
+                            \App\Models\PgsTicket::where('customer_id', $customer->id)->update(['area_id' => $newAreaId]);
+                        }
+                        // 6. Tiket PGK (Penanganan Gangguan Kabel / Lapangan)
+                        if (\Illuminate\Support\Facades\Schema::hasTable('pgk_tickets') && \Illuminate\Support\Facades\Schema::hasColumn('pgk_tickets', 'area_id')) {
+                            \App\Models\PgkTicket::where('customer_id', $customer->id)->update(['area_id' => $newAreaId]);
+                        }
+                        // 7. Akun Login Portal Client Pelanggan
+                        if ($customer->user_id && \Illuminate\Support\Facades\Schema::hasColumn('users', 'area_id')) {
+                            \App\Models\User::where('id', $customer->user_id)->update(['area_id' => $newAreaId]);
+                        }
+                        // 8. Reseller (jika pelanggan reseller)
+                        if (\Illuminate\Support\Facades\Schema::hasTable('resellers') && \Illuminate\Support\Facades\Schema::hasColumn('resellers', 'area_id')) {
+                            \App\Models\Reseller::where('customer_id', $customer->id)->update(['area_id' => $newAreaId]);
                         }
                     }
-                    if (\Illuminate\Support\Facades\Schema::hasColumn('onts', 'area_id')) {
-                        \App\Models\Ont::where('customer_id', $customer->id)->update(['area_id' => $customer->area_id]);
-                    }
-                    if (\Illuminate\Support\Facades\Schema::hasColumn('technician_schedules', 'area_id')) {
-                        \App\Models\TechnicianSchedule::where('customer_id', $customer->id)->update(['area_id' => $customer->area_id]);
-                    }
-                    if (\Illuminate\Support\Facades\Schema::hasColumn('surveys', 'area_id')) {
-                        \App\Models\Survey::where('customer_id', $customer->id)->update(['area_id' => $customer->area_id]);
-                    }
-                    if (\Illuminate\Support\Facades\Schema::hasTable('pgs_tickets') && \Illuminate\Support\Facades\Schema::hasColumn('pgs_tickets', 'area_id')) {
-                        \App\Models\PgsTicket::where('customer_id', $customer->id)->update(['area_id' => $customer->area_id]);
-                    }
-                    if (\Illuminate\Support\Facades\Schema::hasTable('pgk_tickets') && \Illuminate\Support\Facades\Schema::hasColumn('pgk_tickets', 'area_id')) {
-                        \App\Models\PgkTicket::where('customer_id', $customer->id)->update(['area_id' => $customer->area_id]);
-                    }
                 } catch (\Throwable $e) {
-                    \Illuminate\Support\Facades\Log::warning('[Customer::updated] Area sync error: ' . $e->getMessage());
+                    \Illuminate\Support\Facades\Log::warning('[Customer::updated] Area cascading sync error: ' . $e->getMessage());
                 }
             }
 

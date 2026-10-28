@@ -3655,18 +3655,26 @@ class CustomerController extends Controller
             }
         }
 
+        $oldArea = $customer->areaModel?->name ?? $customer->area ?? '-';
         $customer->update($validated);
 
         if ($customer->user) {
             $userUpdate = [];
             if (!empty($validated['name'])) $userUpdate['name'] = $validated['name'];
             if (!empty($validated['email'])) $userUpdate['email'] = $validated['email'];
+            if (!empty($validated['area_id'])) $userUpdate['area_id'] = $validated['area_id'];
             if (!empty($userUpdate)) {
                 $customer->user->update($userUpdate);
             }
         }
 
-        \App\Models\AuditLog::createLog('Edit Booking & Lokasi', $customer, $customer->status, $customer->status, 'Memperbarui data booking, lokasi, & sales');
+        $logDesc = 'Memperbarui data booking, lokasi, & sales';
+        if ($customer->wasChanged('area_id') || $customer->wasChanged('area')) {
+            $newArea = $customer->areaModel?->name ?? $customer->area ?? '-';
+            $logDesc .= " (Area berpindah: {$oldArea} -> {$newArea}, otomatis sinkron ke perangkat, jadwal teknisi, surat jalan material, survey, tiket, & user)";
+        }
+
+        \App\Models\AuditLog::createLog('Edit Booking & Lokasi', $customer, $customer->status, $customer->status, $logDesc);
 
         return back()->with('success', 'Data booking & lokasi berhasil diperbarui.');
     }
