@@ -168,57 +168,17 @@
                         <span>Terkirim</span>
                     </span>
 
-                    <!-- Aksi Cepat: View Detail Booking -->
+                    <!-- WA Permintaan Jadwal Survey (Tetap di Halaman) -->
                     <button 
-                        v-can="'customers_booking_view'"
-                        type="button"
-                        @click="viewCustomer(row)"
-                        class="w-7 h-7 rounded-lg bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white border border-blue-200/80 flex items-center justify-center transition-all shadow-2xs hover:shadow-xs focus:outline-none cursor-pointer"
-                        title="Lihat Detail Booking"
+                        type="button" 
+                        @click="openSurveyScheduleWaModal(row)"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-800 border border-emerald-300 hover:border-emerald-400 rounded-lg text-xs font-bold transition-all shadow-2xs hover:shadow-xs cursor-pointer focus:outline-none"
+                        title="Kirim Permintaan Jadwal Survey via WhatsApp (Pilih Nama Petugas)"
                     >
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.885-9.89 9.885m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.455 5.712 1.457h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.415z"/>
                         </svg>
-                    </button>
-
-                    <!-- Aksi Cepat: Edit Data Booking -->
-                    <Link 
-                        v-can="'customers_booking_edit'"
-                        :href="`/customers/${row.id}/edit`"
-                        class="w-7 h-7 rounded-lg bg-amber-50 hover:bg-amber-600 text-amber-600 hover:text-white border border-amber-200/80 flex items-center justify-center transition-all shadow-2xs hover:shadow-xs focus:outline-none cursor-pointer"
-                        title="Edit Data Booking"
-                    >
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                        </svg>
-                    </Link>
-
-                    <!-- Aksi Cepat: Cetak / Print Booking -->
-                    <a 
-                        v-can="'customers_booking_print'"
-                        :href="`/customers/${row.id}/print-booking`"
-                        target="_blank"
-                        class="w-7 h-7 rounded-lg bg-purple-50 hover:bg-purple-600 text-purple-600 hover:text-white border border-purple-200/80 flex items-center justify-center transition-all shadow-2xs hover:shadow-xs focus:outline-none cursor-pointer"
-                        title="Cetak Formulir / Bukti Booking"
-                    >
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
-                        </svg>
-                    </a>
-
-                    <!-- Aksi Cepat: Hapus Data Booking -->
-                    <button 
-                        v-can="'customers_booking_delete'"
-                        v-if="canDelete"
-                        type="button"
-                        @click="confirmDelete(row)"
-                        class="w-7 h-7 rounded-lg bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-200/80 flex items-center justify-center transition-all shadow-2xs hover:shadow-xs focus:outline-none cursor-pointer"
-                        title="Hapus Booking"
-                    >
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                        </svg>
+                        <span>Minta Jadwal Survey</span>
                     </button>
 
                     <!-- Tombol Dropdown Menu Aksi -->
@@ -320,6 +280,23 @@
                                 <p class="text-[10px] text-slate-400 group-hover:text-purple-500 font-normal leading-tight">Bukti registrasi & SPK pemasangan</p>
                             </div>
                         </a>
+
+                        <!-- Permintaan Jadwal Survey (WhatsApp) -->
+                        <button 
+                            type="button"
+                            @click="openSurveyScheduleWaModal(activeDropdownRow); closeDropdown()"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-emerald-50/80 hover:text-emerald-700 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-emerald-50 group-hover:bg-emerald-100/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.885-9.89 9.885m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.455 5.712 1.457h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.415z"/>
+                                </svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-slate-800 group-hover:text-emerald-700">Minta Jadwal Survey (WA)</span>
+                                <p class="text-[10px] text-slate-400 group-hover:text-emerald-500 font-normal leading-tight">Pilih nama petugas & kirim via WhatsApp</p>
+                            </div>
+                        </button>
 
                         <!-- Pindah ke Data Survey (Jika status booking) -->
                         <button 
@@ -609,6 +586,158 @@
                 </div>
             </div>
         </Teleport>
+        <!-- Modal Permintaan Jadwal Survey via WhatsApp -->
+        <Teleport to="body">
+            <div v-if="showSurveyScheduleWaModal && waCustomer" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-pointer" @click="closeSurveyScheduleWaModal"></div>
+                <div class="relative bg-white border border-gray-200 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col animate-fade-in-up">
+                    
+                    <!-- Header -->
+                    <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-emerald-600 to-teal-700 text-white">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shrink-0 shadow-inner">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.885-9.89 9.885m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.455 5.712 1.457h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.415z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-bold leading-tight">Permintaan Jadwal Survey</h3>
+                                <p class="text-xs text-emerald-100/90 mt-0.5">Ke siapa minta jadwal survey? Tinggal pilih namanya di bawah</p>
+                            </div>
+                        </div>
+                        <button type="button" @click="closeSurveyScheduleWaModal" class="text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-xl transition-colors cursor-pointer">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Body Content -->
+                    <div class="p-5 overflow-y-auto space-y-4 max-h-[calc(90vh-140px)]">
+                        <!-- Customer Brief Card -->
+                        <div class="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Calon Pelanggan</span>
+                                    <h4 class="text-sm font-bold text-slate-800">{{ waCustomer.name }}</h4>
+                                    <p class="text-xs text-slate-500 mt-0.5">{{ waCustomer.phone || '-' }} &bull; {{ waCustomer.area || 'Tanpa Area' }}</p>
+                                    <p class="text-xs text-slate-600 mt-1 line-clamp-1" :title="waCustomer.address">{{ waCustomer.address || '-' }}</p>
+                                </div>
+                                <span class="px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold rounded-lg shrink-0">
+                                    {{ waCustomer.package ? waCustomer.package.name : 'Paket Belum Dipilih' }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Auto-move to survey checkbox (if booking) -->
+                        <div v-if="waCustomer.status === 'booking'" class="p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl flex items-center justify-between gap-3">
+                            <div class="flex items-center gap-2.5">
+                                <input type="checkbox" id="autoMoveSurvey" v-model="autoMoveToSurvey" class="rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500 h-4 w-4 cursor-pointer" />
+                                <label for="autoMoveSurvey" class="text-xs font-semibold text-emerald-900 cursor-pointer">
+                                    Otomatis teruskan calon pelanggan ke Data Survey
+                                </label>
+                            </div>
+                            <span class="text-[10px] font-semibold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded">Status Terkirim</span>
+                        </div>
+
+                        <!-- Search Box for Recipients -->
+                        <div class="relative">
+                            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                            <input 
+                                type="text" 
+                                v-model="recipientSearchQuery" 
+                                placeholder="Cari nama teknisi, surveyor, atau petugas..." 
+                                class="form-input !pl-9 w-full rounded-xl border-slate-200 text-xs shadow-2xs focus:ring-emerald-500 focus:border-emerald-500" 
+                            />
+                        </div>
+
+                        <!-- Recipients List: "Tinggal Pilih Namanya Saja Untuk Diklik" -->
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="text-xs font-bold text-slate-700">Pilih Nama Petugas / Teknisi:</label>
+                                <span class="text-[11px] text-slate-400 font-medium">{{ filteredTechnicians.length }} nama tersedia</span>
+                            </div>
+
+                            <div v-if="filteredTechnicians.length > 0" class="space-y-2 max-h-64 overflow-y-auto pr-1">
+                                <button 
+                                    v-for="tech in filteredTechnicians" 
+                                    :key="tech.id"
+                                    type="button"
+                                    @click="selectRecipientAndSend(tech)"
+                                    class="w-full text-left p-3 rounded-xl border border-slate-200 hover:border-emerald-500 bg-white hover:bg-emerald-50/50 transition-all shadow-2xs hover:shadow-sm flex items-center justify-between gap-3 group cursor-pointer"
+                                >
+                                    <div class="flex items-center gap-3 min-w-0">
+                                        <div :class="['w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-2xs', getAvatarColor(tech.name)]">
+                                            {{ (tech.name || 'T').charAt(0).toUpperCase() }}
+                                        </div>
+                                        <div class="min-w-0">
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-xs font-bold text-slate-800 group-hover:text-emerald-700 truncate">{{ tech.name }}</span>
+                                                <span v-if="tech.is_on_duty" class="px-1.5 py-0.2 bg-emerald-100 text-emerald-700 text-[10px] font-semibold rounded flex items-center gap-1">
+                                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> On Duty
+                                                </span>
+                                            </div>
+                                            <div class="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5 truncate">
+                                                <span class="capitalize text-slate-500 font-medium">{{ tech.role || 'Teknisi' }}</span>
+                                                <span>&bull;</span>
+                                                <span class="font-mono">{{ tech.phone || 'Belum ada nomor' }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 group-hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors">
+                                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.885-9.89 9.885m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.455 5.712 1.457h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.415z"/>
+                                        </svg>
+                                        <span>Kirim WA</span>
+                                    </div>
+                                </button>
+                            </div>
+                            <div v-else class="text-center py-8 px-4 bg-slate-50 rounded-xl border border-slate-200">
+                                <p class="text-xs text-slate-500">Tidak ada teknisi atau petugas yang cocok dengan kata kunci.</p>
+                            </div>
+                        </div>
+
+                        <!-- Preview Pesan Collapsible -->
+                        <div class="border border-slate-200 rounded-xl overflow-hidden">
+                            <button 
+                                type="button" 
+                                @click="showWaPreview = !showWaPreview"
+                                class="w-full px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-xs font-semibold text-slate-700 transition-colors cursor-pointer"
+                            >
+                                <span class="flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                    Preview Format Pesan WhatsApp
+                                </span>
+                                <div class="flex items-center gap-2">
+                                    <button 
+                                        type="button" 
+                                        @click.stop="copyWaPreview" 
+                                        class="px-2 py-0.5 bg-white border border-slate-200 text-slate-600 hover:text-emerald-700 rounded text-[10px] font-medium shadow-2xs"
+                                    >
+                                        {{ copiedWaText ? '✓ Tersalin' : 'Salin Teks' }}
+                                    </button>
+                                    <svg class="w-4 h-4 text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': showWaPreview }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                </div>
+                            </button>
+                            <div v-if="showWaPreview" class="p-3 bg-slate-100/70 border-t border-slate-200 text-[11px] font-mono text-slate-700 whitespace-pre-wrap leading-relaxed select-all">
+                                {{ generateWaMessage(waCustomer, '{nama_petugas}') }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+                        <span class="flex items-center gap-1 text-[11px]">
+                            ⚡ Klik nama petugas untuk membuka WhatsApp secara otomatis.
+                        </span>
+                        <button type="button" @click="closeSurveyScheduleWaModal" class="btn-secondary py-1.5 px-3 text-xs">
+                            Tutup
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
     </AppLayout>
 </template>
 
@@ -619,10 +748,137 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import PipelineGuideCard from '@/Components/Customers/PipelineGuideCard.vue';
 import DataTable from '@/Components/DataTable.vue';
 
-const props = defineProps({ customers: Object, filters: Object, areas: Array, stats: Object });
+const props = defineProps({ customers: Object, filters: Object, areas: Array, stats: Object, technicians: Array });
 const page = usePage();
 
-// WA Modal removed
+// ── WA Permintaan Jadwal Survey Logic ──────────────────────
+const showSurveyScheduleWaModal = ref(false);
+const waCustomer = ref(null);
+const autoMoveToSurvey = ref(true);
+const recipientSearchQuery = ref('');
+const showWaPreview = ref(false);
+const copiedWaText = ref(false);
+
+function openSurveyScheduleWaModal(customer) {
+    waCustomer.value = customer;
+    recipientSearchQuery.value = '';
+    showWaPreview.value = false;
+    copiedWaText.value = false;
+    autoMoveToSurvey.value = customer?.status === 'booking';
+    showSurveyScheduleWaModal.value = true;
+}
+
+function closeSurveyScheduleWaModal() {
+    showSurveyScheduleWaModal.value = false;
+    waCustomer.value = null;
+}
+
+function cleanPhoneNumber(phone) {
+    if (!phone) return '';
+    let p = String(phone).replace(/[^0-9]/g, '');
+    if (p.startsWith('0')) {
+        p = '62' + p.substring(1);
+    } else if (p.startsWith('8')) {
+        p = '628' + p.substring(1);
+    }
+    return p;
+}
+
+function generateWaMessage(customer, recipientName = '') {
+    if (!customer) return '';
+    const cleanPhone = customer.phone || '-';
+    const pkgName = customer.package ? customer.package.name : '-';
+    const area = customer.area || 'Tanpa Area';
+    const address = customer.address || '-';
+    const greeting = recipientName ? `Halo Rekan *${recipientName}*,` : 'Halo Rekan,';
+    
+    let msg = `${greeting}\n\n`;
+    msg += `Mohon bantuan konfirmasi ketersediaan *Jadwal Survey Lapangan* untuk calon pelanggan baru berikut:\n\n`;
+    msg += `📋 *DATA CALON PELANGGAN*\n`;
+    msg += `• Nama: *${customer.name || '-'}*\n`;
+    msg += `• No. HP / WA: ${cleanPhone}\n`;
+    msg += `• Paket Pilihan: ${pkgName}\n`;
+    msg += `• Wilayah / Area: ${area}\n`;
+    msg += `• Alamat Pemasangan: ${address}\n`;
+
+    if (customer.latitude && customer.longitude) {
+        msg += `📍 *Titik Lokasi Google Maps:*\nhttps://maps.google.com/?q=${customer.latitude},${customer.longitude}\n`;
+    }
+
+    if (customer.sales?.name) {
+        msg += `• Sales / Pendaftar: ${customer.sales.name}\n`;
+    }
+
+    msg += `\nMohon diinfokan apakah rekan bersedia dan estimasi tanggal serta jam berapa survey dapat dilaksanakan. Terima kasih! 🙏⚡`;
+
+    return msg;
+}
+
+const allTechniciansList = computed(() => {
+    const fromProps = props.technicians || [];
+    const fromOfficers = page.props?.officers || [];
+    
+    const map = new Map();
+    fromProps.forEach(t => map.set(t.id, { ...t }));
+    fromOfficers.forEach(o => {
+        if (map.has(o.id)) {
+            map.get(o.id).is_on_duty = true;
+        } else {
+            map.set(o.id, { ...o, is_on_duty: true });
+        }
+    });
+
+    return Array.from(map.values()).sort((a, b) => {
+        if (a.is_on_duty && !b.is_on_duty) return -1;
+        if (!a.is_on_duty && b.is_on_duty) return 1;
+        return (a.name || '').localeCompare(b.name || '');
+    });
+});
+
+const filteredTechnicians = computed(() => {
+    if (!recipientSearchQuery.value) return allTechniciansList.value;
+    const q = recipientSearchQuery.value.toLowerCase().trim();
+    return allTechniciansList.value.filter(t => 
+        (t.name && t.name.toLowerCase().includes(q)) ||
+        (t.role && t.role.toLowerCase().includes(q)) ||
+        (t.phone && String(t.phone).includes(q))
+    );
+});
+
+function selectRecipientAndSend(tech) {
+    if (!tech?.phone) {
+        alert(`Petugas ${tech?.name || ''} belum memiliki nomor HP/WhatsApp yang terdaftar.`);
+        return;
+    }
+
+    const message = generateWaMessage(waCustomer.value, tech.name);
+    const cleanPhone = cleanPhoneNumber(tech.phone);
+    const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+
+    // Buka WhatsApp
+    window.open(waUrl, '_blank');
+
+    // Jika opsi teruskan ke Data Survey dicentang dan status masih booking
+    if (autoMoveToSurvey.value && waCustomer.value.status === 'booking') {
+        router.post(`/customers/${waCustomer.value.id}/request-survey`, {}, {
+            preserveScroll: true
+        });
+    }
+
+    closeSurveyScheduleWaModal();
+}
+
+async function copyWaPreview() {
+    if (!waCustomer.value) return;
+    const msg = generateWaMessage(waCustomer.value, '{nama_petugas}');
+    try {
+        await navigator.clipboard.writeText(msg);
+        copiedWaText.value = true;
+        setTimeout(() => { copiedWaText.value = false; }, 2500);
+    } catch (e) {
+        console.error('Failed to copy text', e);
+    }
+}
 const selectedIds = ref([]);
 
 const canDelete = computed(() => {

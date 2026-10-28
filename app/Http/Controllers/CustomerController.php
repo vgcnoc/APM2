@@ -1096,10 +1096,19 @@ class CustomerController extends Controller
             'disurvey' => (clone $query)->where('status', 'survey')->count(),
         ];
 
+        // Ambil semua user/teknisi/karyawan aktif untuk permintaan jadwal survey WA
+        $technicians = User::where(function ($q) {
+                $q->where('is_active', true)->orWhereNull('is_active');
+            })
+            ->with('employee')
+            ->orderBy('name')
+            ->get(['id', 'name', 'phone', 'email', 'role', 'is_on_duty']);
+
         return Inertia::render('Customers/Booking', [
             'customers' => $customers,
             'areas' => $areas,
             'stats' => $stats,
+            'technicians' => $technicians,
             'filters' => $request->only(['search', 'date', 'area', 'area_id', 'status']),
         ]);
     }
