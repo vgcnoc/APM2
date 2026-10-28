@@ -2129,19 +2129,29 @@ class CustomerController extends Controller
                 // Tarif bulanan mengikuti paket aktif yang berlaku di Master Data
                 $validated['base_amount'] = $package->current_price;
 
-                // Biaya Pasang Baru cerdas per-wilayah dan opsi sales
+                // Biaya Pasang Baru: Ditentukan secara otomatis dan cerdas oleh Master Paket Internet
                 $selectedArea = $validated['area'] ?? null;
                 $defaultAreaFee = $package->getInstallationFeeForArea($selectedArea);
                 $allowedFees = $package->getAllowedInstallationFeesForArea($selectedArea);
 
-                $chosenFee = isset($request->installation_fee) && is_numeric($request->installation_fee)
-                    ? (float)$request->installation_fee
-                    : null;
+                if ($isAffiliatePortal) {
+                    $chosenFee = isset($request->installation_fee) && is_numeric($request->installation_fee)
+                        ? (float)$request->installation_fee
+                        : null;
 
-                if ($chosenFee !== null && (in_array($chosenFee, $allowedFees, false) || $chosenFee === (float)$package->installation_fee || $chosenFee === 0.0 || $chosenFee === 120000.0)) {
-                    $validated['installation_fee'] = $chosenFee;
+                    if ($chosenFee !== null && in_array($chosenFee, $allowedFees, false)) {
+                        $validated['installation_fee'] = $chosenFee;
+                    } else {
+                        $validated['installation_fee'] = $defaultAreaFee;
+                    }
                 } else {
-                    $validated['installation_fee'] = $defaultAreaFee;
+                    // Internal Admin / Operator Workspace: Biaya pasang baru ditentukan secara mutlak oleh Paket Internet
+                    $serviceStatus = $validated['service_status'] ?? 'berbayar';
+                    if ($serviceStatus === 'gratis' || $serviceStatus === 'free_home') {
+                        $validated['installation_fee'] = 0;
+                    } else {
+                        $validated['installation_fee'] = $defaultAreaFee;
+                    }
                 }
             } else {
                 $validated['base_amount'] = 0;

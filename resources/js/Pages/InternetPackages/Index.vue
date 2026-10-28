@@ -1651,12 +1651,10 @@ const openEditModal = (pkg) => {
         const fee = found && found.fee !== undefined && found.fee !== null ? Number(found.fee) : Number(pkg.installation_fee || 0);
         let allowed = found && Array.isArray(found.allowed_options) && found.allowed_options.length 
             ? found.allowed_options.map(Number) 
-            : [0, 120000];
+            : [fee];
         if (!allowed.includes(fee)) {
             allowed.push(fee);
         }
-        if (!allowed.includes(0)) allowed.push(0);
-        if (!allowed.includes(120000)) allowed.push(120000);
         allowed.sort((x, y) => x - y);
         return {
             area_id: a.id,

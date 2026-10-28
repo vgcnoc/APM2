@@ -133,24 +133,10 @@ class InternetPackage extends Model
             }
         }
 
-        // Selalu sertakan biaya standar area
+        // Sertakan biaya standar area
         $areaFee = $this->getInstallationFeeForArea($areaIdOrName);
         if (!in_array($areaFee, $options, false)) {
             $options[] = $areaFee;
-        }
-
-        // Selalu sertakan 0 (promo gratis pasang) dan 120000 jika belum ada agar fleksibel untuk Sales
-        if (!in_array(0.0, $options, false)) {
-            $options[] = 0.0;
-        }
-        if (!in_array(120000.0, $options, false)) {
-            $options[] = 120000.0;
-        }
-
-        // Sertakan juga default paket jika berbeda
-        $pkgFee = (float)($this->installation_fee ?? 0);
-        if (!in_array($pkgFee, $options, false)) {
-            $options[] = $pkgFee;
         }
 
         sort($options);

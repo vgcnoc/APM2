@@ -267,54 +267,77 @@
                                         <label class="block text-[11px] font-bold text-gray-700 uppercase tracking-wider">
                                             Biaya Pasang Baru (PSB)
                                         </label>
-                                        <!-- Poin 1: Tarif Standar Wilayah -->
                                         <span v-if="form.package_id && form.area" class="text-[10px] font-bold px-2 py-0.5 rounded-md border"
-                                            :class="standardAreaInstallationFee === 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'">
-                                            Standar {{ form.area }}: Rp {{ formatCurrency(standardAreaInstallationFee) }}
+                                            :class="standardAreaInstallationFee === 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-indigo-50 text-indigo-700 border-indigo-200'">
+                                            {{ standardAreaInstallationFee === 0 ? '🎁 Promo Rp 0' : `Standar ${form.area}: Rp ${formatCurrency(standardAreaInstallationFee)}` }}
                                         </span>
                                     </div>
 
-                                    <!-- Poin 2: Opsi Pilihan Sales (Rp 0 atau Rp 120.000 dll) -->
-                                    <div v-if="form.package_id && availableInstallationOptions.length > 0 && form.service_status === 'berbayar'" class="grid grid-cols-2 gap-2 mb-2">
-                                        <button 
-                                            v-for="opt in availableInstallationOptions" 
-                                            :key="opt.value"
-                                            type="button"
-                                            @click="selectInstallationFee(opt.value)"
-                                            class="p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between"
-                                            :class="Number(form.installation_fee) === Number(opt.value) 
-                                                ? 'border-indigo-600 bg-indigo-50/80 ring-2 ring-indigo-500/30 shadow-xs' 
-                                                : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'"
-                                        >
-                                            <div class="flex items-center justify-between gap-1 mb-1">
-                                                <span class="text-[10px] font-bold uppercase tracking-wider" :class="opt.isPromo ? 'text-emerald-700' : 'text-indigo-700'">
-                                                    {{ opt.tag }}
-                                                </span>
-                                                <span v-if="Number(form.installation_fee) === Number(opt.value)" class="w-2 h-2 rounded-full bg-indigo-600"></span>
-                                            </div>
-                                            <div class="text-sm font-black" :class="Number(form.installation_fee) === Number(opt.value) ? 'text-indigo-950' : 'text-gray-900'">
-                                                {{ opt.label }}
-                                            </div>
-                                        </button>
+                                    <!-- Opsi Pilihan HANYA untuk Portal Sales jika diperbolehkan pada paket -->
+                                    <div v-if="isSalesPortal && availableInstallationOptions.length > 1 && form.service_status === 'berbayar'" class="space-y-1.5 mb-2">
+                                        <span class="text-[10px] font-bold text-indigo-700 uppercase tracking-wider block">Pilih Opsi Pasang Baru (Portal Sales):</span>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <button 
+                                                v-for="opt in availableInstallationOptions" 
+                                                :key="opt.value"
+                                                type="button"
+                                                @click="selectInstallationFee(opt.value)"
+                                                class="p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between"
+                                                :class="Number(form.installation_fee) === Number(opt.value) 
+                                                    ? 'border-indigo-600 bg-indigo-50/80 ring-2 ring-indigo-500/30 shadow-xs' 
+                                                    : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'"
+                                            >
+                                                <div class="flex items-center justify-between gap-1 mb-1">
+                                                    <span class="text-[10px] font-bold uppercase tracking-wider" :class="opt.isPromo ? 'text-emerald-700' : 'text-indigo-700'">
+                                                        {{ opt.tag }}
+                                                    </span>
+                                                    <span v-if="Number(form.installation_fee) === Number(opt.value)" class="w-2 h-2 rounded-full bg-indigo-600"></span>
+                                                </div>
+                                                <div class="text-sm font-black" :class="Number(form.installation_fee) === Number(opt.value) ? 'text-indigo-950' : 'text-gray-900'">
+                                                    {{ opt.label }}
+                                                </div>
+                                            </button>
+                                        </div>
                                     </div>
 
+                                    <!-- Input Nominal: Readonly & Terkunci Sesuai Master Paket Internet -->
                                     <div class="relative">
                                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                             <span class="text-gray-500 text-sm font-semibold">Rp</span>
                                         </div>
                                         <input 
-                                            v-model.number="form.installation_fee" 
+                                            :value="form.installation_fee" 
                                             type="number" 
-                                            min="0"
-                                            class="w-full pl-11 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 font-mono font-bold focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" 
+                                            readonly 
+                                            aria-readonly="true"
+                                            class="w-full pl-11 pr-4 py-2.5 border rounded-lg text-sm text-gray-700 bg-gray-100 border-gray-200 font-mono font-bold cursor-not-allowed" 
+                                            required 
                                         />
                                     </div>
-                                    <div v-if="form.package_id && form.area" class="mt-1.5 text-[10px] text-gray-500 flex items-center gap-1.5 flex-wrap">
-                                        <span class="font-bold text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-200">Point 1</span>
-                                        <span>Standar Area <b>{{ form.area }}</b>: Rp {{ formatCurrency(standardAreaInstallationFee) }}</span>
-                                        <span class="text-gray-300">•</span>
-                                        <span class="font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">Point 2</span>
-                                        <span>Pilihan Sales: <b>Rp {{ formatCurrency(form.installation_fee) }}</b></span>
+
+                                    <!-- Keterangan Otomatis & Cerdas -->
+                                    <div class="mt-1.5 text-xs">
+                                        <div v-if="form.service_status === 'gratis' || form.service_status === 'free_home'" class="flex items-center gap-1.5 text-emerald-700 font-semibold text-[11px]">
+                                            <span>🎁</span>
+                                            <span>Bebas biaya pasang baru untuk status layanan <b>{{ form.service_status === 'free_home' ? 'Free Home' : 'Gratis' }}</b>.</span>
+                                        </div>
+                                        <div v-else-if="form.package_id" class="flex flex-col gap-0.5">
+                                            <div class="flex items-center gap-1.5 flex-wrap">
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border"
+                                                    :class="standardAreaInstallationFee === 0 ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-indigo-50 text-indigo-800 border-indigo-200'">
+                                                    <span>{{ standardAreaInstallationFee === 0 ? '🎁 Bebas Biaya (Rp 0)' : `Biaya Pasang: Rp ${formatCurrency(standardAreaInstallationFee)}` }}</span>
+                                                </span>
+                                                <span class="text-[11px] text-gray-600 font-medium">
+                                                    Ditentukan otomatis dari Paket <b>{{ selectedPackage?.name }}</b>{{ form.area ? ` untuk Wilayah ${form.area}` : '' }}.
+                                                </span>
+                                            </div>
+                                            <span class="text-[10px] text-gray-400">
+                                                * Ditetapkan dan dikelola pada Master Data Paket Internet.
+                                            </span>
+                                        </div>
+                                        <div v-else class="text-[11px] text-gray-400">
+                                            Pilih Paket Langganan untuk menentukan Biaya Pasang Baru secara otomatis.
+                                        </div>
                                     </div>
                                 </div>
 
@@ -451,6 +474,8 @@ const isAffiliateAccount = computed(() => {
     if (r === 'affiliate' || r === 'reseller') return true;
     return false;
 });
+
+const isSalesPortal = computed(() => Boolean(props.affiliatePortal));
 
 const registration_type = ref('customer');
 
@@ -617,9 +642,9 @@ const standardAreaInstallationFee = computed(() => {
     return Number(selectedPackage.value.installation_fee || 0);
 });
 
-// Poin 2: Opsi Pilihan Biaya Pasang Baru untuk Sales
+// Poin 2: Opsi Pilihan Biaya Pasang Baru untuk Portal Sales
 const availableInstallationOptions = computed(() => {
-    if (!selectedPackage.value) return [];
+    if (!isSalesPortal.value || !selectedPackage.value || form.service_status !== 'berbayar') return [];
 
     let rawOptions = [];
     const areaFees = selectedPackage.value.area_installation_fees;
@@ -636,16 +661,10 @@ const availableInstallationOptions = computed(() => {
         }
     }
 
-    // Pastikan standar area masuk dalam opsi
+    // Pastikan standar area masuk dalam opsi jika opsi sales belum didefinisikan secara khusus
     const standardFee = standardAreaInstallationFee.value;
-    rawOptions.push(standardFee);
-
-    // Pastikan 0 (Promo Gratis) dan 120.000 (Standar) selalu menjadi opsi fleksibel bagi sales
-    rawOptions.push(0);
-    rawOptions.push(120000);
-
-    if (selectedPackage.value.installation_fee !== undefined) {
-        rawOptions.push(Number(selectedPackage.value.installation_fee));
+    if (!rawOptions.includes(standardFee)) {
+        rawOptions.push(standardFee);
     }
 
     const uniqueVals = [...new Set(rawOptions.map(Number))].sort((a, b) => a - b);
@@ -678,7 +697,14 @@ function selectInstallationFee(fee) {
 
 watch(() => form.area, (newArea) => {
     if (form.package_id && form.service_status === 'berbayar') {
-        form.installation_fee = standardAreaInstallationFee.value;
+        if (!isSalesPortal.value) {
+            form.installation_fee = standardAreaInstallationFee.value;
+        } else {
+            const allowed = availableInstallationOptions.value.map(o => Number(o.value));
+            if (!allowed.includes(Number(form.installation_fee))) {
+                form.installation_fee = standardAreaInstallationFee.value;
+            }
+        }
     }
 });
 
@@ -693,6 +719,10 @@ function formatCurrency(value) {
 function applyPackagePricing(packageId = form.package_id) {
     const pkg = props.packages.find(p => String(p.id) === String(packageId));
     form.base_amount = pkg ? packageMonthlyTariff(pkg) : 0;
+    if (form.service_status !== 'berbayar') {
+        form.installation_fee = 0;
+        return;
+    }
     form.installation_fee = standardAreaInstallationFee.value;
 }
 
