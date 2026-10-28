@@ -324,6 +324,12 @@ Route::middleware(['auth'])->group(function () {
     Route::post('shifts/{shift}/delete', [\App\Http\Controllers\ShiftController::class, 'destroy'])->name('shifts.destroy.post');
     Route::post('shifts/{shift}/assign', [\App\Http\Controllers\ShiftController::class, 'assignEmployees'])->name('shifts.assign');
 
+    // Pantauan Lokasi & Keaktifan Karyawan (Live GPS Tracking)
+    Route::post('/employee-locations/ping', [\App\Http\Controllers\EmployeeLocationController::class, 'ping'])->name('employee-locations.ping');
+    Route::post('/employee-locations/ping-offline', [\App\Http\Controllers\EmployeeLocationController::class, 'pingOffline'])->name('employee-locations.ping-offline');
+    Route::get('/employee-locations', [\App\Http\Controllers\EmployeeLocationController::class, 'index'])->name('employee-locations.index');
+    Route::get('/employee-locations/live-data', [\App\Http\Controllers\EmployeeLocationController::class, 'liveData'])->name('employee-locations.live-data');
+
     // Jadwal Kerja & Roster Shift
     Route::get('work-schedules', [\App\Http\Controllers\WorkScheduleController::class, 'index'])->name('work-schedules.index');
     Route::post('work-schedules/save-batch', [\App\Http\Controllers\WorkScheduleController::class, 'saveBatch'])->name('work-schedules.save-batch');

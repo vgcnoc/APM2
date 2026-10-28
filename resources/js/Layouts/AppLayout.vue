@@ -441,6 +441,22 @@
                         <!-- Theme Toggle Button (Dark / Light Mode) -->
                         <ThemeToggle />
 
+                        <!-- Live GPS Badge for Employees -->
+                        <div v-if="$page.props.auth?.user?.role !== 'customer'" class="hidden sm:flex items-center">
+                            <button 
+                                type="button" 
+                                @click="openGpsModal"
+                                class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border transition shadow-2xs cursor-pointer"
+                                :class="gpsActive 
+                                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100' 
+                                    : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border-rose-300 dark:border-rose-800 animate-pulse hover:bg-rose-100'"
+                                :title="gpsLocationName ? `Lokasi: ${gpsLocationName} (Akurasi: ±${gpsAccuracy || 0}m)` : 'GPS belum aktif, klik untuk nyalakan'"
+                            >
+                                <span class="w-2 h-2 rounded-full" :class="gpsActive ? 'bg-emerald-500' : 'bg-rose-500'"></span>
+                                <span class="max-w-[140px] truncate">{{ gpsActive ? (gpsShortLocation || 'GPS Aktif') : 'GPS Mati (Wajib)' }}</span>
+                            </button>
+                        </div>
+
                         <!-- On Duty Toggle -->
                         <div v-if="$page.props.auth?.user?.role !== 'customer'" class="hidden sm:flex items-center gap-2">
                             <span class="text-xs font-bold" :class="$page.props.auth?.user?.is_on_duty ? 'text-green-600' : 'text-gray-400'">
@@ -481,6 +497,67 @@
                 <slot />
             </div>
 
+            <!-- MODAL MANDATORY GPS KARYAWAN -->
+            <div v-if="showGpsModal && isEmployee" class="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-gray-900/75 backdrop-blur-xs">
+                <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-md w-full border border-gray-100 dark:border-slate-800 overflow-hidden text-center p-6 animate-scale-in">
+                    <div class="w-16 h-16 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-3 text-3xl shadow-inner">
+                        🛰️
+                    </div>
+                    <span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-700">
+                        Kebijakan Operasional Karyawan
+                    </span>
+                    <h3 class="text-base font-black text-gray-900 dark:text-white mt-2 mb-1">
+                        Wajib Menyalakan GPS Lokasi
+                    </h3>
+                    <p class="text-xs text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
+                        Halo <b>{{ $page.props.auth?.user?.name }}</b>, sebagai karyawan yang sedang bertugas, Anda diwajibkan mengaktifkan izin GPS pada perangkat Anda untuk memverifikasi lokasi kerja selama menggunakan aplikasi.
+                    </p>
+
+                    <div v-if="gpsErrorMessage" class="p-3 mb-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-left text-xs text-rose-700 dark:text-rose-300">
+                        <div class="font-bold flex items-center gap-1.5 mb-1">
+                            <span>⚠️ Kendala Akses GPS:</span>
+                        </div>
+                        <p>{{ gpsErrorMessage }}</p>
+                        <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                            Tips: Klik ikon gembok / perizinan di sebelah address bar browser, ubah <b>Lokasi</b> ke <b>Izinkan (Allow)</b>.
+                        </p>
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <button 
+                            type="button" 
+                            @click="requestGpsLocation(true)"
+                            :disabled="isGpsLoading"
+                            class="w-full py-2.5 px-4 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-700 text-white shadow-md transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
+                        >
+                            <span v-if="isGpsLoading" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                            <span>{{ isGpsLoading ? 'Mendeteksi Lokasi...' : '🛰️ Izinkan & Aktifkan GPS Sekarang' }}</span>
+                        </button>
+                        <button 
+                            type="button" 
+                            @click="showGpsModal = false"
+                            class="w-full py-2 px-4 rounded-xl font-bold text-xs bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 transition cursor-pointer"
+                        >
+                            Tutup Sementara
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- In-App Notification Toast GPS Aktif -->
+            <div v-if="gpsToastMessage" class="fixed bottom-5 right-5 z-[9999] max-w-sm bg-gray-900 dark:bg-slate-800 text-white p-3.5 rounded-2xl shadow-2xl border border-gray-700 dark:border-slate-700 flex items-start gap-3 animate-slide-up">
+                <div class="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 text-base">
+                    📍
+                </div>
+                <div class="flex-1 text-xs">
+                    <div class="font-extrabold text-emerald-400 flex items-center justify-between">
+                        <span>GPS Aktif & Terdeteksi</span>
+                        <button @click="gpsToastMessage = ''" class="text-gray-400 hover:text-white cursor-pointer">✕</button>
+                    </div>
+                    <p class="text-gray-200 dark:text-gray-300 mt-0.5 leading-snug">{{ gpsToastMessage }}</p>
+                </div>
+            </div>
+
             <!-- Application Footer -->
             <footer v-if="!fullBleed" class="workspace-footer mt-auto py-3.5 px-4 sm:px-6 lg:px-8 border-t border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md text-xs text-slate-500 dark:text-slate-400 print:hidden transition-colors">
                 <div class="flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
@@ -504,6 +581,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
+import axios from 'axios';
 import AppLogo from '@/Components/AppLogo.vue';
 import ThemeToggle from '@/Components/ThemeToggle.vue';
 import PatternPicker from '@/Components/PatternPicker.vue';
@@ -539,6 +617,117 @@ const searchQuery = ref('');
 
 // Baca tema langsung dari <html> agar ikon tidak berkedip saat render pertama
 const { isDarkMode, toggleTheme, initTheme } = useTheme();
+
+// ==================== LIVE GPS TRACKING KARYAWAN ====================
+const isEmployee = computed(() => {
+    const role = String(page.props.auth?.user?.role || '').toLowerCase();
+    return role !== 'customer';
+});
+
+const gpsActive = ref(Boolean(page.props.auth?.user?.is_gps_enabled));
+const showGpsModal = ref(false);
+const isGpsLoading = ref(false);
+const gpsLocationName = ref(page.props.auth?.user?.last_location_name || '');
+const gpsAccuracy = ref(page.props.auth?.user?.last_location_accuracy || null);
+const gpsErrorMessage = ref('');
+const gpsToastMessage = ref('');
+let gpsHeartbeatTimer = null;
+
+const gpsShortLocation = computed(() => {
+    if (!gpsLocationName.value) return 'GPS Aktif';
+    const parts = gpsLocationName.value.split(',');
+    return parts[0].trim();
+});
+
+const openGpsModal = () => {
+    showGpsModal.value = true;
+};
+
+const sendGpsPing = async (lat, lng, accuracy, showNotification = false) => {
+    try {
+        const response = await axios.post('/employee-locations/ping', {
+            latitude: lat,
+            longitude: lng,
+            accuracy: accuracy
+        });
+
+        if (response.data && response.data.success) {
+            gpsActive.value = true;
+            gpsLocationName.value = response.data.location_name;
+            gpsAccuracy.value = response.data.accuracy ? Math.round(response.data.accuracy) : null;
+            showGpsModal.value = false;
+            gpsErrorMessage.value = '';
+
+            if (showNotification) {
+                gpsToastMessage.value = `Lokasi Anda: ${response.data.location_name} (Akurasi: ±${gpsAccuracy.value || 0}m)`;
+                setTimeout(() => {
+                    gpsToastMessage.value = '';
+                }, 8000);
+            }
+        }
+    } catch (e) {
+        console.error('[GPS] Gagal mengirim ping lokasi:', e);
+    }
+};
+
+const requestGpsLocation = (isUserClick = false) => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+        gpsErrorMessage.value = 'Peramban Anda tidak mendukung sensor Geolocation GPS.';
+        showGpsModal.value = true;
+        return;
+    }
+
+    isGpsLoading.value = true;
+    gpsErrorMessage.value = '';
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            isGpsLoading.value = false;
+            sendGpsPing(
+                position.coords.latitude,
+                position.coords.longitude,
+                position.coords.accuracy,
+                true // tampilkan notifikasi di aplikasi
+            );
+        },
+        (error) => {
+            isGpsLoading.value = false;
+            gpsActive.value = false;
+            if (error.code === 1) {
+                gpsErrorMessage.value = 'Izin akses lokasi GPS ditolak oleh browser. Harap aktifkan izin lokasi di setelan browser.';
+            } else if (error.code === 2) {
+                gpsErrorMessage.value = 'Sinyal GPS tidak terdeteksi. Pastikan GPS/Location perangkat HP atau laptop Anda menyala.';
+            } else {
+                gpsErrorMessage.value = 'Waktu permintaan GPS habis. Pastikan koneksi internet dan GPS perangkat Anda aktif.';
+            }
+            showGpsModal.value = true;
+
+            axios.post('/employee-locations/ping-offline').catch(() => {});
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 30000
+        }
+    );
+};
+
+const startGpsHeartbeat = () => {
+    clearInterval(gpsHeartbeatTimer);
+    gpsHeartbeatTimer = setInterval(() => {
+        if (!isEmployee.value || typeof window === 'undefined' || !navigator.geolocation) return;
+
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                sendGpsPing(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, false);
+            },
+            () => {
+                gpsActive.value = false;
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+        );
+    }, 60000);
+};
 
 const isGroupCollapsed = (grp) => {
     if (isSearching.value) return false;
@@ -1053,9 +1242,10 @@ const menuItems = [
         icon: 'briefcase',
         label: 'Karyawan & Shift',
         theme: 'slate',
-        active: (url) => ['/employees', '/positions', '/shifts', '/work-schedules'].some(path => (url || '').startsWith(path)),
+        active: (url) => ['/employees', '/positions', '/shifts', '/work-schedules', '/employee-locations'].some(path => (url || '').startsWith(path)),
         permission: ['menu_hr_employees', 'menu_hr_positions', 'menu_shifts', 'menu_work_schedules'],
         children: [
+            { href: '/employee-locations', label: 'Pantauan Lokasi (Live GPS)', active: (url) => (url || '').startsWith('/employee-locations'), permission: 'menu_hr_employees' },
             { href: '/employees', label: 'Data Karyawan', active: (url) => (url || '').startsWith('/employees'), permission: 'menu_hr_employees' },
             { href: '/positions', label: 'Posisi / Jabatan', active: (url) => (url || '').startsWith('/positions'), permission: 'menu_hr_positions' },
             { href: '/shifts', label: 'Shift Kerja', active: (url) => (url || '').startsWith('/shifts'), permission: 'menu_shifts' },
@@ -1067,9 +1257,10 @@ const menuItems = [
         icon: 'badge-check',
         label: 'Sistem Presensi & Absensi',
         theme: 'slate',
-        active: (url) => ['/attendances', '/absen-terbaik', '/absen-khusus', '/absen-tugas-luar', '/settings/attendance'].some(path => (url || '').startsWith(path)),
+        active: (url) => ['/attendances', '/absen-terbaik', '/absen-khusus', '/absen-tugas-luar', '/settings/attendance', '/employee-locations'].some(path => (url || '').startsWith(path)),
         permission: ['menu_attendances', 'attendance_tab_reguler', 'attendance_tab_best', 'attendance_tab_special', 'attendance_tab_field', 'menu_settings_attendance'],
         children: [
+            { href: '/employee-locations', label: 'Pantauan Lokasi GPS', active: (url) => (url || '').startsWith('/employee-locations'), permission: 'menu_attendances' },
             { href: '/attendances', label: 'Absensi Reguler', active: (url) => (url || '').startsWith('/attendances'), permission: 'attendance_tab_reguler' },
             { href: '/absen-terbaik', label: 'Absen Terbaik', active: (url) => (url || '').startsWith('/absen-terbaik'), permission: 'attendance_tab_best' },
             { href: '/absen-khusus', label: 'Absen Tim Khusus', active: (url) => (url || '').startsWith('/absen-khusus'), permission: 'attendance_tab_special' },
@@ -1291,6 +1482,35 @@ onMounted(() => {
     if (typeof window !== 'undefined') {
         window.addEventListener('keydown', handleGlobalKeydown);
     }
+
+    // Mandatory GPS Check untuk seluruh karyawan
+    if (isEmployee.value && typeof window !== 'undefined') {
+        if (navigator.permissions && navigator.permissions.query) {
+            navigator.permissions.query({ name: 'geolocation' }).then((perm) => {
+                if (perm.state === 'granted') {
+                    requestGpsLocation(false);
+                } else {
+                    showGpsModal.value = true;
+                    requestGpsLocation(false);
+                }
+
+                perm.onchange = () => {
+                    if (perm.state === 'granted') {
+                        requestGpsLocation(false);
+                    } else {
+                        gpsActive.value = false;
+                        showGpsModal.value = true;
+                    }
+                };
+            }).catch(() => {
+                requestGpsLocation(false);
+            });
+        } else {
+            requestGpsLocation(false);
+        }
+
+        startGpsHeartbeat();
+    }
 });
 
 onBeforeUnmount(() => {
@@ -1300,6 +1520,8 @@ onBeforeUnmount(() => {
     if (typeof window !== 'undefined') {
         window.removeEventListener('keydown', handleGlobalKeydown);
     }
+
+    clearInterval(gpsHeartbeatTimer);
 });
 
 const iconPaths = {

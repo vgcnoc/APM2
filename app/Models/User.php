@@ -34,6 +34,13 @@ class User extends Authenticatable
         'bank_name',
         'bank_account_number',
         'bank_account_holder',
+        'last_latitude',
+        'last_longitude',
+        'last_location_name',
+        'last_location_accuracy',
+        'last_gps_updated_at',
+        'last_seen_at',
+        'is_gps_enabled',
     ];
 
     protected $hidden = [
@@ -51,12 +58,41 @@ class User extends Authenticatable
             'accessible_areas' => 'array',
             'bpjs_kesehatan' => 'boolean',
             'bpjs_ketenagakerjaan' => 'boolean',
+            'last_latitude' => 'float',
+            'last_longitude' => 'float',
+            'last_location_accuracy' => 'float',
+            'last_gps_updated_at' => 'datetime',
+            'last_seen_at' => 'datetime',
+            'is_gps_enabled' => 'boolean',
         ];
     }
 
     protected $appends = [
         'job_position',
+        'is_currently_online',
+        'online_status',
     ];
+
+    public function getIsCurrentlyOnlineAttribute(): bool
+    {
+        return $this->last_seen_at && $this->last_seen_at->gte(now()->subMinutes(5));
+    }
+
+    public function getOnlineStatusAttribute(): string
+    {
+        if ($this->last_seen_at && $this->last_seen_at->gte(now()->subMinutes(5))) {
+            return 'online';
+        }
+        if ($this->last_seen_at && $this->last_seen_at->gte(now()->subMinutes(30))) {
+            return 'idle';
+        }
+        return 'offline';
+    }
+
+    public function locationLogs(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(EmployeeLocationLog::class, 'user_id');
+    }
 
     // ── Relationships ──────────────────────────────────────────
 
