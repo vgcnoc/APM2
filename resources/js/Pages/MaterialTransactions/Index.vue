@@ -261,7 +261,7 @@
                                     </div>
                                 </td>
                                 <td class="py-4 px-6 text-right align-top">
-                                    <span class="text-sm font-bold text-gray-900">Rp {{ formatNumber(item.total_cost) }}</span>
+                                    <span v-if="isMigrationTransaction(item) || !Number(item.total_cost)" class="text-xs font-semibold text-gray-400">-</span><span v-else class="text-sm font-bold text-gray-900">Rp {{ formatNumber(item.total_cost) }}</span>
                                 </td>
                                 <td class="py-4 px-6 text-right align-top">
                                     <div class="flex flex-col items-end gap-2">
@@ -462,6 +462,15 @@ const props = defineProps({
         default: () => []
     },
 });
+
+const isMigrationTransaction = (item) => {
+    if (!item) return false;
+    if (item.is_migration) return true;
+    const num = item.transaction_number || '';
+    const pur = (item.purpose || '').toLowerCase();
+    const notes = (item.notes || '').toLowerCase();
+    return num.includes('MIG') || pur.includes('migrasi') || notes.includes('migrasi') || item.source_type === 'migrasi';
+};
 
 const formatNumber = (num) => {
     if (!num) return '0';

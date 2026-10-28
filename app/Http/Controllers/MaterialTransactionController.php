@@ -61,7 +61,16 @@ class MaterialTransactionController extends Controller
         }
 
         $totalTransactions = (clone $baseQuery)->count();
-        $totalCost = (clone $baseQuery)->sum('total_cost');
+        $totalCost = (clone $baseQuery)
+            ->where('transaction_number', 'not like', '%MIG%')
+            ->where('purpose', 'not like', '%migrasi%')
+            ->where(function ($q) {
+                $q->whereNull('notes')->orWhere('notes', 'not like', '%migrasi%');
+            })
+            ->where(function ($q) {
+                $q->whereNull('source_type')->orWhere('source_type', '!=', 'migrasi');
+            })
+            ->sum('total_cost');
         
         // Total Items
         $totalItems = MaterialTransactionItem::whereHas('transaction', function($q) use ($request, $user) {

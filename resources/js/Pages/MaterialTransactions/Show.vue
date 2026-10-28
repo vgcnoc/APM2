@@ -103,7 +103,7 @@
                                     </td>
                                     <td class="py-3 px-4 text-right">
                                         <span class="text-sm font-bold text-gray-900">{{ item.quantity }}</span>
-                                        <div class="mt-1 flex flex-col items-end gap-0.5">
+                                        <div v-if="!isMigrationTransaction && Number(item.total_price) > 0" class="mt-1 flex flex-col items-end gap-0.5">
                                             <span class="text-xs text-gray-500">@ Rp {{ formatNumber(item.price_per_unit) }}</span>
                                             <span class="text-xs font-semibold text-emerald-600">Rp {{ formatNumber(item.total_price) }}</span>
                                         </div>
@@ -142,7 +142,7 @@
                 <p class="text-sm text-blue-800 mb-4">Informasi nilai tagihan di bawah ini hanya untuk admin dan disembunyikan saat surat jalan dicetak.</p>
                 <div class="flex justify-between items-center bg-white/60 p-4 rounded-lg border border-blue-200/50">
                     <span class="text-sm font-bold text-blue-900">Total Tagihan (Harga Jual) Pengeluaran Ini:</span>
-                    <span class="text-lg font-black text-blue-600">Rp {{ formatNumber(transaction.total_cost) }}</span>
+                    <span v-if="isMigrationTransaction" class="text-xs font-semibold text-blue-700 bg-blue-100 px-3 py-1 rounded-lg">Hasil Migrasi (Bebas Biaya / Tanpa Nominal)</span><span v-else class="text-lg font-black text-blue-600">Rp {{ formatNumber(transaction.total_cost) }}</span>
                 </div>
             </div>
         </div>
@@ -193,6 +193,15 @@
 import { ref, computed } from 'vue';
 import { Link, useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+
+const isMigrationTransaction = computed(() => {
+    if (!props.transaction) return false;
+    if (props.transaction.is_migration) return true;
+    const num = props.transaction.transaction_number || '';
+    const pur = (props.transaction.purpose || '').toLowerCase();
+    const notes = (props.transaction.notes || '').toLowerCase();
+    return num.includes('MIG') || pur.includes('migrasi') || notes.includes('migrasi') || props.transaction.source_type === 'migrasi';
+});
 
 const props = defineProps({
     transaction: Object

@@ -40,6 +40,18 @@ class MaterialTransaction extends Model
         'date' => 'date',
     ];
 
+    protected $appends = [
+        'is_migration',
+    ];
+
+    public function getIsMigrationAttribute(): bool
+    {
+        return str_contains($this->transaction_number ?? '', 'MIG')
+            || str_contains(strtolower($this->purpose ?? ''), 'migrasi')
+            || str_contains(strtolower($this->notes ?? ''), 'migrasi')
+            || ($this->source_type ?? '') === 'migrasi';
+    }
+
     public static bool $isCascadingCustomerDelete = false;
 
     protected static function booted(): void

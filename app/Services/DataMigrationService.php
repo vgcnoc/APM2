@@ -2755,8 +2755,7 @@ class DataMigrationService
         // ── E. Auto-fill MaterialTransaction & Item (Menu Gudang & Riwayat Alokasi Material) ───
         if ($targetCust && ($cableDistance > 0 || !empty($ontSn))) {
             $transNumber = 'OUT-MIG-' . ($targetCust->customer_code ?: 'CUS-' . $targetCust->id);
-            $totalCost = ($cableDistance > 0 && $freeconMaterial ? (float)$freeconMaterial->price_per_unit * $cableDistance : 0)
-                + (!empty($ontSn) && $ontMat ? (float)($ontMat->price_per_unit ?: 150000) : 0);
+            $totalCost = 0; // Transaksi material hasil migrasi tanpa biaya / nominal
 
             $matTrans = MaterialTransaction::updateOrCreate(
                 ['transaction_number' => $transNumber],
@@ -2786,8 +2785,8 @@ class DataMigrationService
                     [
                         'quantity' => $cableDistance,
                         'unit' => 'meter',
-                        'price_per_unit' => $freeconMaterial->price_per_unit ?? 0,
-                        'total_price' => ($freeconMaterial->price_per_unit ?? 0) * $cableDistance,
+                        'price_per_unit' => 0,
+                        'total_price' => 0,
                         'stock_before' => $freeconMaterial->stock ?? 0,
                         'stock_after' => $freeconMaterial->stock ?? 0,
                         'condition' => 'Terpasang/Digunakan',
@@ -2797,7 +2796,7 @@ class DataMigrationService
             }
 
             if (!empty($ontSn) && $ontMat) {
-                $ontPrice = (float)($ontMat->price_per_unit ?: 150000);
+                $ontPrice = 0;
                 $ontTrxItem = MaterialTransactionItem::updateOrCreate(
                     [
                         'material_transaction_id' => $matTrans->id,
@@ -2806,8 +2805,8 @@ class DataMigrationService
                     [
                         'quantity' => 1,
                         'unit' => 'unit',
-                        'price_per_unit' => $ontPrice,
-                        'total_price' => $ontPrice,
+                        'price_per_unit' => 0,
+                        'total_price' => 0,
                         'stock_before' => $ontMat->stock ?? 0,
                         'stock_after' => $ontMat->stock ?? 0,
                         'condition' => 'Terpasang/Digunakan',
@@ -3151,7 +3150,7 @@ class DataMigrationService
                         'customer_id' => $targetCust->id,
                         'area_id' => $targetCust->area_id ?: $area->id,
                         'notes' => "Material migrasi terpasang:\n- ONT: {$ontMat->name} (SN: {$data['serial_number']})",
-                        'total_cost' => $ontPrice,
+                        'total_cost' => 0,
                     ]
                 );
 
@@ -3163,8 +3162,8 @@ class DataMigrationService
                     [
                         'quantity' => 1,
                         'unit' => 'unit',
-                        'price_per_unit' => $ontPrice,
-                        'total_price' => $ontPrice,
+                        'price_per_unit' => 0,
+                        'total_price' => 0,
                         'condition' => 'Terpasang/Digunakan',
                         'is_registered_to_ont' => true,
                     ]
@@ -3426,7 +3425,7 @@ class DataMigrationService
                         'customer_id' => $targetCust->id,
                         'area_id' => $targetCust->area_id,
                         'notes' => "Material migrasi terpasang:\n- ONT: {$ontMat->name} (SN: {$sn})",
-                        'total_cost' => $ontPrice,
+                        'total_cost' => 0,
                     ]
                 );
 
@@ -3438,8 +3437,8 @@ class DataMigrationService
                     [
                         'quantity' => 1,
                         'unit' => 'unit',
-                        'price_per_unit' => $ontPrice,
-                        'total_price' => $ontPrice,
+                        'price_per_unit' => 0,
+                        'total_price' => 0,
                         'condition' => 'Terpasang/Digunakan',
                         'is_registered_to_ont' => true,
                     ]
@@ -3894,7 +3893,7 @@ class DataMigrationService
                     'source_type' => 'migrasi',
                     'area_id' => $areaId,
                     'notes' => "Stok material kabel dropcore hasil migrasi {$items->count()} pelanggan: {$totalMeter} meter (~{$totalRoll} Roll)",
-                    'total_cost' => ($freeconMaterial->price_per_unit ?: 1500) * $totalMeter,
+                    'total_cost' => 0,
                     'user_id' => 1,
                 ]
             );
@@ -3907,8 +3906,8 @@ class DataMigrationService
                 [
                     'quantity' => $totalMeter,
                     'unit' => 'meter',
-                    'price_per_unit' => $freeconMaterial->price_per_unit ?: 1500,
-                    'total_price' => ($freeconMaterial->price_per_unit ?: 1500) * $totalMeter,
+                    'price_per_unit' => 0,
+                    'total_price' => 0,
                     'stock_before' => 0,
                     'stock_after' => $totalMeter,
                     'condition' => 'Layak Pakai',
@@ -4019,7 +4018,7 @@ class DataMigrationService
                         'customer_id' => $targetCust->id,
                         'area_id' => $areaId,
                         'notes' => "Material migrasi terpasang:\n- ONT: {$ontMat->name} (SN: {$ont->serial_number})",
-                        'total_cost' => $ontPrice,
+                        'total_cost' => 0,
                     ]
                 );
 
@@ -4031,8 +4030,8 @@ class DataMigrationService
                     [
                         'quantity' => 1,
                         'unit' => 'unit',
-                        'price_per_unit' => $ontPrice,
-                        'total_price' => $ontPrice,
+                        'price_per_unit' => 0,
+                        'total_price' => 0,
                         'condition' => 'Terpasang/Digunakan',
                         'is_registered_to_ont' => true,
                     ]
@@ -4096,8 +4095,8 @@ class DataMigrationService
                     [
                         'quantity' => $count,
                         'unit' => 'unit',
-                        'price_per_unit' => $price,
-                        'total_price' => $totalPrice,
+                        'price_per_unit' => 0,
+                        'total_price' => 0,
                         'stock_before' => 0,
                         'stock_after' => $count,
                         'condition' => 'Layak Pakai',
