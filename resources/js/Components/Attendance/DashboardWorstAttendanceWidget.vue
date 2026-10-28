@@ -294,3 +294,4 @@ const getWhatsAppTeguranLink = (emp) => {
     return `https://wa.me/${clean}?text=${encodeURIComponent(text)}`;
 };
 </script>
+

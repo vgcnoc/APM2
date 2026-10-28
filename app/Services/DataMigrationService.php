@@ -2108,7 +2108,7 @@ class DataMigrationService
             'base_amount' => $baseAmount,
             'installation_fee' => (float) ($row['biaya_pasang'] ?? 0),
             'service_status' => $serviceStatus,
-            'billing_type' => in_array(strtolower($row['jenis_billing'] ?? ''), ['prabayar', 'pascabayar']) ? strtolower($row['jenis_billing']) : 'prabayar',
+            'billing_type' => in_array(strtolower($row['jenis_billing'] ?? ''), ['prabayar', 'pascabayar']) ? strtolower($row['jenis_billing']) : \App\Models\Setting::get('billing_type', 'prabayar'),
             'status' => $status,
             'registration_date' => self::parseFlexibleDate($row['tgl_registrasi'] ?? null, now()->toDateString()),
             'activation_date' => ($status === 'active') ? self::parseFlexibleDate($row['tgl_aktivasi'] ?? null, now()->toDateString()) : self::parseFlexibleDate($row['tgl_aktivasi'] ?? null),
@@ -2422,7 +2422,7 @@ class DataMigrationService
             'issued_date' => self::parseFlexibleDate($row['tgl_terbit'] ?? null, now()->toDateString()),
             'due_date' => self::parseFlexibleDate($row['tgl_jatuh_tempo'] ?? null, now()->addDays(7)->toDateString()),
             'status' => $status,
-            'billing_type' => in_array(strtolower($row['jenis_tagihan'] ?? ''), ['prabayar', 'pascabayar', 'prorata']) ? strtolower($row['jenis_tagihan']) : 'prabayar',
+            'billing_type' => in_array(strtolower($row['jenis_tagihan'] ?? ''), ['prabayar', 'pascabayar', 'prorata']) ? strtolower($row['jenis_tagihan']) : \App\Models\Setting::get('billing_type', 'prabayar'),
             'notes' => $row['catatan_invoice'] ?? null,
             'is_existing' => $isExisting,
         ];

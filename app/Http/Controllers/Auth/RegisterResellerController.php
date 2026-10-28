@@ -111,7 +111,7 @@ class RegisterResellerController extends Controller
                 'is_reseller' => true,
                 'registration_date' => now()->toDateString(),
                 'activation_date' => now()->toDateString(),
-                'billing_type' => 'prabayar',
+                'billing_type' => \App\Models\Setting::get('billing_type', 'prabayar'),
                 'notes' => 'Pendaftaran Mandiri Mitra Reseller Voucher & Loket Pembayaran (Biller)',
             ]);
 
