@@ -1242,10 +1242,9 @@ const menuItems = [
         icon: 'briefcase',
         label: 'Karyawan & Shift',
         theme: 'slate',
-        active: (url) => ['/employees', '/positions', '/shifts', '/work-schedules', '/employee-locations'].some(path => (url || '').startsWith(path)),
+        active: (url) => ['/employees', '/positions', '/shifts', '/work-schedules'].some(path => (url || '').startsWith(path)),
         permission: ['menu_hr_employees', 'menu_hr_positions', 'menu_shifts', 'menu_work_schedules'],
         children: [
-            { href: '/employee-locations', label: 'Pantauan Lokasi (Live GPS)', active: (url) => (url || '').startsWith('/employee-locations'), permission: 'menu_hr_employees' },
             { href: '/employees', label: 'Data Karyawan', active: (url) => (url || '').startsWith('/employees'), permission: 'menu_hr_employees' },
             { href: '/positions', label: 'Posisi / Jabatan', active: (url) => (url || '').startsWith('/positions'), permission: 'menu_hr_positions' },
             { href: '/shifts', label: 'Shift Kerja', active: (url) => (url || '').startsWith('/shifts'), permission: 'menu_shifts' },
@@ -1258,9 +1257,9 @@ const menuItems = [
         label: 'Sistem Presensi & Absensi',
         theme: 'slate',
         active: (url) => ['/attendances', '/absen-terbaik', '/absen-khusus', '/absen-tugas-luar', '/settings/attendance', '/employee-locations'].some(path => (url || '').startsWith(path)),
-        permission: ['menu_attendances', 'attendance_tab_reguler', 'attendance_tab_best', 'attendance_tab_special', 'attendance_tab_field', 'menu_settings_attendance'],
+        permission: ['menu_attendances', 'attendance_tab_reguler', 'attendance_tab_best', 'attendance_tab_special', 'attendance_tab_field', 'menu_settings_attendance', 'menu_hr_employees'],
         children: [
-            { href: '/employee-locations', label: 'Pantauan Lokasi GPS', active: (url) => (url || '').startsWith('/employee-locations'), permission: 'menu_attendances' },
+            { href: '/employee-locations', label: 'Pantauan Lokasi (Live GPS)', active: (url) => (url || '').startsWith('/employee-locations'), permission: ['menu_attendances', 'menu_hr_employees'] },
             { href: '/attendances', label: 'Absensi Reguler', active: (url) => (url || '').startsWith('/attendances'), permission: 'attendance_tab_reguler' },
             { href: '/absen-terbaik', label: 'Absen Terbaik', active: (url) => (url || '').startsWith('/absen-terbaik'), permission: 'attendance_tab_best' },
             { href: '/absen-khusus', label: 'Absen Tim Khusus', active: (url) => (url || '').startsWith('/absen-khusus'), permission: 'attendance_tab_special' },
