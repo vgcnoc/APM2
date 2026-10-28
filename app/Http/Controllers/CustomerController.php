@@ -2126,10 +2126,23 @@ class CustomerController extends Controller
             }
 
             if ($package) {
-                // Jangan percaya nominal dari browser; tarif dan biaya pasang selalu
-                // mengikuti paket yang disediakan administrator di Master Data.
+                // Tarif bulanan mengikuti paket aktif yang berlaku di Master Data
                 $validated['base_amount'] = $package->current_price;
-                $validated['installation_fee'] = $package->installation_fee;
+
+                // Biaya Pasang Baru cerdas per-wilayah dan opsi sales
+                $selectedArea = $validated['area'] ?? null;
+                $defaultAreaFee = $package->getInstallationFeeForArea($selectedArea);
+                $allowedFees = $package->getAllowedInstallationFeesForArea($selectedArea);
+
+                $chosenFee = isset($request->installation_fee) && is_numeric($request->installation_fee)
+                    ? (float)$request->installation_fee
+                    : null;
+
+                if ($chosenFee !== null && (in_array($chosenFee, $allowedFees, false) || $chosenFee === (float)$package->installation_fee || $chosenFee === 0.0 || $chosenFee === 120000.0)) {
+                    $validated['installation_fee'] = $chosenFee;
+                } else {
+                    $validated['installation_fee'] = $defaultAreaFee;
+                }
             } else {
                 $validated['base_amount'] = 0;
                 $validated['installation_fee'] = 0;

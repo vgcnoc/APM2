@@ -103,16 +103,18 @@
 
             <!-- Card 6: Pelanggan Terpasang -->
             <div 
-                class="bg-white rounded-2xl p-4 border border-gray-200/80 transition-all duration-200 shadow-xs hover:shadow-md"
+                @click="setQuickFilter('sort', 'customers_desc')"
+                class="bg-white rounded-2xl p-4 border transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md hover:-translate-y-0.5 group"
+                :class="[filterState.sort === 'customers_desc' ? 'border-purple-500 ring-2 ring-purple-500/20 bg-purple-50/20' : 'border-gray-200/80 hover:border-purple-300']"
             >
                 <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs font-bold uppercase tracking-wider text-gray-500">Pelanggan</span>
+                    <span class="text-xs font-bold uppercase tracking-wider text-gray-500 group-hover:text-purple-600 transition-colors">Pelanggan</span>
                     <div class="w-8 h-8 rounded-xl bg-purple-100/70 text-purple-600 flex items-center justify-center">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                     </div>
                 </div>
                 <div class="text-2xl font-black text-purple-600">{{ Number(stats?.total_customers || 0).toLocaleString('id-ID') }}</div>
-                <p class="text-[11px] text-gray-500 mt-1">Total Pengguna Aktif</p>
+                <p class="text-[11px] text-gray-500 mt-1">Total Pengguna Terhubung</p>
             </div>
         </div>
 
@@ -190,6 +192,7 @@
                         </div>
                         <input 
                             v-model="filterState.search" 
+                            @input="onSearchInput"
                             @keyup.enter="applyFilters"
                             type="text" 
                             class="w-full pl-10 pr-9 py-2 bg-gray-50/60 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-gray-400" 
@@ -326,6 +329,12 @@
                                     Rp {{ formatPrice(pkg.is_promo ? pkg.promo_price : pkg.price) }}
                                 </div>
                                 <div v-if="pkg.is_promo" class="text-[10px] text-gray-400 line-through">Rp {{ formatPrice(pkg.price) }}</div>
+                                <div class="text-[10px] text-indigo-700 font-medium mt-0.5 flex items-center gap-1.5 flex-wrap">
+                                    <span>PSB: <b>Rp {{ formatPrice(pkg.installation_fee || 0) }}</b></span>
+                                    <span v-if="pkg.area_installation_fees && pkg.area_installation_fees.length > 0" class="px-1.5 py-0.2 rounded bg-sky-100 text-sky-800 text-[9px] font-bold border border-sky-200">
+                                        📍 {{ pkg.area_installation_fees.length }} Area Khusus
+                                    </span>
+                                </div>
                                 <div v-if="pkg.fee_reseller > 0" class="text-[10px] text-gray-500 mt-0.5">
                                     Reseller: Rp {{ formatPrice(pkg.fee_reseller) }}
                                 </div>
@@ -628,11 +637,142 @@
                                     </div>
 
                                     <div class="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4">
-                                        <label class="block text-xs font-bold text-indigo-900 mb-1.5">Biaya Pasang Baru <span class="text-red-500">*</span></label>
-                                        <p class="text-[10px] text-indigo-700 mb-2">Diisi sekali di Master Data. Nominal akan otomatis digunakan saat booking pelanggan memilih paket ini.</p>
+                                        <label class="block text-xs font-bold text-indigo-900 mb-1.5">Biaya Pasang Baru Standar <span class="text-red-500">*</span></label>
+                                        <p class="text-[10px] text-indigo-700 mb-2">Tarif dasar pasang baru. Digunakan otomatis sebagai nilai acuan standar saat booking.</p>
                                         <div class="relative max-w-sm">
                                             <span class="absolute left-3 top-2.5 text-sm font-bold text-indigo-400">Rp</span>
                                             <input v-model="form.installation_fee" type="number" min="0" class="input-text border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500 pl-10 font-bold" required>
+                                        </div>
+                                    </div>
+
+                                    <!-- Konfigurasi Cerdas Biaya Pasang per Wilayah / Area & Opsi Sales -->
+                                    <div class="rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50/80 via-white to-indigo-50/40 p-4 shadow-xs">
+                                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 mb-3 border-b border-sky-100">
+                                            <div>
+                                                <div class="flex items-center gap-2">
+                                                    <span class="p-1 rounded-lg bg-sky-100 text-sky-700 text-sm leading-none">📍</span>
+                                                    <h4 class="text-xs font-extrabold text-sky-950 uppercase tracking-wider">
+                                                        Tarif Pasang Baru Khusus per Wilayah / Area
+                                                    </h4>
+                                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-800 border border-sky-200">
+                                                        Poin 1 & 2
+                                                    </span>
+                                                </div>
+                                                <p class="text-[11px] text-slate-600 mt-1">
+                                                    Contoh: Paket ini bisa diatur biaya pasang baru <b>Rp 0 untuk BC 1</b>, tapi untuk <b>BC 2 Rp 120.000</b>. Di portal sales, sales dapat memilih opsi yang diizinkan (misal Rp 0 atau Rp 120.000).
+                                                </p>
+                                            </div>
+                                            <div class="flex items-center gap-1.5 self-start sm:self-auto flex-wrap">
+                                                <button 
+                                                    type="button" 
+                                                    @click="applyFeeToAllAreas(0)"
+                                                    class="text-[10px] font-bold px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition cursor-pointer"
+                                                >
+                                                    Set Semua Rp 0
+                                                </button>
+                                                <button 
+                                                    type="button" 
+                                                    @click="applyFeeToAllAreas(120000)"
+                                                    class="text-[10px] font-bold px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition cursor-pointer"
+                                                >
+                                                    Set Semua 120K
+                                                </button>
+                                                <button 
+                                                    type="button" 
+                                                    @click="applyDefaultFeeToAllAreas"
+                                                    class="text-[10px] font-bold px-2 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 transition cursor-pointer"
+                                                >
+                                                    Samakan Default
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Area List / Grid -->
+                                        <div v-if="form.area_installation_fees && form.area_installation_fees.length > 0" class="space-y-3">
+                                            <div 
+                                                v-for="(areaItem, idx) in form.area_installation_fees" 
+                                                :key="areaItem.area_id || areaItem.area_name"
+                                                class="bg-white rounded-xl p-3 border border-slate-200/80 shadow-2xs hover:border-sky-300 transition-colors"
+                                            >
+                                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                                    <!-- Area Identity -->
+                                                    <div class="flex items-center gap-2 min-w-[110px]">
+                                                        <span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span>
+                                                        <span class="text-xs font-bold text-slate-800">{{ areaItem.area_name }}</span>
+                                                    </div>
+
+                                                    <!-- Poin 1: Biaya Pasang Standar Wilayah -->
+                                                    <div class="flex items-center gap-2 flex-1 flex-wrap">
+                                                        <span class="text-[11px] font-semibold text-slate-500 whitespace-nowrap">Tarif Area:</span>
+                                                        <div class="relative w-36">
+                                                            <span class="absolute left-2.5 top-1.5 text-xs font-bold text-slate-400">Rp</span>
+                                                            <input 
+                                                                v-model.number="areaItem.fee" 
+                                                                type="number" 
+                                                                min="0" 
+                                                                class="w-full pl-8 pr-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-sky-500" 
+                                                                placeholder="0"
+                                                            />
+                                                        </div>
+                                                        <div class="flex items-center gap-1">
+                                                            <button 
+                                                                type="button" 
+                                                                @click="areaItem.fee = 0" 
+                                                                class="text-[10px] px-1.5 py-0.5 rounded font-bold transition cursor-pointer"
+                                                                :class="areaItem.fee === 0 ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                                                            >
+                                                                0
+                                                            </button>
+                                                            <button 
+                                                                type="button" 
+                                                                @click="areaItem.fee = 120000" 
+                                                                class="text-[10px] px-1.5 py-0.5 rounded font-bold transition cursor-pointer"
+                                                                :class="areaItem.fee === 120000 ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                                                            >
+                                                                120K
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Poin 2: Opsi Pilihan di Portal Sales -->
+                                                    <div class="flex items-center gap-1.5 flex-wrap sm:justify-end">
+                                                        <span class="text-[10px] font-semibold text-slate-500 whitespace-nowrap">Opsi Sales:</span>
+                                                        <button 
+                                                            type="button" 
+                                                            @click="toggleAreaOption(idx, 0)"
+                                                            class="px-2 py-0.5 rounded-md text-[10px] font-bold border transition cursor-pointer flex items-center gap-1"
+                                                            :class="areaItem.allowed_options && areaItem.allowed_options.includes(0) 
+                                                                ? 'bg-emerald-50 border-emerald-300 text-emerald-700 font-extrabold' 
+                                                                : 'bg-slate-50 border-slate-200 text-slate-400 hover:bg-slate-100'"
+                                                        >
+                                                            <span>{{ areaItem.allowed_options && areaItem.allowed_options.includes(0) ? '✓' : '+' }} Rp 0 (Promo)</span>
+                                                        </button>
+                                                        <button 
+                                                            type="button" 
+                                                            @click="toggleAreaOption(idx, 120000)"
+                                                            class="px-2 py-0.5 rounded-md text-[10px] font-bold border transition cursor-pointer flex items-center gap-1"
+                                                            :class="areaItem.allowed_options && areaItem.allowed_options.includes(120000) 
+                                                                ? 'bg-indigo-50 border-indigo-300 text-indigo-700 font-extrabold' 
+                                                                : 'bg-slate-50 border-slate-200 text-slate-400 hover:bg-slate-100'"
+                                                        >
+                                                            <span>{{ areaItem.allowed_options && areaItem.allowed_options.includes(120000) ? '✓' : '+' }} Rp 120K</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="mt-1.5 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500">
+                                                    <span class="flex items-center gap-1">
+                                                        <span class="text-sky-700 font-bold">Portal Sales ({{ areaItem.area_name }}):</span>
+                                                        <span>Default otomatis <b>Rp {{ Number(areaItem.fee || 0).toLocaleString('id-ID') }}</b></span>
+                                                    </span>
+                                                    <span class="text-slate-500 font-medium">
+                                                        Opsi pilihan Sales: [{{ (areaItem.allowed_options || []).map(v => 'Rp ' + Number(v).toLocaleString('id-ID')).join(', ') || 'Standar saja' }}]
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div v-else class="text-center py-4 bg-white rounded-xl border border-dashed border-slate-200 text-xs text-slate-400">
+                                            Belum ada data wilayah / area.
                                         </div>
                                     </div>
 
@@ -780,8 +920,16 @@
                         <span class="text-sm font-black text-gray-900">Rp {{ formatPrice(currentActivePrice) }}</span>
                     </div>
                     <div class="flex justify-between border-b pb-2">
-                        <span class="text-sm text-gray-500">Biaya Pasang Baru</span>
+                        <span class="text-sm text-gray-500">Biaya Pasang Baru Standar</span>
                         <span class="text-sm font-bold text-indigo-700">Rp {{ formatPrice(form.installation_fee) }}</span>
+                    </div>
+                    <div v-if="form.area_installation_fees && form.area_installation_fees.length > 0" class="border-b pb-2 text-left">
+                        <span class="text-xs text-gray-500 font-semibold block mb-1">Tarif Biaya Pasang per Area:</span>
+                        <div class="flex flex-wrap gap-1.5">
+                            <span v-for="a in form.area_installation_fees" :key="a.area_id || a.area_name" class="text-[11px] bg-slate-100 px-2 py-0.5 rounded font-mono text-slate-700">
+                                <b>{{ a.area_name }}:</b> Rp {{ Number(a.fee || 0).toLocaleString('id-ID') }}
+                            </span>
+                        </div>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-sm font-bold text-gray-700">Margin Pusat</span>
@@ -1008,6 +1156,36 @@
                                 <div class="text-[9px] text-slate-400">Laba Bersih ISP</div>
                             </div>
                         </div>
+
+                        <!-- Rincian Biaya Pasang per Wilayah / Area -->
+                        <div v-if="selectedViewPackage.area_installation_fees && selectedViewPackage.area_installation_fees.length > 0" class="mt-3 pt-3 border-t border-slate-200/80">
+                            <div class="text-[11px] font-bold text-slate-700 mb-2 flex items-center justify-between">
+                                <span class="flex items-center gap-1.5">
+                                    <span class="text-sky-600 font-extrabold">📍</span>
+                                    <span>Tarif Pasang Baru per Wilayah / Area & Opsi Sales</span>
+                                </span>
+                                <span class="text-[10px] font-bold text-sky-700 bg-sky-100 px-2 py-0.5 rounded-full">
+                                    {{ selectedViewPackage.area_installation_fees.length }} Area Dikonfigurasi
+                                </span>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div v-for="areaFee in selectedViewPackage.area_installation_fees" :key="areaFee.area_id || areaFee.area_name" class="p-2.5 bg-white rounded-lg border border-slate-200 flex flex-col justify-between">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="w-2 h-2 rounded-full bg-sky-500"></span>
+                                            <span class="font-bold text-slate-800">{{ areaFee.area_name }}</span>
+                                        </div>
+                                        <span class="font-extrabold" :class="Number(areaFee.fee) === 0 ? 'text-emerald-600' : 'text-indigo-600'">
+                                            Rp {{ Number(areaFee.fee || 0).toLocaleString('id-ID') }}
+                                        </span>
+                                    </div>
+                                    <div class="text-[10px] text-slate-500 mt-1 flex items-center justify-between">
+                                        <span>Opsi Sales:</span>
+                                        <span class="font-semibold text-slate-700">[{{ (areaFee.allowed_options || []).map(v => 'Rp ' + Number(v).toLocaleString('id-ID')).join(', ') || 'Standar' }}]</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- SECTION 2: JARINGAN & MIKROTIK -->
@@ -1124,6 +1302,10 @@ const props = defineProps({
         type: Object,
         default: () => ({ total: 0, active: 0, inactive: 0, promo: 0, pppoe: 0, hotspot: 0, total_customers: 0 })
     },
+    areas: {
+        type: Array,
+        default: () => []
+    },
     filters: {
         type: Object,
         default: () => ({ search: '', access_mode: 'all', status: 'all', is_promo: 'all', sort: 'price_asc' })
@@ -1183,6 +1365,14 @@ const resetFilters = () => {
     router.get(route('internet-packages.index'), {}, { preserveState: true, replace: true });
 };
 
+let searchTimeout = null;
+const onSearchInput = () => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        applyFilters();
+    }, 300);
+};
+
 const setQuickFilter = (type, val) => {
     if (type === 'all') {
         filterState.value.status = 'all';
@@ -1194,6 +1384,8 @@ const setQuickFilter = (type, val) => {
         filterState.value.access_mode = filterState.value.access_mode === val ? 'all' : val;
     } else if (type === 'promo') {
         filterState.value.is_promo = filterState.value.is_promo === val ? 'all' : val;
+    } else if (type === 'sort') {
+        filterState.value.sort = filterState.value.sort === val ? 'price_asc' : val;
     }
     applyFilters();
 };
@@ -1341,6 +1533,7 @@ const form = useForm({
     description: '',
     price: '',
     installation_fee: 0,
+    area_installation_fees: [],
     is_promo: false,
     promo_price: '',
     fee_reseller: 0,
@@ -1355,6 +1548,39 @@ const form = useForm({
     is_active: true,
     is_visible_to_sales: false,
 });
+
+const applyFeeToAllAreas = (amount) => {
+    if (!form.area_installation_fees) return;
+    const num = Number(amount);
+    form.area_installation_fees.forEach(item => {
+        item.fee = num;
+        if (!item.allowed_options.includes(num)) {
+            item.allowed_options.push(num);
+            item.allowed_options.sort((a, b) => a - b);
+        }
+    });
+};
+
+const applyDefaultFeeToAllAreas = () => {
+    applyFeeToAllAreas(form.installation_fee || 0);
+};
+
+const toggleAreaOption = (idx, amount) => {
+    if (!form.area_installation_fees || !form.area_installation_fees[idx]) return;
+    const item = form.area_installation_fees[idx];
+    if (!item.allowed_options) item.allowed_options = [];
+
+    const num = Number(amount);
+    const existingIdx = item.allowed_options.indexOf(num);
+    if (existingIdx > -1) {
+        if (item.allowed_options.length > 1) {
+            item.allowed_options.splice(existingIdx, 1);
+        }
+    } else {
+        item.allowed_options.push(num);
+        item.allowed_options.sort((a, b) => a - b);
+    }
+};
 
 const currentActivePrice = computed(() => {
     return form.is_promo ? (form.promo_price || 0) : (form.price || 0);
@@ -1378,6 +1604,12 @@ const openCreateModal = () => {
     editMode.value = false;
     form.reset();
     form.clearErrors();
+    form.area_installation_fees = (props.areas || []).map(a => ({
+        area_id: a.id,
+        area_name: a.name,
+        fee: Number(form.installation_fee || 0),
+        allowed_options: [0, 120000]
+    }));
     showModal.value = true;
     nextTick(() => {
         if (modalScrollRef.value) {
@@ -1409,6 +1641,31 @@ const openEditModal = (pkg) => {
     if (!form.shared_device) form.shared_device = 1;
     if (!form.active_period_unit) form.active_period_unit = 'Bulan';
     
+    // Setup area installation fees
+    const existingFees = Array.isArray(pkg.area_installation_fees) ? pkg.area_installation_fees : [];
+    form.area_installation_fees = (props.areas || []).map(a => {
+        const found = existingFees.find(item => 
+            (item.area_id && Number(item.area_id) === Number(a.id)) ||
+            (item.area_name && item.area_name.toLowerCase().trim() === a.name.toLowerCase().trim())
+        );
+        const fee = found && found.fee !== undefined && found.fee !== null ? Number(found.fee) : Number(pkg.installation_fee || 0);
+        let allowed = found && Array.isArray(found.allowed_options) && found.allowed_options.length 
+            ? found.allowed_options.map(Number) 
+            : [0, 120000];
+        if (!allowed.includes(fee)) {
+            allowed.push(fee);
+        }
+        if (!allowed.includes(0)) allowed.push(0);
+        if (!allowed.includes(120000)) allowed.push(120000);
+        allowed.sort((x, y) => x - y);
+        return {
+            area_id: a.id,
+            area_name: a.name,
+            fee: fee,
+            allowed_options: [...new Set(allowed)]
+        };
+    });
+
     form.clearErrors();
     showModal.value = true;
     nextTick(() => {
