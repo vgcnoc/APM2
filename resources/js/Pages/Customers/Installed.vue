@@ -1,6 +1,9 @@
 <template>
     <AppLayout title="Pelanggan Instalasi" subtitle="Pelanggan yang sedang diinstalasi">
         
+        <!-- Panduan & SOP Penggunaan Fitur -->
+        <PipelineGuideCard stage="installed" />
+        
         <!-- Statistik Cards -->
         <div v-can="'customers_installed_card_stats'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <StatCard 
@@ -1417,6 +1420,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { Link, router, useForm , usePage} from '@inertiajs/vue3';
 import axios from 'axios';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import PipelineGuideCard from '@/Components/Customers/PipelineGuideCard.vue';
 import DataTable from '@/Components/DataTable.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 import StatCard from '@/Components/StatCard.vue';

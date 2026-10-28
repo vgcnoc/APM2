@@ -1,6 +1,9 @@
 <template>
     <AppLayout title="Data Pembatalan" subtitle="Pelanggan yang dibatalkan pendaftarannya">
         
+        <!-- Panduan & SOP Penggunaan Fitur -->
+        <PipelineGuideCard stage="canceled" />
+        
         <!-- Statistik -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div class="glass-card p-6 animate-fade-in-up" style="animation-delay: 0.1s">
@@ -430,6 +433,7 @@
 import { ref, computed } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import PipelineGuideCard from '@/Components/Customers/PipelineGuideCard.vue';
 import DataTable from '@/Components/DataTable.vue';
 
 const props = defineProps({

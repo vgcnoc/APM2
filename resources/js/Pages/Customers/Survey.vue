@@ -1,6 +1,9 @@
 <template>
     <AppLayout title="Data Survey" subtitle="Manajemen jadwal & pelaporan hasil survey ODP">
         
+        <!-- Panduan & SOP Penggunaan Fitur -->
+        <PipelineGuideCard stage="survey" />
+        
         <!-- Statistik Cards -->
         <div v-can="'customers_survey_card_stats'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <StatCard 
@@ -924,6 +927,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { Link, useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import PipelineGuideCard from '@/Components/Customers/PipelineGuideCard.vue';
 import DataTable from '@/Components/DataTable.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 import StatCard from '@/Components/StatCard.vue';

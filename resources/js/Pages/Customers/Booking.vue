@@ -1,6 +1,9 @@
 <template>
     <AppLayout title="Data Booking" subtitle="Calon pelanggan yang baru mendaftar">
         
+        <!-- Panduan & SOP Penggunaan Fitur -->
+        <PipelineGuideCard stage="booking" />
+        
         <!-- Statistik -->
         <div v-can="'customers_booking_card_stats'" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <!-- Total Booking -->
@@ -613,6 +616,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import PipelineGuideCard from '@/Components/Customers/PipelineGuideCard.vue';
 import DataTable from '@/Components/DataTable.vue';
 
 const props = defineProps({ customers: Object, filters: Object, areas: Array, stats: Object });

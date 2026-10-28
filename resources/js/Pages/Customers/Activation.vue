@@ -1,6 +1,9 @@
 <template>
     <AppLayout title="Aktivasi Pelanggan" :subtitle="currentTab === 'riwayat' ? 'Riwayat pelanggan yang telah berhasil diaktivasi' : 'Pelanggan yang menunggu proses aktivasi layanan'">
         
+        <!-- Panduan & SOP Penggunaan Fitur -->
+        <PipelineGuideCard stage="activation" />
+        
         <!-- Statistik Cards -->
         <div v-can="'customers_activation_card_stats'" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             <StatCard 
@@ -1172,6 +1175,7 @@
 import { ref, computed, watch } from 'vue';
 import { Link, router, useForm , usePage} from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import PipelineGuideCard from '@/Components/Customers/PipelineGuideCard.vue';
 import DataTable from '@/Components/DataTable.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 import StatCard from '@/Components/StatCard.vue';
