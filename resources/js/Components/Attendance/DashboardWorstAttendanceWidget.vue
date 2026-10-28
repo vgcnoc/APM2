@@ -24,38 +24,41 @@
 
         <!-- MAIN BODY -->
         <div class="p-5 sm:p-6 space-y-6">
-            <!-- 1. STAT CARDS ROW (4 METRICS) -->
+            <!-- 1. STAT CARDS ROW (4 METRICS: PER KARYAWAN) -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <!-- Card 1: Total Potongan Denda Absensi -->
+                <!-- Card 1: Potongan Denda Per Karyawan (Akun Anda) -->
                 <div class="p-4 rounded-2xl bg-rose-50/60 border border-rose-100 dark:border-rose-900/40 relative overflow-hidden group hover:shadow-sm transition">
                     <div class="flex items-center justify-between">
-                        <span class="text-[10px] font-extrabold uppercase tracking-wider text-rose-700">Total Potongan Denda</span>
+                        <span class="text-[10px] font-extrabold uppercase tracking-wider text-rose-700">Potongan Denda Anda</span>
                         <div class="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold text-sm">
-                            💸
+                            👤
                         </div>
                     </div>
-                    <div class="text-2xl font-black text-rose-900 mt-2 tracking-tight">
-                        {{ formatRupiah(data?.summary?.total_deductions_amount || 0) }}
+                    <div class="text-2xl font-black text-rose-900 mt-2 tracking-tight font-mono">
+                        {{ formatRupiah(myStat?.total_deduction || 0) }}
                     </div>
-                    <div class="text-xs text-rose-600 font-semibold mt-1 flex items-center gap-1">
-                        <span>{{ data?.summary?.total_employees_with_penalties || 0 }} Karyawan Terkena Penalti</span>
+                    <div class="text-xs text-rose-600 font-semibold mt-1 flex items-center justify-between">
+                        <span class="truncate max-w-[130px]">{{ myStat?.name || currentUser?.name || 'Karyawan' }}</span>
+                        <span :class="myStat?.total_deduction > 0 ? 'text-rose-700 font-bold' : 'text-emerald-700 font-bold'">
+                            {{ myStat?.total_deduction > 0 ? `${myStat.infractions_count} Penalti` : 'Bebas Denda' }}
+                        </span>
                     </div>
                 </div>
 
                 <!-- Card 2: Keterlambatan -->
                 <div class="p-4 rounded-2xl bg-amber-50/60 border border-amber-100 dark:border-amber-900/40 relative overflow-hidden group hover:shadow-sm transition">
                     <div class="flex items-center justify-between">
-                        <span class="text-[10px] font-extrabold uppercase tracking-wider text-amber-700">Keterlambatan</span>
+                        <span class="text-[10px] font-extrabold uppercase tracking-wider text-amber-700">Keterlambatan Anda</span>
                         <div class="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-sm">
                             ⏱️
                         </div>
                     </div>
                     <div class="text-2xl font-black text-amber-900 mt-2 tracking-tight">
-                        {{ data?.summary?.total_lates_count || 0 }} <span class="text-sm font-bold text-amber-700">Kejadian</span>
+                        {{ myStat ? myStat.lates : (data?.summary?.total_lates_count || 0) }} <span class="text-sm font-bold text-amber-700">Kejadian</span>
                     </div>
                     <div class="text-xs text-amber-700 mt-1 flex items-center justify-between">
-                        <span>Akumulasi: <b>{{ data?.summary?.total_late_minutes || 0 }} mnt</b></span>
-                        <span class="font-bold text-amber-800">{{ formatRupiah(data?.summary?.total_late_deductions || 0) }}</span>
+                        <span>Akumulasi: <b>{{ myStat ? myStat.late_minutes : (data?.summary?.total_late_minutes || 0) }} mnt</b></span>
+                        <span class="font-bold text-amber-800 font-mono">{{ formatRupiah(myStat ? myStat.late_deduction : 0) }}</span>
                     </div>
                 </div>
 
@@ -68,11 +71,11 @@
                         </div>
                     </div>
                     <div class="text-2xl font-black text-purple-900 mt-2 tracking-tight">
-                        {{ (data?.summary?.total_missing_outs_count || 0) + (data?.summary?.total_early_leaves_count || 0) }} <span class="text-sm font-bold text-purple-700">Kejadian</span>
+                        {{ myStat ? (myStat.missing_outs + myStat.early_leaves) : ((data?.summary?.total_missing_outs_count || 0) + (data?.summary?.total_early_leaves_count || 0)) }} <span class="text-sm font-bold text-purple-700">Kejadian</span>
                     </div>
                     <div class="text-xs text-purple-700 mt-1 flex items-center justify-between">
-                        <span>{{ data?.summary?.total_missing_outs_count || 0 }} No-Out · {{ data?.summary?.total_early_leaves_count || 0 }} Cepat</span>
-                        <span class="font-bold text-purple-800">{{ formatRupiah((data?.summary?.total_missing_out_deductions || 0) + (data?.summary?.total_early_leave_deductions || 0)) }}</span>
+                        <span>{{ myStat ? myStat.missing_outs : (data?.summary?.total_missing_outs_count || 0) }} No-Out · {{ myStat ? myStat.early_leaves : (data?.summary?.total_early_leaves_count || 0) }} Cepat</span>
+                        <span class="font-bold text-purple-800 font-mono">{{ formatRupiah(myStat ? (myStat.missing_out_deduction + myStat.early_leave_deduction) : 0) }}</span>
                     </div>
                 </div>
 
@@ -85,58 +88,16 @@
                         </div>
                     </div>
                     <div class="text-2xl font-black text-slate-900 mt-2 tracking-tight">
-                        {{ data?.summary?.total_alphas_count || 0 }} <span class="text-sm font-bold text-slate-500">Hari</span>
+                        {{ myStat ? myStat.alphas : (data?.summary?.total_alphas_count || 0) }} <span class="text-sm font-bold text-slate-500">Hari</span>
                     </div>
                     <div class="text-xs text-slate-600 mt-1 flex items-center justify-between">
                         <span>Mangkir Jadwal Kerja</span>
-                        <span class="font-bold text-rose-700">{{ formatRupiah(data?.summary?.total_alpha_deductions || 0) }}</span>
+                        <span class="font-bold text-rose-700 font-mono">{{ formatRupiah(myStat ? myStat.alpha_deduction : 0) }}</span>
                     </div>
                 </div>
             </div>
 
-            <!-- 2. PERSONAL DISCIPLINE STRIP (STATUS PRESENSI AKUN ANDA) -->
-            <div 
-                v-if="myStat" 
-                class="p-4 rounded-2xl border transition-all duration-200 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-2xs"
-                :class="myStat.infractions_count > 0 ? 'bg-amber-50/70 border-amber-200/90 text-amber-900' : 'bg-emerald-50/70 border-emerald-200/90 text-emerald-900'"
-            >
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0"
-                        :class="myStat.infractions_count > 0 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'">
-                        {{ myStat.infractions_count > 0 ? '⚠️' : '🎖️' }}
-                    </div>
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs font-black uppercase tracking-wider px-2 py-0.5 rounded-md"
-                                :class="myStat.infractions_count > 0 ? 'bg-amber-200/80 text-amber-900' : 'bg-emerald-200/80 text-emerald-900'">
-                                Status Presensi Anda ({{ myStat.name }})
-                            </span>
-                            <span class="text-xs font-bold" :class="myStat.infractions_count > 0 ? 'text-amber-800' : 'text-emerald-700'">
-                                {{ myStat.infractions_count > 0 ? `${myStat.infractions_count} Catatan Pelanggaran` : 'Tertib & Disiplin Baik' }}
-                            </span>
-                        </div>
-                        <div class="text-xs text-slate-600 font-medium mt-1 flex flex-wrap items-center gap-2">
-                            <span>Hadir: <b>{{ myStat.presents }}/{{ myStat.target_days }} Hari</b></span>
-                            <span>•</span>
-                            <span>Telat: <b :class="myStat.lates > 0 ? 'text-amber-700' : ''">{{ myStat.lates }}x ({{ myStat.late_minutes }}m)</b></span>
-                            <span>•</span>
-                            <span>No-Out: <b :class="myStat.missing_outs > 0 ? 'text-purple-700' : ''">{{ myStat.missing_outs }}x</b></span>
-                            <span>•</span>
-                            <span>Alpha: <b :class="myStat.alphas > 0 ? 'text-rose-700' : ''">{{ myStat.alphas }} Hari</b></span>
-                            <span>•</span>
-                            <span>Skor Disiplin: <b>{{ myStat.score }}%</b></span>
-                        </div>
-                    </div>
-                </div>
-                <div class="text-left md:text-right shrink-0 bg-white/80 px-3.5 py-2 rounded-xl border border-slate-200/60">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Estimasi Potongan Denda Anda</span>
-                    <span class="text-base font-black font-mono block" :class="myStat.total_deduction > 0 ? 'text-rose-700' : 'text-emerald-700'">
-                        {{ formatRupiah(myStat.total_deduction) }}
-                    </span>
-                </div>
-            </div>
-
-            <!-- 3. PAPAN PERINGKAT ABSEN TERBURUK (TABEL DAFTAR KARYAWAN) -->
+            <!-- 2. PAPAN PERINGKAT ABSEN TERBURUK (TABEL DAFTAR KARYAWAN) -->
             <div class="space-y-3">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
