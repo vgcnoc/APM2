@@ -53,7 +53,42 @@ class CustomerMonitoringController extends Controller
             }
         };
 
-        // ── 1. STATS RINGKASAN GLOBAL ─────────────────────────────
+        // Filter Area & Search helper untuk query Customer
+        $applyCustomerFilter = function ($q) use ($areaId, $search) {
+            if ($areaId) {
+                $areaName = Area::find($areaId)?->name;
+                $q->where(fn($sub) => $sub->where('area_id', $areaId)->when($areaName, fn($s) => $s->orWhere('area', $areaName)));
+            }
+            if ($search) {
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('name', 'like', "%{$search}%")
+                        ->orWhere('customer_code', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%")
+                        ->orWhere('address', 'like', "%{$search}%");
+                });
+            }
+        };
+
+        // Filter Area & Search helper untuk query Invoice
+        $applyInvoiceCustomerFilter = function ($q) use ($areaId, $search) {
+            if ($areaId) {
+                $areaName = Area::find($areaId)?->name;
+                $q->whereHas('customer', fn($c) => $c->where(fn($sub) => $sub->where('area_id', $areaId)->when($areaName, fn($s) => $s->orWhere('area', $areaName))));
+            }
+            if ($search) {
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('invoice_number', 'like', "%{$search}%")
+                        ->orWhereHas('customer', function ($c) use ($search) {
+                            $c->where('name', 'like', "%{$search}%")
+                              ->orWhere('customer_code', 'like', "%{$search}%")
+                              ->orWhere('phone', 'like', "%{$search}%")
+                              ->orWhere('address', 'like', "%{$search}%");
+                        });
+                });
+            }
+        };
+
+        // ── 1. STATS RINGKASAN GLOBAL (KONTEKSTUAL AREA & SEARCH) ──
         // Pelanggan menunggak (memiliki invoice belum lunas yang telah lewat jatuh tempo dan belum terminated)
         $menunggakCustomerQuery = Customer::where('status', '!=', 'terminated')
             ->whereHas('invoices', function ($q) use ($today) {
@@ -62,6 +97,7 @@ class CustomerMonitoringController extends Controller
                   ->where('due_date', '<', $today);
             });
         $scopeCustomerArea($menunggakCustomerQuery);
+        $applyCustomerFilter($menunggakCustomerQuery);
         $menunggakCustomersCount = $menunggakCustomerQuery->count();
 
         $nominalMenunggakQuery = Invoice::whereIn('status', ['unpaid', 'partial'])
@@ -69,6 +105,7 @@ class CustomerMonitoringController extends Controller
             ->where('due_date', '<', $today)
             ->whereHas('customer', fn($c) => $c->where('status', '!=', 'terminated'));
         $scopeInvoiceArea($nominalMenunggakQuery);
+        $applyInvoiceCustomerFilter($nominalMenunggakQuery);
         $totalNominalMenunggak = (float) $nominalMenunggakQuery->sum('amount');
 
         // Janji bayar (hanya pelanggan yang belum terminated)
@@ -77,6 +114,7 @@ class CustomerMonitoringController extends Controller
             ->whereNotNull('promise_date')
             ->whereHas('customer', fn($c) => $c->where('status', '!=', 'terminated'));
         $scopeInvoiceArea($janjiBayarQuery);
+        $applyInvoiceCustomerFilter($janjiBayarQuery);
 
         $totalJanjiBayarCount = (clone $janjiBayarQuery)->count();
         $totalNominalJanjiBayar = (float) (clone $janjiBayarQuery)->sum('amount');
@@ -87,6 +125,7 @@ class CustomerMonitoringController extends Controller
         // Stop Sementara (Suspended)
         $stopSementaraQuery = Customer::where('status', 'suspended');
         $scopeCustomerArea($stopSementaraQuery);
+        $applyCustomerFilter($stopSementaraQuery);
         $stopSementaraCount = $stopSementaraQuery->count();
 
         $stopKarenaTunggakanQuery = Customer::where('status', 'suspended')
@@ -96,6 +135,7 @@ class CustomerMonitoringController extends Controller
                   ->where('due_date', '<', $today);
             });
         $scopeCustomerArea($stopKarenaTunggakanQuery);
+        $applyCustomerFilter($stopKarenaTunggakanQuery);
         $stopKarenaTunggakanCount = $stopKarenaTunggakanQuery->count();
 
         $stats = [

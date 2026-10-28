@@ -6,14 +6,14 @@
             <div 
                 @click="switchTab('menunggak')"
                 :class="[
-                    'bg-white rounded-2xl p-5 border shadow-sm hover:shadow-md transition-all relative overflow-hidden group cursor-pointer',
+                    'bg-white rounded-2xl p-5 border shadow-sm hover:shadow-md transition-all relative overflow-hidden group cursor-pointer select-none',
                     tab === 'menunggak' ? 'border-rose-400 ring-2 ring-rose-200/70 shadow-rose-50' : 'border-gray-100 hover:border-rose-200'
                 ]"
-                title="Klik untuk membuka tab Sering Menunggak"
+                title="Klik untuk membuka tab Sering Menunggak (reset filter tingkat tunggakan)"
             >
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Pelanggan Menunggak</span>
-                    <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 group-hover:scale-105 transition-transform">
+                    <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 group-hover:scale-105 transition-transform shadow-inner">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </div>
                 </div>
@@ -31,14 +31,14 @@
             <div 
                 @click="switchTab('janji_bayar')"
                 :class="[
-                    'bg-white rounded-2xl p-5 border shadow-sm hover:shadow-md transition-all relative overflow-hidden group cursor-pointer',
+                    'bg-white rounded-2xl p-5 border shadow-sm hover:shadow-md transition-all relative overflow-hidden group cursor-pointer select-none',
                     tab === 'janji_bayar' ? 'border-amber-400 ring-2 ring-amber-200/70 shadow-amber-50' : 'border-gray-100 hover:border-amber-200'
                 ]"
                 title="Klik untuk membuka tab Janji Bayar"
             >
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Komitmen Janji Bayar</span>
-                    <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100 group-hover:scale-105 transition-transform">
+                    <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100 group-hover:scale-105 transition-transform shadow-inner">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                     </div>
                 </div>
@@ -46,12 +46,33 @@
                     <span class="text-2xl font-black text-amber-600">{{ stats.total_janji_bayar_count }}</span>
                     <span class="text-xs font-semibold text-gray-400">Invoice</span>
                 </div>
-                <div class="mt-2 text-[11px] font-medium text-gray-500 flex items-center gap-2 pt-2 border-t border-gray-50">
-                    <span class="text-rose-600 font-bold" title="Terlewat / Ingkar Janji">⚠️ {{ stats.janji_terlewat_count }} Terlewat</span>
+                <div class="mt-2 text-[11px] font-medium text-gray-500 flex items-center gap-1.5 pt-2 border-t border-gray-50 flex-wrap">
+                    <span 
+                        @click.stop="switchTab('janji_bayar', { promise_filter: 'overdue' })"
+                        class="text-rose-600 font-bold hover:underline cursor-pointer px-1 py-0.5 rounded hover:bg-rose-50 transition-colors"
+                        :class="{ 'ring-1 ring-rose-400 bg-rose-50': tab === 'janji_bayar' && localFilters.promise_filter === 'overdue' }"
+                        title="Klik untuk filter janji bayar terlewat"
+                    >
+                        ⚠️ {{ stats.janji_terlewat_count }} Terlewat
+                    </span>
                     <span>•</span>
-                    <span class="text-amber-600 font-bold" title="Jatuh Tempo Hari Ini">🔔 {{ stats.janji_hari_ini_count }} Hari Ini</span>
+                    <span 
+                        @click.stop="switchTab('janji_bayar', { promise_filter: 'today' })"
+                        class="text-amber-600 font-bold hover:underline cursor-pointer px-1 py-0.5 rounded hover:bg-amber-50 transition-colors"
+                        :class="{ 'ring-1 ring-amber-400 bg-amber-50': tab === 'janji_bayar' && localFilters.promise_filter === 'today' }"
+                        title="Klik untuk filter janji bayar jatuh tempo hari ini"
+                    >
+                        🔔 {{ stats.janji_hari_ini_count }} Hari Ini
+                    </span>
                     <span>•</span>
-                    <span class="text-emerald-600 font-bold" title="Mendatang">📅 {{ stats.janji_mendatang_count }}</span>
+                    <span 
+                        @click.stop="switchTab('janji_bayar', { promise_filter: 'upcoming' })"
+                        class="text-emerald-600 font-bold hover:underline cursor-pointer px-1 py-0.5 rounded hover:bg-emerald-50 transition-colors"
+                        :class="{ 'ring-1 ring-emerald-400 bg-emerald-50': tab === 'janji_bayar' && localFilters.promise_filter === 'upcoming' }"
+                        title="Klik untuk filter janji bayar mendatang"
+                    >
+                        📅 {{ stats.janji_mendatang_count }}
+                    </span>
                 </div>
             </div>
 
@@ -59,14 +80,14 @@
             <div 
                 @click="switchTab('stop_sementara')"
                 :class="[
-                    'bg-white rounded-2xl p-5 border shadow-sm hover:shadow-md transition-all relative overflow-hidden group cursor-pointer',
+                    'bg-white rounded-2xl p-5 border shadow-sm hover:shadow-md transition-all relative overflow-hidden group cursor-pointer select-none',
                     tab === 'stop_sementara' ? 'border-orange-400 ring-2 ring-orange-200/70 shadow-orange-50' : 'border-gray-100 hover:border-orange-200'
                 ]"
                 title="Klik untuk membuka tab Stop Sementara (Isolir)"
             >
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Stop Sementara (Isolir)</span>
-                    <div class="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100 group-hover:scale-105 transition-transform">
+                    <div class="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100 group-hover:scale-105 transition-transform shadow-inner">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </div>
                 </div>
@@ -76,15 +97,29 @@
                 </div>
                 <div class="mt-2 text-xs font-medium text-gray-500 flex items-center justify-between pt-2 border-t border-gray-50">
                     <span>Karena Tunggakan:</span>
-                    <span class="font-bold text-orange-600">{{ stats.stop_karena_tunggakan_count }} Pelanggan</span>
+                    <span 
+                        @click.stop="switchTab('stop_sementara', { stop_reason: 'tunggakan' })"
+                        class="font-bold text-orange-600 hover:underline cursor-pointer px-1.5 py-0.5 rounded hover:bg-orange-50 transition-colors"
+                        :class="{ 'ring-1 ring-orange-400 bg-orange-50': tab === 'stop_sementara' && localFilters.stop_reason === 'tunggakan' }"
+                        title="Klik untuk filter stop sementara karena tunggakan tagihan"
+                    >
+                        {{ stats.stop_karena_tunggakan_count }} Pelanggan
+                    </span>
                 </div>
             </div>
 
             <!-- Card 4: Total Piutang Terancam -->
-            <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+            <div 
+                @click="switchTab('menunggak', { severity: '3_plus' })"
+                class="bg-white rounded-2xl p-5 border shadow-sm hover:shadow-md transition-all relative overflow-hidden group cursor-pointer select-none"
+                :class="[
+                    tab === 'menunggak' && localFilters.severity === '3_plus' ? 'border-indigo-400 ring-2 ring-indigo-200/70 shadow-indigo-50' : 'border-gray-100 hover:border-indigo-200'
+                ]"
+                title="Klik untuk melihat pelanggan menunggak ≥ 3 bulan (Kritis)"
+            >
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Piutang Terancam</span>
-                    <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 group-hover:scale-105 transition-transform shadow-inner">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     </div>
                 </div>
@@ -93,7 +128,13 @@
                 </div>
                 <div class="mt-2 text-xs font-medium text-gray-500 flex items-center justify-between pt-2 border-t border-gray-50">
                     <span>Janji Bayar Aktif:</span>
-                    <span class="font-bold text-indigo-600">{{ formatRupiah(Number(stats.total_nominal_janji_bayar || 0)) }}</span>
+                    <span 
+                        @click.stop="switchTab('janji_bayar')"
+                        class="font-bold text-indigo-600 hover:underline cursor-pointer px-1 py-0.5 rounded hover:bg-indigo-50 transition-colors"
+                        title="Klik untuk membuka tab Janji Bayar"
+                    >
+                        {{ formatRupiah(Number(stats.total_nominal_janji_bayar || 0)) }}
+                    </span>
                 </div>
             </div>
         </div>
@@ -161,11 +202,23 @@
                         <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                         <input
                             v-model="localFilters.search"
+                            @input="onSearchInput"
                             @keyup.enter="applyFilters"
                             type="text"
                             placeholder="Cari nama, kode, HP, alamat..."
-                            class="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-gray-300 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
+                            class="w-full pl-9 pr-8 py-2 text-xs rounded-xl border border-gray-300 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
                         />
+                        <button
+                            v-if="localFilters.search"
+                            @click="clearSearch"
+                            type="button"
+                            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5 rounded-full hover:bg-gray-100 transition-colors"
+                            title="Hapus pencarian"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
                     </div>
 
                     <!-- Area Filter -->
@@ -219,7 +272,8 @@
                     <!-- Tombol Terapkan & Reset -->
                     <button
                         @click="applyFilters"
-                        class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
+                        type="button"
+                        class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
                     >
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
                         Filter
@@ -227,8 +281,11 @@
                     <button
                         v-if="hasActiveFilter"
                         @click="resetFilters"
-                        class="px-3 py-2 text-gray-500 hover:text-gray-800 text-xs font-medium transition-colors"
+                        type="button"
+                        class="px-3 py-2 text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                        title="Reset semua filter ke default"
                     >
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         Reset
                     </button>
                 </div>
@@ -780,7 +837,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue';
+import { ref, reactive, computed, watch } from 'vue';
 import { router, useForm, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Swal from 'sweetalert2';
@@ -804,16 +861,51 @@ const localFilters = reactive({
     stop_reason: props.filters?.stop_reason || 'all',
 });
 
+// Watch props.filters to sync local states
+watch(() => props.filters, (newFilters) => {
+    localFilters.search = newFilters?.search || '';
+    localFilters.area_id = newFilters?.area_id || '';
+    localFilters.severity = newFilters?.severity || 'all';
+    localFilters.promise_filter = newFilters?.promise_filter || 'all';
+    localFilters.stop_reason = newFilters?.stop_reason || 'all';
+}, { deep: true });
+
 const hasActiveFilter = computed(() => {
-    return localFilters.search || localFilters.area_id || localFilters.severity !== 'all' || localFilters.promise_filter !== 'all' || localFilters.stop_reason !== 'all';
+    return !!(localFilters.search || localFilters.area_id || localFilters.severity !== 'all' || localFilters.promise_filter !== 'all' || localFilters.stop_reason !== 'all');
 });
 
-const switchTab = (newTab) => {
-    router.get(route('monitoring-pelanggan.index'), {
+let searchDebounceTimeout = null;
+const onSearchInput = () => {
+    clearTimeout(searchDebounceTimeout);
+    searchDebounceTimeout = setTimeout(() => {
+        applyFilters();
+    }, 400);
+};
+
+const clearSearch = () => {
+    localFilters.search = '';
+    applyFilters();
+};
+
+const switchTab = (newTab, extraFilters = {}) => {
+    const params = {
         tab: newTab,
-        search: localFilters.search,
-        area_id: localFilters.area_id,
-    }, {
+        search: localFilters.search || undefined,
+        area_id: localFilters.area_id || undefined,
+        severity: newTab === 'menunggak' ? (extraFilters.severity || 'all') : undefined,
+        promise_filter: newTab === 'janji_bayar' ? (extraFilters.promise_filter || 'all') : undefined,
+        stop_reason: newTab === 'stop_sementara' ? (extraFilters.stop_reason || 'all') : undefined,
+    };
+
+    if (newTab === 'menunggak' && extraFilters.severity) {
+        localFilters.severity = extraFilters.severity;
+    } else if (newTab === 'janji_bayar' && extraFilters.promise_filter) {
+        localFilters.promise_filter = extraFilters.promise_filter;
+    } else if (newTab === 'stop_sementara' && extraFilters.stop_reason) {
+        localFilters.stop_reason = extraFilters.stop_reason;
+    }
+
+    router.get(route('monitoring-pelanggan.index'), params, {
         preserveState: true,
         preserveScroll: true,
     });
@@ -822,11 +914,11 @@ const switchTab = (newTab) => {
 const applyFilters = () => {
     router.get(route('monitoring-pelanggan.index'), {
         tab: props.tab,
-        search: localFilters.search,
-        area_id: localFilters.area_id,
-        severity: localFilters.severity,
-        promise_filter: localFilters.promise_filter,
-        stop_reason: localFilters.stop_reason,
+        search: localFilters.search || undefined,
+        area_id: localFilters.area_id || undefined,
+        severity: props.tab === 'menunggak' ? localFilters.severity : undefined,
+        promise_filter: props.tab === 'janji_bayar' ? localFilters.promise_filter : undefined,
+        stop_reason: props.tab === 'stop_sementara' ? localFilters.stop_reason : undefined,
     }, {
         preserveState: true,
         preserveScroll: true,
@@ -839,7 +931,12 @@ const resetFilters = () => {
     localFilters.severity = 'all';
     localFilters.promise_filter = 'all';
     localFilters.stop_reason = 'all';
-    applyFilters();
+    router.get(route('monitoring-pelanggan.index'), {
+        tab: props.tab,
+    }, {
+        preserveState: true,
+        preserveScroll: true,
+    });
 };
 
 // ================= MODAL JANJI BAYAR =================
