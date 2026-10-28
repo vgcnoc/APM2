@@ -31,6 +31,16 @@ class SyncDraftTechnicians extends Command
      */
     public function handle()
     {
+        Customer::$isMigrating = true;
+        try {
+            return $this->doHandle();
+        } finally {
+            Customer::$isMigrating = false;
+        }
+    }
+
+    private function doHandle()
+    {
         $filePath = $this->argument('file');
         $scheduleType = $this->option('type') ?: 'installation';
 

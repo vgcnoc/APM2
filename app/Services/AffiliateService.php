@@ -176,6 +176,10 @@ class AffiliateService
      */
     public static function recordBookingCommission(Customer $customer): ?AffiliateCommission
     {
+        if (\App\Models\Customer::$isMigrating) {
+            return null;
+        }
+
         if (!$customer->sales_id) {
             return null;
         }
@@ -541,6 +545,10 @@ class AffiliateService
      */
     public static function recordMonthlyCommission(Invoice $invoice): array
     {
+        if (\App\Models\Customer::$isMigrating) {
+            return [];
+        }
+
         $customer = $invoice->customer;
         if (!$customer || !$customer->sales_id) {
             return [];

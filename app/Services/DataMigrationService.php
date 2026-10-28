@@ -1657,6 +1657,7 @@ class DataMigrationService
         $runtimeSalesCache = [];
         $runtimeOdpsCache = [];
 
+        Customer::$isMigrating = true;
         DB::beginTransaction();
         try {
             foreach ($dryRun['rows'] as $r) {
@@ -1738,6 +1739,17 @@ class DataMigrationService
 
             DB::commit();
 
+            // Proteksi Tambahan: Hapus jika ada insentif atau komisi afiliasi dari migrasi
+            if (in_array($category, ['customers', 'booking_survey', 'installation_activation'])) {
+                \App\Models\Incentive::where('type', 'auto')
+                    ->where('description', 'like', '%Fee Booking Pelanggan%')
+                    ->where('created_at', '>=', now()->subMinutes(30))
+                    ->delete();
+                \App\Models\AffiliateCommission::where('type', 'booking')
+                    ->where('created_at', '>=', now()->subMinutes(30))
+                    ->delete();
+            }
+
             return [
                 'success' => true,
                 'batch_id' => $batchId,
@@ -1760,6 +1772,8 @@ class DataMigrationService
                 'success' => false,
                 'message' => 'Terjadi kesalahan sistem saat menyimpan ke database: ' . $e->getMessage(),
             ];
+        } finally {
+            Customer::$isMigrating = false;
         }
     }
 

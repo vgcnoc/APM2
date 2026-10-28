@@ -87,6 +87,9 @@ class Invoice extends Model
         });
 
         static::updated(function (Invoice $invoice) {
+            if (\App\Models\Customer::$isMigrating) {
+                return;
+            }
             if ($invoice->wasChanged('status') && $invoice->status === 'paid' && !$invoice->is_reseller_balance) {
                 try {
                     \App\Services\AffiliateService::recordMonthlyCommission($invoice);
