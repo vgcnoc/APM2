@@ -35,10 +35,7 @@ return new class extends Migration
             if (count($assignedTechIds) > 1) {
                 // Cek insentif pasang yang sudah tercatat untuk pelanggan ini
                 $existingIncentives = Incentive::where('type', 'auto')
-                    ->where(function($q) use ($customer) {
-                        $q->where('description', 'like', 'Fee Pasang Pelanggan: ' . $customer->name . '%')
-                          ->orWhere('description', 'like', '%' . ($customer->customer_code ?? '---') . '%');
-                    })
+                    ->where('description', 'like', 'Fee Pasang Pelanggan: ' . $customer->name . '%')
                     ->get();
 
                 // Hanya proses jika pelanggan ini memang pernah diaktivasi dan sudah tercatat setidaknya 1 insentif pasang
