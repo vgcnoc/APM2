@@ -37,26 +37,6 @@ const formatDate = (dateStr) => {
         <!-- ═══ Evaluasi Pelanggaran Presensi, Absen Terburuk & Potongan Denda ═══ -->
         <DashboardWorstAttendanceWidget :data="worstAttendanceData" class="mb-6" />
 
-        <!-- ═══ BANNER UTAMA: PUSAT EKSEKUSI & LAPORAN LAPANGAN ═══ -->
-        <div class="mb-6 bg-gradient-to-r from-teal-600 via-teal-700 to-emerald-800 rounded-3xl p-5 md:p-6 text-white shadow-xl shadow-teal-900/10 flex flex-col md:flex-row items-center justify-between gap-5 border border-teal-500/30">
-            <div class="space-y-1.5 text-center md:text-left">
-                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-xs text-xs font-bold text-white uppercase tracking-wider">
-                    ⚡ Pusat Kerja Lapangan Terpadu
-                </div>
-                <h2 class="text-xl md:text-2xl font-black tracking-tight">Progress Harian Operasional</h2>
-                <p class="text-xs md:text-sm text-teal-100 max-w-2xl leading-relaxed">
-                    Halaman utama untuk mengerjakan tugas hari ini: update status <b>Sedang Dikerjakan / Selesai</b>, catat jam mulai & selesai, ukur redaman optik (OPM dBm), dan upload foto bukti pekerjaan di lapangan.
-                </p>
-            </div>
-            <Link 
-                href="/operational/daily-progress" 
-                class="shrink-0 px-6 py-3.5 rounded-2xl bg-white text-teal-800 hover:bg-teal-50 font-extrabold text-xs md:text-sm shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-0.5 flex items-center gap-2.5 cursor-pointer"
-            >
-                <span>Buka Progress Harian</span>
-                <span class="text-lg leading-none">➔</span>
-            </Link>
-        </div>
-
         <!-- ═══ Pencarian Cepat Pelanggan & Foto Rumah (Tampil untuk Semua User) ═══ -->
         <CustomerSearchWidget class="mb-6" />
 
