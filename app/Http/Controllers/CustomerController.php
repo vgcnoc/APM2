@@ -3230,7 +3230,7 @@ class CustomerController extends Controller
                     'billing_cycle' => $billingCycle,
                     'billing_day' => $billingDay,
                     'service_status' => $serviceStatus,
-                    'notes' => $validated['notes'] ? $customer->notes . "\n[Aktivasi]: " . $validated['notes'] : $customer->notes,
+                    'notes' => !empty($validated['notes']) ? ($customer->notes ? $customer->notes . "\n[Aktivasi]: " . $validated['notes'] : $validated['notes']) : $customer->notes,
                     'tax_ppn' => $taxPpn,
                     'tax_bhp' => $taxBhp,
                     'tax_uso' => $taxUso,
@@ -3254,16 +3254,16 @@ class CustomerController extends Controller
                 $customer->ont->update([
                     'pppoe_user' => $pppoeUser,
                     'pppoe_password' => $pppoePassword,
-                    'vlan_mode' => $validated['vlan_mode'],
-                    'vlan_id' => $validated['vlan_id'],
+                    'vlan_mode' => $validated['vlan_mode'] ?? $customer->ont->vlan_mode,
+                    'vlan_id' => $validated['vlan_id'] ?? $customer->ont->vlan_id,
                     'access_mode' => $accessMode,
-                    'free_hotspot' => $validated['free_hotspot'] ?? false,
+                    'free_hotspot' => !empty($validated['free_hotspot']),
                     'hotspot_user' => $hotspotUser,
                     'hotspot_password' => $hotspotPassword,
                     'hotspot_vlan_id' => $validated['hotspot_vlan_id'] ?? null,
-                    'ip_login' => $validated['ip_login'],
-                    'login_user' => $validated['login_user'],
-                    'login_password' => $validated['login_password'],
+                    'ip_login' => $validated['ip_login'] ?? $customer->ont->ip_login,
+                    'login_user' => $validated['login_user'] ?? $customer->ont->login_user,
+                    'login_password' => $validated['login_password'] ?? $customer->ont->login_password,
                 ]);
 
                 // Create initial invoice
@@ -3401,11 +3401,10 @@ class CustomerController extends Controller
 
                 // 2. Fee Survey (Surveyor / Teknisi Survey)
                 $surveyorIds = collect();
-                if ($customer->surveys) {
-                    foreach ($customer->surveys as $survey) {
-                        if ($survey->surveyor_id) {
-                            $surveyorIds->push($survey->surveyor_id);
-                        }
+                $allSurveys = $customer->surveys()->get();
+                foreach ($allSurveys as $survey) {
+                    if ($survey->surveyor_id) {
+                        $surveyorIds->push($survey->surveyor_id);
                     }
                 }
                 $surveySchedules = $customer->technicianSchedules()
