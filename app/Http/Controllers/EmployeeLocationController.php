@@ -29,6 +29,10 @@ class EmployeeLocationController extends Controller
             return response()->json(['error' => 'Unauthenticated'], 401);
         }
 
+        if ($user->role === 'customer') {
+            return response()->json(['success' => false, 'message' => 'Customer tidak dilacak.'], 403);
+        }
+
         $lat = (float) $validated['latitude'];
         $lng = (float) $validated['longitude'];
         $accuracy = isset($validated['accuracy']) ? (float) $validated['accuracy'] : null;
@@ -107,6 +111,10 @@ class EmployeeLocationController extends Controller
      */
     public function index(Request $request): Response
     {
+        if ($request->user() && $request->user()->role === 'customer') {
+            abort(403, 'Akses terbatas untuk staf dan manajemen.');
+        }
+
         $data = $this->buildEmployeeTrackingData($request);
 
         return Inertia::render('EmployeeLocations/Index', $data);
@@ -117,6 +125,10 @@ class EmployeeLocationController extends Controller
      */
     public function liveData(Request $request): JsonResponse
     {
+        if ($request->user() && $request->user()->role === 'customer') {
+            return response()->json(['error' => 'Akses terbatas untuk staf dan manajemen.'], 403);
+        }
+
         $data = $this->buildEmployeeTrackingData($request);
 
         return response()->json($data);
