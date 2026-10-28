@@ -1191,6 +1191,20 @@
                     </button>
                 </div>
 
+                <!-- Info Ringkas Target & Petugas -->
+                <div class="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-400">Target & Wilayah:</span>
+                        <span class="font-bold text-teal-600 dark:text-teal-400 font-mono">
+                            {{ activeMaintenanceItem.category_icon || '🛠️' }} {{ activeMaintenanceItem.location }} ({{ activeMaintenanceItem.area_name }})
+                        </span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-400">Petugas Ditugaskan:</span>
+                        <span class="font-semibold text-slate-700 dark:text-slate-200">👷 {{ activeMaintenanceItem.technicians }}</span>
+                    </div>
+                </div>
+
                 <form @submit.prevent="submitUpdateMaintenance" class="space-y-3.5">
                     
                     <!-- 1. Pilihan Status -->
@@ -1200,29 +1214,33 @@
                         </label>
                         <div class="grid grid-cols-2 gap-2 text-xs">
                             <label 
-                                class="p-2.5 rounded-xl border flex items-center gap-1.5 cursor-pointer"
-                                :class="updateForm.status === 'in_progress' ? 'bg-blue-50 border-blue-500 text-blue-900 font-bold' : 'border-slate-200 dark:border-slate-700'"
+                                @click="selectUpdateStatus('in_progress')"
+                                class="p-2.5 rounded-xl border flex items-center gap-1.5 cursor-pointer transition-all"
+                                :class="updateForm.status === 'in_progress' ? 'bg-blue-50 border-blue-500 text-blue-900 font-bold shadow-xs' : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'"
                             >
                                 <input type="radio" v-model="updateForm.status" value="in_progress" class="sr-only" />
                                 <span>🛠️ Sedang Dikerjakan</span>
                             </label>
                             <label 
-                                class="p-2.5 rounded-xl border flex items-center gap-1.5 cursor-pointer"
-                                :class="updateForm.status === 'completed' ? 'bg-emerald-50 border-emerald-500 text-emerald-900 font-bold' : 'border-slate-200 dark:border-slate-700'"
+                                @click="selectUpdateStatus('completed')"
+                                class="p-2.5 rounded-xl border flex items-center gap-1.5 cursor-pointer transition-all"
+                                :class="updateForm.status === 'completed' ? 'bg-emerald-50 border-emerald-500 text-emerald-900 font-bold shadow-xs' : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'"
                             >
                                 <input type="radio" v-model="updateForm.status" value="completed" class="sr-only" />
                                 <span>✅ Selesai Dikerjakan</span>
                             </label>
                             <label 
-                                class="p-2.5 rounded-xl border flex items-center gap-1.5 cursor-pointer"
-                                :class="updateForm.status === 'rescheduled' ? 'bg-purple-50 border-purple-500 text-purple-900 font-bold' : 'border-slate-200 dark:border-slate-700'"
+                                @click="selectUpdateStatus('rescheduled')"
+                                class="p-2.5 rounded-xl border flex items-center gap-1.5 cursor-pointer transition-all"
+                                :class="updateForm.status === 'rescheduled' ? 'bg-purple-50 border-purple-500 text-purple-900 font-bold shadow-xs' : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'"
                             >
                                 <input type="radio" v-model="updateForm.status" value="rescheduled" class="sr-only" />
                                 <span>🗓️ Reschedule</span>
                             </label>
                             <label 
-                                class="p-2.5 rounded-xl border flex items-center gap-1.5 cursor-pointer"
-                                :class="updateForm.status === 'scheduled' ? 'bg-amber-50 border-amber-500 text-amber-900 font-bold' : 'border-slate-200 dark:border-slate-700'"
+                                @click="selectUpdateStatus('scheduled')"
+                                class="p-2.5 rounded-xl border flex items-center gap-1.5 cursor-pointer transition-all"
+                                :class="updateForm.status === 'scheduled' ? 'bg-amber-50 border-amber-500 text-amber-900 font-bold shadow-xs' : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'"
                             >
                                 <input type="radio" v-model="updateForm.status" value="scheduled" class="sr-only" />
                                 <span>⏳ Pending / Jadwal</span>
@@ -1245,9 +1263,18 @@
                     <!-- 2. Jam Mulai & Jam Selesai -->
                     <div class="grid grid-cols-2 gap-2.5">
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                                Jam Mulai:
-                            </label>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                    Jam Mulai:
+                                </label>
+                                <button 
+                                    type="button" 
+                                    @click="updateForm.start_time = getCurrentTimeStr()" 
+                                    class="text-[10px] text-teal-600 dark:text-teal-400 hover:underline font-semibold flex items-center gap-0.5 cursor-pointer"
+                                >
+                                    ⏱️ Sekarang
+                                </button>
+                            </div>
                             <input
                                 type="time"
                                 v-model="updateForm.start_time"
@@ -1255,9 +1282,18 @@
                             />
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                                Jam Selesai:
-                            </label>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                    Jam Selesai:
+                                </label>
+                                <button 
+                                    type="button" 
+                                    @click="updateForm.end_time = getCurrentTimeStr()" 
+                                    class="text-[10px] text-teal-600 dark:text-teal-400 hover:underline font-semibold flex items-center gap-0.5 cursor-pointer"
+                                >
+                                    ⏱️ Sekarang
+                                </button>
+                            </div>
                             <input
                                 type="time"
                                 v-model="updateForm.end_time"
@@ -1718,6 +1754,30 @@ const updateForm = ref({
     action_taken: '',
     scheduled_date: '',
 });
+
+function getCurrentTimeStr() {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2, '0');
+    const m = String(now.getMinutes()).padStart(2, '0');
+    return `${h}:${m}`;
+}
+
+function selectUpdateStatus(newStatus) {
+    updateForm.value.status = newStatus;
+    const nowStr = getCurrentTimeStr();
+    if (newStatus === 'in_progress') {
+        if (!updateForm.value.start_time) {
+            updateForm.value.start_time = nowStr;
+        }
+    } else if (newStatus === 'completed') {
+        if (!updateForm.value.end_time) {
+            updateForm.value.end_time = nowStr;
+        }
+        if (!updateForm.value.start_time) {
+            updateForm.value.start_time = nowStr;
+        }
+    }
+}
 
 function openQuickUpdateModal(item) {
     activeMaintenanceItem.value = item;
