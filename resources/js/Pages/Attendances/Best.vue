@@ -90,45 +90,10 @@
                 </div>
 
                 <!-- ===================================================== -->
-                <!-- 2. FILTER TABS (DEPARTEMEN & SCOPE GLOBAL / CABANG)  -->
+                <!-- 2. FILTER KATEGORI (SCOPE: GLOBAL / PER CABANG / JUARA MAINTENANCE) -->
                 <!-- ===================================================== -->
-                <div class="mt-5 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
-                    <!-- Left: Departemen Filter -->
-                    <div class="flex items-center gap-1.5 bg-slate-100/80 p-1 rounded-xl overflow-x-auto max-w-full">
-                        <button
-                            type="button"
-                            @click="setDepartment('all')"
-                            :class="[
-                                'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0',
-                                currentDepartment === 'all'
-                                    ? 'bg-white text-slate-900 shadow-sm'
-                                    : 'text-slate-600 hover:text-slate-900'
-                            ]"
-                        >
-                            <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-                            </svg>
-                            <span>Semua</span>
-                        </button>
-                        <button
-                            v-for="dept in departmentTabs"
-                            :key="dept.key"
-                            type="button"
-                            @click="setDepartment(dept.key)"
-                            :class="[
-                                'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0',
-                                currentDepartment === dept.key
-                                    ? 'bg-white text-slate-900 shadow-sm'
-                                    : 'text-slate-600 hover:text-slate-900'
-                            ]"
-                        >
-                            <span>{{ dept.icon }}</span>
-                            <span>{{ dept.label }}</span>
-                        </button>
-                    </div>
-
-                    <!-- Right: Scope Global vs Per Cabang vs Juara Maintenance vs Tim Khusus -->
-                    <div class="flex items-center gap-2">
+                <div class="mt-5 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex flex-wrap items-center gap-2">
                         <div class="flex items-center gap-1.5 bg-slate-100/80 p-1 rounded-xl">
                             <button
                                 type="button"
@@ -1112,7 +1077,6 @@ const props = defineProps({
 // Month & Year state
 const selectedMonth = ref(Number(props.filters.month) || 10);
 const selectedYear = ref(Number(props.filters.year) || 2026);
-const currentDepartment = ref(props.filters.department || 'all');
 const currentScope = ref(props.filters.scope || 'global');
 const selectedAreaId = ref(props.filters.area_id || null);
 
@@ -1147,40 +1111,6 @@ const printScopeSubtitle = computed(() => {
     return 'TINGKAT GLOBAL PERUSAHAAN';
 });
 
-const departmentTabs = computed(() => {
-    const rawList = props.positions && props.positions.length > 0
-        ? props.positions
-        : ['Maintenance', 'Teknisi', 'CS', 'Kolektor', 'Admin', 'Finance'];
-
-    const iconMap = {
-        'maintenance': '🛠️',
-        'teknisi': '🔧',
-        'cs': '🎧',
-        'customer service': '🎧',
-        'kolektor': '💼',
-        'admin': '📋',
-        'finance': '💰',
-        'noc': '💻',
-        'infrastruktur': '🌐',
-        'manager': '👔',
-    };
-
-    return rawList.map(pos => {
-        const lower = pos.toLowerCase();
-        let icon = '🏷️';
-        for (const [key, ic] of Object.entries(iconMap)) {
-            if (lower.includes(key)) {
-                icon = ic;
-                break;
-            }
-        }
-        return {
-            key: pos.toLowerCase(),
-            label: pos,
-            icon: icon,
-        };
-    });
-});
 
 const monthNames = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -1205,17 +1135,11 @@ const applyFilters = () => {
         {
             month: selectedMonth.value,
             year: selectedYear.value,
-            department: currentDepartment.value,
             scope: currentScope.value,
             area_id: selectedAreaId.value,
         },
         { preserveState: true, replace: true }
     );
-};
-
-const setDepartment = (dept) => {
-    currentDepartment.value = dept;
-    applyFilters();
 };
 
 const setScope = (scope) => {
