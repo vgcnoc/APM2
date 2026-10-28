@@ -78,10 +78,10 @@
                 <div class="flex items-center gap-2 text-rose-700 dark:text-rose-300">
                     <span class="text-lg animate-bounce">⚠️</span>
                     <h3 class="text-xs sm:text-sm font-black uppercase tracking-wider">
-                        Peringatan Kritis & Larangan Keras (Wajib Dipatuhi)
+                        Peringatan Kritis, Dampak Hapus Data & Larangan Keras (Wajib Dipatuhi)
                     </h3>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
                     <div 
                         v-for="(warn, wIdx) in currentData.warnings" 
                         :key="'warn-' + wIdx"
@@ -183,6 +183,10 @@ const guides = {
                 highlight: 'Cek Riwayat Tunggakan Pelanggan!',
                 text: 'Periksa apakah nama atau alamat calon pelanggan memiliki catatan tunggakan lama atau perangkat belum kembali di masa lalu.',
             },
+            {
+                highlight: 'Dampak Hapus Data Booking vs Batalkan:',
+                text: 'Menghapus data booking akan memusnahkan riwayat calon pelanggan permanen beserta foto KTP dan log pesan WA. Jika calon pelanggan ragu atau belum siap, gunakan fitur "Batalkan Booking" agar riwayat prospek tetap tersimpan dan dapat dipulihkan sewaktu-waktu.',
+            },
         ],
         qcList: [
             'Nomor WA aktif & tervalidasi',
@@ -225,6 +229,10 @@ const guides = {
             {
                 highlight: 'Wajib Foto Rumah & Box ODP!',
                 text: 'Foto rumah dan nomor port ODP wajib diunggah ke sistem sebagai bukti fisik agar teknisi instalasi tidak salah tarik kabel.',
+            },
+            {
+                highlight: 'Dampak Hapus Data Survey vs Unfeasible:',
+                text: 'Menghapus data survey otomatis menghapus jadwal teknisi di lapangan, foto bukti ODP, dan melepaskan reservasi port ODP. Jika ODP penuh atau rute tidak tercover, JANGAN dihapus! Tandai "Unfeasible" atau "Batalkan" agar tercatat sebagai riwayat kebutuhan ekspansi ODP baru.',
             },
         ],
         qcList: [
@@ -269,6 +277,10 @@ const guides = {
                 highlight: 'Wajib 4 Foto Bukti & Catat Material!',
                 text: 'Foto rumah, ODP, barcode ONT, dan layar OPM wajib diunggah. Seluruh material (kabel, fast connector, ONT) wajib dicatat demi akurasi stok gudang.',
             },
+            {
+                highlight: 'Dampak Fatal Hapus Data Instalasi:',
+                text: 'Menghapus data instalasi otomatis melepaskan port ODP, memutuskan tautan ONT dan mengembalikan status modem ke Gudang ("Belum Set"), serta membatalkan laporan kerja teknisi. Jika batal pasang, gunakan "Batalkan" dan pastikan fisik modem/material ditarik ke gudang.',
+            },
         ],
         qcList: [
             'Kabel kencang, rapi & aman dari tegangan PLN',
@@ -311,6 +323,10 @@ const guides = {
             {
                 highlight: 'Cek Paket Internet & Insentif Mitra!',
                 text: 'Periksa paket pelanggan dan komisi affiliate (jika ada) agar invoice dan reward tercatat otomatis tanpa kesalahan hitung.',
+            },
+            {
+                highlight: 'Larangan Keras Hapus Pelanggan Aktif / Aktivasi:',
+                text: 'DILARANG menghapus pelanggan aktif! Hapus data aktivasi seketika menghapus akun PPPoE/Hotspot di FreeRADIUS (internet mati), membebaskan port ODP, serta menghapus seluruh invoice, riwayat pembayaran kasir, dan tiket. Jika berhenti berlangganan, gunakan alur resmi "Isolir" atau "Berhenti (Terminated)" & terbitkan tiket Cabut Perangkat (CBP).',
             },
         ],
         qcList: [
