@@ -161,6 +161,13 @@
         <!-- ═══ Presensi Reguler Staf Widget ═══ -->
         <DashboardAttendanceWidget :attendance-data="attendanceData" class="mb-6" />
 
+        <!-- ═══ Evaluasi Pelanggaran Presensi, Absen Terburuk & Potongan Denda ═══ -->
+        <DashboardWorstAttendanceWidget 
+            v-if="$page.props.auth?.user?.role !== 'customer'"
+            :data="worstAttendanceData" 
+            class="mb-6" 
+        />
+
         <!-- ═══ Pencarian Cepat Pelanggan & Foto Rumah (Tampil untuk Semua User) ═══ -->
         <CustomerSearchWidget class="mb-6" :initial-area-id="selectedAreaId" />
 
@@ -578,6 +585,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DashboardAttendanceWidget from '@/Components/Attendance/DashboardAttendanceWidget.vue';
+import DashboardWorstAttendanceWidget from '@/Components/Attendance/DashboardWorstAttendanceWidget.vue';
 import RealtimeWidget from '@/Components/Dashboard/RealtimeWidget.vue';
 import CustomerSearchWidget from '@/Components/Dashboard/CustomerSearchWidget.vue';
 
@@ -602,6 +610,7 @@ const props = defineProps({
     topAreas: Array,
     totalCustomersInAreas: Number,
     attendanceData: { type: Object, default: () => ({}) },
+    worstAttendanceData: { type: Object, default: () => ({ summary: {}, worst_employees: [] }) },
     selectedAreaId: { type: [String, Number], default: 'all' },
     availableAreas: { type: Array, default: () => [] },
     selectedAreaDetail: { type: Object, default: null },
