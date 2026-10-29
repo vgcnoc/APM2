@@ -142,10 +142,13 @@
             </div>
 
 
+            <!-- Anchor for smooth scrolling -->
+            <div id="network-data-container" class="scroll-mt-6"></div>
+
             <!-- CARD VIEW -->
             <div v-if="viewMode === 'card'" class="space-y-8">
                 <!-- Group by ODC -->
-                <div v-for="odcGroup in odpsGroupedByOdc" :key="odcGroup.odc.id" class="animate-fade-in-up">
+                <div v-for="odcGroup in paginatedOdcGroups" :key="odcGroup.odc.id" class="animate-fade-in-up">
                     <div class="relative overflow-hidden bg-gradient-to-r from-[#20053b] via-[#3b0764] to-[#20053b] text-white p-5 rounded-t-xl flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-purple-800/60 shadow-lg">
                         <!-- Modern Tech Motif & Ambient Glow Pattern -->
                         <div class="absolute inset-0 pointer-events-none overflow-hidden select-none">
@@ -467,6 +470,66 @@
                     </div>
                 </div>
 
+                <!-- Pagination Footer Card View -->
+                <div v-if="odpsGroupedByOdc.length > 0" class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <!-- Summary & Per-Page Selector -->
+                    <div class="flex items-center flex-wrap gap-4 text-xs text-gray-600">
+                        <div>
+                            Menampilkan <span class="font-bold text-gray-900">{{ cardPaginationInfo.from }}</span> - 
+                            <span class="font-bold text-gray-900">{{ cardPaginationInfo.to }}</span> dari 
+                            <span class="font-bold text-gray-900">{{ cardPaginationInfo.total }}</span> ODC
+                            <span class="text-gray-400 ml-1">({{ odps.length }} total ODP)</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 border-l border-gray-200 pl-4">
+                            <span class="text-gray-500 font-medium">Tampilkan:</span>
+                            <select v-model="cardPerPage" class="border border-gray-200 rounded-lg text-xs py-1 px-2.5 bg-gray-50 text-gray-700 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+                                <option :value="3">3 ODC</option>
+                                <option :value="5">5 ODC</option>
+                                <option :value="10">10 ODC</option>
+                                <option :value="15">15 ODC</option>
+                                <option value="all">Semua ODC</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Navigation Buttons -->
+                    <div v-if="totalCardPages > 1" class="flex items-center gap-1">
+                        <button 
+                            @click="goToCardPage(cardCurrentPage - 1)" 
+                            :disabled="cardCurrentPage === 1"
+                            class="px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1"
+                            :class="cardCurrentPage === 1 ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50' : 'border-gray-200 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 bg-white'"
+                            title="Halaman Sebelumnya"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                            <span>Prev</span>
+                        </button>
+
+                        <template v-for="p in getPageNumbers(cardCurrentPage, totalCardPages)" :key="'card-' + p">
+                            <span v-if="p === '...'" class="px-2 py-1 text-gray-400 text-xs">...</span>
+                            <button 
+                                v-else 
+                                @click="goToCardPage(p)"
+                                class="min-w-[32px] h-8 px-2 rounded-lg text-xs font-bold transition-all"
+                                :class="p === cardCurrentPage ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white border border-gray-200 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200'"
+                            >
+                                {{ p }}
+                            </button>
+                        </template>
+
+                        <button 
+                            @click="goToCardPage(cardCurrentPage + 1)" 
+                            :disabled="cardCurrentPage === totalCardPages"
+                            class="px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1"
+                            :class="cardCurrentPage === totalCardPages ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50' : 'border-gray-200 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 bg-white'"
+                            title="Halaman Selanjutnya"
+                        >
+                            <span>Next</span>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </button>
+                    </div>
+                </div>
+
                 <div v-if="odps.length === 0" class="text-center py-12 bg-white rounded-xl border border-gray-200">
                     <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     <p class="text-gray-500 font-medium">Tidak ada data jaringan yang cocok dengan filter.</p>
@@ -491,7 +554,7 @@
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
-                            <tr v-for="odp in odps" :key="odp.id" class="hover:bg-gray-50 transition-colors">
+                            <tr v-for="odp in paginatedOdpsTable" :key="odp.id" class="hover:bg-gray-50 transition-colors">
                                 <td class="px-6 py-3 whitespace-nowrap">
                                     <div class="flex items-center gap-2">
                                         <div class="font-bold text-gray-900 text-sm">{{ odp.name }}</div>
@@ -544,6 +607,64 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Pagination Footer Table View -->
+                <div v-if="odps.length > 0" class="p-3.5 border-t border-gray-200 bg-gray-50/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <div class="flex items-center flex-wrap gap-4 text-gray-600">
+                        <div>
+                            Menampilkan <span class="font-bold text-gray-900">{{ tablePaginationInfo.from }}</span> - 
+                            <span class="font-bold text-gray-900">{{ tablePaginationInfo.to }}</span> dari 
+                            <span class="font-bold text-gray-900">{{ tablePaginationInfo.total }}</span> ODP
+                        </div>
+                        <div class="flex items-center gap-1.5 border-l border-gray-200 pl-4">
+                            <span class="text-gray-500 font-medium">Tampilkan:</span>
+                            <select v-model="tablePerPage" class="border border-gray-200 rounded-lg text-xs py-1 px-2.5 bg-white text-gray-700 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
+                                <option :value="10">10 ODP</option>
+                                <option :value="25">25 ODP</option>
+                                <option :value="50">50 ODP</option>
+                                <option :value="100">100 ODP</option>
+                                <option value="all">Semua ODP</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Navigation Buttons -->
+                    <div v-if="totalTablePages > 1" class="flex items-center gap-1">
+                        <button 
+                            @click="goToTablePage(tableCurrentPage - 1)" 
+                            :disabled="tableCurrentPage === 1"
+                            class="px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1"
+                            :class="tableCurrentPage === 1 ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50' : 'border-gray-200 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 bg-white'"
+                            title="Halaman Sebelumnya"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                            <span>Prev</span>
+                        </button>
+
+                        <template v-for="p in getPageNumbers(tableCurrentPage, totalTablePages)" :key="'table-' + p">
+                            <span v-if="p === '...'" class="px-2 py-1 text-gray-400 text-xs">...</span>
+                            <button 
+                                v-else 
+                                @click="goToTablePage(p)"
+                                class="min-w-[32px] h-8 px-2 rounded-lg text-xs font-bold transition-all"
+                                :class="p === tableCurrentPage ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white border border-gray-200 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200'"
+                            >
+                                {{ p }}
+                            </button>
+                        </template>
+
+                        <button 
+                            @click="goToTablePage(tableCurrentPage + 1)" 
+                            :disabled="tableCurrentPage === totalTablePages"
+                            class="px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1"
+                            :class="tableCurrentPage === totalTablePages ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50' : 'border-gray-200 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 bg-white'"
+                            title="Halaman Selanjutnya"
+                        >
+                            <span>Next</span>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -830,6 +951,136 @@ const odpsGroupedByOdc = computed(() => {
         groups[odcId].odps.push(odp);
     });
     return Object.values(groups).sort((a, b) => a.odc.name.localeCompare(b.odc.name));
+});
+
+// ================= PAGINASI CARD VIEW & TABLE VIEW =================
+const cardPerPage = ref(5);
+const cardCurrentPage = ref(1);
+
+const tablePerPage = ref(25);
+const tableCurrentPage = ref(1);
+
+// Card View Pagination
+const totalCardPages = computed(() => {
+    if (cardPerPage.value === 'all') return 1;
+    const perPage = Number(cardPerPage.value) || 5;
+    return Math.max(1, Math.ceil(odpsGroupedByOdc.value.length / perPage));
+});
+
+const paginatedOdcGroups = computed(() => {
+    if (cardPerPage.value === 'all') return odpsGroupedByOdc.value;
+    const perPage = Number(cardPerPage.value) || 5;
+    const start = (cardCurrentPage.value - 1) * perPage;
+    return odpsGroupedByOdc.value.slice(start, start + perPage);
+});
+
+const cardPaginationInfo = computed(() => {
+    const total = odpsGroupedByOdc.value.length;
+    if (total === 0) return { from: 0, to: 0, total: 0 };
+    if (cardPerPage.value === 'all') return { from: 1, to: total, total };
+    const perPage = Number(cardPerPage.value) || 5;
+    const from = (cardCurrentPage.value - 1) * perPage + 1;
+    const to = Math.min(cardCurrentPage.value * perPage, total);
+    return { from, to, total };
+});
+
+// Table View Pagination
+const totalTablePages = computed(() => {
+    if (tablePerPage.value === 'all') return 1;
+    const perPage = Number(tablePerPage.value) || 25;
+    return Math.max(1, Math.ceil(props.odps.length / perPage));
+});
+
+const paginatedOdpsTable = computed(() => {
+    if (tablePerPage.value === 'all') return props.odps;
+    const perPage = Number(tablePerPage.value) || 25;
+    const start = (tableCurrentPage.value - 1) * perPage;
+    return props.odps.slice(start, start + perPage);
+});
+
+const tablePaginationInfo = computed(() => {
+    const total = props.odps.length;
+    if (total === 0) return { from: 0, to: 0, total: 0 };
+    if (tablePerPage.value === 'all') return { from: 1, to: total, total };
+    const perPage = Number(tablePerPage.value) || 25;
+    const from = (tableCurrentPage.value - 1) * perPage + 1;
+    const to = Math.min(tableCurrentPage.value * perPage, total);
+    return { from, to, total };
+});
+
+const getPageNumbers = (current, total) => {
+    const curr = Number(current);
+    const tot = Number(total);
+    if (tot <= 7) {
+        return Array.from({ length: tot }, (_, i) => i + 1);
+    }
+    const pages = [];
+    if (curr <= 4) {
+        for (let i = 1; i <= 5; i++) pages.push(i);
+        pages.push('...');
+        pages.push(tot);
+    } else if (curr >= tot - 3) {
+        pages.push(1);
+        pages.push('...');
+        for (let i = tot - 4; i <= tot; i++) pages.push(i);
+    } else {
+        pages.push(1);
+        pages.push('...');
+        pages.push(curr - 1);
+        pages.push(curr);
+        pages.push(curr + 1);
+        pages.push('...');
+        pages.push(tot);
+    }
+    return pages;
+};
+
+const scrollToContent = () => {
+    const el = document.getElementById('network-data-container');
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+};
+
+const goToCardPage = (page) => {
+    if (page === '...') return;
+    const target = Number(page);
+    if (isNaN(target) || target < 1 || target > totalCardPages.value) return;
+    cardCurrentPage.value = target;
+    scrollToContent();
+};
+
+const goToTablePage = (page) => {
+    if (page === '...') return;
+    const target = Number(page);
+    if (isNaN(target) || target < 1 || target > totalTablePages.value) return;
+    tableCurrentPage.value = target;
+    scrollToContent();
+};
+
+watch([() => props.odps, () => form.olt_id, () => form.odc_id, () => form.odp_id, () => form.area_id, () => form.status, () => form.search], () => {
+    cardCurrentPage.value = 1;
+    tableCurrentPage.value = 1;
+});
+
+watch(cardPerPage, () => {
+    cardCurrentPage.value = 1;
+});
+
+watch(tablePerPage, () => {
+    tableCurrentPage.value = 1;
+});
+
+watch(totalCardPages, (newTotal) => {
+    if (cardCurrentPage.value > newTotal) {
+        cardCurrentPage.value = Math.max(1, newTotal);
+    }
+});
+
+watch(totalTablePages, (newTotal) => {
+    if (tableCurrentPage.value > newTotal) {
+        tableCurrentPage.value = Math.max(1, newTotal);
+    }
 });
 
 // Grouping for Topology
