@@ -11,6 +11,12 @@
                             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                             Reseller Aktif
                         </span>
+                        <span v-if="is_master" class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-black bg-gradient-to-r from-amber-500 to-yellow-500 text-white shadow-xs">
+                            👑 MASTER BILLER &amp; DISTRIBUTOR
+                        </span>
+                        <span v-else-if="reseller.master" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                            👑 Binaan: {{ reseller.master.customer?.name || reseller.master.user?.name }}
+                        </span>
                         <span class="text-xs text-gray-300">•</span>
                         <span class="text-xs font-medium text-gray-500">
                             {{ reseller.name || 'Mitra Reseller' }}
@@ -52,6 +58,199 @@
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
                     Lihat Rincian Kasbon
                 </button>
+            </div>
+
+            <!-- MASTER BILLER & DISTRIBUTOR HUB (Khusus Master Reseller) -->
+            <div v-if="is_master" class="bg-gradient-to-br from-[#161329] via-[#1c1836] to-[#291e3a] rounded-3xl border border-amber-500/30 shadow-xl overflow-hidden text-white">
+                <div class="p-5 sm:p-6">
+                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 pb-5 border-b border-white/10">
+                        <div class="flex items-start gap-4">
+                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-400 text-slate-950 flex items-center justify-center text-2xl font-black shadow-lg shadow-amber-500/25 shrink-0">
+                                👑
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <h2 class="text-lg sm:text-xl font-black tracking-tight text-white">Pusat Distributor &amp; Master Biller</h2>
+                                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                                        Royalti +Rp {{ Number(override_fee_amount || 500).toLocaleString('id-ID') }}/Tagihan
+                                    </span>
+                                </div>
+                                <p class="text-xs sm:text-sm text-slate-300 mt-1">
+                                    Salurkan saldo modal ke loket warung binaan secara instan (P2P) dan nikmati royalti pasif otomatis setiap kali downline melunasi tagihan pelanggan.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+                            <button
+                                type="button"
+                                @click="openTransferModal()"
+                                class="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 rounded-xl text-xs font-black shadow-lg shadow-amber-500/25 transition-all flex items-center gap-2 cursor-pointer"
+                            >
+                                <span>💸</span>
+                                <span>Transfer Saldo ke Sub-Reseller</span>
+                            </button>
+                            <button
+                                type="button"
+                                @click="showDownlinesPanel = !showDownlinesPanel"
+                                class="px-3.5 py-2.5 bg-white/10 hover:bg-white/15 border border-white/15 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                            >
+                                <span>👥</span>
+                                <span>{{ showDownlinesPanel ? 'Tutup' : 'Daftar' }} Loket Binaan ({{ downlines.length }})</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 4 Master Grid Cards: Kode Referral + 3 Statistik Jaringan -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-5">
+                        <!-- Kode Referral Master -->
+                        <div class="bg-white/8 backdrop-blur-sm rounded-2xl p-4 border border-amber-400/30 flex flex-col justify-between">
+                            <div class="flex items-center justify-between mb-1.5">
+                                <span class="text-[11px] font-bold uppercase tracking-wider text-amber-300">Kode Referral Master</span>
+                                <span class="text-xs">🔗</span>
+                            </div>
+                            <div class="font-mono text-xl font-black tracking-wider text-amber-300 my-1">
+                                {{ reseller.referral_code || '-' }}
+                            </div>
+                            <div class="flex items-center gap-1.5 mt-2">
+                                <button
+                                    type="button"
+                                    @click="copyReferralCode"
+                                    class="flex-1 py-1.5 px-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/30 rounded-lg text-[11px] font-bold text-amber-200 transition cursor-pointer text-center"
+                                >
+                                    Salin Kode
+                                </button>
+                                <button
+                                    type="button"
+                                    @click="copyRegistrationLink"
+                                    class="flex-1 py-1.5 px-2 bg-white/10 hover:bg-white/20 border border-white/15 rounded-lg text-[11px] font-bold text-white transition cursor-pointer text-center"
+                                >
+                                    Link Daftar
+                                </button>
+                                <button
+                                    type="button"
+                                    @click="shareReferralWhatsApp"
+                                    title="Bagikan undangan loket via WhatsApp"
+                                    class="py-1.5 px-2.5 bg-emerald-500/25 hover:bg-emerald-500/40 border border-emerald-400/30 rounded-lg text-[11px] font-bold text-emerald-300 transition cursor-pointer"
+                                >
+                                    WA
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- TotalRoyalti Override -->
+                        <div class="bg-white/5 rounded-2xl p-4 border border-white/10 flex flex-col justify-between">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-300">Total Royalti Override</span>
+                                <span class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-xs">💎</span>
+                            </div>
+                            <div class="text-xl font-black text-emerald-400 tracking-tight my-1">
+                                Rp {{ Number(total_override_royalty || 0).toLocaleString('id-ID') }}
+                            </div>
+                            <p class="text-[11px] text-slate-400">Otomatis masuk ke saldo dompet Anda</p>
+                        </div>
+
+                        <!-- Loket Binaan Aktif -->
+                        <div class="bg-white/5 rounded-2xl p-4 border border-white/10 flex flex-col justify-between">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-300">Loket Binaan Aktif</span>
+                                <span class="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-300 flex items-center justify-center text-xs">🏪</span>
+                            </div>
+                            <div class="flex items-baseline gap-1.5 my-1">
+                                <span class="text-2xl font-black text-white">{{ downlines.length }}</span>
+                                <span class="text-xs font-semibold text-indigo-300">Sub-Reseller</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400">Terhubung ke kode referral Anda</p>
+                        </div>
+
+                        <!-- Total Saldo di Jaringan Loket -->
+                        <div class="bg-white/5 rounded-2xl p-4 border border-white/10 flex flex-col justify-between">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-300">Saldo Jaringan Binaan</span>
+                                <span class="w-7 h-7 rounded-lg bg-sky-500/20 text-sky-300 flex items-center justify-center text-xs">🏦</span>
+                            </div>
+                            <div class="text-xl font-black text-sky-300 tracking-tight my-1">
+                                Rp {{ Number(total_downlines_balance || 0).toLocaleString('id-ID') }}
+                            </div>
+                            <p class="text-[11px] text-slate-400">Akumulasi sisa saldo seluruh downline</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel Tabel Jaringan Loket Binaan -->
+                <div v-if="showDownlinesPanel" class="bg-slate-950/60 border-t border-white/10 p-5 sm:p-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+                        <div>
+                            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                                <span>👥 Jaringan Loket Binaan Saya</span>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300">{{ downlines.length }} Loket</span>
+                            </h3>
+                            <p class="text-xs text-slate-400">Pantau sisa saldo loket warung binaan Anda agar tidak kehabisan modal transaksi.</p>
+                        </div>
+                    </div>
+
+                    <div v-if="downlines.length > 0" class="overflow-x-auto rounded-2xl border border-white/10">
+                        <table class="min-w-full divide-y divide-white/10 text-left text-xs">
+                            <thead class="bg-white/5 text-slate-300 uppercase font-bold tracking-wider text-[10px]">
+                                <tr>
+                                    <th class="px-4 py-3">Nama Loket / Sub-Reseller</th>
+                                    <th class="px-4 py-3">Kontak WA</th>
+                                    <th class="px-4 py-3">Alamat Usaha</th>
+                                    <th class="px-4 py-3">Sisa Saldo Loket</th>
+                                    <th class="px-4 py-3">Terdaftar</th>
+                                    <th class="px-4 py-3 text-right">Distribusi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-white/10">
+                                <tr v-for="dl in downlines" :key="dl.id" class="hover:bg-white/5 transition-colors">
+                                    <td class="px-4 py-3 font-bold text-white whitespace-nowrap">
+                                        🏪 {{ dl.name }}
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-slate-300">
+                                        <div class="flex items-center gap-2">
+                                            <span>{{ dl.phone || '-' }}</span>
+                                            <a
+                                                v-if="dl.phone"
+                                                :href="`https://wa.me/${formatWaPhone(dl.phone)}`"
+                                                target="_blank"
+                                                class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 font-bold text-[10px]"
+                                            >
+                                                Chat WA
+                                            </a>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3 text-slate-400 max-w-xs truncate">
+                                        {{ dl.address || '-' }}
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap font-mono font-black" :class="dl.balance < 50000 ? 'text-rose-400' : 'text-emerald-400'">
+                                        Rp {{ Number(dl.balance || 0).toLocaleString('id-ID') }}
+                                        <span v-if="dl.balance < 50000" class="ml-1 px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 text-[9px] font-sans">Tipis</span>
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-slate-400">
+                                        {{ dl.created_at }}
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-right">
+                                        <button
+                                            type="button"
+                                            @click="openTransferModal(dl.id)"
+                                            class="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-[11px] font-black transition cursor-pointer"
+                                        >
+                                            + Kirim Saldo
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div v-else class="py-8 px-4 text-center rounded-2xl border border-dashed border-white/15 bg-white/5">
+                        <div class="text-2xl mb-2">🏪</div>
+                        <p class="text-xs font-bold text-white">Belum ada loket binaan terdaftar</p>
+                        <p class="text-[11px] text-slate-400 mt-1 max-w-md mx-auto">
+                            Bagikan link pendaftaran mandiri dengan kode referral <strong class="text-amber-300 font-mono">{{ reseller.referral_code }}</strong> kepada konter pulsa atau warung di wilayah Anda, atau langsung transfer saldo ke loket mandiri yang belum memiliki sponsor.
+                        </p>
+                    </div>
+                </div>
             </div>
 
             <!-- 4 Stat KPI Cards -->
@@ -725,6 +924,152 @@
             </div>
         </Teleport>
 
+        <!-- Modal Transfer Saldo P2P Master -> Sub-Reseller -->
+        <Teleport to="body">
+            <div v-if="showTransferModal" class="fixed inset-0 z-[115] flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+                <div class="fixed inset-0 bg-gray-900/65 backdrop-blur-sm" @click="showTransferModal = false"></div>
+                <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[92vh] flex flex-col overflow-hidden animate-fade-in-up my-auto z-10">
+                    <!-- Header -->
+                    <div class="p-5 sm:p-6 border-b border-amber-100 bg-gradient-to-r from-amber-50 via-yellow-50/50 to-white flex items-center justify-between shrink-0">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-yellow-500 text-slate-950 flex items-center justify-center text-lg font-black shadow-md shadow-amber-500/20 shrink-0">
+                                💸
+                            </div>
+                            <div>
+                                <h3 class="text-base font-black text-gray-900">Transfer Saldo ke Sub-Reseller</h3>
+                                <p class="text-xs text-gray-500">Distribusi modal instan P2P ke loket binaan Anda</p>
+                            </div>
+                        </div>
+                        <button @click="showTransferModal = false" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Form -->
+                    <form @submit.prevent="submitTransferBalance" class="flex flex-col flex-1 overflow-hidden min-h-0">
+                        <div class="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+                            <!-- Saldo Master Saat Ini -->
+                            <div class="p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-2xl flex items-center justify-between">
+                                <span class="text-xs font-bold text-amber-900">Saldo Modal Master Anda</span>
+                                <span class="text-sm font-black text-amber-950 font-mono">Rp {{ Number(reseller.balance || 0).toLocaleString('id-ID') }}</span>
+                            </div>
+
+                            <!-- Pilih Sub-Reseller Tujuan -->
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
+                                    Pilih Loket Sub-Reseller Tujuan <span class="text-rose-500">*</span>
+                                </label>
+                                <select
+                                    v-model="transferForm.target_reseller_id"
+                                    required
+                                    class="w-full rounded-xl border-gray-300 text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 py-2.5"
+                                >
+                                    <option value="" disabled>-- Pilih Loket Tujuan Transfer --</option>
+                                    <optgroup v-if="myDownlineOptions.length > 0" label="── Loket Binaan Saya ──">
+                                        <option v-for="r in myDownlineOptions" :key="r.id" :value="r.id">
+                                            🏪 {{ r.name }} ({{ r.phone || '-' }}) • Saldo: Rp {{ Number(r.balance || 0).toLocaleString('id-ID') }}
+                                        </option>
+                                    </optgroup>
+                                    <optgroup v-if="freeResellerOptions.length > 0" label="── Loket Mandiri (Otomatis Jadi Binaan) ──">
+                                        <option v-for="r in freeResellerOptions" :key="r.id" :value="r.id">
+                                            ➕ {{ r.name }} ({{ r.phone || '-' }}) • Saldo: Rp {{ Number(r.balance || 0).toLocaleString('id-ID') }}
+                                        </option>
+                                    </optgroup>
+                                </select>
+                                <div v-if="transferForm.errors.target_reseller_id" class="text-xs text-rose-600 mt-1">{{ transferForm.errors.target_reseller_id }}</div>
+                            </div>
+
+                            <!-- Pilihan Nominal Cepat Transfer -->
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Nominal Cepat</label>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <button
+                                        v-for="amt in transferPresetAmounts"
+                                        :key="amt"
+                                        type="button"
+                                        @click="transferForm.amount = amt"
+                                        :class="transferForm.amount == amt ? 'bg-amber-500 text-slate-950 border-amber-500 ring-2 ring-amber-400/40' : 'bg-white text-gray-700 border-gray-200 hover:border-amber-300 hover:bg-amber-50/50'"
+                                        class="py-2 px-3 rounded-xl border text-xs font-black transition cursor-pointer text-center"
+                                    >
+                                        {{ formatPresetLabel(amt) }}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Input Nominal Custom -->
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
+                                    Nominal Transfer Saldo <span class="text-rose-500">*</span>
+                                </label>
+                                <div class="relative rounded-2xl">
+                                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500 font-bold text-sm">Rp</div>
+                                    <input
+                                        v-model.number="transferForm.amount"
+                                        type="number"
+                                        min="10000"
+                                        step="5000"
+                                        required
+                                        class="w-full bg-gray-50/70 border border-gray-300 text-gray-900 text-base font-extrabold rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 focus:bg-white block pl-11 pr-4 py-2.5 shadow-xs transition"
+                                        placeholder="100000"
+                                    />
+                                </div>
+                                <span class="text-[11px] text-gray-400 mt-1 block">Minimal transfer P2P ke loket binaan: Rp 10.000</span>
+                            </div>
+
+                            <!-- Catatan -->
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">Catatan Transaksi (Opsional)</label>
+                                <input
+                                    v-model="transferForm.notes"
+                                    type="text"
+                                    maxlength="255"
+                                    placeholder="Contoh: Setoran tunai modal loket"
+                                    class="w-full rounded-xl border-gray-300 text-xs focus:ring-amber-500 focus:border-amber-500"
+                                />
+                            </div>
+
+                            <!-- Ringkasan Kalkulasi -->
+                            <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2 text-xs">
+                                <div class="flex justify-between text-gray-600">
+                                    <span>Estimasi Sisa Saldo Anda:</span>
+                                    <span class="font-bold font-mono" :class="(Number(reseller.balance || 0) - Number(transferForm.amount || 0)) < 0 ? 'text-rose-600' : 'text-gray-900'">
+                                        Rp {{ Number(Math.max(0, Number(reseller.balance || 0) - Number(transferForm.amount || 0))).toLocaleString('id-ID') }}
+                                    </span>
+                                </div>
+                                <div v-if="selectedTransferTarget" class="flex justify-between text-emerald-700 pt-1.5 border-t border-slate-200">
+                                    <span>Saldo {{ selectedTransferTarget.name }} Setelah Terima:</span>
+                                    <span class="font-black font-mono">
+                                        Rp {{ Number(Number(selectedTransferTarget.balance || 0) + Number(transferForm.amount || 0)).toLocaleString('id-ID') }}
+                                    </span>
+                                </div>
+                                <div v-if="Number(transferForm.amount || 0) > Number(reseller.balance || 0)" class="text-rose-600 font-bold text-[11px] pt-1">
+                                    ⚠️ Saldo modal Anda tidak mencukupi untuk nominal ini. Silakan isi saldo terlebih dahulu.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="p-4 sm:p-5 border-t border-gray-100 bg-gray-50/90 flex items-center justify-end gap-3 shrink-0">
+                            <button
+                                type="button"
+                                @click="showTransferModal = false"
+                                class="px-4 py-2.5 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 transition cursor-pointer"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="submit"
+                                :disabled="transferForm.processing || !transferForm.target_reseller_id || !transferForm.amount || transferForm.amount < 10000 || Number(transferForm.amount) > Number(reseller.balance || 0)"
+                                class="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl text-xs font-black transition shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                            >
+                                <span>{{ transferForm.processing ? 'Memproses Transfer...' : 'Kirim Saldo Sekarang' }}</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </Teleport>
+
         <!-- Modal Top Up Saldo Mandiri Reseller -->
         <Teleport to="body">
             <div v-if="showTopUpModal" class="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
@@ -769,7 +1114,7 @@
                                         :class="topUpForm.amount == amt ? 'bg-blue-600 text-white border-blue-600 ring-2 ring-blue-500/30' : 'bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'"
                                         class="py-2.5 px-3 rounded-xl border text-xs font-black transition cursor-pointer text-center"
                                     >
-                                        Rp {{ (amt / 1000).toLocaleString('id-ID') }}k
+                                        {{ formatPresetLabel(amt) }}
                                     </button>
                                 </div>
                             </div>
@@ -784,15 +1129,15 @@
                                     <input 
                                         v-model.number="topUpForm.amount" 
                                         type="number" 
-                                        min="10000" 
-                                        max="10000000" 
+                                        :min="effectiveMinDeposit" 
+                                        :max="effectiveMaxDeposit" 
                                         step="5000"
                                         required
                                         class="w-full bg-gray-50/70 border border-gray-300 text-gray-900 text-base font-extrabold rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white block pl-11 pr-4 py-3 shadow-xs transition" 
                                         placeholder="50000"
                                     />
                                 </div>
-                                <span class="text-[11px] text-gray-400 mt-1 block">Minimal pengisian saldo: Rp 10.000</span>
+                                <span class="text-[11px] text-gray-500 mt-1 block">Minimal pengisian saldo ({{ is_master ? 'Master Biller' : 'Mitra Loket' }}): <strong>Rp {{ Number(effectiveMinDeposit).toLocaleString('id-ID') }}</strong></span>
                             </div>
 
                             <!-- Pilihan Saluran Pembayaran -->
@@ -837,7 +1182,7 @@
                             </button>
                             <button 
                                 type="submit" 
-                                :disabled="topUpForm.processing || !topUpForm.amount || topUpForm.amount < 10000"
+                                :disabled="topUpForm.processing || !topUpForm.amount || topUpForm.amount < effectiveMinDeposit"
                                 class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                             >
                                 <svg v-if="topUpForm.processing" class="animate-spin -ml-1 mr-1 h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
@@ -1380,6 +1725,34 @@ import Swal from 'sweetalert2';
 
 const props = defineProps({
     reseller: Object,
+    is_master: {
+        type: Boolean,
+        default: false
+    },
+    downlines: {
+        type: Array,
+        default: () => []
+    },
+    total_downlines_balance: {
+        type: Number,
+        default: 0
+    },
+    total_override_royalty: {
+        type: Number,
+        default: 0
+    },
+    all_resellers_for_transfer: {
+        type: Array,
+        default: () => []
+    },
+    min_deposit: {
+        type: Number,
+        default: 50000
+    },
+    override_fee_amount: {
+        type: Number,
+        default: 500
+    },
     vouchers: Object,
     profiles: Array,
     income: Number,
@@ -1399,11 +1772,136 @@ const showKasbonModal = ref(false);
 const showTopUpModal = ref(false);
 
 const topUpForm = useForm({
-    amount: 50000,
+    amount: props.is_master ? Math.max(2000000, Number(props.min_deposit || 2000000)) : Math.max(50000, Number(props.min_deposit || 50000)),
     channel: 'QRIS',
 });
 
-const presetAmounts = [20000, 50000, 100000, 200000, 500000];
+const effectiveMinDeposit = computed(() => {
+    if (props.min_deposit && Number(props.min_deposit) > 0) return Number(props.min_deposit);
+    return props.is_master ? 2000000 : 50000;
+});
+
+const effectiveMaxDeposit = computed(() => props.is_master ? 50000000 : 10000000);
+
+const presetAmounts = computed(() => {
+    return props.is_master
+        ? [2000000, 3000000, 5000000, 10000000, 15000000, 25000000]
+        : [50000, 100000, 200000, 300000, 500000, 1000000];
+});
+
+const formatPresetLabel = (amt) => {
+    if (amt >= 1000000) {
+        return 'Rp ' + (amt / 1000000).toLocaleString('id-ID') + ' Jt';
+    }
+    return 'Rp ' + (amt / 1000).toLocaleString('id-ID') + 'k';
+};
+
+// ── Master Biller / Distributor Logic ──────────────────────────
+const showDownlinesPanel = ref(props.is_master && (props.downlines?.length || 0) > 0);
+const showTransferModal = ref(false);
+const transferPresetAmounts = [50000, 100000, 200000, 300000, 500000, 1000000];
+
+const transferForm = useForm({
+    target_reseller_id: '',
+    amount: 100000,
+    notes: '',
+});
+
+const myDownlineOptions = computed(() => {
+    return (props.all_resellers_for_transfer || []).filter(r => r.is_downline);
+});
+
+const freeResellerOptions = computed(() => {
+    return (props.all_resellers_for_transfer || []).filter(r => !r.is_downline);
+});
+
+const selectedTransferTarget = computed(() => {
+    if (!transferForm.target_reseller_id) return null;
+    return (props.all_resellers_for_transfer || []).find(r => r.id == transferForm.target_reseller_id) || null;
+});
+
+const openTransferModal = (targetId = '') => {
+    transferForm.clearErrors();
+    if (targetId) {
+        transferForm.target_reseller_id = targetId;
+    } else if (!transferForm.target_reseller_id && myDownlineOptions.value.length > 0) {
+        transferForm.target_reseller_id = myDownlineOptions.value[0].id;
+    }
+    showTransferModal.value = true;
+};
+
+const submitTransferBalance = () => {
+    transferForm.post(route('client-area.transfer-balance'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showTransferModal.value = false;
+            const targetName = selectedTransferTarget.value?.name || 'Sub-Reseller';
+            const sentAmt = Number(transferForm.amount || 0).toLocaleString('id-ID');
+            transferForm.reset('notes');
+            Swal.fire({
+                icon: 'success',
+                title: 'Transfer Saldo Berhasil!',
+                text: `Saldo modal Rp ${sentAmt} berhasil dikirim ke loket ${targetName}.`,
+                timer: 2500,
+                showConfirmButton: false,
+            });
+        },
+        onError: (errors) => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Transfer Gagal',
+                text: errors.target_reseller_id || errors.amount || errors.error || 'Gagal memproses transfer saldo.',
+            });
+        }
+    });
+};
+
+const getRegistrationUrl = () => {
+    const code = props.reseller?.referral_code || '';
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    return code ? `${origin}/register-reseller?ref=${encodeURIComponent(code)}` : `${origin}/register-reseller`;
+};
+
+const copyReferralCode = async () => {
+    const code = props.reseller?.referral_code || '';
+    if (!code) return;
+    try {
+        await navigator.clipboard.writeText(code);
+        Swal.fire({
+            icon: 'success',
+            title: 'Kode Tersalin!',
+            text: `Kode referral ${code} berhasil disalin.`,
+            timer: 1600,
+            showConfirmButton: false,
+        });
+    } catch (e) {
+        Swal.fire('Kode Referral Anda', code, 'info');
+    }
+};
+
+const copyRegistrationLink = async () => {
+    const url = getRegistrationUrl();
+    try {
+        await navigator.clipboard.writeText(url);
+        Swal.fire({
+            icon: 'success',
+            title: 'Link Pendaftaran Tersalin!',
+            text: 'Kirimkan link ini ke calon pemilik konter/warung binaan Anda.',
+            timer: 2000,
+            showConfirmButton: false,
+        });
+    } catch (e) {
+        Swal.fire('Link Pendaftaran Loket', url, 'info');
+    }
+};
+
+const shareReferralWhatsApp = () => {
+    const code = props.reseller?.referral_code || '-';
+    const url = getRegistrationUrl();
+    const masterName = props.reseller?.customer?.name || 'Master Biller';
+    const text = `Halo! Mari bergabung menjadi *Mitra Loket Pembayaran WiFi & Reseller Voucher* binaan *${masterName}*.\n\n✅ Daftar gratis 100% bebas iuran\n✅ Dapatkan komisi setiap bayar tagihan warga & jual voucher WiFi\n✅ Top-up modal mudah bisa langsung lewat kami\n\n🔑 *Kode Sponsor Master:* ${code}\n📝 *Daftar langsung di sini:*\n${url}`;
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+};
 
 const paymentChannels = [
     { id: 'QRIS', name: 'QRIS', desc: 'GoPay, OVO, Dana, ShopeePay, BCA/BRI/Mandiri QR' },

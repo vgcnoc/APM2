@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Reseller;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -18,35 +17,70 @@ class ResellerController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Reseller::with(['customer.areaModel', 'customer.package', 'customer.user', 'user'])
-            ->where(function($q) {
-                $q->whereNull('customer_id')
-                  ->orWhereHas('customer', function($cq) {
-                      $cq->where('status', 'active');
-                  });
-            });
+        $query = Reseller::with([
+            'customer.areaModel', 
+            'customer.package', 
+            'customer.user', 
+            'user',
+            'master.customer',
+            'master.user',
+            'downlines.customer',
+            'downlines.user',
+        ])
+        ->withCount('downlines')
+        ->where(function($q) {
+            $q->whereNull('customer_id')
+              ->orWhereHas('customer', function($cq) {
+                  $cq->where('status', 'active');
+              });
+        });
+
+        if ($request->filled('tier') && in_array($request->tier, ['master', 'regular'])) {
+            $query->where('tier', $request->tier);
+        }
 
         if ($request->filled('search')) {
             $search = trim($request->search);
             $query->where(function($q) use ($search) {
-                $q->whereHas('customer', function($cq) use ($search) {
-                    $cq->where('name', 'like', "%{$search}%")
-                      ->orWhere('phone', 'like', "%{$search}%")
-                      ->orWhere('customer_code', 'like', "%{$search}%");
-                })
-                ->orWhereHas('user', function($uq) use ($search) {
-                    $uq->where('name', 'like', "%{$search}%")
-                      ->orWhere('phone', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
-                });
+                $q->where('referral_code', 'like', "%{$search}%")
+                  ->orWhereHas('customer', function($cq) use ($search) {
+                      $cq->where('name', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%")
+                        ->orWhere('customer_code', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('user', function($uq) use ($search) {
+                      $uq->where('name', 'like', "%{$search}%")
+                        ->orWhere('phone', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                  });
             });
         }
 
-        $resellers = $query->latest()->paginate(10)->withQueryString();
+        $resellers = $query->latest()->paginate(15)->withQueryString();
+
+        $stats = [
+            'total' => Reseller::count(),
+            'master' => Reseller::where('tier', 'master')->count(),
+            'regular' => Reseller::where('tier', 'regular')->count(),
+            'total_balance' => (float) Reseller::sum('balance'),
+        ];
+
+        $masterOptions = Reseller::where('tier', 'master')
+            ->with(['customer', 'user'])
+            ->get()
+            ->map(function ($m) {
+                return [
+                    'id' => $m->id,
+                    'name' => $m->customer?->name ?: $m->user?->name,
+                    'referral_code' => $m->referral_code,
+                ];
+            });
 
         return Inertia::render('Resellers/Index', [
             'resellers' => $resellers,
-            'filters' => $request->only(['search'])
+            'stats' => $stats,
+            'masterOptions' => $masterOptions,
+            'filters' => $request->only(['search', 'tier'])
         ]);
     }
 
@@ -66,11 +100,19 @@ class ResellerController extends Controller
         $validated = $request->validate([
             'balance' => 'numeric|min:0',
             'is_active' => 'boolean',
+            'tier' => 'nullable|in:regular,master',
+            'parent_id' => 'nullable|exists:resellers,id',
+            'override_fee' => 'nullable|numeric|min:0',
         ]);
 
         $oldBalance = (float)$reseller->balance;
         $newBalance = (float)$validated['balance'];
         $diff = $newBalance - $oldBalance;
+
+        // Jika diubah menjadi master tapi belum punya referral code, buatkan otomatis
+        if (isset($validated['tier']) && $validated['tier'] === 'master' && empty($reseller->referral_code)) {
+            $validated['referral_code'] = Reseller::generateReferralCode();
+        }
 
         $reseller->update($validated);
 
@@ -84,7 +126,24 @@ class ResellerController extends Controller
             ]);
         }
 
-        return redirect()->back()->with('success', 'Data dompet Reseller berhasil diperbarui.');
+        return redirect()->back()->with('success', 'Data kemitraan Reseller berhasil diperbarui.');
+    }
+
+    /**
+     * Ubah status Tier Reseller (Regular <-> Master)
+     */
+    public function toggleTier(Reseller $reseller)
+    {
+        if ($reseller->tier === 'master') {
+            $reseller->update(['tier' => 'regular']);
+            return redirect()->back()->with('success', "Status mitra {$reseller->customer?->name} diubah menjadi Reseller Biasa.");
+        } else {
+            $reseller->update([
+                'tier' => 'master',
+                'referral_code' => $reseller->referral_code ?: Reseller::generateReferralCode(),
+            ]);
+            return redirect()->back()->with('success', "Mitra {$reseller->customer?->name} berhasil dipromosikan menjadi Master Biller / Distributor! Kode Referral: {$reseller->referral_code}");
+        }
     }
 
     /**
@@ -122,10 +181,8 @@ class ResellerController extends Controller
         $name = $customer ? $customer->name : 'Reseller ' . $reseller->id;
         $phone = $customer ? $customer->phone : null;
 
-        // Cek apakah email sudah ada di tabel users
         $existingUser = User::where('email', $email)->first();
 
-        // Atau jika customer sudah memiliki user_id
         if (!$existingUser && $customer && $customer->user_id) {
             $existingUser = User::find($customer->user_id);
         }
@@ -135,7 +192,6 @@ class ResellerController extends Controller
                 $role = Role::firstOrCreate(['name' => 'reseller']);
 
                 if ($existingUser) {
-                    // Cek apakah user sudah terikat dengan RESELLER LAIN
                     $otherReseller = Reseller::where('user_id', $existingUser->id)
                         ->where('id', '!=', $reseller->id)
                         ->first();
@@ -213,7 +269,6 @@ class ResellerController extends Controller
             $changed = true;
         }
         
-        // Ensure the user has the reseller role
         if ($reseller->user->role !== 'reseller') {
             $reseller->user->update(['role' => 'reseller']);
             $role = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'reseller']);

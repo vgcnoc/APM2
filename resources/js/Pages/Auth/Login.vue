@@ -20,8 +20,8 @@ const portals = [
         hint: 'Gunakan akun staf yang telah terdaftar di perusahaan.',
     },
     {
-        id: 'reseller', label: 'Mitra Biller', icon: CreditCardIcon, tone: 'mint',
-        description: 'Transaksi, pembayaran, dan layanan mitra.',
+        id: 'reseller', label: 'Mitra Biller & Master', icon: CreditCardIcon, tone: 'mint',
+        description: 'Loket pembayaran, voucher hotspot, & distribusi saldo Master.',
         hint: 'Masuk menggunakan akun mitra atau reseller yang telah diverifikasi.',
         registration: '/register-reseller',
     },

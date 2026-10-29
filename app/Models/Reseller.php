@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Reseller extends Model
 {
@@ -15,13 +16,48 @@ class Reseller extends Model
         'user_id',
         'balance',
         'is_active',
+        'tier',
+        'parent_id',
+        'referral_code',
+        'override_fee',
+        'status',
     ];
 
     protected static function booted()
     {
+        static::creating(function (Reseller $reseller) {
+            if ($reseller->tier === 'master' && empty($reseller->referral_code)) {
+                $reseller->referral_code = static::generateReferralCode();
+            }
+        });
+
         static::deleting(function (Reseller $reseller) {
             $reseller->purgeConnectedData();
         });
+    }
+
+    public static function generateReferralCode(): string
+    {
+        do {
+            $code = 'MSTR-' . strtoupper(Str::random(5));
+        } while (static::where('referral_code', $code)->exists());
+
+        return $code;
+    }
+
+    public function isMaster(): bool
+    {
+        return $this->tier === 'master';
+    }
+
+    public function master()
+    {
+        return $this->belongsTo(Reseller::class, 'parent_id');
+    }
+
+    public function downlines()
+    {
+        return $this->hasMany(Reseller::class, 'parent_id');
     }
 
     /**

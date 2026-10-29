@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Customer;
 use App\Models\Reseller;
 use App\Models\Area;
+use App\Models\Setting;
 use App\Models\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,7 +21,7 @@ class RegisterResellerController extends Controller
     /**
      * Tampilkan halaman pendaftaran mandiri calon Mitra Reseller & Biller.
      */
-    public function create()
+    public function create(Request $request)
     {
         // Jika sudah login, redirect sesuai role
         if (Auth::check()) {
@@ -32,9 +33,13 @@ class RegisterResellerController extends Controller
         }
 
         $areas = Area::orderBy('name')->get(['id', 'name']);
+        $refCode = $request->query('ref', $request->query('sponsor', ''));
 
         return Inertia::render('Auth/RegisterReseller', [
             'areas' => $areas,
+            'defaultRefCode' => trim((string)$refCode),
+            'minDepositRegular' => (int) Setting::get('reseller_min_deposit', 50000),
+            'minDepositMaster' => (int) Setting::get('master_reseller_min_deposit', 2000000),
         ]);
     }
 
@@ -44,6 +49,8 @@ class RegisterResellerController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'tier' => 'required|in:regular,master',
+            'master_referral_code' => 'nullable|string|max:30',
             'name' => 'required|string|max:255',
             'store_name' => 'nullable|string|max:255',
             'phone' => 'required|string|max:25',
@@ -52,6 +59,7 @@ class RegisterResellerController extends Controller
             'address' => 'required|string|max:500',
             'area_id' => 'nullable|exists:areas,id',
         ], [
+            'tier.required' => 'Pilih jenis kemitraan (Mitra Loket Biasa atau Master Biller).',
             'name.required' => 'Nama lengkap wajib diisi.',
             'phone.required' => 'Nomor WhatsApp aktif wajib diisi.',
             'email.required' => 'Email wajib diisi.',
@@ -63,9 +71,24 @@ class RegisterResellerController extends Controller
             'address.required' => 'Alamat atau lokasi usaha/konter wajib diisi.',
         ]);
 
-        $user = null;
+        // Cek Master Referral Code jika diisi
+        $parentId = null;
+        if ($validated['tier'] === 'regular' && !empty($validated['master_referral_code'])) {
+            $cleanedCode = trim(strtoupper($validated['master_referral_code']));
+            $masterReseller = Reseller::where('tier', 'master')
+                ->where('referral_code', $cleanedCode)
+                ->where('is_active', true)
+                ->first();
 
-        DB::transaction(function () use ($validated, $request, &$user) {
+            if ($masterReseller) {
+                $parentId = $masterReseller->id;
+            }
+        }
+
+        $user = null;
+        $reseller = null;
+
+        DB::transaction(function () use ($validated, $parentId, &$user, &$reseller) {
             $displayName = !empty($validated['store_name']) 
                 ? "{$validated['name']} ({$validated['store_name']})" 
                 : $validated['name'];
@@ -95,7 +118,6 @@ class RegisterResellerController extends Controller
             }
 
             // 3. Buat Customer record khusus Mitra Murni (Bebas Tagihan / Non-PSB)
-            // Menggunakan service_status 'gratis' dan package_id null agar tidak pernah ada invoice bulanan/aktivasi
             $customer = Customer::create([
                 'user_id' => $user->id,
                 'name' => $displayName,
@@ -104,23 +126,29 @@ class RegisterResellerController extends Controller
                 'address' => $validated['address'],
                 'area_id' => $validated['area_id'] ?? null,
                 'area' => $areaName,
-                'status' => 'active', // Langsung aktif sebagai mitra loket tanpa lewat teknisi kabel
-                'service_status' => 'gratis', // Bebas dari sistem billing tagihan bulanan
-                'package_id' => null, // Tanpa paket internet rumah
+                'status' => 'active',
+                'service_status' => 'gratis',
+                'package_id' => null,
                 'base_amount' => 0,
                 'is_reseller' => true,
                 'registration_date' => now()->toDateString(),
                 'activation_date' => now()->toDateString(),
-                'billing_type' => \App\Models\Setting::get('billing_type', 'prabayar'),
-                'notes' => 'Pendaftaran Mandiri Mitra Reseller Voucher & Loket Pembayaran (Biller)',
+                'billing_type' => Setting::get('billing_type', 'prabayar'),
+                'notes' => $validated['tier'] === 'master' 
+                    ? 'Pendaftaran Mandiri Master Biller & Distributor Wilayah' 
+                    : 'Pendaftaran Mandiri Mitra Reseller Voucher & Loket Pembayaran (Biller)',
             ]);
 
-            // 4. Buat Dompet Saldo Reseller
+            // 4. Buat Dompet Saldo Reseller (dengan Tier dan Referral)
             $reseller = Reseller::create([
                 'customer_id' => $customer->id,
                 'user_id' => $user->id,
                 'balance' => 0,
                 'is_active' => true,
+                'tier' => $validated['tier'],
+                'parent_id' => $parentId,
+                'referral_code' => $validated['tier'] === 'master' ? Reseller::generateReferralCode() : null,
+                'status' => 'active',
             ]);
 
             // 5. Catat Audit Log
@@ -130,7 +158,7 @@ class RegisterResellerController extends Controller
                     $reseller,
                     null,
                     'active',
-                    "Pendaftaran mandiri Mitra Reseller & Biller: {$displayName} ({$user->email})"
+                    "Pendaftaran mandiri Mitra (" . strtoupper($validated['tier']) . "): {$displayName} ({$user->email})" . ($parentId ? " [Downline Master ID #{$parentId}]" : "")
                 );
             } catch (\Exception $e) {}
         });
@@ -139,7 +167,12 @@ class RegisterResellerController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
-        return redirect()->route('client-area.dashboard')
-            ->with('success', 'Selamat bergabung sebagai Mitra Reseller Voucher & Loket Biller! Silakan isi saldo dompet untuk mulai transaksi.');
+        if ($reseller && $reseller->tier === 'master') {
+            $msg = "Selamat bergabung sebagai Master Biller & Distributor Wilayah! Kode Referral Anda: {$reseller->referral_code}. Bagikan kode ini ke calon loket binaan Anda.";
+        } else {
+            $msg = "Selamat bergabung sebagai Mitra Reseller Voucher & Loket Biller! Silakan isi saldo dompet untuk mulai melayani transaksi pelanggan.";
+        }
+
+        return redirect()->route('client-area.dashboard')->with('success', $msg);
     }
 }

@@ -97,6 +97,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/biller/pay/{invoice}', [\App\Http\Controllers\ResellerClientController::class, 'payCustomerInvoice'])->name('biller.pay');
         Route::post('/generate-vouchers', [\App\Http\Controllers\ResellerClientController::class, 'generateVouchers'])->name('generate-vouchers');
         Route::post('/top-up-balance', [\App\Http\Controllers\PaymentGatewayController::class, 'topUpReseller'])->name('top-up-balance');
+        Route::post('/transfer-balance', [\App\Http\Controllers\ResellerClientController::class, 'transferBalance'])->name('transfer-balance');
     });
 
     // Customer Area (Pelanggan)
@@ -458,6 +459,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/resellers/{reseller}/delete', [\App\Http\Controllers\ResellerController::class, 'destroy'])->name('resellers.destroy.post');
         Route::post('/resellers/{reseller}/create-account', [\App\Http\Controllers\ResellerController::class, 'createAccount'])->name('resellers.create-account');
         Route::post('/resellers/{reseller}/reset-password', [\App\Http\Controllers\ResellerController::class, 'resetPassword'])->name('resellers.reset-password');
+        Route::post('/resellers/{reseller}/toggle-tier', [\App\Http\Controllers\ResellerController::class, 'toggleTier'])->name('resellers.toggle-tier');
     });
     
     // ── Reseller Requests (Riwayat & Top Up Saldo) ──────────────

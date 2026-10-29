@@ -49,17 +49,25 @@ class PaymentGatewayController extends Controller
      */
     public function topUpReseller(Request $request)
     {
-        $validated = $request->validate([
-            'amount' => 'required|numeric|min:10000|max:10000000',
-            'channel' => 'nullable|string|max:20',
-        ]);
-
         $user = auth()->user();
         $reseller = Reseller::where('user_id', $user->id)->first();
 
         if (!$reseller) {
             return back()->with('error', 'Akun Anda tidak terdaftar sebagai reseller.');
         }
+
+        $minDeposit = $reseller->isMaster()
+            ? (int) \App\Models\Setting::get('master_reseller_min_deposit', 2000000)
+            : (int) \App\Models\Setting::get('reseller_min_deposit', 50000);
+        $maxDeposit = $reseller->isMaster() ? 50000000 : 10000000;
+
+        $validated = $request->validate([
+            'amount' => "required|numeric|min:{$minDeposit}|max:{$maxDeposit}",
+            'channel' => 'nullable|string|max:20',
+        ], [
+            'amount.min' => 'Minimal pengisian saldo untuk ' . ($reseller->isMaster() ? 'Master Biller' : 'Mitra Loket') . ' adalah Rp ' . number_format($minDeposit, 0, ',', '.') . '.',
+            'amount.max' => 'Maksimal pengisian saldo per transaksi adalah Rp ' . number_format($maxDeposit, 0, ',', '.') . '.',
+        ]);
 
         $channel = $validated['channel'] ?? 'QRIS';
         $result = $this->pgService->createResellerTopUp($reseller, (float) $validated['amount'], $channel);

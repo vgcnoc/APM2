@@ -11,6 +11,9 @@
                             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                             Loket Pembayaran Internet
                         </span>
+                        <span v-if="is_master" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-black bg-gradient-to-r from-amber-500 to-yellow-500 text-white shadow-xs">
+                            👑 MASTER BILLER
+                        </span>
                         <span class="text-xs text-gray-300">•</span>
                         <span class="text-xs font-medium text-gray-500">
                             {{ reseller.name || 'Mitra Reseller' }}
@@ -572,7 +575,7 @@
                                     :class="topUpForm.amount == amt ? 'bg-blue-600 text-white border-blue-600 ring-2 ring-blue-500/30' : 'bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'"
                                     class="py-2.5 px-3 rounded-xl border text-xs font-black transition cursor-pointer text-center"
                                 >
-                                    Rp {{ (amt / 1000).toLocaleString('id-ID') }}k
+                                    {{ formatPresetLabel(amt) }}
                                 </button>
                             </div>
                         </div>
@@ -586,15 +589,15 @@
                                 <input 
                                     v-model.number="topUpForm.amount" 
                                     type="number" 
-                                    min="10000" 
-                                    max="10000000" 
+                                    :min="effectiveMinDeposit" 
+                                    :max="effectiveMaxDeposit" 
                                     step="5000"
                                     required
                                     class="w-full bg-gray-50/70 border border-gray-300 text-gray-900 text-base font-extrabold rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white block pl-11 pr-4 py-3 shadow-xs transition" 
                                     placeholder="50000"
                                 />
                             </div>
-                            <span class="text-[11px] text-gray-400 mt-1 block">Minimal pengisian saldo: Rp 10.000</span>
+                            <span class="text-[11px] text-gray-500 mt-1 block">Minimal pengisian saldo ({{ is_master ? 'Master Biller' : 'Mitra Loket' }}): <strong>Rp {{ Number(effectiveMinDeposit).toLocaleString('id-ID') }}</strong></span>
                         </div>
 
                         <div>
@@ -624,7 +627,7 @@
                             <button type="button" @click="showTopUpModal = false" class="px-4 py-2.5 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 transition cursor-pointer">
                                 Batal
                             </button>
-                            <button type="submit" :disabled="topUpForm.processing || !topUpForm.amount || topUpForm.amount < 10000" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-2 disabled:opacity-50 cursor-pointer">
+                            <button type="submit" :disabled="topUpForm.processing || !topUpForm.amount || topUpForm.amount < effectiveMinDeposit" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-2 disabled:opacity-50 cursor-pointer">
                                 <svg v-if="topUpForm.processing" class="animate-spin -ml-1 mr-1 h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                 <span>{{ topUpForm.processing ? 'Memproses...' : 'Lanjut ke Pembayaran' }}</span>
                             </button>
@@ -683,7 +686,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import ClientAreaLayout from '@/Layouts/ClientAreaLayout.vue';
 import Swal from 'sweetalert2';
@@ -691,6 +694,14 @@ import axios from 'axios';
 
 const props = defineProps({
     reseller: Object,
+    is_master: {
+        type: Boolean,
+        default: false
+    },
+    min_deposit: {
+        type: Number,
+        default: 50000
+    },
     recentPayments: Object,
     totalTransactionsAmount: Number,
     totalTransactionsCount: Number,
@@ -917,10 +928,28 @@ _Terima kasih atas pembayaran Anda. Simpan bukti ini sebagai tanda terima sah._`
 // Top Up Modal State
 const showTopUpModal = ref(false);
 const topUpForm = useForm({
-    amount: 50000,
+    amount: props.is_master ? Math.max(2000000, Number(props.min_deposit || 2000000)) : Math.max(50000, Number(props.min_deposit || 50000)),
     channel: 'QRIS',
 });
-const presetAmounts = [20000, 50000, 100000, 200000, 500000];
+const effectiveMinDeposit = computed(() => {
+    if (props.min_deposit && Number(props.min_deposit) > 0) return Number(props.min_deposit);
+    return props.is_master ? 2000000 : 50000;
+});
+
+const effectiveMaxDeposit = computed(() => props.is_master ? 50000000 : 10000000);
+
+const presetAmounts = computed(() => {
+    return props.is_master
+        ? [2000000, 3000000, 5000000, 10000000, 15000000, 25000000]
+        : [50000, 100000, 200000, 300000, 500000, 1000000];
+});
+
+const formatPresetLabel = (amt) => {
+    if (amt >= 1000000) {
+        return 'Rp ' + (amt / 1000000).toLocaleString('id-ID') + ' Jt';
+    }
+    return 'Rp ' + (amt / 1000).toLocaleString('id-ID') + 'k';
+};
 const paymentChannels = [
     { id: 'QRIS', name: 'QRIS', desc: 'GoPay, OVO, Dana, ShopeePay, BCA/BRI/Mandiri QR' },
     { id: 'BCAVA', name: 'BCA Virtual Account', desc: 'Transfer Otomatis Bank BCA' },
