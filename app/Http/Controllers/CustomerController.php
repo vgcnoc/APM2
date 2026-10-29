@@ -2088,6 +2088,25 @@ class CustomerController extends Controller
     }
 
     /**
+     * Cetak Invoice Pasang Baru (PSB) & Bukti Aktivasi
+     */
+    public function printPsb(Customer $customer)
+    {
+        $customer->load(['package', 'areaModel', 'sales.employee', 'ont.odp.odc.olt']);
+
+        $company = [
+            'name' => Setting::get('company_name', config('app.name', 'ISP Management')),
+            'address' => Setting::get('company_address', 'Layanan Internet Cepat & Stabil'),
+            'phone' => Setting::get('company_phone', ''),
+            'email' => Setting::get('company_email', ''),
+            'website' => Setting::get('company_website', ''),
+            'logo' => Setting::get('company_logo', null),
+        ];
+
+        return view('print.invoice-psb', compact('customer', 'company'));
+    }
+
+    /**
      * Form tambah pelanggan baru (booking)
      */
     public function create(): Response

@@ -147,6 +147,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{customer}/write-off-invoices', [CustomerController::class, 'writeOffInvoices'])->name('write-off-invoices');
         Route::get('/{customer}/print-termination', [CustomerController::class, 'printTermination'])->name('print-termination');
         Route::get('/{customer}/print-booking', [CustomerController::class, 'printBooking'])->name('print-booking');
+        Route::get('/{customer}/print-psb', [CustomerController::class, 'printPsb'])->name('print-psb');
         Route::post('/{customer}/suspend', [CustomerController::class, 'suspend'])->name('suspend');
         Route::post('/{customer}/unsuspend', [CustomerController::class, 'unsuspend'])->name('unsuspend');
         Route::post('/{customer}/connection-access', [CustomerController::class, 'connectionAccess'])->name('connection-access');

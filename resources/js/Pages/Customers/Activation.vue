@@ -117,6 +117,16 @@
                         <div class="flex items-center justify-start gap-1.5 whitespace-nowrap">
                             <button 
                                 type="button"
+                                @click="openPsbInvoiceModal(row)"
+                                class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold transition-all shadow-2xs hover:shadow-xs cursor-pointer"
+                                title="Kirim WhatsApp / Cetak Invoice Pasang Baru (PSB)"
+                            >
+                                <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                <span>Invoice PSB</span>
+                            </button>
+
+                            <button 
+                                type="button"
                                 @click="openEditActivationModal(row)"
                                 class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold transition-all shadow-2xs hover:shadow-xs cursor-pointer"
                                 title="Edit Data & Konfigurasi Aktivasi"
@@ -1143,6 +1153,192 @@
             </div>
         </Teleport>
 
+        <!-- ================= MODAL INVOICE PSB ================= -->
+        <Teleport to="body">
+            <div v-if="showPsbModal && selectedPsbCustomer" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="closePsbInvoiceModal"></div>
+                <div class="relative bg-white border border-gray-200 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] overflow-hidden flex flex-col animate-fade-in-up">
+                    
+                    <!-- Header Modal -->
+                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-emerald-600 to-teal-700 text-white">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-md flex items-center justify-center shadow-inner">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-bold text-white leading-tight">
+                                    Invoice Pasang Baru (PSB) & Bukti Aktivasi
+                                </h3>
+                                <p class="text-xs text-emerald-100 mt-0.5">
+                                    No: <span class="font-mono font-semibold">{{ getPsbInvoiceNumber(selectedPsbCustomer) }}</span>
+                                </p>
+                            </div>
+                        </div>
+                        <button @click="closePsbInvoiceModal" class="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Body Modal (Scrollable) -->
+                    <div class="p-6 overflow-y-auto space-y-5 flex-1">
+                        
+                        <!-- Banner Berhasil Aktivasi -->
+                        <div class="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3">
+                            <span class="text-2xl mt-0.5">🎉</span>
+                            <div>
+                                <h4 class="text-xs font-bold text-emerald-900 uppercase tracking-wider">Aktivasi Pelanggan Selesai</h4>
+                                <p class="text-xs text-emerald-700 mt-0.5 leading-relaxed">
+                                    Layanan pelanggan telah aktif. Anda dapat langsung mengirimkan bukti pembayaran & invoice PSB ini ke nomor WhatsApp pelanggan atau mencetaknya.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Ringkasan Invoice PSB Sheet Preview -->
+                        <div class="bg-gray-50/70 border border-gray-200 rounded-xl p-4 space-y-4">
+                            
+                            <!-- Kop Invoice Sederhana -->
+                            <div class="flex items-start justify-between border-b border-gray-200 pb-3">
+                                <div>
+                                    <h4 class="text-sm font-extrabold text-gray-900 tracking-tight">
+                                        {{ $page.props.company_name || 'VIZBILL INTERNET' }}
+                                    </h4>
+                                    <p class="text-[11px] text-gray-500">
+                                        {{ $page.props.company_address || 'Penyedia Layanan Internet Cepat & Stabil' }}
+                                    </p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold border border-emerald-200">
+                                        ✓ LUNAS
+                                    </span>
+                                    <p class="text-[10px] text-gray-400 mt-1 font-mono">
+                                        {{ formatDateIndo(selectedPsbCustomer.activation_date || new Date()) }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Data Pelanggan & Paket Grid -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                                <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-2xs space-y-1.5">
+                                    <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">Data Pelanggan</span>
+                                    <div>
+                                        <span class="font-bold text-gray-900 text-sm block">{{ selectedPsbCustomer.name }}</span>
+                                        <span class="text-gray-500 font-mono text-[11px]">{{ selectedPsbCustomer.customer_code }}</span>
+                                    </div>
+                                    <div class="text-gray-600 text-[11px]">
+                                        <span>📞 {{ selectedPsbCustomer.phone || '-' }}</span>
+                                    </div>
+                                    <div class="text-gray-600 text-[11px] truncate" :title="selectedPsbCustomer.address">
+                                        <span>📍 {{ selectedPsbCustomer.address || '-' }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="bg-white p-3 rounded-lg border border-gray-200 shadow-2xs space-y-1.5">
+                                    <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">Detail Layanan</span>
+                                    <div>
+                                        <span class="font-bold text-gray-900 text-sm block">
+                                            {{ selectedPsbCustomer.package?.name || 'Internet Service' }}
+                                        </span>
+                                        <span v-if="selectedPsbCustomer.package?.speed" class="text-emerald-700 font-bold text-[11px]">
+                                            {{ selectedPsbCustomer.package?.speed }} Mbps
+                                        </span>
+                                    </div>
+                                    <div class="text-gray-600 text-[11px]">
+                                        <span>📅 Aktivasi: <strong>{{ formatDateIndo(selectedPsbCustomer.activation_date || new Date()) }}</strong></span>
+                                    </div>
+                                    <div class="text-gray-600 text-[11px]">
+                                        <span>🌐 Wilayah: {{ selectedPsbCustomer.area || '-' }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Rincian Biaya PSB -->
+                            <div class="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-2xs">
+                                <div class="px-4 py-2.5 bg-gray-50 border-b border-gray-200 flex justify-between items-center text-xs font-bold text-gray-700">
+                                    <span>Rincian Biaya</span>
+                                    <span>Nominal</span>
+                                </div>
+                                <div class="p-4 space-y-2">
+                                    <div class="flex justify-between items-center text-xs">
+                                        <div>
+                                            <span class="font-bold text-gray-900">Biaya Pasang Baru (PSB) & Registrasi</span>
+                                            <p class="text-[11px] text-gray-500">Instalasi kabel, konfigurasi ONT modem, & aktivasi</p>
+                                        </div>
+                                        <span class="font-bold font-mono text-gray-900 text-sm">
+                                            {{ formatRupiah(selectedPsbCustomer.installation_fee || 0) }}
+                                        </span>
+                                    </div>
+                                    <div class="border-t border-gray-100 pt-2 flex justify-between items-center">
+                                        <span class="text-xs font-extrabold text-gray-900 uppercase tracking-wide">Total Invoice PSB:</span>
+                                        <span class="text-base font-extrabold font-mono text-emerald-700">
+                                            {{ formatRupiah(selectedPsbCustomer.installation_fee || 0) }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Preview Pesan WhatsApp -->
+                        <div class="space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <label class="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.861.173.086.275.072.376-.044.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.043.072.043.419-.101.824z"/></svg>
+                                    Format Pesan WhatsApp untuk Pelanggan:
+                                </label>
+                                <button 
+                                    type="button" 
+                                    @click="copyPsbText" 
+                                    class="text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 hover:underline cursor-pointer"
+                                >
+                                    <svg v-if="!copySuccess" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                    <span v-if="copySuccess" class="text-emerald-600 font-bold">✓ Tersalin!</span>
+                                    <span v-else>Salin Teks</span>
+                                </button>
+                            </div>
+                            <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs text-gray-700 whitespace-pre-line font-mono max-h-36 overflow-y-auto leading-relaxed">
+                                {{ generatePsbWhatsAppText(selectedPsbCustomer) }}
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Footer Action Buttons -->
+                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-wrap items-center justify-between gap-2.5">
+                        <button 
+                            type="button" 
+                            @click="closePsbInvoiceModal" 
+                            class="px-4 py-2.5 bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 rounded-xl text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+                        >
+                            Tutup
+                        </button>
+                        
+                        <div class="flex items-center gap-2">
+                            <!-- Cetak / Print Invoice PSB -->
+                            <a 
+                                :href="`/customers/${selectedPsbCustomer.id}/print-psb`" 
+                                target="_blank"
+                                class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-all shadow-sm hover:shadow cursor-pointer"
+                            >
+                                <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                                <span>Cetak Invoice PSB</span>
+                            </a>
+
+                            <!-- Kirim ke WhatsApp -->
+                            <button 
+                                type="button" 
+                                @click="sendPsbWhatsApp" 
+                                class="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-600/20 hover:shadow-lg hover:shadow-emerald-600/30 cursor-pointer"
+                            >
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.861.173.086.275.072.376-.044.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.043.072.043.419-.101.824z"/></svg>
+                                <span>Kirim ke WhatsApp Pelanggan</span>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </Teleport>
+
         <!-- Modal Konfirmasi Hapus -->
         <Teleport to="body">
             <div v-if="showDeleteModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -1286,7 +1482,7 @@ function bulkDelete() {
 const columns = computed(() => {
     if (currentTab.value === 'riwayat') {
         return [
-            { key: 'actions', label: 'Aksi', class: 'whitespace-nowrap min-w-[170px]' },
+            { key: 'actions', label: 'Aksi', class: 'whitespace-nowrap min-w-[280px]' },
             { key: 'name', label: 'Pelanggan' },
             { key: 'package', label: 'Paket & Tagihan' },
             { key: 'activation_date', label: 'Tgl Aktivasi' },
@@ -1805,12 +2001,119 @@ function submitActivation() {
         activationForm.hotspot_user = activationForm.pppoe_user;
         activationForm.hotspot_password = activationForm.pppoe_password;
     }
+    const customerSnapshot = {
+        ...activeCustomer.value,
+        activation_date: activationForm.activation_date || new Date().toISOString().slice(0, 10),
+        installation_fee: activeCustomer.value?.installation_fee || 0,
+        pppoe_user: activationForm.pppoe_user,
+        access_mode: activationForm.access_mode
+    };
     activationForm.post(`/customers/${activeCustomer.value.id}/activate`, {
         preserveScroll: true,
         onSuccess: () => {
             showActivationModal.value = false;
+            // Buka otomatis Invoice PSB agar langsung bisa kirim ke WhatsApp / cetak!
+            openPsbInvoiceModal(customerSnapshot);
         }
     });
+}
+
+// ================= PSB INVOICE MODAL STATE & ACTIONS =================
+const showPsbModal = ref(false);
+const selectedPsbCustomer = ref(null);
+const copySuccess = ref(false);
+
+function openPsbInvoiceModal(customer) {
+    if (!customer) return;
+    selectedPsbCustomer.value = customer;
+    copySuccess.value = false;
+    showPsbModal.value = true;
+}
+
+function closePsbInvoiceModal() {
+    showPsbModal.value = false;
+    selectedPsbCustomer.value = null;
+}
+
+function cleanPhone(phone) {
+    if (!phone) return '';
+    let cleaned = String(phone).replace(/[^0-9]/g, '');
+    if (cleaned.startsWith('0')) {
+        cleaned = '62' + cleaned.substring(1);
+    } else if (cleaned.startsWith('8')) {
+        cleaned = '62' + cleaned;
+    }
+    return cleaned;
+}
+
+function getPsbInvoiceNumber(customer) {
+    if (!customer) return 'PSB-00000';
+    const code = customer.customer_code || ('CUS-' + String(customer.id).padStart(5, '0'));
+    return `INV-PSB-${code}`;
+}
+
+function generatePsbWhatsAppText(customer) {
+    if (!customer) return '';
+    const compName = page.props.company_name || 'VIZBILL INTERNET';
+    const compPhone = page.props.company_phone || '';
+    const invNum = getPsbInvoiceNumber(customer);
+    const custCode = customer.customer_code || '-';
+    const custName = customer.name || '-';
+    const custPhone = customer.phone || '-';
+    const custAddress = customer.address || '-';
+    const pkgName = customer.package?.name || 'Paket Internet';
+    const actDate = formatDateIndo(customer.activation_date || new Date().toISOString());
+    const psbFee = formatRupiah(customer.installation_fee || 0);
+
+    return `*INVOICE PEMASANGAN BARU (PSB)*\n` +
+        `*${compName.toUpperCase()}*\n` +
+        `----------------------------------------\n` +
+        `Halo Bpk/Ibu *${custName}*,\n` +
+        `Terima kasih telah mempercayakan kebutuhan internet Anda kepada kami. Layanan internet Anda telah *BERHASIL DIAKTIVASI* dan siap digunakan.\n\n` +
+        `Berikut rincian Invoice Biaya Pasang Baru (PSB):\n` +
+        `📄 *No. Invoice*: ${invNum}\n` +
+        `🆔 *ID Pelanggan*: ${custCode}\n` +
+        `👤 *Nama*: ${custName}\n` +
+        `📞 *No. WhatsApp*: ${custPhone}\n` +
+        `📍 *Alamat*: ${custAddress}\n` +
+        `📦 *Paket Layanan*: ${pkgName}\n` +
+        `📅 *Tanggal Aktivasi*: ${actDate}\n` +
+        `💰 *Biaya Pasang Baru (PSB)*: ${psbFee}\n` +
+        `✅ *Status Pembayaran*: LUNAS (Sudah Diterima)\n` +
+        `----------------------------------------\n` +
+        `_Simpan pesan ini sebagai bukti pembayaran dan registrasi resmi pemasangan baru._\n\n` +
+        (compPhone ? `Bila ada kendala atau pertanyaan teknis, hubungi kami di *${compPhone}*.\n\n` : '') +
+        `Salam,\n*${compName}*`;
+}
+
+function sendPsbWhatsApp() {
+    if (!selectedPsbCustomer.value) return;
+    const phone = cleanPhone(selectedPsbCustomer.value.phone);
+    const text = generatePsbWhatsAppText(selectedPsbCustomer.value);
+    const isMobile = typeof navigator !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    let url = '';
+    if (phone) {
+        url = isMobile 
+            ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
+            : `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(text)}`;
+    } else {
+        url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    }
+    window.open(url, '_blank');
+}
+
+function copyPsbText() {
+    if (!selectedPsbCustomer.value) return;
+    const text = generatePsbWhatsAppText(selectedPsbCustomer.value);
+    if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+            copySuccess.value = true;
+            setTimeout(() => { copySuccess.value = false; }, 2500);
+        });
+    } else {
+        copySuccess.value = true;
+        setTimeout(() => { copySuccess.value = false; }, 2500);
+    }
 }
 
 // Delete Logic
