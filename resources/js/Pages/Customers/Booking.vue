@@ -104,21 +104,7 @@
             </template>
 
             <template #row="{ row }">
-                <td>
-                    <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center text-sm font-bold text-gray-900 shrink-0">
-                            {{ row.name.charAt(0) }}
-                        </div>
-                        <div>
-                            <Link :href="`/customers/${row.id}`" class="text-gray-900 font-medium hover:text-blue-400 transition-colors">
-                                {{ row.name }}
-                            </Link>
-                            <p class="text-xs text-gray-500 font-mono">{{ row.customer_code }}</p>
-                        </div>
-                    </div>
-                </td>
-
-                <!-- Aksi Pelanggan (Sebelah Nama Pelanggan) -->
+                <!-- Aksi Pelanggan (Sebelum Nama Pelanggan) -->
                 <td class="whitespace-nowrap">
                     <div class="flex items-center justify-start gap-1.5 whitespace-nowrap">
                         <!-- Status / Aksi Utama -->
@@ -162,6 +148,21 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                             </svg>
                         </button>
+                    </div>
+                </td>
+
+                <!-- Nama Pelanggan -->
+                <td>
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center text-sm font-bold text-gray-900 shrink-0">
+                            {{ row.name.charAt(0) }}
+                        </div>
+                        <div>
+                            <Link :href="`/customers/${row.id}`" class="text-gray-900 font-medium hover:text-blue-400 transition-colors">
+                                {{ row.name }}
+                            </Link>
+                            <p class="text-xs text-gray-500 font-mono">{{ row.customer_code }}</p>
+                        </div>
                     </div>
                 </td>
                 <td class="text-gray-500">{{ row.phone }}</td>
@@ -980,8 +981,8 @@ function formatDate(dateStr) {
 }
 
 const columns = [
-    { key: 'name', label: 'Nama Pelanggan' },
     { key: 'actions', label: 'Aksi', class: 'whitespace-nowrap min-w-[170px]' },
+    { key: 'name', label: 'Nama Pelanggan' },
     { key: 'phone', label: 'Telepon' },
     { key: 'address', label: 'Alamat' },
     { key: 'package', label: 'Paket Langganan' },

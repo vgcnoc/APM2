@@ -13,13 +13,15 @@ php artisan permissions:sync
 npm install --legacy-peer-deps
 npm run build
 php artisan optimize:clear
+rm -rf storage/framework/cache/data/*
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 chown -R www-data:www-data storage bootstrap/cache public/build
-chmod -R 775 storage bootstrap/cache public/build
-setfacl -R -d -m u:www-data:rwx,g:www-data:rwx,o:r-x /var/www/APM2/storage /var/www/APM2/bootstrap/cache 2>/dev/null || true
-setfacl -R -m u:www-data:rwx,g:www-data:rwx,o:r-x /var/www/APM2/storage /var/www/APM2/bootstrap/cache 2>/dev/null || true
+chmod -R 777 storage bootstrap/cache
+chmod -R 775 public/build
+setfacl -R -d -m u:www-data:rwx,g:www-data:rwx,o:rwx /var/www/APM2/storage /var/www/APM2/bootstrap/cache 2>/dev/null || true
+setfacl -R -m u:www-data:rwx,g:www-data:rwx,o:rwx /var/www/APM2/storage /var/www/APM2/bootstrap/cache 2>/dev/null || true
 
 # Pastikan cron scheduler selalu dijalankan oleh user www-data (bukan root)
 if crontab -l 2>/dev/null | grep -q "schedule:run"; then

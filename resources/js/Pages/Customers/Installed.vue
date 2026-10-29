@@ -119,29 +119,7 @@
                 </div>
             </template>
             <template #row="{ row }">
-                <td>
-                    <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-sm font-bold text-gray-900 shrink-0">
-                            {{ row.name.charAt(0) }}
-                        </div>
-                        <div>
-                            <Link :href="`/customers/${row.id}?source=instalasi`" class="text-gray-900 font-medium hover:text-blue-400 transition-colors">
-                                {{ row.name }}
-                            </Link>
-                            <p class="text-xs text-gray-500 font-mono">{{ row.customer_code }}</p>
-                            <div v-if="getAssignedTechnicians(row, 'installation') !== '-'" class="mt-1 flex items-center gap-1 text-[11px] text-blue-600 font-semibold bg-blue-50/70 px-1.5 py-0.5 rounded border border-blue-100/60 w-fit">
-                                <svg class="w-3 h-3 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                                <span>Teknisi: {{ getAssignedTechnicians(row, 'installation') }}</span>
-                            </div>
-                            <div v-else-if="getCustomerProgressStatus(row) === 'jadwal_pasang'" class="mt-1 flex items-center gap-1 text-[11px] text-amber-600 font-medium bg-amber-50/70 px-1.5 py-0.5 rounded border border-amber-100/60 w-fit">
-                                <svg class="w-3 h-3 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                <span>Belum Dijadwalkan</span>
-                            </div>
-                        </div>
-                    </div>
-                </td>
-
-                <!-- Aksi Pelanggan (Sebelah Nama Pelanggan) -->
+                <!-- Aksi Pelanggan (Sebelum Nama Pelanggan) -->
                 <td class="whitespace-nowrap">
                     <div class="flex items-center justify-start gap-1.5 whitespace-nowrap">
                         <!-- Quick Action: Jadwal Pasang -->
@@ -212,6 +190,29 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                             </svg>
                         </button>
+                    </div>
+                </td>
+
+                <!-- Pelanggan -->
+                <td>
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-sm font-bold text-gray-900 shrink-0">
+                            {{ row.name.charAt(0) }}
+                        </div>
+                        <div>
+                            <Link :href="`/customers/${row.id}?source=instalasi`" class="text-gray-900 font-medium hover:text-blue-400 transition-colors">
+                                {{ row.name }}
+                            </Link>
+                            <p class="text-xs text-gray-500 font-mono">{{ row.customer_code }}</p>
+                            <div v-if="getAssignedTechnicians(row, 'installation') !== '-'" class="mt-1 flex items-center gap-1 text-[11px] text-blue-600 font-semibold bg-blue-50/70 px-1.5 py-0.5 rounded border border-blue-100/60 w-fit">
+                                <svg class="w-3 h-3 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                <span>Teknisi: {{ getAssignedTechnicians(row, 'installation') }}</span>
+                            </div>
+                            <div v-else-if="getCustomerProgressStatus(row) === 'jadwal_pasang'" class="mt-1 flex items-center gap-1 text-[11px] text-amber-600 font-medium bg-amber-50/70 px-1.5 py-0.5 rounded border border-amber-100/60 w-fit">
+                                <svg class="w-3 h-3 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <span>Belum Dijadwalkan</span>
+                            </div>
+                        </div>
                     </div>
                 </td>
                 <td>
@@ -1559,8 +1560,8 @@ function bulkDelete() {
 }
 
 const columns = [
-    { key: 'name', label: 'Pelanggan' },
     { key: 'actions', label: 'Aksi', class: 'whitespace-nowrap min-w-[170px]' },
+    { key: 'name', label: 'Pelanggan' },
     { key: 'package', label: 'Paket' },
     { key: 'status', label: 'Status' },
     { key: 'ont', label: 'ONT S/N' },

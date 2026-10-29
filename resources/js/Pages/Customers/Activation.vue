@@ -112,25 +112,7 @@
             <template #row="{ row }">
                 <!-- ================= RIWAYAT AKTIVASI ROWS ================= -->
                 <template v-if="currentTab === 'riwayat'">
-                    <!-- Pelanggan -->
-                    <td>
-                        <div class="flex items-center gap-3">
-                            <div :class="['w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-2xs', getAvatarColor(row.name)]">
-                                {{ (row.name || 'P').charAt(0).toUpperCase() }}
-                            </div>
-                            <div>
-                                <Link :href="`/customers/${row.id}`" class="text-gray-900 font-bold hover:text-blue-600 transition-colors block text-sm">
-                                    {{ row.name }}
-                                </Link>
-                                <div class="flex items-center gap-1.5 text-xs text-gray-500 font-mono">
-                                    <span>{{ row.customer_code }}</span>
-                                    <span v-if="row.phone">&bull; {{ row.phone }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </td>
-
-                    <!-- Aksi Pelanggan Riwayat (Sebelah Nama Pelanggan) -->
+                    <!-- Aksi Pelanggan Riwayat (Sebelum Nama Pelanggan) -->
                     <td class="whitespace-nowrap">
                         <div class="flex items-center justify-start gap-1.5 whitespace-nowrap">
                             <button 
@@ -160,6 +142,24 @@
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                 <span>Hapus</span>
                             </button>
+                        </div>
+                    </td>
+
+                    <!-- Pelanggan -->
+                    <td>
+                        <div class="flex items-center gap-3">
+                            <div :class="['w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-2xs', getAvatarColor(row.name)]">
+                                {{ (row.name || 'P').charAt(0).toUpperCase() }}
+                            </div>
+                            <div>
+                                <Link :href="`/customers/${row.id}`" class="text-gray-900 font-bold hover:text-blue-600 transition-colors block text-sm">
+                                    {{ row.name }}
+                                </Link>
+                                <div class="flex items-center gap-1.5 text-xs text-gray-500 font-mono">
+                                    <span>{{ row.customer_code }}</span>
+                                    <span v-if="row.phone">&bull; {{ row.phone }}</span>
+                                </div>
+                            </div>
                         </div>
                     </td>
 
@@ -247,21 +247,7 @@
 
                 <!-- ================= MENUNGGU AKTIVASI ROWS ================= -->
                 <template v-else>
-                    <td>
-                        <div class="flex items-center gap-3">
-                            <div :class="['w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-2xs', getAvatarColor(row.name)]">
-                                {{ (row.name || 'P').charAt(0).toUpperCase() }}
-                            </div>
-                            <div>
-                                <Link :href="`/customers/${row.id}`" class="text-gray-900 font-medium hover:text-blue-400 transition-colors block">
-                                    {{ row.name }}
-                                </Link>
-                                <p class="text-xs text-gray-500 font-mono">{{ row.customer_code }}</p>
-                            </div>
-                        </div>
-                    </td>
-
-                    <!-- Aksi Pelanggan Menunggu (Sebelah Nama Pelanggan) -->
+                    <!-- Aksi Pelanggan Menunggu (Sebelum Nama Pelanggan) -->
                     <td class="whitespace-nowrap">
                         <div class="flex items-center justify-start gap-1.5 whitespace-nowrap">
                             <button v-if="row.status === 'installing' && row.ont && row.is_audited" 
@@ -286,6 +272,21 @@
                                 title="Hapus Pelanggan">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                             </button>
+                        </div>
+                    </td>
+
+                    <!-- Pelanggan -->
+                    <td>
+                        <div class="flex items-center gap-3">
+                            <div :class="['w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-2xs', getAvatarColor(row.name)]">
+                                {{ (row.name || 'P').charAt(0).toUpperCase() }}
+                            </div>
+                            <div>
+                                <Link :href="`/customers/${row.id}`" class="text-gray-900 font-medium hover:text-blue-400 transition-colors block">
+                                    {{ row.name }}
+                                </Link>
+                                <p class="text-xs text-gray-500 font-mono">{{ row.customer_code }}</p>
+                            </div>
                         </div>
                     </td>
                     <td>
@@ -1285,8 +1286,8 @@ function bulkDelete() {
 const columns = computed(() => {
     if (currentTab.value === 'riwayat') {
         return [
-            { key: 'name', label: 'Pelanggan' },
             { key: 'actions', label: 'Aksi', class: 'whitespace-nowrap min-w-[170px]' },
+            { key: 'name', label: 'Pelanggan' },
             { key: 'package', label: 'Paket & Tagihan' },
             { key: 'activation_date', label: 'Tgl Aktivasi' },
             { key: 'account', label: 'Akun / Mode' },
@@ -1295,8 +1296,8 @@ const columns = computed(() => {
         ];
     }
     return [
-        { key: 'name', label: 'Pelanggan' },
         { key: 'actions', label: 'Aksi', class: 'whitespace-nowrap min-w-[170px]' },
+        { key: 'name', label: 'Pelanggan' },
         { key: 'package', label: 'Paket' },
         { key: 'status', label: 'Status' },
         { key: 'ont', label: 'ONT S/N' },

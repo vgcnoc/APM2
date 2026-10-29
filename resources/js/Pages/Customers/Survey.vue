@@ -111,28 +111,7 @@
             </template>
             
             <template #row="{ row }">
-                <td class="min-w-[200px] max-w-[280px] whitespace-normal">
-                    <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-xs">
-                            {{ (row.name || 'P').charAt(0).toUpperCase() }}
-                        </div>
-                        <div class="min-w-0 flex-1">
-                            <div class="flex items-center gap-1.5 flex-wrap">
-                                <Link :href="`/customers/${row.id}`" class="text-gray-900 font-bold hover:text-blue-600 transition-colors text-sm truncate max-w-[180px] block" :title="row.name">
-                                    {{ row.name }}
-                                </Link>
-                                <span v-if="row.customer_code" class="text-[10px] font-mono px-1.5 py-0.2 bg-gray-100 text-gray-600 rounded">
-                                    {{ row.customer_code }}
-                                </span>
-                            </div>
-                            <p class="text-xs text-gray-500 line-clamp-2 mt-0.5 leading-snug break-words" :title="row.address">
-                                {{ row.address }}
-                            </p>
-                        </div>
-                    </div>
-                </td>
-
-                <!-- Aksi Pelanggan (Sebelah Nama Pelanggan) -->
+                <!-- Aksi Pelanggan (Sebelum Nama Pelanggan) -->
                 <td class="whitespace-nowrap">
                     <div class="flex items-center justify-start gap-1.5 whitespace-nowrap">
                         <template v-if="row.status === 'survey'">
@@ -160,10 +139,10 @@
                                 </span>
                             </template>
 
-                            <!-- Sudah Disurvey & Feasible -->
+                            <!-- Sudah Disurvey & Feasible: Warna ORANGE sesuai permintaan user -->
                             <button v-else-if="row.surveys?.length && row.surveys[0]?.feasibility === 'feasible' && hasPermission('customers_survey_mark_ready')" 
                                 @click="openInstallModal(row)" 
-                                class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer" 
+                                class="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer" 
                                 title="Laporan Selesai: Klik untuk menjadwalkan instalasi di menu Pasang/Aktif">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
                                 <span>Ready Install</span>
@@ -197,6 +176,28 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                             </svg>
                         </button>
+                    </div>
+                </td>
+
+                <!-- Pelanggan -->
+                <td class="min-w-[200px] max-w-[280px] whitespace-normal">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-xs">
+                            {{ (row.name || 'P').charAt(0).toUpperCase() }}
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <Link :href="`/customers/${row.id}`" class="text-gray-900 font-bold hover:text-blue-600 transition-colors text-sm truncate max-w-[180px] block" :title="row.name">
+                                    {{ row.name }}
+                                </Link>
+                                <span v-if="row.customer_code" class="text-[10px] font-mono px-1.5 py-0.2 bg-gray-100 text-gray-600 rounded">
+                                    {{ row.customer_code }}
+                                </span>
+                            </div>
+                            <p class="text-xs text-gray-500 line-clamp-2 mt-0.5 leading-snug break-words" :title="row.address">
+                                {{ row.address }}
+                            </p>
+                        </div>
                     </div>
                 </td>
                 <td class="whitespace-nowrap">
@@ -353,14 +354,14 @@
                             v-if="activeDropdownRow.status === 'survey' && activeDropdownRow.surveys?.length && activeDropdownRow.surveys[0]?.feasibility === 'feasible' && hasPermission('customers_survey_mark_ready')"
                             type="button"
                             @click="openInstallModal(activeDropdownRow); closeDropdown()"
-                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-emerald-50/80 hover:text-emerald-700 transition-colors font-medium group cursor-pointer"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-orange-50/80 hover:text-orange-700 transition-colors font-medium group cursor-pointer"
                         >
-                            <div class="w-6 h-6 rounded-lg bg-emerald-50 group-hover:bg-emerald-100/80 flex items-center justify-center shrink-0 transition-colors">
-                                <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+                            <div class="w-6 h-6 rounded-lg bg-orange-50 group-hover:bg-orange-100/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
                             </div>
                             <div class="min-w-0 flex-1">
-                                <span class="font-semibold text-xs block text-slate-800 group-hover:text-emerald-700">Proses Ready Install</span>
-                                <p class="text-[10px] text-slate-400 group-hover:text-emerald-500 font-normal leading-tight">Kirim ke antrian Pemasangan</p>
+                                <span class="font-semibold text-xs block text-slate-800 group-hover:text-orange-700">Proses Ready Install</span>
+                                <p class="text-[10px] text-slate-400 group-hover:text-orange-500 font-normal leading-tight">Kirim ke antrian Pemasangan</p>
                             </div>
                         </button>
 
@@ -991,8 +992,8 @@ function bulkDelete() {
 }
 
 const columns = [
-    { key: 'name', label: 'Pelanggan', class: 'min-w-[200px] max-w-[280px]' },
     { key: 'actions', label: 'Aksi', class: 'whitespace-nowrap min-w-[170px]' },
+    { key: 'name', label: 'Pelanggan', class: 'min-w-[200px] max-w-[280px]' },
     { key: 'odp', label: 'ODP Terdekat', class: 'whitespace-nowrap' },
     { key: 'distance', label: 'Jarak Kabel', class: 'whitespace-nowrap text-center' },
     { key: 'port', label: 'Port ODP', class: 'whitespace-nowrap' },
