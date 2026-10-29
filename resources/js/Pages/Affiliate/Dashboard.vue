@@ -255,6 +255,17 @@
                         </div>
                     </div>
 
+                    <!-- Info Alert: Ketentuan Perhitungan Pelanggan Aktif Migrasi & Komisi -->
+                    <div class="p-3.5 bg-blue-50 border border-blue-200 rounded-2xl text-xs text-blue-900 flex items-start gap-3 shadow-xs">
+                        <span class="text-lg leading-none shrink-0 mt-0.5">ℹ️</span>
+                        <div class="leading-relaxed">
+                            <strong class="font-bold text-blue-950">Perhitungan Pelanggan Aktif &amp; Komisi Pasif Downline:</strong>
+                            <p class="mt-0.5 text-blue-800">
+                                Sesuai ketentuan, pelanggan aktif hasil migrasi yang dihitung komisi pasif adalah pelanggan yang <strong>sudah aktivasi pada bulan Oktober 2026</strong>. Komisi upline mengalir otomatis sebesar <strong>Rp 2.000 / pelanggan / bulan</strong> untuk Downline Level 1 dan <strong>Rp 1.000 / pelanggan / bulan</strong> untuk Downline Level 2.
+                            </p>
+                        </div>
+                    </div>
+
                     <!-- Tier 1 Downlines -->
                     <div>
                         <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
@@ -263,7 +274,7 @@
                                 <span class="px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px]">{{ downlinesL1.length }} Mitra</span>
                             </h4>
                             <div class="flex items-center gap-2 text-xs">
-                                <span class="text-slate-500">Komisi Upline: {{ formatRupiah(settings.affiliate_commission_upline_1) }} / pelanggan / bulan</span>
+                                <span class="text-slate-500 font-medium">Komisi: <strong class="text-indigo-700 font-bold">Rp 2.000</strong> / pelanggan / bulan</span>
                                 <span v-if="downlines_l1_summary?.total_commission" class="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-xs">
                                     Total: {{ formatRupiah(downlines_l1_summary.total_commission) }} / bln
                                 </span>
@@ -277,27 +288,37 @@
                                         <th class="px-4 py-2.5">Nama Mitra</th>
                                         <th class="px-4 py-2.5">Kode Referral</th>
                                         <th class="px-4 py-2.5">WhatsApp</th>
-                                        <th class="px-4 py-2.5">Pelanggan Aktif</th>
-                                        <th class="px-4 py-2.5 text-right">Komisi Upline</th>
+                                        <th class="px-4 py-2.5">Pelanggan Aktif (Okt 2026)</th>
+                                        <th class="px-4 py-2.5 text-center">Tarif Komisi</th>
+                                        <th class="px-4 py-2.5 text-right">Total Komisi Upline</th>
                                         <th class="px-4 py-2.5">Bergabung</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
-                                    <tr v-for="d in downlinesL1" :key="d.id" class="hover:bg-slate-50/60">
+                                    <tr v-for="d in downlinesL1" :key="d.id" class="hover:bg-slate-50/60 transition-colors">
                                         <td class="px-4 py-2.5 font-bold text-slate-800">{{ d.name }}</td>
                                         <td class="px-4 py-2.5 font-mono text-purple-600 font-semibold">{{ d.referral_code }}</td>
                                         <td class="px-4 py-2.5 text-slate-600">{{ d.whatsapp || '-' }}</td>
                                         <td class="px-4 py-2.5 font-semibold text-indigo-600">
-                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-bold">
-                                                {{ d.active_customers ?? d.total_customers }} Pelanggan
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-700 font-extrabold">
+                                                {{ d.active_customers }} Pelanggan
                                             </span>
                                             <span v-if="(d.total_customers ?? 0) > (d.active_customers ?? 0)" class="text-[10px] text-slate-400 block mt-0.5">
-                                                (Total: {{ d.total_customers }})
+                                                (dari {{ d.total_customers }} total)
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-2.5 text-center">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-bold text-[11px]">
+                                                Rp 2.000 / plg
                                             </span>
                                         </td>
                                         <td class="px-4 py-2.5 text-right font-bold text-emerald-600">
-                                            {{ formatRupiah(d.commission_monthly ?? ((d.active_customers ?? d.total_customers) * settings.affiliate_commission_upline_1)) }}
-                                            <span class="text-[10px] font-normal text-slate-400 block">/ bln</span>
+                                            <div class="text-sm font-extrabold text-emerald-600">
+                                                {{ formatRupiah(d.commission_monthly ?? (d.active_customers * (settings.affiliate_commission_upline_1 || 2000))) }}
+                                            </div>
+                                            <span class="text-[10px] font-normal text-slate-400 block">
+                                                ({{ d.active_customers }} × Rp 2.000) / bln
+                                            </span>
                                         </td>
                                         <td class="px-4 py-2.5 text-slate-400">{{ d.joined_at }}</td>
                                     </tr>
@@ -317,7 +338,7 @@
                                 <span class="px-2 py-0.5 rounded-full bg-purple-50 border border-purple-200 text-purple-700 text-[10px]">{{ downlinesL2.length }} Mitra</span>
                             </h4>
                             <div class="flex items-center gap-2 text-xs">
-                                <span class="text-slate-500">Komisi Upline: {{ formatRupiah(settings.affiliate_commission_upline_2) }} / pelanggan / bulan</span>
+                                <span class="text-slate-500 font-medium">Komisi: <strong class="text-purple-700 font-bold">Rp 1.000</strong> / pelanggan / bulan</span>
                                 <span v-if="downlines_l2_summary?.total_commission" class="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-xs">
                                     Total: {{ formatRupiah(downlines_l2_summary.total_commission) }} / bln
                                 </span>
@@ -331,27 +352,37 @@
                                         <th class="px-4 py-2.5">Nama Mitra</th>
                                         <th class="px-4 py-2.5">Upline Level 1</th>
                                         <th class="px-4 py-2.5">Kode Referral</th>
-                                        <th class="px-4 py-2.5">Pelanggan Aktif</th>
-                                        <th class="px-4 py-2.5 text-right">Komisi Upline</th>
+                                        <th class="px-4 py-2.5">Pelanggan Aktif (Okt 2026)</th>
+                                        <th class="px-4 py-2.5 text-center">Tarif Komisi</th>
+                                        <th class="px-4 py-2.5 text-right">Total Komisi Upline</th>
                                         <th class="px-4 py-2.5">Bergabung</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
-                                    <tr v-for="d in downlinesL2" :key="d.id" class="hover:bg-slate-50/60">
+                                    <tr v-for="d in downlinesL2" :key="d.id" class="hover:bg-slate-50/60 transition-colors">
                                         <td class="px-4 py-2.5 font-bold text-slate-800">{{ d.name }}</td>
                                         <td class="px-4 py-2.5 text-indigo-600 font-semibold">{{ d.upline_name }}</td>
                                         <td class="px-4 py-2.5 font-mono text-purple-600">{{ d.referral_code }}</td>
                                         <td class="px-4 py-2.5 font-semibold text-purple-600">
-                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 font-bold">
-                                                {{ d.active_customers ?? d.total_customers }} Pelanggan
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-purple-50 border border-purple-200 text-purple-700 font-extrabold">
+                                                {{ d.active_customers }} Pelanggan
                                             </span>
                                             <span v-if="(d.total_customers ?? 0) > (d.active_customers ?? 0)" class="text-[10px] text-slate-400 block mt-0.5">
-                                                (Total: {{ d.total_customers }})
+                                                (dari {{ d.total_customers }} total)
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-2.5 text-center">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 font-bold text-[11px]">
+                                                Rp 1.000 / plg
                                             </span>
                                         </td>
                                         <td class="px-4 py-2.5 text-right font-bold text-emerald-600">
-                                            {{ formatRupiah(d.commission_monthly ?? ((d.active_customers ?? d.total_customers) * settings.affiliate_commission_upline_2)) }}
-                                            <span class="text-[10px] font-normal text-slate-400 block">/ bln</span>
+                                            <div class="text-sm font-extrabold text-emerald-600">
+                                                {{ formatRupiah(d.commission_monthly ?? (d.active_customers * (settings.affiliate_commission_upline_2 || 1000))) }}
+                                            </div>
+                                            <span class="text-[10px] font-normal text-slate-400 block">
+                                                ({{ d.active_customers }} × Rp 1.000) / bln
+                                            </span>
                                         </td>
                                         <td class="px-4 py-2.5 text-slate-400">{{ d.joined_at }}</td>
                                     </tr>

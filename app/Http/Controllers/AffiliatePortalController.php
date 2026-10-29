@@ -48,13 +48,50 @@ class AffiliatePortalController extends Controller
         $upline1CommissionRate = (float) ($settings['affiliate_commission_upline_1'] ?? 2000);
         $upline2CommissionRate = (float) ($settings['affiliate_commission_upline_2'] ?? 1000);
 
+        // Filter Pelanggan Aktif yang berhak atas komisi:
+        // - Pelanggan baru / non-migrasi: status active
+        // - Pelanggan hasil migrasi: status active DAN aktivasi pada bulan Oktober 2026
+        $octStart = '2026-10-01 00:00:00';
+        $octEnd = '2026-10-31 23:59:59';
+
+        $activeEligibleCustomerFilter = function ($q) use ($octStart, $octEnd) {
+            $q->where('status', 'active')
+              ->where(function ($sq) use ($octStart, $octEnd) {
+                  $sq->where(function ($sub) {
+                      $sub->where('is_migrated', false)
+                          ->orWhereNull('is_migrated');
+                  })->orWhere(function ($sub) use ($octStart, $octEnd) {
+                      $sub->where('is_migrated', true)
+                          ->where(function ($dq) use ($octStart, $octEnd) {
+                              $dq->whereBetween('activation_date', [$octStart, $octEnd])
+                                 ->orWhere(function ($fq) use ($octStart, $octEnd) {
+                                     $fq->whereNull('activation_date')
+                                        ->whereBetween('registration_date', [$octStart, $octEnd]);
+                                 });
+                          });
+                  });
+              });
+        };
+
         // Pelanggan yang diajak
         $customers = $profile->customers()
             ->with(['package', 'areaModel'])
             ->latest('registration_date')
             ->get()
-            ->map(function ($cust) use ($customerCommissions, $directMonthlyRate) {
+            ->map(function ($cust) use ($customerCommissions, $directMonthlyRate, $octStart, $octEnd) {
                 $totalCommissions = $customerCommissions->get($cust->id, 0);
+
+                $isActiveAndEligible = false;
+                if ($cust->status === 'active') {
+                    if (!$cust->is_migrated) {
+                        $isActiveAndEligible = true;
+                    } else {
+                        $actDate = $cust->activation_date ? $cust->activation_date->format('Y-m-d') : ($cust->registration_date ? $cust->registration_date->format('Y-m-d') : null);
+                        if ($actDate && $actDate >= '2026-10-01' && $actDate <= '2026-10-31') {
+                            $isActiveAndEligible = true;
+                        }
+                    }
+                }
 
                 return [
                     'id' => $cust->id,
@@ -64,8 +101,10 @@ class AffiliatePortalController extends Controller
                     'package_name' => $cust->package?->name ?? 'Internet Rumah',
                     'status' => $cust->status,
                     'is_migrated' => (bool) $cust->is_migrated,
-                    'monthly_commission_rate' => $cust->status === 'active' ? $directMonthlyRate : 0,
+                    'is_eligible_commission' => $isActiveAndEligible,
+                    'monthly_commission_rate' => $isActiveAndEligible ? $directMonthlyRate : 0,
                     'registration_date' => $cust->registration_date ? $cust->registration_date->format('d M Y') : '-',
+                    'activation_date' => $cust->activation_date ? $cust->activation_date->format('d M Y') : '-',
                     'total_commission' => (float) $totalCommissions,
                 ];
             });
@@ -77,7 +116,8 @@ class AffiliatePortalController extends Controller
             ->with('user')
             ->withCount([
                 'customers',
-                'customers as active_customers_count' => function ($q) {
+                'customers as active_customers_count' => $activeEligibleCustomerFilter,
+                'customers as all_active_customers_count' => function ($q) {
                     $q->where('status', 'active');
                 }
             ])
@@ -85,6 +125,7 @@ class AffiliatePortalController extends Controller
             ->map(function ($dl) use ($upline1CommissionRate) {
                 $custCount = (int) $dl->customers_count;
                 $activeCount = (int) $dl->active_customers_count;
+                $allActiveCount = (int) ($dl->all_active_customers_count ?? $activeCount);
                 $monthlyComm = $activeCount * $upline1CommissionRate;
 
                 return [
@@ -95,6 +136,7 @@ class AffiliatePortalController extends Controller
                     'referral_code' => $dl->referral_code,
                     'total_customers' => $custCount,
                     'active_customers' => $activeCount,
+                    'all_active_customers' => $allActiveCount,
                     'commission_monthly' => $monthlyComm,
                     'commission_rate' => $upline1CommissionRate,
                     'joined_at' => $dl->created_at->format('d M Y'),
@@ -112,7 +154,8 @@ class AffiliatePortalController extends Controller
                 ->with(['user', 'upline'])
                 ->withCount([
                     'customers',
-                    'customers as active_customers_count' => function ($q) {
+                    'customers as active_customers_count' => $activeEligibleCustomerFilter,
+                    'customers as all_active_customers_count' => function ($q) {
                         $q->where('status', 'active');
                     }
                 ])
@@ -120,6 +163,7 @@ class AffiliatePortalController extends Controller
                 ->map(function ($dl) use ($upline2CommissionRate) {
                     $custCount = (int) $dl->customers_count;
                     $activeCount = (int) $dl->active_customers_count;
+                    $allActiveCount = (int) ($dl->all_active_customers_count ?? $activeCount);
                     $monthlyComm = $activeCount * $upline2CommissionRate;
 
                     return [
@@ -130,6 +174,7 @@ class AffiliatePortalController extends Controller
                         'referral_code' => $dl->referral_code,
                         'total_customers' => $custCount,
                         'active_customers' => $activeCount,
+                        'all_active_customers' => $allActiveCount,
                         'commission_monthly' => $monthlyComm,
                         'commission_rate' => $upline2CommissionRate,
                         'joined_at' => $dl->created_at->format('d M Y'),
@@ -238,7 +283,8 @@ class AffiliatePortalController extends Controller
                 'booking_commissions' => (float) $commissionTotals->booking,
                 'recurring_commissions' => (float) $commissionTotals->recurring,
                 'pending_bookings' => $customers->where('status', 'booking')->count(),
-                'active_customers' => $customers->where('status', 'active')->count(),
+                'active_customers' => $customers->where('is_eligible_commission', true)->count(),
+                'total_active_all' => $customers->where('status', 'active')->count(),
                 'total_customers' => $customers->count(),
                 'total_downlines' => count($downlinesL1) + count($downlinesL2),
                 'downlines_l1_count' => count($downlinesL1),
