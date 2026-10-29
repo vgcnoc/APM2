@@ -65,10 +65,14 @@ class AffiliateProfile extends Model
      */
     public function customers(): HasMany
     {
-        $rel = $this->hasMany(Customer::class, 'sales_id', 'user_id');
-        if (\Illuminate\Support\Facades\Schema::hasColumn('customers', 'is_migrated')) {
-            $rel->where('customers.is_migrated', false);
-        }
-        return $rel;
+        return $this->hasMany(Customer::class, 'sales_id', 'user_id');
+    }
+
+    /**
+     * Pelanggan aktif yang didaftarkan lewat affiliate ini
+     */
+    public function activeCustomers(): HasMany
+    {
+        return $this->hasMany(Customer::class, 'sales_id', 'user_id')->where('status', 'active');
     }
 }

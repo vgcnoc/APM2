@@ -43,12 +43,17 @@ class AffiliatePortalController extends Controller
             ->selectRaw("customer_id, SUM(CASE WHEN type IN ('clawback_booking', 'clawback_survey') THEN -ABS(amount) ELSE amount END) AS total")
             ->groupBy('customer_id')->pluck('total', 'customer_id');
 
+        $settings = AffiliateService::getSettings();
+        $directMonthlyRate = (float) ($settings['affiliate_commission_monthly'] ?? 5000);
+        $upline1CommissionRate = (float) ($settings['affiliate_commission_upline_1'] ?? 2000);
+        $upline2CommissionRate = (float) ($settings['affiliate_commission_upline_2'] ?? 1000);
+
         // Pelanggan yang diajak
         $customers = $profile->customers()
             ->with(['package', 'areaModel'])
             ->latest('registration_date')
             ->get()
-            ->map(function ($cust) use ($customerCommissions) {
+            ->map(function ($cust) use ($customerCommissions, $directMonthlyRate) {
                 $totalCommissions = $customerCommissions->get($cust->id, 0);
 
                 return [
@@ -58,6 +63,8 @@ class AffiliatePortalController extends Controller
                     'phone' => $cust->phone,
                     'package_name' => $cust->package?->name ?? 'Internet Rumah',
                     'status' => $cust->status,
+                    'is_migrated' => (bool) $cust->is_migrated,
+                    'monthly_commission_rate' => $cust->status === 'active' ? $directMonthlyRate : 0,
                     'registration_date' => $cust->registration_date ? $cust->registration_date->format('d M Y') : '-',
                     'total_commission' => (float) $totalCommissions,
                 ];
@@ -68,10 +75,18 @@ class AffiliatePortalController extends Controller
             ->where('user_id', '!=', $user->id)
             ->whereHas('user')
             ->with('user')
-            ->withCount('customers')
+            ->withCount([
+                'customers',
+                'customers as active_customers_count' => function ($q) {
+                    $q->where('status', 'active');
+                }
+            ])
             ->get()
-            ->map(function ($dl) {
-                $custCount = $dl->customers_count;
+            ->map(function ($dl) use ($upline1CommissionRate) {
+                $custCount = (int) $dl->customers_count;
+                $activeCount = (int) $dl->active_customers_count;
+                $monthlyComm = $activeCount * $upline1CommissionRate;
+
                 return [
                     'id' => $dl->id,
                     'user_id' => $dl->user_id,
@@ -79,6 +94,9 @@ class AffiliatePortalController extends Controller
                     'whatsapp' => $dl->whatsapp ?? $dl->user?->phone,
                     'referral_code' => $dl->referral_code,
                     'total_customers' => $custCount,
+                    'active_customers' => $activeCount,
+                    'commission_monthly' => $monthlyComm,
+                    'commission_rate' => $upline1CommissionRate,
                     'joined_at' => $dl->created_at->format('d M Y'),
                 ];
             });
@@ -92,20 +110,38 @@ class AffiliatePortalController extends Controller
                 ->whereNotIn('user_id', $l1UserIds)
                 ->whereHas('user')
                 ->with(['user', 'upline'])
-                ->withCount('customers')
+                ->withCount([
+                    'customers',
+                    'customers as active_customers_count' => function ($q) {
+                        $q->where('status', 'active');
+                    }
+                ])
                 ->get()
-                ->map(function ($dl) {
+                ->map(function ($dl) use ($upline2CommissionRate) {
+                    $custCount = (int) $dl->customers_count;
+                    $activeCount = (int) $dl->active_customers_count;
+                    $monthlyComm = $activeCount * $upline2CommissionRate;
+
                     return [
                         'id' => $dl->id,
                         'name' => $dl->user?->name ?? 'Mitra',
                         'whatsapp' => $dl->whatsapp ?? $dl->user?->phone,
                         'upline_name' => $dl->upline?->name ?? '-',
                         'referral_code' => $dl->referral_code,
-                        'total_customers' => $dl->customers_count,
+                        'total_customers' => $custCount,
+                        'active_customers' => $activeCount,
+                        'commission_monthly' => $monthlyComm,
+                        'commission_rate' => $upline2CommissionRate,
                         'joined_at' => $dl->created_at->format('d M Y'),
                     ];
                 });
         }
+
+        $totalDownlinesL1ActiveCustomers = (int) $downlinesL1->sum('active_customers');
+        $totalDownlinesL1Commission = (float) $downlinesL1->sum('commission_monthly');
+        $totalDownlinesL2ActiveCustomers = (int) collect($downlinesL2)->sum('active_customers');
+        $totalDownlinesL2Commission = (float) collect($downlinesL2)->sum('commission_monthly');
+        $potentialMonthlyNetworkCommission = $totalDownlinesL1Commission + $totalDownlinesL2Commission;
 
         // Riwayat Komisi
         $commissions = AffiliateCommission::where('affiliate_id', $user->id)
@@ -145,7 +181,6 @@ class AffiliatePortalController extends Controller
                 ];
             });
 
-        $settings = AffiliateService::getSettings();
         $isEmployee = AffiliateService::isInternalEmployee($user);
         $pendingPayrollIncentives = $isEmployee
             ? $this->pendingAffiliatePayrollIncentives($user->id)
@@ -208,7 +243,25 @@ class AffiliatePortalController extends Controller
                 'total_downlines' => count($downlinesL1) + count($downlinesL2),
                 'downlines_l1_count' => count($downlinesL1),
                 'downlines_l2_count' => count($downlinesL2),
+                'downlines_l1_active_customers' => $totalDownlinesL1ActiveCustomers,
+                'downlines_l2_active_customers' => $totalDownlinesL2ActiveCustomers,
+                'total_downlines_active_customers' => $totalDownlinesL1ActiveCustomers + $totalDownlinesL2ActiveCustomers,
+                'downlines_l1_commission' => $totalDownlinesL1Commission,
+                'downlines_l2_commission' => $totalDownlinesL2Commission,
+                'potential_monthly_network_commission' => $potentialMonthlyNetworkCommission,
                 'pending_payroll_incentives' => $pendingPayrollIncentives,
+            ],
+            'downlines_l1_summary' => [
+                'total_mitra' => count($downlinesL1),
+                'total_active_customers' => $totalDownlinesL1ActiveCustomers,
+                'total_commission' => $totalDownlinesL1Commission,
+                'rate' => $upline1CommissionRate,
+            ],
+            'downlines_l2_summary' => [
+                'total_mitra' => count($downlinesL2),
+                'total_active_customers' => $totalDownlinesL2ActiveCustomers,
+                'total_commission' => $totalDownlinesL2Commission,
+                'rate' => $upline2CommissionRate,
             ],
             'customers' => $customers,
             'downlinesL1' => $downlinesL1,

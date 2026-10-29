@@ -136,12 +136,20 @@
                                     <td class="px-4 py-3 text-slate-600">{{ c.package_name }}</td>
                                     <td class="px-4 py-3 text-slate-500">{{ c.registration_date }}</td>
                                     <td class="px-4 py-3">
-                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold capitalize" :class="c.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'">
-                                            {{ c.status }}
-                                        </span>
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold capitalize" :class="c.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'">
+                                                {{ c.status }}
+                                            </span>
+                                            <span v-if="c.is_migrated" class="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[9px] font-semibold border border-indigo-200">
+                                                Migrasi
+                                            </span>
+                                        </div>
                                     </td>
-                                    <td class="px-4 py-3 text-right font-bold text-emerald-600">
-                                        {{ formatRupiah(c.total_commission) }}
+                                    <td class="px-4 py-3 text-right">
+                                        <div class="font-bold text-emerald-600">{{ formatRupiah(c.total_commission) }}</div>
+                                        <div v-if="c.status === 'active'" class="text-[10px] text-slate-400 font-medium">
+                                            +{{ formatRupiah(settings.affiliate_commission_monthly) }}/bln
+                                        </div>
                                     </td>
                                 </tr>
                             </tbody>
@@ -221,6 +229,10 @@
                                 <p class="text-[11px] text-slate-300 mt-1.5 leading-relaxed">
                                     Pasif income dari pembayaran pelanggan milik mitra binaan langsung Anda.
                                 </p>
+                                <div v-if="downlines_l1_summary?.total_active_customers" class="mt-2.5 pt-2 border-t border-white/10 text-xs font-semibold text-emerald-300 flex justify-between">
+                                    <span>{{ downlines_l1_summary.total_active_customers }} Pelanggan Aktif:</span>
+                                    <span>{{ formatRupiah(downlines_l1_summary.total_commission) }}/bln</span>
+                                </div>
                             </div>
 
                             <!-- Tier 2: Downline L2 -->
@@ -235,18 +247,27 @@
                                 <p class="text-[11px] text-slate-300 mt-1.5 leading-relaxed">
                                     Pasif income dari pelanggan yang diajak oleh mitra di bawah mitra Anda (generasi 2).
                                 </p>
+                                <div v-if="downlines_l2_summary?.total_active_customers" class="mt-2.5 pt-2 border-t border-white/10 text-xs font-semibold text-purple-300 flex justify-between">
+                                    <span>{{ downlines_l2_summary.total_active_customers }} Pelanggan Aktif:</span>
+                                    <span>{{ formatRupiah(downlines_l2_summary.total_commission) }}/bln</span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Tier 1 Downlines -->
                     <div>
-                        <div class="flex items-center justify-between mb-3">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
                             <h4 class="text-xs font-bold uppercase tracking-wider text-indigo-700 flex items-center gap-1.5">
                                 <span>⭐ Downline Level 1 (Diajak Langsung)</span>
                                 <span class="px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px]">{{ downlinesL1.length }} Mitra</span>
                             </h4>
-                            <span class="text-xs text-slate-500">Komisi Upline: {{ formatRupiah(settings.affiliate_commission_upline_1) }} / pelanggan / bulan</span>
+                            <div class="flex items-center gap-2 text-xs">
+                                <span class="text-slate-500">Komisi Upline: {{ formatRupiah(settings.affiliate_commission_upline_1) }} / pelanggan / bulan</span>
+                                <span v-if="downlines_l1_summary?.total_commission" class="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-xs">
+                                    Total: {{ formatRupiah(downlines_l1_summary.total_commission) }} / bln
+                                </span>
+                            </div>
                         </div>
 
                         <div v-if="downlinesL1.length > 0" class="overflow-x-auto">
@@ -257,6 +278,7 @@
                                         <th class="px-4 py-2.5">Kode Referral</th>
                                         <th class="px-4 py-2.5">WhatsApp</th>
                                         <th class="px-4 py-2.5">Pelanggan Aktif</th>
+                                        <th class="px-4 py-2.5 text-right">Komisi Upline</th>
                                         <th class="px-4 py-2.5">Bergabung</th>
                                     </tr>
                                 </thead>
@@ -265,7 +287,18 @@
                                         <td class="px-4 py-2.5 font-bold text-slate-800">{{ d.name }}</td>
                                         <td class="px-4 py-2.5 font-mono text-purple-600 font-semibold">{{ d.referral_code }}</td>
                                         <td class="px-4 py-2.5 text-slate-600">{{ d.whatsapp || '-' }}</td>
-                                        <td class="px-4 py-2.5 font-semibold text-indigo-600">{{ d.total_customers }} Pelanggan</td>
+                                        <td class="px-4 py-2.5 font-semibold text-indigo-600">
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-bold">
+                                                {{ d.active_customers ?? d.total_customers }} Pelanggan
+                                            </span>
+                                            <span v-if="(d.total_customers ?? 0) > (d.active_customers ?? 0)" class="text-[10px] text-slate-400 block mt-0.5">
+                                                (Total: {{ d.total_customers }})
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-2.5 text-right font-bold text-emerald-600">
+                                            {{ formatRupiah(d.commission_monthly ?? ((d.active_customers ?? d.total_customers) * settings.affiliate_commission_upline_1)) }}
+                                            <span class="text-[10px] font-normal text-slate-400 block">/ bln</span>
+                                        </td>
                                         <td class="px-4 py-2.5 text-slate-400">{{ d.joined_at }}</td>
                                     </tr>
                                 </tbody>
@@ -278,12 +311,17 @@
 
                     <!-- Tier 2 Downlines -->
                     <div>
-                        <div class="flex items-center justify-between mb-3">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
                             <h4 class="text-xs font-bold uppercase tracking-wider text-purple-700 flex items-center gap-1.5">
                                 <span>🚀 Downline Level 2 (Binaan Mitra Anda)</span>
                                 <span class="px-2 py-0.5 rounded-full bg-purple-50 border border-purple-200 text-purple-700 text-[10px]">{{ downlinesL2.length }} Mitra</span>
                             </h4>
-                            <span class="text-xs text-slate-500">Komisi Upline: {{ formatRupiah(settings.affiliate_commission_upline_2) }} / pelanggan / bulan</span>
+                            <div class="flex items-center gap-2 text-xs">
+                                <span class="text-slate-500">Komisi Upline: {{ formatRupiah(settings.affiliate_commission_upline_2) }} / pelanggan / bulan</span>
+                                <span v-if="downlines_l2_summary?.total_commission" class="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-xs">
+                                    Total: {{ formatRupiah(downlines_l2_summary.total_commission) }} / bln
+                                </span>
+                            </div>
                         </div>
 
                         <div v-if="downlinesL2.length > 0" class="overflow-x-auto">
@@ -294,6 +332,7 @@
                                         <th class="px-4 py-2.5">Upline Level 1</th>
                                         <th class="px-4 py-2.5">Kode Referral</th>
                                         <th class="px-4 py-2.5">Pelanggan Aktif</th>
+                                        <th class="px-4 py-2.5 text-right">Komisi Upline</th>
                                         <th class="px-4 py-2.5">Bergabung</th>
                                     </tr>
                                 </thead>
@@ -302,7 +341,18 @@
                                         <td class="px-4 py-2.5 font-bold text-slate-800">{{ d.name }}</td>
                                         <td class="px-4 py-2.5 text-indigo-600 font-semibold">{{ d.upline_name }}</td>
                                         <td class="px-4 py-2.5 font-mono text-purple-600">{{ d.referral_code }}</td>
-                                        <td class="px-4 py-2.5 font-semibold text-purple-600">{{ d.total_customers }} Pelanggan</td>
+                                        <td class="px-4 py-2.5 font-semibold text-purple-600">
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 font-bold">
+                                                {{ d.active_customers ?? d.total_customers }} Pelanggan
+                                            </span>
+                                            <span v-if="(d.total_customers ?? 0) > (d.active_customers ?? 0)" class="text-[10px] text-slate-400 block mt-0.5">
+                                                (Total: {{ d.total_customers }})
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-2.5 text-right font-bold text-emerald-600">
+                                            {{ formatRupiah(d.commission_monthly ?? ((d.active_customers ?? d.total_customers) * settings.affiliate_commission_upline_2)) }}
+                                            <span class="text-[10px] font-normal text-slate-400 block">/ bln</span>
+                                        </td>
                                         <td class="px-4 py-2.5 text-slate-400">{{ d.joined_at }}</td>
                                     </tr>
                                 </tbody>
@@ -641,6 +691,8 @@ const props = defineProps({
     customers: Array,
     downlinesL1: Array,
     downlinesL2: Array,
+    downlines_l1_summary: Object,
+    downlines_l2_summary: Object,
     commissions: Object,
     withdrawals: Array,
     settings: Object,

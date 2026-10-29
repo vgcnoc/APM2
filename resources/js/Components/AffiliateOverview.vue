@@ -10,7 +10,15 @@ const stats = computed(() => [
     { label: 'Total booking saya', value: props.kpi.total_customers, detail: `${props.kpi.pending_bookings} menunggu proses`, icon: UsersIcon, tone: 'blue' },
     { label: 'Pelanggan aktif', value: props.kpi.active_customers, detail: 'Pelanggan langsung milik Anda', icon: UsersIcon, tone: 'green' },
     { label: 'Total pendapatan', value: currency(props.profile.total_earned), detail: 'Akumulasi komisi Anda', icon: BanknotesIcon, tone: 'blue' },
-    { label: 'Jaringan afiliasi', value: props.kpi.total_downlines, detail: `Level 1: ${props.kpi.downlines_l1_count} · Level 2: ${props.kpi.downlines_l2_count}`, icon: UserGroupIcon, tone: 'violet' },
+    { 
+        label: 'Jaringan afiliasi', 
+        value: `${props.kpi.total_downlines} Mitra`, 
+        detail: props.kpi.total_downlines_active_customers 
+            ? `${props.kpi.total_downlines_active_customers} Pelanggan Aktif (${currency(props.kpi.potential_monthly_network_commission)}/bln)` 
+            : `Level 1: ${props.kpi.downlines_l1_count} · Level 2: ${props.kpi.downlines_l2_count}`, 
+        icon: UserGroupIcon, 
+        tone: 'violet' 
+    },
 ]);
 const latestCustomers = computed(() => (props.customers || []).slice(0, 5));
 </script>

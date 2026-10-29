@@ -304,7 +304,7 @@ class AffiliateManagementController extends Controller
         if (!$isGlobal && !empty($accessibleAreas)) {
             $kpi = [
                 'total_affiliates' => AffiliateProfile::whereHas('user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas))->count(),
-                'total_customers' => Customer::when(\Illuminate\Support\Facades\Schema::hasColumn('customers', 'is_migrated'), fn($q) => $q->where('is_migrated', false))->whereNotNull('sales_id')->whereIn('area_id', $accessibleAreas)->count(),
+                'total_customers' => Customer::whereNotNull('sales_id')->whereIn('area_id', $accessibleAreas)->count(),
                 'total_commissions_paid' => (float) AffiliateCommission::whereHas('affiliate.user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas))->where('status', 'paid')->sum('amount'),
                 'pending_withdrawals_count' => AffiliateWithdrawal::whereHas('affiliate.user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas))->where('status', 'pending')->count(),
                 'pending_withdrawals_amount' => (float) AffiliateWithdrawal::whereHas('affiliate.user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas))->where('status', 'pending')->sum('amount'),
@@ -312,7 +312,7 @@ class AffiliateManagementController extends Controller
         } else {
             $kpi = [
                 'total_affiliates' => AffiliateProfile::count(),
-                'total_customers' => Customer::when(\Illuminate\Support\Facades\Schema::hasColumn('customers', 'is_migrated'), fn($q) => $q->where('is_migrated', false))->whereNotNull('sales_id')->count(),
+                'total_customers' => Customer::whereNotNull('sales_id')->count(),
                 'total_commissions_paid' => (float) AffiliateCommission::where('status', 'paid')->sum('amount'),
                 'pending_withdrawals_count' => AffiliateWithdrawal::where('status', 'pending')->count(),
                 'pending_withdrawals_amount' => (float) AffiliateWithdrawal::where('status', 'pending')->sum('amount'),
