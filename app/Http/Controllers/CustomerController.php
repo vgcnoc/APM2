@@ -2159,6 +2159,11 @@ class CustomerController extends Controller
             'area_villages' => $areaVillagesMap,
             'isAffiliate' => $isAffiliate,
             'affiliatePortal' => $isAffiliatePortal,
+            'taxSettings' => [
+                'tax_ppn' => (float) \App\Models\Setting::get('tax_ppn', '0'),
+                'tax_bhp' => (float) \App\Models\Setting::get('tax_bhp', '0'),
+                'tax_uso' => (float) \App\Models\Setting::get('tax_uso', '0'),
+            ],
         ]);
     }
 
@@ -2231,6 +2236,10 @@ class CustomerController extends Controller
             'billing_day' => 'nullable|integer|min:1|max:28',
             'is_reseller' => 'boolean',
             'service_status' => 'nullable|in:berbayar,gratis,free_home',
+            'enable_tax' => 'nullable|boolean',
+            'tax_ppn' => 'nullable|numeric|min:0|max:100',
+            'tax_bhp' => 'nullable|numeric|min:0|max:100',
+            'tax_uso' => 'nullable|numeric|min:0|max:100',
         ], [
             'email.unique' => 'Email ini sudah terdaftar pada pelanggan lain. Silakan gunakan email berbeda.',
             'email.email' => 'Format penulisan email tidak valid.',
@@ -2342,6 +2351,16 @@ class CustomerController extends Controller
         }
         if (empty($validated['billing_cycle'])) {
             $validated['billing_cycle'] = 'default';
+        }
+
+        if ($request->has('enable_tax') && !$request->boolean('enable_tax')) {
+            $validated['tax_ppn'] = 0;
+            $validated['tax_bhp'] = 0;
+            $validated['tax_uso'] = 0;
+        } else {
+            $validated['tax_ppn'] = (float) ($request->input('tax_ppn') ?? \App\Models\Setting::get('tax_ppn', '0'));
+            $validated['tax_bhp'] = (float) ($request->input('tax_bhp') ?? \App\Models\Setting::get('tax_bhp', '0'));
+            $validated['tax_uso'] = (float) ($request->input('tax_uso') ?? \App\Models\Setting::get('tax_uso', '0'));
         }
 
         DB::transaction(function () use ($validated, &$customer) {
@@ -2586,6 +2605,11 @@ class CustomerController extends Controller
             'sales' => $sales,
             'areas' => $areas,
             'isAffiliate' => $isAffiliate,
+            'taxSettings' => [
+                'tax_ppn' => (float) \App\Models\Setting::get('tax_ppn', '0'),
+                'tax_bhp' => (float) \App\Models\Setting::get('tax_bhp', '0'),
+                'tax_uso' => (float) \App\Models\Setting::get('tax_uso', '0'),
+            ],
         ]);
     }
 

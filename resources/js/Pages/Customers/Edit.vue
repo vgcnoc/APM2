@@ -178,7 +178,7 @@
                                         <select v-model="form.package_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all" :required="form.service_status !== 'free_home'">
                                             <option value="">-- Pilih Paket Langganan --</option>
                                             <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">
-                                                {{ pkg.name }} - Rp {{ Number(pkg.price).toLocaleString('id-ID') }}
+                                                {{ pkg.name }} - Rp {{ Number(pkg.price).toLocaleString('id-ID') }}/bln{{ Number(pkg.price) > 0 && ppnPercent > 0 ? ` (+ PPN ${ppnPercent}%: Rp ${Number(Math.round(Number(pkg.price) * (1 + ppnPercent / 100))).toLocaleString('id-ID')})` : '' }}
                                             </option>
                                         </select>
                                     </div>
@@ -239,12 +239,80 @@
                                         <span>Tarif Bulanan (Rp) <span class="text-red-500">*</span></span>
                                         <span v-if="form.service_status === 'gratis' && !isAffiliateAccount" class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">Otomatis Rp 0 (Gratis)</span>
                                         <span v-else-if="form.service_status === 'free_home' && !isAffiliateAccount" class="text-[10px] text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded">Otomatis Rp 0 (Free Home)</span>
+                                        <span v-else-if="Number(form.base_amount) > 0 && form.enable_tax && ppnPercent > 0" class="text-[10px] font-bold px-2 py-0.5 rounded-md border bg-yellow-50 text-yellow-800 border-yellow-200">
+                                            Total + PPN ({{ ppnPercent }}%): Rp {{ formatCurrency(totalWithPpn) }} / bln
+                                        </span>
                                     </label>
                                     <div class="relative">
                                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                             <span class="text-gray-500 text-sm font-semibold">Rp</span>
                                         </div>
                                         <input v-model="form.base_amount" type="number" :disabled="(form.service_status === 'gratis' || form.service_status === 'free_home') && !isAffiliateAccount" class="w-full pl-11 pr-4 py-2.5 border rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:border-transparent transition-all font-mono font-medium disabled:bg-gray-100 disabled:text-gray-600 disabled:font-bold disabled:border-gray-200 disabled:cursor-not-allowed" :class="form.service_status === 'gratis' ? 'focus:ring-emerald-500' : (form.service_status === 'free_home' ? 'focus:ring-amber-500' : 'bg-gray-50 border-gray-200 focus:ring-yellow-500')" required />
+                                    </div>
+
+                                    <!-- Rincian Lengkap Harga Pokok + PPN -->
+                                    <div v-if="Number(form.base_amount) > 0 && form.service_status === 'berbayar'" class="mt-2.5 p-3.5 rounded-xl border transition-all text-xs"
+                                        :class="form.enable_tax && ppnPercent > 0 
+                                            ? 'bg-gradient-to-br from-yellow-50/70 via-amber-50/40 to-slate-50 border-yellow-200/90' 
+                                            : 'bg-slate-50 border-slate-200'">
+                                        
+                                        <div class="flex items-center justify-between font-bold text-[11px] uppercase tracking-wider text-yellow-900 pb-2 border-b border-yellow-100">
+                                            <span class="flex items-center gap-1.5">
+                                                <svg class="w-3.5 h-3.5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                                                Rincian Tarif &amp; PPN
+                                            </span>
+                                            <span class="text-[10px] px-2 py-0.5 rounded-full font-bold"
+                                                :class="form.enable_tax && ppnPercent > 0 
+                                                    ? 'bg-yellow-100 text-yellow-800' 
+                                                    : 'bg-emerald-100 text-emerald-700'">
+                                                {{ form.enable_tax && ppnPercent > 0 ? `PPN ${ppnPercent}% Aktif` : 'Bebas PPN (0%)' }}
+                                            </span>
+                                        </div>
+
+                                        <div class="space-y-1.5 py-2 border-b border-yellow-100/70">
+                                            <div class="flex items-center justify-between text-slate-600 text-xs">
+                                                <span>Harga Dasar Tarif (DPP)</span>
+                                                <span class="font-mono font-semibold text-slate-800">Rp {{ formatCurrency(form.base_amount) }}</span>
+                                            </div>
+                                            
+                                            <div v-if="form.enable_tax && ppnPercent > 0" class="flex items-center justify-between text-xs">
+                                                <span class="text-slate-600 flex items-center gap-1.5">
+                                                    <span>PPN ({{ ppnPercent }}%)</span>
+                                                    <span class="text-[9px] bg-yellow-100 text-yellow-800 font-semibold px-1.5 py-0.2 rounded">Pajak Pertambahan Nilai</span>
+                                                </span>
+                                                <span class="font-mono font-bold text-yellow-700">+ Rp {{ formatCurrency(ppnAmount) }}</span>
+                                            </div>
+                                            <div v-else class="flex items-center justify-between text-xs text-slate-500">
+                                                <span>PPN (0%)</span>
+                                                <span class="font-mono font-medium text-emerald-600">Rp 0 (Non-PPN)</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center justify-between pt-2">
+                                            <div>
+                                                <span class="font-bold text-slate-900 block text-xs">Total Tagihan Pelanggan</span>
+                                                <span class="text-[10px] text-slate-500">Harga Pokok + PPN per bulan</span>
+                                            </div>
+                                            <div class="text-right">
+                                                <span class="font-mono font-extrabold text-base" :class="form.enable_tax && ppnPercent > 0 ? 'text-yellow-700' : 'text-slate-900'">
+                                                    Rp {{ formatCurrency(totalWithPpn) }}
+                                                </span>
+                                                <span class="text-[10px] text-slate-500 block -mt-0.5">/ bulan</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Keterangan Lengkap -->
+                                        <div class="mt-2.5 pt-2 border-t border-yellow-100/70 text-[11px] leading-relaxed text-slate-600">
+                                            <div class="flex items-start gap-1.5">
+                                                <span class="text-yellow-600 font-bold shrink-0">ℹ️</span>
+                                                <p v-if="form.enable_tax && ppnPercent > 0">
+                                                    <strong>Keterangan Lengkap:</strong> Tarif pokok pelanggan adalah <strong>Rp {{ formatCurrency(form.base_amount) }}</strong>. Dikenakan PPN sebesar <strong>{{ ppnPercent }}% (Rp {{ formatCurrency(ppnAmount) }})</strong>. Total tagihan invoice bulanan pelanggan adalah <strong>Rp {{ formatCurrency(totalWithPpn) }} / bulan</strong> (sudah termasuk PPN).
+                                                </p>
+                                                <p v-else>
+                                                    <strong>Keterangan Lengkap:</strong> Pelanggan ini bebas pajak (Non-PPN). Total tagihan bulanan pada invoice pelanggan adalah tarif normal <strong>Rp {{ formatCurrency(form.base_amount) }} / bulan</strong> tanpa tambahan pajak.
+                                                </p>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                                 
@@ -470,6 +538,10 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
+    taxSettings: {
+        type: Object,
+        default: () => ({}),
+    },
 });
 
 const isNewArea = ref(false);
@@ -605,6 +677,35 @@ const form = useForm({
     billing_type: props.customer.billing_type || page.props.billingSettings?.billing_type || 'prabayar',
     billing_cycle: props.customer.billing_cycle || 'default',
     billing_day: props.customer.billing_day || null,
+});
+
+function formatCurrency(value) {
+    return Number(value || 0).toLocaleString('id-ID');
+}
+
+const ppnPercent = computed(() => {
+    if (!form.enable_tax) return 0;
+    if (form.tax_ppn !== undefined && form.tax_ppn !== null && form.tax_ppn !== '') {
+        return Number(form.tax_ppn);
+    }
+    if (props.taxSettings?.tax_ppn !== undefined && props.taxSettings?.tax_ppn !== null) {
+        return Number(props.taxSettings.tax_ppn);
+    }
+    const globalPpn = page.props.billingSettings?.tax_ppn ?? page.props.taxSettings?.tax_ppn;
+    return Number(globalPpn !== undefined && globalPpn !== null ? globalPpn : 11);
+});
+
+const ppnAmount = computed(() => {
+    if (form.service_status === 'gratis' || form.service_status === 'free_home') return 0;
+    const base = Number(form.base_amount || 0);
+    if (base <= 0 || !form.enable_tax || ppnPercent.value <= 0) return 0;
+    return Math.round(base * (ppnPercent.value / 100));
+});
+
+const totalWithPpn = computed(() => {
+    if (form.service_status === 'gratis' || form.service_status === 'free_home') return 0;
+    const base = Number(form.base_amount || 0);
+    return base + ppnAmount.value;
 });
 
 const registration_type = ref('customer');
