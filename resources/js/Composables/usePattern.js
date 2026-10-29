@@ -2,11 +2,20 @@ import { ref } from 'vue';
 
 export const AVAILABLE_PATTERNS = [
     {
+        id: 'gold-wood',
+        name: 'Golden Wood & Amber',
+        subtitle: 'Corak serat kayu emas & estetika hangat',
+        badge: 'Eksklusif',
+        icon: '🪵',
+        swatchType: 'gold-wood',
+    },
+    {
         id: 'dots',
         name: 'Tech Matrix Dots',
         subtitle: 'Grid titik digital & ambient glow',
         badge: 'Rekomendasi',
         icon: '⁝⁝',
+        swatchType: 'dots',
     },
     {
         id: 'grid',
@@ -14,6 +23,7 @@ export const AVAILABLE_PATTERNS = [
         subtitle: 'Garis grid arsitektur NOC & Server',
         badge: 'Teknis',
         icon: '▦',
+        swatchType: 'grid',
     },
     {
         id: 'mesh',
@@ -21,6 +31,7 @@ export const AVAILABLE_PATTERNS = [
         subtitle: 'Gradien gelombang ambient mewah',
         badge: 'Artistik',
         icon: '✦',
+        swatchType: 'mesh',
     },
     {
         id: 'circuit',
@@ -28,6 +39,7 @@ export const AVAILABLE_PATTERNS = [
         subtitle: 'Motif geometris sirkuit fiber optik',
         badge: 'Modern',
         icon: '◈',
+        swatchType: 'circuit',
     },
     {
         id: 'clean',
@@ -35,6 +47,7 @@ export const AVAILABLE_PATTERNS = [
         subtitle: 'Warna latar flat standar',
         badge: 'Klasik',
         icon: '○',
+        swatchType: 'clean',
     },
 ];
 

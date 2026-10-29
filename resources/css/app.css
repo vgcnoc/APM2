@@ -667,6 +667,37 @@ html.dark [role="dialog"] {
     transition: background-color 0.25s ease, background-image 0.25s ease;
 }
 
+
+/* ── CORAK 0: GOLDEN WOOD & AMBER (Sesuai Corak & Warna Pilihan User) ──
+   Serat tekstur kayu emas elegan dipadu pencahayaan hangat & kontras teks optimal */
+html[data-bg-pattern="gold-wood"] .apm-shell {
+    background-color: #faf5ee !important;
+    background-image:
+        radial-gradient(1200px 700px at 15% -5%, rgba(217, 119, 6, 0.12), transparent 60%),
+        radial-gradient(1000px 600px at 85% -5%, rgba(180, 83, 9, 0.09), transparent 55%),
+        radial-gradient(1200px 800px at 50% 100%, rgba(147, 133, 98, 0.08), transparent 65%),
+        linear-gradient(rgba(250, 245, 238, 0.85), rgba(250, 245, 238, 0.85)),
+        url('/images/patterns/golden-wood-seamless.png') !important;
+    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 443px 100px !important;
+    background-position: 0 0, 0 0, 0 0, 0 0, 0 0 !important;
+    background-attachment: fixed !important;
+    background-repeat: repeat !important;
+}
+
+html.dark[data-bg-pattern="gold-wood"] .apm-shell {
+    background-color: #15110a !important;
+    background-image:
+        radial-gradient(1200px 700px at 15% -5%, rgba(217, 119, 6, 0.18), transparent 60%),
+        radial-gradient(1000px 600px at 85% -5%, rgba(245, 158, 11, 0.12), transparent 55%),
+        radial-gradient(1200px 800px at 50% 100%, rgba(147, 133, 98, 0.10), transparent 65%),
+        linear-gradient(rgba(21, 17, 10, 0.87), rgba(21, 17, 10, 0.87)),
+        url('/images/patterns/golden-wood-seamless.png') !important;
+    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 443px 100px !important;
+    background-position: 0 0, 0 0, 0 0, 0 0, 0 0 !important;
+    background-attachment: fixed !important;
+    background-repeat: repeat !important;
+}
+
 /* ── CORAK 1: TECH MATRIX DOTS (Default / Rekomendasi) ──
    Titik grid matrix presisi tinggi dipadu ambient glow indigo & cyan */
 html:not([data-bg-pattern]) .apm-shell,

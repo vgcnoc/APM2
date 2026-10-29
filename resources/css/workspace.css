@@ -54,6 +54,79 @@
     }
 
     /* Preserve the chosen pattern, with quieter canvas and solid reading surfaces. */
+    
+    /* ── GOLDEN WOOD & AMBER THEME OVERRIDE (Sesuai Permintaan Corak & Warna User) ── */
+    html[data-bg-pattern="gold-wood"] .workspace-ui, 
+    html[data-bg-pattern="gold-wood"] body.workspace-ui-page {
+        --ws-canvas: #faf5ee;
+        --ws-surface: #ffffff;
+        --ws-subtle: #f5eee3;
+        --ws-raised: #ebe1d1;
+        --ws-border: #dfd3be;
+        --ws-heading: #26190c; /* Deep warm espresso for maximum readability */
+        --ws-text: #453523;    /* Rich warm dark brown body font */
+        --ws-muted: #78654e;   /* Warm muted camel text */
+        --ws-accent: #b45309;  /* Warm golden amber accent */
+        --ws-accent-soft: #fef3c7;
+        --ws-accent-text: #92400e;
+        --ws-shadow: 0 2px 4px -2px rgb(50 35 15 / .06), 0 8px 24px -10px rgb(50 35 15 / .09);
+        --ws-focus: 0 0 0 3px rgb(180 83 9 / .18);
+        --apm-canvas: var(--ws-canvas);
+        --apm-surface: var(--ws-surface);
+        --apm-recessed: var(--ws-subtle);
+        --apm-raised: var(--ws-raised);
+        --apm-border: var(--ws-border);
+        --apm-text: var(--ws-heading);
+        --apm-secondary: var(--ws-text);
+        --apm-muted: var(--ws-muted);
+    }
+
+    html.dark[data-bg-pattern="gold-wood"] .workspace-ui, 
+    html.dark[data-bg-pattern="gold-wood"] body.workspace-ui-page {
+        --ws-canvas: #15110a;
+        --ws-surface: #1e1810;
+        --ws-subtle: #19140c;
+        --ws-raised: #2b2216;
+        --ws-border: #3d301f;
+        --ws-heading: #fef7ee; /* Warm glowing ivory headers */
+        --ws-text: #ebdcc5;    /* Warm beige high readability text */
+        --ws-muted: #ab977c;   /* Warm muted golden sand */
+        --ws-accent: #f59e0b;  /* Warm vibrant gold */
+        --ws-accent-soft: #2e210e;
+        --ws-accent-text: #fbbf24;
+        --ws-shadow: 0 4px 22px -8px rgb(0 0 0 / .5);
+        --ws-focus: 0 0 0 3px rgb(245 158 11 / .25);
+        --apm-canvas: var(--ws-canvas);
+        --apm-surface: var(--ws-surface);
+        --apm-recessed: var(--ws-subtle);
+        --apm-raised: var(--ws-raised);
+        --apm-border: var(--ws-border);
+        --apm-text: var(--ws-heading);
+        --apm-secondary: var(--ws-text);
+        --apm-muted: var(--ws-muted);
+    }
+
+    /* Font & Surface adaptation specifically for Golden Wood & Amber */
+    html[data-bg-pattern="gold-wood"] .workspace-ui :is(h1, h2, h3, h4, h5, h6) { color: var(--ws-heading); }
+    html[data-bg-pattern="gold-wood"] .workspace-ui :is(.text-gray-900, .text-slate-900, .text-gray-800, .text-slate-800) { color: var(--ws-heading) !important; }
+    html[data-bg-pattern="gold-wood"] .workspace-ui :is(.text-gray-700, .text-slate-700, .text-gray-600, .text-slate-600) { color: var(--ws-text) !important; }
+    html[data-bg-pattern="gold-wood"] .workspace-ui :is(.text-gray-500, .text-slate-500, .text-gray-400, .text-slate-400) { color: var(--ws-muted) !important; }
+    html[data-bg-pattern="gold-wood"] .workspace-ui :is(.border-gray-200, .border-slate-200, .border-gray-100, .border-slate-100) { border-color: var(--ws-border) !important; }
+    html[data-bg-pattern="gold-wood"] .workspace-ui :is(.bg-gray-50, .bg-slate-50) { background-color: var(--ws-subtle) !important; }
+    html[data-bg-pattern="gold-wood"] .workspace-ui :is(.data-table thead, table thead) { background-color: var(--ws-subtle) !important; border-color: var(--ws-border) !important; }
+    html[data-bg-pattern="gold-wood"] .workspace-ui :is(.data-table, table) thead th { color: var(--ws-muted) !important; border-color: var(--ws-border) !important; }
+    html[data-bg-pattern="gold-wood"] .workspace-ui :is(.data-table, table) tbody tr { border-color: var(--ws-border) !important; }
+    html[data-bg-pattern="gold-wood"] .workspace-ui :is(.data-table, table) tbody td { color: var(--ws-text) !important; }
+    html[data-bg-pattern="gold-wood"] .workspace-ui :is(.data-table, table) tbody tr:hover { background-color: var(--ws-subtle) !important; }
+    html[data-bg-pattern="gold-wood"] .workspace-ui .workspace-welcome {
+        border-color: #dfd3be;
+        background: linear-gradient(105deg, #fbf7f0 0%, #fefcf9 65%, #f5efe4 100%);
+    }
+    html.dark[data-bg-pattern="gold-wood"] .workspace-ui .workspace-welcome {
+        border-color: #3d301f;
+        background: linear-gradient(110deg, #261e14, #1f1810 65%, #2a2015);
+    }
+
     .workspace-ui :is(.glass, .glass-card, .stat-card) {
         background: var(--ws-surface) !important;
         border: 1px solid var(--ws-border) !important;

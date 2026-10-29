@@ -141,4 +141,26 @@ html.dark .sales-mobile-dialog[role="dialog"], html.dark .sales-withdraw-dialog[
     .sales-page-footer { padding: 0 16px 24px; flex-wrap: wrap; gap: 7px; }
 }
 @media (prefers-reduced-motion: reduce) { .sales-mobile-panel { animation: none; } .sales-nav-link { transition: none; } }
+
+html[data-bg-pattern="gold-wood"] .affiliate-workspace {
+    --sales-canvas: #faf5ee;
+    --sales-surface: #ffffff;
+    --sales-subtle: #f5eee3;
+    --sales-text: #26190c;
+    --sales-muted: #78654e;
+    --sales-line: #dfd3be;
+    --sales-accent: #b45309;
+    --sales-accent-soft: #fef3c7;
+}
+html.dark[data-bg-pattern="gold-wood"] .affiliate-workspace {
+    --sales-canvas: #15110a;
+    --sales-surface: #1e1810;
+    --sales-subtle: #19140c;
+    --sales-text: #fef7ee;
+    --sales-muted: #ab977c;
+    --sales-line: #3d301f;
+    --sales-accent: #f59e0b;
+    --sales-accent-soft: #2e210e;
+}
+
 </style>
