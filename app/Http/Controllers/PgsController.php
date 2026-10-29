@@ -139,7 +139,7 @@ class PgsController extends Controller
             ->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'area', 'package_id')
             ->with(['package:id,name', 'areaModel:id,name', 'ont:id,customer_id,serial_number,status,rx_power,odp_id', 'ont.odp:id,name']);
         DataScopeService::applyCustomerScope($customerQuery, $user);
-        $customers = $customerQuery->get();
+        $customers = function () use ($user) { $q = Customer::whereIn('status', ['active', 'suspended', 'isolir', 'installing'])->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'area', 'package_id')->with(['package:id,name', 'areaModel:id,name', 'ont:id,customer_id,serial_number,status,rx_power,odp_id', 'ont.odp:id,name']); DataScopeService::applyCustomerScope($q, $user); return $q->get(); };
 
         $technicians = User::role(['teknisi', 'kepala teknisi'])->select('id', 'name', 'phone')->get();
         if ($technicians->isEmpty()) {
@@ -151,8 +151,8 @@ class PgsController extends Controller
             $leadTechnicians = User::select('id', 'name')->get();
         }
 
-        $materials = Material::select('id', 'name', 'category', 'unit', 'stock')->where('stock', '>', 0)->get();
-        $areas = DataScopeService::getScopedAreas($user, 'pgs');
+        $materials = fn () => Material::select('id', 'name', 'category', 'unit', 'stock')->where('stock', '>', 0)->get();
+        $areas = fn () => DataScopeService::getScopedAreas($user, 'pgs');
 
         return Inertia::render('Pgs/Index', [
             'tickets' => $tickets,
@@ -367,14 +367,14 @@ class PgsController extends Controller
             })
             ->orderBy('name')
             ->get();
-        $materialTransactions = RestockStockService::getRestockTransactions();
-        $areas = DataScopeService::getScopedAreas($user, 'pgs');
+        $materialTransactions = fn () => RestockStockService::getRestockTransactions();
+        $areas = fn () => DataScopeService::getScopedAreas($user, 'pgs');
         $ontQuery = Ont::whereNull('customer_id')
             ->whereIn('status', ['Sudah Set', 'Belum Set/Baru Input'])
             ->select('id', 'ont_id', 'serial_number', 'brand', 'model', 'status', 'area_id')
             ->orderBy('serial_number');
         DataScopeService::applyOntScope($ontQuery, $user);
-        $availableOnts = $ontQuery->get();
+        $availableOnts = fn () => $ontQuery->get();
 
         return Inertia::render('Pgs/Jadwal', [
             'tickets' => $tickets,
@@ -565,14 +565,14 @@ class PgsController extends Controller
         }
 
         $materials = Material::select('id', 'name', 'category', 'unit', 'stock')->get();
-        $materialTransactions = RestockStockService::getRestockTransactions();
-        $areas = DataScopeService::getScopedAreas($user, 'pgs');
+        $materialTransactions = fn () => RestockStockService::getRestockTransactions();
+        $areas = fn () => DataScopeService::getScopedAreas($user, 'pgs');
         $ontQuery = Ont::whereNull('customer_id')
             ->whereIn('status', ['Sudah Set', 'Belum Set/Baru Input'])
             ->select('id', 'ont_id', 'serial_number', 'brand', 'model', 'status', 'area_id')
             ->orderBy('serial_number');
         DataScopeService::applyOntScope($ontQuery, $user);
-        $availableOnts = $ontQuery->get();
+        $availableOnts = fn () => $ontQuery->get();
 
         return Inertia::render('Pgs/Laporan', [
             'tickets' => $tickets,

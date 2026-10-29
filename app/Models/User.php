@@ -73,6 +73,65 @@ class User extends Authenticatable
         'online_status',
     ];
 
+    protected static ?array $empPosCache = null;
+    protected static ?array $spatieFirstRoleCache = null;
+
+    protected static function booted(): void
+    {
+        $clearCaches = function (self $u) {
+            self::$empPosCache = null;
+            self::$spatieFirstRoleCache = null;
+            try {
+                \Illuminate\Support\Facades\Cache::forget('inertia_on_duty_officers');
+                \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);
+            } catch (\Throwable $e) {}
+        };
+        static::saved($clearCaches);
+        static::deleted($clearCaches);
+    }
+
+    protected static function ensureJobPositionLookupLoaded(): void
+    {
+        if (self::$empPosCache === null) {
+            self::$empPosCache = ['email' => [], 'phone' => [], 'name' => []];
+            try {
+                $rows = \Illuminate\Support\Facades\DB::table('employees')
+                    ->whereNotNull('position')
+                    ->where('position', '!=', '')
+                    ->get(['email', 'phone', 'name', 'position']);
+                foreach ($rows as $r) {
+                    $pos = trim((string) $r->position);
+                    if ($pos === '') continue;
+                    if (!empty($r->email)) {
+                        $k = mb_strtolower(trim((string) $r->email));
+                        self::$empPosCache['email'][$k] ??= $pos;
+                    }
+                    if (!empty($r->phone)) {
+                        $k = trim((string) $r->phone);
+                        self::$empPosCache['phone'][$k] ??= $pos;
+                    }
+                    if (!empty($r->name)) {
+                        $k = mb_strtolower(trim((string) $r->name));
+                        self::$empPosCache['name'][$k] ??= $pos;
+                    }
+                }
+            } catch (\Throwable $e) {}
+        }
+
+        if (self::$spatieFirstRoleCache === null) {
+            self::$spatieFirstRoleCache = [];
+            try {
+                $roleRows = \Illuminate\Support\Facades\DB::table('model_has_roles')
+                    ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+                    ->where('model_has_roles.model_type', static::class)
+                    ->get(['model_has_roles.model_id', 'roles.name']);
+                foreach ($roleRows as $rr) {
+                    self::$spatieFirstRoleCache[$rr->model_id] ??= $rr->name;
+                }
+            } catch (\Throwable $e) {}
+        }
+    }
+
     public function getIsCurrentlyOnlineAttribute(): bool
     {
         return $this->last_seen_at && $this->last_seen_at->gte(now()->subMinutes(5));
@@ -106,24 +165,31 @@ class User extends Authenticatable
      */
     public function getJobPositionAttribute(): string
     {
-        // 1. Cek dari relasi data Karyawan (HR)
-        $emp = $this->relationLoaded('employee') ? $this->employee : null;
-        if (!$emp && !empty($this->email)) {
-            $emp = Employee::where('email', $this->email)->first();
-        }
-        if (!$emp && !empty($this->phone)) {
-            $emp = Employee::where('phone', $this->phone)->first();
-        }
-        if (!$emp && !empty($this->name)) {
-            $emp = Employee::where('name', $this->name)->first();
+        // 1. Cek dari relasi data Karyawan (HR) tanpa N+1 query
+        if ($this->relationLoaded('employee') && $this->employee && !empty($this->employee->position)) {
+            return trim($this->employee->position);
         }
 
-        if ($emp && !empty($emp->position)) {
-            return trim($emp->position);
+        self::ensureJobPositionLookupLoaded();
+
+        $pos = null;
+        if (!empty($this->email)) {
+            $pos = self::$empPosCache['email'][mb_strtolower(trim((string) $this->email))] ?? null;
+        }
+        if (!$pos && !empty($this->phone)) {
+            $pos = self::$empPosCache['phone'][trim((string) $this->phone)] ?? null;
+        }
+        if (!$pos && !empty($this->name)) {
+            $pos = self::$empPosCache['name'][mb_strtolower(trim((string) $this->name))] ?? null;
+        }
+        if (!empty($pos)) {
+            return $pos;
         }
 
-        // 2. Cek dari Spatie Roles
-        $spatieRole = method_exists($this, 'getRoleNames') ? $this->getRoleNames()->first() : null;
+        // 2. Cek dari Spatie Roles tanpa N+1 query
+        $spatieRole = $this->relationLoaded('roles')
+            ? $this->roles->first()?->name
+            : (self::$spatieFirstRoleCache[$this->id] ?? null);
         if ($spatieRole && !in_array(strtolower($spatieRole), ['cs', 'karyawan'])) {
             return ucwords(str_replace(['_', '-'], ' ', $spatieRole));
         }

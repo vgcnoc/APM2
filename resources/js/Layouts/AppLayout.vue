@@ -4,7 +4,7 @@
         <div v-show="mobileMenuOpen" class="fixed inset-0 bg-gray-900/50 z-40 lg:hidden transition-opacity" @click="mobileMenuOpen = false"></div>
         <aside
             :class="[
-                'apm-sidebar fixed inset-y-0 left-0 z-50 flex flex-col border-r border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-[2px_0_24px_rgba(0,0,0,0.03)] dark:shadow-[2px_0_24px_rgba(0,0,0,0.4)] transition-all duration-300 print:hidden',
+                'apm-sidebar fixed inset-y-0 left-0 z-50 flex flex-col border-r border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 shadow-[2px_0_24px_rgba(0,0,0,0.03)] dark:shadow-[2px_0_24px_rgba(0,0,0,0.4)] transition-all duration-300 print:hidden',
                 mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
                 sidebarOpen ? 'w-64' : 'w-20 lg:w-20 w-64'
             ]"
@@ -559,7 +559,7 @@
             </div>
 
             <!-- Application Footer -->
-            <footer v-if="!fullBleed" class="workspace-footer mt-auto py-3.5 px-4 sm:px-6 lg:px-8 border-t border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md text-xs text-slate-500 dark:text-slate-400 print:hidden transition-colors">
+            <footer v-if="!fullBleed" class="workspace-footer mt-auto py-3.5 px-4 sm:px-6 lg:px-8 border-t border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 text-xs text-slate-500 dark:text-slate-400 print:hidden transition-colors">
                 <div class="flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
                     <p class="font-medium">
                         Copyright {{ new Date().getFullYear() }} &copy; <span class="font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">VIRUZS</span> - Smart Billing, Smarter Business.
@@ -588,6 +588,7 @@ import PatternPicker from '@/Components/PatternPicker.vue';
 import { useTheme } from '@/Composables/useTheme';
 import { usePermission } from '@/Composables/usePermission';
 import { useSidebarState } from '@/Composables/useSidebarState';
+import { cachedGpsActive, cachedGpsLocationName, cachedGpsAccuracy, isGpsRecentlyVerified, markGpsVerified, markGpsOffline } from '@/Composables/useGpsSessionCache';
 
 defineProps({
     title: { type: String, default: 'Dashboard' },
@@ -624,11 +625,11 @@ const isEmployee = computed(() => {
     return role !== 'customer';
 });
 
-const gpsActive = ref(Boolean(page.props.auth?.user?.is_gps_enabled));
+const gpsActive = ref(cachedGpsActive.value !== null ? cachedGpsActive.value : Boolean(page.props.auth?.user?.is_gps_enabled));
 const showGpsModal = ref(false);
 const isGpsLoading = ref(false);
-const gpsLocationName = ref(page.props.auth?.user?.last_location_name || '');
-const gpsAccuracy = ref(page.props.auth?.user?.last_location_accuracy || null);
+const gpsLocationName = ref(cachedGpsLocationName.value || page.props.auth?.user?.last_location_name || '');
+const gpsAccuracy = ref(cachedGpsAccuracy.value ?? page.props.auth?.user?.last_location_accuracy ?? null);
 const gpsErrorMessage = ref('');
 const gpsToastMessage = ref('');
 let gpsHeartbeatTimer = null;
@@ -655,6 +656,7 @@ const sendGpsPing = async (lat, lng, accuracy, showNotification = false) => {
             gpsActive.value = true;
             gpsLocationName.value = response.data.location_name;
             gpsAccuracy.value = response.data.accuracy ? Math.round(response.data.accuracy) : null;
+            markGpsVerified(gpsLocationName.value, gpsAccuracy.value);
             showGpsModal.value = false;
             gpsErrorMessage.value = '';
 
@@ -693,6 +695,7 @@ const requestGpsLocation = (isUserClick = false) => {
         (error) => {
             isGpsLoading.value = false;
             gpsActive.value = false;
+            markGpsOffline();
             if (error.code === 1) {
                 gpsErrorMessage.value = 'Izin akses lokasi GPS ditolak oleh browser. Harap aktifkan izin lokasi di setelan browser.';
             } else if (error.code === 2) {
@@ -1496,7 +1499,9 @@ onMounted(() => {
         if (navigator.permissions && navigator.permissions.query) {
             navigator.permissions.query({ name: 'geolocation' }).then((perm) => {
                 if (perm.state === 'granted') {
-                    requestGpsLocation(false);
+                    if (!isGpsRecentlyVerified()) {
+                        requestGpsLocation(false);
+                    }
                 } else {
                     showGpsModal.value = true;
                     requestGpsLocation(false);

@@ -23,6 +23,20 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class DataScopeService
 {
+    protected static array $scopeMemo = [];
+    protected static ?array $areaDictMemo = null;
+
+    public static function getAreaDictionary(): array
+    {
+        if (self::$areaDictMemo === null) {
+            try {
+                self::$areaDictMemo = Area::orderBy('name')->pluck('name', 'id')->toArray();
+            } catch (\Throwable $e) {
+                self::$areaDictMemo = [];
+            }
+        }
+        return self::$areaDictMemo;
+    }
     /**
      * Tentukan level cakupan data pengguna untuk modul tertentu
      * 
@@ -35,9 +49,14 @@ class DataScopeService
             return 'own';
         }
 
-        // Admin dan Super Admin selalu memiliki akses global ke seluruh data
-        if ($user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin') {
-            return 'all';
+        $memoKey = $user->id . ':' . $module;
+        if (isset(self::$scopeMemo[$memoKey])) {
+            return self::$scopeMemo[$memoKey];
+        }
+
+        // Admin dan Super Admin selalu memiliki akses global ke seluruh data (cek kolom role dulu agar hemat query)
+        if ($user->role === 'admin' || $user->role === 'super admin' || $user->hasRole('admin') || $user->hasRole('super admin')) {
+            return self::$scopeMemo[$memoKey] = 'all';
         }
 
         // Cek permission _view_all
@@ -64,7 +83,7 @@ class DataScopeService
 
         foreach ($viewAllPerms as $perm) {
             if ($user->can($perm)) {
-                return 'all';
+                return self::$scopeMemo[$memoKey] = 'all';
             }
         }
 
@@ -92,7 +111,7 @@ class DataScopeService
 
         foreach ($viewAreaPerms as $perm) {
             if ($user->can($perm)) {
-                return 'area';
+                return self::$scopeMemo[$memoKey] = 'area';
             }
         }
 
@@ -113,12 +132,12 @@ class DataScopeService
 
         foreach ($viewOwnPerms as $perm) {
             if ($user->can($perm)) {
-                return 'own';
+                return self::$scopeMemo[$memoKey] = 'own';
             }
         }
 
         // Default: Karyawan sendiri (own data) / view_assigned
-        return 'own';
+        return self::$scopeMemo[$memoKey] = 'own';
     }
 
     /**
@@ -195,7 +214,8 @@ class DataScopeService
             $accessibleAreas = $user->getAccessibleAreaIds();
             return $query->where(function ($q) use ($accessibleAreas, $user) {
                 $q->whereIn('area_id', $accessibleAreas);
-                $areaNames = Area::whereIn('id', $accessibleAreas)->pluck('name')->filter()->toArray();
+                $areaDict = self::getAreaDictionary();
+                $areaNames = array_values(array_filter(array_map(fn($aid) => $areaDict[$aid] ?? null, $accessibleAreas)));
                 if (!empty($areaNames)) {
                     $q->orWhereIn('area', $areaNames);
                 }
@@ -789,7 +809,8 @@ class DataScopeService
             $accessibleAreas = $user->getAccessibleAreaIds();
             return $query->where(function ($q) use ($accessibleAreas) {
                 $q->whereIn('area_id', $accessibleAreas);
-                $areaNames = Area::whereIn('id', $accessibleAreas)->pluck('name')->filter()->toArray();
+                $areaDict = self::getAreaDictionary();
+                $areaNames = array_values(array_filter(array_map(fn($aid) => $areaDict[$aid] ?? null, $accessibleAreas)));
                 if (!empty($areaNames)) {
                     $q->orWhereIn('branch', $areaNames);
                 }

@@ -261,7 +261,7 @@
         font-size: 13px;
         line-height: 1.5;
         box-shadow: 0 1px 2px rgb(20 36 59 / .025);
-        transition: border-color .15s, box-shadow .15s;
+        transition: border-color .1s ease;
     }
     .workspace-ui :is(input, select, textarea)::placeholder { color: var(--ws-muted) !important; opacity: .8; }
     .workspace-ui :is(input, select, textarea):focus {

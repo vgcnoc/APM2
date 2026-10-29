@@ -49,6 +49,9 @@ class Invoice extends Model
 
     public function getTotalPaidAttribute(): int
     {
+        if ($this->relationLoaded('payments')) {
+            return (int) round($this->payments->where('status', 'verified')->sum('amount'));
+        }
         return (int) round($this->payments()->where('status', 'verified')->sum('amount'));
     }
 

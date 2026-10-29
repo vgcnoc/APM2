@@ -36,6 +36,7 @@ class RoleController extends Controller
             ], array_values($missing));
             Permission::insert($records);
             app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);
         }
     }
 
@@ -78,6 +79,7 @@ class RoleController extends Controller
         }
 
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);
 
         return redirect()->back()->with('success', "Role '{$role->name}' berhasil ditambahkan.");
     }
@@ -98,6 +100,7 @@ class RoleController extends Controller
             }
             $role->syncPermissions(Permission::where('guard_name', 'web')->get());
             app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);
             return redirect()->back()->with('success', "Role Admin terkunci permanen dengan akses penuh.");
         }
 
@@ -111,6 +114,7 @@ class RoleController extends Controller
 
         // Clear permission cache
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);
 
         return redirect()->back()->with('success', "Role '{$role->name}' berhasil diperbarui.");
     }
@@ -133,6 +137,7 @@ class RoleController extends Controller
         if ($existingRole) {
             $existingRole->syncPermissions($sourcePermissions);
             app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);
 
             return redirect()->back()->with('success', "Seluruh izin (" . count($sourcePermissions) . " izin) dari role '{$role->name}' berhasil disalin ke role '{$existingRole->name}'.");
         }
@@ -141,6 +146,7 @@ class RoleController extends Controller
         $newRole->syncPermissions($sourcePermissions);
 
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);
 
         return redirect()->back()->with('success', "Role baru '{$newRole->name}' berhasil dibuat dan seluruh izin dari '{$role->name}' berhasil diduplikasi.");
     }
@@ -172,6 +178,7 @@ class RoleController extends Controller
         }
 
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        \Illuminate\Support\Facades\Cache::put('inertia_rbac_ver', time(), 86400);
 
         return redirect()->back()->with('success', "Template preset '{$presetKey}' berhasil diterapkan ke role '{$role->name}' (" . count($permissions) . " izin).");
     }

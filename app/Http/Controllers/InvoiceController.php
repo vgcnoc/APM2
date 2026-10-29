@@ -229,7 +229,7 @@ class InvoiceController extends Controller
                 ];
             });
 
-        $leadTechnicians = \App\Models\User::where(function($q) {
+        $leadTechnicians = fn () => \App\Models\User::where(function($q) {
             $q->whereHas('roles', function($rq) {
                 $rq->whereIn('name', ['kepala teknisi', 'teknisi', 'admin']);
             })->orWhere('role', 'like', '%teknisi%')
@@ -239,14 +239,14 @@ class InvoiceController extends Controller
         return Inertia::render('Invoices/Index', [
             'invoices' => $invoices,
             'stats' => $stats,
-            'invoice_issue_date' => (int) \App\Models\Setting::get('invoice_issue_date', '1'),
-            'packages' => \App\Models\InternetPackage::active()->orderBy('price')->get(['id', 'name', 'price', 'speed_mbps']),
-            'areas' => $isAreaRestricted
+            'invoice_issue_date' => fn () => (int) \App\Models\Setting::get('invoice_issue_date', '1'),
+            'packages' => fn () => \App\Models\InternetPackage::active()->orderBy('price')->get(['id', 'name', 'price', 'speed_mbps']),
+            'areas' => fn () => $isAreaRestricted
                 ? \App\Models\Area::whereIn('id', $userAreaIds)->orderBy('name')->get(['id', 'name'])
                 : \App\Models\Area::orderBy('name')->get(['id', 'name']),
             'lead_technicians' => $leadTechnicians,
             'filters' => $request->only(['search', 'status', 'start_date', 'end_date', 'area_id', 'tab']),
-            'payment_banks' => json_decode(\App\Models\Setting::get('payment_banks', '[]'), true),
+            'payment_banks' => fn () => json_decode(\App\Models\Setting::get('payment_banks', '[]'), true),
         ]);
     }
 

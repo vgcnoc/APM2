@@ -1,5 +1,5 @@
 <template>
-    <div class="glass-card overflow-hidden animate-fade-in-up">
+    <div class="glass-card overflow-hidden">
         <!-- Table Header: Search & Filters -->
         <div class="p-4 border-b border-gray-200 space-y-4">
             <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -70,7 +70,7 @@
                             </div>
                         </td>
                     </tr>
-                    <tr v-else v-for="(row, index) in data" :key="row.id || index" class="animate-fade-in-up" :style="{ animationDelay: `${index * 0.03}s` }">
+                    <tr v-else v-for="(row, index) in data" :key="row.id || index">
                         <td v-if="selectable" class="w-10 text-center px-3">
                             <input type="checkbox" 
                                 class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 shadow-sm" 

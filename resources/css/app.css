@@ -84,14 +84,14 @@ h1, h2, h3, h4, h5, h6 {
 /* ── Clean Corporate Effect with Frosted Depth ─────────────────────────── */
 .glass {
     @apply bg-white/95 border border-slate-200/90 shadow-sm dark:bg-gray-900/95 dark:border-gray-800;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    /* backdrop-filter disabled for instant form/select focus */
+    /* -webkit-backdrop-filter disabled */
 }
 
 .glass-card {
     @apply bg-white/95 border border-slate-200/90 rounded-2xl shadow-sm dark:bg-gray-900/95 dark:border-gray-800;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    /* backdrop-filter disabled for instant form/select focus */
+    /* -webkit-backdrop-filter disabled */
 }
 
 /* ── Status Badge Variants ──────────────────────────────────── */
@@ -178,7 +178,7 @@ h1, h2, h3, h4, h5, h6 {
         @apply w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5
                text-gray-900 placeholder-gray-400 shadow-sm
                focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20
-               transition-all duration-200 outline-none hover:border-gray-400;
+                transition-colors duration-100 outline-none hover:border-gray-400;
     }
 
     .form-select {
@@ -457,7 +457,7 @@ h1, h2, h3, h4, h5, h6 {
     border-radius: 9999px;
     background-color: var(--gb-dot);
     box-shadow: 0 0 6px var(--gb-dot);
-    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    animation: none;
 }
 
 /* Light mode palette */
@@ -664,13 +664,24 @@ html.dark [role="dialog"] {
 .apm-shell {
     position: relative;
     min-height: 100vh;
-    transition: background-color 0.25s ease, background-image 0.25s ease;
+    isolation: isolate;
+    transition: background-color 0.2s ease;
+}
+
+.apm-shell::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    transform: translateZ(0);
+    backface-visibility: hidden;
 }
 
 
 /* ── CORAK 0: GOLDEN WOOD & AMBER (Sesuai Corak & Warna Pilihan User) ──
    Serat tekstur kayu emas elegan dipadu pencahayaan hangat & kontras teks optimal */
-html[data-bg-pattern="gold-wood"] .apm-shell {
+html[data-bg-pattern="gold-wood"] .apm-shell::before {
     background-color: #faf5ee !important;
     background-image:
         radial-gradient(1200px 700px at 15% -5%, rgba(217, 119, 6, 0.12), transparent 60%),
@@ -680,11 +691,11 @@ html[data-bg-pattern="gold-wood"] .apm-shell {
         url('/images/patterns/golden-wood-seamless.png') !important;
     background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 443px 100px !important;
     background-position: 0 0, 0 0, 0 0, 0 0, 0 0 !important;
-    background-attachment: fixed !important;
+    background-attachment: scroll !important;
     background-repeat: repeat !important;
 }
 
-html.dark[data-bg-pattern="gold-wood"] .apm-shell {
+html.dark[data-bg-pattern="gold-wood"] .apm-shell::before {
     background-color: #15110a !important;
     background-image:
         radial-gradient(1200px 700px at 15% -5%, rgba(217, 119, 6, 0.18), transparent 60%),
@@ -694,14 +705,14 @@ html.dark[data-bg-pattern="gold-wood"] .apm-shell {
         url('/images/patterns/golden-wood-seamless.png') !important;
     background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 443px 100px !important;
     background-position: 0 0, 0 0, 0 0, 0 0, 0 0 !important;
-    background-attachment: fixed !important;
+    background-attachment: scroll !important;
     background-repeat: repeat !important;
 }
 
 /* ── CORAK 1: TECH MATRIX DOTS (Default / Rekomendasi) ──
    Titik grid matrix presisi tinggi dipadu ambient glow indigo & cyan */
-html:not([data-bg-pattern]) .apm-shell,
-html[data-bg-pattern="dots"] .apm-shell {
+html:not([data-bg-pattern]) .apm-shell::before,
+html[data-bg-pattern="dots"] .apm-shell::before {
     background-color: #f8fafc !important;
     background-image:
         radial-gradient(1200px 700px at 10% -5%, rgba(99, 102, 241, 0.08), transparent 60%),
@@ -710,11 +721,11 @@ html[data-bg-pattern="dots"] .apm-shell {
         radial-gradient(rgba(100, 116, 139, 0.28) 1.25px, transparent 1.25px) !important;
     background-size: 100% 100%, 100% 100%, 100% 100%, 24px 24px !important;
     background-position: 0 0, 0 0, 0 0, 0 0 !important;
-    background-attachment: fixed !important;
+    background-attachment: scroll !important;
 }
 
-html.dark:not([data-bg-pattern]) .apm-shell,
-html.dark[data-bg-pattern="dots"] .apm-shell {
+html.dark:not([data-bg-pattern]) .apm-shell::before,
+html.dark[data-bg-pattern="dots"] .apm-shell::before {
     background-color: #0b0718 !important;
     background-image:
         radial-gradient(1200px 700px at 10% -5%, rgba(99, 102, 241, 0.18), transparent 60%),
@@ -723,12 +734,12 @@ html.dark[data-bg-pattern="dots"] .apm-shell {
         radial-gradient(rgba(148, 163, 184, 0.14) 1.25px, transparent 1.25px) !important;
     background-size: 100% 100%, 100% 100%, 100% 100%, 24px 24px !important;
     background-position: 0 0, 0 0, 0 0, 0 0 !important;
-    background-attachment: fixed !important;
+    background-attachment: scroll !important;
 }
 
 /* ── CORAK 2: BLUEPRINT ENGINEERING GRID ──
    Garis arsitektur cartesian / NOC server room network grid */
-html[data-bg-pattern="grid"] .apm-shell {
+html[data-bg-pattern="grid"] .apm-shell::before {
     background-color: #f8fafc !important;
     background-image:
         radial-gradient(1200px 700px at 50% -10%, rgba(59, 130, 246, 0.09), transparent 65%),
@@ -736,10 +747,10 @@ html[data-bg-pattern="grid"] .apm-shell {
         linear-gradient(to bottom, rgba(148, 163, 184, 0.16) 1px, transparent 1px) !important;
     background-size: 100% 100%, 32px 32px, 32px 32px !important;
     background-position: center top, 0 0, 0 0 !important;
-    background-attachment: fixed !important;
+    background-attachment: scroll !important;
 }
 
-html.dark[data-bg-pattern="grid"] .apm-shell {
+html.dark[data-bg-pattern="grid"] .apm-shell::before {
     background-color: #0b0718 !important;
     background-image:
         radial-gradient(1200px 700px at 50% -10%, rgba(99, 102, 241, 0.2), transparent 65%),
@@ -747,12 +758,12 @@ html.dark[data-bg-pattern="grid"] .apm-shell {
         linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px) !important;
     background-size: 100% 100%, 32px 32px, 32px 32px !important;
     background-position: center top, 0 0, 0 0 !important;
-    background-attachment: fixed !important;
+    background-attachment: scroll !important;
 }
 
 /* ── CORAK 3: AURORA GLOW MESH ──
    Gradien ambient lembut organik kaya warna (Indigo, Sky, Rose, Mint) */
-html[data-bg-pattern="mesh"] .apm-shell {
+html[data-bg-pattern="mesh"] .apm-shell::before {
     background-color: #f8fafc !important;
     background-image:
         radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.13) 0px, transparent 50%),
@@ -761,10 +772,10 @@ html[data-bg-pattern="mesh"] .apm-shell {
         radial-gradient(at 0% 100%, rgba(16, 185, 129, 0.08) 0px, transparent 50%),
         radial-gradient(at 50% 50%, rgba(168, 85, 247, 0.07) 0px, transparent 50%) !important;
     background-size: 100% 100% !important;
-    background-attachment: fixed !important;
+    background-attachment: scroll !important;
 }
 
-html.dark[data-bg-pattern="mesh"] .apm-shell {
+html.dark[data-bg-pattern="mesh"] .apm-shell::before {
     background-color: #0b0718 !important;
     background-image:
         radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.24) 0px, transparent 50%),
@@ -773,12 +784,12 @@ html.dark[data-bg-pattern="mesh"] .apm-shell {
         radial-gradient(at 0% 100%, rgba(16, 185, 129, 0.13) 0px, transparent 50%),
         radial-gradient(at 50% 50%, rgba(168, 85, 247, 0.16) 0px, transparent 50%) !important;
     background-size: 100% 100% !important;
-    background-attachment: fixed !important;
+    background-attachment: scroll !important;
 }
 
 /* ── CORAK 4: CYBER CIRCUIT & ISOMETRIC ──
    Struktur heksagonal/diagonal sirkuit fiber optik */
-html[data-bg-pattern="circuit"] .apm-shell {
+html[data-bg-pattern="circuit"] .apm-shell::before {
     background-color: #f8fafc !important;
     background-image:
         radial-gradient(1200px 700px at 15% -5%, rgba(99, 102, 241, 0.09), transparent 60%),
@@ -789,10 +800,10 @@ html[data-bg-pattern="circuit"] .apm-shell {
         linear-gradient(315deg, rgba(148, 163, 184, 0.11) 25%, transparent 25%) !important;
     background-position: 0 0, 0 0, 16px 0, 16px 0, 0 0, 0 0 !important;
     background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px, 32px 32px, 32px 32px !important;
-    background-attachment: fixed !important;
+    background-attachment: scroll !important;
 }
 
-html.dark[data-bg-pattern="circuit"] .apm-shell {
+html.dark[data-bg-pattern="circuit"] .apm-shell::before {
     background-color: #0b0718 !important;
     background-image:
         radial-gradient(1200px 700px at 15% -5%, rgba(99, 102, 241, 0.2), transparent 60%),
@@ -803,23 +814,25 @@ html.dark[data-bg-pattern="circuit"] .apm-shell {
         linear-gradient(315deg, rgba(255, 255, 255, 0.035) 25%, transparent 25%) !important;
     background-position: 0 0, 0 0, 16px 0, 16px 0, 0 0, 0 0 !important;
     background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px, 32px 32px, 32px 32px !important;
-    background-attachment: fixed !important;
+    background-attachment: scroll !important;
 }
 
 /* ── CORAK 5: POLOS MINIMALIS ──
    Opsi latar solid standar */
-html[data-bg-pattern="clean"] .apm-shell {
+html[data-bg-pattern="clean"] .apm-shell::before {
     background-color: #f8fafc !important;
     background-image: none !important;
 }
 
-html.dark[data-bg-pattern="clean"] .apm-shell {
+html.dark[data-bg-pattern="clean"] .apm-shell::before {
     background-color: #0b0718 !important;
     background-image: none !important;
 }
 
 /* Print override: Bersihkan motif agar tinta hemat & bersih saat dicetak */
 @media print {
+    html[data-bg-pattern] .apm-shell::before,
+    .apm-shell::before,
     html[data-bg-pattern] .apm-shell,
     .apm-shell {
         background: white !important;

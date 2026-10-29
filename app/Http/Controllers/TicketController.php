@@ -38,19 +38,18 @@ class TicketController extends Controller
 
         $tickets = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
         
-        $activeCustomers = Customer::where('status', 'active')->select('id', 'name', 'customer_code', 'address')->get();
-        $technicians = User::where(function($q) {
-            $q->whereHas('roles', fn($r) => $r->whereIn('name', ['teknisi', 'kepala teknisi', 'maintenance', 'teknisi lapangan']))
-              ->orWhereIn('role', ['teknisi', 'kepala teknisi', 'maintenance', 'teknisi lapangan']);
-        })->select('id', 'name')->orderBy('name')->get();
-        if ($technicians->isEmpty()) {
-            $technicians = User::where('is_active', true)->select('id', 'name')->orderBy('name')->get();
-        }
-
         return Inertia::render('Tickets/Index', [
             'tickets' => $tickets,
-            'customers' => $activeCustomers,
-            'technicians' => $technicians,
+            'customers' => fn () => Customer::where('status', 'active')->select('id', 'name', 'customer_code', 'address')->get(),
+            'technicians' => function () {
+                $techs = User::where(function($q) {
+                    $q->whereHas('roles', fn($r) => $r->whereIn('name', ['teknisi', 'kepala teknisi', 'maintenance', 'teknisi lapangan']))
+                      ->orWhereIn('role', ['teknisi', 'kepala teknisi', 'maintenance', 'teknisi lapangan']);
+                })->select('id', 'name')->orderBy('name')->get();
+                return $techs->isEmpty()
+                    ? User::where('is_active', true)->select('id', 'name')->orderBy('name')->get()
+                    : $techs;
+            },
             'filters' => $request->only(['search', 'status', 'priority'])
         ]);
     }

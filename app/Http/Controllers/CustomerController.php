@@ -105,27 +105,37 @@ class CustomerController extends Controller
                     ->orWhereHas('surveys', fn ($sq) => $sq->where('odp_id', $odp))
             ));
 
-        // 1. Hitung Statistik secara Kontekstual mengikuti filter aktif
+        // 1. Hitung Statistik secara Kontekstual mengikuti filter aktif (1x agregasi SQL tunggal)
         $now = now();
         $startOfMonth = $now->copy()->startOfMonth();
 
-        $totalCustomers = (clone $filterQuery)->count();
-        $lastMonthTotal = (clone $filterQuery)->where('created_at', '<', $startOfMonth)->count();
+        $agg = (clone $filterQuery)->selectRaw("
+            COUNT(*) as total_all,
+            COALESCE(SUM(CASE WHEN created_at < ? THEN 1 ELSE 0 END), 0) as last_month_total,
+            COALESCE(SUM(CASE WHEN status = 'active' AND (connection_disabled = 0 OR connection_disabled IS NULL) THEN 1 ELSE 0 END), 0) as active_all,
+            COALESCE(SUM(CASE WHEN status = 'active' AND (connection_disabled = 0 OR connection_disabled IS NULL) AND created_at < ? THEN 1 ELSE 0 END), 0) as last_month_active,
+            COALESCE(SUM(CASE WHEN status IN ('booking', 'survey', 'installing') THEN 1 ELSE 0 END), 0) as pending_all,
+            COALESCE(SUM(CASE WHEN status IN ('booking', 'survey', 'installing') AND created_at < ? THEN 1 ELSE 0 END), 0) as last_month_pending,
+            COALESCE(SUM(CASE WHEN status = 'suspended' OR connection_disabled = 1 THEN 1 ELSE 0 END), 0) as inactive_all,
+            COALESCE(SUM(CASE WHEN (status = 'suspended' OR connection_disabled = 1) AND created_at < ? THEN 1 ELSE 0 END), 0) as last_month_inactive
+        ", [$startOfMonth, $startOfMonth, $startOfMonth, $startOfMonth])->first();
+
+        $totalCustomers = (int) ($agg->total_all ?? 0);
+        $lastMonthTotal = (int) ($agg->last_month_total ?? 0);
         $totalGrowth = $lastMonthTotal > 0 ? round((($totalCustomers - $lastMonthTotal) / $lastMonthTotal) * 100, 1) : ($totalCustomers > 0 ? 100 : 0);
 
-        $activeCustomers = (clone $filterQuery)->where('status', 'active')->where('connection_disabled', false)->count();
-        $lastMonthActive = (clone $filterQuery)->where('status', 'active')->where('connection_disabled', false)->where('created_at', '<', $startOfMonth)->count();
+        $activeCustomers = (int) ($agg->active_all ?? 0);
+        $lastMonthActive = (int) ($agg->last_month_active ?? 0);
         $activeGrowth = $lastMonthActive > 0 ? round((($activeCustomers - $lastMonthActive) / $lastMonthActive) * 100, 1) : ($activeCustomers > 0 ? 100 : 0);
         $activePercentage = $totalCustomers > 0 ? round(($activeCustomers / $totalCustomers) * 100, 1) : 0;
 
-        $pendingCustomers = (clone $filterQuery)->whereIn('status', ['booking', 'survey', 'installing'])->count();
-        $lastMonthPending = (clone $filterQuery)->whereIn('status', ['booking', 'survey', 'installing'])->where('created_at', '<', $startOfMonth)->count();
+        $pendingCustomers = (int) ($agg->pending_all ?? 0);
+        $lastMonthPending = (int) ($agg->last_month_pending ?? 0);
         $pendingGrowth = $lastMonthPending > 0 ? round((($pendingCustomers - $lastMonthPending) / $lastMonthPending) * 100, 1) : ($pendingCustomers > 0 ? 100 : 0);
         $pendingPercentage = $totalCustomers > 0 ? round(($pendingCustomers / $totalCustomers) * 100, 1) : 0;
 
-        $inactiveQuery = (clone $filterQuery)->where(fn ($q) => $q->where('status', 'suspended')->orWhere('connection_disabled', true));
-        $inactiveCustomers = (clone $inactiveQuery)->count();
-        $lastMonthInactive = (clone $inactiveQuery)->where('created_at', '<', $startOfMonth)->count();
+        $inactiveCustomers = (int) ($agg->inactive_all ?? 0);
+        $lastMonthInactive = (int) ($agg->last_month_inactive ?? 0);
         $inactiveGrowth = $lastMonthInactive > 0 ? round((($inactiveCustomers - $lastMonthInactive) / $lastMonthInactive) * 100, 1) : ($inactiveCustomers > 0 ? 100 : 0);
         $inactivePercentage = $totalCustomers > 0 ? round(($inactiveCustomers / $totalCustomers) * 100, 1) : 0;
 
@@ -168,21 +178,20 @@ class CustomerController extends Controller
             ->paginate($request->per_page ?? 10)
             ->withQueryString();
 
-        $odpFilterQuery = class_exists('\App\Models\Odp') ? \App\Models\Odp::orderBy('name') : null;
-        if ($odpFilterQuery) {
-            DataScopeService::applyOdpScope($odpFilterQuery, $request->user());
-            $odpsList = $odpFilterQuery->get(['id', 'name', 'area_id']);
-        } else {
-            $odpsList = [];
-        }
-
         return Inertia::render('Customers/Index', [
             'isolirOnly' => $isolirOnly,
             'customers' => $customers,
-            'packages' => InternetPackage::active()->get(['id', 'name', 'price', 'speed_mbps']),
-            'areas' => DataScopeService::getScopedAreas($request->user(), 'customers_all'),
-            'odps' => $odpsList,
-            'officers' => \App\Models\User::where('is_on_duty', true)->get(['id', 'name', 'phone', 'role']),
+            'packages' => fn () => InternetPackage::active()->get(['id', 'name', 'price', 'speed_mbps']),
+            'areas' => fn () => DataScopeService::getScopedAreas($request->user(), 'customers_all'),
+            'odps' => function () use ($request) {
+                $odpFilterQuery = class_exists('\App\Models\Odp') ? \App\Models\Odp::orderBy('name') : null;
+                if ($odpFilterQuery) {
+                    DataScopeService::applyOdpScope($odpFilterQuery, $request->user());
+                    return $odpFilterQuery->get(['id', 'name', 'area_id']);
+                }
+                return [];
+            },
+            'officers' => fn () => \Illuminate\Support\Facades\Cache::remember('inertia_on_duty_officers', 45, fn () => \App\Models\User::where('is_on_duty', true)->get(['id', 'name', 'phone', 'role'])->toArray()),
             'filters' => [
                 'search' => $request->search ? (string) $request->search : '',
                 'status' => $request->status ? (string) $request->status : '',
@@ -433,8 +442,8 @@ class CustomerController extends Controller
 
         return Inertia::render('Customers/Online', [
             'customers' => $paginated,
-            'areas' => DataScopeService::getScopedAreas($request->user(), 'customers_all'),
-            'packages' => InternetPackage::where('access_mode', '!=', 'voucher')->orderBy('name')->get(['id', 'name']),
+            'areas' => fn () => DataScopeService::getScopedAreas($request->user(), 'customers_all'),
+            'packages' => fn () => InternetPackage::where('access_mode', '!=', 'voucher')->orderBy('name')->get(['id', 'name']),
             'filters' => [
                 'search' => $request->search,
                 'area_id' => $request->area_id ?: $request->area,
@@ -1086,107 +1095,112 @@ class CustomerController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        // Get all areas for dropdown
-        $areas = \App\Models\Area::orderBy('name')->pluck('name')->all();
-
-        // Calculate statistics based on the current filtered view
+        // Calculate statistics based on the current filtered view (1x query agregasi)
+        $bAgg = (clone $query)->selectRaw("
+            COUNT(*) as total_all,
+            COALESCE(SUM(CASE WHEN status = 'booking' THEN 1 ELSE 0 END), 0) as baru_all,
+            COALESCE(SUM(CASE WHEN status = 'survey' THEN 1 ELSE 0 END), 0) as survey_all
+        ")->first();
         $stats = [
-            'total' => (clone $query)->count(),
-            'baru' => (clone $query)->where('status', 'booking')->count(),
-            'disurvey' => (clone $query)->where('status', 'survey')->count(),
+            'total' => (int) ($bAgg->total_all ?? 0),
+            'baru' => (int) ($bAgg->baru_all ?? 0),
+            'disurvey' => (int) ($bAgg->survey_all ?? 0),
         ];
 
-        // Ambil data Customer Service (CS) yang bertugas menurut jadwal kerja (shift hari ini)
-        $today = now()->toDateString();
-        $currentTime = now()->format('H:i');
+        $resolveCsOfficers = function () {
+            static $memo = null;
+            if ($memo !== null) return $memo;
+            $today = now()->toDateString();
+            $currentTime = now()->format('H:i');
 
-        $csOfficers = User::where(function ($q) {
-                $q->where('role', 'cs')
-                    ->orWhere('role', 'like', '%cs%')
-                    ->orWhere('role', 'like', '%customer%')
-                    ->orWhereHas('roles', fn ($rq) => $rq->where('name', 'like', '%cs%'))
-                    ->orWhereHas('employee', function ($eq) {
-                        $eq->where('position', 'like', '%cs%')
-                            ->orWhere('position', 'like', '%customer%');
-                    });
-            })
-            ->where(function ($q) {
-                $q->where('is_active', true)->orWhereNull('is_active');
-            })
-            ->with(['employee.schedules' => function ($sq) use ($today) {
-                $sq->whereDate('date', $today)->with('shift');
-            }])
-            ->get(['id', 'name', 'phone', 'email', 'role', 'is_on_duty'])
-            ->map(function ($u) use ($currentTime) {
-                $todaySched = $u->employee?->schedules?->first();
-                $shift = $todaySched?->shift;
-                $isOff = !$todaySched || in_array(strtolower((string) $todaySched->status), ['off', 'libur', 'cuti', 'izin', 'sakit']) || ($shift && (stripos($shift->name, 'libur') !== false || stripos($shift->name, 'off') !== false));
-
-                $isCurrentShift = false;
-                if ($shift && !$isOff && $shift->start_time && $shift->end_time) {
-                    $start = substr($shift->start_time, 0, 5);
-                    $end = substr($shift->end_time, 0, 5);
-                    if ($start <= $end) {
-                        $isCurrentShift = ($currentTime >= $start && $currentTime <= $end);
-                    } else {
-                        // Shift malam yang melewati pergantian hari
-                        $isCurrentShift = ($currentTime >= $start || $currentTime <= $end);
-                    }
-                }
-
-                $phone = $u->phone ?: ($u->employee?->phone ?: '');
-
-                return [
-                    'id' => $u->id,
-                    'name' => $u->name,
-                    'phone' => $phone,
-                    'email' => $u->email,
-                    'role' => $u->employee?->position ?: ($u->role ?: 'CS'),
-                    'is_on_duty' => (bool) ($u->is_on_duty || (!$isOff && $todaySched)),
-                    'is_scheduled_today' => (bool) (!$isOff && $todaySched),
-                    'is_current_shift' => (bool) $isCurrentShift,
-                    'shift_name' => $shift?->name ?: ($isOff ? 'Libur / Off' : '-'),
-                    'shift_time' => $shift?->formatted_time ?: '',
-                    'schedule_status' => $todaySched?->status ?: 'off',
-                ];
-            })
-            ->filter(fn ($item) => !empty($item['phone']))
-            ->values();
-
-        // Fallback jika belum ada CS dengan nomor telepon (ambil CS/admin yang ada)
-        if ($csOfficers->isEmpty()) {
             $csOfficers = User::where(function ($q) {
                     $q->where('role', 'cs')
                         ->orWhere('role', 'like', '%cs%')
-                        ->orWhere('role', 'admin');
+                        ->orWhere('role', 'like', '%customer%')
+                        ->orWhereHas('roles', fn ($rq) => $rq->where('name', 'like', '%cs%'))
+                        ->orWhereHas('employee', function ($eq) {
+                            $eq->where('position', 'like', '%cs%')
+                                ->orWhere('position', 'like', '%customer%');
+                        });
                 })
                 ->where(function ($q) {
                     $q->where('is_active', true)->orWhereNull('is_active');
                 })
+                ->with(['employee.schedules' => function ($sq) use ($today) {
+                    $sq->whereDate('date', $today)->with('shift');
+                }])
                 ->get(['id', 'name', 'phone', 'email', 'role', 'is_on_duty'])
-                ->map(fn ($u) => [
-                    'id' => $u->id,
-                    'name' => $u->name,
-                    'phone' => $u->phone ?: '',
-                    'email' => $u->email,
-                    'role' => $u->role ?: 'CS',
-                    'is_on_duty' => (bool) $u->is_on_duty,
-                    'is_scheduled_today' => false,
-                    'is_current_shift' => false,
-                    'shift_name' => '-',
-                    'shift_time' => '',
-                    'schedule_status' => 'standby',
-                ])
+                ->map(function ($u) use ($currentTime) {
+                    $todaySched = $u->employee?->schedules?->first();
+                    $shift = $todaySched?->shift;
+                    $isOff = !$todaySched || in_array(strtolower((string) $todaySched->status), ['off', 'libur', 'cuti', 'izin', 'sakit']) || ($shift && (stripos($shift->name, 'libur') !== false || stripos($shift->name, 'off') !== false));
+
+                    $isCurrentShift = false;
+                    if ($shift && !$isOff && $shift->start_time && $shift->end_time) {
+                        $start = substr($shift->start_time, 0, 5);
+                        $end = substr($shift->end_time, 0, 5);
+                        if ($start <= $end) {
+                            $isCurrentShift = ($currentTime >= $start && $currentTime <= $end);
+                        } else {
+                            $isCurrentShift = ($currentTime >= $start || $currentTime <= $end);
+                        }
+                    }
+
+                    $phone = $u->phone ?: ($u->employee?->phone ?: '');
+
+                    return [
+                        'id' => $u->id,
+                        'name' => $u->name,
+                        'phone' => $phone,
+                        'email' => $u->email,
+                        'role' => $u->employee?->position ?: ($u->role ?: 'CS'),
+                        'is_on_duty' => (bool) ($u->is_on_duty || (!$isOff && $todaySched)),
+                        'is_scheduled_today' => (bool) (!$isOff && $todaySched),
+                        'is_current_shift' => (bool) $isCurrentShift,
+                        'shift_name' => $shift?->name ?: ($isOff ? 'Libur / Off' : '-'),
+                        'shift_time' => $shift?->formatted_time ?: '',
+                        'schedule_status' => $todaySched?->status ?: 'off',
+                    ];
+                })
                 ->filter(fn ($item) => !empty($item['phone']))
                 ->values();
-        }
+
+            if ($csOfficers->isEmpty()) {
+                $csOfficers = User::where(function ($q) {
+                        $q->where('role', 'cs')
+                            ->orWhere('role', 'like', '%cs%')
+                            ->orWhere('role', 'admin');
+                    })
+                    ->where(function ($q) {
+                        $q->where('is_active', true)->orWhereNull('is_active');
+                    })
+                    ->get(['id', 'name', 'phone', 'email', 'role', 'is_on_duty'])
+                    ->map(fn ($u) => [
+                        'id' => $u->id,
+                        'name' => $u->name,
+                        'phone' => $u->phone ?: '',
+                        'email' => $u->email,
+                        'role' => $u->role ?: 'CS',
+                        'is_on_duty' => (bool) $u->is_on_duty,
+                        'is_scheduled_today' => false,
+                        'is_current_shift' => false,
+                        'shift_name' => '-',
+                        'shift_time' => '',
+                        'schedule_status' => 'standby',
+                    ])
+                    ->filter(fn ($item) => !empty($item['phone']))
+                    ->values();
+            }
+
+            return $memo = $csOfficers;
+        };
 
         return Inertia::render('Customers/Booking', [
             'customers' => $customers,
-            'areas' => $areas,
+            'areas' => fn () => \App\Models\Area::orderBy('name')->pluck('name')->all(),
             'stats' => $stats,
-            'technicians' => $csOfficers,
-            'cs_officers' => $csOfficers,
+            'technicians' => fn () => $resolveCsOfficers(),
+            'cs_officers' => fn () => $resolveCsOfficers(),
             'filters' => $request->only(['search', 'date', 'area', 'area_id', 'status']),
         ]);
     }
@@ -1340,64 +1354,50 @@ class CustomerController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        // Auto-heal ghost reserved ports (marked reserved but have no active customer in survey/installing)
-        try {
-            $hasReserved = \App\Models\OdpPort::where('status', 'reserved')->exists();
-            if ($hasReserved) {
-                $ghostReservedIds = \App\Models\OdpPort::where('status', 'reserved')
+        // Auto-heal ghost ports dibatasi maksimal 1x per 2 menit agar klik filter tetap instan
+        if (\Illuminate\Support\Facades\Cache::add('survey_odp_ports_autoheal_lock', 1, 120)) {
+            try {
+                $hasReserved = \App\Models\OdpPort::where('status', 'reserved')->exists();
+                if ($hasReserved) {
+                    $ghostReservedIds = \App\Models\OdpPort::where('status', 'reserved')
+                        ->whereNotExists(function ($query) {
+                            $query->select(\Illuminate\Support\Facades\DB::raw(1))
+                                ->from('surveys')
+                                ->join('customers', 'surveys.customer_id', '=', 'customers.id')
+                                ->whereColumn('surveys.odp_id', 'odp_ports.odp_id')
+                                ->whereColumn('surveys.port_number', 'odp_ports.port_number')
+                                ->whereIn('customers.status', ['survey', 'installing']);
+                        })
+                        ->pluck('id');
+
+                    if ($ghostReservedIds->isNotEmpty()) {
+                        \App\Models\OdpPort::whereIn('id', $ghostReservedIds)->update(['status' => 'available']);
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[CustomerController::surveyIndex] Auto-heal reserved ports skipped: ' . $e->getMessage());
+            }
+
+            try {
+                $ghostUsedIds = \App\Models\OdpPort::where('status', 'used')
                     ->whereNotExists(function ($query) {
                         $query->select(\Illuminate\Support\Facades\DB::raw(1))
-                            ->from('surveys')
-                            ->join('customers', 'surveys.customer_id', '=', 'customers.id')
-                            ->whereColumn('surveys.odp_id', 'odp_ports.odp_id')
-                            ->whereColumn('surveys.port_number', 'odp_ports.port_number')
-                            ->whereIn('customers.status', ['survey', 'installing']);
+                            ->from('onts')
+                            ->whereColumn('onts.odp_id', 'odp_ports.odp_id')
+                            ->whereColumn('onts.port_number', 'odp_ports.port_number')
+                            ->whereNotNull('onts.customer_id')
+                            ->where('onts.status', '!=', 'inactive');
                     })
+                    ->limit(20)
                     ->pluck('id');
 
-                if ($ghostReservedIds->isNotEmpty()) {
-                    \App\Models\OdpPort::whereIn('id', $ghostReservedIds)->update(['status' => 'available']);
+                if ($ghostUsedIds->isNotEmpty()) {
+                    \App\Models\OdpPort::whereIn('id', $ghostUsedIds)->update(['status' => 'available']);
                 }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[CustomerController::surveyIndex] Auto-heal used ports skipped: ' . $e->getMessage());
             }
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('[CustomerController::surveyIndex] Auto-heal reserved ports skipped: ' . $e->getMessage());
         }
-
-        // Auto-heal ghost used ports (marked used but have no active ONT) safely by primary key
-        try {
-            $ghostUsedIds = \App\Models\OdpPort::where('status', 'used')
-                ->whereNotExists(function ($query) {
-                    $query->select(\Illuminate\Support\Facades\DB::raw(1))
-                        ->from('onts')
-                        ->whereColumn('onts.odp_id', 'odp_ports.odp_id')
-                        ->whereColumn('onts.port_number', 'odp_ports.port_number')
-                        ->whereNotNull('onts.customer_id')
-                        ->where('onts.status', '!=', 'inactive');
-                })
-                ->limit(20)
-                ->pluck('id');
-
-            if ($ghostUsedIds->isNotEmpty()) {
-                \App\Models\OdpPort::whereIn('id', $ghostUsedIds)->update(['status' => 'available']);
-            }
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('[CustomerController::surveyIndex] Auto-heal used ports skipped: ' . $e->getMessage());
-        }
-
-        $availableOdps = Odp::active()
-            ->with('odc.olt')
-            ->get();
-            
-        // Ambil semua user/karyawan yang aktif (tanpa dibatasi area)
-        $technicians = User::where(function ($q) {
-                $q->where('is_active', true)->orWhereNull('is_active');
-            })
-            ->with('employee')
-            ->orderBy('name')
-            ->get(['id', 'name', 'phone', 'email', 'role']);
-
-        // Get all areas for dropdown
-        $areas = \App\Models\Area::orderBy('name')->pluck('name')->all();
 
         $openCustomer = null;
         if ($request->filled('open_report')) {
@@ -1432,9 +1432,14 @@ class CustomerController extends Controller
 
         return Inertia::render('Customers/Survey', [
             'customers' => $customers,
-            'availableOdps' => Odp::active()->with(['odc.olt', 'odc.area', 'area', 'ports'])->get(),
-            'technicians' => $technicians,
-            'areas' => $areas,
+            'availableOdps' => fn () => Odp::active()->with(['odc.olt', 'odc.area', 'area', 'ports'])->get(),
+            'technicians' => fn () => User::where(function ($q) {
+                    $q->where('is_active', true)->orWhereNull('is_active');
+                })
+                ->with('employee')
+                ->orderBy('name')
+                ->get(['id', 'name', 'phone', 'email', 'role']),
+            'areas' => fn () => \App\Models\Area::orderBy('name')->pluck('name')->all(),
             'stats' => $stats,
             'filters' => $request->only(['search', 'tab', 'technician_id', 'date', 'area', 'open_report']),
             'openCustomer' => $openCustomer,
@@ -1568,43 +1573,33 @@ class CustomerController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        // Ambil semua user/karyawan yang aktif (tanpa dibatasi area)
-        $technicians = User::where(function ($q) {
-                $q->where('is_active', true)->orWhereNull('is_active');
-            })
-            ->with('employee')
-            ->orderBy('name')
-            ->get(['id', 'name', 'phone', 'email', 'role']);
-        $availableOnts = \App\Models\Ont::whereIn('status', ['Sudah Set', 'Belum Set/Baru Input', 'inactive'])
-            ->whereNull('customer_id')
-            ->get();
-            
-        $materialTransactions = \App\Models\MaterialTransaction::where('type', 'in')
-            ->with('items.material.stocks')
-            ->latest()
-            ->limit(100)
-            ->get();
-
-        $materials = \App\Models\Material::with('stocks')
-            ->where(function ($q) {
-                $q->where('is_active', true)->orWhereNull('is_active');
-            })
-            ->orderBy('name')
-            ->get();
-
-        $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
-
         return Inertia::render('Customers/Installed', [
             'customers' => $customers,
-            'technicians' => $technicians,
-            'availableOnts' => $availableOnts,
-            'materials' => $materials,
-            'materialTransactions' => $materialTransactions,
-            'packages' => \App\Models\InternetPackage::active()->get(),
-            'areas' => $areas,
+            'technicians' => fn () => User::where(function ($q) {
+                    $q->where('is_active', true)->orWhereNull('is_active');
+                })
+                ->with('employee')
+                ->orderBy('name')
+                ->get(['id', 'name', 'phone', 'email', 'role']),
+            'availableOnts' => fn () => \App\Models\Ont::whereIn('status', ['Sudah Set', 'Belum Set/Baru Input', 'inactive'])
+                ->whereNull('customer_id')
+                ->get(),
+            'materials' => fn () => \App\Models\Material::with('stocks')
+                ->where(function ($q) {
+                    $q->where('is_active', true)->orWhereNull('is_active');
+                })
+                ->orderBy('name')
+                ->get(),
+            'materialTransactions' => fn () => \App\Models\MaterialTransaction::where('type', 'in')
+                ->with('items.material.stocks')
+                ->latest()
+                ->limit(100)
+                ->get(),
+            'packages' => fn () => \App\Models\InternetPackage::active()->get(),
+            'areas' => fn () => \App\Models\Area::orderBy('name')->get(['id', 'name']),
             'stats' => $stats,
             'filters' => array_merge(['tab' => $currentTab ?: ''], $request->only(['search', 'tab', 'date_from', 'date_to', 'area', 'area_id', 'technician_id'])),
-            'taxSettings' => [
+            'taxSettings' => fn () => [
                 'tax_ppn' => \App\Models\Setting::get('tax_ppn', '0'),
                 'tax_bhp' => \App\Models\Setting::get('tax_bhp', '0'),
                 'tax_uso' => \App\Models\Setting::get('tax_uso', '0'),
@@ -1722,15 +1717,15 @@ class CustomerController extends Controller
         return Inertia::render('Customers/Activation', [
             'customers' => $customers,
             'stats' => $stats,
-            'packages' => \App\Models\InternetPackage::orderBy('price')->get(['id', 'name', 'price']),
-            'areas' => DataScopeService::getScopedAreaNames($request->user(), 'customers_all'),
+            'packages' => fn () => \App\Models\InternetPackage::orderBy('price')->get(['id', 'name', 'price']),
+            'areas' => fn () => DataScopeService::getScopedAreaNames($request->user(), 'customers_all'),
             'filters' => array_merge(['tab' => $currentTab], $request->only(['search', 'tab', 'date', 'area', 'date_from', 'date_to'])),
-            'taxSettings' => [
+            'taxSettings' => fn () => [
                 'tax_ppn' => \App\Models\Setting::get('tax_ppn', '0'),
                 'tax_bhp' => \App\Models\Setting::get('tax_bhp', '0'),
                 'tax_uso' => \App\Models\Setting::get('tax_uso', '0'),
             ],
-            'billingSettings' => [
+            'billingSettings' => fn () => [
                 'billing_cycle' => \App\Models\Setting::get('billing_cycle', 'anniversary'),
                 'billing_type' => \App\Models\Setting::get('billing_type', 'prabayar'),
                 'invoice_issue_date' => \App\Models\Setting::get('invoice_issue_date', '1'),
@@ -1739,12 +1734,12 @@ class CustomerController extends Controller
                 'isolate_time' => \App\Models\Setting::get('isolate_time', '00:00'),
                 'prorata_formula' => \App\Models\Setting::get('prorata_formula', 'exact_days'),
             ],
-            'masterFees' => [
+            'masterFees' => fn () => [
                 'booking' => (float) (\App\Models\MasterFee::where('type', 'Fee Booking')->where('is_active', true)->value('nominal') ?? 35000),
                 'survey' => (float) (\App\Models\MasterFee::where('type', 'Fee Survey')->where('is_active', true)->value('nominal') ?? 15000),
                 'pasang' => (float) (\App\Models\MasterFee::where('type', 'Fee Pasang')->where('is_active', true)->value('nominal') ?? 35000),
             ],
-            'masterFeePasang' => (float) (\App\Models\MasterFee::where('type', 'Fee Pasang')->where('is_active', true)->value('nominal') ?? 35000),
+            'masterFeePasang' => fn () => (float) (\App\Models\MasterFee::where('type', 'Fee Pasang')->where('is_active', true)->value('nominal') ?? 35000),
         ]);
     }
 
@@ -1881,8 +1876,8 @@ class CustomerController extends Controller
 
         return Inertia::render('Customers/Terminated', [
             'customers' => $customers,
-            'packages' => InternetPackage::active()->get(['id', 'name', 'price']),
-            'areas' => DataScopeService::getScopedAreas($request->user(), 'customers_all'),
+            'packages' => fn () => InternetPackage::active()->get(['id', 'name', 'price']),
+            'areas' => fn () => DataScopeService::getScopedAreas($request->user(), 'customers_all'),
             'stats' => $stats,
             'filters' => [
                 'search' => $search,
@@ -5290,27 +5285,43 @@ class CustomerController extends Controller
     {
         if (!$areaVal) return $query;
 
-        $areaId = is_numeric($areaVal) ? (int)$areaVal : \App\Models\Area::where('name', $areaVal)->orWhere('name', str_replace('-', ' ', $areaVal))->value('id');
-        $areaName = !is_numeric($areaVal) ? $areaVal : \App\Models\Area::where('id', $areaVal)->value('name');
+        $areaDict = DataScopeService::getAreaDictionary(); // [id => name], cached in memory
+        $matchedIds = [];
+        $areaName = null;
 
-        $variants = array_unique(array_filter([
-            $areaVal,
+        if (is_numeric($areaVal)) {
+            $id = (int) $areaVal;
+            $matchedIds[] = $id;
+            $areaName = $areaDict[$id] ?? null;
+        } else {
+            $areaName = trim((string) $areaVal);
+            $normTarget = mb_strtolower(str_replace('-', ' ', $areaName));
+            foreach ($areaDict as $id => $name) {
+                $normName = mb_strtolower(str_replace('-', ' ', trim((string) $name)));
+                if ($normName === $normTarget || mb_strtolower(trim((string) $name)) === mb_strtolower($areaName)) {
+                    $matchedIds[] = (int) $id;
+                    $areaName = $name;
+                }
+            }
+        }
+
+        $stringVariants = array_values(array_unique(array_filter([
+            !is_numeric($areaVal) ? trim((string) $areaVal) : null,
             $areaName,
-            str_replace(' ', '-', $areaVal),
-            str_replace('-', ' ', $areaVal),
+            !is_numeric($areaVal) ? str_replace(' ', '-', trim((string) $areaVal)) : null,
+            !is_numeric($areaVal) ? str_replace('-', ' ', trim((string) $areaVal)) : null,
             $areaName ? str_replace(' ', '-', $areaName) : null,
             $areaName ? str_replace('-', ' ', $areaName) : null,
-        ]));
+        ])));
 
-        return $query->where(function ($sub) use ($areaId, $variants, $areaName) {
-            if ($areaId) {
-                $sub->where('area_id', $areaId);
-            }
-            if (!empty($variants) && \Illuminate\Support\Facades\Schema::hasColumn('customers', 'area')) {
-                $sub->orWhereIn('area', $variants);
-            }
-            if ($areaName) {
-                $sub->orWhereHas('areaModel', fn($q2) => $q2->where('name', $areaName)->orWhere('name', str_replace('-', ' ', $areaName)));
+        return $query->where(function ($sub) use ($matchedIds, $stringVariants) {
+            if (!empty($matchedIds)) {
+                $sub->whereIn('area_id', $matchedIds);
+                if (!empty($stringVariants)) {
+                    $sub->orWhereIn('area', $stringVariants);
+                }
+            } elseif (!empty($stringVariants)) {
+                $sub->whereIn('area', $stringVariants);
             }
         });
     }

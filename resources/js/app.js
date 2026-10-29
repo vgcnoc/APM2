@@ -7,6 +7,77 @@ import '../css/workspace.css';
 import { applyTheme } from './Composables/useTheme';
 import { applyDeviceScale } from './Composables/deviceScale';
 
+// Optimasi Partial Reload otomatis saat filter/pencarian pada halaman yang sama
+const SHARED_STATIC_PROPS = [
+    'officers',
+    'billingSettings',
+    'app_logo',
+    'app_favicon',
+    'company_logo',
+    'app_name',
+    'company_name',
+    'company_address',
+    'company_phone',
+    'company_email',
+    'company_website',
+];
+
+const PIPELINE_STATIC_PROPS = [
+    'packages',
+    'odps',
+    'availableOdps',
+    'availableOnts',
+    'technicians',
+    'lead_technicians',
+    'cs_officers',
+    'materials',
+    'materialTransactions',
+    'taxSettings',
+    'masterFees',
+    'masterFeePasang',
+    'statusOptions',
+    'payment_banks',
+    'invoice_issue_date',
+    'company',
+];
+
+router.on('before', (event) => {
+    const visit = event.detail?.visit;
+    if (!visit || typeof window === 'undefined') return;
+    if (
+        String(visit.method || 'get').toLowerCase() === 'get' &&
+        visit.preserveState === true &&
+        Array.isArray(visit.only) && visit.only.length === 0 &&
+        Array.isArray(visit.except) && visit.except.length === 0 &&
+        visit.url?.pathname === window.location.pathname
+    ) {
+        const pathname = visit.url.pathname || '';
+        const toSkip = [...SHARED_STATIC_PROPS];
+
+        if (!pathname.includes('/areas')) {
+            toSkip.push('areas');
+        }
+
+        if (
+            pathname.startsWith('/customers') ||
+            pathname.startsWith('/invoices') ||
+            pathname.startsWith('/pgk') ||
+            pathname.startsWith('/pgs') ||
+            pathname.startsWith('/customer-reports') ||
+            pathname.startsWith('/financial-reports')
+        ) {
+            toSkip.push(...PIPELINE_STATIC_PROPS);
+            if (pathname.startsWith('/pgk') || pathname.startsWith('/pgs')) {
+                toSkip.push('customers', 'leadTechnicians');
+            }
+        } else if (pathname.startsWith('/tickets')) {
+            toSkip.push('customers', 'technicians');
+        }
+
+        visit.except.push(...toSkip);
+    }
+});
+
 // Cegah modal popup 419 | PAGE EXPIRED dan refresh otomatis saat session/CSRF habis
 router.on('invalid', (event) => {
     if (event.detail.response?.status === 419) {

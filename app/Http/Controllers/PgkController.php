@@ -142,33 +142,26 @@ class PgkController extends Controller
             'completed' => (clone $baseCountQuery)->whereIn('status', ['completed', 'resolved_by_admin'])->count(),
         ];
 
-        $customerQuery = Customer::whereIn('status', ['active', 'suspended', 'isolir', 'installing'])
-            ->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'area', 'package_id')
-            ->with(['package:id,name', 'areaModel:id,name', 'ont:id,customer_id,serial_number,status,rx_power,odp_id', 'ont.odp:id,name']);
-        DataScopeService::applyCustomerScope($customerQuery, $user);
-        $customers = $customerQuery->get();
-
-        $technicians = User::role(['teknisi', 'kepala teknisi'])->select('id', 'name', 'phone')->get();
-        if ($technicians->isEmpty()) {
-            $technicians = User::select('id', 'name', 'phone')->get();
-        }
-
-        $leadTechnicians = User::role(['kepala teknisi', 'admin', 'noc', 'manager'])->select('id', 'name')->get();
-        if ($leadTechnicians->isEmpty()) {
-            $leadTechnicians = User::select('id', 'name')->get();
-        }
-
-        $materials = Material::select('id', 'name', 'category', 'unit', 'stock')->where('stock', '>', 0)->get();
-        $areas = DataScopeService::getScopedAreas($user, 'pgk');
-
         return Inertia::render('Pgk/Index', [
             'tickets' => $tickets,
             'counts' => $counts,
-            'customers' => $customers,
-            'areas' => $areas,
-            'technicians' => $technicians,
-            'leadTechnicians' => $leadTechnicians,
-            'materials' => $materials,
+            'customers' => function () use ($user) {
+                $customerQuery = Customer::whereIn('status', ['active', 'suspended', 'isolir', 'installing'])
+                    ->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'area', 'package_id')
+                    ->with(['package:id,name', 'areaModel:id,name', 'ont:id,customer_id,serial_number,status,rx_power,odp_id', 'ont.odp:id,name']);
+                DataScopeService::applyCustomerScope($customerQuery, $user);
+                return $customerQuery->get();
+            },
+            'areas' => fn () => DataScopeService::getScopedAreas($user, 'pgk'),
+            'technicians' => function () {
+                $techs = User::role(['teknisi', 'kepala teknisi'])->select('id', 'name', 'phone')->get();
+                return $techs->isEmpty() ? User::select('id', 'name', 'phone')->get() : $techs;
+            },
+            'leadTechnicians' => function () {
+                $leads = User::role(['kepala teknisi', 'admin', 'noc', 'manager'])->select('id', 'name')->get();
+                return $leads->isEmpty() ? User::select('id', 'name')->get() : $leads;
+            },
+            'materials' => fn () => Material::select('id', 'name', 'category', 'unit', 'stock')->where('stock', '>', 0)->get(),
             'filters' => $request->only(['search', 'status', 'priority', 'channel', 'area_id']),
         ]);
     }
@@ -381,14 +374,14 @@ class PgkController extends Controller
             })
             ->orderBy('name')
             ->get();
-        $materialTransactions = RestockStockService::getRestockTransactions();
+        $materialTransactions = fn () => RestockStockService::getRestockTransactions();
         $areas = DataScopeService::getScopedAreas($user, 'pgk');
         $ontQuery = Ont::whereNull('customer_id')
             ->whereIn('status', ['Sudah Set', 'Belum Set/Baru Input'])
             ->select('id', 'ont_id', 'serial_number', 'brand', 'model', 'status', 'area_id')
             ->orderBy('serial_number');
         DataScopeService::applyOntScope($ontQuery, $user);
-        $availableOnts = $ontQuery->get();
+        $availableOnts = fn () => $ontQuery->get();
 
         return Inertia::render('Pgk/Jadwal', [
             'tickets' => $tickets,
@@ -580,14 +573,14 @@ class PgkController extends Controller
         }
 
         $materials = Material::select('id', 'name', 'category', 'unit', 'stock')->with('stocks')->get();
-        $materialTransactions = RestockStockService::getRestockTransactions();
+        $materialTransactions = fn () => RestockStockService::getRestockTransactions();
         $areas = DataScopeService::getScopedAreas($user, 'pgk');
         $ontQuery = Ont::whereNull('customer_id')
             ->whereIn('status', ['Sudah Set', 'Belum Set/Baru Input'])
             ->select('id', 'ont_id', 'serial_number', 'brand', 'model', 'status', 'area_id')
             ->orderBy('serial_number');
         DataScopeService::applyOntScope($ontQuery, $user);
-        $availableOnts = $ontQuery->get();
+        $availableOnts = fn () => $ontQuery->get();
 
         return Inertia::render('Pgk/Laporan', [
             'tickets' => $tickets,
