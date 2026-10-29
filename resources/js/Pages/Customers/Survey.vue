@@ -131,6 +131,74 @@
                         </div>
                     </div>
                 </td>
+
+                <!-- Aksi Pelanggan (Sebelah Nama Pelanggan) -->
+                <td class="whitespace-nowrap">
+                    <div class="flex items-center justify-start gap-1.5 whitespace-nowrap">
+                        <template v-if="row.status === 'survey'">
+                            <!-- Belum Dijadwalkan -->
+                            <button v-if="!row.surveys?.length && !row.technician_schedules?.length && hasPermission('customers_survey_assign')" 
+                                @click="openAssignModal(row)" 
+                                class="btn-primary py-1.5 px-3 text-xs flex items-center gap-1.5 cursor-pointer">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                <span>Jadwalkan</span>
+                            </button>
+                            
+                            <!-- Sudah Dijadwalkan, tapi belum disurvey -->
+                            <template v-else-if="!row.surveys?.length && row.technician_schedules?.length">
+                                <!-- Jika punya akses Isi Laporan atau ditugaskan pada survey ini -->
+                                <button v-if="hasPermission('customers_survey_report') || isUserAssigned(row)" 
+                                    @click="openReportModal(row)" 
+                                    class="btn-success py-1.5 px-3 text-xs flex items-center gap-1.5 cursor-pointer">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                                    <span>Isi Laporan</span>
+                                </button>
+                                <!-- Jika tidak punya akses Isi Laporan (CS/Admin tanpa akses) -->
+                                <span v-else class="px-2.5 py-1.5 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg text-xs font-medium flex items-center gap-1 cursor-default" title="Menunggu teknisi mengisi laporan survey">
+                                    <svg class="w-3.5 h-3.5 animate-spin text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                    <span>Menunggu Survey</span>
+                                </span>
+                            </template>
+
+                            <!-- Sudah Disurvey & Feasible -->
+                            <button v-else-if="row.surveys?.length && row.surveys[0]?.feasibility === 'feasible' && hasPermission('customers_survey_mark_ready')" 
+                                @click="openInstallModal(row)" 
+                                class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer" 
+                                title="Laporan Selesai: Klik untuk menjadwalkan instalasi di menu Pasang/Aktif">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+                                <span>Ready Install</span>
+                            </button>
+
+                            <!-- Sudah Disurvey & Not Feasible -->
+                            <div v-else-if="row.surveys?.length && row.surveys[0]?.feasibility === 'not_feasible'" 
+                                class="flex items-center gap-1 px-2.5 py-1.5 bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-xs font-bold cursor-not-allowed" 
+                                title="Pelanggan tidak layak/tidak tercover jaringan">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <span>Unfeasible</span>
+                            </div>
+                        </template>
+                        <template v-else>
+                            <span class="px-2.5 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-bold border border-emerald-200 flex items-center gap-1" title="Telah masuk proses Pemasangan/Aktif">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                <span>Selesai</span>
+                            </span>
+                        </template>
+
+                        <!-- Tombol Dropdown Menu Aksi -->
+                        <button 
+                            type="button" 
+                            @click.stop="toggleDropdown($event, row)" 
+                            class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 rounded-lg transition-all shadow-2xs hover:shadow-xs cursor-pointer text-xs font-semibold focus:outline-none"
+                            :class="{ 'ring-2 ring-blue-500 bg-blue-50 text-blue-600 border-blue-300': activeDropdownRow?.id === row.id }"
+                            title="Pilihan Aksi"
+                        >
+                            <span>Aksi</span>
+                            <svg class="w-3.5 h-3.5 text-slate-400 transition-transform duration-200" :class="{ 'rotate-180 text-blue-600': activeDropdownRow?.id === row.id }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                    </div>
+                </td>
                 <td class="whitespace-nowrap">
                     <span v-if="row.surveys?.length" class="text-xs text-cyan-600 font-mono font-semibold">
                         {{ row.surveys[0]?.odp?.name || '-' }}
@@ -167,73 +235,6 @@
                     </div>
                     <span v-else class="text-gray-400 text-xs italic">Belum ada jadwal</span>
                 </td>
-            </template>
-
-            <template #rowActions="{ row }">
-                <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
-                    <template v-if="row.status === 'survey'">
-                        <!-- Belum Dijadwalkan -->
-                        <button v-if="!row.surveys?.length && !row.technician_schedules?.length && hasPermission('customers_survey_assign')" 
-                            @click="openAssignModal(row)" 
-                            class="btn-primary py-1.5 px-3 text-xs flex items-center gap-1.5">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                            Jadwalkan
-                        </button>
-                        
-                        <!-- Sudah Dijadwalkan, tapi belum disurvey -->
-                        <template v-else-if="!row.surveys?.length && row.technician_schedules?.length">
-                            <!-- Jika punya akses Isi Laporan atau ditugaskan pada survey ini -->
-                            <button v-if="hasPermission('customers_survey_report') || isUserAssigned(row)" 
-                                @click="openReportModal(row)" 
-                                class="btn-success py-1.5 px-3 text-xs flex items-center gap-1.5">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
-                                Isi Laporan
-                            </button>
-                            <!-- Jika tidak punya akses Isi Laporan (CS/Admin tanpa akses) -->
-                            <span v-else class="px-2.5 py-1.5 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg text-xs font-medium flex items-center gap-1 cursor-default" title="Menunggu teknisi mengisi laporan survey">
-                                <svg class="w-3.5 h-3.5 animate-spin text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                                Menunggu Survey
-                            </span>
-                        </template>
-
-                        <!-- Sudah Disurvey & Feasible -->
-                        <button v-else-if="row.surveys?.length && row.surveys[0]?.feasibility === 'feasible' && hasPermission('customers_survey_mark_ready')" 
-                            @click="openInstallModal(row)" 
-                            class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors" 
-                            title="Laporan Selesai: Klik untuk menjadwalkan instalasi di menu Pasang/Aktif">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
-                            Ready Install
-                        </button>
-
-                        <!-- Sudah Disurvey & Not Feasible -->
-                        <div v-else-if="row.surveys?.length && row.surveys[0]?.feasibility === 'not_feasible'" 
-                            class="flex items-center gap-1 px-2.5 py-1.5 bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-xs font-bold cursor-not-allowed" 
-                            title="Pelanggan tidak layak/tidak tercover jaringan">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            Unfeasible
-                        </div>
-                    </template>
-                    <template v-else>
-                        <span class="px-2.5 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-bold border border-emerald-200 flex items-center gap-1" title="Telah masuk proses Pemasangan/Aktif">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                            Selesai
-                        </span>
-                    </template>
-
-                    <!-- Tombol Dropdown Menu Aksi -->
-                    <button 
-                        type="button" 
-                        @click.stop="toggleDropdown($event, row)" 
-                        class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 rounded-lg transition-all shadow-2xs hover:shadow-xs cursor-pointer text-xs font-semibold focus:outline-none"
-                        :class="{ 'ring-2 ring-blue-500 bg-blue-50 text-blue-600 border-blue-300': activeDropdownRow?.id === row.id }"
-                        title="Pilihan Aksi"
-                    >
-                        <span>Aksi</span>
-                        <svg class="w-3.5 h-3.5 text-slate-400 transition-transform duration-200" :class="{ 'rotate-180 text-blue-600': activeDropdownRow?.id === row.id }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                    </button>
-                </div>
             </template>
         </DataTable>
 
@@ -991,6 +992,7 @@ function bulkDelete() {
 
 const columns = [
     { key: 'name', label: 'Pelanggan', class: 'min-w-[200px] max-w-[280px]' },
+    { key: 'actions', label: 'Aksi', class: 'whitespace-nowrap min-w-[170px]' },
     { key: 'odp', label: 'ODP Terdekat', class: 'whitespace-nowrap' },
     { key: 'distance', label: 'Jarak Kabel', class: 'whitespace-nowrap text-center' },
     { key: 'port', label: 'Port ODP', class: 'whitespace-nowrap' },
@@ -1437,7 +1439,10 @@ function toggleDropdown(event, row) {
         }
     }
 
-    let left = rect.right - dropdownWidth;
+    let left = rect.left;
+    if (left + dropdownWidth > window.innerWidth - 10) {
+        left = Math.max(10, window.innerWidth - dropdownWidth - 10);
+    }
     if (left < 10) {
         left = 10;
     }
