@@ -244,21 +244,34 @@ class DashboardController extends Controller
 
         $totalRevenue = (clone $invoiceBase)->where('status', 'paid')->sum('amount');
 
-        // Pendapatan per bulan (6 bulan terakhir)
+        // Pendapatan per bulan (6 bulan terakhir) - 1 query teragregasi
+        $sixMonthsAgo = now()->subMonths(5)->startOfMonth();
+        $rawMonthlyRevenues = (clone $invoiceBase)
+            ->where('status', 'paid')
+            ->where(function($q) use ($sixMonthsAgo) {
+                $q->where('period_year', '>', $sixMonthsAgo->year)
+                  ->orWhere(function($sub) use ($sixMonthsAgo) {
+                      $sub->where('period_year', $sixMonthsAgo->year)
+                          ->where('period_month', '>=', $sixMonthsAgo->month);
+                  });
+            })
+            ->selectRaw('period_year, period_month, SUM(amount) as total')
+            ->groupBy('period_year', 'period_month')
+            ->get()
+            ->keyBy(fn($r) => "{$r->period_year}-{$r->period_month}");
+
         $revenueChart = [];
         for ($i = 5; $i >= 0; $i--) {
             $date  = now()->subMonths($i);
             $month = $date->month;
             $year  = $date->year;
-            $total = (clone $invoiceBase)->where('period_month', $month)
-                ->where('period_year', $year)
-                ->where('status', 'paid')
-                ->sum('amount');
+            $key   = "{$year}-{$month}";
+            $total = isset($rawMonthlyRevenues[$key]) ? (float) $rawMonthlyRevenues[$key]->total : 0.0;
 
             $revenueChart[] = [
                 'period_month' => $month,
                 'period_year'  => $year,
-                'total'        => (float) $total,
+                'total'        => $total,
             ];
         }
 
@@ -337,18 +350,19 @@ class DashboardController extends Controller
         if (!$canViewAllAreas && count($userAccessibleAreaIds) > 0) {
             $topAreasQuery->whereIn('area_id', $userAccessibleAreaIds);
         }
-        $topAreas = $topAreasQuery->groupBy('area_id')
+        $rawTopAreas = $topAreasQuery->groupBy('area_id')
             ->orderByDesc('total')
             ->limit(5)
-            ->get()
-            ->map(function ($item) {
-                $area = Area::find($item->area_id);
-                return [
-                    'id'    => $item->area_id,
-                    'name'  => $area?->name ?? 'Unknown',
-                    'total' => $item->total,
-                ];
-            });
+            ->get();
+        $areaIds = $rawTopAreas->pluck('area_id')->filter()->all();
+        $areaNames = Area::whereIn('id', $areaIds)->pluck('name', 'id');
+        $topAreas = $rawTopAreas->map(function ($item) use ($areaNames) {
+            return [
+                'id'    => $item->area_id,
+                'name'  => $areaNames[$item->area_id] ?? 'Unknown',
+                'total' => $item->total,
+            ];
+        });
 
         $totalCustomersInAreas = $topAreas->sum('total');
 
@@ -1064,7 +1078,18 @@ class DashboardController extends Controller
         string $search = ''
     ): array {
         $user = $user ?? auth()->user();
-        Carbon::setLocale('id');
+        $cacheKey = 'realtime_dash_' . md5(json_encode([
+            $user?->id,
+            $areaId,
+            $nasId,
+            $period,
+            $service,
+            $statusFilter,
+            $search
+        ]));
+
+        return \Illuminate\Support\Facades\Cache::remember($cacheKey, 15, function () use ($user, $areaId, $nasId, $period, $service, $statusFilter, $search) {
+            Carbon::setLocale('id');
 
         $canViewAllAreas = $user && (
             $user->hasRole('admin') || 
@@ -1608,6 +1633,7 @@ class DashboardController extends Controller
             'last_updated'      => now()->timezone('Asia/Jakarta')->format('H:i:s'),
             'last_updated_full' => now()->timezone('Asia/Jakarta')->translatedFormat('d M Y, H:i:s') . ' WIB',
         ];
+        });
     }
 
     /**
@@ -1694,8 +1720,10 @@ class DashboardController extends Controller
      */
     protected function getWorstAttendanceData($selectedAreaId = 'all'): array
     {
-        $now = Carbon::now();
-        $startOfMonth = $now->copy()->startOfMonth()->format('Y-m-d');
+        $cacheKey = "worst_att_rankings_{$selectedAreaId}";
+        $data = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function () use ($selectedAreaId) {
+            $now = Carbon::now();
+            $startOfMonth = $now->copy()->startOfMonth()->format('Y-m-d');
         $endOfMonth = $now->copy()->endOfMonth()->format('Y-m-d');
         $todayDate = $now->format('Y-m-d');
 
@@ -1917,21 +1945,28 @@ class DashboardController extends Controller
         // Ambil Top 5 karyawan dengan pelanggaran terbanyak
         $topWorstEmployees = $rankedWorst->take(5)->all();
 
+        return [
+            'summary' => $summary,
+            'rankedWorst' => $rankedWorst,
+            'topWorstEmployees' => $topWorstEmployees,
+        ];
+        });
+
         // Cari data presensi / disiplin user yang sedang login
         $currentEmpStat = null;
         $currentUser = auth()->user();
-        if ($currentUser) {
-            $currentEmpStat = $rankedWorst->first(function ($item) use ($currentUser) {
+        if ($currentUser && isset($data['rankedWorst'])) {
+            $currentEmpStat = $data['rankedWorst']->first(function ($item) use ($currentUser) {
                 return (isset($item['email']) && !empty($item['email']) && strtolower($item['email']) === strtolower($currentUser->email))
                     || (isset($item['name']) && !empty($item['name']) && strtolower(trim($item['name'])) === strtolower(trim($currentUser->name)));
             });
         }
 
         return [
-            'summary' => $summary,
-            'worst_employees' => $topWorstEmployees,
+            'summary' => $data['summary'] ?? [],
+            'worst_employees' => $data['topWorstEmployees'] ?? [],
             'my_infraction_stat' => $currentEmpStat,
-            'all_infractions_count' => $rankedWorst->where('infractions_count', '>', 0)->count(),
+            'all_infractions_count' => isset($data['rankedWorst']) ? $data['rankedWorst']->where('infractions_count', '>', 0)->count() : 0,
         ];
     }
 }

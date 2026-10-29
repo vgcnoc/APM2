@@ -171,7 +171,7 @@ class CustomerController extends Controller
         $odpFilterQuery = class_exists('\App\Models\Odp') ? \App\Models\Odp::orderBy('name') : null;
         if ($odpFilterQuery) {
             DataScopeService::applyOdpScope($odpFilterQuery, $request->user());
-            $odpsList = $odpFilterQuery->get();
+            $odpsList = $odpFilterQuery->get(['id', 'name', 'area_id']);
         } else {
             $odpsList = [];
         }
@@ -179,7 +179,7 @@ class CustomerController extends Controller
         return Inertia::render('Customers/Index', [
             'isolirOnly' => $isolirOnly,
             'customers' => $customers,
-            'packages' => InternetPackage::active()->get(),
+            'packages' => InternetPackage::active()->get(['id', 'name', 'price', 'speed_mbps']),
             'areas' => DataScopeService::getScopedAreas($request->user(), 'customers_all'),
             'odps' => $odpsList,
             'officers' => \App\Models\User::where('is_on_duty', true)->get(['id', 'name', 'phone', 'role']),

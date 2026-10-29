@@ -221,10 +221,10 @@ class NetworkMapController extends Controller
 
         $fiber = $request->input('purpose') === 'fiber';
         $endpoint = rtrim(config('services.osrm.url', 'https://router.project-osrm.org'), '/');
-        $cacheKey = 'gis-fiber-route:v1:' . hash('sha256', $endpoint . ':' . implode(',', array_map(
+        $cacheKey = 'gis-route:v2:' . ($fiber ? 'fiber:' : 'nav:') . hash('sha256', $endpoint . ':' . implode(',', array_map(
             fn ($value) => sprintf('%.6F', $value), [$oLat, $oLng, $dLat, $dLng]
         )));
-        if ($fiber && ($cached = Cache::get($cacheKey))) {
+        if ($cached = Cache::get($cacheKey)) {
             return response()->json(array_merge($cached, ['cached' => true]));
         }
         // Uncached cable routes share one request/second across all GIS users.
@@ -236,7 +236,7 @@ class NetworkMapController extends Controller
         $url = "{$endpoint}/route/v1/driving/{$oLng},{$oLat};{$dLng},{$dLat}?overview=full&geometries=geojson&steps={$steps}";
 
         try {
-            $response = Http::withHeaders(['User-Agent' => 'VIZBILL-GIS/1.0', 'Referer' => config('app.url')])->timeout(6)->get($url);
+            $response = Http::withHeaders(['User-Agent' => 'VIZBILL-GIS/1.0', 'Referer' => config('app.url')])->timeout(3)->get($url);
             if ($response->successful()) {
                 $data = $response->json();
                 $coordinates = $data['routes'][0]['geometry']['coordinates'] ?? [];
