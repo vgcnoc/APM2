@@ -18,6 +18,16 @@ php artisan route:cache
 php artisan view:cache
 chown -R www-data:www-data storage bootstrap/cache public/build
 chmod -R 775 storage bootstrap/cache public/build
+setfacl -R -d -m u:www-data:rwx,g:www-data:rwx,o:r-x /var/www/APM2/storage /var/www/APM2/bootstrap/cache 2>/dev/null || true
+setfacl -R -m u:www-data:rwx,g:www-data:rwx,o:r-x /var/www/APM2/storage /var/www/APM2/bootstrap/cache 2>/dev/null || true
+
+# Pastikan cron scheduler selalu dijalankan oleh user www-data (bukan root)
+if crontab -l 2>/dev/null | grep -q "schedule:run"; then
+    crontab -r 2>/dev/null || true
+fi
+if ! crontab -u www-data -l 2>/dev/null | grep -q "schedule:run"; then
+    echo "* * * * * cd /var/www/APM2 && php artisan schedule:run >> /dev/null 2>&1" | crontab -u www-data -
+fi
 
 # 1. Optimasi Nginx Gzip & Static Asset Caching
 sed -i 's/# gzip_vary on;/gzip_vary on;/' /etc/nginx/nginx.conf

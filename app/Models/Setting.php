@@ -26,13 +26,21 @@ class Setting extends Model
             return self::$cachedSettings;
         }
 
-        return self::$cachedSettings = Cache::remember('app_settings_all_dict', 3600, function () {
+        try {
+            return self::$cachedSettings = Cache::remember('app_settings_all_dict', 3600, function () {
+                try {
+                    return self::query()->pluck('value', 'key')->toArray();
+                } catch (\Throwable $e) {
+                    return [];
+                }
+            });
+        } catch (\Throwable $e) {
             try {
-                return self::query()->pluck('value', 'key')->toArray();
-            } catch (\Throwable $e) {
+                return self::$cachedSettings = self::query()->pluck('value', 'key')->toArray();
+            } catch (\Throwable $e2) {
                 return [];
             }
-        });
+        }
     }
 
     /**
@@ -54,7 +62,9 @@ class Setting extends Model
     public static function set(string $key, $value)
     {
         self::$cachedSettings = null;
-        Cache::forget('app_settings_all_dict');
+        try {
+            Cache::forget('app_settings_all_dict');
+        } catch (\Throwable $e) {}
 
         return self::updateOrCreate(
             ['key' => $key],
@@ -68,6 +78,8 @@ class Setting extends Model
     public static function clearCache(): void
     {
         self::$cachedSettings = null;
-        Cache::forget('app_settings_all_dict');
+        try {
+            Cache::forget('app_settings_all_dict');
+        } catch (\Throwable $e) {}
     }
 }
