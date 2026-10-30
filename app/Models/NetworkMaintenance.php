@@ -49,6 +49,43 @@ class NetworkMaintenance extends Model
         'longitude' => 'decimal:8',
     ];
 
+    protected $appends = [
+        'category_label',
+        'category_icon',
+        'photo_after_urls',
+        'photo_before_urls',
+    ];
+
+    /**
+     * URL Semua Foto Dokumentasi Lapangan (Mendukung Multi-Foto)
+     */
+    public function getPhotoAfterUrlsAttribute(): array
+    {
+        if (empty($this->photo_after)) return [];
+        $decoded = json_decode($this->photo_after, true);
+        if (is_array($decoded)) {
+            return array_values(array_filter(array_map(function ($p) {
+                return $p ? \Illuminate\Support\Facades\Storage::url($p) : null;
+            }, $decoded)));
+        }
+        return [\Illuminate\Support\Facades\Storage::url($this->photo_after)];
+    }
+
+    /**
+     * URL Foto Sebelum Pengerjaan
+     */
+    public function getPhotoBeforeUrlsAttribute(): array
+    {
+        if (empty($this->photo_before)) return [];
+        $decoded = json_decode($this->photo_before, true);
+        if (is_array($decoded)) {
+            return array_values(array_filter(array_map(function ($p) {
+                return $p ? \Illuminate\Support\Facades\Storage::url($p) : null;
+            }, $decoded)));
+        }
+        return [\Illuminate\Support\Facades\Storage::url($this->photo_before)];
+    }
+
     /**
      * Auto Generate Nomor Pemeliharaan: MNT-YYYYMM-XXXX
      */

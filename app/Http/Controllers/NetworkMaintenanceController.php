@@ -162,13 +162,17 @@ class NetworkMaintenanceController extends Controller
                 'optical_power_before' => $m->optical_power_before,
                 'optical_power_after' => $m->optical_power_after,
                 'photo_before' => $m->photo_before ? Storage::url($m->photo_before) : null,
-                'photo_after' => $m->photo_after ? Storage::url($m->photo_after) : null,
+                'photo_after' => $m->photo_after_urls[0] ?? ($m->photo_after ? Storage::url($m->photo_after) : null),
+                'photo_after_urls' => $m->photo_after_urls,
+                'photo_before_urls' => $m->photo_before_urls,
                 'created_by' => $m->created_by,
                 'is_my_task' => $isMyTask,
                 'materials' => $m->materials->map(fn($mat) => [
                     'id' => $mat->id,
                     'material_id' => $mat->material_id,
+                    'name' => $mat->material?->name ?? 'Material',
                     'material_name' => $mat->material?->name ?? 'Material',
+                    'category' => $mat->material?->category ?? '',
                     'material_transaction_item_id' => $mat->material_transaction_item_id,
                     'trx_number' => $mat->trx_number,
                     'quantity_prepared' => (float) $mat->quantity_prepared,
@@ -538,19 +542,55 @@ class NetworkMaintenanceController extends Controller
                 $updateData['completed_at'] = null;
             }
 
-            // Upload foto baru jika ada (Auto-Kompresi Cerdas)
+            // Upload foto baru jika ada (Mendukung Multi-Foto Lapangan & Auto-Kompresi Cerdas)
+            $existingPhotos = [];
+            if (!empty($maintenance->photo_after)) {
+                $dec = json_decode($maintenance->photo_after, true);
+                $existingPhotos = is_array($dec) ? $dec : [$maintenance->photo_after];
+            }
+
+            $newUploadedPaths = [];
+            if ($request->hasFile('photos_after')) {
+                foreach ($request->file('photos_after') as $file) {
+                    if ($file && $file->isValid()) {
+                        $newUploadedPaths[] = ImageCompressionService::compressAndStore($file, 'maintenance_photos', 'public');
+                    }
+                }
+            }
+            if ($request->hasFile('photo_after')) {
+                $file = $request->file('photo_after');
+                if ($file && $file->isValid()) {
+                    $newUploadedPaths[] = ImageCompressionService::compressAndStore($file, 'maintenance_photos', 'public');
+                }
+            }
+
+            if ($request->has('existing_photos_after') || !empty($newUploadedPaths)) {
+                $keptOldPhotos = [];
+                if ($request->has('existing_photos_after')) {
+                    $keptRaw = $request->input('existing_photos_after');
+                    if (is_string($keptRaw)) $keptRaw = json_decode($keptRaw, true);
+                    if (is_array($keptRaw)) {
+                        foreach ($keptRaw as $url) {
+                            foreach ($existingPhotos as $origPath) {
+                                if (str_contains((string)$url, (string)$origPath) || str_contains((string)$origPath, basename((string)$url))) {
+                                    $keptOldPhotos[] = $origPath;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    $keptOldPhotos = $existingPhotos;
+                }
+                $finalPhotos = array_values(array_unique(array_merge($keptOldPhotos, $newUploadedPaths)));
+                $updateData['photo_after'] = !empty($finalPhotos) ? json_encode($finalPhotos) : null;
+            }
+
             if ($request->hasFile('photo_before')) {
                 if ($maintenance->photo_before && Storage::disk('public')->exists($maintenance->photo_before)) {
                     Storage::disk('public')->delete($maintenance->photo_before);
                 }
                 $updateData['photo_before'] = ImageCompressionService::compressAndStore($request->file('photo_before'), 'maintenance_photos', 'public');
-            }
-
-            if ($request->hasFile('photo_after')) {
-                if ($maintenance->photo_after && Storage::disk('public')->exists($maintenance->photo_after)) {
-                    Storage::disk('public')->delete($maintenance->photo_after);
-                }
-                $updateData['photo_after'] = ImageCompressionService::compressAndStore($request->file('photo_after'), 'maintenance_photos', 'public');
             }
 
             $maintenance->update($updateData);
@@ -584,18 +624,48 @@ class NetworkMaintenanceController extends Controller
                                 'notes' => $mItem['notes'] ?? $matRow->notes,
                             ]);
 
-                            // Jika ada barang kembali bertambah, kembalikan ke stok gudang
+                            // Jika ada perubahan selisih barang kembali, sesuaikan stok gudang secara cerdas
                             $returnDiff = $newReturned - $oldReturned;
-                            if ($returnDiff > 0) {
+                            if ($returnDiff != 0) {
                                 $material = Material::find($matRow->material_id);
                                 if ($material) {
-                                    $material->increment('stock', $returnDiff);
+                                    if ($returnDiff > 0) {
+                                        $material->increment('stock', $returnDiff);
+                                    } else {
+                                        $material->decrement('stock', abs($returnDiff));
+                                    }
                                     if ($maintenance->area_id) {
                                         $matStock = MaterialStock::where('material_id', $material->id)
                                             ->where('area_id', $maintenance->area_id)
                                             ->first();
                                         if ($matStock) {
-                                            $matStock->increment('stock', $returnDiff);
+                                            if ($returnDiff > 0) {
+                                                $matStock->increment('stock', $returnDiff);
+                                            } else {
+                                                $matStock->decrement('stock', abs($returnDiff));
+                                            }
+                                        }
+                                    }
+
+                                    // Catat riwayat transaksi mutasi pengembalian sisa material
+                                    if ($returnDiff > 0) {
+                                        try {
+                                            $trx = MaterialTransaction::create([
+                                                'transaction_number' => MaterialTransaction::generateTransactionNumber(),
+                                                'type' => 'in',
+                                                'purpose' => "Pengembalian Sisa Material Pemeliharaan ({$maintenance->maintenance_number})",
+                                                'area_id' => $maintenance->area_id,
+                                                'notes' => "Sisa material dikembalikan dari kegiatan {$maintenance->title}",
+                                                'created_by' => auth()->id() ?? 1,
+                                            ]);
+                                            MaterialTransactionItem::create([
+                                                'material_transaction_id' => $trx->id,
+                                                'material_id' => $material->id,
+                                                'quantity' => $returnDiff,
+                                                'unit' => $matRow->unit ?: ($material->unit ?? 'pcs'),
+                                            ]);
+                                        } catch (\Throwable $te) {
+                                            Log::warning('[NetworkMaintenanceController::quickUpdate] Trx Log Warning: ' . $te->getMessage());
                                         }
                                     }
                                 }

@@ -108,12 +108,18 @@ const updateForm = ref({
 });
 
 const isCompressingPhotoAfter = ref(false);
-const photoAfterCompressionInfo = ref(null);
+const isUpdateModalMaximized = ref(false);
+const updatePhotosAfterFiles = ref([]);
+const existingPhotosAfter = ref([]);
 
 function openQuickUpdateModal(item) {
     activeMaintenanceItem.value = item;
-    updatePhotoAfterFile.value = null;
-    photoAfterCompressionInfo.value = null;
+    isUpdateModalMaximized.value = false;
+    updatePhotosAfterFiles.value = [];
+    existingPhotosAfter.value = Array.isArray(item.photo_after_urls)
+        ? [...item.photo_after_urls]
+        : (item.photo_after ? [item.photo_after] : []);
+
     updateForm.value = {
         status: item.is_done ? 'completed' : (item.is_in_progress ? 'completed' : 'in_progress'),
         start_time: item.start_time || '',
@@ -130,7 +136,8 @@ function openQuickUpdateModal(item) {
             return {
                 id: m.id,
                 material_id: m.material_id,
-                name: m.material?.name || m.name || 'Material',
+                name: m.material_name || m.material?.name || m.name || 'Material',
+                category: m.category || m.material?.category || '',
                 quantity_prepared: prep,
                 quantity_used: used,
                 quantity_returned: ret,
@@ -159,30 +166,45 @@ function selectUpdateStatus(newStatus) {
     }
 }
 
-async function handlePhotoAfterUpload(e) {
-    const file = e.target.files?.[0];
-    if (!file) {
-        updatePhotoAfterFile.value = null;
-        photoAfterCompressionInfo.value = null;
-        return;
-    }
+async function handlePhotosAfterUpload(e) {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
 
     isCompressingPhotoAfter.value = true;
     try {
-        const res = await compressImage(file, { maxWidth: 1920, maxHeight: 1920, quality: 0.82 });
-        updatePhotoAfterFile.value = res.file;
-        photoAfterCompressionInfo.value = res;
+        for (const file of files) {
+            const res = await compressImage(file, { maxWidth: 1920, maxHeight: 1920, quality: 0.82 });
+            updatePhotosAfterFiles.value.push({
+                file: res.file,
+                preview: res.previewUrl || URL.createObjectURL(res.file),
+                size: res.compressedFormatted || formatBytes(res.file.size),
+                origSize: res.originalFormatted,
+                ratio: res.ratio,
+            });
+        }
     } catch (err) {
         console.warn('Gagal kompres foto:', err);
-        updatePhotoAfterFile.value = file;
+        for (const file of files) {
+            updatePhotosAfterFiles.value.push({
+                file,
+                preview: URL.createObjectURL(file),
+                size: formatBytes(file.size),
+                origSize: formatBytes(file.size),
+                ratio: '0%',
+            });
+        }
     } finally {
         isCompressingPhotoAfter.value = false;
+        e.target.value = '';
     }
 }
 
-function removePhotoAfter() {
-    updatePhotoAfterFile.value = null;
-    photoAfterCompressionInfo.value = null;
+function removeNewPhoto(idx) {
+    updatePhotosAfterFiles.value.splice(idx, 1);
+}
+
+function removeExistingPhoto(idx) {
+    existingPhotosAfter.value.splice(idx, 1);
 }
 
 async function submitUpdateMaintenance() {
@@ -196,7 +218,16 @@ async function submitUpdateMaintenance() {
         if (updateForm.value.start_time) payload.append('start_time', updateForm.value.start_time);
         if (updateForm.value.end_time) payload.append('end_time', updateForm.value.end_time);
         if (updateForm.value.scheduled_date) payload.append('scheduled_date', updateForm.value.scheduled_date);
-        if (updatePhotoAfterFile.value) payload.append('photo_after', updatePhotoAfterFile.value);
+        
+        // Multi photos upload
+        updatePhotosAfterFiles.value.forEach((item, idx) => {
+            payload.append(`photos_after[${idx}]`, item.file);
+        });
+
+        // List foto lama yang dipertahankan
+        payload.append('existing_photos_after', JSON.stringify(existingPhotosAfter.value));
+
+        // Update laporan material
         if (updateForm.value.materials && updateForm.value.materials.length > 0) {
             payload.append('materials', JSON.stringify(updateForm.value.materials));
         }
@@ -407,6 +438,23 @@ const onUsedQtyChange = (mat) => {
     const prep = parseFloat(mat.quantity_prepared) || 0;
     const used = parseFloat(mat.quantity_used) || 0;
     mat.quantity_returned = Math.max(0, parseFloat((prep - used).toFixed(2)));
+};
+
+const onReturnedQtyChange = (mat) => {
+    const prep = parseFloat(mat.quantity_prepared) || 0;
+    const ret = parseFloat(mat.quantity_returned) || 0;
+    mat.quantity_used = Math.max(0, parseFloat((prep - ret).toFixed(2)));
+};
+
+const setMaterialQuick = (mat, mode) => {
+    const prep = parseFloat(mat.quantity_prepared) || 0;
+    if (mode === 'habis') {
+        mat.quantity_used = prep;
+        mat.quantity_returned = 0;
+    } else if (mode === 'utuh') {
+        mat.quantity_used = 0;
+        mat.quantity_returned = prep;
+    }
 };
 
 const isCompressingPhotoBefore = ref(false);
@@ -1041,7 +1089,10 @@ function getCategoryBadgeClass(category) {
             class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto"
             @click.self="showUpdateModal = false"
         >
-            <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 my-auto animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+            <div 
+                :class="isUpdateModalMaximized ? 'max-w-4xl sm:max-w-5xl w-full h-[95vh]' : 'max-w-lg w-full max-h-[92vh]'"
+                class="bg-white dark:bg-slate-900 rounded-3xl flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 my-auto animate-in fade-in zoom-in-95 duration-200 overflow-hidden transition-all"
+            >
                 
                 <!-- Modal Header (Pinned) -->
                 <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
@@ -1054,12 +1105,30 @@ function getCategoryBadgeClass(category) {
                             <p class="text-[11px] text-slate-400 font-mono">{{ activeMaintenanceItem.maintenance_number }} · {{ activeMaintenanceItem.title }}</p>
                         </div>
                     </div>
-                    <button 
-                        @click="showUpdateModal = false"
-                        class="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                    >
-                        ✕
-                    </button>
+                    <div class="flex items-center gap-1.5">
+                        <!-- Tombol Perbesar / Perkecil Form -->
+                        <button 
+                            type="button"
+                            @click="isUpdateModalMaximized = !isUpdateModalMaximized"
+                            class="p-2 rounded-xl text-slate-400 hover:text-teal-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                            :title="isUpdateModalMaximized ? 'Perkecil Ukuran Form' : 'Perbesar Ukuran Form'"
+                        >
+                            <svg v-if="!isUpdateModalMaximized" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                            </svg>
+                            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9L4 4m0 0v4m0-4h4m6 5l5-5m0 0v4m0-4h-4M9 15l-5 5m0 0v-4m0 4h4m6-5l5 5m0 0v-4m0 4h-4" />
+                            </svg>
+                        </button>
+                        <button 
+                            type="button"
+                            @click="showUpdateModal = false"
+                            class="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                            title="Tutup Form"
+                        >
+                            ✕
+                        </button>
+                    </div>
                 </div>
 
                 <form @submit.prevent="submitUpdateMaintenance" class="flex flex-col min-h-0 flex-1 overflow-hidden">
@@ -1132,46 +1201,25 @@ function getCategoryBadgeClass(category) {
                         />
                     </div>
 
-                    <!-- 2. Jam Mulai & Jam Selesai -->
-                    <div class="grid grid-cols-2 gap-2.5">
-                        <div>
-                            <div class="flex items-center justify-between mb-1">
-                                <label class="text-xs font-bold text-slate-700 dark:text-slate-300">
-                                    Jam Mulai:
-                                </label>
-                                <button 
-                                    type="button" 
-                                    @click="updateForm.start_time = getCurrentTimeStr()" 
-                                    class="text-[10px] text-teal-600 dark:text-teal-400 hover:underline font-semibold flex items-center gap-0.5 cursor-pointer"
-                                >
-                                    ⏱️ Sekarang
-                                </button>
-                            </div>
-                            <input
-                                type="time"
-                                v-model="updateForm.start_time"
-                                class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
-                            />
+                    <!-- 2. Jam Mulai Pengerjaan -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                Jam Mulai Pengerjaan:
+                            </label>
+                            <button 
+                                type="button" 
+                                @click="updateForm.start_time = getCurrentTimeStr()" 
+                                class="text-[10px] text-teal-600 dark:text-teal-400 hover:underline font-semibold flex items-center gap-0.5 cursor-pointer"
+                            >
+                                ⏱️ Sekarang
+                            </button>
                         </div>
-                        <div>
-                            <div class="flex items-center justify-between mb-1">
-                                <label class="text-xs font-bold text-slate-700 dark:text-slate-300">
-                                    Jam Selesai:
-                                </label>
-                                <button 
-                                    type="button" 
-                                    @click="updateForm.end_time = getCurrentTimeStr()" 
-                                    class="text-[10px] text-teal-600 dark:text-teal-400 hover:underline font-semibold flex items-center gap-0.5 cursor-pointer"
-                                >
-                                    ⏱️ Sekarang
-                                </button>
-                            </div>
-                            <input
-                                type="time"
-                                v-model="updateForm.end_time"
-                                class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
-                            />
-                        </div>
+                        <input
+                            type="time"
+                            v-model="updateForm.start_time"
+                            class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                        />
                     </div>
 
                     <!-- 3. Redaman Optik (OPM dBm) -->
@@ -1200,8 +1248,8 @@ function getCategoryBadgeClass(category) {
                         ></textarea>
                     </div>
 
-                    <!-- Laporan Pemakaian Material Lapangan -->
-                    <div v-if="updateForm.materials && updateForm.materials.length > 0" class="space-y-2 p-3 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/50">
+                    <!-- Laporan Pemakaian Material Lapangan (Cerdas & Sempurna) -->
+                    <div v-if="updateForm.materials && updateForm.materials.length > 0" class="space-y-2 p-3.5 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/50">
                         <div class="flex items-center justify-between">
                             <label class="block text-xs font-bold text-amber-800 dark:text-amber-300 uppercase flex items-center gap-1.5">
                                 <span>📦</span>
@@ -1210,48 +1258,107 @@ function getCategoryBadgeClass(category) {
                             <span class="text-[10px] text-amber-600 dark:text-amber-400 font-medium">Sisa otomatis dikembalikan ke gudang</span>
                         </div>
 
-                        <div class="space-y-2 pt-1">
-                            <div v-for="(mat, idx) in updateForm.materials" :key="idx" class="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-1.5 text-xs shadow-2xs">
-                                <div class="flex items-center justify-between">
-                                    <span class="font-bold text-slate-800 dark:text-slate-200">{{ mat.name }}</span>
-                                    <span class="text-[11px] text-slate-500">Bekal Awal: <strong class="text-amber-700 dark:text-amber-400 font-mono">{{ mat.quantity_prepared }} {{ mat.unit }}</strong></span>
+                        <div class="space-y-3 pt-1">
+                            <div v-for="(mat, idx) in updateForm.materials" :key="idx" class="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-2 text-xs shadow-2xs">
+                                <div class="flex items-center justify-between flex-wrap gap-2 pb-1.5 border-b border-slate-100 dark:border-slate-800">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-black text-slate-900 dark:text-slate-100 text-xs sm:text-sm">
+                                            {{ mat.name || mat.material_name || 'Material' }}
+                                        </span>
+                                        <span v-if="mat.category" class="text-[10px] px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-bold uppercase border border-amber-200 dark:border-amber-800">
+                                            {{ mat.category }}
+                                        </span>
+                                    </div>
+                                    <div class="text-[11px] text-slate-600 dark:text-slate-400 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-lg border border-amber-200/80 dark:border-amber-800 font-medium">
+                                        Bekal Awal: <strong class="text-amber-800 dark:text-amber-400 font-mono font-black">{{ mat.quantity_prepared }} {{ mat.unit }}</strong>
+                                    </div>
                                 </div>
+
+                                <!-- Tombol Pintar Cepat -->
+                                <div class="flex items-center gap-2 pt-0.5">
+                                    <button 
+                                        type="button" 
+                                        @click="setMaterialQuick(mat, 'habis')" 
+                                        class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 cursor-pointer transition shadow-2xs"
+                                        title="Semua bekal terpakai di lapangan"
+                                    >
+                                        ⚡ Habis Terpakai
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        @click="setMaterialQuick(mat, 'utuh')" 
+                                        class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 cursor-pointer transition shadow-2xs"
+                                        title="Material tidak jadi terpakai dan kembali utuh ke gudang"
+                                    >
+                                        🔄 Tidak Terpakai (Utuh)
+                                    </button>
+                                </div>
+
                                 <div class="grid grid-cols-2 gap-2 pt-1">
                                     <div>
                                         <label class="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">Jumlah Terpakai:</label>
-                                        <input 
-                                            type="number" 
-                                            step="0.01" 
-                                            min="0" 
-                                            :max="mat.quantity_prepared"
-                                            v-model.number="mat.quantity_used" 
-                                            @input="onUsedQtyChange(mat)"
-                                            class="w-full px-2.5 py-1 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 font-bold"
-                                        />
+                                        <div class="flex items-center gap-1">
+                                            <input 
+                                                type="number" 
+                                                step="0.01" 
+                                                min="0" 
+                                                v-model.number="mat.quantity_used" 
+                                                @input="onUsedQtyChange(mat)"
+                                                class="w-full px-2.5 py-1.5 text-xs font-black rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-emerald-700 dark:text-emerald-400"
+                                            />
+                                            <span class="text-[11px] font-bold text-slate-400 shrink-0">{{ mat.unit }}</span>
+                                        </div>
                                     </div>
                                     <div>
                                         <label class="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">Sisa Kembali ke Gudang:</label>
-                                        <input 
-                                            type="number" 
-                                            step="0.01" 
-                                            min="0" 
-                                            v-model.number="mat.quantity_returned" 
-                                            class="w-full px-2.5 py-1 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-blue-700 dark:text-blue-400 font-bold"
-                                        />
+                                        <div class="flex items-center gap-1">
+                                            <input 
+                                                type="number" 
+                                                step="0.01" 
+                                                min="0" 
+                                                v-model.number="mat.quantity_returned" 
+                                                @input="onReturnedQtyChange(mat)"
+                                                class="w-full px-2.5 py-1.5 text-xs font-black rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-blue-700 dark:text-blue-400"
+                                            />
+                                            <span class="text-[11px] font-bold text-slate-400 shrink-0">{{ mat.unit }}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- 5. Upload Foto Sesudah (Auto Kompres Cerdas) -->
-                    <div>
-                        <div class="flex items-center justify-between mb-1">
-                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                                Upload Foto Dokumentasi Lapangan (Opsional):
+                    <!-- Jam Selesai Pengerjaan (Pindah di Bawah Sesuai Permintaan) -->
+                    <div class="p-3.5 bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200/80 dark:border-teal-900/50 rounded-2xl">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="text-xs font-bold text-teal-900 dark:text-teal-300 flex items-center gap-1.5 uppercase">
+                                <span>🏁</span>
+                                <span>Jam Selesai Pengerjaan:</span>
                             </label>
-                            <span v-if="photoAfterCompressionInfo?.isCompressed" class="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-700">
-                                ⚡ Auto-Kompres Aktif (Hemat {{ photoAfterCompressionInfo.ratio }})
+                            <button 
+                                type="button" 
+                                @click="updateForm.end_time = getCurrentTimeStr()" 
+                                class="text-xs text-teal-700 dark:text-teal-300 hover:underline font-bold flex items-center gap-1 cursor-pointer bg-white dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-teal-200 dark:border-teal-700 shadow-2xs"
+                            >
+                                ⏱️ Set Jam Sekarang
+                            </button>
+                        </div>
+                        <input
+                            type="time"
+                            v-model="updateForm.end_time"
+                            class="w-full px-3 py-2 text-sm font-black rounded-xl bg-white dark:bg-slate-800 border border-teal-300 dark:border-teal-700 text-teal-950 dark:text-white"
+                        />
+                    </div>
+
+                    <!-- 5. Upload Foto Sesudah / Dokumentasi (Bisa Lebih Dari 1 & Auto Kompres Cerdas) -->
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                                <span>📸</span>
+                                <span>Upload Foto Dokumentasi Lapangan (Opsional):</span>
+                            </label>
+                            <span class="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-700">
+                                ⚡ Multi-Foto & Auto-Kompres Aktif
                             </span>
                         </div>
 
@@ -1263,44 +1370,68 @@ function getCategoryBadgeClass(category) {
                             <span class="font-medium">Mengompres ukuran dan resolusi foto secara otomatis...</span>
                         </div>
 
-                        <!-- Input File (Jika Belum Ada File Terpilih) -->
-                        <div v-else-if="!updatePhotoAfterFile">
-                            <input
-                                type="file"
-                                accept="image/*"
-                                @change="handlePhotoAfterUpload"
-                                class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 dark:file:bg-slate-800 dark:file:text-teal-400 cursor-pointer"
-                            />
-                            <p class="text-[10px] text-slate-400 mt-1">Ukuran foto kamera HP (mis. 5-15MB) akan otomatis dikompres ke ~200-350KB agar upload instan tanpa menguras kuota.</p>
+                        <!-- Daftar Foto Terpilih / Preview Grid -->
+                        <div v-if="existingPhotosAfter.length > 0 || updatePhotosAfterFiles.length > 0" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                            <!-- Foto Lama dari Server -->
+                            <div 
+                                v-for="(pUrl, pIdx) in existingPhotosAfter" 
+                                :key="'exist-photo-' + pIdx" 
+                                class="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 aspect-video bg-slate-100 dark:bg-slate-800"
+                            >
+                                <img :src="pUrl" class="w-full h-full object-cover" />
+                                <span class="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-900/70 text-white">
+                                    Foto {{ pIdx + 1 }}
+                                </span>
+                                <button 
+                                    type="button" 
+                                    @click="removeExistingPhoto(pIdx)" 
+                                    class="absolute top-1 right-1 w-6 h-6 rounded-full bg-rose-600 text-white flex items-center justify-center text-xs font-bold shadow-md hover:bg-rose-700 cursor-pointer"
+                                    title="Hapus foto ini"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+
+                            <!-- Foto Baru yang Diunggah -->
+                            <div 
+                                v-for="(nPhoto, nIdx) in updatePhotosAfterFiles" 
+                                :key="'new-photo-' + nIdx" 
+                                class="relative group rounded-xl overflow-hidden border-2 border-emerald-400 dark:border-emerald-600 aspect-video bg-slate-100 dark:bg-slate-800"
+                            >
+                                <img :src="nPhoto.preview" class="w-full h-full object-cover" />
+                                <div class="absolute bottom-0 inset-x-0 bg-slate-900/80 px-1.5 py-0.5 flex items-center justify-between text-[9px] text-white">
+                                    <span class="truncate font-semibold">{{ nPhoto.file.name }}</span>
+                                    <span class="font-bold text-emerald-400">{{ nPhoto.size }}</span>
+                                </div>
+                                <button 
+                                    type="button" 
+                                    @click="removeNewPhoto(nIdx)" 
+                                    class="absolute top-1 right-1 w-6 h-6 rounded-full bg-rose-600 text-white flex items-center justify-center text-xs font-bold shadow-md hover:bg-rose-700 cursor-pointer"
+                                    title="Batalkan foto ini"
+                                >
+                                    ✕
+                                </button>
+                            </div>
                         </div>
 
-                        <!-- Preview Thumbnail & Info Kompresi -->
-                        <div v-else class="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
-                            <div class="flex items-center gap-2.5 min-w-0">
-                                <img 
-                                    v-if="photoAfterCompressionInfo?.previewUrl" 
-                                    :src="photoAfterCompressionInfo.previewUrl" 
-                                    class="w-12 h-12 object-cover rounded-xl border border-slate-300 dark:border-slate-600 shrink-0 shadow-2xs" 
+                        <!-- Input File Multi (Bisa Pilih Banyak Foto Sekaligus atau Bertahap) -->
+                        <div>
+                            <label class="flex items-center justify-center gap-2 p-3 rounded-2xl border-2 border-dashed border-teal-300 dark:border-teal-700 hover:border-teal-500 bg-teal-50/30 dark:bg-teal-950/20 hover:bg-teal-50/60 transition cursor-pointer">
+                                <input
+                                    type="file"
+                                    multiple
+                                    accept="image/*"
+                                    @change="handlePhotosAfterUpload"
+                                    class="sr-only"
                                 />
-                                <div class="min-w-0">
-                                    <p class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{{ updatePhotoAfterFile.name }}</p>
-                                    <div class="flex items-center gap-1.5 text-[10px] text-slate-500 mt-0.5">
-                                        <span class="line-through text-slate-400" v-if="photoAfterCompressionInfo?.isCompressed">{{ photoAfterCompressionInfo.originalFormatted }}</span>
-                                        <span class="font-bold text-emerald-600 dark:text-emerald-400">{{ photoAfterCompressionInfo?.compressedFormatted || formatBytes(updatePhotoAfterFile.size) }}</span>
-                                        <span v-if="photoAfterCompressionInfo?.isCompressed" class="px-1.5 py-0.2 rounded font-extrabold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">
-                                            -{{ photoAfterCompressionInfo.ratio }}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                            <button
-                                type="button"
-                                @click="removePhotoAfter"
-                                class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
-                                title="Hapus / Ganti Foto"
-                            >
-                                ✕
-                            </button>
+                                <span class="text-teal-600 dark:text-teal-400 font-bold text-lg">📷</span>
+                                <span class="text-xs font-bold text-teal-800 dark:text-teal-300">
+                                    + Tambah Foto Dokumentasi Lapangan (Bisa Lebih Dari 1)
+                                </span>
+                            </label>
+                            <p class="text-[10px] text-slate-400 mt-1">
+                                Mendukung multi-foto sekaligus. Tiap foto kamera HP otomatis dikompres ke ~200-350KB agar upload instan tanpa menguras kuota.
+                            </p>
                         </div>
                     </div>
 
@@ -1324,7 +1455,7 @@ function getCategoryBadgeClass(category) {
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                             </svg>
-                            <span>Simpan Update 🚀</span>
+                            <span>{{ isSubmitting ? 'Menyimpan...' : 'Simpan Update 🚀' }}</span>
                         </button>
                     </div>
 

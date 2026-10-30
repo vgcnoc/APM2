@@ -190,7 +190,13 @@
                                     <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Nama Barang / Material</th>
                                     <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Kategori</th>
                                     <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Detail Stok per Area</th>
-                                    <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Total Stok (All Area)</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">
+                                        <span v-if="filterAreaId" class="inline-flex items-center gap-1">
+                                            <span>Stok Area:</span>
+                                            <span class="text-indigo-600 font-black normal-case">{{ getAreaName(filterAreaId) }}</span>
+                                        </span>
+                                        <span v-else>Total Stok (Semua Area)</span>
+                                    </th>
                                     <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Aksi</th>
                                 </tr>
                             </thead>
@@ -226,6 +232,11 @@
                                                 <svg class="w-3.5 h-3.5" :class="filterAreaId && stock.area_id == filterAreaId ? 'text-indigo-200' : 'text-indigo-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                                 <span>{{ stock.area?.name || 'Area ?' }}: <strong :class="filterAreaId && stock.area_id == filterAreaId ? 'text-white' : 'text-indigo-900'">{{ formatNum(stock.stock) }}</strong> {{ material.unit }} <span class="font-bold text-[9px]" :class="filterAreaId && stock.area_id == filterAreaId ? 'text-indigo-100' : 'text-indigo-500'">{{ formatSecondaryUnit(material, stock.stock) }}</span></span>
                                             </div>
+                                            <span v-if="filterAreaId && (material.stocks || []).some(s => s.area_id != filterAreaId && Number(s.stock) > 0)" 
+                                                  class="text-[10px] text-slate-500 font-semibold bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/80 cursor-help"
+                                                  :title="'Stok di area lain: ' + (material.stocks || []).filter(s => s.area_id != filterAreaId).map(s => (s.area?.name || 'Area') + ': ' + formatNum(s.stock) + ' ' + material.unit).join(', ')">
+                                                + Ada di area lain
+                                            </span>
                                             <button 
                                                 type="button" 
                                                 @click="openDistributeModal(material)"
@@ -250,24 +261,29 @@
                                     <td class="px-6 py-4 text-right">
                                         <div class="flex flex-col items-end justify-center">
                                             <div>
-                                                <span class="text-sm font-black text-slate-800">{{ formatNum(getTotalStock(material)) }}</span>
-                                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">{{ material.unit }} <span class="text-slate-400 normal-case">{{ formatSecondaryUnit(material, getTotalStock(material)) }}</span></span>
+                                                <span class="text-sm font-black text-slate-800">{{ formatNum(filterAreaId ? getAreaStock(material, filterAreaId) : getAllAreasTotalStock(material)) }}</span>
+                                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider ml-1">{{ material.unit }} <span class="text-slate-400 normal-case">{{ formatSecondaryUnit(material, filterAreaId ? getAreaStock(material, filterAreaId) : getAllAreasTotalStock(material)) }}</span></span>
                                             </div>
                                             <div class="mt-1">
-                                                <span v-if="getTotalStock(material) <= 0" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-200">
-                                                    Stok Habis
+                                                <span v-if="(filterAreaId ? getAreaStock(material, filterAreaId) : getAllAreasTotalStock(material)) <= 0" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-200">
+                                                    {{ filterAreaId ? 'Stok Habis di Area Ini' : 'Stok Habis' }}
                                                 </span>
-                                                <span v-else-if="getTotalStock(material) <= 20" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                                <span v-else-if="(filterAreaId ? getAreaStock(material, filterAreaId) : getAllAreasTotalStock(material)) <= 20" class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
                                                     Menipis
                                                 </span>
                                                 <span v-else class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                    Tersedia
+                                                    {{ filterAreaId ? 'Tersedia di Area Ini' : 'Tersedia' }}
                                                 </span>
                                             </div>
                                             <div class="inline-flex items-center gap-1 text-[11px] text-slate-500 mt-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/60 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-                                                <span class="text-slate-400 font-normal">Awal:</span>
-                                                <span class="font-bold text-slate-700">{{ formatNum(getInitialStock(material)) }}</span>
+                                                <span class="text-slate-400 font-normal">Awal{{ filterAreaId ? ' Area' : '' }}:</span>
+                                                <span class="font-bold text-slate-700">{{ formatNum(filterAreaId ? getAreaInitialStock(material, filterAreaId) : getAllAreasInitialStock(material)) }}</span>
                                                 <span class="text-[9px] uppercase font-bold text-slate-400">{{ material.unit }}</span>
+                                            </div>
+                                            <div v-if="filterAreaId" class="inline-flex items-center gap-1 text-[10px] text-indigo-700 font-semibold mt-1 bg-indigo-50/70 px-1.5 py-0.5 rounded border border-indigo-100" title="Total stok barang ini di seluruh area/cabang">
+                                                <span>🏢 All Area:</span>
+                                                <span class="font-bold font-mono">{{ formatNum(getAllAreasTotalStock(material)) }}</span>
+                                                <span class="text-[8px] uppercase font-bold text-indigo-400">{{ material.unit }}</span>
                                             </div>
                                         </div>
                                     </td>
@@ -617,27 +633,37 @@ const getStatusLabel = (status) => {
     }
 };
 
-const getTotalStock = (material) => {
-    if (filterAreaId.value) {
-        const found = (material.stocks || []).find(s => s.area_id == filterAreaId.value);
-        return found ? (Number(found.stock) || 0) : 0;
+const getAllAreasTotalStock = (material) => {
+    return (material.stocks || []).reduce((a, b) => a + Number(b.stock || 0), 0);
+};
+
+const getAllAreasInitialStock = (material) => {
+    const areaInitialSum = (material.stocks || []).reduce((a, b) => a + Number(b.initial_stock || 0), 0);
+    if (areaInitialSum > 0) return areaInitialSum;
+    return Number(material.initial_stock) > 0 ? Number(material.initial_stock) : getAllAreasTotalStock(material);
+};
+
+const getAreaStock = (material, areaId) => {
+    if (!areaId) return getAllAreasTotalStock(material);
+    const found = (material.stocks || []).find(s => s.area_id == areaId);
+    return found ? (Number(found.stock) || 0) : 0;
+};
+
+const getAreaInitialStock = (material, areaId) => {
+    if (!areaId) return getAllAreasInitialStock(material);
+    const found = (material.stocks || []).find(s => s.area_id == areaId);
+    if (found && Number(found.initial_stock) > 0) {
+        return Number(found.initial_stock);
     }
-    return (material.stocks || []).reduce((a, b) => a + Number(b.stock), 0);
+    return found ? (Number(found.stock) || 0) : 0;
+};
+
+const getTotalStock = (material) => {
+    return filterAreaId.value ? getAreaStock(material, filterAreaId.value) : getAllAreasTotalStock(material);
 };
 
 const getInitialStock = (material) => {
-    if (filterAreaId.value) {
-        const found = (material.stocks || []).find(s => s.area_id == filterAreaId.value);
-        if (found && Number(found.initial_stock) > 0) {
-            return Number(found.initial_stock);
-        }
-        return found ? (Number(found.stock) || 0) : 0;
-    }
-    const areaInitialSum = (material.stocks || []).reduce((a, b) => a + Number(b.initial_stock || 0), 0);
-    if (areaInitialSum > 0) {
-        return areaInitialSum;
-    }
-    return Number(material.initial_stock) > 0 ? Number(material.initial_stock) : getTotalStock(material);
+    return filterAreaId.value ? getAreaInitialStock(material, filterAreaId.value) : getAllAreasInitialStock(material);
 };
 
 const applyFilters = () => {

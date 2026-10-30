@@ -24,12 +24,9 @@ class WarehouseStockController extends Controller
             $q->where('is_active', true)->orWhereNull('is_active');
         })
         ->visibleInMaterialsTable()
-        ->with(['stocks' => function ($sq) use ($accessibleAreas, $selectedAreaId, $isGlobal) {
+        ->with(['stocks' => function ($sq) use ($accessibleAreas, $isGlobal) {
             if (!$isGlobal && !empty($accessibleAreas)) {
                 $sq->whereIn('area_id', $accessibleAreas);
-            }
-            if ($selectedAreaId) {
-                $sq->where('area_id', $selectedAreaId);
             }
             $sq->with('area');
         }]);
