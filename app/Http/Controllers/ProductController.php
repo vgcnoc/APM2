@@ -22,15 +22,17 @@ class ProductController extends Controller
             $query->where('category', $request->category);
         }
 
-        $products = $query->latest()->paginate(10)->withQueryString();
+        $products = $query->with('stocks.area')->latest()->paginate(10)->withQueryString();
 
         $dbCategories = Material::select('category')->whereNotNull('category')->where('category', '!=', '')->distinct()->pluck('category')->toArray();
         $defaultCategories = ['Umum', 'Kabel', 'Patchcord', 'Klem', 'Isolasi', 'ONT', 'Splitter', 'Aksesoris', 'Peralatan'];
         $categories = array_values(array_unique(array_merge($defaultCategories, $dbCategories)));
+        $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('Inventory/Products/Index', [
             'products' => $products,
             'categories' => $categories,
+            'areas' => $areas,
             'filters' => $request->only(['search', 'category'])
         ]);
     }
@@ -47,6 +49,7 @@ class ProductController extends Controller
             'description' => 'nullable|string',
             'stock' => 'nullable|numeric|min:0',
             'initial_stock' => 'nullable|numeric|min:0',
+            'area_id' => 'nullable|exists:areas,id',
             // Smart conversion fields
             'meter_per_roll' => 'nullable|numeric|min:0',
             'pcs_per_pack' => 'nullable|numeric|min:0',
@@ -56,6 +59,9 @@ class ProductController extends Controller
             'requires_mac' => 'boolean',
         ]);
 
+        $areaId = $validated['area_id'] ?? null;
+        unset($validated['area_id']);
+
         if (array_key_exists('stock', $validated) && is_null($validated['stock'])) {
             $validated['stock'] = 0;
         }
@@ -64,7 +70,19 @@ class ProductController extends Controller
             $validated['initial_stock'] = $validated['stock'] ?? 0;
         }
 
-        Material::create($validated);
+        $material = Material::create($validated);
+
+        if ($areaId) {
+            \App\Models\MaterialStock::create([
+                'material_id' => $material->id,
+                'area_id' => $areaId,
+                'stock' => $material->stock,
+                'initial_stock' => $material->stock,
+                'total_rolls' => $material->total_rolls ?? 0,
+                'total_packs' => $material->total_packs ?? 0,
+                'total_pieces' => $material->total_pieces ?? 0,
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Produk berhasil ditambahkan.');
     }
@@ -83,6 +101,7 @@ class ProductController extends Controller
             'description' => 'nullable|string',
             'stock' => 'nullable|numeric|min:0',
             'initial_stock' => 'nullable|numeric|min:0',
+            'area_id' => 'nullable|exists:areas,id',
             'meter_per_roll' => 'nullable|numeric|min:0',
             'pcs_per_pack' => 'nullable|numeric|min:0',
             'cm_per_pcs' => 'nullable|numeric|min:0',
@@ -91,11 +110,46 @@ class ProductController extends Controller
             'requires_mac' => 'boolean',
         ]);
 
+        $areaId = $validated['area_id'] ?? null;
+        unset($validated['area_id']);
+
         if (array_key_exists('stock', $validated) && is_null($validated['stock'])) {
             unset($validated['stock']);
         }
 
         $product->update($validated);
+
+        if ($areaId) {
+            $existingStocks = \App\Models\MaterialStock::where('material_id', $product->id)->get();
+            if ($existingStocks->count() <= 1) {
+                \App\Models\MaterialStock::updateOrCreate(
+                    ['material_id' => $product->id],
+                    [
+                        'area_id' => $areaId,
+                        'stock' => $product->stock,
+                        'initial_stock' => $product->stock,
+                        'total_rolls' => $product->total_rolls ?? 0,
+                        'total_packs' => $product->total_packs ?? 0,
+                        'total_pieces' => $product->total_pieces ?? 0,
+                    ]
+                );
+            } else {
+                \App\Models\MaterialStock::updateOrCreate(
+                    ['material_id' => $product->id, 'area_id' => $areaId],
+                    [
+                        'stock' => $product->stock,
+                        'initial_stock' => $product->stock,
+                        'total_rolls' => $product->total_rolls ?? 0,
+                        'total_packs' => $product->total_packs ?? 0,
+                        'total_pieces' => $product->total_pieces ?? 0,
+                    ]
+                );
+            }
+        } else {
+            if (\App\Models\MaterialStock::where('material_id', $product->id)->count() === 1) {
+                \App\Models\MaterialStock::where('material_id', $product->id)->delete();
+            }
+        }
 
         return redirect()->back()->with('success', 'Produk berhasil diperbarui.');
     }

@@ -142,11 +142,70 @@ class MaterialController extends Controller
             'price_per_unit' => 'nullable|numeric|min:0',
             'selling_price' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
+            'area_id' => 'nullable|exists:areas,id',
         ]);
+
+        $areaId = $validated['area_id'] ?? null;
+        unset($validated['area_id']);
 
         $validated['initial_stock'] = $validated['stock'];
 
-        Material::create($validated);
+        $material = Material::create($validated);
+
+        if ($areaId) {
+            \App\Models\MaterialStock::create([
+                'material_id' => $material->id,
+                'area_id' => $areaId,
+                'stock' => $material->stock,
+                'initial_stock' => $material->stock,
+                'total_rolls' => $material->total_rolls ?? 0,
+                'total_packs' => $material->total_packs ?? 0,
+                'total_pieces' => $material->total_pieces ?? 0,
+            ]);
+
+            if ((float)$material->stock > 0) {
+                // Catat transaksi mutasi awal ke log
+                $transaction = \App\Models\MaterialTransaction::create([
+                    'transaction_number' => 'IN-INIT-' . date('YmdHis') . '-' . $material->id,
+                    'type' => 'in',
+                    'status' => 'approved',
+                    'date' => now(),
+                    'technician_name' => auth()->user() ? auth()->user()->name : 'Admin',
+                    'purpose' => 'Stok Awal Produk Baru',
+                    'user_id' => auth()->id(),
+                    'area_id' => $areaId,
+                    'notes' => 'Pencatatan stok awal saat produk baru didaftarkan'
+                ]);
+
+                $unitPrice = (float) ($material->price_per_unit ?? 0);
+                $baseRate = $unitPrice;
+                $cat = strtolower((string) $material->category);
+                $name = strtolower((string) $material->name);
+                if ((str_contains($cat, 'kabel') || str_contains($name, 'kabel')) && (float) $material->meter_per_roll > 0) {
+                    $baseRate = $unitPrice / (float) $material->meter_per_roll;
+                } elseif (str_contains($cat, 'isolasi') || str_contains($name, 'isolasi')) {
+                    $cmPerPcs = (float) ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
+                    $pcsPerPack = (float) ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
+                    $factor = $cmPerPcs * $pcsPerPack;
+                    $baseRate = $factor > 0 ? ($unitPrice / $factor) : $unitPrice;
+                } elseif ((str_contains($cat, 'klem') || str_contains($name, 'klem')) && (float) $material->pcs_per_pack > 0) {
+                    $baseRate = $unitPrice / (float) $material->pcs_per_pack;
+                }
+                $itemTotal = $baseRate * (float) $material->stock;
+
+                \App\Models\MaterialTransactionItem::create([
+                    'material_transaction_id' => $transaction->id,
+                    'material_id' => $material->id,
+                    'quantity' => $material->stock,
+                    'unit' => $material->unit,
+                    'price_per_unit' => $baseRate,
+                    'total_price' => $itemTotal,
+                    'stock_before' => 0,
+                    'stock_after' => $material->stock,
+                    'condition' => 'Layak Pakai'
+                ]);
+            }
+        }
 
         return redirect()->route('materials.index')->with('success', 'Data material berhasil ditambahkan.');
     }
@@ -168,9 +227,45 @@ class MaterialController extends Controller
             'price_per_unit' => 'nullable|numeric|min:0',
             'selling_price' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
+            'area_id' => 'nullable|exists:areas,id',
         ]);
 
+        $areaId = $validated['area_id'] ?? null;
+        unset($validated['area_id']);
+
         $material->update($validated);
+
+        if ($areaId) {
+            $existingStocks = \App\Models\MaterialStock::where('material_id', $material->id)->get();
+            if ($existingStocks->count() <= 1) {
+                \App\Models\MaterialStock::updateOrCreate(
+                    ['material_id' => $material->id],
+                    [
+                        'area_id' => $areaId,
+                        'stock' => $material->stock,
+                        'initial_stock' => $material->stock,
+                        'total_rolls' => $material->total_rolls ?? 0,
+                        'total_packs' => $material->total_packs ?? 0,
+                        'total_pieces' => $material->total_pieces ?? 0,
+                    ]
+                );
+            } else {
+                \App\Models\MaterialStock::updateOrCreate(
+                    ['material_id' => $material->id, 'area_id' => $areaId],
+                    [
+                        'stock' => $material->stock,
+                        'initial_stock' => $material->stock,
+                        'total_rolls' => $material->total_rolls ?? 0,
+                        'total_packs' => $material->total_packs ?? 0,
+                        'total_pieces' => $material->total_pieces ?? 0,
+                    ]
+                );
+            }
+        } else {
+            if (\App\Models\MaterialStock::where('material_id', $material->id)->count() === 1) {
+                \App\Models\MaterialStock::where('material_id', $material->id)->delete();
+            }
+        }
 
         return redirect()->route('materials.index')->with('success', 'Data material berhasil diperbarui.');
     }

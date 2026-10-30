@@ -209,6 +209,14 @@
                                                 <label class="block text-sm font-bold text-gray-700 mb-1">Supplier / Merk</label>
                                                 <input type="text" v-model="form.supplier" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 transition-all" placeholder="Contoh: ZTE / FiberStar">
                                             </div>
+                                            <div class="col-span-1 md:col-span-2">
+                                                <label class="block text-sm font-bold text-gray-700 mb-1">Area / Wilayah Penempatan (Opsional)</label>
+                                                <select v-model="form.area_id" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 bg-white text-sm">
+                                                    <option value="">🏢 Gudang Utama / Pusat (Tanpa Area Khusus)</option>
+                                                    <option v-for="area in areas" :key="area.id" :value="area.id">📍 {{ area.name }}</option>
+                                                </select>
+                                                <p class="text-[11px] text-gray-400 mt-1">Pilih area jika stok awal produk ini langsung dialokasikan untuk cabang/wilayah tertentu.</p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -492,6 +500,10 @@ import { Link } from '@inertiajs/vue3';
 const props = defineProps({
     products: Object,
     categories: Array,
+    areas: {
+        type: Array,
+        default: () => []
+    },
     filters: Object,
 });
 
@@ -564,6 +576,7 @@ const form = useForm({
     category: '',
     supplier: '',
     unit: 'pcs',
+    area_id: '',
     meter_per_roll: null,
     pcs_per_pack: null,
     cm_per_pcs: null,
@@ -658,6 +671,7 @@ const openModal = (product = null) => {
         form.requires_sn = product.requires_sn || false;
         form.requires_mac = product.requires_mac || false;
         form.description = product.description;
+        form.area_id = product.stocks?.[0]?.area_id || '';
         isNewCategory.value = !props.categories.includes(product.category);
     } else {
         form.id = null;
@@ -665,6 +679,7 @@ const openModal = (product = null) => {
         form.category = '';
         form.supplier = '';
         form.unit = 'pcs';
+        form.area_id = (props.areas && props.areas.length === 1) ? props.areas[0].id : '';
         form.meter_per_roll = null;
         form.pcs_per_pack = null;
         form.cm_per_pcs = null;

@@ -410,6 +410,21 @@
                             </div>
                         </div>
 
+                        <!-- Area / Wilayah Penempatan -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                Area / Wilayah Penempatan
+                                <span class="text-xs text-gray-400 font-normal">(Opsional)</span>
+                            </label>
+                            <div class="relative">
+                                <select v-model="form.area_id" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-white text-sm">
+                                    <option value="">🏢 Gudang Utama / Pusat (Tanpa Area Khusus)</option>
+                                    <option v-for="area in areas" :key="area.id" :value="area.id">📍 {{ area.name }}</option>
+                                </select>
+                            </div>
+                            <p class="text-[11px] text-gray-400 mt-1">Pilih area jika stok awal produk ini langsung dialokasikan untuk cabang atau area tertentu.</p>
+                        </div>
+
                         <!-- Kabel Calculator -->
                         <div v-if="form.category === 'Kabel' || form.category === 'Kabel Drop / Frecon'" class="bg-blue-50/50 border border-blue-100 rounded-xl p-4">
                             <div class="flex items-center gap-2 mb-3 text-blue-600 font-medium text-sm">
@@ -924,6 +939,7 @@ const form = useForm({
     supplier: '',
     category: '',
     unit: 'pcs',
+    area_id: '',
     meter_per_roll: 0,
     total_rolls: 0,
     pcs_per_pack: 0,
@@ -1122,6 +1138,16 @@ const openModal = (item = null) => {
         form.price_per_unit = item.price_per_unit || 0;
         form.selling_price = item.selling_price || 0;
         form.description = item.description || '';
+
+        // Tentukan area default dari filter aktif atau stok area yang sudah tercatat
+        let matchedArea = '';
+        if (filterArea.value && item.stocks?.some(s => String(s.area_id) === String(filterArea.value))) {
+            matchedArea = Number(filterArea.value);
+        } else if (item.stocks && item.stocks.length > 0) {
+            matchedArea = item.stocks[0].area_id;
+        }
+        form.area_id = matchedArea;
+
         if (form.category !== 'Kabel' && form.category !== 'Paku Klem' && form.category !== 'Isolasi') {
             calculateTotalPrice('modal');
             calculateTotalPrice('jual');
@@ -1130,6 +1156,7 @@ const openModal = (item = null) => {
         isEditing.value = false;
         editingId.value = null;
         form.reset();
+        form.area_id = (filterArea.value && filterArea.value !== '') ? Number(filterArea.value) : ((props.areas && props.areas.length === 1) ? props.areas[0].id : '');
         tempTotalModal.value = null;
         tempTotalJual.value = null;
     }
