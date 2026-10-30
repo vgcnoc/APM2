@@ -211,7 +211,7 @@ class NetworkMaintenanceController extends Controller
             });
         })->with('roles')->orderBy('name')->get(['id', 'name', 'phone', 'area_id', 'role']);
 
-        $employees = Employee::select('id', 'name', 'position', 'department')->get();
+        $employees = Employee::select('id', 'name', 'position')->get();
         $empMapByName = [];
         foreach ($employees as $e) {
             $key = mb_strtolower(trim((string)$e->name));
