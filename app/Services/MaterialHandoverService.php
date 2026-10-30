@@ -161,15 +161,15 @@ class MaterialHandoverService
             foreach ($items as $item) {
                 $materialId = $item['material_id'] ?? null;
                 $qty = (float) ($item['quantity'] ?? 0);
-                if (!$materialId || $qty <= 0) continue;
+                if ($qty <= 0) continue;
 
-                $material = Material::find($materialId);
-                if (!$material) continue;
+                $material = $materialId ? Material::find($materialId) : null;
+                $materialName = $item['material_name'] ?? ($material?->name ?? 'Material Tarikan / Diganti');
 
-                $unit = $item['unit'] ?? $material->unit ?? 'pcs';
-                $condition = $item['condition'] ?? 'Layak Pakai';
-                $ppu = (float) ($material->selling_price ?: ($material->price_per_unit ?? 0));
-                if (strtolower($material->category ?? '') === 'kabel' && strtolower($unit) === 'meter') {
+                $unit = $item['unit'] ?? ($material?->unit ?? 'pcs');
+                $condition = $item['condition'] ?? 'Rusak';
+                $ppu = $material ? (float) ($material->selling_price ?: ($material->price_per_unit ?? 0)) : 0;
+                if ($material && strtolower($material->category ?? '') === 'kabel' && strtolower($unit) === 'meter') {
                     $mpr = $material->meter_per_roll > 0 ? (float) $material->meter_per_roll : 1000;
                     $ppu = $ppu / $mpr;
                 }
@@ -177,17 +177,18 @@ class MaterialHandoverService
                 $totalCost += $itemCost;
 
                 $matStock = null;
-                if ($areaId) {
+                if ($areaId && $material) {
                     $matStock = MaterialStock::where('material_id', $material->id)
                         ->where('area_id', $areaId)
                         ->first();
                 }
 
-                $stockCurrent = $matStock ? (float) $matStock->stock : (float) $material->stock;
+                $stockCurrent = $matStock ? (float) $matStock->stock : ($material ? (float) $material->stock : 0);
 
                 MaterialTransactionItem::create([
                     'material_transaction_id' => $transaction->id,
-                    'material_id' => $material->id,
+                    'material_id' => $material?->id,
+                    'material_name' => $materialName,
                     'quantity' => $qty,
                     'unit' => $unit,
                     'price_per_unit' => $ppu,
@@ -195,6 +196,7 @@ class MaterialHandoverService
                     'stock_before' => $stockCurrent,
                     'stock_after' => $stockCurrent + $qty, // Proyeksi setelah serah terima
                     'condition' => $condition,
+                    'notes' => $item['notes'] ?? null,
                 ]);
             }
 
@@ -276,6 +278,11 @@ class MaterialHandoverService
                             ]);
                         }
                     }
+                } else {
+                    $trxItem->update([
+                        'quantity' => $newQty,
+                        'condition' => $newCondition,
+                    ]);
                 }
             }
 

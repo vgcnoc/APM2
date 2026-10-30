@@ -208,7 +208,7 @@
                                         <!-- Items List -->
                                         <div v-for="item in trx.items" :key="item.id" class="flex items-center justify-between gap-2 p-1.5 bg-gray-50 rounded-lg border border-gray-100">
                                             <div class="min-w-0">
-                                                <span class="font-bold text-gray-800">{{ item.material?.name || 'Material' }}</span>
+                                                <span class="font-bold text-gray-800">{{ item.material?.name || item.material_name || 'Material' }}</span>
                                                 <span class="text-gray-500 ml-1">({{ formatQty(item.quantity) }} {{ item.unit || item.material?.unit }})</span>
                                             </div>
                                             <div class="shrink-0">
@@ -669,7 +669,7 @@ const openReceiveModal = (trx) => {
     receiveForm.notes = '';
     receiveForm.items = (trx.items || []).map(it => ({
         id: it.id,
-        material_name: it.material?.name || 'Item',
+        material_name: it.material?.name || it.material_name || 'Item',
         quantity: it.quantity,
         unit: it.unit || it.material?.unit || 'pcs',
         condition: it.condition || 'Layak Pakai',
@@ -747,6 +747,7 @@ const getSourceLabel = (src) => {
         pgs: '⚡ PGS Sigap',
         pgk: '🛠️ PGK Komplain',
         pgj: '🌐 PGJ Jalur',
+        maintenance: '🛠️ Pemeliharaan Jalur',
         rollout_odc: '🏗️ Rollout ODC',
         rollout_odp: '🏗️ Rollout ODP',
         manual: 'Manual',
@@ -760,6 +761,7 @@ const getSourceBadgeClass = (src) => {
         pgs: 'bg-amber-100 text-amber-800',
         pgk: 'bg-rose-100 text-rose-800',
         pgj: 'bg-purple-100 text-purple-800',
+        maintenance: 'bg-teal-100 text-teal-800',
         rollout_odc: 'bg-emerald-100 text-emerald-800',
         rollout_odp: 'bg-teal-100 text-teal-800',
     };

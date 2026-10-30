@@ -32,6 +32,7 @@ class NetworkMaintenance extends Model
         'start_time',
         'end_time',
         'description',
+        'replaced_materials',
         'action_taken',
         'optical_power_before',
         'optical_power_after',
@@ -47,6 +48,7 @@ class NetworkMaintenance extends Model
         'completed_at' => 'datetime',
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
+        'replaced_materials' => 'array',
     ];
 
     protected $appends = [

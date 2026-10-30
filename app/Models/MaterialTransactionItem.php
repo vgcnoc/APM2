@@ -10,6 +10,7 @@ class MaterialTransactionItem extends Model
     protected $fillable = [
         'material_transaction_id',
         'material_id',
+        'material_name',
         'quantity',
         'unit',
         'price_per_unit',
@@ -18,6 +19,7 @@ class MaterialTransactionItem extends Model
         'stock_before',
         'stock_after',
         'condition',
+        'notes',
     ];
 
     protected static function booted(): void

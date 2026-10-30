@@ -127,6 +127,17 @@ function openQuickUpdateModal(item) {
         optical_power_after: item.optical_power_after || '',
         action_taken: item.action_taken || '',
         scheduled_date: item.scheduled_date || filterDate.value,
+        replaced_materials: Array.isArray(item.replaced_materials)
+            ? item.replaced_materials.map(r => ({
+                material_id: r.material_id || '',
+                name: r.name || r.material_name || '',
+                quantity: parseFloat(r.quantity) || 1,
+                unit: r.unit || 'pcs',
+                condition: r.condition || 'Rusak',
+                notes: r.notes || '',
+                is_manual: !r.material_id,
+            }))
+            : [],
         materials: (item.materials || []).map(m => {
             const prep = parseFloat(m.quantity_prepared) || 0;
             const used = parseFloat(m.quantity_used) || 0;
@@ -150,6 +161,37 @@ function openQuickUpdateModal(item) {
         }),
     };
     showUpdateModal.value = true;
+}
+
+function addReplacedMaterial() {
+    if (!updateForm.value.replaced_materials) {
+        updateForm.value.replaced_materials = [];
+    }
+    updateForm.value.replaced_materials.push({
+        material_id: '',
+        name: '',
+        quantity: 1,
+        unit: 'pcs',
+        condition: 'Rusak',
+        notes: '',
+        is_manual: true,
+    });
+}
+
+function removeReplacedMaterial(idx) {
+    if (updateForm.value.replaced_materials) {
+        updateForm.value.replaced_materials.splice(idx, 1);
+    }
+}
+
+function onReplacedMaterialSelect(rep) {
+    if (rep.material_id) {
+        const mat = (props.materials || []).find(m => m.id == rep.material_id);
+        if (mat) {
+            rep.name = mat.name;
+            rep.unit = mat.unit || 'pcs';
+        }
+    }
 }
 
 function selectUpdateStatus(newStatus) {
@@ -233,6 +275,23 @@ async function submitUpdateMaintenance() {
         // Update laporan material
         if (updateForm.value.materials && updateForm.value.materials.length > 0) {
             payload.append('materials', JSON.stringify(updateForm.value.materials));
+        }
+
+        // Material yang diganti / dicabut di lapangan
+        if (updateForm.value.replaced_materials && updateForm.value.replaced_materials.length > 0) {
+            const validReplaced = updateForm.value.replaced_materials
+                .filter(r => (r.name && r.name.trim()) || r.material_id)
+                .map(r => ({
+                    material_id: r.material_id || null,
+                    name: (r.name || '').trim(),
+                    quantity: parseFloat(r.quantity) || 1,
+                    unit: r.unit || 'pcs',
+                    condition: r.condition || 'Rusak',
+                    notes: r.notes || '',
+                }));
+            payload.append('replaced_materials', JSON.stringify(validReplaced));
+        } else {
+            payload.append('replaced_materials', JSON.stringify([]));
         }
 
         const res = await axios.post(`/operational/network-maintenance/${activeMaintenanceItem.value.id}/quick-update`, payload);
@@ -1035,6 +1094,28 @@ function getCategoryBadgeClass(category) {
                         </div>
 
                         <!-- Persiapan Bekal & Pemakaian Material Petugas -->
+                                                <!-- Material yang Diganti / Dicabut (Retur Gudang) -->
+                        <div v-if="item.replaced_materials && item.replaced_materials.length > 0" class="md:col-span-2 p-2.5 rounded-xl bg-rose-50/60 dark:bg-rose-950/30 border border-rose-200/80 dark:border-rose-900/50 space-y-1">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] font-black uppercase tracking-wider text-rose-800 dark:text-rose-300 flex items-center gap-1">
+                                    🔄 Material Diganti / Dicabut (Retur Gudang)
+                                </span>
+                                <span class="text-[10px] font-medium text-rose-700 dark:text-rose-400">
+                                    {{ item.replaced_materials.length }} Item
+                                </span>
+                            </div>
+                            <div class="flex flex-wrap gap-1.5 pt-0.5">
+                                <div v-for="(rm, rmIdx) in item.replaced_materials" :key="'rep-card-' + rmIdx" class="inline-flex items-center gap-1 text-[11px] bg-white dark:bg-slate-900 px-2 py-0.5 rounded-md border border-rose-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 shadow-2xs">
+                                    <span class="font-bold text-rose-600 dark:text-rose-400">{{ rm.name || rm.material_name }}:</span>
+                                    <span class="font-mono font-semibold">{{ rm.quantity }} {{ rm.unit }}</span>
+                                    <span class="text-[9px] px-1.5 py-0.5 rounded font-bold" :class="rm.condition === 'Layak Pakai' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'">
+                                        {{ rm.condition || 'Rusak' }}
+                                    </span>
+                                    <span v-if="rm.notes" class="text-[10px] text-slate-500 italic">({{ rm.notes }})</span>
+                                </div>
+                            </div>
+                        </div>
+
                         <div v-if="item.materials && item.materials.length > 0" class="md:col-span-2 p-2.5 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/50 space-y-1">
                             <div class="flex items-center justify-between">
                                 <span class="text-[10px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 flex items-center gap-1">
@@ -1331,26 +1412,165 @@ function getCategoryBadgeClass(category) {
                         </div>
                     </div>
 
-                    <!-- Jam Selesai Pengerjaan (Pindah di Bawah Sesuai Permintaan) -->
-                    <div class="p-3.5 bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200/80 dark:border-teal-900/50 rounded-2xl">
-                        <div class="flex items-center justify-between mb-1.5">
-                            <label class="text-xs font-bold text-teal-900 dark:text-teal-300 flex items-center gap-1.5 uppercase">
-                                <span>🏁</span>
-                                <span>Jam Selesai Pengerjaan:</span>
-                            </label>
-                            <button 
-                                type="button" 
-                                @click="updateForm.end_time = getCurrentTimeStr()" 
-                                class="text-xs text-teal-700 dark:text-teal-300 hover:underline font-bold flex items-center gap-1 cursor-pointer bg-white dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-teal-200 dark:border-teal-700 shadow-2xs"
+                                        <!-- Material Yang Diganti / Dicabut di Lapangan (Ketik Manual / Katalog -> Serah Terima & Retur) -->
+                    <div class="space-y-3 p-3.5 rounded-2xl bg-rose-50/40 dark:bg-rose-950/20 border border-rose-200/80 dark:border-rose-900/50">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <div>
+                                <label class="block text-xs font-bold text-rose-800 dark:text-rose-300 uppercase flex items-center gap-1.5">
+                                    <span>🔄</span>
+                                    <span>Material Yang Diganti / Dicabut di Lapangan</span>
+                                </label>
+                                <p class="text-[10px] text-rose-600 dark:text-rose-400 font-medium mt-0.5">
+                                    Ketik manual atau pilih katalog. Otomatis masuk ke Serah Terima &amp; Retur Gudang.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                @click="addReplacedMaterial"
+                                class="px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1 shadow-sm transition cursor-pointer"
                             >
-                                ⏱️ Set Jam Sekarang
+                                <span>+</span>
+                                <span>Tambah Material Diganti</span>
                             </button>
                         </div>
-                        <input
-                            type="time"
-                            v-model="updateForm.end_time"
-                            class="w-full px-3 py-2 text-sm font-black rounded-xl bg-white dark:bg-slate-800 border border-teal-300 dark:border-teal-700 text-teal-950 dark:text-white"
-                        />
+
+                        <!-- Empty state -->
+                        <div v-if="!updateForm.replaced_materials || updateForm.replaced_materials.length === 0" class="p-3 text-center border border-dashed border-rose-200 dark:border-rose-900/60 rounded-xl bg-white/60 dark:bg-slate-900/40 text-[11px] text-slate-500 dark:text-slate-400">
+                            Tidak ada material yang diganti/dicabut di lapangan. Klik tombol di atas jika ada kabel putus, modem rusak, atau perangkat yang ditarik.
+                        </div>
+
+                        <!-- List Material Diganti -->
+                        <div v-else class="space-y-2.5">
+                            <div
+                                v-for="(rep, rIdx) in updateForm.replaced_materials"
+                                :key="'rep-' + rIdx"
+                                class="p-3 rounded-xl bg-white dark:bg-slate-900 border border-rose-200/90 dark:border-rose-900/60 space-y-2 text-xs shadow-2xs"
+                            >
+                                <div class="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-100 dark:border-slate-800">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-5 h-5 rounded-full bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 font-black text-[10px] flex items-center justify-center">
+                                            #{{ rIdx + 1 }}
+                                        </span>
+                                        <span class="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                                            Barang Tarikan / Penggantian Lapangan
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center gap-1.5">
+                                        <!-- Switch Ketik Manual vs Pilih Katalog -->
+                                        <button
+                                            type="button"
+                                            @click="rep.is_manual = !rep.is_manual; if (rep.is_manual) { rep.material_id = ''; } else { rep.name = ''; }"
+                                            class="px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer border"
+                                            :class="rep.is_manual 
+                                                ? 'bg-amber-50 border-amber-300 text-amber-800 dark:bg-amber-950/50 dark:border-amber-700 dark:text-amber-300' 
+                                                : 'bg-indigo-50 border-indigo-300 text-indigo-800 dark:bg-indigo-950/50 dark:border-indigo-700 dark:text-indigo-300'"
+                                        >
+                                            {{ rep.is_manual ? '✍️ Mode: Ketik Manual' : '📦 Mode: Pilih Katalog' }}
+                                        </button>
+                                        <!-- Hapus Baris -->
+                                        <button
+                                            type="button"
+                                            @click="removeReplacedMaterial(rIdx)"
+                                            class="p-1 rounded text-rose-600 hover:text-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer"
+                                            title="Hapus baris ini"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Input Nama Barang -->
+                                <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                                    <div class="sm:col-span-7">
+                                        <label class="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
+                                            Nama Material / Barang Diganti:
+                                        </label>
+                                        <div v-if="rep.is_manual">
+                                            <input
+                                                type="text"
+                                                v-model="rep.name"
+                                                placeholder="Ketik manual: Contoh Kabel Dropcore Bekas, Modem Rusak..."
+                                                class="w-full px-2.5 py-1.5 rounded-lg border border-rose-300 dark:border-rose-700 bg-rose-50/30 dark:bg-slate-800 text-slate-800 dark:text-white font-medium text-xs focus:ring-1 focus:ring-rose-500"
+                                            />
+                                        </div>
+                                        <div v-else>
+                                            <select
+                                                v-model="rep.material_id"
+                                                @change="onReplacedMaterialSelect(rep)"
+                                                class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs focus:ring-1 focus:ring-rose-500"
+                                            >
+                                                <option value="">-- Pilih dari Katalog Material --</option>
+                                                <option v-for="mat in (props.materials || [])" :key="mat.id" :value="mat.id">
+                                                    {{ mat.name }} ({{ mat.unit || 'pcs' }})
+                                                </option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <!-- Jumlah & Satuan -->
+                                    <div class="sm:col-span-5 grid grid-cols-2 gap-1.5">
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
+                                                Jumlah:
+                                            </label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                min="0.01"
+                                                v-model.number="rep.quantity"
+                                                class="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white font-bold text-xs"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
+                                                Satuan:
+                                            </label>
+                                            <input
+                                                type="text"
+                                                v-model="rep.unit"
+                                                placeholder="pcs / meter"
+                                                class="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-semibold"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Kondisi Barang & Keterangan / Catatan -->
+                                <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-1 border-t border-slate-100 dark:border-slate-800/80">
+                                    <div class="sm:col-span-4">
+                                        <label class="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
+                                            Kondisi Fisik:
+                                        </label>
+                                        <select
+                                            v-model="rep.condition"
+                                            class="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold"
+                                            :class="{
+                                                'text-rose-600 dark:text-rose-400': rep.condition === 'Rusak',
+                                                'text-amber-600 dark:text-amber-400': rep.condition === 'Tidak Layak',
+                                                'text-emerald-600 dark:text-emerald-400': rep.condition === 'Layak Pakai',
+                                            }"
+                                        >
+                                            <option value="Rusak">❌ Rusak (Default)</option>
+                                            <option value="Tidak Layak">⚠️ Tidak Layak Pakai</option>
+                                            <option value="Layak Pakai">✅ Layak Pakai (Bisa Re-use)</option>
+                                        </select>
+                                    </div>
+                                    <div class="sm:col-span-8">
+                                        <label class="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
+                                            Keterangan Lapangan / Penyebab Diganti:
+                                        </label>
+                                        <input
+                                            type="text"
+                                            v-model="rep.notes"
+                                            placeholder="Contoh: Putus terlindas truk / Meleleh / Rusak sambaran petir"
+                                            class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-white text-xs"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- 5. Upload Foto Sesudah / Dokumentasi (Bisa Lebih Dari 1 & Auto Kompres Cerdas) -->
@@ -1436,6 +1656,28 @@ function getCategoryBadgeClass(category) {
                                 Mendukung multi-foto sekaligus. Tiap foto kamera HP otomatis dikompres ke ~200-350KB agar upload instan tanpa menguras kuota.
                             </p>
                         </div>
+                    </div>
+
+                    <!-- Jam Selesai Pengerjaan (Pindah di Bawah Sesuai Permintaan) -->
+                    <div class="p-3.5 bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200/80 dark:border-teal-900/50 rounded-2xl">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="text-xs font-bold text-teal-900 dark:text-teal-300 flex items-center gap-1.5 uppercase">
+                                <span>🏁</span>
+                                <span>Jam Selesai Pengerjaan:</span>
+                            </label>
+                            <button 
+                                type="button" 
+                                @click="updateForm.end_time = getCurrentTimeStr()" 
+                                class="text-xs text-teal-700 dark:text-teal-300 hover:underline font-bold flex items-center gap-1 cursor-pointer bg-white dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-teal-200 dark:border-teal-700 shadow-2xs"
+                            >
+                                ⏱️ Set Jam Sekarang
+                            </button>
+                        </div>
+                        <input
+                            type="time"
+                            v-model="updateForm.end_time"
+                            class="w-full px-3 py-2 text-sm font-black rounded-xl bg-white dark:bg-slate-800 border border-teal-300 dark:border-teal-700 text-teal-950 dark:text-white"
+                        />
                     </div>
 
                     </div>

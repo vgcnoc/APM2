@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use App\Services\ImageCompressionService;
+use App\Services\MaterialHandoverService;
 
 class NetworkMaintenanceController extends Controller
 {
@@ -167,6 +168,7 @@ class NetworkMaintenanceController extends Controller
                 'photo_before_urls' => $m->photo_before_urls,
                 'created_by' => $m->created_by,
                 'is_my_task' => $isMyTask,
+                'replaced_materials' => $m->replaced_materials ?? [],
                 'materials' => $m->materials->map(fn($mat) => [
                     'id' => $mat->id,
                     'material_id' => $mat->material_id,
@@ -669,6 +671,93 @@ class NetworkMaintenanceController extends Controller
                                         }
                                     }
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Update & Ajukan Material Yang Diganti / Dicabut ke Serah Terima & Retur
+            if ($request->has('replaced_materials')) {
+                $repRaw = $request->input('replaced_materials');
+                if (is_string($repRaw)) {
+                    $repRaw = json_decode($repRaw, true);
+                }
+                if (is_array($repRaw)) {
+                    $validReplaced = [];
+                    $handoverItems = [];
+
+                    foreach ($repRaw as $rItem) {
+                        $name = trim($rItem['name'] ?? ($rItem['material_name'] ?? ''));
+                        $qty = (float) ($rItem['quantity'] ?? ($rItem['qty'] ?? 0));
+                        if (!$name || $qty <= 0) continue;
+
+                        $matId = !empty($rItem['material_id']) ? (int) $rItem['material_id'] : null;
+                        $unit = trim($rItem['unit'] ?? 'pcs');
+                        $condition = trim($rItem['condition'] ?? 'Rusak');
+                        $notes = trim($rItem['notes'] ?? ($rItem['keterangan'] ?? ''));
+
+                        $validReplaced[] = [
+                            'material_id' => $matId,
+                            'name' => $name,
+                            'material_name' => $name,
+                            'quantity' => $qty,
+                            'unit' => $unit,
+                            'condition' => $condition,
+                            'notes' => $notes,
+                        ];
+
+                        $handoverItems[] = [
+                            'material_id' => $matId,
+                            'material_name' => $name,
+                            'quantity' => $qty,
+                            'unit' => $unit,
+                            'condition' => $condition,
+                            'notes' => $notes,
+                        ];
+                    }
+
+                    $maintenance->update(['replaced_materials' => $validReplaced]);
+
+                    // Ajukan otomatis ke Sistem Serah Terima & Retur jika ada material yang diganti/dicabut
+                    if (!empty($handoverItems)) {
+                        $techNames = $maintenance->technicians->pluck('name')->filter()->toArray();
+                        $techStr = !empty($techNames) ? implode(', ', $techNames) : (auth()->user()?->name ?? 'Tim Maintenance');
+
+                        $existingReturnTrx = MaterialTransaction::where('source_type', 'maintenance')
+                            ->where('source_id', $maintenance->id)
+                            ->where('request_type', 'return_handover')
+                            ->first();
+
+                        if ($existingReturnTrx) {
+                            if ($existingReturnTrx->handover_status === 'pending_handover' || $existingReturnTrx->status === 'pending') {
+                                $existingReturnTrx->items()->delete();
+                                foreach ($handoverItems as $hItem) {
+                                    MaterialTransactionItem::create([
+                                        'material_transaction_id' => $existingReturnTrx->id,
+                                        'material_id' => $hItem['material_id'],
+                                        'material_name' => $hItem['material_name'],
+                                        'quantity' => $hItem['quantity'],
+                                        'unit' => $hItem['unit'],
+                                        'condition' => $hItem['condition'],
+                                        'notes' => $hItem['notes'],
+                                    ]);
+                                }
+                            }
+                        } else {
+                            try {
+                                MaterialHandoverService::submitReturnHandover(
+                                    sourceType: 'maintenance',
+                                    sourceId: $maintenance->id,
+                                    sourceRef: $maintenance->maintenance_number,
+                                    items: $handoverItems,
+                                    technicianName: $techStr,
+                                    areaId: $maintenance->area_id,
+                                    notes: "Material diganti / dicabut dari kegiatan Pemeliharaan Jalur [{$maintenance->maintenance_number} - {$maintenance->title}]. " . ($maintenance->action_taken ? "Tindakan: {$maintenance->action_taken}" : ''),
+                                    user: auth()->user()
+                                );
+                            } catch (\Throwable $he) {
+                                Log::warning('[NetworkMaintenanceController::quickUpdate] Handover Warning: ' . $he->getMessage());
                             }
                         }
                     }

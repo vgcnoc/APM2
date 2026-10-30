@@ -1094,6 +1094,7 @@ class OperationalDailyProgressController extends Controller
                 'photo_after' => $m->photo_after_urls[0] ?? ($m->photo_after ? Storage::url($m->photo_after) : null),
                 'photo_after_urls' => $m->photo_after_urls,
                 'photo_before_urls' => $m->photo_before_urls,
+                'replaced_materials' => $m->replaced_materials ?? [],
                 'materials' => $m->materials->map(fn($mat) => [
                     'id' => $mat->id,
                     'material_id' => $mat->material_id,
