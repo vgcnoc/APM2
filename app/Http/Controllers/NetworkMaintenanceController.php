@@ -8,6 +8,7 @@ use App\Models\Area;
 use App\Models\Odp;
 use App\Models\Odc;
 use App\Models\User;
+use App\Models\Employee;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -157,8 +158,8 @@ class NetworkMaintenanceController extends Controller
             'my_tasks' => collect($maintenanceList)->where('is_my_task', true)->count(),
         ];
 
-        // Daftar teknisi lapangan untuk form create
-        $availableTechnicians = User::where(function ($q) {
+        // Daftar teknisi dan maintenance lapangan untuk form create
+        $rawTechnicians = User::where(function ($q) {
             $q->where('is_active', true)->orWhereNull('is_active');
         })->where(function ($q) {
             $q->whereHas('roles', function ($r) {
@@ -176,7 +177,41 @@ class NetworkMaintenanceController extends Controller
                    ->orWhere('role', 'LIKE', '%jaringan%')
                    ->orWhere('role', 'LIKE', '%serbu%');
             });
-        })->orderBy('name')->get(['id', 'name', 'phone', 'area_id']);
+        })->with('roles')->orderBy('name')->get(['id', 'name', 'phone', 'area_id', 'role']);
+
+        $employees = Employee::select('id', 'name', 'position', 'department')->get();
+        $empMapByName = [];
+        foreach ($employees as $e) {
+            $key = mb_strtolower(trim((string)$e->name));
+            if ($key !== '' && !isset($empMapByName[$key])) {
+                $empMapByName[$key] = $e;
+            }
+        }
+
+        $availableTechnicians = $rawTechnicians->map(function ($u) use ($empMapByName) {
+            $nm = mb_strtolower(trim((string)$u->name));
+            $emp = $empMapByName[$nm] ?? null;
+            $pos = mb_strtolower(trim((string)($emp?->position ?? '')));
+            $roleCol = mb_strtolower(trim((string)($u->role ?? '')));
+            $isMaint = str_contains($pos, 'maintenance') || str_contains($roleCol, 'maintenance');
+            if (!$isMaint && $u->relationLoaded('roles')) {
+                foreach ($u->roles as $r) {
+                    if (str_contains(mb_strtolower((string)$r->name), 'maintenance')) {
+                        $isMaint = true;
+                        break;
+                    }
+                }
+            }
+            return [
+                'id' => $u->id,
+                'name' => $u->name,
+                'phone' => $u->phone,
+                'area_id' => $u->area_id,
+                'is_maintenance' => $isMaint,
+                'division' => $isMaint ? 'maintenance' : 'teknisi',
+                'role_label' => $isMaint ? 'Maintenance' : 'Teknisi',
+            ];
+        });
 
         $availableOdps = Odp::select('id', 'name', 'area_id')->orderBy('name')->limit(500)->get();
         $availableOdcs = Odc::select('id', 'name', 'area_id')->orderBy('name')->limit(150)->get();

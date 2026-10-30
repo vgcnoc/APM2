@@ -838,15 +838,15 @@ function getCategoryBadgeClass(category) {
         <!-- ═══════════════════════════════════════════════════════════ -->
         <div 
             v-if="showUpdateModal && activeMaintenanceItem" 
-            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto"
             @click.self="showUpdateModal = false"
         >
-            <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 my-8 animate-in fade-in zoom-in-95 duration-200">
+            <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 my-auto animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
                 
-                <!-- Modal Header -->
-                <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                <!-- Modal Header (Pinned) -->
+                <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
                     <div class="flex items-center gap-2.5">
-                        <div class="w-9 h-9 rounded-2xl bg-teal-500 text-white flex items-center justify-center font-bold text-lg">
+                        <div class="w-9 h-9 rounded-2xl bg-teal-500 text-white flex items-center justify-center font-bold text-lg shadow-sm">
                             📝
                         </div>
                         <div>
@@ -862,21 +862,22 @@ function getCategoryBadgeClass(category) {
                     </button>
                 </div>
 
-                <!-- Info Target & Petugas -->
-                <div class="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs space-y-1.5">
-                    <div class="flex items-center justify-between">
-                        <span class="text-slate-400">Target & Wilayah:</span>
-                        <span class="font-bold text-teal-600 dark:text-teal-400 font-mono">
-                            {{ activeMaintenanceItem.category_icon || '🛠️' }} {{ activeMaintenanceItem.location }} ({{ activeMaintenanceItem.area_name }})
-                        </span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-slate-400">Petugas Ditugaskan:</span>
-                        <span class="font-semibold text-slate-700 dark:text-slate-200">👷 {{ activeMaintenanceItem.technicians }}</span>
-                    </div>
-                </div>
+                <form @submit.prevent="submitUpdateMaintenance" class="flex flex-col min-h-0 flex-1 overflow-hidden">
+                    <div class="p-6 space-y-4 overflow-y-auto flex-1 overscroll-contain">
 
-                <form @submit.prevent="submitUpdateMaintenance" class="space-y-3.5">
+                        <!-- Info Target & Petugas -->
+                        <div class="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-400">Target & Wilayah:</span>
+                                <span class="font-bold text-teal-600 dark:text-teal-400 font-mono">
+                                    {{ activeMaintenanceItem.category_icon || '🛠️' }} {{ activeMaintenanceItem.location }} ({{ activeMaintenanceItem.area_name }})
+                                </span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-400">Petugas Ditugaskan:</span>
+                                <span class="font-semibold text-slate-700 dark:text-slate-200">👷 {{ activeMaintenanceItem.technicians }}</span>
+                            </div>
+                        </div>
                     
                     <!-- 1. Pilihan Status -->
                     <div>
@@ -1059,8 +1060,10 @@ function getCategoryBadgeClass(category) {
                         </div>
                     </div>
 
-                    <!-- Modal Actions -->
-                    <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                    </div>
+
+                    <!-- Modal Actions (Pinned) -->
+                    <div class="flex items-center justify-end gap-2 px-6 py-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 shrink-0">
                         <button
                             type="button"
                             @click="showUpdateModal = false"
@@ -1091,14 +1094,15 @@ function getCategoryBadgeClass(category) {
         <!-- ═══════════════════════════════════════════════════════════ -->
         <div 
             v-if="showCreateModal" 
-            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto"
             @click.self="showCreateModal = false"
         >
-            <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 my-8 animate-in fade-in zoom-in-95 duration-200">
+            <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 my-auto animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
                 
-                <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                <!-- Fixed Header (Pinned at Top) -->
+                <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
                     <div class="flex items-center gap-2.5">
-                        <div class="w-9 h-9 rounded-2xl bg-teal-600 text-white flex items-center justify-center font-bold text-lg">
+                        <div class="w-9 h-9 rounded-2xl bg-teal-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
                             🔧
                         </div>
                         <div>
@@ -1114,7 +1118,8 @@ function getCategoryBadgeClass(category) {
                     </button>
                 </div>
 
-                <form @submit.prevent="submitCreateMaintenance" class="space-y-3.5">
+                <form @submit.prevent="submitCreateMaintenance" class="flex flex-col min-h-0 flex-1 overflow-hidden">
+                    <div class="p-6 space-y-3.5 overflow-y-auto flex-1 overscroll-contain">
                     
                     <!-- Kategori -->
                     <div>
@@ -1173,7 +1178,7 @@ function getCategoryBadgeClass(category) {
                                 type="button"
                                 @click="createForm.asset_type = 'manual'"
                                 class="p-2 text-xs font-bold rounded-xl border text-center transition-all cursor-pointer"
-                                :class="createForm.asset_type === 'manual' ? 'bg-teal-50 border-teal-500 text-teal-800' : 'border-slate-200 text-slate-600'"
+                                :class="createForm.asset_type === 'manual' ? 'bg-teal-50 dark:bg-teal-950/50 border-teal-500 text-teal-800 dark:text-teal-300' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'"
                             >
                                 📍 Rute Jalan
                             </button>
@@ -1181,7 +1186,7 @@ function getCategoryBadgeClass(category) {
                                 type="button"
                                 @click="createForm.asset_type = 'odp'"
                                 class="p-2 text-xs font-bold rounded-xl border text-center transition-all cursor-pointer"
-                                :class="createForm.asset_type === 'odp' ? 'bg-teal-50 border-teal-500 text-teal-800' : 'border-slate-200 text-slate-600'"
+                                :class="createForm.asset_type === 'odp' ? 'bg-teal-50 dark:bg-teal-950/50 border-teal-500 text-teal-800 dark:text-teal-300' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'"
                             >
                                 📦 Box ODP
                             </button>
@@ -1189,7 +1194,7 @@ function getCategoryBadgeClass(category) {
                                 type="button"
                                 @click="createForm.asset_type = 'odc'"
                                 class="p-2 text-xs font-bold rounded-xl border text-center transition-all cursor-pointer"
-                                :class="createForm.asset_type === 'odc' ? 'bg-teal-50 border-teal-500 text-teal-800' : 'border-slate-200 text-slate-600'"
+                                :class="createForm.asset_type === 'odc' ? 'bg-teal-50 dark:bg-teal-950/50 border-teal-500 text-teal-800 dark:text-teal-300' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'"
                             >
                                 🗄️ Kabinet ODC
                             </button>
@@ -1240,7 +1245,7 @@ function getCategoryBadgeClass(category) {
                                 type="date"
                                 v-model="createForm.scheduled_date"
                                 required
-                                class="w-full px-2.5 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 text-slate-900 dark:text-white"
+                                class="w-full px-2.5 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
                             />
                         </div>
                         <div>
@@ -1248,14 +1253,14 @@ function getCategoryBadgeClass(category) {
                             <input
                                 type="time"
                                 v-model="createForm.scheduled_time"
-                                class="w-full px-2.5 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 text-slate-900 dark:text-white"
+                                class="w-full px-2.5 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
                             />
                         </div>
                         <div>
                             <label class="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Prioritas:</label>
                             <select
                                 v-model="createForm.priority"
-                                class="w-full px-2.5 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 text-slate-900 dark:text-white"
+                                class="w-full px-2.5 py-1.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
                             >
                                 <option value="normal">Normal</option>
                                 <option value="urgent">🔥 Mendesak</option>
@@ -1278,23 +1283,31 @@ function getCategoryBadgeClass(category) {
                                 {{ showAllAreaTechs ? 'Filter Sesuai Area' : 'Tampilkan Semua Area' }}
                             </button>
                         </div>
-                        <div class="max-h-32 overflow-y-auto p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 space-y-1.5 text-xs">
+                        <div class="max-h-36 overflow-y-auto p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 space-y-1 text-xs">
                             <template v-if="filteredTechnicians.length">
                                 <label
                                     v-for="t in filteredTechnicians"
                                     :key="t.id"
-                                    class="flex items-center gap-2 cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700/50 p-1 rounded-lg"
+                                    class="flex items-center justify-between gap-2 cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700/50 px-2 py-1.5 rounded-lg transition-colors"
                                 >
-                                    <input
-                                        type="checkbox"
-                                        :value="t.id"
-                                        v-model="createForm.technician_ids"
-                                        class="rounded text-teal-600 focus:ring-teal-500"
-                                    />
-                                    <span class="text-slate-800 dark:text-slate-200 font-medium">{{ t.name }}</span>
+                                    <div class="flex items-center gap-2 min-w-0">
+                                        <input
+                                            type="checkbox"
+                                            :value="t.id"
+                                            v-model="createForm.technician_ids"
+                                            class="rounded text-teal-600 focus:ring-teal-500"
+                                        />
+                                        <span class="text-slate-800 dark:text-slate-200 font-medium truncate">{{ t.name }}</span>
+                                    </div>
+                                    <span 
+                                        class="text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0 uppercase"
+                                        :class="t.is_maintenance ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 dark:border-amber-700' : 'bg-blue-100 text-blue-800 dark:bg-blue-950/70 dark:text-blue-300 border border-blue-300 dark:border-blue-700'"
+                                    >
+                                        {{ t.role_label || (t.is_maintenance ? 'Maintenance' : 'Teknisi') }}
+                                    </span>
                                 </label>
                             </template>
-                            <p v-else class="text-xs text-slate-400 italic py-1 text-center">Belum ada teknisi terdaftar pada area ini.</p>
+                            <p v-else class="text-xs text-slate-400 italic py-1 text-center">Belum ada petugas terdaftar pada area ini.</p>
                         </div>
                     </div>
 
@@ -1307,7 +1320,7 @@ function getCategoryBadgeClass(category) {
                             v-model="createForm.description"
                             rows="2"
                             placeholder="Contoh: Kabel kendur melintang di atas jalan raya, perlu dinaikkan dan pasang span clamp baru."
-                            class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500"
+                            class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500"
                         ></textarea>
                     </div>
 
@@ -1371,8 +1384,10 @@ function getCategoryBadgeClass(category) {
                         </div>
                     </div>
 
-                    <!-- Modal Actions -->
-                    <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                    </div>
+
+                    <!-- Modal Actions (Pinned at Bottom) -->
+                    <div class="flex items-center justify-end gap-2 px-6 py-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 shrink-0">
                         <button
                             type="button"
                             @click="showCreateModal = false"

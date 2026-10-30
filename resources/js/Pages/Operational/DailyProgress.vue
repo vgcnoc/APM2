@@ -1042,14 +1042,14 @@
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <div 
             v-if="showCreateModal" 
-            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto"
             @click.self="showCreateModal = false"
         >
-            <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 my-8 animate-in fade-in zoom-in-95 duration-200">
+            <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 my-auto animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
                 
-                <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
                     <div class="flex items-center gap-2.5">
-                        <div class="w-9 h-9 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold text-lg">
+                        <div class="w-9 h-9 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold text-lg shadow-sm">
                             🛠️
                         </div>
                         <div>
@@ -1065,7 +1065,8 @@
                     </button>
                 </div>
 
-                <form @submit.prevent="submitCreateMaintenance" class="space-y-3.5">
+                <form @submit.prevent="submitCreateMaintenance" class="flex flex-col min-h-0 flex-1 overflow-hidden">
+                    <div class="p-6 space-y-3.5 overflow-y-auto flex-1 overscroll-contain">
                     
                     <!-- 1. Kategori Kegiatan -->
                     <div>
@@ -1288,8 +1289,10 @@
                         ></textarea>
                     </div>
 
-                    <!-- Modal Actions -->
-                    <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                    </div>
+
+                    <!-- Modal Actions (Pinned) -->
+                    <div class="flex items-center justify-end gap-2 px-6 py-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 shrink-0">
                         <button
                             type="button"
                             @click="showCreateModal = false"
@@ -1319,14 +1322,14 @@
         <!-- ═══════════════════════════════════════════════════════════════ -->
         <div 
             v-if="showUpdateModal && activeMaintenanceItem" 
-            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto"
             @click.self="showUpdateModal = false"
         >
-            <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 my-8 animate-in fade-in zoom-in-95 duration-200">
+            <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 my-auto animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
                 
-                <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
                     <div class="flex items-center gap-2.5">
-                        <div class="w-9 h-9 rounded-2xl bg-teal-500 text-white flex items-center justify-center font-bold text-lg">
+                        <div class="w-9 h-9 rounded-2xl bg-teal-500 text-white flex items-center justify-center font-bold text-lg shadow-sm">
                             📝
                         </div>
                         <div>
@@ -1342,21 +1345,22 @@
                     </button>
                 </div>
 
-                <!-- Info Ringkas Target & Petugas -->
-                <div class="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs space-y-1.5">
-                    <div class="flex items-center justify-between">
-                        <span class="text-slate-400">Target & Wilayah:</span>
-                        <span class="font-bold text-teal-600 dark:text-teal-400 font-mono">
-                            {{ activeMaintenanceItem.category_icon || '🛠️' }} {{ activeMaintenanceItem.location }} ({{ activeMaintenanceItem.area_name }})
-                        </span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-slate-400">Petugas Ditugaskan:</span>
-                        <span class="font-semibold text-slate-700 dark:text-slate-200">👷 {{ activeMaintenanceItem.technicians }}</span>
-                    </div>
-                </div>
+                <form @submit.prevent="submitUpdateMaintenance" class="flex flex-col min-h-0 flex-1 overflow-hidden">
+                    <div class="p-6 space-y-4 overflow-y-auto flex-1 overscroll-contain">
 
-                <form @submit.prevent="submitUpdateMaintenance" class="space-y-3.5">
+                        <!-- Info Ringkas Target & Petugas -->
+                        <div class="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-400">Target & Wilayah:</span>
+                                <span class="font-bold text-teal-600 dark:text-teal-400 font-mono">
+                                    {{ activeMaintenanceItem.category_icon || '🛠️' }} {{ activeMaintenanceItem.location }} ({{ activeMaintenanceItem.area_name }})
+                                </span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-400">Petugas Ditugaskan:</span>
+                                <span class="font-semibold text-slate-700 dark:text-slate-200">👷 {{ activeMaintenanceItem.technicians }}</span>
+                            </div>
+                        </div>
                     
                     <!-- 1. Pilihan Status -->
                     <div>
@@ -1539,8 +1543,10 @@
                         </div>
                     </div>
 
-                    <!-- Modal Actions -->
-                    <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                    </div>
+
+                    <!-- Modal Actions (Pinned) -->
+                    <div class="flex items-center justify-end gap-2 px-6 py-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 shrink-0">
                         <button
                             type="button"
                             @click="showUpdateModal = false"

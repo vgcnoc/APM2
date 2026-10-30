@@ -1,69 +1,45 @@
 const { Client } = require('ssh2');
 
 const conn = new Client();
+const commands = [
+  'cd /var/www/APM2',
+  'git reset --hard HEAD',
+  'git clean -fd public/build',
+  'git pull origin main',
+  'php artisan optimize:clear',
+  'php artisan config:cache',
+  'php artisan route:cache',
+  'php artisan view:cache',
+  'php artisan queue:restart',
+  'systemctl is-active php8.2-fpm && systemctl reload php8.2-fpm || true',
+  'systemctl is-active nginx && systemctl reload nginx || true',
+  'echo "DEPLOYMENT_SUCCESSFUL"'
+].join(' && ');
 
-const script = `
-cd /var/www/APM2
-git fetch origin
-git reset --hard origin/main
-git clean -fd -e public/build
-php artisan migrate --force
-composer dump-autoload -o
-php artisan permissions:sync
-npm install --legacy-peer-deps
-npm run build
-php artisan optimize:clear
-rm -rf storage/framework/cache/data/*
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-chown -R www-data:www-data storage bootstrap/cache public/build
-chmod -R 777 storage bootstrap/cache
-chmod -R 775 public/build
-setfacl -R -d -m u:www-data:rwx,g:www-data:rwx,o:rwx /var/www/APM2/storage /var/www/APM2/bootstrap/cache 2>/dev/null || true
-setfacl -R -m u:www-data:rwx,g:www-data:rwx,o:rwx /var/www/APM2/storage /var/www/APM2/bootstrap/cache 2>/dev/null || true
-
-# Pastikan cron scheduler selalu dijalankan oleh user www-data (bukan root)
-if crontab -l 2>/dev/null | grep -q "schedule:run"; then
-    crontab -r 2>/dev/null || true
-fi
-if ! crontab -u www-data -l 2>/dev/null | grep -q "schedule:run"; then
-    echo "* * * * * cd /var/www/APM2 && php artisan schedule:run >> /dev/null 2>&1" | crontab -u www-data -
-fi
-
-# 1. Optimasi Nginx Gzip & Static Asset Caching
-sed -i 's/# gzip_vary on;/gzip_vary on;/' /etc/nginx/nginx.conf
-sed -i 's/# gzip_proxied any;/gzip_proxied any;/' /etc/nginx/nginx.conf
-sed -i 's/# gzip_comp_level 6;/gzip_comp_level 6;/' /etc/nginx/nginx.conf
-sed -i 's/# gzip_types /gzip_types /' /etc/nginx/nginx.conf
-sed -i 's/gzip_types text\\/plain text\\/css application\\/json application\\/javascript text\\/xml application\\/xml application\\/xml+rss text\\/javascript;/gzip_types text\\/plain text\\/css application\\/json application\\/javascript text\\/xml application\\/xml application\\/xml+rss text\\/javascript image\\/svg+xml font\\/woff font\\/woff2 application\\/vnd.ms-fontobject;/' /etc/nginx/nginx.conf
-
-if ! grep -q "max-age=31536000" /etc/nginx/sites-available/bill.viruzs.my.id; then
-    sed -i '/location \\/ {/i \\    location ~* \\\\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|webp|avif)$ {\\n        expires 1y;\\n        add_header Cache-Control "public, max-age=31536000, immutable";\\n        access_log off;\\n        log_not_found off;\\n        try_files $uri =404;\\n    }\\n' /etc/nginx/sites-available/bill.viruzs.my.id
-fi
-
-# 2. Optimasi InnoDB Buffer Pool MySQL (1 GB untuk cache tabel dan index di RAM)
-if [ -f /etc/mysql/mysql.conf.d/mysqld.cnf ] && ! grep -q "innodb_buffer_pool_size" /etc/mysql/mysql.conf.d/mysqld.cnf; then
-    sed -i '/\\[mysqld\\]/a innodb_buffer_pool_size = 1G' /etc/mysql/mysql.conf.d/mysqld.cnf
-    systemctl restart mysql || true
-fi
-
-nginx -t && systemctl reload nginx
-systemctl restart php8.5-fpm || true
-echo "=== OPTIMASI SERVER & DEPLOYMENT SUKSES ==="
-`;
+console.log('Connecting to VPS 157.66.140.17...');
 
 conn.on('ready', () => {
-  conn.exec(script, (err, stream) => {
-    if (err) throw err;
-    stream.on('close', (code, signal) => {
+  console.log('SSH Connection ready. Executing deployment pipeline...');
+  conn.exec(commands, (err, stream) => {
+    if (err) {
+      console.error('Exec error:', err);
       conn.end();
+      process.exit(1);
+    }
+
+    stream.on('close', (code, signal) => {
+      console.log(`Command closed with code: ${code}`);
+      conn.end();
+      process.exit(code || 0);
     }).on('data', (data) => {
-      process.stdout.write(data);
+      process.stdout.write(data.toString());
     }).stderr.on('data', (data) => {
-      process.stderr.write(data);
+      process.stderr.write(data.toString());
     });
   });
+}).on('error', (err) => {
+  console.error('SSH Connection failed:', err);
+  process.exit(1);
 }).connect({
   host: '157.66.140.17',
   port: 22,
