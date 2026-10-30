@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Area;
+use App\Models\Material;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -16,7 +17,14 @@ class WarehouseStockController extends Controller
 
         $selectedAreaId = $request->filled('area_id') ? $request->area_id : null;
 
-        $query = \App\Models\Material::with(['stocks' => function ($sq) use ($accessibleAreas, $selectedAreaId, $isGlobal) {
+        // Tampilkan barang yang aktif dan memenuhi kriteria:
+        // - Barang migrasi (ID <= 260): Tetap tampil karena merupakan data material yang sudah terpasang di pelanggan
+        // - Barang katalog baru (ID > 260): HANYA tampil jika sudah pernah di-order toko (restock) ke area cabang
+        $query = Material::where(function ($q) {
+            $q->where('is_active', true)->orWhereNull('is_active');
+        })
+        ->visibleInMaterialsTable()
+        ->with(['stocks' => function ($sq) use ($accessibleAreas, $selectedAreaId, $isGlobal) {
             if (!$isGlobal && !empty($accessibleAreas)) {
                 $sq->whereIn('area_id', $accessibleAreas);
             }
@@ -35,15 +43,17 @@ class WarehouseStockController extends Controller
                     $sq->whereIn('area_id', $accessibleAreas);
                 }
             });
-            $areas = \App\Models\Area::whereIn('id', $accessibleAreas)->orderBy('name')->get(['id', 'name']);
+            $areas = Area::whereIn('id', $accessibleAreas)->orderBy('name')->get(['id', 'name']);
         } else {
-            // Filter Area Gudang jika dipilih
+            // Filter Area Gudang jika dipilih, atau pastikan barang memiliki alokasi stok di area
             if ($selectedAreaId) {
                 $query->whereHas('stocks', function ($q) use ($selectedAreaId) {
                     $q->where('area_id', $selectedAreaId);
                 });
+            } else {
+                $query->whereHas('stocks');
             }
-            $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
+            $areas = Area::orderBy('name')->get(['id', 'name']);
         }
 
         // 2. Pencarian Cerdas (Nama, Kategori, Supplier, Satuan, Keterangan)
@@ -120,24 +130,30 @@ class WarehouseStockController extends Controller
 
         $materials = $query->paginate(15)->withQueryString();
 
-        $categories = \App\Models\Material::whereNotNull('category')->where('category', '!=', '')->distinct()->pluck('category')->sort()->values();
-        $units = \App\Models\Material::whereNotNull('unit')->where('unit', '!=', '')->distinct()->pluck('unit')->sort()->values();
+        $baseSummaryQuery = Material::where(function ($q) {
+            $q->where('is_active', true)->orWhereNull('is_active');
+        })->visibleInMaterialsTable();
 
-        // Summary counts
+        $categories = (clone $baseSummaryQuery)->whereHas('stocks')->whereNotNull('category')->where('category', '!=', '')->distinct()->pluck('category')->sort()->values();
+        $units = (clone $baseSummaryQuery)->whereHas('stocks')->whereNotNull('unit')->where('unit', '!=', '')->distinct()->pluck('unit')->sort()->values();
+
+        // Summary counts (Hanya hitung material yang masuk kriteria area warehouse)
         if ($scopedAreaIds) {
-            $totalMaterials = \App\Models\Material::whereHas('stocks', fn($sq) => $sq->whereIn('area_id', $scopedAreaIds))->count();
-            $outOfStockCount = \App\Models\Material::whereDoesntHave('stocks', function ($sq) use ($scopedAreaIds) {
-                $sq->whereIn('area_id', $scopedAreaIds)->where('stock', '>', 0);
-            })->count();
-            $availableCount = \App\Models\Material::whereHas('stocks', function ($sq) use ($scopedAreaIds) {
+            $totalMaterials = (clone $baseSummaryQuery)->whereHas('stocks', fn($sq) => $sq->whereIn('area_id', $scopedAreaIds))->count();
+            $outOfStockCount = (clone $baseSummaryQuery)->whereHas('stocks', fn($sq) => $sq->whereIn('area_id', $scopedAreaIds))
+                ->whereDoesntHave('stocks', function ($sq) use ($scopedAreaIds) {
+                    $sq->whereIn('area_id', $scopedAreaIds)->where('stock', '>', 0);
+                })->count();
+            $availableCount = (clone $baseSummaryQuery)->whereHas('stocks', function ($sq) use ($scopedAreaIds) {
                 $sq->whereIn('area_id', $scopedAreaIds)->where('stock', '>', 0);
             })->count();
         } else {
-            $totalMaterials = \App\Models\Material::count();
-            $outOfStockCount = \App\Models\Material::whereDoesntHave('stocks', function ($sq) {
-                $sq->where('stock', '>', 0);
-            })->count();
-            $availableCount = \App\Models\Material::whereHas('stocks', function ($sq) {
+            $totalMaterials = (clone $baseSummaryQuery)->whereHas('stocks')->count();
+            $outOfStockCount = (clone $baseSummaryQuery)->whereHas('stocks')
+                ->whereDoesntHave('stocks', function ($sq) {
+                    $sq->where('stock', '>', 0);
+                })->count();
+            $availableCount = (clone $baseSummaryQuery)->whereHas('stocks', function ($sq) {
                 $sq->where('stock', '>', 0);
             })->count();
         }
@@ -161,7 +177,7 @@ class WarehouseStockController extends Controller
     {
         try {
             \Illuminate\Support\Facades\DB::transaction(function () use ($id) {
-                $material = \App\Models\Material::findOrFail($id);
+                $material = Material::findOrFail($id);
 
                 // Unlink ONTs from material transaction items if any
                 $itemIds = \App\Models\MaterialTransactionItem::where('material_id', $id)->pluck('id');
