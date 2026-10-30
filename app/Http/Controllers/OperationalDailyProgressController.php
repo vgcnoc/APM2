@@ -156,8 +156,8 @@ class OperationalDailyProgressController extends Controller
             $waGatewayStatus = false;
         }
 
-        // Ambil Daftar Teknisi Lapangan untuk Penugasan Cepat
-        $availableTechnicians = User::where(function ($q) {
+        // Ambil Daftar Teknisi Lapangan untuk Penugasan Cepat (Teknisi & Maintenance)
+        $rawTechnicians = User::where(function ($q) {
             $q->where('is_active', true)->orWhereNull('is_active');
         })->where(function ($q) {
             $q->whereHas('roles', function ($r) {
@@ -175,7 +175,40 @@ class OperationalDailyProgressController extends Controller
                    ->orWhere('role', 'LIKE', '%jaringan%')
                    ->orWhere('role', 'LIKE', '%serbu%');
             });
-        })->orderBy('name')->get(['id', 'name', 'phone', 'area_id']);
+        })->with('roles')->orderBy('name')->get(['id', 'name', 'phone', 'area_id', 'role']);
+
+        $allEmpsMap = Employee::get(['id', 'name', 'position', 'area_id']);
+        $empMapByName = [];
+        foreach ($allEmpsMap as $em) {
+            if ($nm = mb_strtolower(trim((string)$em->name))) {
+                $empMapByName[$nm] = $em;
+            }
+        }
+
+        $availableTechnicians = $rawTechnicians->map(function ($u) use ($empMapByName) {
+            $nm = mb_strtolower(trim((string)$u->name));
+            $emp = $empMapByName[$nm] ?? null;
+            $pos = mb_strtolower(trim((string)($emp?->position ?? '')));
+            $roleCol = mb_strtolower(trim((string)($u->role ?? '')));
+            $isMaint = str_contains($pos, 'maintenance') || str_contains($roleCol, 'maintenance');
+            if (!$isMaint && $u->relationLoaded('roles')) {
+                foreach ($u->roles as $r) {
+                    if (str_contains(mb_strtolower((string)$r->name), 'maintenance')) {
+                        $isMaint = true;
+                        break;
+                    }
+                }
+            }
+            return [
+                'id' => $u->id,
+                'name' => $u->name,
+                'phone' => $u->phone,
+                'area_id' => $u->area_id,
+                'is_maintenance' => $isMaint,
+                'division' => $isMaint ? 'maintenance' : 'teknisi',
+                'role_label' => $isMaint ? 'Maintenance' : 'Teknisi',
+            ];
+        });
 
         $availableOdps = Odp::select('id', 'name', 'area_id')->orderBy('name')->limit(500)->get();
         $availableOdcs = Odc::select('id', 'name', 'area_id')->orderBy('name')->limit(150)->get();
@@ -196,6 +229,7 @@ class OperationalDailyProgressController extends Controller
             'cbpList' => $cbpList,
             'maintenanceList' => $maintenanceList,
             'technicianStatus' => $technicianStatus,
+            'maintenanceStatus' => $technicianStatus['maintenance'] ?? [],
             'availableTechnicians' => $availableTechnicians,
             'availableOdps' => $availableOdps,
             'availableOdcs' => $availableOdcs,
@@ -1073,14 +1107,17 @@ class OperationalDailyProgressController extends Controller
                        ->orWhere('role', 'LIKE', '%serbu%');
                 });
             })
+            ->with('roles')
             ->orderBy('name')
-            ->get(['id', 'name', 'email', 'phone', 'is_on_duty', 'area_id', 'accessible_areas']);
+            ->get(['id', 'name', 'email', 'phone', 'is_on_duty', 'area_id', 'accessible_areas', 'role']);
 
         // 3. Petakan relasi silang User <-> Employee (email -> telepon -> nama)
+        $empById = [];
         $empByEmail = [];
         $empByPhone = [];
         $empByName = [];
         foreach ($allTechEmployees as $emp) {
+            $empById[$emp->id] = $emp;
             if ($e = $normKey($emp->email)) $empByEmail[$e] ??= $emp;
             if ($p = $normPhone($emp->phone)) $empByPhone[$p] ??= $emp;
             if ($n = $normKey($emp->name)) $empByName[$n] ??= $emp;
@@ -1109,6 +1146,27 @@ class OperationalDailyProgressController extends Controller
             if (($p = $normPhone($u->phone)) && isset($empByPhone[$p])) return $empByPhone[$p];
             if (($n = $normKey($u->name)) && isset($empByName[$n])) return $empByName[$n];
             return null;
+        };
+
+        // Klasifikasi Cerdas: Apakah Petugas Tergolong Maintenance (Bukan Teknisi)
+        $isMaintenancePerson = static function ($emp, $u): bool {
+            $pos = mb_strtolower(trim((string) ($emp?->position ?? '')));
+            if (str_contains($pos, 'maintenance') || str_contains($pos, 'pemeliharaan')) {
+                return true;
+            }
+            $roleCol = mb_strtolower(trim((string) ($u?->role ?? '')));
+            if (str_contains($roleCol, 'maintenance') || str_contains($roleCol, 'pemeliharaan')) {
+                return true;
+            }
+            if ($u && $u->relationLoaded('roles')) {
+                foreach ($u->roles as $r) {
+                    $rName = mb_strtolower((string) $r->name);
+                    if (str_contains($rName, 'maintenance') || str_contains($rName, 'pemeliharaan')) {
+                        return true;
+                    }
+                }
+            }
+            return false;
         };
 
         // 4. Filter teknisi berdasarkan penempatan Area yang dipilih
@@ -1146,12 +1204,19 @@ class OperationalDailyProgressController extends Controller
 
         $scopedEmpIds = $scopedEmployees->pluck('id')->all();
 
-        $offList = [];
-        $offKeys = [];
-        $nightList = [];
-        $nightKeys = [];
+        $teknisiOffList = [];
+        $teknisiNightList = [];
+        $teknisiOnDutyList = [];
 
-        // 5. Ambil WorkSchedule & Attendance hari ini KHUSUS teknisi di Area tersebut
+        $maintOffList = [];
+        $maintNightList = [];
+        $maintOnDutyList = [];
+
+        $offKeys = [];
+        $nightKeys = [];
+        $onDutyKeys = [];
+
+        // 5. Ambil WorkSchedule & Attendance hari ini KHUSUS petugas di Area tersebut
         if (!empty($scopedEmpIds)) {
             $schedules = WorkSchedule::with(['employee', 'shift'])
                 ->whereDate('date', $date)
@@ -1159,11 +1224,14 @@ class OperationalDailyProgressController extends Controller
                 ->get();
 
             foreach ($schedules as $ws) {
-                $empName = trim((string) ($ws->employee?->name ?? ''));
+                $emp = $ws->employee ?? ($empById[$ws->employee_id] ?? null);
+                $empName = trim((string) ($emp?->name ?? ''));
                 if ($empName === '') continue;
 
                 $k = $normKey($empName);
                 $shift = $ws->shift;
+                $linkedU = $findLinkedUser($emp);
+                $isMaint = $isMaintenancePerson($emp, $linkedU);
 
                 // Cek status libur / cuti / sakit
                 if (
@@ -1174,7 +1242,11 @@ class OperationalDailyProgressController extends Controller
                 ) {
                     if (!isset($offKeys[$k])) {
                         $offKeys[$k] = true;
-                        $offList[] = $empName;
+                        if ($isMaint) {
+                            $maintOffList[] = $empName;
+                        } else {
+                            $teknisiOffList[] = $empName;
+                        }
                     }
                 } elseif (
                     $shift
@@ -1182,7 +1254,11 @@ class OperationalDailyProgressController extends Controller
                 ) {
                     if (!isset($nightKeys[$k]) && !isset($offKeys[$k])) {
                         $nightKeys[$k] = true;
-                        $nightList[] = $empName;
+                        if ($isMaint) {
+                            $maintNightList[] = $empName;
+                        } else {
+                            $teknisiNightList[] = $empName;
+                        }
                     }
                 }
             }
@@ -1194,17 +1270,26 @@ class OperationalDailyProgressController extends Controller
                 ->get();
 
             foreach ($attendances as $att) {
-                $eName = trim((string) ($att->employee?->name ?? ''));
+                $emp = $att->employee ?? ($empById[$att->employee_id] ?? null);
+                $eName = trim((string) ($emp?->name ?? ''));
                 if ($eName === '') continue;
 
                 $k = $normKey($eName);
+                $linkedU = $findLinkedUser($emp);
+                $isMaint = $isMaintenancePerson($emp, $linkedU);
+
                 if (!isset($offKeys[$k])) {
                     $offKeys[$k] = true;
-                    $offList[] = $eName;
+                    if ($isMaint) {
+                        $maintOffList[] = $eName;
+                    } else {
+                        $teknisiOffList[] = $eName;
+                    }
                 }
                 if (isset($nightKeys[$k])) {
                     unset($nightKeys[$k]);
-                    $nightList = array_values(array_filter($nightList, fn($n) => $normKey($n) !== $k));
+                    $teknisiNightList = array_values(array_filter($teknisiNightList, fn($n) => $normKey($n) !== $k));
+                    $maintNightList = array_values(array_filter($maintNightList, fn($n) => $normKey($n) !== $k));
                 }
             }
         }
@@ -1218,9 +1303,6 @@ class OperationalDailyProgressController extends Controller
             }
         }
 
-        $onDutyList = [];
-        $onDutyKeys = [];
-
         foreach ($scopedUsers as $tech) {
             $tName = trim((string) $tech->name);
             if ($tName === '') continue;
@@ -1231,11 +1313,16 @@ class OperationalDailyProgressController extends Controller
 
             $isOff = isset($offKeys[$k]) || ($empKey && isset($offKeys[$empKey]));
             $isNight = isset($nightKeys[$k]) || ($empKey && isset($nightKeys[$empKey]));
+            $isMaint = $isMaintenancePerson($linkedEmp, $tech);
 
             if (!$isOff && (!$isNight || isset($activeJobKeys[$k])) && !isset($onDutyKeys[$k])) {
                 $onDutyKeys[$k] = true;
                 if ($empKey) $onDutyKeys[$empKey] = true;
-                $onDutyList[] = $tName;
+                if ($isMaint) {
+                    $maintOnDutyList[] = $tName;
+                } else {
+                    $teknisiOnDutyList[] = $tName;
+                }
             }
         }
 
@@ -1250,18 +1337,70 @@ class OperationalDailyProgressController extends Controller
             $alreadyAdded = isset($onDutyKeys[$k]) || ($userKey && isset($onDutyKeys[$userKey]));
             $isOff = isset($offKeys[$k]) || ($userKey && isset($offKeys[$userKey]));
             $isNight = isset($nightKeys[$k]) || ($userKey && isset($nightKeys[$userKey]));
+            $isMaint = $isMaintenancePerson($emp, $linkedUser);
 
             if (!$alreadyAdded && !$isOff && (!$isNight || isset($activeJobKeys[$k]))) {
                 $onDutyKeys[$k] = true;
                 if ($userKey) $onDutyKeys[$userKey] = true;
-                $onDutyList[] = $eName;
+                if ($isMaint) {
+                    $maintOnDutyList[] = $eName;
+                } else {
+                    $teknisiOnDutyList[] = $eName;
+                }
             }
         }
 
+        // Tangkap nama dari tugas aktif hari ini yang belum tercatat
+        foreach ($activeJobTechNames as $aName) {
+            $trimmed = trim((string) $aName);
+            if ($trimmed === '' || in_array($trimmed, ['-', 'Belum Ditugaskan', 'Tim Maintenance Jalur', 'Petugas Survey', 'Petugas CBP', 'Teknisi Instalasi'], true)) {
+                continue;
+            }
+            $k = $normKey($trimmed);
+            if (!isset($onDutyKeys[$k])) {
+                $linkedEmp = $empByName[$k] ?? null;
+                $linkedU = $userByName[$k] ?? null;
+                $isMaint = $isMaintenancePerson($linkedEmp, $linkedU);
+                $onDutyKeys[$k] = true;
+                if ($isMaint) {
+                    $maintOnDutyList[] = $trimmed;
+                } else {
+                    $teknisiOnDutyList[] = $trimmed;
+                }
+            }
+        }
+
+        $cleanUnique = static fn(array $arr): array => array_values(array_unique(array_filter($arr)));
+
+        $tekDuty = $cleanUnique($teknisiOnDutyList);
+        $tekOff = $cleanUnique($teknisiOffList);
+        $tekNight = $cleanUnique($teknisiNightList);
+
+        $maintDuty = $cleanUnique($maintOnDutyList);
+        $maintOff = $cleanUnique($maintOffList);
+        $maintNight = $cleanUnique($maintNightList);
+
         return [
-            'on_duty' => array_values(array_unique(array_filter($onDutyList))),
-            'off' => array_values(array_unique(array_filter($offList))),
-            'night' => array_values(array_unique(array_filter($nightList))),
+            // Top-level teknisi (agar petugas maintenance seperti Herli tidak tercampur ke teknisi)
+            'on_duty' => $tekDuty,
+            'off' => $tekOff,
+            'night' => $tekNight,
+
+            'teknisi' => [
+                'on_duty' => $tekDuty,
+                'off' => $tekOff,
+                'night' => $tekNight,
+            ],
+            'maintenance' => [
+                'on_duty' => $maintDuty,
+                'off' => $maintOff,
+                'night' => $maintNight,
+            ],
+            'all' => [
+                'on_duty' => $cleanUnique(array_merge($tekDuty, $maintDuty)),
+                'off' => $cleanUnique(array_merge($tekOff, $maintOff)),
+                'night' => $cleanUnique(array_merge($tekNight, $maintNight)),
+            ],
         ];
     }
 
@@ -1289,12 +1428,23 @@ class OperationalDailyProgressController extends Controller
         $lines[] = "";
 
         // Petugas Bertugas
-        $lines[] = "👷‍♂️ *PETUGAS :*";
-        if (!empty($technicianStatus['on_duty'])) {
-            $lines[] = implode(', ', $technicianStatus['on_duty']);
-        } else {
-            $lines[] = "-";
-        }
+        $tekStatus = $technicianStatus['teknisi'] ?? [
+            'on_duty' => $technicianStatus['on_duty'] ?? [],
+            'off' => $technicianStatus['off'] ?? [],
+            'night' => $technicianStatus['night'] ?? [],
+        ];
+        $maintStatus = $technicianStatus['maintenance'] ?? [
+            'on_duty' => [],
+            'off' => [],
+            'night' => [],
+        ];
+
+        $tekDutyStr = !empty($tekStatus['on_duty']) ? implode(', ', $tekStatus['on_duty']) : '-';
+        $maintDutyStr = !empty($maintStatus['on_duty']) ? implode(', ', $maintStatus['on_duty']) : '-';
+
+        $lines[] = "👷‍♂️ *PETUGAS BERTUGAS :*";
+        $lines[] = "• Teknisi: {$tekDutyStr}";
+        $lines[] = "• Maintenance: {$maintDutyStr}";
         $lines[] = "";
         $lines[] = "";
 
@@ -1405,7 +1555,7 @@ class OperationalDailyProgressController extends Controller
             $groupedMnt = collect($maintenanceList)->groupBy('technicians');
             foreach ($groupedMnt as $techName => $mItems) {
                 $lines[] = "";
-                $lines[] = "👷 *Petugas Teknisi :* {$techName}";
+                $lines[] = "🛠️ *Petugas Maintenance/Teknisi :* {$techName}";
                 $idx = 1;
                 foreach ($mItems as $m) {
                     $lines[] = "{$idx}. Kegiatan : {$m['category_label']}";
@@ -1424,7 +1574,7 @@ class OperationalDailyProgressController extends Controller
                 }
             }
         } else {
-            $lines[] = "👷 Petugas Teknisi : -";
+            $lines[] = "🛠️ Petugas Maintenance/Teknisi : -";
             $lines[] = "(Nihil / Belum ada perapihan & pengecekan jalur)";
         }
         $lines[] = "";
@@ -1440,13 +1590,24 @@ class OperationalDailyProgressController extends Controller
 
         // 7. STATUS TEKNISI
         $lines[] = "👷 *STATUS TEKNISI*";
-        $liburStr = !empty($technicianStatus['off']) ? implode(', ', $technicianStatus['off']) : '-';
-        $malamStr = !empty($technicianStatus['night']) ? implode(', ', $technicianStatus['night']) : '-';
-        $lines[] = "Teknisi Libur: {$liburStr}";
-        $lines[] = "Teknisi Masuk Malam: {$malamStr}";
+        $tekLiburStr = !empty($tekStatus['off']) ? implode(', ', $tekStatus['off']) : '-';
+        $tekMalamStr = !empty($tekStatus['night']) ? implode(', ', $tekStatus['night']) : '-';
+        $lines[] = "Teknisi Libur: {$tekLiburStr}";
+        $lines[] = "Teknisi Masuk Malam: {$tekMalamStr}";
         $lines[] = "";
 
-        // 8. NOTE
+        // 8. STATUS MAINTENANCE
+        $lines[] = "🛠️ *STATUS MAINTENANCE*";
+        $maintLiburStr = !empty($maintStatus['off']) ? implode(', ', $maintStatus['off']) : '-';
+        $lines[] = "Maintenance Bertugas: {$maintDutyStr}";
+        $lines[] = "Maintenance Libur: {$maintLiburStr}";
+        if (!empty($maintStatus['night'])) {
+            $maintMalamStr = implode(', ', $maintStatus['night']);
+            $lines[] = "Maintenance Masuk Malam: {$maintMalamStr}";
+        }
+        $lines[] = "";
+
+        // 9. NOTE
         $lines[] = "📝 *NOTE*";
         $lines[] = $customNote ?: "Tetap semangat dan jaga keselamatan kerja! 💪";
 

@@ -243,7 +243,7 @@
                     </div>
                 </div>
 
-                <!-- 6. Status Teknisi Card -->
+                <!-- 6. Status Petugas & Shift Card -->
                 <div 
                     @click="activeTab = 'teknisi'"
                     class="p-4 rounded-2xl border transition-all cursor-pointer group hover:shadow-md col-span-2 sm:col-span-1"
@@ -252,16 +252,16 @@
                         : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-emerald-300'"
                 >
                     <div class="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
-                        <span class="text-[11px] font-black uppercase tracking-wider">👷 Teknisi Tugas</span>
-                        <span class="text-xs font-bold px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/60">{{ technicianStatus?.on_duty?.length || 0 }}</span>
+                        <span class="text-[11px] font-black uppercase tracking-wider">👷 Shift Petugas</span>
+                        <span class="text-xs font-bold px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/60">{{ totalStaffDutyCount }}</span>
                     </div>
                     <div class="mt-2 text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                        {{ technicianStatus?.on_duty?.length || 0 }} Orang
+                        {{ totalStaffDutyCount }} Orang
                     </div>
-                    <div class="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 mt-1 truncate">
-                        <span class="text-slate-600 dark:text-slate-300">Off: {{ technicianStatus?.off?.length || 0 }}</span>
+                    <div class="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 mt-1 truncate">
+                        <span class="text-emerald-600 dark:text-emerald-400 font-bold">Tek: {{ tekStatus?.on_duty?.length || 0 }} (Off: {{ tekStatus?.off?.length || 0 }})</span>
                         <span>·</span>
-                        <span class="text-indigo-600 dark:text-indigo-400 font-bold">Malam: {{ technicianStatus?.night?.length || 0 }}</span>
+                        <span class="text-teal-600 dark:text-teal-400 font-bold">Mnt: {{ maintStatus?.on_duty?.length || 0 }} (Off: {{ maintStatus?.off?.length || 0 }})</span>
                     </div>
                 </div>
 
@@ -762,77 +762,168 @@
                     </div>
 
                     <!-- TAB 6: STATUS TEKNISI & ROSTER SHIFT -->
+                    <!-- TAB 6: STATUS SHIFT & PETUGAS LAPANGAN -->
                     <div v-if="activeTab === 'teknisi'" class="space-y-4">
-                        <div class="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 space-y-4">
-                            <div class="flex flex-wrap items-center justify-between gap-2">
-                                <h3 class="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                                    <span>👷‍♂️</span>
-                                    <span>Status Shift & Penugasan Teknisi</span>
-                                </h3>
+                        <div class="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 space-y-6">
+                            <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+                                <div>
+                                    <h3 class="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                                        <span>👷‍♂️</span>
+                                        <span>Status Shift Teknisi & Maintenance</span>
+                                    </h3>
+                                    <p class="text-[11px] text-slate-400 mt-0.5">Pemantauan kehadiran & shift tugas terpisah antara Teknisi Lapangan dan Tim Maintenance Jalur</p>
+                                </div>
                                 <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                                     🏢 {{ areaLabel }}
                                 </span>
                             </div>
 
-                            <!-- On Duty -->
-                            <div class="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 space-y-2">
+                            <!-- BAGIAN 1: DIVISI TEKNISI LAPANGAN -->
+                            <div class="space-y-3">
                                 <div class="flex items-center justify-between">
-                                    <h4 class="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 uppercase tracking-wider">
-                                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                        Teknisi On Duty / Bertugas Hari Ini ({{ technicianStatus?.on_duty?.length || 0 }})
+                                    <h4 class="text-xs font-black text-emerald-800 dark:text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                                        <span class="p-1 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700">👷</span>
+                                        <span>Divisi Teknisi Lapangan</span>
                                     </h4>
+                                    <span class="text-[10px] font-bold text-slate-400">Total Tugas: {{ tekStatus?.on_duty?.length || 0 }} Orang</span>
                                 </div>
-                                <div class="flex flex-wrap gap-1.5">
-                                    <span 
-                                        v-for="(name, nIdx) in technicianStatus?.on_duty" 
-                                        :key="'duty-' + nIdx"
-                                        class="px-3 py-1 rounded-xl bg-white dark:bg-slate-800 text-xs font-bold text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700 shadow-2xs"
-                                    >
-                                        👷 {{ name }}
-                                    </span>
-                                    <span v-if="!technicianStatus?.on_duty?.length" class="text-xs text-slate-400 italic">Tidak ada teknisi on duty tercatat</span>
+
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <!-- Teknisi On Duty -->
+                                    <div class="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 space-y-2">
+                                        <div class="flex items-center justify-between">
+                                            <h5 class="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 uppercase tracking-wider">
+                                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                                Teknisi Bertugas ({{ tekStatus?.on_duty?.length || 0 }})
+                                            </h5>
+                                        </div>
+                                        <div class="flex flex-wrap gap-1.5">
+                                            <span 
+                                                v-for="(name, nIdx) in tekStatus?.on_duty" 
+                                                :key="'tek-duty-' + nIdx"
+                                                class="px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800 text-xs font-bold text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700 shadow-2xs"
+                                            >
+                                                👷 {{ name }}
+                                            </span>
+                                            <span v-if="!tekStatus?.on_duty?.length" class="text-xs text-slate-400 italic">Tidak ada teknisi bertugas</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Teknisi Shift Malam -->
+                                    <div class="p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 space-y-2">
+                                        <div class="flex items-center justify-between">
+                                            <h5 class="text-xs font-bold text-indigo-800 dark:text-indigo-300 flex items-center gap-1.5 uppercase tracking-wider">
+                                                <span>🌙</span>
+                                                Shift Malam ({{ tekStatus?.night?.length || 0 }})
+                                            </h5>
+                                        </div>
+                                        <div class="flex flex-wrap gap-1.5">
+                                            <span 
+                                                v-for="(name, mIdx) in tekStatus?.night" 
+                                                :key="'tek-night-' + mIdx"
+                                                class="px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800 text-xs font-bold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700 shadow-2xs"
+                                            >
+                                                🌙 {{ name }}
+                                            </span>
+                                            <span v-if="!tekStatus?.night?.length" class="text-xs text-slate-400 italic">- (Nihil)</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Teknisi Libur / Off / Cuti -->
+                                    <div class="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2">
+                                        <div class="flex items-center justify-between">
+                                            <h5 class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 uppercase tracking-wider">
+                                                <span>🏖️</span>
+                                                Teknisi Libur / Cuti ({{ tekStatus?.off?.length || 0 }})
+                                            </h5>
+                                        </div>
+                                        <div class="flex flex-wrap gap-1.5">
+                                            <span 
+                                                v-for="(name, oIdx) in tekStatus?.off" 
+                                                :key="'tek-off-' + oIdx"
+                                                class="px-2.5 py-1 rounded-xl bg-white dark:bg-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600 shadow-2xs"
+                                            >
+                                                🏖️ {{ name }}
+                                            </span>
+                                            <span v-if="!tekStatus?.off?.length" class="text-xs text-slate-400 italic">- (Nihil)</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- Shift Malam -->
-                            <div class="p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 space-y-2">
+                            <!-- BAGIAN 2: DIVISI MAINTENANCE JALUR -->
+                            <div class="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
                                 <div class="flex items-center justify-between">
-                                    <h4 class="text-xs font-bold text-indigo-800 dark:text-indigo-300 flex items-center gap-1.5 uppercase tracking-wider">
-                                        <span>🌙</span>
-                                        Teknisi Masuk Shift Malam ({{ technicianStatus?.night?.length || 0 }})
+                                    <h4 class="text-xs font-black text-teal-800 dark:text-teal-300 uppercase tracking-wider flex items-center gap-1.5">
+                                        <span class="p-1 rounded-lg bg-teal-100 dark:bg-teal-950 text-teal-700">🛠️</span>
+                                        <span>Divisi Maintenance Jalur & Pemeliharaan Jaringan</span>
                                     </h4>
+                                    <span class="text-[10px] font-bold text-slate-400">Total Tugas: {{ maintStatus?.on_duty?.length || 0 }} Orang</span>
                                 </div>
-                                <div class="flex flex-wrap gap-1.5">
-                                    <span 
-                                        v-for="(name, mIdx) in technicianStatus?.night" 
-                                        :key="'night-' + mIdx"
-                                        class="px-3 py-1 rounded-xl bg-white dark:bg-slate-800 text-xs font-bold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700 shadow-2xs"
-                                    >
-                                        🌙 {{ name }}
-                                    </span>
-                                    <span v-if="!technicianStatus?.night?.length" class="text-xs text-slate-400 italic">- (Nihil)</span>
+
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <!-- Maintenance Bertugas -->
+                                    <div class="p-4 rounded-2xl bg-teal-50/70 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 space-y-2">
+                                        <div class="flex items-center justify-between">
+                                            <h5 class="text-xs font-bold text-teal-800 dark:text-teal-300 flex items-center gap-1.5 uppercase tracking-wider">
+                                                <span class="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></span>
+                                                Maintenance Bertugas ({{ maintStatus?.on_duty?.length || 0 }})
+                                            </h5>
+                                        </div>
+                                        <div class="flex flex-wrap gap-1.5">
+                                            <span 
+                                                v-for="(name, mnIdx) in maintStatus?.on_duty" 
+                                                :key="'maint-duty-' + mnIdx"
+                                                class="px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800 text-xs font-bold text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-700 shadow-2xs"
+                                            >
+                                                🛠️ {{ name }}
+                                            </span>
+                                            <span v-if="!maintStatus?.on_duty?.length" class="text-xs text-slate-400 italic">Tidak ada maintenance bertugas</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Maintenance Shift Malam -->
+                                    <div class="p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 space-y-2">
+                                        <div class="flex items-center justify-between">
+                                            <h5 class="text-xs font-bold text-indigo-800 dark:text-indigo-300 flex items-center gap-1.5 uppercase tracking-wider">
+                                                <span>🌙</span>
+                                                Maintenance Shift Malam ({{ maintStatus?.night?.length || 0 }})
+                                            </h5>
+                                        </div>
+                                        <div class="flex flex-wrap gap-1.5">
+                                            <span 
+                                                v-for="(name, mnMIdx) in maintStatus?.night" 
+                                                :key="'maint-night-' + mnMIdx"
+                                                class="px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800 text-xs font-bold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700 shadow-2xs"
+                                            >
+                                                🌙 {{ name }}
+                                            </span>
+                                            <span v-if="!maintStatus?.night?.length" class="text-xs text-slate-400 italic">- (Nihil)</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Maintenance Libur / Off / Cuti -->
+                                    <div class="p-4 rounded-2xl bg-rose-50/60 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/60 space-y-2">
+                                        <div class="flex items-center justify-between">
+                                            <h5 class="text-xs font-bold text-rose-800 dark:text-rose-300 flex items-center gap-1.5 uppercase tracking-wider">
+                                                <span>🏖️</span>
+                                                Maintenance Libur / Cuti ({{ maintStatus?.off?.length || 0 }})
+                                            </h5>
+                                        </div>
+                                        <div class="flex flex-wrap gap-1.5">
+                                            <span 
+                                                v-for="(name, mnOIdx) in maintStatus?.off" 
+                                                :key="'maint-off-' + mnOIdx"
+                                                class="px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800 text-xs font-bold text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-700 shadow-2xs"
+                                            >
+                                                🏖️ {{ name }}
+                                            </span>
+                                            <span v-if="!maintStatus?.off?.length" class="text-xs text-slate-400 italic">- (Nihil)</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- Libur / Off / Cuti -->
-                            <div class="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2">
-                                <div class="flex items-center justify-between">
-                                    <h4 class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 uppercase tracking-wider">
-                                        <span>🏖️</span>
-                                        Teknisi Libur / Off / Cuti ({{ technicianStatus?.off?.length || 0 }})
-                                    </h4>
-                                </div>
-                                <div class="flex flex-wrap gap-1.5">
-                                    <span 
-                                        v-for="(name, oIdx) in technicianStatus?.off" 
-                                        :key="'off-' + oIdx"
-                                        class="px-3 py-1 rounded-xl bg-white dark:bg-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600 shadow-2xs"
-                                    >
-                                        🏖️ {{ name }}
-                                    </span>
-                                    <span v-if="!technicianStatus?.off?.length" class="text-xs text-slate-400 italic">- (Nihil)</span>
-                                </div>
-                            </div>
                         </div>
                     </div>
 
@@ -1110,11 +1201,11 @@
                         </div>
                     </div>
 
-                    <!-- 5. Pilih Teknisi Lapangan -->
+                    <!-- 5. Pilih Petugas Ditugaskan (Teknisi / Maintenance) -->
                     <div>
                         <div class="flex items-center justify-between mb-1">
                             <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                                Petugas Teknisi Ditugaskan:
+                                Petugas Ditugaskan (Teknisi / Maintenance):
                             </label>
                             <button
                                 v-if="createForm.area_id"
@@ -1125,23 +1216,31 @@
                                 {{ showAllAreaTechs ? 'Filter Sesuai Area' : 'Tampilkan Semua Area' }}
                             </button>
                         </div>
-                        <div class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 max-h-32 overflow-y-auto space-y-1">
-                            <div v-if="filteredTechnicians.length" class="grid grid-cols-2 gap-1.5">
+                        <div class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 max-h-36 overflow-y-auto space-y-1">
+                            <div v-if="filteredTechnicians.length" class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                                 <label 
                                     v-for="tech in filteredTechnicians" 
                                     :key="tech.id"
-                                    class="flex items-center gap-1.5 p-1.5 rounded-lg text-xs cursor-pointer hover:bg-white dark:hover:bg-slate-700"
+                                    class="flex items-center justify-between gap-1.5 p-1.5 rounded-lg text-xs cursor-pointer hover:bg-white dark:hover:bg-slate-700 transition-colors"
                                 >
-                                    <input 
-                                        type="checkbox" 
-                                        :value="tech.id" 
-                                        v-model="createForm.technician_ids"
-                                        class="rounded text-amber-600 focus:ring-amber-500"
-                                    />
-                                    <span class="truncate">{{ tech.name }}</span>
+                                    <div class="flex items-center gap-1.5 truncate">
+                                        <input 
+                                            type="checkbox" 
+                                            :value="tech.id" 
+                                            v-model="createForm.technician_ids"
+                                            class="rounded text-amber-600 focus:ring-amber-500"
+                                        />
+                                        <span class="truncate font-medium text-slate-800 dark:text-slate-200">{{ tech.name }}</span>
+                                    </div>
+                                    <span 
+                                        class="px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase shrink-0"
+                                        :class="tech.is_maintenance ? 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border border-teal-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 border border-slate-300'"
+                                    >
+                                        {{ tech.role_label || (tech.is_maintenance ? 'Maintenance' : 'Teknisi') }}
+                                    </span>
                                 </label>
                             </div>
-                            <p v-else class="text-xs text-slate-400 italic py-1 text-center">Belum ada teknisi terdaftar pada area ini.</p>
+                            <p v-else class="text-xs text-slate-400 italic py-1 text-center">Belum ada petugas terdaftar pada area ini.</p>
                         </div>
                     </div>
 
@@ -1573,12 +1672,32 @@ const props = defineProps({
     cbpList: { type: Array, default: () => [] },
     maintenanceList: { type: Array, default: () => [] },
     technicianStatus: { type: Object, default: () => ({}) },
+    maintenanceStatus: { type: Object, default: () => ({}) },
     availableTechnicians: { type: Array, default: () => [] },
     availableOdps: { type: Array, default: () => [] },
     availableOdcs: { type: Array, default: () => [] },
     summary: { type: Object, default: () => ({}) },
     waText: { type: String, default: '' },
     waGatewayStatus: { type: Boolean, default: false },
+});
+
+// Normalisasi Status Teknisi & Maintenance (Divisi Terpisah & Anti-Tercampur)
+const tekStatus = computed(() => {
+    return props.technicianStatus?.teknisi || {
+        on_duty: props.technicianStatus?.on_duty || [],
+        off: props.technicianStatus?.off || [],
+        night: props.technicianStatus?.night || [],
+    };
+});
+
+const maintStatus = computed(() => {
+    return (props.maintenanceStatus && Object.keys(props.maintenanceStatus).length > 0)
+        ? props.maintenanceStatus
+        : (props.technicianStatus?.maintenance || { on_duty: [], off: [], night: [] });
+});
+
+const totalStaffDutyCount = computed(() => {
+    return (tekStatus.value.on_duty?.length || 0) + (maintStatus.value.on_duty?.length || 0);
 });
 
 // Helper Local Date (WIB / Browser Local timezone, bebas dari bug UTC)
@@ -1647,7 +1766,7 @@ const tabs = computed(() => [
     { key: 'survey', label: 'Survey PSB', icon: '🔎', count: props.summary?.survey || 0 },
     { key: 'cbp', label: 'Cabut Perangkat', icon: '🔌', count: props.summary?.cbp || 0 },
     { key: 'maintenance', label: 'Perapihan & Jalur', icon: '🛠️', count: props.summary?.maintenance || 0 },
-    { key: 'teknisi', label: 'Status Shift', icon: '👷', count: props.technicianStatus?.on_duty?.length || 0 },
+    { key: 'teknisi', label: 'Status Shift', icon: '👷', count: totalStaffDutyCount.value },
 ]);
 
 // Dynamic WhatsApp message text calculation
