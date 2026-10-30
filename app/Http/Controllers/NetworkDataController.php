@@ -49,12 +49,17 @@ class NetworkDataController extends Controller
         if ($areaId) {
             $odpQuery->where(function ($q) use ($areaId) {
                 if (is_numeric($areaId)) {
-                    $q->where('area_id', $areaId)
-                      ->orWhereHas('odc', fn($odcq) => $odcq->where('area_id', $areaId))
-                      ->orWhereHas('area', fn($aq) => $aq->where('id', $areaId));
+                    $q->where('area_id', (int) $areaId)
+                      ->orWhere(function ($fallback) use ($areaId) {
+                          $fallback->whereNull('area_id')
+                              ->whereHas('odc', fn($odcq) => $odcq->where('area_id', (int) $areaId));
+                      });
                 } else {
                     $q->whereHas('area', fn($aq) => $aq->where('name', $areaId))
-                      ->orWhereHas('odc.area', fn($aq) => $aq->where('name', $areaId));
+                      ->orWhere(function ($fallback) use ($areaId) {
+                          $fallback->whereNull('area_id')
+                              ->whereHas('odc.area', fn($aq) => $aq->where('name', $areaId));
+                      });
                 }
             });
         }
@@ -110,9 +115,17 @@ class NetworkDataController extends Controller
         if ($areaId) {
             $baseOdpQuery->where(function ($q) use ($areaId) {
                 if (is_numeric($areaId)) {
-                    $q->where('area_id', $areaId)->orWhereHas('odc', fn($odcq) => $odcq->where('area_id', $areaId));
+                    $q->where('area_id', (int) $areaId)
+                      ->orWhere(function ($fallback) use ($areaId) {
+                          $fallback->whereNull('area_id')
+                              ->whereHas('odc', fn($odcq) => $odcq->where('area_id', (int) $areaId));
+                      });
                 } else {
-                    $q->whereHas('area', fn($aq) => $aq->where('name', $areaId))->orWhereHas('odc.area', fn($aq) => $aq->where('name', $areaId));
+                    $q->whereHas('area', fn($aq) => $aq->where('name', $areaId))
+                      ->orWhere(function ($fallback) use ($areaId) {
+                          $fallback->whereNull('area_id')
+                              ->whereHas('odc.area', fn($aq) => $aq->where('name', $areaId));
+                      });
                 }
             });
         }

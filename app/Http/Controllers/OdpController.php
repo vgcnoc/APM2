@@ -19,39 +19,16 @@ class OdpController extends Controller
         $baseQuery = Odp::query();
         DataScopeService::applyOdpScope($baseQuery, $user);
 
-        // Stats calculation
-        $totalOdps = (clone $baseQuery)->count();
-        $activeOdps = (clone $baseQuery)->where('status', 'active')->count();
-        $totalPorts = (int) (clone $baseQuery)->sum('total_ports');
-        $usedPorts = (int) (clone $baseQuery)->sum('used_ports');
-        $availablePorts = max(0, $totalPorts - $usedPorts);
-        $odpsWithAvailable = (clone $baseQuery)->hasAvailablePort()->count();
-        $fullOdps = (clone $baseQuery)->where(function ($q) {
-            $q->where('status', 'full')
-              ->orWhereRaw('used_ports >= total_ports');
-        })->count();
-        $inactiveOdps = (clone $baseQuery)->whereIn('status', ['inactive', 'maintenance'])->count();
-
-        $stats = [
-            'total' => $totalOdps,
-            'active' => $activeOdps,
-            'total_ports' => $totalPorts,
-            'used_ports' => $usedPorts,
-            'available_ports' => $availablePorts,
-            'has_available' => $odpsWithAvailable,
-            'full' => $fullOdps,
-            'inactive' => $inactiveOdps,
-        ];
-
         // Options for smart filter dropdowns
         $types = (clone $baseQuery)->whereNotNull('type')->distinct()->orderBy('type')->pluck('type')->filter()->values();
 
-        $query = (clone $baseQuery)->with(['odc.olt', 'area'])->withCount('onts');
+        // 1. Base query for stats and records
+        $filteredQuery = (clone $baseQuery);
 
         // Search Filter (Debounced)
         if ($request->filled('search')) {
             $s = trim($request->search);
-            $query->where(function ($sub) use ($s) {
+            $filteredQuery->where(function ($sub) use ($s) {
                 $sub->where('name', 'like', "%{$s}%")
                     ->orWhere('address', 'like', "%{$s}%")
                     ->orWhere('description', 'like', "%{$s}%")
@@ -60,24 +37,73 @@ class OdpController extends Controller
             });
         }
 
-        // Area Filter
+        // Area Filter (Strict & Smart: match odp.area_id first; if null, inherit from odc.area_id)
         if ($request->filled('area_id')) {
             $areaVal = $request->area_id;
-            $query->where(function ($sub) use ($areaVal) {
+            $filteredQuery->where(function ($sub) use ($areaVal) {
                 if (is_numeric($areaVal)) {
-                    $sub->where('area_id', $areaVal)
-                        ->orWhereHas('odc', fn($oq) => $oq->where('area_id', $areaVal));
+                    $sub->where('area_id', (int) $areaVal)
+                        ->orWhere(function ($fallback) use ($areaVal) {
+                            $fallback->whereNull('area_id')
+                                ->whereHas('odc', fn($oq) => $oq->where('area_id', (int) $areaVal));
+                        });
                 } else {
                     $sub->whereHas('area', fn($aq) => $aq->where('name', $areaVal))
-                        ->orWhereHas('odc.area', fn($aq) => $aq->where('name', $areaVal));
+                        ->orWhere(function ($fallback) use ($areaVal) {
+                            $fallback->whereNull('area_id')
+                                ->whereHas('odc.area', fn($aq) => $aq->where('name', $areaVal));
+                        });
                 }
             });
         }
 
         // ODC Filter
         if ($request->filled('odc_id')) {
-            $query->where('odc_id', $request->odc_id);
+            $filteredQuery->where('odc_id', $request->odc_id);
         }
+
+        // Port Capacity Filter
+        if ($request->filled('total_ports')) {
+            $filteredQuery->where('total_ports', (int) $request->total_ports);
+        }
+
+        // Type Filter (Normal, Split 2, Closure, Pedestal)
+        if ($request->filled('type')) {
+            $filteredQuery->where('type', $request->type);
+        }
+
+        // Date Range Filter
+        if ($request->filled('date_from')) {
+            $filteredQuery->whereDate('created_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $filteredQuery->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        // Dynamic Stats calculation scoped to selected area, ODC, search, capacity, type, and date range
+        $statsData = (clone $filteredQuery)->selectRaw("
+            COUNT(*) as total,
+            SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
+            COALESCE(SUM(total_ports), 0) as total_ports,
+            COALESCE(SUM(used_ports), 0) as used_ports,
+            SUM(CASE WHEN used_ports < total_ports AND (status IS NULL OR status NOT IN ('inactive', 'maintenance')) THEN 1 ELSE 0 END) as has_available,
+            SUM(CASE WHEN status = 'full' OR used_ports >= total_ports THEN 1 ELSE 0 END) as full_count,
+            SUM(CASE WHEN status IN ('inactive', 'maintenance') THEN 1 ELSE 0 END) as inactive
+        ")->first();
+
+        $stats = [
+            'total' => (int) ($statsData->total ?? 0),
+            'active' => (int) ($statsData->active ?? 0),
+            'total_ports' => (int) ($statsData->total_ports ?? 0),
+            'used_ports' => (int) ($statsData->used_ports ?? 0),
+            'available_ports' => max(0, (int) ($statsData->total_ports ?? 0) - (int) ($statsData->used_ports ?? 0)),
+            'has_available' => (int) ($statsData->has_available ?? 0),
+            'full' => (int) ($statsData->full_count ?? 0),
+            'inactive' => (int) ($statsData->inactive ?? 0),
+        ];
+
+        // Table Query (starts from filteredQuery, then applies sub-filters like status and port availability)
+        $query = (clone $filteredQuery)->with(['odc.olt', 'area'])->withCount('onts');
 
         // Status Filter
         if ($request->filled('status')) {
@@ -95,16 +121,6 @@ class OdpController extends Controller
             }
         }
 
-        // Port Capacity Filter
-        if ($request->filled('total_ports')) {
-            $query->where('total_ports', (int) $request->total_ports);
-        }
-
-        // Type Filter (Normal, Split 2, Closure, Pedestal)
-        if ($request->filled('type')) {
-            $query->where('type', $request->type);
-        }
-
         // Port Availability Filter
         if ($request->filled('port_availability')) {
             if ($request->port_availability === 'available') {
@@ -116,14 +132,6 @@ class OdpController extends Controller
 
         if ($request->boolean('available_only')) {
             $query->hasAvailablePort();
-        }
-
-        // Date Range Filter
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
         }
 
         $perPage = in_array((int) $request->input('per_page'), [10, 15, 25, 50, 100, 250]) ? (int) $request->input('per_page') : 15;
@@ -321,7 +329,22 @@ class OdpController extends Controller
                 });
             }
             if ($request->filled('area_id')) {
-                $query->where('area_id', $request->area_id);
+                $areaVal = $request->area_id;
+                $query->where(function ($sub) use ($areaVal) {
+                    if (is_numeric($areaVal)) {
+                        $sub->where('area_id', (int) $areaVal)
+                            ->orWhere(function ($fallback) use ($areaVal) {
+                                $fallback->whereNull('area_id')
+                                    ->whereHas('odc', fn($oq) => $oq->where('area_id', (int) $areaVal));
+                            });
+                    } else {
+                        $sub->whereHas('area', fn($aq) => $aq->where('name', $areaVal))
+                            ->orWhere(function ($fallback) use ($areaVal) {
+                                $fallback->whereNull('area_id')
+                                    ->whereHas('odc.area', fn($aq) => $aq->where('name', $areaVal));
+                            });
+                    }
+                });
             }
             if ($request->filled('odc_id')) {
                 $query->where('odc_id', $request->odc_id);

@@ -234,7 +234,7 @@
                             class="w-full px-3 py-2 bg-gray-50/60 border border-gray-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium text-gray-700"
                         >
                             <option value="">Semua ODC</option>
-                            <option v-for="odc in odcs" :key="odc.id" :value="odc.id">{{ odc.name }}</option>
+                            <option v-for="odc in filterOdcsList" :key="odc.id" :value="odc.id">{{ odc.name }}</option>
                         </select>
                     </div>
 
@@ -250,6 +250,7 @@
                             <option value="full">Full (Penuh)</option>
                             <option value="inactive">Inactive</option>
                             <option value="maintenance">Maintenance</option>
+                            <option value="inactive_maintenance">Inaktif / Maintenance</option>
                         </select>
                     </div>
 
@@ -355,7 +356,7 @@
                     </span>
 
                     <span v-if="filterState.status" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200">
-                        Status: {{ filterState.status }}
+                        Status: {{ getStatusLabel(filterState.status) }}
                         <button type="button" @click="filterState.status = ''" class="hover:text-emerald-900">&times;</button>
                     </span>
 
@@ -939,6 +940,26 @@ const hasPermission = (perm) => isAdmin.value || permissions.value.includes(perm
 
 // Filter State & Drawer
 const isAdvancedDrawerOpen = ref(false);
+// Filter ODC options based on selected area in filter bar
+const filterOdcsList = computed(() => {
+    if (!filterState.area_id) {
+        return props.odcs || [];
+    }
+    return (props.odcs || []).filter(o => String(o.area_id) === String(filterState.area_id));
+});
+
+const getStatusLabel = (st) => {
+    switch (st) {
+        case 'active': return 'Aktif (Normal)';
+        case 'has_available': return 'Port Tersedia';
+        case 'full': return 'Penuh (Full)';
+        case 'inactive': return 'Inactive';
+        case 'maintenance': return 'Maintenance';
+        case 'inactive_maintenance': return 'Inaktif / Maint';
+        default: return st;
+    }
+};
+
 const filterState = reactive({
     search: props.filters?.search || '',
     area_id: props.filters?.area_id || '',
@@ -969,6 +990,7 @@ const applyFilters = (preservePagination = false) => {
         preserveState: true,
         replace: true,
         preserveScroll: true,
+        only: ['odps', 'stats', 'filters'],
     });
 };
 
@@ -987,6 +1009,33 @@ watch(
     () => {
         applyFilters(false);
     }
+);
+
+watch(
+    () => filterState.area_id,
+    (newAreaId) => {
+        if (filterState.odc_id) {
+            const odc = (props.odcs || []).find(o => String(o.id) === String(filterState.odc_id));
+            if (odc && newAreaId && String(odc.area_id) !== String(newAreaId)) {
+                filterState.odc_id = '';
+            }
+        }
+    }
+);
+
+watch(
+    () => props.filters,
+    (newFilters) => {
+        if (!newFilters) return;
+        Object.keys(filterState).forEach(key => {
+            if (key in newFilters) {
+                filterState[key] = newFilters[key] ?? (key === 'per_page' ? '15' : '');
+            } else if (key !== 'per_page') {
+                filterState[key] = '';
+            }
+        });
+    },
+    { deep: true }
 );
 
 watch(
