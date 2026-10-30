@@ -4,7 +4,7 @@
         <div class="p-3.5 sm:p-4 border-b border-gray-200 space-y-3.5">
             <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
                 <!-- Search -->
-                <div class="relative w-full lg:w-72 xl:w-80 shrink-0 min-w-0">
+                <div :class="['relative min-w-0 shrink-0', $slots.actions ? 'w-full lg:w-72 xl:w-96' : 'w-full sm:max-w-md lg:max-w-xl']">
                     <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                     </svg>
@@ -130,6 +130,7 @@ const props = defineProps({
     searchRoute: { type: String, default: '' },
     selectable: { type: Boolean, default: false },
     selected: { type: Array, default: () => [] },
+    filters: { type: Object, default: () => ({}) },
 });
 
 const emit = defineEmits(['update:selected']);
@@ -188,8 +189,15 @@ function onSearch() {
             if (existingQuery) {
                 const parsedExisting = new URLSearchParams(existingQuery);
                 for (const [k, v] of parsedExisting.entries()) {
-                    if (!urlParams.has(k)) {
+                    urlParams.set(k, v);
+                }
+            }
+            if (props.filters && typeof props.filters === 'object') {
+                for (const [k, v] of Object.entries(props.filters)) {
+                    if (v !== undefined && v !== null && v !== '') {
                         urlParams.set(k, v);
+                    } else {
+                        urlParams.delete(k);
                     }
                 }
             }

@@ -3,17 +3,17 @@
         <!-- Top Toolbar: NOC Status & Auto-Refresh Controls -->
         <div class="mb-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div class="flex items-center gap-2">
-                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shadow-sm">
                     <span class="relative flex h-2.5 w-2.5">
                         <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                         <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                     </span>
                     RADIUS NOC SYNC
                 </span>
-                <span class="text-xs text-gray-400">|</span>
-                <span class="text-xs text-gray-500 font-medium">
+                <span class="text-xs text-gray-400 dark:text-gray-500">|</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">
                     Kesehatan Jaringan: 
-                    <strong :class="stats.health_rate >= 80 ? 'text-emerald-600' : (stats.health_rate >= 50 ? 'text-amber-600' : 'text-rose-600')">
+                    <strong :class="stats.health_rate >= 80 ? 'text-emerald-600 dark:text-emerald-400' : (stats.health_rate >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400')">
                         {{ stats.health_rate }}%
                     </strong>
                 </span>
@@ -25,10 +25,10 @@
                     type="button"
                     @click="toggleAutoRefresh"
                     :class="[
-                        'inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-200 shadow-sm focus:outline-none focus:ring-0 select-none',
+                        'inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-200 shadow-sm focus:outline-none focus:ring-0 select-none cursor-pointer',
                         autoRefreshEnabled
-                            ? 'bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100'
-                            : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                            ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60'
+                            : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
                     ]"
                     :title="autoRefreshEnabled ? 'Klik untuk mematikan auto refresh' : 'Klik untuk mengaktifkan auto refresh tiap 30 detik'"
                 >
@@ -45,7 +45,7 @@
                     type="button"
                     @click="refreshData(false)"
                     :disabled="refreshing"
-                    class="btn-secondary bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium text-xs py-1.5 px-3 rounded-lg shadow-sm flex items-center gap-1.5 transition-colors disabled:opacity-50 focus:outline-none focus:ring-0 select-none"
+                    class="btn-secondary bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-medium text-xs py-1.5 px-3 rounded-lg shadow-sm flex items-center gap-1.5 transition-colors disabled:opacity-50 focus:outline-none focus:ring-0 select-none cursor-pointer"
                 >
                     <svg class="w-3.5 h-3.5" :class="{ 'animate-spin': refreshing }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -63,29 +63,29 @@
                 :class="[
                     'group relative rounded-2xl p-4 border transition-all duration-200 cursor-pointer overflow-hidden',
                     filterStatus === 'online'
-                        ? 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-400 ring-2 ring-emerald-300/60 shadow-md shadow-emerald-50'
-                        : 'bg-white hover:bg-emerald-50/30 border-gray-200 hover:border-emerald-300 hover:shadow-sm'
+                        ? 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/70 dark:to-emerald-900/40 border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-300/60 dark:ring-emerald-700/60 shadow-md shadow-emerald-50 dark:shadow-none'
+                        : 'bg-white dark:bg-gray-800 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20 border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-600 hover:shadow-sm'
                 ]"
             >
                 <div class="flex items-center justify-between mb-1.5">
-                    <span class="text-[11px] uppercase tracking-wider font-bold text-emerald-700 flex items-center gap-1.5">
+                    <span class="text-[11px] uppercase tracking-wider font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
                         <span class="relative flex h-2 w-2">
                             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                             <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                         </span>
                         Online
                     </span>
-                    <div class="w-8 h-8 rounded-xl bg-emerald-100/70 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <div class="w-8 h-8 rounded-xl bg-emerald-100/70 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>
                         </svg>
                     </div>
                 </div>
                 <div class="flex items-baseline gap-1.5">
-                    <span class="text-2xl font-black text-emerald-700 tracking-tight">{{ stats.online }}</span>
-                    <span class="text-[11px] font-semibold text-emerald-600/80">sesi</span>
+                    <span class="text-2xl font-black text-emerald-700 dark:text-emerald-400 tracking-tight">{{ stats.online }}</span>
+                    <span class="text-[11px] font-semibold text-emerald-600/80 dark:text-emerald-500">sesi</span>
                 </div>
-                <div class="mt-1 flex items-center justify-between text-[10px] text-emerald-600 font-medium">
+                <div class="mt-1 flex items-center justify-between text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
                     <span>{{ stats.health_rate }}% Terhubung</span>
                     <span class="opacity-0 group-hover:opacity-100 transition-opacity font-bold">Filter &rarr;</span>
                 </div>
@@ -97,26 +97,26 @@
                 :class="[
                     'group relative rounded-2xl p-4 border transition-all duration-200 cursor-pointer overflow-hidden',
                     filterStatus === 'offline'
-                        ? 'bg-gradient-to-br from-rose-50 to-rose-100/50 border-rose-400 ring-2 ring-rose-300/60 shadow-md shadow-rose-50'
-                        : 'bg-white hover:bg-rose-50/30 border-gray-200 hover:border-rose-300 hover:shadow-sm'
+                        ? 'bg-gradient-to-br from-rose-50 to-rose-100/50 dark:from-rose-950/70 dark:to-rose-900/40 border-rose-400 dark:border-rose-600 ring-2 ring-rose-300/60 dark:ring-rose-700/60 shadow-md shadow-rose-50 dark:shadow-none'
+                        : 'bg-white dark:bg-gray-800 hover:bg-rose-50/30 dark:hover:bg-rose-950/20 border-gray-200 dark:border-gray-700 hover:border-rose-300 dark:hover:border-rose-600 hover:shadow-sm'
                 ]"
             >
                 <div class="flex items-center justify-between mb-1.5">
-                    <span class="text-[11px] uppercase tracking-wider font-bold text-rose-700 flex items-center gap-1.5">
+                    <span class="text-[11px] uppercase tracking-wider font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded-full bg-rose-500"></span>
                         Offline
                     </span>
-                    <div class="w-8 h-8 rounded-xl bg-rose-100/70 text-rose-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <div class="w-8 h-8 rounded-xl bg-rose-100/70 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400 flex items-center justify-center group-hover:scale-105 transition-transform">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 4.243a9 9 0 01-12.728 0m0 0l2.829-2.829m-2.829 2.829L3 21m2.828-5.657a5 5 0 010-7.072m0 0l2.829 2.829m0 0l4.242 4.243"/>
                         </svg>
                     </div>
                 </div>
                 <div class="flex items-baseline gap-1.5">
-                    <span class="text-2xl font-black text-rose-700 tracking-tight">{{ stats.offline }}</span>
-                    <span class="text-[11px] font-semibold text-rose-600/80">pelanggan</span>
+                    <span class="text-2xl font-black text-rose-700 dark:text-rose-400 tracking-tight">{{ stats.offline }}</span>
+                    <span class="text-[11px] font-semibold text-rose-600/80 dark:text-rose-500">pelanggan</span>
                 </div>
-                <div class="mt-1 flex items-center justify-between text-[10px] text-rose-600 font-medium">
+                <div class="mt-1 flex items-center justify-between text-[10px] text-rose-600 dark:text-rose-400 font-medium">
                     <span>{{ stats.total > 0 ? (100 - stats.health_rate).toFixed(1) : 0 }}% Perlu Cek</span>
                     <span class="opacity-0 group-hover:opacity-100 transition-opacity font-bold">Filter &rarr;</span>
                 </div>
@@ -128,26 +128,26 @@
                 :class="[
                     'group relative rounded-2xl p-4 border transition-all duration-200 cursor-pointer overflow-hidden',
                     filterMode === 'pppoe'
-                        ? 'bg-gradient-to-br from-indigo-50 to-indigo-100/50 border-indigo-400 ring-2 ring-indigo-300/60 shadow-md shadow-indigo-50'
-                        : 'bg-white hover:bg-indigo-50/30 border-gray-200 hover:border-indigo-300 hover:shadow-sm'
+                        ? 'bg-gradient-to-br from-indigo-50 to-indigo-100/50 dark:from-indigo-950/70 dark:to-indigo-900/40 border-indigo-400 dark:border-indigo-600 ring-2 ring-indigo-300/60 dark:ring-indigo-700/60 shadow-md shadow-indigo-50 dark:shadow-none'
+                        : 'bg-white dark:bg-gray-800 hover:bg-indigo-50/30 dark:hover:bg-indigo-950/20 border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-sm'
                 ]"
             >
                 <div class="flex items-center justify-between mb-1.5">
-                    <span class="text-[11px] uppercase tracking-wider font-bold text-indigo-700 flex items-center gap-1.5">
+                    <span class="text-[11px] uppercase tracking-wider font-bold text-indigo-700 dark:text-indigo-400 flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
                         PPPoE
                     </span>
-                    <div class="w-8 h-8 rounded-xl bg-indigo-100/70 text-indigo-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <div class="w-8 h-8 rounded-xl bg-indigo-100/70 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-105 transition-transform">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
                         </svg>
                     </div>
                 </div>
                 <div class="flex items-baseline gap-1.5">
-                    <span class="text-2xl font-black text-indigo-700 tracking-tight">{{ stats.pppoe_count }}</span>
-                    <span class="text-[11px] font-semibold text-indigo-600/80">pelanggan</span>
+                    <span class="text-2xl font-black text-indigo-700 dark:text-indigo-400 tracking-tight">{{ stats.pppoe_count }}</span>
+                    <span class="text-[11px] font-semibold text-indigo-600/80 dark:text-indigo-500">pelanggan</span>
                 </div>
-                <div class="mt-1 flex items-center justify-between text-[10px] text-indigo-600 font-medium">
+                <div class="mt-1 flex items-center justify-between text-[10px] text-indigo-600 dark:text-indigo-400 font-medium">
                     <span>Broadband Rumahan</span>
                     <span class="opacity-0 group-hover:opacity-100 transition-opacity font-bold">Filter &rarr;</span>
                 </div>
@@ -159,26 +159,26 @@
                 :class="[
                     'group relative rounded-2xl p-4 border transition-all duration-200 cursor-pointer overflow-hidden',
                     filterMode === 'hotspot'
-                        ? 'bg-gradient-to-br from-amber-50 to-amber-100/50 border-amber-400 ring-2 ring-amber-300/60 shadow-md shadow-amber-50'
-                        : 'bg-white hover:bg-amber-50/30 border-gray-200 hover:border-amber-300 hover:shadow-sm'
+                        ? 'bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/70 dark:to-amber-900/40 border-amber-400 dark:border-amber-600 ring-2 ring-amber-300/60 dark:ring-amber-700/60 shadow-md shadow-amber-50 dark:shadow-none'
+                        : 'bg-white dark:bg-gray-800 hover:bg-amber-50/30 dark:hover:bg-amber-950/20 border-gray-200 dark:border-gray-700 hover:border-amber-300 dark:hover:border-amber-600 hover:shadow-sm'
                 ]"
             >
                 <div class="flex items-center justify-between mb-1.5">
-                    <span class="text-[11px] uppercase tracking-wider font-bold text-amber-700 flex items-center gap-1.5">
+                    <span class="text-[11px] uppercase tracking-wider font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded-full bg-amber-500"></span>
                         Hotspot
                     </span>
-                    <div class="w-8 h-8 rounded-xl bg-amber-100/70 text-amber-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <div class="w-8 h-8 rounded-xl bg-amber-100/70 dark:bg-amber-900/60 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:scale-105 transition-transform">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                         </svg>
                     </div>
                 </div>
                 <div class="flex items-baseline gap-1.5">
-                    <span class="text-2xl font-black text-amber-700 tracking-tight">{{ stats.hotspot_count }}</span>
-                    <span class="text-[11px] font-semibold text-amber-600/80">pelanggan</span>
+                    <span class="text-2xl font-black text-amber-700 dark:text-amber-400 tracking-tight">{{ stats.hotspot_count }}</span>
+                    <span class="text-[11px] font-semibold text-amber-600/80 dark:text-amber-500">pelanggan</span>
                 </div>
-                <div class="mt-1 flex items-center justify-between text-[10px] text-amber-600 font-medium">
+                <div class="mt-1 flex items-center justify-between text-[10px] text-amber-600 dark:text-amber-400 font-medium">
                     <span>Login Member</span>
                     <span class="opacity-0 group-hover:opacity-100 transition-opacity font-bold">Filter &rarr;</span>
                 </div>
@@ -190,26 +190,26 @@
                 :class="[
                     'group relative rounded-2xl p-4 border transition-all duration-200 cursor-pointer overflow-hidden col-span-2 sm:col-span-1',
                     filterStatus === 'all' && filterMode === 'all' && !filterArea && !filterPackage
-                        ? 'bg-gradient-to-br from-slate-50 to-blue-50 border-blue-400 ring-2 ring-blue-300/60 shadow-md shadow-blue-50'
-                        : 'bg-white hover:bg-slate-50 border-gray-200 hover:border-blue-300 hover:shadow-sm'
+                        ? 'bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-800 dark:to-blue-950/60 border-blue-400 dark:border-blue-600 ring-2 ring-blue-300/60 dark:ring-blue-700/60 shadow-md shadow-blue-50 dark:shadow-none'
+                        : 'bg-white dark:bg-gray-800 hover:bg-slate-50 dark:hover:bg-gray-700/50 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-sm'
                 ]"
             >
                 <div class="flex items-center justify-between mb-1.5">
-                    <span class="text-[11px] uppercase tracking-wider font-bold text-slate-700 flex items-center gap-1.5">
+                    <span class="text-[11px] uppercase tracking-wider font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded-full bg-slate-500"></span>
                         Semua
                     </span>
-                    <div class="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <div class="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center group-hover:scale-105 transition-transform">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
                         </svg>
                     </div>
                 </div>
                 <div class="flex items-baseline gap-1.5">
-                    <span class="text-2xl font-black text-slate-800 tracking-tight">{{ stats.total }}</span>
-                    <span class="text-[11px] font-semibold text-slate-500">terdaftar</span>
+                    <span class="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">{{ stats.total }}</span>
+                    <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400">terdaftar</span>
                 </div>
-                <div class="mt-1 flex items-center justify-between text-[10px] text-slate-600 font-medium">
+                <div class="mt-1 flex items-center justify-between text-[10px] text-slate-600 dark:text-slate-400 font-medium">
                     <span>Non-Voucher</span>
                     <span class="opacity-0 group-hover:opacity-100 transition-opacity font-bold">Reset &rarr;</span>
                 </div>
@@ -217,22 +217,22 @@
         </div>
 
         <!-- Segmented Control Bar: Status Tabs & Mode Pills -->
-        <div class="mb-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-white p-2 rounded-2xl border border-gray-200/80 shadow-sm">
+        <div class="mb-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-white dark:bg-gray-800 p-2 rounded-2xl border border-gray-200/80 dark:border-gray-700 shadow-sm">
             <!-- Left: Status Segmented Tabs -->
-            <div class="flex items-center gap-1 bg-gray-100/80 p-1 rounded-xl">
+            <div class="flex items-center gap-1 bg-gray-100/80 dark:bg-gray-900/80 p-1 rounded-xl">
                 <button
                     id="tab-status-all"
                     type="button"
                     @click="filterStatusTab('all')"
                     :class="[
-                        'px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 flex items-center gap-1.5 focus:outline-none focus:ring-0 select-none',
+                        'px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 flex items-center gap-1.5 focus:outline-none focus:ring-0 select-none cursor-pointer',
                         filterStatus === 'all'
-                            ? 'bg-white text-gray-900 shadow-sm'
-                            : 'text-gray-500 hover:text-gray-800 hover:bg-white/50'
+                            ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-gray-800/50'
                     ]"
                 >
                     <span>Semua Sesi</span>
-                    <span :class="['px-1.5 py-0.5 rounded-full text-[10px] font-black', filterStatus === 'all' ? 'bg-slate-100 text-slate-700' : 'bg-gray-200/60 text-gray-600']">
+                    <span :class="['px-1.5 py-0.5 rounded-full text-[10px] font-black', filterStatus === 'all' ? 'bg-slate-100 dark:bg-gray-700 text-slate-700 dark:text-gray-300' : 'bg-gray-200/60 dark:bg-gray-800 text-gray-600 dark:text-gray-400']">
                         {{ stats.tab_total ?? stats.total }}
                     </span>
                 </button>
@@ -242,10 +242,10 @@
                     type="button"
                     @click="filterStatusTab('online')"
                     :class="[
-                        'px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 flex items-center gap-1.5 focus:outline-none focus:ring-0 select-none',
+                        'px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 flex items-center gap-1.5 focus:outline-none focus:ring-0 select-none cursor-pointer',
                         filterStatus === 'online'
-                            ? 'bg-emerald-600 text-white shadow-sm'
-                            : 'text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/60'
+                            ? 'bg-emerald-600 dark:bg-emerald-600 text-white shadow-sm'
+                            : 'text-gray-600 dark:text-gray-400 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/40'
                     ]"
                 >
                     <span class="relative flex h-2 w-2">
@@ -253,7 +253,7 @@
                         <span :class="['relative inline-flex rounded-full h-2 w-2', filterStatus === 'online' ? 'bg-white' : 'bg-emerald-500']"></span>
                     </span>
                     <span>Online</span>
-                    <span :class="['px-1.5 py-0.5 rounded-full text-[10px] font-black', filterStatus === 'online' ? 'bg-emerald-700 text-emerald-100' : 'bg-emerald-100 text-emerald-700']">
+                    <span :class="['px-1.5 py-0.5 rounded-full text-[10px] font-black', filterStatus === 'online' ? 'bg-emerald-700 dark:bg-emerald-800 text-emerald-100' : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300']">
                         {{ stats.tab_online ?? stats.online }}
                     </span>
                 </button>
@@ -263,15 +263,15 @@
                     type="button"
                     @click="filterStatusTab('offline')"
                     :class="[
-                        'px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 flex items-center gap-1.5 focus:outline-none focus:ring-0 select-none',
+                        'px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 flex items-center gap-1.5 focus:outline-none focus:ring-0 select-none cursor-pointer',
                         filterStatus === 'offline'
-                            ? 'bg-rose-600 text-white shadow-sm'
-                            : 'text-gray-600 hover:text-rose-700 hover:bg-rose-50/60'
+                            ? 'bg-rose-600 dark:bg-rose-600 text-white shadow-sm'
+                            : 'text-gray-600 dark:text-gray-400 hover:text-rose-700 dark:hover:text-rose-400 hover:bg-rose-50/60 dark:hover:bg-rose-950/40'
                     ]"
                 >
                     <span :class="['inline-block w-2 h-2 rounded-full', filterStatus === 'offline' ? 'bg-white' : 'bg-rose-500']"></span>
                     <span>Offline</span>
-                    <span :class="['px-1.5 py-0.5 rounded-full text-[10px] font-black', filterStatus === 'offline' ? 'bg-rose-700 text-rose-100' : 'bg-rose-100 text-rose-700']">
+                    <span :class="['px-1.5 py-0.5 rounded-full text-[10px] font-black', filterStatus === 'offline' ? 'bg-rose-700 dark:bg-rose-800 text-rose-100' : 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300']">
                         {{ stats.tab_offline ?? stats.offline }}
                     </span>
                 </button>
@@ -279,15 +279,15 @@
 
             <!-- Right: Access Mode Sub-Filter Pills -->
             <div class="flex items-center gap-1 flex-wrap">
-                <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mr-1 hidden sm:inline">Mode:</span>
+                <span class="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mr-1 hidden sm:inline">Mode:</span>
                 <button
                     type="button"
                     @click="filterModePill('all')"
                     :class="[
-                        'px-2.5 py-1 text-xs font-semibold rounded-lg transition-all focus:outline-none focus:ring-0 select-none',
+                        'px-2.5 py-1 text-xs font-semibold rounded-lg transition-all focus:outline-none focus:ring-0 select-none cursor-pointer',
                         filterMode === 'all'
-                            ? 'bg-blue-50 text-blue-700 border border-blue-200 shadow-xs'
-                            : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'
+                            ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shadow-xs'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
                     ]"
                 >
                     Semua Mode
@@ -296,10 +296,10 @@
                     type="button"
                     @click="filterModePill('pppoe')"
                     :class="[
-                        'px-2.5 py-1 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 focus:outline-none focus:ring-0 select-none',
+                        'px-2.5 py-1 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 focus:outline-none focus:ring-0 select-none cursor-pointer',
                         filterMode === 'pppoe'
-                            ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-xs'
-                            : 'text-gray-500 hover:text-indigo-700 hover:bg-indigo-50/50'
+                            ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shadow-xs'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/40'
                     ]"
                 >
                     <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
@@ -309,10 +309,10 @@
                     type="button"
                     @click="filterModePill('hotspot')"
                     :class="[
-                        'px-2.5 py-1 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 focus:outline-none focus:ring-0 select-none',
+                        'px-2.5 py-1 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 focus:outline-none focus:ring-0 select-none cursor-pointer',
                         filterMode === 'hotspot'
-                            ? 'bg-amber-50 text-amber-700 border border-amber-200 shadow-xs'
-                            : 'text-gray-500 hover:text-amber-700 hover:bg-amber-50/50'
+                            ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shadow-xs'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-amber-700 dark:hover:text-amber-300 hover:bg-amber-50/50 dark:hover:bg-amber-950/40'
                     ]"
                 >
                     <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
@@ -333,33 +333,33 @@
             <!-- Dropdown Filters Slot -->
             <template #filters>
                 <!-- Area -->
-                <div class="relative flex items-center bg-white border border-gray-200 rounded-xl pl-3 pr-2 py-1 shadow-xs w-full sm:w-auto sm:min-w-[170px]">
-                    <div class="shrink-0 mr-2 text-gray-400">
+                <div class="relative flex items-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl pl-3 pr-2 py-1 shadow-xs w-full sm:w-auto sm:min-w-[170px]">
+                    <div class="shrink-0 mr-2 text-gray-400 dark:text-gray-500">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                         </svg>
                     </div>
                     <div class="flex flex-col flex-1 min-w-0">
-                        <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5 leading-none mt-0.5">Area / Wilayah</span>
-                        <select v-model="filterArea" @change="applyFilters" class="form-select border-0 pt-0 pb-0.5 pl-0 !pr-7 h-auto text-xs bg-transparent focus:ring-0 text-gray-700 font-semibold w-full cursor-pointer truncate">
-                            <option value="">Semua Area / Wilayah</option>
-                            <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
+                        <span class="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider mb-0.5 leading-none mt-0.5">Area / Wilayah</span>
+                        <select v-model="filterArea" @change="applyFilters" class="form-select border-0 pt-0 pb-0.5 pl-0 !pr-7 h-auto text-xs bg-transparent focus:ring-0 text-gray-700 dark:text-gray-200 font-semibold w-full cursor-pointer truncate">
+                            <option value="" class="dark:bg-gray-800">Semua Area / Wilayah</option>
+                            <option v-for="a in areas" :key="a.id" :value="a.id" class="dark:bg-gray-800">{{ a.name }}</option>
                         </select>
                     </div>
                 </div>
 
                 <!-- Paket -->
-                <div class="relative flex items-center bg-white border border-gray-200 rounded-xl pl-3 pr-2 py-1 shadow-xs w-full sm:w-auto sm:min-w-[180px]">
-                    <div class="shrink-0 mr-2 text-gray-400">
+                <div class="relative flex items-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl pl-3 pr-2 py-1 shadow-xs w-full sm:w-auto sm:min-w-[180px]">
+                    <div class="shrink-0 mr-2 text-gray-400 dark:text-gray-500">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
                         </svg>
                     </div>
                     <div class="flex flex-col flex-1 min-w-0">
-                        <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5 leading-none mt-0.5">Paket Layanan</span>
-                        <select v-model="filterPackage" @change="applyFilters" class="form-select border-0 pt-0 pb-0.5 pl-0 !pr-7 h-auto text-xs bg-transparent focus:ring-0 text-gray-700 font-semibold w-full cursor-pointer truncate">
-                            <option value="">Semua Paket Layanan</option>
-                            <option v-for="p in packages" :key="p.id" :value="p.id">{{ p.name }}</option>
+                        <span class="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider mb-0.5 leading-none mt-0.5">Paket Layanan</span>
+                        <select v-model="filterPackage" @change="applyFilters" class="form-select border-0 pt-0 pb-0.5 pl-0 !pr-7 h-auto text-xs bg-transparent focus:ring-0 text-gray-700 dark:text-gray-200 font-semibold w-full cursor-pointer truncate">
+                            <option value="" class="dark:bg-gray-800">Semua Paket Layanan</option>
+                            <option v-for="p in packages" :key="p.id" :value="p.id" class="dark:bg-gray-800">{{ p.name }}</option>
                         </select>
                     </div>
                 </div>
@@ -382,7 +382,7 @@
                         type="button"
                         v-if="hasActiveFilter"
                         @click="resetAllFilters"
-                        class="px-3.5 py-2 rounded-xl text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 transition-colors flex items-center gap-1.5 focus:outline-none select-none cursor-pointer"
+                        class="px-3.5 py-2 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200 dark:border-rose-800 transition-colors flex items-center gap-1.5 focus:outline-none select-none cursor-pointer"
                         title="Reset semua filter ke kondisi awal"
                     >
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -406,13 +406,13 @@
                         <div class="relative shrink-0">
                             <div :class="[
                                 'w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black text-white shadow-sm ring-2',
-                                row.is_online ? 'ring-emerald-400 shadow-emerald-100' : 'ring-rose-300 shadow-rose-100',
+                                row.is_online ? 'ring-emerald-400 dark:ring-emerald-500 shadow-emerald-100 dark:shadow-none' : 'ring-rose-300 dark:ring-rose-600 shadow-rose-100 dark:shadow-none',
                                 getAvatarColor(row.name)
                             ]">
                                 {{ (row.name || 'P').charAt(0).toUpperCase() }}
                             </div>
                             <span :class="[
-                                'absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white',
+                                'absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white dark:border-gray-800',
                                 row.is_online ? 'bg-emerald-500 ring-1 ring-emerald-300' : 'bg-rose-500 ring-1 ring-rose-200'
                             ]"></span>
                         </div>
@@ -420,23 +420,23 @@
                             <div class="flex items-center gap-1.5 flex-wrap">
                                 <Link
                                     :href="`/customers/${row.id}`"
-                                    class="font-bold text-sm text-gray-900 hover:text-blue-600 transition-colors truncate max-w-[200px]"
+                                    class="font-bold text-sm text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors truncate max-w-[200px]"
                                     :title="row.name"
                                 >
                                     {{ row.name }}
                                 </Link>
-                                <span v-if="row.odp_name" class="inline-flex px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-100 text-slate-700 border border-slate-200" :title="`ODP: ${row.odp_name}`">
+                                <span v-if="row.odp_name" class="inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700" :title="`ODP: ${row.odp_name}`">
                                     {{ row.odp_name }}
                                 </span>
                             </div>
-                            <div class="flex items-center gap-2 mt-0.5 text-[11px] text-gray-500 font-mono">
-                                <span class="font-semibold text-gray-700">{{ row.customer_code }}</span>
+                            <div class="flex items-center gap-2 mt-0.5 text-[11px] text-gray-500 dark:text-gray-400 font-mono">
+                                <span class="font-semibold text-gray-700 dark:text-gray-300">{{ row.customer_code }}</span>
                                 <span v-if="row.phone" class="text-gray-400">•</span>
                                 <a
                                     v-if="row.phone"
                                     :href="`https://wa.me/${formatWaNumber(row.phone)}`"
                                     target="_blank"
-                                    class="text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1"
+                                    class="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:underline flex items-center gap-1"
                                     title="Hubungi via WhatsApp"
                                 >
                                     <span>{{ row.phone }}</span>
@@ -449,10 +449,10 @@
                 <!-- Status & Sesi Live -->
                 <td>
                     <div class="flex flex-col gap-1 items-start">
-                        <div class="flex items-center gap-1.5">
+                        <div class="flex items-center gap-1.5 flex-wrap">
                             <span
                                 v-if="row.is_online"
-                                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-300 uppercase tracking-wider"
+                                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 uppercase tracking-wider"
                             >
                                 <span class="relative flex h-2 w-2">
                                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -462,21 +462,28 @@
                             </span>
                             <span
                                 v-else
-                                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-50 text-rose-700 border border-rose-300 uppercase tracking-wider"
+                                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 uppercase tracking-wider"
                             >
                                 <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
                                 Offline
+                            </span>
+
+                            <span
+                                v-if="row.customer_status === 'suspended'"
+                                class="inline-flex px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800"
+                            >
+                                Isolir
                             </span>
                         </div>
 
                         <!-- IP Address / Disconnect Cause -->
                         <div v-if="row.is_online && row.ip_address" class="flex items-center gap-1">
-                            <span class="inline-flex px-1.5 py-0.5 rounded bg-slate-50 border border-slate-200 text-[10px] font-mono font-bold text-slate-800">
+                            <span class="inline-flex px-1.5 py-0.5 rounded bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] font-mono font-bold text-slate-800 dark:text-slate-200">
                                 {{ row.ip_address }}
                             </span>
                             <button
                                 @click="copyText(row.ip_address, 'IP Address')"
-                                class="text-gray-400 hover:text-gray-600 p-0.5 transition-colors"
+                                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-0.5 transition-colors cursor-pointer"
                                 title="Salin IP"
                             >
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
@@ -499,7 +506,7 @@
                 <!-- Paket & Area -->
                 <td>
                     <div class="flex flex-col items-start gap-1">
-                        <span v-if="row.package" class="inline-flex items-center gap-1 text-xs font-bold text-gray-800 whitespace-nowrap">
+                        <span v-if="row.package" class="inline-flex items-center gap-1 text-xs font-bold text-gray-800 dark:text-gray-200 whitespace-nowrap">
                             <svg class="w-3.5 h-3.5 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>
                             </svg>
@@ -507,7 +514,7 @@
                         </span>
                         <span v-else class="text-xs text-gray-400 font-medium">-</span>
 
-                        <span v-if="row.area" class="inline-flex px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded text-[9px] font-bold uppercase tracking-wider">
+                        <span v-if="row.area" class="inline-flex px-2 py-0.5 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded text-[9px] font-bold uppercase tracking-wider">
                             {{ row.area }}
                         </span>
                         <span v-else class="text-[10px] text-gray-400">-</span>
@@ -518,17 +525,17 @@
                 <td>
                     <div class="flex flex-col items-start gap-1">
                         <div class="flex items-center gap-1.5 flex-wrap">
-                            <span v-if="row.access_mode" :class="['inline-flex px-1.5 py-0.2 border rounded text-[9px] font-extrabold uppercase whitespace-nowrap', modeClass(row.access_mode)]">
+                            <span v-if="row.access_mode" :class="['inline-flex px-1.5 py-0.5 border rounded text-[9px] font-extrabold uppercase whitespace-nowrap', modeClass(row.access_mode)]">
                                 {{ modeLabel(row.access_mode) }}
                             </span>
                             <div class="flex items-center gap-1">
-                                <span class="font-mono text-xs font-bold text-gray-800">
+                                <span class="font-mono text-xs font-bold text-gray-800 dark:text-gray-200">
                                     {{ row.username || '-' }}
                                 </span>
                                 <button
                                     v-if="row.username"
                                     @click="copyText(row.username, 'Username')"
-                                    class="text-gray-400 hover:text-gray-600 p-0.5 transition-colors"
+                                    class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-0.5 transition-colors cursor-pointer"
                                     title="Salin Username"
                                 >
                                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
@@ -536,10 +543,10 @@
                             </div>
                         </div>
 
-                        <div class="flex items-center gap-1.5 text-[10px] text-gray-500 font-mono">
+                        <div class="flex items-center gap-1.5 text-[10px] text-gray-500 dark:text-gray-400 font-mono">
                             <span v-if="row.mac_address" title="MAC Address">{{ row.mac_address }}</span>
                             <span v-if="row.ont_sn" class="text-gray-400">|</span>
-                            <span v-if="row.ont_sn" class="text-indigo-600 font-semibold" title="ONT Serial Number">SN: {{ row.ont_sn }}</span>
+                            <span v-if="row.ont_sn" class="text-indigo-600 dark:text-indigo-400 font-semibold" title="ONT Serial Number">SN: {{ row.ont_sn }}</span>
                         </div>
                     </div>
                 </td>
@@ -548,31 +555,38 @@
                 <td>
                     <!-- Online: Uptime + Live Traffic -->
                     <div v-if="row.is_online" class="flex flex-col gap-0.5">
-                        <div class="flex items-center gap-1 text-xs font-bold text-emerald-700 whitespace-nowrap">
+                        <div class="flex items-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
                             <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
                             Up: {{ formatUptime(row.session_time) }}
                         </div>
                         <div class="flex items-center gap-2 text-[10px] font-mono font-medium whitespace-nowrap">
-                            <span class="text-blue-600" title="Download">↓ {{ formatBytes(row.download) }}</span>
-                            <span class="text-gray-300">/</span>
-                            <span class="text-amber-600" title="Upload">↑ {{ formatBytes(row.upload) }}</span>
+                            <span class="text-blue-600 dark:text-blue-400" title="Download">↓ {{ formatBytes(row.download) }}</span>
+                            <span class="text-gray-300 dark:text-gray-600">/</span>
+                            <span class="text-amber-600 dark:text-amber-400" title="Upload">↑ {{ formatBytes(row.upload) }}</span>
                         </div>
-                        <span class="text-[9px] text-gray-400">Login: {{ formatDate(row.start_time) }}</span>
+                        <span class="text-[9px] text-gray-400 dark:text-gray-500">Login: {{ formatDate(row.start_time) }}</span>
                     </div>
 
                     <!-- Offline: Last Logout + Duration Ago -->
                     <div v-else class="flex flex-col gap-0.5">
-                        <span class="text-xs font-semibold text-gray-800 whitespace-nowrap">
-                            {{ formatDate(row.last_logout) || 'Belum Login' }}
-                        </span>
-                        <span v-if="row.last_logout" class="text-[10px] text-gray-500 font-medium">
-                            {{ formatTimeAgo(row.last_logout) }}
-                        </span>
-                        <span v-else class="text-[10px] text-gray-400 italic">
-                            Belum ada riwayat sesi
-                        </span>
+                        <template v-if="row.last_logout">
+                            <span class="text-xs font-semibold text-gray-800 dark:text-gray-200 whitespace-nowrap">
+                                {{ formatDate(row.last_logout) }}
+                            </span>
+                            <span class="text-[10px] text-gray-500 dark:text-gray-400 font-medium">
+                                {{ formatTimeAgo(row.last_logout) }}
+                            </span>
+                        </template>
+                        <template v-else>
+                            <span class="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                                Belum Pernah Login
+                            </span>
+                            <span class="text-[10px] text-gray-400 dark:text-gray-500 italic">
+                                Belum ada riwayat sesi
+                            </span>
+                        </template>
                     </div>
                 </td>
 
@@ -586,7 +600,7 @@
                             :id="`btn-kick-${row.id}`"
                             @click="kickSession(row)"
                             :disabled="kicking === row.username"
-                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-600 hover:text-white border border-rose-200 transition-all shadow-xs disabled:opacity-50"
+                            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-600 hover:text-white border border-rose-200 dark:border-rose-800 transition-all shadow-xs disabled:opacity-50 cursor-pointer"
                             title="Kick / Putuskan sesi online ini dari Mikrotik"
                         >
                             <svg class="w-3.5 h-3.5" :class="{ 'animate-spin': kicking === row.username }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -598,7 +612,7 @@
                         <!-- Link Detail Pelanggan -->
                         <Link
                             :href="`/customers/${row.id}`"
-                            class="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
+                            class="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-700 rounded-lg transition-colors border border-transparent hover:border-blue-100 dark:hover:border-gray-600"
                             title="Buka Profil Pelanggan"
                         >
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -768,7 +782,6 @@ function filterCardStatus(status) {
         filterStatus.value = 'all';
     } else {
         filterStatus.value = status;
-        filterMode.value = 'all';
     }
     applyFilters();
 }
@@ -778,7 +791,6 @@ function filterCardMode(mode) {
         filterMode.value = 'all';
     } else {
         filterMode.value = mode;
-        filterStatus.value = 'all';
     }
     applyFilters();
 }
@@ -969,7 +981,7 @@ function formatUptime(seconds) {
 }
 
 function formatDate(isoString) {
-    if (!isoString) return '-';
+    if (!isoString) return '';
     try {
         const date = new Date(isoString);
         if (isNaN(date.getTime())) return isoString;
@@ -1016,12 +1028,12 @@ function humanizeDisconnectCause(cause) {
 }
 
 function getDisconnectCauseStyle(cause) {
-    if (!cause) return 'bg-gray-50 text-gray-500 border-gray-200';
+    if (!cause) return 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700';
     const c = String(cause).toLowerCase();
-    if (c.includes('lost-carrier')) return 'bg-rose-50 text-rose-700 border-rose-200';
-    if (c.includes('user-request')) return 'bg-slate-50 text-slate-700 border-slate-200';
-    if (c.includes('nas-reboot')) return 'bg-purple-50 text-purple-700 border-purple-200';
-    if (c.includes('admin-reset')) return 'bg-amber-50 text-amber-700 border-amber-200';
-    return 'bg-gray-50 text-gray-700 border-gray-200';
+    if (c.includes('lost-carrier')) return 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800';
+    if (c.includes('user-request')) return 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700';
+    if (c.includes('nas-reboot')) return 'bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800';
+    if (c.includes('admin-reset')) return 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800';
+    return 'bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700';
 }
 </script>

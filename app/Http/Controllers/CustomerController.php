@@ -229,35 +229,45 @@ class CustomerController extends Controller
 
     /**
      * Monitoring Status Koneksi Pelanggan (Online & Offline Terpadu)
+     * Dual-Source: FreeRADIUS RadAcct + MikroTik RouterOS API Live Sessions
      */
     public function connections(Request $request): Response
     {
-        // 1. Ambil seluruh sesi online aktif dari RADIUS
-        try {
-            $onlineSessions = \App\Models\Radius\RadAcct::online()
-                ->orderByDesc('acctstarttime')
-                ->get(['radacctid', 'username', 'framedipaddress', 'callingstationid', 'nasipaddress', 'acctstarttime', 'acctsessiontime', 'acctinputoctets', 'acctoutputoctets'])
-                ->unique('username')
-                ->keyBy('username');
-        } catch (\Exception $e) {
-            $onlineSessions = collect();
-        }
+        // 1. Ambil seluruh sesi online aktif (Dual Source: RADIUS RadAcct + Live MikroTik RouterOS API)
+        $liveData = $this->getLiveConnectionSessions();
+        $onlineLookup = $liveData['lookup']; // normalized key => session info array
+        $onlineUsernames = $liveData['usernames']; // list of all online usernames
 
-        $onlineUsernames = $onlineSessions->keys()->all();
+        // Resolve Area Filter
+        $areaInput = $request->area_id ?: $request->area;
+        $resolvedAreaId = null;
+        if ($areaInput) {
+            if (is_numeric($areaInput)) {
+                $resolvedAreaId = (int) $areaInput;
+            } else {
+                $areaDict = DataScopeService::getAreaDictionary();
+                foreach ($areaDict as $id => $name) {
+                    if (mb_strtolower(trim((string)$name)) === mb_strtolower(trim((string)$areaInput))) {
+                        $resolvedAreaId = (int) $id;
+                        break;
+                    }
+                }
+            }
+        }
 
         // 2. Query Pelanggan Aktif / Suspended yang memiliki ONT (tanpa voucher)
         $customersQuery = Customer::with(['package', 'areaModel', 'ont.odp'])
             ->whereIn('status', ['active', 'suspended'])
             ->whereDoesntHave('package', fn ($q) => $q->where('access_mode', 'voucher'))
             ->whereHas('ont')
-            ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function ($q) {
+            ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->hasRole('super admin') && !auth()->user()->hasRole('superadmin') && !auth()->user()->can('customers_all_view_all'), function ($q) {
                 if (auth()->user()->can('customers_all_view_area')) {
                     $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
                 } else {
                     $q->where('sales_id', auth()->id());
                 }
             })
-            ->when($request->area || $request->area_id, fn($q) => $this->applyAreaFilter($q, $request->area_id ?: $request->area))
+            ->when($areaInput, fn($q) => $this->applyAreaFilter($q, $areaInput))
             ->when($request->package_id, fn ($q, $pkg) => $q->where('package_id', $pkg));
 
         $customers = $customersQuery->get();
@@ -267,10 +277,28 @@ class CustomerController extends Controller
         foreach ($customers as $c) {
             $u1 = $c->ont?->pppoe_user;
             $u2 = $c->ont?->hotspot_user;
-            $isOnline = ($u1 && in_array($u1, $onlineUsernames)) || ($u2 && in_array($u2, $onlineUsernames));
-            if (!$isOnline) {
-                if ($u1) $offlineUsernames[] = $u1;
-                if ($u2) $offlineUsernames[] = $u2;
+
+            $cIsOnline = false;
+            foreach (array_filter([$u1, $u2, $c->customer_code]) as $un) {
+                $k = mb_strtolower(trim((string) $un));
+                $kNoRealm = explode('@', $k)[0];
+                if (isset($onlineLookup[$k]) || isset($onlineLookup[$kNoRealm])) {
+                    $cIsOnline = true;
+                    break;
+                }
+            }
+            if (!$cIsOnline) {
+                if ($u1) {
+                    $offlineUsernames[] = trim((string) $u1);
+                    $offlineUsernames[] = explode('@', trim((string) $u1))[0];
+                }
+                if ($u2) {
+                    $offlineUsernames[] = trim((string) $u2);
+                    $offlineUsernames[] = explode('@', trim((string) $u2))[0];
+                }
+                if ($c->customer_code) {
+                    $offlineUsernames[] = trim((string) $c->customer_code);
+                }
             }
         }
         $offlineUsernames = array_values(array_unique(array_filter($offlineUsernames)));
@@ -278,41 +306,73 @@ class CustomerController extends Controller
         $lastOfflineSessions = collect();
         if (!empty($offlineUsernames)) {
             try {
+                // FreeRADIUS table column is 'acctterminatecause' (NOT 'terminate_cause')
                 $lastOfflineSessions = \App\Models\Radius\RadAcct::whereIn('username', $offlineUsernames)
                     ->whereNotNull('acctstoptime')
                     ->orderByDesc('acctstoptime')
-                    ->get(['username', 'acctstoptime', 'callingstationid', 'terminate_cause'])
-                    ->unique('username')
-                    ->keyBy('username');
-            } catch (\Exception $e) {
-                // ignore
+                    ->get(['username', 'acctstoptime', 'callingstationid', 'acctterminatecause'])
+                    ->unique(fn ($item) => mb_strtolower(trim(explode('@', (string) $item->username)[0])))
+                    ->keyBy(fn ($item) => mb_strtolower(trim((string) $item->username)));
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[CustomerController::connections] Offline radacct query error: ' . $e->getMessage());
             }
         }
 
         // 4. Transformasi Data Baris
-        $rows = $customers->map(function (Customer $c) use ($onlineSessions, $lastOfflineSessions) {
+        $rows = $customers->map(function (Customer $c) use ($onlineLookup, $lastOfflineSessions) {
             $mode = mb_strtolower((string) ($c->package?->access_mode ?? $c->ont?->access_mode ?? 'pppoe'));
             $isHotspot = str_contains($mode, 'hotspot');
-            $username = $isHotspot
+            $primaryUsername = $isHotspot
                 ? ($c->ont?->hotspot_user ?: $c->ont?->pppoe_user)
                 : ($c->ont?->pppoe_user ?: $c->ont?->hotspot_user);
 
-            // Cek sesi online
-            $s = ($username ? $onlineSessions->get($username) : null)
-                ?: ($c->ont?->pppoe_user ? $onlineSessions->get($c->ont->pppoe_user) : null)
-                ?: ($c->ont?->hotspot_user ? $onlineSessions->get($c->ont->hotspot_user) : null);
+            // Cek sesi online dengan matching cerdas (case-insensitive & stripped @realm)
+            $s = null;
+            $candidates = array_filter([
+                $primaryUsername,
+                $c->ont?->pppoe_user,
+                $c->ont?->hotspot_user,
+                $c->customer_code
+            ]);
 
-            $isOnline = !is_null($s);
-
-            if ($s && $s->username) {
-                $username = $s->username;
+            foreach ($candidates as $cand) {
+                $candKey = mb_strtolower(trim((string) $cand));
+                $candNoRealm = explode('@', $candKey)[0];
+                if (isset($onlineLookup[$candKey])) {
+                    $s = $onlineLookup[$candKey];
+                    break;
+                }
+                if (isset($onlineLookup[$candNoRealm])) {
+                    $s = $onlineLookup[$candNoRealm];
+                    break;
+                }
             }
 
+            // Juga cek MAC address ONT jika ada
+            if (!$s && !empty($c->ont?->mac_address)) {
+                $cleanMac = mb_strtolower(preg_replace('/[^a-f0-9]/i', '', (string) $c->ont->mac_address));
+                if (isset($onlineLookup['mac_' . $cleanMac])) {
+                    $s = $onlineLookup['mac_' . $cleanMac];
+                }
+            }
+
+            $isOnline = !is_null($s);
+            $displayUsername = $primaryUsername ?: ($s['username'] ?? '-');
+
             $lastSession = null;
-            if (!$isOnline && $username) {
-                $lastSession = $lastOfflineSessions->get($username)
-                    ?: ($c->ont?->pppoe_user ? $lastOfflineSessions->get($c->ont->pppoe_user) : null)
-                    ?: ($c->ont?->hotspot_user ? $lastOfflineSessions->get($c->ont->hotspot_user) : null);
+            if (!$isOnline) {
+                foreach ($candidates as $cand) {
+                    $candKey = mb_strtolower(trim((string) $cand));
+                    $candNoRealm = explode('@', $candKey)[0];
+                    if ($lastOfflineSessions->has($candKey)) {
+                        $lastSession = $lastOfflineSessions->get($candKey);
+                        break;
+                    }
+                    if ($lastOfflineSessions->has($candNoRealm)) {
+                        $lastSession = $lastOfflineSessions->get($candNoRealm);
+                        break;
+                    }
+                }
             }
 
             return [
@@ -323,19 +383,19 @@ class CustomerController extends Controller
                 'area' => $c->areaModel?->name ?? $c->area,
                 'package' => $c->package?->name,
                 'package_price' => $c->package?->price,
-                'username' => $username,
+                'username' => $displayUsername,
                 'access_mode' => $c->package?->access_mode ?? $c->ont?->access_mode ?? 'pppoe',
                 'is_online' => $isOnline,
                 'status_connection' => $isOnline ? 'online' : 'offline',
-                'ip_address' => $isOnline ? $s?->framedipaddress : null,
-                'mac_address' => $s?->callingstationid ?: $lastSession?->callingstationid ?: $c->ont?->mac_address,
-                'nas_ip' => $s?->nasipaddress,
-                'start_time' => $s?->acctstarttime ? (string) $s->acctstarttime : null,
-                'session_time' => $s ? $s->liveSessionTime() : 0,
-                'upload' => (int) ($s?->acctinputoctets ?? 0),
-                'download' => (int) ($s?->acctoutputoctets ?? 0),
+                'ip_address' => $isOnline ? ($s['framedipaddress'] ?? null) : null,
+                'mac_address' => ($s['callingstationid'] ?? null) ?: ($lastSession?->callingstationid ?: $c->ont?->mac_address),
+                'nas_ip' => $s['nasipaddress'] ?? null,
+                'start_time' => $s['start_time'] ?? null,
+                'session_time' => $s['session_time'] ?? 0,
+                'upload' => (int) ($s['upload'] ?? 0),
+                'download' => (int) ($s['download'] ?? 0),
                 'last_logout' => $lastSession?->acctstoptime ? (string) $lastSession->acctstoptime : null,
-                'disconnect_cause' => $lastSession?->terminate_cause ?? null,
+                'disconnect_cause' => $lastSession?->acctterminatecause ?? null,
                 'customer_status' => $c->status,
                 'odp_name' => $c->ont?->odp?->name,
                 'ont_sn' => $c->ont?->serial_number ?: $c->ont?->sn,
@@ -443,11 +503,13 @@ class CustomerController extends Controller
         return Inertia::render('Customers/Online', [
             'customers' => $paginated,
             'areas' => fn () => DataScopeService::getScopedAreas($request->user(), 'customers_all'),
-            'packages' => fn () => InternetPackage::where('access_mode', '!=', 'voucher')->orderBy('name')->get(['id', 'name']),
+            'packages' => fn () => InternetPackage::where(function($q) {
+                $q->whereNull('access_mode')->orWhere('access_mode', '!=', 'voucher');
+            })->orderBy('name')->get(['id', 'name']),
             'filters' => [
                 'search' => $request->search,
-                'area_id' => $request->area_id ?: $request->area,
-                'package_id' => $request->package_id,
+                'area_id' => $resolvedAreaId,
+                'package_id' => $request->package_id ? (int) $request->package_id : null,
                 'status' => $statusTab,
                 'mode' => $modeFilter ?: 'all',
             ],
@@ -455,6 +517,171 @@ class CustomerController extends Controller
             'totalOnline' => $stats['online'],
             'totalOffline' => $stats['offline'],
         ]);
+    }
+
+    /**
+     * Ambil seluruh sesi online aktif (Dual Source: RADIUS RadAcct + Live MikroTik RouterOS API)
+     * Menggunakan cache cerdas agar beban router dan database tetap ringan & instan.
+     */
+    private function getLiveConnectionSessions(): array
+    {
+        return \Illuminate\Support\Facades\Cache::remember('live_connection_sessions_v1', 10, function () {
+            $lookup = [];
+            $usernames = [];
+
+            // 1. Baca sesi dari FreeRADIUS RadAcct
+            try {
+                if (class_exists(\App\Models\Radius\RadAcct::class)) {
+                    $radSessions = \App\Models\Radius\RadAcct::online()
+                        ->orderByDesc('acctstarttime')
+                        ->get(['radacctid', 'username', 'framedipaddress', 'callingstationid', 'nasipaddress', 'acctstarttime', 'acctsessiontime', 'acctinputoctets', 'acctoutputoctets']);
+
+                    foreach ($radSessions as $rs) {
+                        $rawUser = trim((string) $rs->username);
+                        if ($rawUser === '') continue;
+
+                        $k = mb_strtolower($rawUser);
+                        $kNoRealm = explode('@', $k)[0];
+                        $usernames[] = $rawUser;
+
+                        $data = [
+                            'username' => $rawUser,
+                            'framedipaddress' => $rs->framedipaddress,
+                            'callingstationid' => $rs->callingstationid,
+                            'nasipaddress' => $rs->nasipaddress,
+                            'start_time' => $rs->acctstarttime ? (string) $rs->acctstarttime : null,
+                            'session_time' => $rs->liveSessionTime(),
+                            'upload' => (int) ($rs->acctinputoctets ?? 0),
+                            'download' => (int) ($rs->acctoutputoctets ?? 0),
+                            'source' => 'radius',
+                        ];
+
+                        $lookup[$k] = $data;
+                        if (!isset($lookup[$kNoRealm])) {
+                            $lookup[$kNoRealm] = $data;
+                        }
+                        if (!empty($rs->callingstationid)) {
+                            $cleanMac = mb_strtolower(preg_replace('/[^a-f0-9]/i', '', $rs->callingstationid));
+                            if ($cleanMac) $lookup['mac_' . $cleanMac] = $data;
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[CustomerController::connections] RADIUS query failed: ' . $e->getMessage());
+            }
+
+            // 2. Baca sesi aktif dari router MikroTik langsung (PPP & Hotspot)
+            try {
+                $nases = \App\Models\Radius\Nas::all();
+                $ports = \App\Models\Router::whereNotNull('nas_id')->pluck('api_port', 'nas_id');
+                $client = app(\App\Services\RouterOsApiClient::class);
+
+                foreach ($nases as $nas) {
+                    $host = $nas->apiHost();
+                    $user = $nas->api_user;
+                    $pass = (string) $nas->api_password;
+                    $port = (int) ($ports->get($nas->id) ?: 8728);
+                    if (!$host || !$user || !$pass) continue;
+
+                    try {
+                        $client->connect($host, $port, $user, $pass, 1.0);
+
+                        // /ppp/active/print
+                        try {
+                            $pppRows = $client->command('/ppp/active/print', ['.proplist' => 'name,address,caller-id,uptime,service'])['rows'] ?? [];
+                            foreach ($pppRows as $row) {
+                                $uName = trim((string) ($row['name'] ?? ''));
+                                if ($uName === '') continue;
+
+                                $k = mb_strtolower($uName);
+                                $kNoRealm = explode('@', $k)[0];
+                                $usernames[] = $uName;
+
+                                if (!isset($lookup[$k]) && !isset($lookup[$kNoRealm])) {
+                                    $data = [
+                                        'username' => $uName,
+                                        'framedipaddress' => $row['address'] ?? null,
+                                        'callingstationid' => $row['caller-id'] ?? null,
+                                        'nasipaddress' => $host,
+                                        'start_time' => null,
+                                        'session_time' => $this->parseRouterUptimeSeconds($row['uptime'] ?? ''),
+                                        'upload' => 0,
+                                        'download' => 0,
+                                        'source' => 'mikrotik_ppp',
+                                    ];
+                                    $lookup[$k] = $data;
+                                    $lookup[$kNoRealm] = $data;
+                                    if (!empty($row['caller-id'])) {
+                                        $cleanMac = mb_strtolower(preg_replace('/[^a-f0-9]/i', '', $row['caller-id']));
+                                        if ($cleanMac) $lookup['mac_' . $cleanMac] = $data;
+                                    }
+                                }
+                            }
+                        } catch (\Throwable $e) {}
+
+                        // /ip/hotspot/active/print
+                        try {
+                            $hsRows = $client->command('/ip/hotspot/active/print', ['.proplist' => 'user,address,mac-address,uptime'])['rows'] ?? [];
+                            foreach ($hsRows as $row) {
+                                $uName = trim((string) ($row['user'] ?? ''));
+                                if ($uName === '') continue;
+
+                                $k = mb_strtolower($uName);
+                                $kNoRealm = explode('@', $k)[0];
+                                $usernames[] = $uName;
+
+                                if (!isset($lookup[$k]) && !isset($lookup[$kNoRealm])) {
+                                    $data = [
+                                        'username' => $uName,
+                                        'framedipaddress' => $row['address'] ?? null,
+                                        'callingstationid' => $row['mac-address'] ?? null,
+                                        'nasipaddress' => $host,
+                                        'start_time' => null,
+                                        'session_time' => $this->parseRouterUptimeSeconds($row['uptime'] ?? ''),
+                                        'upload' => 0,
+                                        'download' => 0,
+                                        'source' => 'mikrotik_hotspot',
+                                    ];
+                                    $lookup[$k] = $data;
+                                    $lookup[$kNoRealm] = $data;
+                                    if (!empty($row['mac-address'])) {
+                                        $cleanMac = mb_strtolower(preg_replace('/[^a-f0-9]/i', '', $row['mac-address']));
+                                        if ($cleanMac) $lookup['mac_' . $cleanMac] = $data;
+                                    }
+                                }
+                            }
+                        } catch (\Throwable $e) {}
+
+                    } catch (\Throwable $e) {
+                    } finally {
+                        $client->close();
+                    }
+                }
+            } catch (\Throwable $e) {}
+
+            return [
+                'lookup' => $lookup,
+                'usernames' => array_values(array_unique($usernames)),
+            ];
+        });
+    }
+
+    /**
+     * Konversi format uptime MikroTik (contoh: 1w2d3h4m5s, 15m30s) menjadi detik integer
+     */
+    private function parseRouterUptimeSeconds(?string $str): int
+    {
+        if (!$str) return 0;
+        $seconds = 0;
+        if (preg_match('/(?:(\d+)w)?(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?/', $str, $m)) {
+            $weeks = (int) ($m[1] ?? 0);
+            $days  = (int) ($m[2] ?? 0);
+            $hours = (int) ($m[3] ?? 0);
+            $mins  = (int) ($m[4] ?? 0);
+            $secs  = (int) ($m[5] ?? 0);
+            $seconds = ($weeks * 604800) + ($days * 86400) + ($hours * 3600) + ($mins * 60) + $secs;
+        }
+        return $seconds;
     }
 
     public function online(Request $request): Response
