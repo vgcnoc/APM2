@@ -4,11 +4,16 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\NetworkMaintenance;
+use App\Models\NetworkMaintenanceMaterial;
 use App\Models\Area;
 use App\Models\Odp;
 use App\Models\Odc;
 use App\Models\User;
 use App\Models\Employee;
+use App\Models\Material;
+use App\Models\MaterialStock;
+use App\Models\MaterialTransaction;
+use App\Models\MaterialTransactionItem;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -65,7 +70,7 @@ class NetworkMaintenanceController extends Controller
         $areas = \App\Services\DataScopeService::getScopedAreas($user, 'operational_progress');
 
         // Query data pemeliharaan
-        $query = NetworkMaintenance::with(['area', 'odp', 'odc', 'technicians', 'creator']);
+        $query = NetworkMaintenance::with(['area', 'odp', 'odc', 'technicians', 'creator', 'materials.material']);
 
         // Filter Tanggal
         $query->whereDate('scheduled_date', $date);
@@ -160,6 +165,18 @@ class NetworkMaintenanceController extends Controller
                 'photo_after' => $m->photo_after ? Storage::url($m->photo_after) : null,
                 'created_by' => $m->created_by,
                 'is_my_task' => $isMyTask,
+                'materials' => $m->materials->map(fn($mat) => [
+                    'id' => $mat->id,
+                    'material_id' => $mat->material_id,
+                    'material_name' => $mat->material?->name ?? 'Material',
+                    'material_transaction_item_id' => $mat->material_transaction_item_id,
+                    'trx_number' => $mat->trx_number,
+                    'quantity_prepared' => (float) $mat->quantity_prepared,
+                    'quantity_used' => (float) $mat->quantity_used,
+                    'quantity_returned' => (float) $mat->quantity_returned,
+                    'unit' => $mat->unit ?: ($mat->material?->unit ?? 'pcs'),
+                    'notes' => $mat->notes,
+                ])->values(),
             ];
         }
 
@@ -234,10 +251,25 @@ class NetworkMaintenanceController extends Controller
         $carbonDate = Carbon::parse($date)->locale('id');
         $indonesianDate = $carbonDate->isoFormat('dddd, D MMMM Y');
 
+        $materials = Material::where(function ($q) {
+                $q->where('is_active', true)->orWhereNull('is_active');
+            })
+            ->with('stocks')
+            ->orderBy('name')
+            ->get(['id', 'name', 'unit', 'stock', 'price_per_unit', 'category']);
+
+        $materialTransactions = MaterialTransaction::where('type', 'in')
+            ->with(['items.material.stocks', 'areaModel'])
+            ->latest('id')
+            ->limit(200)
+            ->get();
+
         return Inertia::render('Operational/NetworkMaintenance', [
             'maintenanceList' => $maintenanceList,
             'summary' => $summary,
             'areas' => $areas,
+            'materials' => $materials,
+            'materialTransactions' => $materialTransactions,
             'filters' => [
                 'date' => $date,
                 'area_id' => $areaId ? (int) $areaId : null,
@@ -262,6 +294,16 @@ class NetworkMaintenanceController extends Controller
      */
     public function store(Request $request)
     {
+        if ($request->has('materials')) {
+            $mats = $request->input('materials');
+            if (is_string($mats)) {
+                $mats = json_decode($mats, true);
+            }
+            if (is_array($mats)) {
+                $request->merge(['materials' => $mats]);
+            }
+        }
+
         $validated = $request->validate([
             'category' => 'required|string|in:perapihan_jalur,pengecekan_odp,pengecekan_odc,pengecekan_jalur_utama,pemeliharaan_rutin',
             'title' => 'required|string|max:255',
@@ -281,6 +323,14 @@ class NetworkMaintenanceController extends Controller
             'technician_ids.*' => 'exists:users,id',
             'photo_before' => 'nullable|image|max:25600',
             'photo_after' => 'nullable|image|max:25600',
+            'materials' => 'nullable|array',
+            'materials.*.material_id' => 'required|exists:materials,id',
+            'materials.*.material_transaction_item_id' => 'nullable',
+            'materials.*.trx_number' => 'nullable|string|max:100',
+            'materials.*.quantity_prepared' => 'nullable|numeric|min:0.01',
+            'materials.*.quantity' => 'nullable|numeric|min:0.01',
+            'materials.*.unit' => 'nullable|string',
+            'materials.*.notes' => 'nullable|string',
         ], [
             'category.required' => 'Jenis kegiatan wajib dipilih.',
             'title.required' => 'Judul kegiatan wajib diisi.',
@@ -347,12 +397,85 @@ class NetworkMaintenanceController extends Controller
                 $maintenance->technicians()->sync($validated['technician_ids']);
             }
 
+            // Penyiapan Material dari Gudang / Inventory untuk Petugas Lapangan
+            if (!empty($validated['materials'])) {
+                $techNames = !empty($validated['technician_ids'])
+                    ? User::whereIn('id', $validated['technician_ids'])->pluck('name')->join(', ')
+                    : auth()->user()->name;
+
+                $sourceOrders = array_filter(array_unique(array_column($validated['materials'], 'trx_number')));
+                $orderRefStr = !empty($sourceOrders) ? ' (Ref: ' . implode(', ', $sourceOrders) . ')' : '';
+
+                $matTrx = MaterialTransaction::create([
+                    'transaction_number' => 'OUT-MNT-' . date('YmdHis') . rand(10, 99),
+                    'type' => 'out',
+                    'status' => 'approved',
+                    'date' => now(),
+                    'technician_name' => $techNames ?: auth()->user()->name,
+                    'purpose' => 'Persiapan Material Pemeliharaan: ' . $maintenance->maintenance_number . ' (' . $maintenance->title . ')' . $orderRefStr,
+                    'source_type' => 'network_maintenance',
+                    'source_id' => $maintenance->id,
+                    'source_reference' => $maintenance->maintenance_number,
+                    'user_id' => auth()->id(),
+                    'area_id' => $maintenance->area_id,
+                ]);
+
+                foreach ($validated['materials'] as $matItem) {
+                    if (empty($matItem['material_id'])) continue;
+                    $qty = (float) ($matItem['quantity_prepared'] ?? ($matItem['quantity'] ?? 0));
+                    if ($qty <= 0) continue;
+
+                    $material = Material::find($matItem['material_id']);
+                    if ($material) {
+                        $itemUnit = $matItem['unit'] ?? ($material->unit ?? 'pcs');
+
+                        NetworkMaintenanceMaterial::create([
+                            'network_maintenance_id' => $maintenance->id,
+                            'material_id' => $material->id,
+                            'material_transaction_item_id' => $matItem['material_transaction_item_id'] ?? null,
+                            'trx_number' => $matItem['trx_number'] ?? null,
+                            'quantity_prepared' => $qty,
+                            'quantity_used' => 0,
+                            'quantity_returned' => 0,
+                            'unit' => $itemUnit,
+                            'notes' => $matItem['notes'] ?? null,
+                        ]);
+
+                        MaterialTransactionItem::create([
+                            'material_transaction_id' => $matTrx->id,
+                            'material_id' => $material->id,
+                            'quantity' => $qty,
+                            'unit' => $itemUnit,
+                        ]);
+
+                        if ($maintenance->area_id) {
+                            $matStock = MaterialStock::where('material_id', $material->id)
+                                ->where('area_id', $maintenance->area_id)
+                                ->first();
+                            if ($matStock) {
+                                $matStock->decrement('stock', $qty);
+                                if ($material->meter_per_roll > 0) {
+                                    $matStock->total_rolls = $matStock->stock / $material->meter_per_roll;
+                                    $matStock->save();
+                                }
+                            }
+                        }
+
+                        $material->decrement('stock', $qty);
+                        if ($material->meter_per_roll > 0) {
+                            $material->total_rolls = $material->stock / $material->meter_per_roll;
+                            $material->save();
+                        }
+                    }
+                }
+            }
+
             DB::commit();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Kegiatan pemeliharaan/perapihan jalur berhasil ditambahkan!',
-                'maintenance' => $maintenance->load(['area', 'odp', 'odc', 'technicians']),
+                'maintenance' => $maintenance->load(['area', 'odp', 'odc', 'technicians', 'materials.material']),
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -436,10 +559,56 @@ class NetworkMaintenanceController extends Controller
                 $maintenance->technicians()->sync($validated['technician_ids']);
             }
 
+            // Update pemakaian & pengembalian material jika ada
+            if ($request->has('materials')) {
+                $mats = $request->input('materials');
+                if (is_string($mats)) {
+                    $mats = json_decode($mats, true);
+                }
+                if (is_array($mats)) {
+                    foreach ($mats as $mItem) {
+                        if (empty($mItem['id'])) continue;
+                        $matRow = NetworkMaintenanceMaterial::where('network_maintenance_id', $maintenance->id)
+                            ->where('id', $mItem['id'])
+                            ->first();
+                        if ($matRow) {
+                            $oldUsed = (float) $matRow->quantity_used;
+                            $oldReturned = (float) $matRow->quantity_returned;
+
+                            $newUsed = isset($mItem['quantity_used']) ? (float) $mItem['quantity_used'] : $oldUsed;
+                            $newReturned = isset($mItem['quantity_returned']) ? (float) $mItem['quantity_returned'] : $oldReturned;
+
+                            $matRow->update([
+                                'quantity_used' => $newUsed,
+                                'quantity_returned' => $newReturned,
+                                'notes' => $mItem['notes'] ?? $matRow->notes,
+                            ]);
+
+                            // Jika ada barang kembali bertambah, kembalikan ke stok gudang
+                            $returnDiff = $newReturned - $oldReturned;
+                            if ($returnDiff > 0) {
+                                $material = Material::find($matRow->material_id);
+                                if ($material) {
+                                    $material->increment('stock', $returnDiff);
+                                    if ($maintenance->area_id) {
+                                        $matStock = MaterialStock::where('material_id', $material->id)
+                                            ->where('area_id', $maintenance->area_id)
+                                            ->first();
+                                        if ($matStock) {
+                                            $matStock->increment('stock', $returnDiff);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Status pemeliharaan jalur berhasil diperbarui!',
-                'maintenance' => $maintenance->fresh(['area', 'odp', 'odc', 'technicians']),
+                'maintenance' => $maintenance->fresh(['area', 'odp', 'odc', 'technicians', 'materials.material']),
             ]);
         } catch (\Throwable $e) {
             Log::error('[NetworkMaintenanceController::quickUpdate] Error: ' . $e->getMessage());
@@ -456,6 +625,31 @@ class NetworkMaintenanceController extends Controller
     public function destroy(NetworkMaintenance $maintenance)
     {
         try {
+            DB::beginTransaction();
+
+            // Kembalikan alokasi material ke stok jika belum dipakai
+            foreach ($maintenance->materials as $mat) {
+                $qtyPrepared = (float) $mat->quantity_prepared;
+                $qtyUsed = (float) $mat->quantity_used;
+                $qtyReturned = (float) $mat->quantity_returned;
+                
+                $qtyToRestore = max(0, $qtyPrepared - $qtyUsed - $qtyReturned);
+                if ($qtyToRestore > 0) {
+                    $material = Material::find($mat->material_id);
+                    if ($material) {
+                        $material->increment('stock', $qtyToRestore);
+                        if ($maintenance->area_id) {
+                            $matStock = MaterialStock::where('material_id', $material->id)
+                                ->where('area_id', $maintenance->area_id)
+                                ->first();
+                            if ($matStock) {
+                                $matStock->increment('stock', $qtyToRestore);
+                            }
+                        }
+                    }
+                }
+            }
+
             if ($maintenance->photo_before && Storage::disk('public')->exists($maintenance->photo_before)) {
                 Storage::disk('public')->delete($maintenance->photo_before);
             }
@@ -464,13 +658,17 @@ class NetworkMaintenanceController extends Controller
             }
 
             $maintenance->technicians()->detach();
+            $maintenance->materials()->delete();
             $maintenance->delete();
+
+            DB::commit();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Kegiatan pemeliharaan jalur berhasil dihapus.',
             ]);
         } catch (\Throwable $e) {
+            DB::rollBack();
             Log::error('[NetworkMaintenanceController::destroy] Error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,

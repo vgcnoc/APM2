@@ -721,6 +721,25 @@
                                     <span class="text-emerald-800 dark:text-emerald-300 text-[10px] font-bold block uppercase">Tindakan Lapangan / Hasil</span>
                                     <span class="text-slate-800 dark:text-slate-200 font-medium">{{ item.action_taken }}</span>
                                 </div>
+                                <!-- Bekal & Pemakaian Material Petugas -->
+                                <div v-if="item.materials && item.materials.length > 0" class="sm:col-span-2 bg-amber-50/60 dark:bg-amber-950/30 p-2.5 rounded-xl border border-amber-200/80 dark:border-amber-900/50 space-y-1">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-amber-800 dark:text-amber-300 text-[10px] font-bold block uppercase flex items-center gap-1">
+                                            📦 Bekal & Pemakaian Material Petugas
+                                        </span>
+                                        <span class="text-[10px] text-amber-700 dark:text-amber-400 font-medium">
+                                            {{ item.materials.length }} Item
+                                        </span>
+                                    </div>
+                                    <div class="flex flex-wrap gap-1.5 pt-0.5">
+                                        <div v-for="mat in item.materials" :key="mat.id" class="inline-flex items-center gap-1 text-[11px] bg-white dark:bg-slate-800 px-2 py-0.5 rounded-md border border-amber-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 shadow-2xs">
+                                            <span class="font-bold text-amber-600 dark:text-amber-400">{{ mat.material?.name || mat.name || 'Material' }}:</span>
+                                            <span class="font-mono font-semibold">{{ mat.quantity_prepared }} {{ mat.unit }}</span>
+                                            <span v-if="parseFloat(mat.quantity_used) > 0" class="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">(Pakai: {{ mat.quantity_used }})</span>
+                                            <span v-if="parseFloat(mat.quantity_returned) > 0" class="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">(Kembali: {{ mat.quantity_returned }})</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Actions Row -->
@@ -1245,6 +1264,79 @@
                         </div>
                     </div>
 
+                    <!-- Persiapan Material Petugas Lapangan (Bekal Kerja) -->
+                    <div class="space-y-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase flex items-center gap-1.5">
+                                    <span>📦</span>
+                                    <span>Persiapan Bekal Material Petugas</span>
+                                </label>
+                                <p class="text-[11px] text-slate-500 dark:text-slate-400">Siapkan kabel dropcore, span clamp, fast connector, splitter, atau closure dari gudang</p>
+                            </div>
+                            <button 
+                                type="button" 
+                                @click="addMaterialRow" 
+                                class="text-xs font-bold text-amber-600 dark:text-amber-400 hover:text-amber-700 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 px-2.5 py-1.5 rounded-xl border border-amber-200 dark:border-amber-800 flex items-center gap-1 transition-colors cursor-pointer"
+                            >
+                                <span>+ Tambah Material</span>
+                            </button>
+                        </div>
+
+                        <div v-if="createForm.materials && createForm.materials.length > 0" class="space-y-2 pt-1">
+                            <div v-for="(item, idx) in createForm.materials" :key="idx" class="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-1.5 shadow-2xs">
+                                <div class="flex items-center gap-2">
+                                    <div class="flex-1 min-w-0">
+                                        <select 
+                                            v-model="item.selected_key" 
+                                            @change="onMaterialItemChange(item)"
+                                            class="w-full rounded-xl border border-slate-300 dark:border-slate-700 text-xs py-1.5 px-2.5 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:border-amber-500 truncate" 
+                                            required
+                                        >
+                                            <option value="">-- Pilih Material dari Inventory Gudang --</option>
+                                            <option v-for="ord in availableMaterialItems" :key="ord.unique_key" :value="ord.unique_key">
+                                                {{ ord.name }} — Stok: {{ ord.area_stock }} {{ ord.unit }} {{ ord.trx_number ? '(PO: ' + ord.trx_number + ')' : '' }} [{{ ord.area_name }}]
+                                            </option>
+                                        </select>
+                                    </div>
+
+                                    <div class="w-20 shrink-0">
+                                        <input 
+                                            type="number" 
+                                            step="0.01" 
+                                            min="0.01" 
+                                            :max="item.max_stock || undefined"
+                                            v-model.number="item.quantity" 
+                                            @input="validateMaterialQty(item)"
+                                            placeholder="Qty" 
+                                            class="w-full rounded-xl border border-slate-300 dark:border-slate-700 text-xs py-1.5 text-center font-bold text-amber-700 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/40 focus:border-amber-500" 
+                                            required
+                                        />
+                                    </div>
+
+                                    <span class="text-xs font-semibold text-slate-500 w-10 text-center truncate shrink-0">{{ item.unit || '-' }}</span>
+
+                                    <button type="button" @click="removeMaterialRow(idx)" class="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-colors shrink-0 cursor-pointer" title="Hapus Item">
+                                        ✕
+                                    </button>
+                                </div>
+                                <div v-if="item.trx_number || item.max_stock" class="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 px-1">
+                                    <span class="truncate">
+                                        <span>Sumber:</span> 
+                                        <b class="font-mono text-amber-700 dark:text-amber-400 ml-1">{{ item.trx_number ? 'PO ' + item.trx_number : 'Gudang' }}</b>
+                                    </span>
+                                    <span v-if="item.max_stock" class="shrink-0 text-emerald-600 dark:text-emerald-400 font-medium">
+                                        Stok Gudang: {{ item.max_stock }} {{ item.unit }}
+                                    </span>
+                                </div>
+                            </div>
+                            <p class="text-[10px] text-slate-400 dark:text-slate-500 italic">* Stok akan otomatis terpotong saat kegiatan disimpan. Sisa material yang tidak terpakai dapat dilaporkan kembali ke gudang saat pekerjaan selesai.</p>
+                        </div>
+                        <div v-else class="p-3 rounded-xl bg-amber-50/50 dark:bg-amber-950/30 border border-dashed border-amber-200 dark:border-amber-900/50 text-center text-xs text-amber-700 dark:text-amber-400">
+                            Belum ada bekal material yang disiapkan. Klik <b>+ Tambah Material</b> jika petugas memerlukan perlengkapan kabel, clamp, atau perangkat pasif.
+                        </div>
+                    </div>
+
                     <!-- 6. Status Awal & Prioritas -->
                     <div class="grid grid-cols-2 gap-2.5">
                         <div>
@@ -1481,6 +1573,50 @@
                             placeholder="Kabel kendur telah dirapikan dan diikat slack di tiang 14. ODP telah dibersihkan dan konektor dipastikan kencang."
                             class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
                         ></textarea>
+                    </div>
+
+                    <!-- Laporan Pemakaian Material Lapangan -->
+                    <div v-if="updateForm.materials && updateForm.materials.length > 0" class="space-y-2 p-3 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/50">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-xs font-bold text-amber-800 dark:text-amber-300 uppercase flex items-center gap-1.5">
+                                <span>📦</span>
+                                <span>Laporan Pemakaian Material Lapangan</span>
+                            </label>
+                            <span class="text-[10px] text-amber-600 dark:text-amber-400 font-medium">Sisa otomatis dikembalikan ke gudang</span>
+                        </div>
+
+                        <div class="space-y-2 pt-1">
+                            <div v-for="(mat, idx) in updateForm.materials" :key="idx" class="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-1.5 text-xs shadow-2xs">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-bold text-slate-800 dark:text-slate-200">{{ mat.name }}</span>
+                                    <span class="text-[11px] text-slate-500">Bekal Awal: <strong class="text-amber-700 dark:text-amber-400 font-mono">{{ mat.quantity_prepared }} {{ mat.unit }}</strong></span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2 pt-1">
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">Jumlah Terpakai:</label>
+                                        <input 
+                                            type="number" 
+                                            step="0.01" 
+                                            min="0" 
+                                            :max="mat.quantity_prepared"
+                                            v-model.number="mat.quantity_used" 
+                                            @input="onUsedQtyChange(mat)"
+                                            class="w-full px-2.5 py-1 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 font-bold"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">Sisa Kembali ke Gudang:</label>
+                                        <input 
+                                            type="number" 
+                                            step="0.01" 
+                                            min="0" 
+                                            v-model.number="mat.quantity_returned" 
+                                            class="w-full px-2.5 py-1 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-blue-700 dark:text-blue-400 font-bold"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- 5. Upload Foto Sesudah (Auto Kompres Cerdas) -->
@@ -1735,6 +1871,8 @@ const props = defineProps({
     waGatewayStatus: { type: Boolean, default: false },
     canViewAllAreas: { type: Boolean, default: true },
     isAreaScoped: { type: Boolean, default: false },
+    materials: { type: Array, default: () => [] },
+    materialTransactions: { type: Array, default: () => [] },
 });
 
 // Normalisasi Status Teknisi & Maintenance (Divisi Terpisah & Anti-Tercampur)
@@ -1943,6 +2081,7 @@ const createForm = ref({
     status: 'scheduled',
     description: '',
     technician_ids: [],
+    materials: [],
 });
 
 const showAllAreaTechs = ref(false);
@@ -1966,6 +2105,156 @@ const filteredOdcs = computed(() => {
     return props.availableOdcs.filter(c => String(c.area_id) === String(createForm.value.area_id));
 });
 
+// Daftar Material Persiapan Gudang (Bekal Petugas)
+const availableMaterialItems = computed(() => {
+    let items = [];
+    const areaId = createForm.value.area_id;
+    const handledMaterialIds = new Set();
+
+    // 1. Order Restock Area jika ada
+    const trxs = props.materialTransactions || [];
+    trxs.forEach(trx => {
+        if (trx.items && trx.items.length > 0) {
+            trx.items.forEach(item => {
+                if (!item.material) return;
+                const name = (item.material.name || '').toLowerCase();
+                const category = (item.material.category || '').toLowerCase();
+                const isRegistered = item.is_registered_to_ont === 1 || item.is_registered_to_ont === true;
+
+                if (!isRegistered && !name.includes('modem') && !category.includes('modem') && !name.includes('ont') && !category.includes('ont')) {
+                    let remainingInOrder = typeof item.remaining_quantity !== 'undefined'
+                        ? parseFloat(item.remaining_quantity)
+                        : parseFloat(item.quantity);
+
+                    let areaStock = null;
+                    if (item.material.stocks && areaId) {
+                        const stockObj = item.material.stocks.find(s => s.area_id == areaId);
+                        if (stockObj) {
+                            areaStock = parseFloat(stockObj.stock) || 0;
+                        }
+                    }
+
+                    let availableQty = remainingInOrder;
+                    if (areaStock !== null && areaStock < availableQty) {
+                        availableQty = areaStock;
+                    }
+
+                    if (availableQty > 0) {
+                        handledMaterialIds.add(item.material_id);
+                        items.push({
+                            unique_key: 'ord-' + item.id,
+                            id: item.id,
+                            material_id: item.material_id,
+                            trx_number: trx.transaction_number,
+                            trx_date: trx.date,
+                            purpose: trx.purpose,
+                            area_name: trx.area_model?.name || trx.area || 'Restock Area',
+                            name: item.material.name,
+                            category: item.material.category,
+                            area_stock: availableQty,
+                            unit: item.unit || item.material.unit || 'pcs',
+                            material: item.material,
+                        });
+                    }
+                }
+            });
+        }
+    });
+
+    // 2. Sertakan SEMUA Material dari Inventory Gudang
+    const allMaterials = props.materials || [];
+    allMaterials.forEach(m => {
+        const name = (m.name || '').toLowerCase();
+        const category = (m.category || '').toLowerCase();
+        if (name.includes('modem') || category.includes('modem') || name.includes('ont') || category.includes('ont')) {
+            return;
+        }
+
+        let areaStock = 0;
+        if (m.stocks && areaId) {
+            const stockObj = m.stocks.find(s => s.area_id == areaId);
+            if (stockObj) {
+                areaStock = parseFloat(stockObj.stock) || 0;
+            }
+        }
+        if (areaStock <= 0 && m.stock) {
+            areaStock = parseFloat(m.stock) || 0;
+        }
+
+        if (!handledMaterialIds.has(m.id)) {
+            items.push({
+                unique_key: 'mat-' + m.id,
+                id: 'mat-' + m.id,
+                material_id: m.id,
+                trx_number: '',
+                area_name: 'Gudang Utama',
+                name: m.name,
+                category: m.category,
+                area_stock: areaStock,
+                unit: m.unit || 'pcs',
+                material: m,
+            });
+        }
+    });
+
+    return items;
+});
+
+const addMaterialRow = () => {
+    if (!createForm.value.materials) {
+        createForm.value.materials = [];
+    }
+    createForm.value.materials.push({
+        selected_key: '',
+        material_transaction_item_id: null,
+        material_id: '',
+        trx_number: '',
+        name: '',
+        quantity: 1,
+        unit: 'pcs',
+        max_stock: null,
+        notes: '',
+    });
+};
+
+const removeMaterialRow = (index) => {
+    createForm.value.materials.splice(index, 1);
+};
+
+const onMaterialItemChange = (item) => {
+    const selectedKey = item.selected_key;
+    const selectedOrder = availableMaterialItems.value.find(i => i.unique_key === selectedKey || i.id === selectedKey || i.material_id === selectedKey);
+    if (selectedOrder) {
+        item.material_id = selectedOrder.material_id;
+        item.trx_number = selectedOrder.trx_number || '';
+        item.name = selectedOrder.name;
+        item.unit = selectedOrder.unit;
+        item.max_stock = selectedOrder.area_stock;
+        item.material_transaction_item_id = selectedOrder.unique_key?.startsWith('ord-') ? (selectedOrder.id || null) : null;
+        
+        if (item.quantity && item.quantity > selectedOrder.area_stock) {
+            item.quantity = selectedOrder.area_stock;
+        } else if (!item.quantity || item.quantity <= 0) {
+            item.quantity = 1;
+        }
+    }
+};
+
+const validateMaterialQty = (item) => {
+    if (item.max_stock !== undefined && item.max_stock !== null) {
+        if (item.quantity > item.max_stock) {
+            item.quantity = item.max_stock;
+            alert(`Stok tidak mencukupi! Maksimal stok tersedia adalah ${item.max_stock} ${item.unit}`);
+        }
+    }
+};
+
+const onUsedQtyChange = (mat) => {
+    const prep = parseFloat(mat.quantity_prepared) || 0;
+    const used = parseFloat(mat.quantity_used) || 0;
+    mat.quantity_returned = Math.max(0, parseFloat((prep - used).toFixed(2)));
+};
+
 function openCreateModal() {
     showAllAreaTechs.value = false;
     createForm.value = {
@@ -1981,6 +2270,7 @@ function openCreateModal() {
         status: 'scheduled',
         description: '',
         technician_ids: [],
+        materials: [],
     };
     showCreateModal.value = true;
 }
@@ -2004,6 +2294,10 @@ async function submitCreateMaintenance() {
         createForm.value.technician_ids.forEach(id => {
             payload.append('technician_ids[]', id);
         });
+
+        if (createForm.value.materials && createForm.value.materials.length > 0) {
+            payload.append('materials', JSON.stringify(createForm.value.materials));
+        }
 
         const res = await axios.post('/operational/network-maintenance', payload);
         if (res.data && res.data.success) {
@@ -2076,6 +2370,23 @@ function openQuickUpdateModal(item) {
         optical_power_after: item.optical_power_after || '',
         action_taken: item.action_taken || '',
         scheduled_date: item.scheduled_date || filterDate.value,
+        materials: (item.materials || []).map(m => {
+            const prep = parseFloat(m.quantity_prepared) || 0;
+            const used = parseFloat(m.quantity_used) || 0;
+            const ret = (typeof m.quantity_returned !== 'undefined' && m.quantity_returned !== null) 
+                ? parseFloat(m.quantity_returned) 
+                : Math.max(0, parseFloat((prep - used).toFixed(2)));
+            return {
+                id: m.id,
+                material_id: m.material_id,
+                name: m.material?.name || m.name || 'Material',
+                quantity_prepared: prep,
+                quantity_used: used,
+                quantity_returned: ret,
+                unit: m.unit || m.material?.unit || 'pcs',
+                notes: m.notes || '',
+            };
+        }),
     };
     showUpdateModal.value = true;
 }
@@ -2122,6 +2433,9 @@ async function submitUpdateMaintenance() {
         if (updateForm.value.end_time) payload.append('end_time', updateForm.value.end_time);
         if (updateForm.value.scheduled_date) payload.append('scheduled_date', updateForm.value.scheduled_date);
         if (updatePhotoAfterFile.value) payload.append('photo_after', updatePhotoAfterFile.value);
+        if (updateForm.value.materials && updateForm.value.materials.length > 0) {
+            payload.append('materials', JSON.stringify(updateForm.value.materials));
+        }
 
         const res = await axios.post(`/operational/network-maintenance/${activeMaintenanceItem.value.id}/quick-update`, payload);
         if (res.data && res.data.success) {

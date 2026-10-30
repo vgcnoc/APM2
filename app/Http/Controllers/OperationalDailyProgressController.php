@@ -10,6 +10,9 @@ use App\Models\Area;
 use App\Models\Odp;
 use App\Models\Odc;
 use App\Models\NetworkMaintenance;
+use App\Models\NetworkMaintenanceMaterial;
+use App\Models\Material;
+use App\Models\MaterialTransaction;
 use App\Models\PgsTicket;
 use App\Models\PgkTicket;
 use App\Models\PgjTicket;
@@ -228,6 +231,19 @@ class OperationalDailyProgressController extends Controller
         $availableOdps = Odp::select('id', 'name', 'area_id')->orderBy('name')->limit(500)->get();
         $availableOdcs = Odc::select('id', 'name', 'area_id')->orderBy('name')->limit(150)->get();
 
+        $materials = Material::where(function ($q) {
+                $q->where('is_active', true)->orWhereNull('is_active');
+            })
+            ->with('stocks')
+            ->orderBy('name')
+            ->get(['id', 'name', 'unit', 'stock', 'price_per_unit', 'category']);
+
+        $materialTransactions = MaterialTransaction::where('type', 'in')
+            ->with(['items.material.stocks', 'areaModel'])
+            ->latest('id')
+            ->limit(200)
+            ->get();
+
         return Inertia::render('Operational/DailyProgress', [
             'defaultTab' => $request->input('tab', 'gangguan'),
             'filters' => [
@@ -236,6 +252,8 @@ class OperationalDailyProgressController extends Controller
                 'note' => $customNote,
             ],
             'areas' => $areas,
+            'materials' => $materials,
+            'materialTransactions' => $materialTransactions,
             'indonesianDate' => $indonesianDayDate,
             'areaLabel' => $areaLabel,
             'gangguanList' => $gangguanList,
@@ -966,7 +984,7 @@ class OperationalDailyProgressController extends Controller
         $areaIds = is_array($areaId) ? $areaId : ($areaId ? [$areaId] : []);
         $isToday = ($date === Carbon::today()->toDateString());
 
-        $query = NetworkMaintenance::with(['area', 'odp', 'odc', 'technicians', 'creator'])
+        $query = NetworkMaintenance::with(['area', 'odp', 'odc', 'technicians', 'creator', 'materials.material'])
             ->where(function ($q) use ($date, $isToday) {
                 $q->whereDate('scheduled_date', $date)
                   ->orWhereDate('completed_at', $date);
@@ -1060,6 +1078,18 @@ class OperationalDailyProgressController extends Controller
                 'optical_power_after' => $m->optical_power_after,
                 'photo_before' => $m->photo_before ? Storage::url($m->photo_before) : null,
                 'photo_after' => $m->photo_after ? Storage::url($m->photo_after) : null,
+                'materials' => $m->materials->map(fn($mat) => [
+                    'id' => $mat->id,
+                    'material_id' => $mat->material_id,
+                    'material_name' => $mat->material?->name ?? 'Material',
+                    'material_transaction_item_id' => $mat->material_transaction_item_id,
+                    'trx_number' => $mat->trx_number,
+                    'quantity_prepared' => (float) $mat->quantity_prepared,
+                    'quantity_used' => (float) $mat->quantity_used,
+                    'quantity_returned' => (float) $mat->quantity_returned,
+                    'unit' => $mat->unit ?: ($mat->material?->unit ?? 'pcs'),
+                    'notes' => $mat->notes,
+                ])->values(),
             ];
         }
 
@@ -1584,6 +1614,16 @@ class OperationalDailyProgressController extends Controller
                         $lines[] = "   Tindakan: {$m['action_taken']}";
                     } elseif (!empty($m['description'])) {
                         $lines[] = "   Rencana : {$m['description']}";
+                    }
+                    if (!empty($m['materials']) && count($m['materials']) > 0) {
+                        $matParts = [];
+                        foreach ($m['materials'] as $mat) {
+                            $q = ($mat['quantity_used'] > 0) ? $mat['quantity_used'] : $mat['quantity_prepared'];
+                            $matParts[] = "{$q} {$mat['unit']} {$mat['material_name']}";
+                        }
+                        if (!empty($matParts)) {
+                            $lines[] = "   Material: " . implode(', ', $matParts);
+                        }
                     }
                     $lines[] = "   Durasi  : {$m['duration']}";
                     $lines[] = "   Status  : {$m['status_label']}";
