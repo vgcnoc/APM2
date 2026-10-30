@@ -146,7 +146,7 @@ function openQuickUpdateModal(item) {
             const ret = (rawRet !== null && (used > 0 || rawRet > 0 || prep === 0))
                 ? rawRet
                 : Math.max(0, parseFloat((prep - used).toFixed(2)));
-            const foundMat = (materials.value || []).find(x => x.id == m.material_id);
+            const foundMat = (props.materials || []).find(x => x.id == m.material_id);
             return {
                 id: m.id,
                 material_id: m.material_id,
