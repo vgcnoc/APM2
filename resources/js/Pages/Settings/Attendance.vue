@@ -372,16 +372,34 @@
                             </div>
                         </div>
 
-                        <!-- Opsi Bebas Absen di Semua Area / Wilayah Cabang (Highlight Card) -->
-                        <div class="p-4 rounded-2xl border-2 border-blue-200 bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                        <!-- Opsi Pembatasan Absen Berdasarkan Area Penempatan Karyawan (Highlight Card) -->
+                        <div class="p-4 rounded-2xl border-2 border-indigo-200 bg-gradient-to-r from-indigo-50/80 via-blue-50/50 to-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
                             <div class="space-y-0.5">
-                                <div class="text-xs font-black text-blue-900 flex items-center gap-1.5">
-                                    <span class="text-sm">🌐</span>
-                                    <span>Bebas Absen di Semua Area / Wilayah Cabang</span>
-                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-600 text-white shadow-2xs">Fleksibel Multi-Cabang</span>
+                                <div class="text-xs font-black text-indigo-950 flex items-center gap-1.5">
+                                    <span class="text-sm">🔒</span>
+                                    <span>Kunci Absen Sesuai Area Karyawan (Strict Employee Area Lock)</span>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-600 text-white shadow-2xs">Area Khusus Karyawan</span>
                                 </div>
                                 <p class="text-[11px] text-slate-600 leading-relaxed">
-                                    Karyawan dapat memilih dan hadir di lokasi kantor cabang/wilayah mana saja saat presensi reguler (tidak dibatasi hanya kantor asal di profil karyawan). Radius geofencing otomatis dicocokkan ke kantor cabang yang dipilih atau cabang terdekat.
+                                    Batasi absensi reguler secara ketat hanya pada Area/Cabang yang ditentukan di data profil karyawan. <strong>Contoh: Karyawan A hanya bisa absen di Area BC 1, dan Karyawan B hanya bisa absen di Area BC 2</strong>. Presensi reguler di luar area penugasan akan langsung ditolak sistem (kecuali pengguna memiliki role akses bypass).
+                                </p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                                <input type="checkbox" v-model="form.attendance_regular_restrict_employee_area" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                            </label>
+                        </div>
+
+                        <!-- Opsi Bebas Absen di Semua Area / Wilayah Cabang (Highlight Card) -->
+                        <div class="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                            <div class="space-y-0.5">
+                                <div class="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                                    <span class="text-sm">🌐</span>
+                                    <span>Bebas Absen di Semua Area / Wilayah Cabang</span>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-700">Fleksibel Multi-Cabang</span>
+                                </div>
+                                <p class="text-[11px] text-slate-500 leading-relaxed">
+                                    Jika diaktifkan, pembatasan area karyawan dinonaktifkan secara global dan karyawan bebas memilih hadir di kantor cabang mana saja. Jika dinonaktifkan, aturan kunci area per karyawan di atas akan ditegakkan secara penuh.
                                 </p>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer shrink-0">
@@ -1579,7 +1597,8 @@ const form = useForm({
     attendance_regular_require_gps: props.settings?.attendance_regular_require_gps ?? true,
     attendance_regular_strict_radius: props.settings?.attendance_regular_strict_radius ?? true,
     attendance_regular_default_radius: props.settings?.attendance_regular_default_radius ?? 200,
-    attendance_regular_allow_any_area: props.settings?.attendance_regular_allow_any_area ?? true,
+    attendance_regular_restrict_employee_area: props.settings?.attendance_regular_restrict_employee_area ?? true,
+    attendance_regular_allow_any_area: props.settings?.attendance_regular_allow_any_area ?? false,
     attendance_regular_allow_wfh: props.settings?.attendance_regular_allow_wfh ?? false,
     attendance_regular_allow_field: props.settings?.attendance_regular_allow_field ?? true,
     attendance_regular_allow_overtime: props.settings?.attendance_regular_allow_overtime ?? true,

@@ -246,7 +246,8 @@ class SettingController extends Controller
                 'attendance_regular_require_gps' => Setting::get('attendance_regular_require_gps', '1') === '1',
                 'attendance_regular_strict_radius' => Setting::get('attendance_regular_strict_radius', '1') === '1',
                 'attendance_regular_default_radius' => (int) Setting::get('attendance_regular_default_radius', 200),
-                'attendance_regular_allow_any_area' => Setting::get('attendance_regular_allow_any_area', '1') === '1',
+                'attendance_regular_restrict_employee_area' => Setting::get('attendance_regular_restrict_employee_area', '1') === '1',
+                'attendance_regular_allow_any_area' => Setting::get('attendance_regular_allow_any_area', '0') === '1',
                 'attendance_regular_allow_wfh' => Setting::get('attendance_regular_allow_wfh', '0') === '1',
                 'attendance_regular_allow_field' => Setting::get('attendance_regular_allow_field', '1') === '1',
                 'attendance_regular_allow_overtime' => Setting::get('attendance_regular_allow_overtime', '1') === '1',
@@ -341,6 +342,7 @@ class SettingController extends Controller
             'attendance_regular_require_gps' => 'nullable|boolean',
             'attendance_regular_strict_radius' => 'nullable|boolean',
             'attendance_regular_default_radius' => 'nullable|integer|min:10|max:5000',
+            'attendance_regular_restrict_employee_area' => 'nullable|boolean',
             'attendance_regular_allow_any_area' => 'nullable|boolean',
             'attendance_regular_allow_wfh' => 'nullable|boolean',
             'attendance_regular_allow_field' => 'nullable|boolean',
@@ -440,6 +442,7 @@ class SettingController extends Controller
         if ($request->has('attendance_regular_default_radius')) {
             Setting::set('attendance_regular_default_radius', (int) $request->attendance_regular_default_radius);
         }
+        Setting::set('attendance_regular_restrict_employee_area', $request->boolean('attendance_regular_restrict_employee_area') ? '1' : '0');
         Setting::set('attendance_regular_allow_any_area', $request->boolean('attendance_regular_allow_any_area') ? '1' : '0');
         Setting::set('attendance_regular_allow_wfh', $request->boolean('attendance_regular_allow_wfh') ? '1' : '0');
         Setting::set('attendance_regular_allow_field', $request->boolean('attendance_regular_allow_field') ? '1' : '0');

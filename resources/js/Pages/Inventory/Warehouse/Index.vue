@@ -279,9 +279,12 @@
                                                 <span class="text-slate-400 font-normal">Awal{{ filterAreaId ? ' Area' : '' }}:</span>
                                                 <span class="font-bold text-slate-700">{{ formatNum(filterAreaId ? getAreaInitialStock(material, filterAreaId) : getAllAreasInitialStock(material)) }}</span>
                                                 <span class="text-[9px] uppercase font-bold text-slate-400">{{ material.unit }}</span>
+                                                <span v-if="material.id <= 260 && (filterAreaId ? getAreaInitialStock(material, filterAreaId) : getAllAreasInitialStock(material)) > 0" class="ml-1 text-[9px] px-1 py-0.5 rounded bg-amber-100 text-amber-800 font-bold" title="Kabel / material ini berasal dari data pelanggan migrasi awal yang telah terpasang di lapangan">
+                                                    Migrasi Pelanggan
+                                                </span>
                                             </div>
-                                            <div v-if="filterAreaId" class="inline-flex items-center gap-1 text-[10px] text-indigo-700 font-semibold mt-1 bg-indigo-50/70 px-1.5 py-0.5 rounded border border-indigo-100" title="Total stok barang ini di seluruh area/cabang">
-                                                <span>🏢 All Area:</span>
+                                            <div v-if="filterAreaId" class="inline-flex items-center gap-1 text-[10px] text-indigo-700 font-semibold mt-1 bg-indigo-50/70 px-1.5 py-0.5 rounded border border-indigo-100" title="Total stok fisik barang ini di seluruh area/cabang yang siap pakai di gudang">
+                                                <span>🏢 Total All Area:</span>
                                                 <span class="font-bold font-mono">{{ formatNum(getAllAreasTotalStock(material)) }}</span>
                                                 <span class="text-[8px] uppercase font-bold text-indigo-400">{{ material.unit }}</span>
                                             </div>

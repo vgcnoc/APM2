@@ -2491,18 +2491,21 @@ function openQuickUpdateModal(item) {
         materials: (item.materials || []).map(m => {
             const prep = parseFloat(m.quantity_prepared) || 0;
             const used = parseFloat(m.quantity_used) || 0;
-            const ret = (typeof m.quantity_returned !== 'undefined' && m.quantity_returned !== null) 
-                ? parseFloat(m.quantity_returned) 
+            const rawRet = (typeof m.quantity_returned !== 'undefined' && m.quantity_returned !== null) ? parseFloat(m.quantity_returned) : null;
+            // Cerdas: Jika tiket baru dibuka (used == 0 dan ret == 0), maka sisa otomatis adalah prep (utuh), bukan 0!
+            const ret = (rawRet !== null && (used > 0 || rawRet > 0 || prep === 0))
+                ? rawRet
                 : Math.max(0, parseFloat((prep - used).toFixed(2)));
+            const foundMat = (props.materials || []).find(x => x.id == m.material_id);
             return {
                 id: m.id,
                 material_id: m.material_id,
-                name: m.material_name || m.material?.name || m.name || 'Material',
-                category: m.category || m.material?.category || '',
+                name: m.material_name || m.material?.name || m.name || foundMat?.name || 'Material',
+                category: m.category || m.material?.category || foundMat?.category || '',
                 quantity_prepared: prep,
                 quantity_used: used,
                 quantity_returned: ret,
-                unit: m.unit || m.material?.unit || 'pcs',
+                unit: m.unit || m.material?.unit || foundMat?.unit || 'pcs',
                 notes: m.notes || '',
             };
         }),

@@ -13,6 +13,7 @@ class Employee extends Model
         'join_date' => 'date',
         'resign_date' => 'date',
         'base_salary' => 'integer',
+        'allowed_attendance_areas' => 'array',
     ];
 
     protected $appends = [
@@ -22,7 +23,57 @@ class Employee extends Model
         'tenure_months',
         'is_resigned',
         'is_active',
+        'allowed_attendance_area_ids',
+        'allowed_attendance_areas_text',
     ];
+
+    /**
+     * Ambil array ID Area yang diizinkan untuk absensi reguler.
+     * Prioritas:
+     * 1. Kolom allowed_attendance_areas (jika diatur khusus)
+     * 2. Kolom area_id penempatan utama karyawan
+     * 3. Kosong (berarti belum dikunci, atau mengikuti aturan global)
+     */
+    public function getAllowedAttendanceAreaIds(): array
+    {
+        if (!empty($this->allowed_attendance_areas) && is_array($this->allowed_attendance_areas)) {
+            return array_values(array_unique(array_filter(array_map('intval', $this->allowed_attendance_areas))));
+        }
+        if (!empty($this->area_id)) {
+            return [(int) $this->area_id];
+        }
+        return [];
+    }
+
+    public function getAllowedAttendanceAreaIdsAttribute(): array
+    {
+        return $this->getAllowedAttendanceAreaIds();
+    }
+
+    /**
+     * Label teks deskriptif area yang diizinkan untuk absensi
+     */
+    public function getAllowedAttendanceAreasTextAttribute(): string
+    {
+        $ids = $this->getAllowedAttendanceAreaIds();
+        if (empty($ids)) {
+            return 'Bebas Semua Area';
+        }
+        $names = Area::whereIn('id', $ids)->pluck('name')->toArray();
+        return !empty($names) ? implode(', ', $names) : '-';
+    }
+
+    /**
+     * Cek apakah karyawan berhak melakukan absensi di Area tertentu
+     */
+    public function canAttendInArea($areaId): bool
+    {
+        $allowed = $this->getAllowedAttendanceAreaIds();
+        if (empty($allowed)) {
+            return true;
+        }
+        return in_array((int) $areaId, $allowed, true);
+    }
 
     public function getIsResignedAttribute(): bool
     {

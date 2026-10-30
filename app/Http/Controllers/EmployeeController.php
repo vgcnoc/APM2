@@ -179,6 +179,8 @@ class EmployeeController extends Controller
             'email' => 'required|email|max:255|unique:employees,email|unique:users,email',
             'phone' => 'nullable|string|max:20',
             'area_id' => 'nullable|exists:areas,id',
+            'allowed_attendance_areas' => 'nullable|array',
+            'allowed_attendance_areas.*' => 'nullable|integer|exists:areas,id',
             'join_date' => 'nullable|date',
             'employee_type' => 'nullable|string|max:50',
             'base_salary' => 'nullable|numeric|min:0',
@@ -190,12 +192,18 @@ class EmployeeController extends Controller
             'photo' => 'nullable|image|max:2048',
         ]);
 
+        if ($request->has('allowed_attendance_areas')) {
+            $validated['allowed_attendance_areas'] = array_values(array_unique(array_filter(array_map('intval', (array) $request->input('allowed_attendance_areas', [])))));
+        } elseif (!empty($validated['area_id'])) {
+            $validated['allowed_attendance_areas'] = [(int) $validated['area_id']];
+        }
+
         if ($request->hasFile('photo')) {
             $path = $request->file('photo')->store('employees', 'public');
             $validated['photo'] = $path;
         }
 
-        \App\Models\Employee::create($validated);
+        $employee = \App\Models\Employee::create($validated);
 
         // Auto-create user
         $roleName = !empty($validated['position']) ? self::mapPositionToRole($validated['position']) : 'cs';
@@ -205,6 +213,7 @@ class EmployeeController extends Controller
             'role' => $roleName,
             'password' => bcrypt('password123'), // Default password
             'area_id' => $validated['area_id'] ?? null,
+            'accessible_areas' => $validated['allowed_attendance_areas'] ?? (!empty($validated['area_id']) ? [(int) $validated['area_id']] : []),
             'base_salary' => (float) ($validated['base_salary'] ?? 0),
             'bank_name' => $validated['bank_name'] ?? null,
             'bank_account_number' => $validated['bank_account_number'] ?? null,
@@ -233,6 +242,8 @@ class EmployeeController extends Controller
             'email' => 'required|email|max:255|unique:employees,email,' . $employee->id,
             'phone' => 'nullable|string|max:20',
             'area_id' => 'nullable|exists:areas,id',
+            'allowed_attendance_areas' => 'nullable|array',
+            'allowed_attendance_areas.*' => 'nullable|integer|exists:areas,id',
             'join_date' => 'nullable|date',
             'employee_type' => 'nullable|string|max:50',
             'base_salary' => 'nullable|numeric|min:0',
@@ -256,6 +267,10 @@ class EmployeeController extends Controller
             ]);
         }
 
+        if ($request->has('allowed_attendance_areas')) {
+            $validated['allowed_attendance_areas'] = array_values(array_unique(array_filter(array_map('intval', (array) $request->input('allowed_attendance_areas', [])))));
+        }
+
         if ($request->hasFile('photo')) {
             if ($employee->photo && \Illuminate\Support\Facades\Storage::disk('public')->exists($employee->photo)) {
                 \Illuminate\Support\Facades\Storage::disk('public')->delete($employee->photo);
@@ -277,6 +292,9 @@ class EmployeeController extends Controller
                     'email' => $validated['email'],
                     'role' => $roleName,
                     'area_id' => $validated['area_id'] ?? null,
+                    'accessible_areas' => !empty($validated['allowed_attendance_areas'])
+                        ? $validated['allowed_attendance_areas']
+                        : (!empty($validated['area_id']) ? [(int) $validated['area_id']] : []),
                     'bank_name' => $validated['bank_name'] ?? null,
                     'bank_account_number' => $validated['bank_account_number'] ?? null,
                     'bank_account_holder' => $validated['bank_account_holder'] ?? null,

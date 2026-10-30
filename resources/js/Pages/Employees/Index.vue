@@ -445,6 +445,18 @@
                                 <!-- 6. Area -->
                                 <td class="py-4 px-6">
                                     <p class="text-sm font-semibold text-gray-800">{{ emp.area?.name || '-' }}</p>
+                                    <div v-if="emp.allowed_attendance_areas && emp.allowed_attendance_areas.length > 0" class="mt-1">
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs" :title="'Kunci Absen Reguler: ' + (emp.allowed_attendance_areas_text || 'Area Terpilih')">
+                                            <span>🔒</span>
+                                            <span class="truncate max-w-[120px]">{{ emp.allowed_attendance_areas_text || 'Terkunci Area' }}</span>
+                                        </span>
+                                    </div>
+                                    <div v-else-if="emp.area_id" class="mt-1">
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-slate-50 text-slate-500 border border-slate-200" title="Bebas Absen di Semua Cabang">
+                                            <span>🌐</span>
+                                            <span>Semua Area</span>
+                                        </span>
+                                    </div>
                                 </td>
 
                                 <!-- 7. Aksi -->
@@ -776,11 +788,61 @@
                                 <input v-model="form.phone" type="text" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200" placeholder="08xxxxxxxxxx">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Area</label>
-                                <select v-model="form.area_id" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Area Penempatan Utama</label>
+                                <select v-model="form.area_id" @change="onPrimaryAreaChange" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
                                     <option value="">Pilih Area</option>
                                     <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
                                 </select>
+                            </div>
+                        </div>
+
+                        <!-- KUNCI ABSEN REGULER PER KARYAWAN (Strict Employee Area Lock) -->
+                        <div class="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-3">
+                            <div class="flex items-center justify-between flex-wrap gap-2">
+                                <label class="block text-xs font-black text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
+                                    <span class="text-sm">🔒</span>
+                                    <span>Kunci Absen Reguler Per Area</span>
+                                </label>
+                                <div class="flex items-center gap-1.5">
+                                    <button 
+                                        type="button" 
+                                        @click="lockToPrimaryArea" 
+                                        class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-white text-amber-800 border border-amber-300 hover:bg-amber-100 transition shadow-2xs cursor-pointer"
+                                        title="Kunci absensi hanya bisa di area penempatan utama karyawan ini"
+                                    >
+                                        🔒 Kunci ke Penempatan
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        @click="form.allowed_attendance_areas = []" 
+                                        class="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-white text-slate-700 border border-slate-300 hover:bg-slate-100 transition shadow-2xs cursor-pointer"
+                                        title="Karyawan bebas absen reguler di semua cabang"
+                                    >
+                                        🌐 Bebas Semua Cabang
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="text-[11px] text-amber-800 leading-relaxed">
+                                Tentukan cabang mana saja karyawan ini diperbolehkan presensi WFO. <br>
+                                <em>Contoh: Karyawan A hanya di BC 1, Karyawan B hanya di BC 2. Jika tidak dicentang, karyawan mengikuti aturan umum.</em>
+                            </p>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+                                <label 
+                                    v-for="area in areas" 
+                                    :key="'allow-area-' + area.id"
+                                    class="flex items-center gap-2 p-2.5 rounded-xl bg-white border cursor-pointer transition select-none"
+                                    :class="(form.allowed_attendance_areas || []).includes(area.id) ? 'border-amber-400 bg-amber-50/60 shadow-2xs ring-1 ring-amber-300' : 'border-slate-200 hover:border-slate-300'"
+                                >
+                                    <input 
+                                        type="checkbox" 
+                                        :value="area.id" 
+                                        v-model="form.allowed_attendance_areas"
+                                        class="rounded border-slate-300 text-amber-600 focus:ring-amber-500 w-4 h-4 cursor-pointer"
+                                    />
+                                    <span class="text-xs font-bold" :class="(form.allowed_attendance_areas || []).includes(area.id) ? 'text-amber-900' : 'text-slate-700'">
+                                        {{ area.name }}
+                                    </span>
+                                </label>
                             </div>
                         </div>
 
@@ -1536,6 +1598,7 @@ const form = useForm({
     email: '',
     phone: '',
     area_id: '',
+    allowed_attendance_areas: [],
     join_date: '',
     employee_type: '',
     payment_method: '',
@@ -1545,6 +1608,20 @@ const form = useForm({
     address: '',
     photo: null,
 });
+
+const onPrimaryAreaChange = () => {
+    if (form.area_id && (!form.allowed_attendance_areas || form.allowed_attendance_areas.length === 0)) {
+        form.allowed_attendance_areas = [Number(form.area_id)];
+    }
+};
+
+const lockToPrimaryArea = () => {
+    if (form.area_id) {
+        form.allowed_attendance_areas = [Number(form.area_id)];
+    } else {
+        form.allowed_attendance_areas = [];
+    }
+};
 
 const hasActiveFilter = computed(() => {
     return !!(search.value || filterArea.value || filterType.value || filterTenure.value || sortBy.value || (statusFilter.value && statusFilter.value !== 'active'));
@@ -1777,6 +1854,9 @@ function openModal(emp = null) {
         form.email = emp.email || '';
         form.phone = emp.phone || '';
         form.area_id = emp.area_id || '';
+        form.allowed_attendance_areas = Array.isArray(emp.allowed_attendance_areas) 
+            ? emp.allowed_attendance_areas.map(Number) 
+            : (emp.area_id ? [Number(emp.area_id)] : []);
         // If join_date is a formatted string or ISO, ensure YYYY-MM-DD
         if (emp.join_date) {
             form.join_date = emp.join_date.substring(0, 10);
@@ -1800,6 +1880,7 @@ function openModal(emp = null) {
         isEditing.value = false;
         editingId.value = null;
         form.reset();
+        form.allowed_attendance_areas = [];
         form.bank_name = '';
         form.bank_account_number = '';
         form.bank_account_holder = '';

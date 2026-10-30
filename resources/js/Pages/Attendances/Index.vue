@@ -345,7 +345,11 @@
                                         <span>🏢</span>
                                         <span>Lokasi Kantor Presensi:</span>
                                     </label>
-                                    <span v-if="settings?.allow_any_area" class="px-2 py-0.5 rounded-md text-[10px] font-black bg-blue-600 text-white shadow-2xs">
+                                    <span v-if="isEmployeeAreaLocked" class="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-600 text-white shadow-2xs flex items-center gap-1">
+                                        <span>🔒</span>
+                                        <span>Kunci Area: {{ currentEmployee?.allowed_attendance_areas_text || 'Khusus' }}</span>
+                                    </span>
+                                    <span v-else-if="settings?.allow_any_area" class="px-2 py-0.5 rounded-md text-[10px] font-black bg-blue-600 text-white shadow-2xs">
                                         Bebas Pilih Cabang
                                     </span>
                                     <span v-else class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
@@ -354,14 +358,14 @@
                                 </div>
 
                                 <!-- Dropdown Pemilihan Area jika settings.allow_any_area aktif -->
-                                <div v-if="settings?.allow_any_area" class="space-y-1.5">
+                                <div v-if="settings?.allow_any_area || isEmployeeAreaLocked" class="space-y-1.5">
                                     <div class="relative">
                                         <select
                                             v-model="selectedAreaId"
-                                            :disabled="!!todayAttendance?.clock_in"
+                                            :disabled="!!todayAttendance?.clock_in || (isEmployeeAreaLocked && selectableAreas.length <= 1)"
                                             class="w-full text-xs font-bold text-slate-800 bg-white border border-blue-300 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:bg-slate-100 disabled:text-slate-500 cursor-pointer shadow-2xs transition"
                                         >
-                                            <option v-for="ar in areas" :key="ar.id" :value="ar.id">
+                                            <option v-for="ar in selectableAreas" :key="ar.id" :value="ar.id">
                                                 {{ formatAreaDistanceOption(ar) }}
                                             </option>
                                         </select>
@@ -1231,8 +1235,27 @@ const props = defineProps({
     monthlyRecap: Object,
     areas: Array,
     positions: Array,
+    canBypassAreaLock: Boolean,
     settings: Object,
     filters: Object,
+});
+
+// Otorisasi & Kunci Area Absensi Reguler Karyawan (Strict Employee Area Lock)
+const allowedAttendanceAreaIds = computed(() => {
+    return props.currentEmployee?.allowed_attendance_area_ids || [];
+});
+
+const isEmployeeAreaLocked = computed(() => {
+    if (props.canBypassAreaLock) return false;
+    if (props.settings?.restrict_employee_area === false) return false;
+    return allowedAttendanceAreaIds.value.length > 0;
+});
+
+const selectableAreas = computed(() => {
+    if (!props.areas) return [];
+    if (!isEmployeeAreaLocked.value) return props.areas;
+    const filtered = props.areas.filter(a => allowedAttendanceAreaIds.value.includes(a.id));
+    return filtered.length > 0 ? filtered : props.areas;
 });
 
 const getDefaultTab = () => {
@@ -1257,17 +1280,25 @@ const selectedRecapMonth = ref(props.monthlyRecap?.month || '');
 const selectedShiftId = ref(props.shiftToday?.id || null);
 
 // Area Kantor Presensi State
-const selectedAreaId = ref(
-    props.todayAttendance?.area_id ||
-    props.currentEmployee?.area_id ||
-    props.officeLocation?.id ||
-    (props.areas && props.areas.length > 0 ? props.areas[0].id : null)
-);
+const getInitialSelectedAreaId = () => {
+    if (props.todayAttendance?.area_id) return props.todayAttendance.area_id;
+    if (isEmployeeAreaLocked.value) {
+        if (props.currentEmployee?.area_id && allowedAttendanceAreaIds.value.includes(props.currentEmployee.area_id)) {
+            return props.currentEmployee.area_id;
+        }
+        if (allowedAttendanceAreaIds.value.length > 0) {
+            return allowedAttendanceAreaIds.value[0];
+        }
+    }
+    return props.currentEmployee?.area_id || props.officeLocation?.id || (props.areas && props.areas.length > 0 ? props.areas[0].id : null);
+};
+
+const selectedAreaId = ref(getInitialSelectedAreaId());
 const autoDetectedAreaInfo = ref(null);
 
 // Kantor Acuan yang Aktif (Bisa Berpindah jika Multi-Cabang Aktif)
 const currentTargetOffice = computed(() => {
-    if (props.settings?.allow_any_area && selectedAreaId.value && props.areas) {
+    if ((props.settings?.allow_any_area || isEmployeeAreaLocked.value) && selectedAreaId.value && props.areas) {
         const found = props.areas.find(a => a.id === selectedAreaId.value);
         if (found && found.latitude && found.longitude) {
             return {
@@ -1355,14 +1386,15 @@ const formatAreaDistanceOption = (area) => {
 
 // Smart Auto-Select Kantor Cabang Terdekat jika Dalam Radius
 const autoSelectNearestArea = () => {
-    if (!props.settings?.allow_any_area || !userCoordinates.value || !props.areas || props.areas.length === 0) return;
+    if (!props.settings?.allow_any_area && !isEmployeeAreaLocked.value) return;
+    if (!userCoordinates.value || !selectableAreas.value || selectableAreas.value.length === 0) return;
     if (props.todayAttendance?.clock_in) return;
 
     let matchedInRadius = null;
     let closestArea = null;
     let minDistance = Infinity;
 
-    for (const a of props.areas) {
+    for (const a of selectableAreas.value) {
         if (a.latitude && a.longitude) {
             const dist = getDistanceToSpecificArea(a);
             if (dist !== null) {

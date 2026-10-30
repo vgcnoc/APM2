@@ -335,12 +335,14 @@ class AttendanceController extends Controller
             ],
             'areas' => $areas,
             'positions' => $positions,
+            'canBypassAreaLock' => $user && ($user->hasRole('admin') || $user->hasRole('super admin') || $user->can('attendance_bypass_area_restriction')),
             'settings' => [
                 'require_photo' => Setting::get('attendance_regular_require_photo', '1') === '1',
                 'require_gps' => Setting::get('attendance_regular_require_gps', '1') === '1',
                 'strict_radius' => Setting::get('attendance_regular_strict_radius', '1') === '1',
                 'default_radius' => (int) Setting::get('attendance_regular_default_radius', 200),
                 'allow_any_area' => Setting::get('attendance_regular_allow_any_area', '1') === '1',
+                'restrict_employee_area' => Setting::get('attendance_regular_restrict_employee_area', '1') === '1',
                 'allow_wfh' => Setting::get('attendance_regular_allow_wfh', '0') === '1',
                 'allow_field' => Setting::get('attendance_regular_allow_field', '1') === '1',
                 'allow_overtime' => Setting::get('attendance_regular_allow_overtime', '1') === '1',
@@ -440,8 +442,16 @@ class AttendanceController extends Controller
         }
 
         // ==============================================================
-        // PENENTUAN AREA PRESENSI & VALIDASI RADIUS GEOFENCING MULTI-AREA
+        // PENENTUAN AREA PRESENSI & VALIDASI KUNCI AREA REGULER KARYAWAN
         // ==============================================================
+        $restrictEmployeeArea = Setting::get('attendance_regular_restrict_employee_area', '1') === '1';
+        $user = auth()->user();
+        $canBypassAreaLock = $user && ($user->hasRole('admin') || $user->hasRole('super admin') || $user->can('attendance_bypass_area_restriction'));
+
+        // Ambil daftar area yang diizinkan untuk karyawan ini
+        $allowedAreaIds = $employee->getAllowedAttendanceAreaIds();
+        $isAreaRestricted = $restrictEmployeeArea && !$canBypassAreaLock && !empty($allowedAreaIds);
+
         $allowAnyArea = Setting::get('attendance_regular_allow_any_area', '1') === '1';
         $targetArea = null;
 
@@ -450,7 +460,11 @@ class AttendanceController extends Controller
                 $targetArea = Area::find($request->area_id);
             } elseif ($request->latitude && $request->longitude) {
                 // Auto-detect area kantor terdekat yang dalam radius
-                $allOfficeAreas = Area::whereNotNull('latitude')->whereNotNull('longitude')->get();
+                $officeQuery = Area::whereNotNull('latitude')->whereNotNull('longitude');
+                if ($isAreaRestricted) {
+                    $officeQuery->whereIn('id', $allowedAreaIds);
+                }
+                $allOfficeAreas = $officeQuery->get();
                 $closestArea = null;
                 $minDistance = null;
 
@@ -482,6 +496,15 @@ class AttendanceController extends Controller
             }
         } else {
             $targetArea = $employee->area;
+        }
+
+        // Validasi Kunci Absensi Area Karyawan (Strict Lock)
+        // Contoh: Karyawan A hanya di BC 1, Karyawan B hanya di BC 2
+        if ($attendanceType === 'wfo' && $isAreaRestricted) {
+            if ($targetArea && !$employee->canAttendInArea($targetArea->id)) {
+                $allowedNames = Area::whereIn('id', $allowedAreaIds)->pluck('name')->implode(', ');
+                return back()->with('error', "Presensi Masuk Ditolak: Anda hanya diizinkan melakukan presensi reguler di Area: {$allowedNames}. Area '{$targetArea->name}' bukan merupakan area penugasan absensi Anda.");
+            }
         }
 
         $distanceCalculated = $request->distance ? (int) $request->distance : null;
