@@ -355,7 +355,7 @@ class MaterialHandoverService
         array $items,
         ?int $oldOntId = null,
         ?int $replacementOntId = null,
-        User $requester = null,
+        ?User $requester = null,
         ?string $notes = null,
         ?int $areaId = null
     ): MaterialTransaction {
