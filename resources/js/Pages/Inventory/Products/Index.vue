@@ -16,9 +16,9 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                                 </svg>
                             </div>
-                            <h1 class="text-3xl font-black text-gray-900 tracking-tight">Katalog Produk</h1>
+                            <h1 class="text-3xl font-black text-gray-900 tracking-tight">Katalog Produk & Satuan</h1>
                             <p class="mt-2 text-sm text-gray-500 max-w-xl">
-                                Kelola master data barang, material, dan perangkat. Sistem cerdas otomatis mengkonversi satuan beli (Roll/Pack) ke satuan pakai (Meter/Pcs).
+                                Master Data Produk & Satuan berfungsi sebagai <strong>Gudang Pusat</strong>. Ketika Order Toko (Restock) dilakukan, stok di Gudang Pusat berkurang dan dialokasikan ke Area tujuan.
                             </p>
                         </div>
 
@@ -65,7 +65,7 @@
                             <thead>
                                 <tr class="bg-slate-50 border-b border-gray-100">
                                     <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Nama & Kategori</th>
-                                    <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right whitespace-nowrap">Total Stok</th>
+                                    <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right whitespace-nowrap">Stok Gudang Pusat</th>
                                     <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Smart Unit</th>
                                     <th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center whitespace-nowrap">Aksi</th>
                                 </tr>
@@ -591,7 +591,7 @@ const form = useForm({
 });
 
 const getInitialStock = (product) => {
-    if (product.initial_stock !== null && product.initial_stock !== undefined && Number(product.initial_stock) > 0) {
+    if (product.initial_stock !== null && product.initial_stock !== undefined && product.initial_stock !== '') {
         return Number(product.initial_stock);
     }
     return Number(product.stock) || 0;

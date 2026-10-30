@@ -145,10 +145,6 @@ class ProductController extends Controller
                     ]
                 );
             }
-        } else {
-            if (\App\Models\MaterialStock::where('material_id', $product->id)->count() === 1) {
-                \App\Models\MaterialStock::where('material_id', $product->id)->delete();
-            }
         }
 
         return redirect()->back()->with('success', 'Produk berhasil diperbarui.');
