@@ -893,7 +893,7 @@
                                             <span>🔄</span> B. Material Terpasang di Pelanggan & Pergantian Bekas
                                         </div>
                                         <p class="text-[11px] text-teal-800">
-                                            Pilih material pasif (kabel, konektor, roset) yang rusak/diganti. Unit pengganti baru otomatis disinkronkan dengan bekal di atas. <i>(Khusus perangkat Modem ONT dikelola eksklusif pada Bagian C di bawah)</i>.
+                                            Daftar material dan perangkat (kabel, konektor, roset, serta modem ONT) yang terpasang di pelanggan. Klik <b>Ganti</b> jika ada barang yang dibongkar/diganti bekasnya.
                                         </p>
                                     </div>
                                     <button 
@@ -927,7 +927,15 @@
                                         class="p-2.5 rounded-xl bg-white border border-teal-100 shadow-2xs flex items-center justify-between gap-2"
                                     >
                                         <div class="min-w-0">
-                                            <div class="font-bold text-gray-900 text-xs truncate" :title="inst.item_name">{{ inst.item_name }}</div>
+                                            <div class="font-bold text-gray-900 text-xs truncate flex items-center gap-1.5" :title="inst.item_name">
+                                            <span v-if="(inst.item_name || '').toLowerCase().includes('ont') || (inst.item_name || '').toLowerCase().includes('modem')">📶</span>
+                                            <span v-else-if="(inst.item_name || '').toLowerCase().includes('kabel') || (inst.item_name || '').toLowerCase().includes('dropcore')">🔌</span>
+                                            <span v-else>📦</span>
+                                            <span class="truncate">{{ inst.item_name }}</span>
+                                            <span v-if="(inst.item_name || '').toLowerCase().includes('ont') || (inst.item_name || '').toLowerCase().includes('modem')" class="px-1.5 py-0.2 rounded text-[9px] font-black bg-indigo-100 text-indigo-800 border border-indigo-200 shrink-0">
+                                                MODEM ONT
+                                            </span>
+                                        </div>
                                             <div class="text-[10px] text-gray-500 font-mono">
                                                 {{ parseFloat(inst.quantity) }} {{ inst.unit }}
                                                 <span v-if="inst.serial_number">· SN: {{ inst.serial_number }}</span>
@@ -1885,47 +1893,67 @@ const newInstalledMatForm = useForm({
 
 const activeCustomerMaterials = computed(() => {
     const list = selectedTicket.value?.customer?.active_installed_materials || selectedTicket.value?.customer?.activeInstalledMaterials;
+    let items = [];
     if (Array.isArray(list) && list.length > 0) {
-        // Filter out hardware ONT / modem so it is never duplicated with Section C
-        return list.filter(item => {
-            const name = (item.item_name || '').toLowerCase();
-            return !name.includes('ont') && !name.includes('modem');
+        items = [...list];
+    } else {
+        items = [
+            {
+                id: 'fallback-dropcore',
+                item_name: 'Kabel Dropcore 1 Core',
+                quantity: 150,
+                unit: 'meter',
+                status: 'installed',
+                notes: 'Kabel dropcore tarikan instalasi awal'
+            },
+            {
+                id: 'fallback-fc',
+                item_name: 'Fast Connector SC/UPC',
+                quantity: 2,
+                unit: 'pcs',
+                status: 'installed',
+                notes: 'Konektor optik ujung ODP & Roset'
+            },
+            {
+                id: 'fallback-roset',
+                item_name: 'Roset Optik 1 Core',
+                quantity: 1,
+                unit: 'pcs',
+                status: 'installed',
+                notes: 'Roset terminasi indoor dinding'
+            },
+            {
+                id: 'fallback-patchcord',
+                item_name: 'Patchcord SC-SC 3M',
+                quantity: 1,
+                unit: 'pcs',
+                status: 'installed',
+                notes: 'Kabel jumper roset ke modem ONT'
+            }
+        ];
+    }
+
+    // Pastikan ONT pelanggan tercantum di Material Terpasang
+    const hasOnt = items.some(item => {
+        const name = (item.item_name || '').toLowerCase();
+        return name.includes('ont') || name.includes('modem');
+    });
+
+    if (!hasOnt && selectedTicket.value?.customer?.ont) {
+        const ont = selectedTicket.value.customer.ont;
+        const ontName = `ONT ${ont.brand || ''} ${ont.model || ''}`.trim() || 'Modem ONT Standar';
+        items.push({
+            id: 'cust-ont-' + ont.id,
+            item_name: ontName,
+            quantity: 1,
+            unit: 'unit',
+            serial_number: ont.serial_number,
+            status: 'installed',
+            notes: `Modem ONT aktif pelanggan (SN: ${ont.serial_number || '-'})`
         });
     }
-    return [
-        {
-            id: 'fallback-dropcore',
-            item_name: 'Kabel Dropcore 1 Core',
-            quantity: 150,
-            unit: 'meter',
-            status: 'installed',
-            notes: 'Kabel dropcore tarikan instalasi awal'
-        },
-        {
-            id: 'fallback-fc',
-            item_name: 'Fast Connector SC/UPC',
-            quantity: 2,
-            unit: 'pcs',
-            status: 'installed',
-            notes: 'Konektor optik ujung ODP & Roset'
-        },
-        {
-            id: 'fallback-roset',
-            item_name: 'Roset Optik 1 Core',
-            quantity: 1,
-            unit: 'pcs',
-            status: 'installed',
-            notes: 'Roset terminasi indoor dinding'
-        },
-        {
-            id: 'fallback-patchcord',
-            item_name: 'Patchcord SC-SC 3M',
-            quantity: 1,
-            unit: 'pcs',
-            status: 'installed',
-            notes: 'Kabel jumper roset ke modem ONT'
-        }
-    ];
+
+    return items;
 });
 
 const quickActionTemplates = [
@@ -1954,14 +1982,11 @@ const quickDamageChips = [
 ];
 
 const initReplacementForInstalledMaterial = (installedItem) => {
-    // Abaikan jika item berupa ONT/modem karena dikelola eksklusif pada Bagian C
-    const name = (installedItem.item_name || '').toLowerCase();
-    if (installedItem.id === 'fallback-ont' || name.includes('ont') || name.includes('modem')) {
-        return;
-    }
-
     const existing = materialReplacements.value.find(r => r.installed_material_id === installedItem.id);
     if (existing) return;
+
+    const name = (installedItem.item_name || '').toLowerCase();
+    const isOnt = name.includes('ont') || name.includes('modem');
 
     // Cek kecocokan otomatis dengan bekal di Bagian A
     const dummyRep = { item_name: installedItem.item_name, material_id: installedItem.material_id || null };
@@ -1979,13 +2004,14 @@ const initReplacementForInstalledMaterial = (installedItem) => {
     materialReplacements.value.push({
         installed_material_id: installedItem.id,
         item_name: installedItem.item_name,
+        serial_number: installedItem.serial_number || '',
         material_id: installedItem.material_id || null,
         replacement_type: 'full',
-        total_installed_qty: parseFloat(installedItem.quantity),
-        quantity: parseFloat(installedItem.quantity),
-        unit: installedItem.unit || 'pcs',
+        total_installed_qty: parseFloat(installedItem.quantity) || 1,
+        quantity: parseFloat(installedItem.quantity) || 1,
+        unit: installedItem.unit || (isOnt ? 'unit' : 'pcs'),
         condition: 'rusak_scrap',
-        damage_reason: 'Kabel / material putus atau rusak di lapangan',
+        damage_reason: isOnt ? 'ONT / Modem kendala fisik/mati/rusak di lokasi pelanggan' : 'Kabel / material putus atau rusak di lapangan',
         replacement_material_id: matched ? matched.material_id : (installedItem.material_id || null),
         replacement_quantity: matched && parseFloat(matched.quantity_used) > 0 ? parseFloat(matched.quantity_used) : parseFloat(installedItem.quantity),
     });
@@ -2055,11 +2081,7 @@ const openEmergencyRequestForReplacement = (rep) => {
 const saveNewInstalledMaterial = () => {
     if (!selectedTicket.value || !newInstalledMatForm.item_name) return;
 
-    const nameLower = (newInstalledMatForm.item_name || '').toLowerCase();
-    if (nameLower.includes('ont') || nameLower.includes('modem')) {
-        alert('Perangkat ONT / Modem dikelola secara khusus pada Bagian C (Pergantian Unit ONT Pelanggan). Bagian B ini khusus untuk material pasif seperti kabel, konektor, dan roset.');
-        return;
-    }
+
 
     newInstalledMatForm.post(`/pgk/${selectedTicket.value.id}/installed-materials`, {
         preserveScroll: true,
@@ -2372,10 +2394,8 @@ const openReportModal = (ticket, ignoreDraft = false) => {
             }
 
             if (Array.isArray(draft.material_replacements)) {
-                // Bersihkan draft jika sempat menyimpan ONT sebagai material pasif
                 materialReplacements.value = draft.material_replacements.filter(rep => {
-                    const name = (rep.item_name || '').toLowerCase();
-                    return rep.installed_material_id !== 'fallback-ont' && !name.includes('ont') && !name.includes('modem');
+                    return rep.installed_material_id !== 'fallback-ont';
                 });
             }
 

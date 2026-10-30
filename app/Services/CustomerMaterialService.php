@@ -27,6 +27,40 @@ class CustomerMaterialService
             ->whereIn('status', ['installed', 'partially_replaced'])
             ->get();
 
+        // Pastikan perangkat ONT terpasang selalu tercatat di CustomerInstalledMaterial
+        $hasOntInExisting = $existing->contains(function ($item) {
+            $name = strtolower($item->item_name ?? '');
+            return str_contains($name, 'ont') || str_contains($name, 'modem');
+        });
+
+        if (!$hasOntInExisting) {
+            $customer->loadMissing('ont');
+            if ($customer->ont) {
+                $ontBrand = $customer->ont->brand ?: 'ONT';
+                $ontModel = $customer->ont->model ?: 'Fiber Modem';
+                $ontName = "ONT {$ontBrand} {$ontModel}";
+
+                $matOnt = Material::where('category', 'like', '%ont%')
+                    ->orWhere('category', 'like', '%modem%')
+                    ->orWhere('name', 'like', "%{$ontBrand}%")
+                    ->first();
+
+                $ontRecord = CustomerInstalledMaterial::create([
+                    'customer_id' => $customer->id,
+                    'material_id' => $matOnt?->id,
+                    'item_name' => $ontName,
+                    'quantity' => 1,
+                    'unit' => 'unit',
+                    'serial_number' => $customer->ont->serial_number,
+                    'installed_at' => $customer->activation_date ?: $customer->registration_date ?: now(),
+                    'installation_source' => $customer->is_migrated ? 'migration' : 'psb_installation',
+                    'status' => 'installed',
+                    'notes' => 'Unit ONT aktif pelanggan (SN: ' . $customer->ont->serial_number . ')',
+                ]);
+                $existing->push($ontRecord);
+            }
+        }
+
         if ($existing->isNotEmpty()) {
             return $existing;
         }
