@@ -103,7 +103,7 @@ class OdpController extends Controller
         ];
 
         // Table Query (starts from filteredQuery, then applies sub-filters like status and port availability)
-        $query = (clone $filteredQuery)->with(['odc.olt', 'area'])->withCount('onts');
+        $query = (clone $filteredQuery)->with(['odc.olt', 'area', 'parent:id,name', 'children:id,name'])->withCount('onts');
 
         // Status Filter
         if ($request->filled('status')) {
@@ -188,6 +188,7 @@ class OdpController extends Controller
 
         if ($validated['type'] === 'Split 2' && !empty($validated['split_units'])) {
             // Save as 2 separate ODPs
+            $parentOdpId = null;
             foreach ($validated['split_units'] as $index => $unit) {
                 $photoPath = null;
                 // Handle file array from split_units
@@ -195,7 +196,7 @@ class OdpController extends Controller
                     $photoPath = $request->file("split_units.{$index}.photo")->store('odp_photos', 'public');
                 }
 
-                Odp::create([
+                $createdOdp = Odp::create([
                     'odc_id' => $validated['odc_id'],
                     'area_id' => $validated['area_id'],
                     'type' => 'Split 2',
@@ -211,8 +212,13 @@ class OdpController extends Controller
                     'status' => $validated['status'] ?? 'active',
                     'description' => $validated['description'] ?? null,
                     'is_split' => true,
+                    'parent_odp_id' => $index > 0 ? $parentOdpId : null,
                     'photo' => $photoPath,
                 ]);
+
+                if ($index === 0) {
+                    $parentOdpId = $createdOdp->id;
+                }
             }
         } else {
             Odp::create($validated);

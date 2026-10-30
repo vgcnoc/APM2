@@ -152,6 +152,22 @@ class Odp extends Model
         return $this->hasMany(Survey::class);
     }
 
+    /**
+     * ODP Induk (jika split lanjutan)
+     */
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(Odp::class, 'parent_odp_id');
+    }
+
+    /**
+     * ODP Lanjutan/Cabang (jika ODP induk split)
+     */
+    public function children(): HasMany
+    {
+        return $this->hasMany(Odp::class, 'parent_odp_id');
+    }
+
     // ── Computed ───────────────────────────────────────────────
 
     /**
