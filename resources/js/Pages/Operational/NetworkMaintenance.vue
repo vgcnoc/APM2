@@ -18,6 +18,8 @@ const props = defineProps({
     indonesianDate: { type: String, default: '' },
     canCreate: { type: Boolean, default: true },
     canDelete: { type: Boolean, default: false },
+    canViewAllAreas: { type: Boolean, default: true },
+    isAreaScoped: { type: Boolean, default: false },
 });
 
 // Helper Tanggal Lokal (WIB / Browser timezone)
@@ -39,7 +41,7 @@ function getCurrentTimeStr() {
 
 // Filter States
 const filterDate = ref(props.filters?.date || getLocalDateString(0));
-const filterArea = ref(props.filters?.area_id || '');
+const filterArea = ref(props.filters?.area_id || (!props.canViewAllAreas && props.areas?.[0]?.id ? props.areas[0].id : ''));
 const filterStatus = ref(props.filters?.status || 'all');
 const filterCategory = ref(props.filters?.category || 'all');
 const searchQuery = ref(props.filters?.search || '');
@@ -439,7 +441,7 @@ function getCategoryBadgeClass(category) {
                             @change="applyFilters"
                             class="px-3 py-1.5 text-xs font-medium rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                         >
-                            <option value="">🌐 Semua Wilayah / Area</option>
+                            <option v-if="canViewAllAreas !== false" value="">🌐 Semua Wilayah / Area</option>
                             <option v-for="area in areas" :key="area.id" :value="area.id">
                                 {{ area.name }}
                             </option>

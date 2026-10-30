@@ -87,7 +87,7 @@
                                 @change="applyFilter"
                                 class="pl-8 pr-8 py-2 text-xs font-semibold rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-rose-500 focus:outline-none appearance-none transition-all cursor-pointer"
                             >
-                                <option value="">🌐 Semua Wilayah / Area</option>
+                                <option v-if="canViewAllAreas !== false" value="">🌐 Semua Wilayah / Area</option>
                                 <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
                             </select>
                             <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1733,6 +1733,8 @@ const props = defineProps({
     summary: { type: Object, default: () => ({}) },
     waText: { type: String, default: '' },
     waGatewayStatus: { type: Boolean, default: false },
+    canViewAllAreas: { type: Boolean, default: true },
+    isAreaScoped: { type: Boolean, default: false },
 });
 
 // Normalisasi Status Teknisi & Maintenance (Divisi Terpisah & Anti-Tercampur)
@@ -1766,7 +1768,7 @@ function getLocalDateString(offsetDays = 0) {
 
 // Filters State
 const filterDate = ref(props.filters?.date || getLocalDateString(0));
-const filterArea = ref(props.filters?.area_id || '');
+const filterArea = ref(props.filters?.area_id || (!props.canViewAllAreas && props.areas?.[0]?.id ? props.areas[0].id : ''));
 const customNote = ref(props.filters?.note || 'Tetap semangat dan jaga keselamatan kerja! 💪');
 const isLoading = ref(false);
 

@@ -54,15 +54,30 @@ class OperationalDailyProgressController extends Controller
         $accessibleAreaIds = (!$isGlobal && $user) ? $user->getAccessibleAreaIds() : null;
 
         $targetAreaIds = null;
-        if ($areaId) {
-            $requestedAreaId = (int) $areaId;
-            if ($accessibleAreaIds !== null && !in_array($requestedAreaId, $accessibleAreaIds, true)) {
-                $targetAreaIds = $accessibleAreaIds;
+        if ($accessibleAreaIds !== null) {
+            // User dibatasi per area kerja mereka (karyawan hanya bisa lihat data per area)
+            if (empty($accessibleAreaIds)) {
+                $targetAreaIds = [-1]; // Jika belum di-assign area, blokir data area lain
+                $areaId = null;
             } else {
-                $targetAreaIds = [$requestedAreaId];
+                if ($areaId) {
+                    $requestedAreaId = (int) $areaId;
+                    if (in_array($requestedAreaId, $accessibleAreaIds, true)) {
+                        $targetAreaIds = [$requestedAreaId];
+                    } else {
+                        $targetAreaIds = $accessibleAreaIds;
+                        $areaId = $accessibleAreaIds[0];
+                    }
+                } else {
+                    $targetAreaIds = $accessibleAreaIds;
+                    $areaId = $accessibleAreaIds[0];
+                }
             }
-        } elseif ($accessibleAreaIds !== null) {
-            $targetAreaIds = $accessibleAreaIds;
+        } else {
+            // User global / admin: bebas filter area manapun atau tampilkan semua
+            if ($areaId) {
+                $targetAreaIds = [(int) $areaId];
+            }
         }
 
         // Ambil Data Area sesuai scope
@@ -236,6 +251,8 @@ class OperationalDailyProgressController extends Controller
             'summary' => $summary,
             'waText' => $waText,
             'waGatewayStatus' => $waGatewayStatus,
+            'canViewAllAreas' => $isGlobal,
+            'isAreaScoped' => !$isGlobal,
         ]);
     }
 

@@ -232,6 +232,12 @@ class User extends Authenticatable
         if ($this->area_id && !in_array($this->area_id, $areas)) {
             $areas[] = $this->area_id;
         }
+        if (empty($areas)) {
+            $emp = $this->relationLoaded('employee') ? $this->employee : $this->employee()->first();
+            if ($emp && !empty($emp->area_id)) {
+                $areas[] = $emp->area_id;
+            }
+        }
         return array_values(array_unique(array_map('intval', $areas)));
     }
 

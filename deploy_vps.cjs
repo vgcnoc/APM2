@@ -6,6 +6,7 @@ const commands = [
   'git reset --hard HEAD',
   'git clean -fd public/build',
   'git pull origin main',
+  'php artisan permissions:sync',
   'php artisan optimize:clear',
   'php artisan config:cache',
   'php artisan route:cache',
