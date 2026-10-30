@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Material extends Model
 {
@@ -28,9 +29,34 @@ class Material extends Model
         'requires_mac',
     ];
 
-    public function stocks()
+    public function stocks(): HasMany
     {
         return $this->hasMany(MaterialStock::class);
+    }
+
+    public function transactionItems(): HasMany
+    {
+        return $this->hasMany(MaterialTransactionItem::class);
+    }
+
+    /**
+     * Scope untuk tampilan di menu Data Material / Barang:
+     * Menampilkan data hasil migrasi (ID <= 260 atau transaksi migrasi)
+     * DAN material yang sudah selesai di-order via Order Toko (Pembelian Toko / Supplier).
+     * Material yang baru sebatas katalog produk dan belum di-order tidak dimunculkan di Data Material.
+     */
+    public function scopeVisibleInMaterialsTable($query)
+    {
+        return $query->where(function ($q) {
+            $q->where('id', '<=', 260)
+              ->orWhereHas('transactionItems.transaction', function ($tq) {
+                  $tq->where('transaction_number', 'like', '%MIG%')
+                     ->orWhere('purpose', 'like', '%migrasi%')
+                     ->orWhere('notes', 'like', '%migrasi%')
+                     ->orWhere('source_type', 'migrasi')
+                     ->orWhere('purpose', 'Pembelian Toko / Supplier');
+              });
+        });
     }
 
     protected static function booted(): void

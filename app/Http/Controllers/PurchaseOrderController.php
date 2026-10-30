@@ -242,11 +242,6 @@ class PurchaseOrderController extends Controller
                 $pricePerBaseUnit = $convertedQuantity > 0 ? ($itemTotal / $convertedQuantity) : 0;
                 $totalCost += $itemTotal;
 
-                // Validasi kecukupan stok di Gudang Utama (Data Produk)
-                if ($material->stock < $convertedQuantity) {
-                    throw new \Exception("Stok {$material->name} di Gudang Utama tidak mencukupi (Tersedia: {$material->stock} {$material->unit}, diminta: {$convertedQuantity} {$material->unit}).");
-                }
-
                 MaterialTransactionItem::create([
                     'material_transaction_id' => $transaction->id,
                     'material_id' => $material->id,
@@ -256,8 +251,8 @@ class PurchaseOrderController extends Controller
                     'total_price' => $itemTotal
                 ]);
 
-                // Kurangi Stok Gudang Utama (Data Produk) & sinkronkan
-                $material->stock -= $convertedQuantity;
+                // Tambah Stok Perusahaan & sinkronkan (Restock masuk dari Toko/Supplier)
+                $material->stock += $convertedQuantity;
                 $material->recalcUnitTotals()->save();
 
                 // Tambah Stok di Area
@@ -309,7 +304,7 @@ class PurchaseOrderController extends Controller
             foreach ($transaction->items as $oldItem) {
                 $oldMaterial = Material::lockForUpdate()->find($oldItem->material_id);
                 if ($oldMaterial) {
-                    $oldMaterial->stock += $oldItem->quantity;
+                    $oldMaterial->stock = max(0, $oldMaterial->stock - $oldItem->quantity);
                     $oldMaterial->recalcUnitTotals()->save();
                 }
 
@@ -320,6 +315,7 @@ class PurchaseOrderController extends Controller
                     ])->first();
                     if ($oldStock) {
                         $oldStock->decrement('stock', $oldItem->quantity);
+                        $oldStock->decrement('initial_stock', $oldItem->quantity);
                     }
                 }
             }
@@ -410,12 +406,6 @@ class PurchaseOrderController extends Controller
                 $pricePerBaseUnit = $convertedQuantity > 0 ? ($itemTotal / $convertedQuantity) : 0;
                 $totalCost += $itemTotal;
 
-                // Cek ketersediaan stok di Gudang Utama
-                $material->refresh();
-                if ($material->stock < $convertedQuantity) {
-                    throw new \Exception("Stok {$material->name} di Gudang Utama tidak mencukupi (Tersedia: {$material->stock} {$material->unit}, diminta: {$convertedQuantity} {$material->unit}).");
-                }
-
                 MaterialTransactionItem::create([
                     'material_transaction_id' => $transaction->id,
                     'material_id' => $material->id,
@@ -425,8 +415,8 @@ class PurchaseOrderController extends Controller
                     'total_price' => $itemTotal
                 ]);
 
-                // Kurangi stok dari Gudang Utama
-                $material->stock -= $convertedQuantity;
+                // Tambah stok ke Material
+                $material->stock += $convertedQuantity;
                 $material->recalcUnitTotals()->save();
 
                 // Tambah stok baru ke Area
@@ -437,6 +427,7 @@ class PurchaseOrderController extends Controller
                     ], ['stock' => 0, 'initial_stock' => 0]);
                     
                     $materialStock->increment('stock', $convertedQuantity);
+                    $materialStock->increment('initial_stock', $convertedQuantity);
                 }
             }
 
@@ -471,11 +462,11 @@ class PurchaseOrderController extends Controller
         try {
             $area = Area::where('name', $transaction->technician_name)->orWhere('id', $transaction->area_id)->first();
 
-            // Revert stock (kembalikan ke Gudang Utama, kurangi dari Area)
+            // Batalkan transaksi order toko (kurangi stok dari Material & Area)
             foreach ($transaction->items as $item) {
                 $material = $item->material;
                 if ($material) {
-                    $material->stock += $item->quantity;
+                    $material->stock = max(0, $material->stock - $item->quantity);
                     $material->recalcUnitTotals()->save();
                 }
 
@@ -486,6 +477,7 @@ class PurchaseOrderController extends Controller
                     ])->first();
                     if ($materialStock) {
                         $materialStock->decrement('stock', $item->quantity);
+                        $materialStock->decrement('initial_stock', $item->quantity);
                     }
                 }
             }

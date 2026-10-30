@@ -17,7 +17,7 @@
                             </div>
                             <h1 class="text-3xl font-black text-gray-900 tracking-tight">Order Toko (Restock)</h1>
                             <p class="mt-2 text-sm text-gray-500 max-w-xl">
-                                Order material dari area/wilayah ke toko. Sistem memotong stok Gudang Utama dan mendistribusikannya ke Area tujuan, serta mencatat pengeluaran ke <strong>Buku Kas Umum / Laporan Keuangan</strong>.
+                                Order material dari toko / supplier ke area/wilayah. Sistem menambahkan stok ke Area tujuan, memunculkan barang di Data Material, dan mencatat pengeluaran ke <strong>Buku Kas Umum / Laporan Keuangan</strong>.
                             </p>
                         </div>
 

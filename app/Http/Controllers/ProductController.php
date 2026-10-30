@@ -72,7 +72,7 @@ class ProductController extends Controller
 
         $material = Material::create($validated);
 
-        if ($areaId) {
+        if ($areaId && (float)$material->stock > 0) {
             \App\Models\MaterialStock::create([
                 'material_id' => $material->id,
                 'area_id' => $areaId,
@@ -119,7 +119,7 @@ class ProductController extends Controller
 
         $product->update($validated);
 
-        if ($areaId) {
+        if ($areaId && (float)$product->stock > 0) {
             $existingStocks = \App\Models\MaterialStock::where('material_id', $product->id)->get();
             if ($existingStocks->count() <= 1) {
                 \App\Models\MaterialStock::updateOrCreate(

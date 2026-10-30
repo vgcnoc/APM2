@@ -579,8 +579,8 @@
                             </div>
                             
                             <div class="mb-4">
-                                <label class="block text-xs font-medium text-gray-600 mb-1">Total Stok Masuk ({{ form.unit || 'pcs' }}) *</label>
-                                <input v-model="form.stock" type="number" step="0.01" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-blue-200 focus:border-blue-500 bg-white" required>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Total Stok Masuk ({{ form.unit || 'pcs' }})</label>
+                                <input v-model="form.stock" type="number" step="0.01" min="0" class="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:ring-2 focus:ring-blue-200 focus:border-blue-500 bg-white" placeholder="0 (Stok masuk via Order Toko)">
                             </div>
 
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">

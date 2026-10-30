@@ -17,7 +17,7 @@ class MaterialController extends Controller
 
         $query = Material::where(function ($q) {
             $q->where('is_active', true)->orWhereNull('is_active');
-        });
+        })->visibleInMaterialsTable();
 
         // Scope relationship & filtering
         if (!$isGlobal && !empty($accessibleAreas)) {
@@ -110,6 +110,7 @@ class MaterialController extends Controller
         $categories = Material::where(function ($q) {
                 $q->where('is_active', true)->orWhereNull('is_active');
             })
+            ->visibleInMaterialsTable()
             ->select('category')
             ->whereNotNull('category')
             ->where('category', '!=', '')
@@ -138,7 +139,7 @@ class MaterialController extends Controller
             'total_packs' => 'nullable|numeric|min:0',
             'cm_per_pcs' => 'nullable|numeric|min:0',
             'total_pieces' => 'nullable|numeric|min:0',
-            'stock' => 'required|numeric|min:0',
+            'stock' => 'nullable|numeric|min:0',
             'price_per_unit' => 'nullable|numeric|min:0',
             'selling_price' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
@@ -148,11 +149,12 @@ class MaterialController extends Controller
         $areaId = $validated['area_id'] ?? null;
         unset($validated['area_id']);
 
+        $validated['stock'] = $validated['stock'] ?? 0;
         $validated['initial_stock'] = $validated['stock'];
 
         $material = Material::create($validated);
 
-        if ($areaId) {
+        if ($areaId && (float)$material->stock > 0) {
             \App\Models\MaterialStock::create([
                 'material_id' => $material->id,
                 'area_id' => $areaId,
@@ -333,12 +335,14 @@ class MaterialController extends Controller
     {
         $activeQuery = Material::where(function ($q) {
             $q->where('is_active', true)->orWhereNull('is_active');
-        });
+        })->visibleInMaterialsTable();
 
         if ($scopedAreaIds) {
             $stockQuery = \App\Models\MaterialStock::whereIn('area_id', $scopedAreaIds)
                 ->whereHas('material', function ($mq) {
-                    $mq->where('is_active', true)->orWhereNull('is_active');
+                    $mq->where(function ($q) {
+                        $q->where('is_active', true)->orWhereNull('is_active');
+                    })->visibleInMaterialsTable();
                 });
             
             $totalItems = (clone $stockQuery)->where('stock', '>', 0)->distinct('material_id')->count('material_id');
@@ -349,7 +353,9 @@ class MaterialController extends Controller
             $areaStocks = \App\Models\MaterialStock::with('material')
                 ->whereIn('area_id', $scopedAreaIds)
                 ->whereHas('material', function ($mq) {
-                    $mq->where('is_active', true)->orWhereNull('is_active');
+                    $mq->where(function ($q) {
+                        $q->where('is_active', true)->orWhereNull('is_active');
+                    })->visibleInMaterialsTable();
                 })
                 ->get();
 
