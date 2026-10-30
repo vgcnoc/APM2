@@ -1875,19 +1875,31 @@ const props = defineProps({
     materialTransactions: { type: Array, default: () => [] },
 });
 
-// Normalisasi Status Teknisi & Maintenance (Divisi Terpisah & Anti-Tercampur)
+// Normalisasi Status Teknisi & Maintenance (Divisi Terpisah & Anti-Tercampur, Saling Lepas / Disjoint)
 const tekStatus = computed(() => {
-    return props.technicianStatus?.teknisi || {
+    const raw = props.technicianStatus?.teknisi || {
         on_duty: props.technicianStatus?.on_duty || [],
         off: props.technicianStatus?.off || [],
         night: props.technicianStatus?.night || [],
     };
+    const duty = (raw.on_duty || []).filter(Boolean);
+    const dutyLower = duty.map(n => String(n).trim().toLowerCase());
+    const night = (raw.night || []).filter(n => n && !dutyLower.includes(String(n).trim().toLowerCase()));
+    const nightLower = night.map(n => String(n).trim().toLowerCase());
+    const off = (raw.off || []).filter(o => o && !dutyLower.includes(String(o).trim().toLowerCase()) && !nightLower.includes(String(o).trim().toLowerCase()));
+    return { on_duty: duty, night, off };
 });
 
 const maintStatus = computed(() => {
-    return (props.maintenanceStatus && Object.keys(props.maintenanceStatus).length > 0)
+    const raw = (props.maintenanceStatus && Object.keys(props.maintenanceStatus).length > 0)
         ? props.maintenanceStatus
         : (props.technicianStatus?.maintenance || { on_duty: [], off: [], night: [] });
+    const duty = (raw.on_duty || []).filter(Boolean);
+    const dutyLower = duty.map(n => String(n).trim().toLowerCase());
+    const night = (raw.night || []).filter(n => n && !dutyLower.includes(String(n).trim().toLowerCase()));
+    const nightLower = night.map(n => String(n).trim().toLowerCase());
+    const off = (raw.off || []).filter(o => o && !dutyLower.includes(String(o).trim().toLowerCase()) && !nightLower.includes(String(o).trim().toLowerCase()));
+    return { on_duty: duty, night, off };
 });
 
 const totalStaffDutyCount = computed(() => {

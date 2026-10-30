@@ -743,7 +743,12 @@ class OperationalDailyProgressController extends Controller
             if (isset($seenCustomerIds[$cust->id])) continue;
 
             $installScheds = $cust->technicianSchedules->where('type', 'installation');
-            $techNames = $installScheds->pluck('technician.name')->filter()->unique()->toArray();
+            $datedScheds = $installScheds->filter(function ($ts) use ($date) {
+                if (!$ts->scheduled_date) return false;
+                $tsDate = is_string($ts->scheduled_date) ? substr($ts->scheduled_date, 0, 10) : $ts->scheduled_date->format('Y-m-d');
+                return $tsDate === $date;
+            });
+            $techNames = ($datedScheds->isNotEmpty() ? $datedScheds : $installScheds)->pluck('technician.name')->filter()->unique()->toArray();
             $techniciansStr = !empty($techNames) ? implode(', ', $techNames) : 'Teknisi Instalasi';
 
             $pkgName = $cust->package?->name ?? 'Paket Internet';
@@ -801,7 +806,16 @@ class OperationalDailyProgressController extends Controller
             if ($srv->surveyor) {
                 $techNames[] = $srv->surveyor->name;
             }
-            $schedTechs = $cust->technicianSchedules->where('type', 'survey')->pluck('technician.name')->filter()->toArray();
+            $schedTechs = $cust->technicianSchedules
+                ->where('type', 'survey')
+                ->filter(function ($ts) use ($date) {
+                    if (!$ts->scheduled_date) return false;
+                    $tsDate = is_string($ts->scheduled_date) ? substr($ts->scheduled_date, 0, 10) : $ts->scheduled_date->format('Y-m-d');
+                    return $tsDate === $date;
+                })
+                ->pluck('technician.name')
+                ->filter()
+                ->toArray();
             $allTechs = array_unique(array_merge($techNames, $schedTechs));
             $techniciansStr = !empty($allTechs) ? implode(', ', $allTechs) : 'Petugas Survey';
 
@@ -1419,13 +1433,41 @@ class OperationalDailyProgressController extends Controller
 
         $cleanUnique = static fn(array $arr): array => array_values(array_unique(array_filter($arr)));
 
-        $tekDuty = $cleanUnique($teknisiOnDutyList);
-        $tekOff = $cleanUnique($teknisiOffList);
-        $tekNight = $cleanUnique($teknisiNightList);
+        $rawTekDuty = $cleanUnique($teknisiOnDutyList);
+        $rawMaintDuty = $cleanUnique($maintOnDutyList);
 
-        $maintDuty = $cleanUnique($maintOnDutyList);
-        $maintOff = $cleanUnique($maintOffList);
-        $maintNight = $cleanUnique($maintNightList);
+        // Pastikan nama maintenance dan teknisi terpisah dengan benar
+        $maintDutyKeys = array_flip(array_map($normKey, $rawMaintDuty));
+        $tekDuty = array_values(array_filter($rawTekDuty, fn($n) => !isset($maintDutyKeys[$normKey($n)])));
+        $maintDuty = $rawMaintDuty;
+
+        // Siapkan lookup semua nama yang aktif bertugas hari ini
+        $allDutyNormKeys = array_flip(array_merge(
+            array_map($normKey, $tekDuty),
+            array_map($normKey, $maintDuty)
+        ));
+
+        // Shift Malam: Petugas yang bertugas aktif TIDAK BOLEH masuk ke shift malam
+        $rawTekNight = $cleanUnique($teknisiNightList);
+        $rawMaintNight = $cleanUnique($maintNightList);
+        $tekNight = array_values(array_filter($rawTekNight, fn($n) => !isset($allDutyNormKeys[$normKey($n)])));
+        $maintNight = array_values(array_filter($rawMaintNight, fn($n) => !isset($allDutyNormKeys[$normKey($n)])));
+
+        // Siapkan lookup semua nama yang bertugas atau shift malam
+        $allWorkingNormKeys = $allDutyNormKeys + array_flip(array_merge(
+            array_map($normKey, $tekNight),
+            array_map($normKey, $maintNight)
+        ));
+
+        // Libur / Cuti / Off: Petugas yang sedang bertugas atau shift malam TIDAK BOLEH masuk ke Libur / Cuti
+        $rawTekOff = $cleanUnique($teknisiOffList);
+        $rawMaintOff = $cleanUnique($maintOffList);
+        $tekOff = array_values(array_filter($rawTekOff, fn($n) => !isset($allWorkingNormKeys[$normKey($n)])));
+        $maintOff = array_values(array_filter($rawMaintOff, fn($n) => !isset($allWorkingNormKeys[$normKey($n)])));
+
+        // Pastikan juga maintenance libur tidak terduplikasi di teknisi libur
+        $maintOffNormKeys = array_flip(array_map($normKey, $maintOff));
+        $tekOff = array_values(array_filter($tekOff, fn($n) => !isset($maintOffNormKeys[$normKey($n)])));
 
         return [
             // Top-level teknisi (agar petugas maintenance seperti Herli tidak tercampur ke teknisi)
