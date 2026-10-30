@@ -10,12 +10,15 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Material::query();
+        // Khusus material murni katalog (Gudang Pusat) - Material dari hasil migrasi data pelanggan TIDAK dimunculkan
+        $query = Material::catalogProducts();
 
         if ($request->search) {
-            $query->where('name', 'like', "%{$request->search}%")
-                  ->orWhere('supplier', 'like', "%{$request->search}%")
-                  ->orWhere('category', 'like', "%{$request->search}%");
+            $query->where(function ($sq) use ($request) {
+                $sq->where('name', 'like', "%{$request->search}%")
+                   ->orWhere('supplier', 'like', "%{$request->search}%")
+                   ->orWhere('category', 'like', "%{$request->search}%");
+            });
         }
 
         if ($request->category && $request->category !== 'all') {
@@ -24,7 +27,7 @@ class ProductController extends Controller
 
         $products = $query->with('stocks.area')->latest()->paginate(10)->withQueryString();
 
-        $dbCategories = Material::select('category')->whereNotNull('category')->where('category', '!=', '')->distinct()->pluck('category')->toArray();
+        $dbCategories = Material::catalogProducts()->select('category')->whereNotNull('category')->where('category', '!=', '')->distinct()->pluck('category')->toArray();
         $defaultCategories = ['Umum', 'Kabel', 'Patchcord', 'Klem', 'Isolasi', 'ONT', 'Splitter', 'Aksesoris', 'Peralatan'];
         $categories = array_values(array_unique(array_merge($defaultCategories, $dbCategories)));
         $areas = \App\Models\Area::orderBy('name')->get(['id', 'name']);
@@ -69,6 +72,8 @@ class ProductController extends Controller
         if (!isset($validated['initial_stock']) || is_null($validated['initial_stock'])) {
             $validated['initial_stock'] = $validated['stock'] ?? 0;
         }
+
+        $validated['is_migration'] = false;
 
         $material = Material::create($validated);
 

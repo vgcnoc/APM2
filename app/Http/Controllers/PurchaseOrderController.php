@@ -113,8 +113,9 @@ class PurchaseOrderController extends Controller
             return $trx;
         });
 
-        // Hanya produk aktif dari menu Data Produk yang bisa diorder
-        $materials = Material::where(function ($q) {
+        // Hanya produk aktif dari menu Data Produk (Katalog Produk & Satuan) yang bisa diorder
+        $materials = Material::catalogProducts()
+            ->where(function ($q) {
                 $q->where('is_active', true)->orWhereNull('is_active');
             })
             ->orderBy('name')

@@ -25,8 +25,16 @@ class Material extends Model
         'cm_per_pcs',
         'total_pieces',
         'is_active',
+        'is_migration',
         'requires_sn',
         'requires_mac',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+        'is_migration' => 'boolean',
+        'requires_sn' => 'boolean',
+        'requires_mac' => 'boolean',
     ];
 
     public function stocks(): HasMany
@@ -40,15 +48,36 @@ class Material extends Model
     }
 
     /**
+     * Scope untuk tampilan di menu Katalog Produk & Satuan (Gudang Pusat):
+     * Khusus produk/material murni untuk restock / order toko.
+     * Material dari hasil migrasi (pelanggan lama / aset historis) TIDAK BOLEH muncul di sini.
+     */
+    public function scopeCatalogProducts($query)
+    {
+        return $query->where(function ($q) {
+            $q->where('is_migration', false)->orWhereNull('is_migration');
+        })->where(function ($q) {
+            $q->where('id', '>', 260);
+        })->where(function ($q) {
+            $q->whereNull('description')
+              ->orWhere(function ($dq) {
+                  $dq->where('description', 'not like', '%migrasi%')
+                     ->where('description', 'not like', '%hasil migrasi%');
+              });
+        });
+    }
+
+    /**
      * Scope untuk tampilan di menu Data Material / Barang:
-     * Menampilkan data hasil migrasi (ID <= 260 atau transaksi migrasi)
+     * Menampilkan data hasil migrasi (is_migration = true atau ID <= 260 atau transaksi migrasi)
      * DAN material yang sudah selesai di-order via Order Toko (Pembelian Toko / Supplier).
      * Material yang baru sebatas katalog produk dan belum di-order tidak dimunculkan di Data Material.
      */
     public function scopeVisibleInMaterialsTable($query)
     {
         return $query->where(function ($q) {
-            $q->where('id', '<=', 260)
+            $q->where('is_migration', true)
+              ->orWhere('id', '<=', 260)
               ->orWhereHas('transactionItems.transaction', function ($tq) {
                   $tq->where('transaction_number', 'like', '%MIG%')
                      ->orWhere('purpose', 'like', '%migrasi%')

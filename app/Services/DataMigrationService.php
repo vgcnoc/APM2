@@ -2701,6 +2701,7 @@ class DataMigrationService
                     'selling_price' => 2000,
                     'meter_per_roll' => 1000,
                     'is_active' => true,
+                    'is_migration' => true,
                 ]
             );
         }
@@ -3867,6 +3868,7 @@ class DataMigrationService
                 'requires_sn' => true,
                 'requires_mac' => true,
                 'is_active' => true,
+                'is_migration' => true,
                 'description' => "Perangkat Modem ONT {$ontDeviceName} dari hasil migrasi sistem",
             ]
         );
