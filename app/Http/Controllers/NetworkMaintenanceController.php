@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
+use App\Services\ImageCompressionService;
 
 class NetworkMaintenanceController extends Controller
 {
@@ -226,8 +227,8 @@ class NetworkMaintenanceController extends Controller
             'optical_power_after' => 'nullable|string|max:50',
             'technician_ids' => 'nullable|array',
             'technician_ids.*' => 'exists:users,id',
-            'photo_before' => 'nullable|image|max:10240',
-            'photo_after' => 'nullable|image|max:10240',
+            'photo_before' => 'nullable|image|max:25600',
+            'photo_after' => 'nullable|image|max:25600',
         ], [
             'category.required' => 'Jenis kegiatan wajib dipilih.',
             'title.required' => 'Judul kegiatan wajib diisi.',
@@ -239,12 +240,12 @@ class NetworkMaintenanceController extends Controller
 
             $photoBeforePath = null;
             if ($request->hasFile('photo_before')) {
-                $photoBeforePath = $request->file('photo_before')->store('maintenance_photos', 'public');
+                $photoBeforePath = ImageCompressionService::compressAndStore($request->file('photo_before'), 'maintenance_photos', 'public');
             }
 
             $photoAfterPath = null;
             if ($request->hasFile('photo_after')) {
-                $photoAfterPath = $request->file('photo_after')->store('maintenance_photos', 'public');
+                $photoAfterPath = ImageCompressionService::compressAndStore($request->file('photo_after'), 'maintenance_photos', 'public');
             }
 
             $status = $validated['status'] ?? 'scheduled';
@@ -326,8 +327,8 @@ class NetworkMaintenanceController extends Controller
             'end_time' => 'nullable|string|max:10',
             'technician_ids' => 'nullable|array',
             'technician_ids.*' => 'exists:users,id',
-            'photo_before' => 'nullable|image|max:10240',
-            'photo_after' => 'nullable|image|max:10240',
+            'photo_before' => 'nullable|image|max:25600',
+            'photo_after' => 'nullable|image|max:25600',
         ]);
 
         try {
@@ -362,19 +363,19 @@ class NetworkMaintenanceController extends Controller
                 $updateData['completed_at'] = null;
             }
 
-            // Upload foto baru jika ada
+            // Upload foto baru jika ada (Auto-Kompresi Cerdas)
             if ($request->hasFile('photo_before')) {
                 if ($maintenance->photo_before && Storage::disk('public')->exists($maintenance->photo_before)) {
                     Storage::disk('public')->delete($maintenance->photo_before);
                 }
-                $updateData['photo_before'] = $request->file('photo_before')->store('maintenance_photos', 'public');
+                $updateData['photo_before'] = ImageCompressionService::compressAndStore($request->file('photo_before'), 'maintenance_photos', 'public');
             }
 
             if ($request->hasFile('photo_after')) {
                 if ($maintenance->photo_after && Storage::disk('public')->exists($maintenance->photo_after)) {
                     Storage::disk('public')->delete($maintenance->photo_after);
                 }
-                $updateData['photo_after'] = $request->file('photo_after')->store('maintenance_photos', 'public');
+                $updateData['photo_after'] = ImageCompressionService::compressAndStore($request->file('photo_after'), 'maintenance_photos', 'public');
             }
 
             $maintenance->update($updateData);

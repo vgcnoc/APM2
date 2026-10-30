@@ -1479,17 +1479,64 @@
                         ></textarea>
                     </div>
 
-                    <!-- 5. Upload Foto Sesudah -->
+                    <!-- 5. Upload Foto Sesudah (Auto Kompres Cerdas) -->
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                            Upload Foto Dokumentasi Lapangan (Opsional):
-                        </label>
-                        <input
-                            type="file"
-                            accept="image/*"
-                            @change="handlePhotoAfterUpload"
-                            class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer"
-                        />
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                                Upload Foto Dokumentasi Lapangan (Opsional):
+                            </label>
+                            <span v-if="photoCompressionInfo?.isCompressed" class="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-700">
+                                ⚡ Auto-Kompres Aktif (Hemat {{ photoCompressionInfo.ratio }})
+                            </span>
+                        </div>
+
+                        <!-- Indikator Sedang Mengompres -->
+                        <div v-if="isCompressingPhoto" class="p-3 rounded-xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 text-xs text-teal-800 dark:text-teal-300 flex items-center gap-2">
+                            <svg class="w-4 h-4 animate-spin shrink-0 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                            <span class="font-medium">Mengompres ukuran dan resolusi foto secara otomatis...</span>
+                        </div>
+
+                        <!-- Input File (Jika Belum Ada File Terpilih) -->
+                        <div v-else-if="!updatePhotoAfterFile">
+                            <input
+                                type="file"
+                                accept="image/*"
+                                @change="handlePhotoAfterUpload"
+                                class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 dark:file:bg-slate-800 dark:file:text-teal-400 cursor-pointer"
+                            />
+                            <p class="text-[10px] text-slate-400 mt-1">Ukuran foto kamera HP (mis. 5-15MB) akan otomatis dikompres ke ~200-350KB agar upload instan tanpa menguras kuota.</p>
+                        </div>
+
+                        <!-- Preview Thumbnail & Info Kompresi -->
+                        <div v-else class="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                <img 
+                                    v-if="photoCompressionInfo?.previewUrl" 
+                                    :src="photoCompressionInfo.previewUrl" 
+                                    class="w-12 h-12 object-cover rounded-xl border border-slate-300 dark:border-slate-600 shrink-0 shadow-2xs" 
+                                />
+                                <div class="min-w-0">
+                                    <p class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{{ updatePhotoAfterFile.name }}</p>
+                                    <div class="flex items-center gap-1.5 text-[10px] text-slate-500 mt-0.5">
+                                        <span class="line-through text-slate-400" v-if="photoCompressionInfo?.isCompressed">{{ photoCompressionInfo.originalFormatted }}</span>
+                                        <span class="font-bold text-emerald-600 dark:text-emerald-400">{{ photoCompressionInfo?.compressedFormatted || formatBytes(updatePhotoAfterFile.size) }}</span>
+                                        <span v-if="photoCompressionInfo?.isCompressed" class="px-1.5 py-0.2 rounded font-extrabold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">
+                                            -{{ photoCompressionInfo.ratio }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                @click="removePhotoAfter"
+                                class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
+                                title="Hapus / Ganti Foto"
+                            >
+                                ✕
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Modal Actions -->
@@ -1657,6 +1704,7 @@ import { ref, computed, onMounted } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { compressImage, formatBytes } from '@/Utils/imageCompressor';
 
 const page = usePage();
 
@@ -2006,9 +2054,13 @@ function selectUpdateStatus(newStatus) {
     }
 }
 
+const isCompressingPhoto = ref(false);
+const photoCompressionInfo = ref(null);
+
 function openQuickUpdateModal(item) {
     activeMaintenanceItem.value = item;
     updatePhotoAfterFile.value = null;
+    photoCompressionInfo.value = null;
     updateForm.value = {
         status: item.is_done ? 'completed' : (item.is_in_progress ? 'completed' : 'in_progress'),
         start_time: item.start_time || '',
@@ -2020,11 +2072,34 @@ function openQuickUpdateModal(item) {
     showUpdateModal.value = true;
 }
 
-function handlePhotoAfterUpload(e) {
+async function handlePhotoAfterUpload(e) {
     const file = e.target.files?.[0];
-    if (file) {
-        updatePhotoAfterFile.value = file;
+    if (!file) {
+        updatePhotoAfterFile.value = null;
+        photoCompressionInfo.value = null;
+        return;
     }
+
+    isCompressingPhoto.value = true;
+    try {
+        const res = await compressImage(file, {
+            maxWidth: 1920,
+            maxHeight: 1920,
+            quality: 0.82,
+        });
+        updatePhotoAfterFile.value = res.file;
+        photoCompressionInfo.value = res;
+    } catch (err) {
+        console.warn('Gagal kompres foto:', err);
+        updatePhotoAfterFile.value = file;
+    } finally {
+        isCompressingPhoto.value = false;
+    }
+}
+
+function removePhotoAfter() {
+    updatePhotoAfterFile.value = null;
+    photoCompressionInfo.value = null;
 }
 
 async function submitUpdateMaintenance() {
