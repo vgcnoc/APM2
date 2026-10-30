@@ -158,6 +158,7 @@ class OdcController extends Controller
         }
 
         if ($validated['type'] === 'Split' && !empty($validated['split_units'])) {
+            $parentOdc = null;
             foreach ($validated['split_units'] as $unit) {
                 $odcData = [
                     'olt_id' => $validated['olt_id'],
@@ -176,6 +177,7 @@ class OdcController extends Controller
                     'status' => $validated['status'] ?? 'active',
                     'description' => $validated['description'] ?? null,
                     'is_split' => true,
+                    'parent_odc_id' => $parentOdc ? $parentOdc->id : null,
                 ];
                 
                 // Note: File upload for split units is a bit tricky if they are sent in an array. 
@@ -184,7 +186,10 @@ class OdcController extends Controller
                     $odcData['photo'] = $request->file('photo')->store('odcs', 'public');
                 }
 
-                Odc::create($odcData);
+                $created = Odc::create($odcData);
+                if (!$parentOdc) {
+                    $parentOdc = $created;
+                }
             }
         } else {
             if ($request->hasFile('photo')) {
@@ -222,6 +227,9 @@ class OdcController extends Controller
             'description' => 'nullable|string',
             'status' => 'in:active,inactive,maintenance',
             'photo' => 'nullable|image|max:2048',
+            'start_point' => 'nullable|string|max:255',
+            'end_point' => 'nullable|string|max:255',
+            'cable_pull' => 'nullable|string|max:50',
         ]);
 
         $olt = Olt::findOrFail($validated['olt_id']);
