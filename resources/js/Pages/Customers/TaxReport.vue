@@ -1,15 +1,15 @@
 <template>
     <AppLayout title="Laporan Pajak Pelanggan" subtitle="Kalkulasi PPN, BHP, dan USO Pelanggan">
-        <div id="print-section" class="max-w-7xl mx-auto space-y-6">
+        <div id="print-section" class="w-full max-w-7xl mx-auto min-w-0 space-y-5 sm:space-y-6 pb-8">
             <!-- Header section & Aggregates -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                 <!-- Base Price -->
-                <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm relative overflow-hidden group">
+                <div class="bg-white rounded-2xl p-5 min-w-0 border border-gray-100 shadow-sm relative overflow-hidden group">
                     <div class="absolute inset-0 bg-gradient-to-br from-blue-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    <div class="relative flex justify-between items-start">
+                    <div class="relative flex justify-between items-start gap-2">
                         <div>
                             <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Total Dasar (DPP)</p>
-                            <h3 class="text-2xl font-black text-gray-900 tracking-tight">{{ formatCurrency(totals.base_price) }}</h3>
+                            <h3 class="text-xl sm:text-2xl font-black text-gray-900 tracking-tight break-words leading-tight">{{ formatCurrency(totals.base_price) }}</h3>
                         </div>
                         <div class="p-2.5 bg-blue-100/50 rounded-xl text-blue-600">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -19,12 +19,12 @@
                 </div>
 
                 <!-- Total PPN -->
-                <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm relative overflow-hidden group">
+                <div class="bg-white rounded-2xl p-5 min-w-0 border border-gray-100 shadow-sm relative overflow-hidden group">
                     <div class="absolute inset-0 bg-gradient-to-br from-indigo-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    <div class="relative flex justify-between items-start">
+                    <div class="relative flex justify-between items-start gap-2">
                         <div>
                             <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Total PPN</p>
-                            <h3 class="text-2xl font-black text-gray-900 tracking-tight">{{ formatCurrency(totals.ppn) }}</h3>
+                            <h3 class="text-xl sm:text-2xl font-black text-gray-900 tracking-tight break-words leading-tight">{{ formatCurrency(totals.ppn) }}</h3>
                         </div>
                         <div class="p-2.5 bg-indigo-100/50 rounded-xl text-indigo-600">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
@@ -34,30 +34,30 @@
                 </div>
 
                 <!-- Total BHP & USO -->
-                <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm relative overflow-hidden group">
+                <div class="bg-white rounded-2xl p-5 min-w-0 border border-gray-100 shadow-sm relative overflow-hidden group">
                     <div class="absolute inset-0 bg-gradient-to-br from-amber-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    <div class="relative flex justify-between items-start">
+                    <div class="relative flex justify-between items-start gap-2">
                         <div>
                             <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Total BHP + USO</p>
-                            <h3 class="text-2xl font-black text-gray-900 tracking-tight">{{ formatCurrency(totals.bhp + totals.uso) }}</h3>
+                            <h3 class="text-xl sm:text-2xl font-black text-gray-900 tracking-tight break-words leading-tight">{{ formatCurrency(totals.bhp + totals.uso) }}</h3>
                         </div>
                         <div class="p-2.5 bg-amber-100/50 rounded-xl text-amber-600">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
                         </div>
                     </div>
-                    <div class="mt-4 flex items-center justify-between text-[10px] font-bold text-gray-500">
+                    <div class="mt-4 flex flex-wrap items-center justify-between gap-1 text-[10px] font-bold text-gray-500">
                         <span>BHP: {{ formatCurrency(totals.bhp) }}</span>
                         <span>USO: {{ formatCurrency(totals.uso) }}</span>
                     </div>
                 </div>
 
                 <!-- Grand Total -->
-                <div class="bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-2xl p-6 border border-indigo-700 shadow-md relative overflow-hidden text-white">
+                <div class="bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-2xl p-5 min-w-0 border border-indigo-700 shadow-md relative overflow-hidden text-white">
                     <div class="absolute -right-4 -top-4 w-24 h-24 bg-white opacity-5 rounded-full blur-2xl"></div>
-                    <div class="relative flex justify-between items-start">
+                    <div class="relative flex justify-between items-start gap-2">
                         <div>
                             <p class="text-[11px] font-bold text-indigo-200 uppercase tracking-wider mb-1">Grand Total</p>
-                            <h3 class="text-2xl font-black tracking-tight drop-shadow-sm">{{ formatCurrency(totals.grand_total) }}</h3>
+                            <h3 class="text-xl sm:text-2xl font-black tracking-tight drop-shadow-sm break-words leading-tight">{{ formatCurrency(totals.grand_total) }}</h3>
                         </div>
                         <div class="p-2.5 bg-white/10 rounded-xl backdrop-blur-sm border border-white/20">
                             <svg class="w-6 h-6 text-indigo-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
@@ -75,8 +75,8 @@
                         <h3 class="text-base font-bold text-gray-900">Rincian Pajak Pelanggan</h3>
                         <p class="text-sm text-gray-500 mt-1">Data kalkulasi pajak berdasarkan paket dan profil pelanggan aktif.</p>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <div class="relative">
+                    <div class="flex flex-wrap sm:flex-nowrap items-center gap-2.5 w-full sm:w-auto">
+                        <div class="relative flex-1 sm:flex-initial min-w-0">
                             <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                             <input 
                                 type="text" 
@@ -93,10 +93,10 @@
                     </div>
                 </div>
 
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
+                <div class="overflow-x-auto w-full overscroll-x-contain">
+                    <table class="min-w-full text-left border-collapse">
                         <thead>
-                            <tr class="bg-gray-50 border-b border-gray-100 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                            <tr class="bg-gray-50 border-b border-gray-100 text-[11px] font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                 <th class="px-6 py-4">Pelanggan</th>
                                 <th class="px-6 py-4">Paket & Harga (DPP)</th>
                                 <th class="px-6 py-4">PPN</th>
@@ -106,9 +106,9 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100 bg-white">
                             <tr v-for="customer in customers.data" :key="customer.id" class="hover:bg-gray-50/50 transition-colors group">
-                                <td class="px-6 py-4">
+                                <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center gap-3">
-                                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-100 to-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-xs border border-indigo-100 shadow-sm">
+                                        <div class="w-8 h-8 shrink-0 rounded-full bg-gradient-to-br from-indigo-100 to-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-xs border border-indigo-100 shadow-sm">
                                             {{ customer.name.charAt(0) }}
                                         </div>
                                         <div>
@@ -120,7 +120,7 @@
                                         </div>
                                     </div>
                                 </td>
-                                <td class="px-6 py-4">
+                                <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center gap-1.5">
                                         <p class="text-sm font-bold text-gray-900">{{ formatCurrency(customer.base_price) }}</p>
                                         <span v-if="customer.is_prorata" class="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-amber-50 text-amber-700 border border-amber-200">
@@ -132,11 +132,11 @@
                                         {{ customer.package_name }}
                                     </span>
                                 </td>
-                                <td class="px-6 py-4">
+                                <td class="px-6 py-4 whitespace-nowrap">
                                     <p class="text-sm font-semibold text-gray-900">{{ formatCurrency(customer.ppn_amount) }}</p>
                                     <p class="text-xs text-gray-500 mt-0.5">{{ customer.ppn_percent }}%</p>
                                 </td>
-                                <td class="px-6 py-4">
+                                <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex flex-col gap-1 text-sm">
                                         <div class="flex items-center gap-2">
                                             <span class="text-[10px] font-bold text-gray-400 w-8">BHP</span>
@@ -150,7 +150,7 @@
                                         </div>
                                     </div>
                                 </td>
-                                <td class="px-6 py-4 text-right">
+                                <td class="px-6 py-4 text-right whitespace-nowrap">
                                     <span class="text-base font-black text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 shadow-sm inline-block">
                                         {{ formatCurrency(customer.total_price) }}
                                     </span>
@@ -175,7 +175,7 @@
                         <p class="text-sm text-gray-500">
                             Menampilkan <span class="font-semibold text-gray-900">{{ customers.from }}</span> - <span class="font-semibold text-gray-900">{{ customers.to }}</span> dari <span class="font-semibold text-gray-900">{{ customers.total }}</span> pelanggan
                         </p>
-                        <div class="flex items-center gap-1">
+                        <div class="flex flex-wrap items-center justify-center sm:justify-end gap-1">
                             <template v-for="(link, k) in customers.links" :key="k">
                                 <div v-if="link.url === null" class="px-3 py-1.5 text-sm font-medium text-gray-400 bg-gray-50 border border-gray-200 rounded-lg cursor-not-allowed" v-html="link.label"></div>
                                 <Link v-else :href="link.url" class="px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1" :class="link.active ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600 shadow-sm' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-gray-900'" v-html="link.label" />

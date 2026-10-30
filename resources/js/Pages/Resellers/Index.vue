@@ -273,6 +273,9 @@ function toggleDropdown(event, reseller) {
     }
 
     let left = rect.right - dropdownWidth;
+    if (left + dropdownWidth > window.innerWidth - 10) {
+        left = window.innerWidth - dropdownWidth - 10;
+    }
     if (left < 10) {
         left = 10;
     }
@@ -314,69 +317,69 @@ onUnmounted(() => {
     <Head title="Data Reseller Voucher & Master Biller" />
 
     <AppLayout>
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 py-8 space-y-6">
+        <div class="w-full max-w-7xl mx-auto min-w-0 space-y-5 sm:space-y-6 pb-8">
             <!-- Header Section -->
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
+                <div class="min-w-0">
                     <div class="flex items-center gap-2 mb-1">
                         <span class="px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300">
                             👑 Ekosistem Multi-Tier Reseller
                         </span>
                     </div>
-                    <h2 class="text-2xl font-black text-gray-900 tracking-tight">Kemitraan Reseller & Master Biller</h2>
-                    <p class="mt-0.5 text-sm text-gray-600">Kelola dompet saldo, distributor Master Biller, jaringan loket binaan, dan kredensial login.</p>
+                    <h2 class="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">Kemitraan Reseller & Master Biller</h2>
+                    <p class="mt-0.5 text-xs sm:text-sm text-gray-600">Kelola dompet saldo, distributor Master Biller, jaringan loket binaan, dan kredensial login.</p>
                 </div>
-                <div class="flex items-center gap-2 flex-wrap">
-                    <Link href="/register-reseller" target="_blank" class="px-3.5 py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 shadow-sm flex items-center gap-1.5 transition-colors">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                <div class="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+                    <Link href="/register-reseller" target="_blank" class="flex-1 sm:flex-initial justify-center px-3.5 py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 shadow-sm flex items-center gap-1.5 transition-colors whitespace-nowrap">
+                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
                         <span>Link Pendaftaran Mandiri</span>
                     </Link>
-                    <Link href="/customers/booking" class="px-3.5 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 shadow-sm flex items-center gap-1.5 transition-colors">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                    <Link href="/customers/booking" class="flex-1 sm:flex-initial justify-center px-3.5 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 shadow-sm flex items-center gap-1.5 transition-colors whitespace-nowrap">
+                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                         <span>Tambah dari Booking</span>
                     </Link>
                 </div>
             </div>
 
             <!-- 4 KPI Stats Cards -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5 sm:gap-4">
                 <!-- Total Mitra -->
-                <div class="bg-white rounded-2xl border border-gray-100 p-4 shadow-xs">
-                    <div class="flex items-center justify-between text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                        <span>Total Mitra Terdaftar</span>
-                        <div class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">🏪</div>
+                <div class="bg-white rounded-2xl border border-gray-100 p-4 min-w-0 shadow-xs">
+                    <div class="flex items-center justify-between gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                        <span class="truncate">Total Mitra Terdaftar</span>
+                        <div class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold shrink-0">🏪</div>
                     </div>
-                    <div class="text-2xl font-black text-gray-900 tracking-tight">{{ stats.total || 0 }}</div>
+                    <div class="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">{{ stats.total || 0 }}</div>
                     <p class="text-xs text-gray-500 mt-1">Keseluruhan loket & master</p>
                 </div>
 
                 <!-- Master Biller -->
-                <div class="bg-gradient-to-br from-amber-500/10 via-white to-white rounded-2xl border border-amber-200/80 p-4 shadow-xs">
-                    <div class="flex items-center justify-between text-xs font-bold text-amber-800 uppercase tracking-wider mb-2">
-                        <span>Master Biller / Distributor</span>
-                        <div class="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">👑</div>
+                <div class="bg-gradient-to-br from-amber-500/10 via-white to-white rounded-2xl border border-amber-200/80 p-4 min-w-0 shadow-xs">
+                    <div class="flex items-center justify-between gap-2 text-xs font-bold text-amber-800 uppercase tracking-wider mb-2">
+                        <span class="truncate">Master Biller / Distributor</span>
+                        <div class="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold shrink-0">👑</div>
                     </div>
-                    <div class="text-2xl font-black text-amber-700 tracking-tight">{{ stats.master || 0 }}</div>
+                    <div class="text-xl sm:text-2xl font-black text-amber-700 tracking-tight">{{ stats.master || 0 }}</div>
                     <p class="text-xs text-amber-600 mt-1">Distributor saldo modal binaan</p>
                 </div>
 
                 <!-- Reseller Biasa -->
-                <div class="bg-white rounded-2xl border border-gray-100 p-4 shadow-xs">
-                    <div class="flex items-center justify-between text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                        <span>Mitra Loket Biasa</span>
-                        <div class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">🎫</div>
+                <div class="bg-white rounded-2xl border border-gray-100 p-4 min-w-0 shadow-xs">
+                    <div class="flex items-center justify-between gap-2 text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                        <span class="truncate">Mitra Loket Biasa</span>
+                        <div class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold shrink-0">🎫</div>
                     </div>
-                    <div class="text-2xl font-black text-gray-900 tracking-tight">{{ stats.regular || 0 }}</div>
+                    <div class="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">{{ stats.regular || 0 }}</div>
                     <p class="text-xs text-gray-500 mt-1">Loket penjualan voucher & tagihan</p>
                 </div>
 
                 <!-- Total Saldo Beredar -->
-                <div class="bg-gradient-to-br from-emerald-500/10 via-white to-white rounded-2xl border border-emerald-200/80 p-4 shadow-xs">
-                    <div class="flex items-center justify-between text-xs font-bold text-emerald-800 uppercase tracking-wider mb-2">
-                        <span>Total Saldo Beredar</span>
-                        <div class="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">💰</div>
+                <div class="bg-gradient-to-br from-emerald-500/10 via-white to-white rounded-2xl border border-emerald-200/80 p-4 min-w-0 shadow-xs">
+                    <div class="flex items-center justify-between gap-2 text-xs font-bold text-emerald-800 uppercase tracking-wider mb-2">
+                        <span class="truncate">Total Saldo Beredar</span>
+                        <div class="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold shrink-0">💰</div>
                     </div>
-                    <div class="text-2xl font-black text-emerald-700 tracking-tight">
+                    <div class="text-lg sm:text-xl 2xl:text-2xl font-black text-emerald-700 tracking-tight break-words leading-tight">
                         Rp {{ Number(stats.total_balance || 0).toLocaleString('id-ID') }}
                     </div>
                     <p class="text-xs text-emerald-600 mt-1">Saldo aktif di dompet mitra</p>
@@ -384,14 +387,14 @@ onUnmounted(() => {
             </div>
 
             <!-- Filter & Search Bar -->
-            <div class="bg-white rounded-2xl shadow-xs border border-gray-100 p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+            <div class="bg-white rounded-2xl shadow-xs border border-gray-100 p-3.5 sm:p-4 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 min-w-0">
                 <!-- Tier Filter Tabs -->
-                <div class="inline-flex p-1 bg-slate-100 rounded-xl gap-1 shrink-0">
+                <div class="flex items-center p-1 bg-slate-100 rounded-xl gap-1 overflow-x-auto max-w-full overscroll-x-contain">
                     <button 
                         type="button" 
                         @click="setTierFilter('all')" 
                         :class="tierFilter === 'all' ? 'bg-white text-gray-900 shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900 font-medium'"
-                        class="px-3.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer"
+                        class="px-3.5 py-1.5 rounded-lg text-xs transition-all cursor-pointer whitespace-nowrap shrink-0"
                     >
                         Semua Mitra ({{ stats.total || 0 }})
                     </button>
@@ -399,7 +402,7 @@ onUnmounted(() => {
                         type="button" 
                         @click="setTierFilter('master')" 
                         :class="tierFilter === 'master' ? 'bg-amber-500 text-white shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900 font-medium'"
-                        class="px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1 cursor-pointer"
+                        class="px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
                     >
                         <span>👑 Master Biller</span>
                         <span class="px-1.5 py-0.2 rounded-full text-[10px]" :class="tierFilter === 'master' ? 'bg-amber-600 text-white' : 'bg-gray-200 text-gray-700'">{{ stats.master || 0 }}</span>
@@ -408,7 +411,7 @@ onUnmounted(() => {
                         type="button" 
                         @click="setTierFilter('regular')" 
                         :class="tierFilter === 'regular' ? 'bg-blue-600 text-white shadow-xs font-bold' : 'text-gray-600 hover:text-gray-900 font-medium'"
-                        class="px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1 cursor-pointer"
+                        class="px-3.5 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0"
                     >
                         <span>🏪 Loket Biasa</span>
                         <span class="px-1.5 py-0.2 rounded-full text-[10px]" :class="tierFilter === 'regular' ? 'bg-blue-700 text-white' : 'bg-gray-200 text-gray-700'">{{ stats.regular || 0 }}</span>
@@ -416,7 +419,7 @@ onUnmounted(() => {
                 </div>
 
                 <!-- Search Input -->
-                <div class="relative w-full md:w-80">
+                <div class="relative w-full lg:w-72 xl:w-80 shrink-0">
                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                     </div>
@@ -430,8 +433,8 @@ onUnmounted(() => {
             </div>
 
             <!-- Table -->
-            <div class="bg-white rounded-2xl shadow-xs border border-gray-100 overflow-hidden">
-                <div class="overflow-x-auto">
+            <div class="bg-white rounded-2xl shadow-xs border border-gray-100 overflow-hidden min-w-0">
+                <div class="overflow-x-auto w-full overscroll-x-contain">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-slate-50/80">
                             <tr>
@@ -595,7 +598,7 @@ onUnmounted(() => {
             <div v-if="activeDropdownRow" class="fixed inset-0 z-[120]" @click="closeDropdown" @contextmenu.prevent="closeDropdown">
                 <div 
                     :style="{ top: `${dropdownPos.top}px`, left: `${dropdownPos.left}px` }"
-                    class="fixed w-72 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-200/80 py-1.5 z-[121] text-xs divide-y divide-slate-100 animate-fade-in-up"
+                    class="fixed w-72 max-w-[calc(100vw-20px)] max-h-[calc(100vh-20px)] overflow-y-auto bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-200/80 py-1.5 z-[121] text-xs divide-y divide-slate-100 animate-fade-in-up"
                     @click.stop
                 >
                     <!-- Header Info Reseller -->

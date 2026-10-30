@@ -1,54 +1,54 @@
 <template>
     <AppLayout title="Invoice Pelanggan" subtitle="Kelola tagihan pelanggan dan status pembayarannya">
         <!-- Summary Cards -->
-        <div v-can="'invoices_card_summary'" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div v-can="'invoices_card_summary'" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5 sm:gap-4 mb-6">
             <!-- Card 1: Total Belum Lunas -->
-            <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center justify-between">
+            <div class="bg-white rounded-2xl p-4 sm:p-5 min-w-0 gap-3 border border-gray-100 shadow-sm flex items-center justify-between">
                 <div>
                     <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Total Belum Lunas</p>
-                    <h3 class="text-xl font-black text-gray-900">{{ formatCurrency(stats.total_unpaid_amount) }}</h3>
+                    <h3 class="text-lg sm:text-xl font-black text-gray-900 break-words leading-tight">{{ formatCurrency(stats.total_unpaid_amount) }}</h3>
                 </div>
-                <div class="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-red-500">
+                <div class="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-red-500 shrink-0">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </div>
             </div>
 
             <!-- Card 2: Tagihan Jatuh Tempo -->
-            <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center justify-between">
+            <div class="bg-white rounded-2xl p-4 sm:p-5 min-w-0 gap-3 border border-gray-100 shadow-sm flex items-center justify-between">
                 <div>
                     <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Tagihan Jatuh Tempo</p>
-                    <h3 class="text-xl font-black text-red-600">{{ formatCurrency(stats.total_jatuh_tempo_amount) }}</h3>
+                    <h3 class="text-lg sm:text-xl font-black text-red-600 break-words leading-tight">{{ formatCurrency(stats.total_jatuh_tempo_amount) }}</h3>
                 </div>
-                <div class="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center text-red-600">
+                <div class="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center text-red-600 shrink-0">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </div>
             </div>
 
             <!-- Card 3: Total Piutang -->
-            <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center justify-between">
+            <div class="bg-white rounded-2xl p-4 sm:p-5 min-w-0 gap-3 border border-gray-100 shadow-sm flex items-center justify-between">
                 <div>
                     <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Total Piutang</p>
-                    <h3 class="text-xl font-black text-amber-600">{{ formatCurrency(stats.total_piutang_amount) }}</h3>
+                    <h3 class="text-lg sm:text-xl font-black text-amber-600 break-words leading-tight">{{ formatCurrency(stats.total_piutang_amount) }}</h3>
                 </div>
-                <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500">
+                <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500 shrink-0">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </div>
             </div>
 
             <!-- Card 4: Pendapatan Bulan Ini -->
-            <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center justify-between">
+            <div class="bg-white rounded-2xl p-4 sm:p-5 min-w-0 gap-3 border border-gray-100 shadow-sm flex items-center justify-between">
                 <div>
                     <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Pendapatan Bulan Ini</p>
-                    <h3 class="text-xl font-black text-emerald-600">{{ formatCurrency(stats.total_paid_amount) }}</h3>
+                    <h3 class="text-lg sm:text-xl font-black text-emerald-600 break-words leading-tight">{{ formatCurrency(stats.total_paid_amount) }}</h3>
                 </div>
-                <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-500">
+                <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-500 shrink-0">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </div>
             </div>
         </div>
 
         <!-- Tabs Section -->
-        <div class="flex flex-wrap gap-3 mb-5 border-b border-gray-200 pb-3 overflow-x-auto custom-scrollbar">
+        <div class="flex flex-nowrap lg:flex-wrap gap-2 mb-5 border-b border-gray-200 pb-3 overflow-x-auto max-w-full overscroll-x-contain custom-scrollbar">
             <button v-can="'invoices_tab_all'" @click="filterTab('semua')" :class="['px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors flex items-center gap-2 whitespace-nowrap', filterTabVal === 'semua' || !filterTabVal ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700']">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 Daftar Tagihan <span class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-[10px]">{{ stats.semua }}</span>
@@ -96,17 +96,17 @@
             :filters="filters"
         >
             <template #filters>
-                <div class="flex items-center gap-2 w-full sm:w-auto">
+                <div class="flex flex-wrap items-center gap-2.5 w-full">
                     <!-- Tanggal (Start Date -> End Date) -->
-                    <div v-can="'invoices_filter_period'" class="flex items-center gap-2 whitespace-nowrap text-sm text-gray-600 font-medium ml-2">
+                    <div v-can="'invoices_filter_period'" class="flex flex-wrap sm:flex-nowrap items-center gap-2 text-xs sm:text-sm text-gray-600 font-medium w-full sm:w-auto">
                         <span>Tanggal</span>
-                        <input type="date" v-model="filterStartDate" class="form-input text-sm rounded-lg border-gray-300 w-[130px]" />
+                        <input type="date" v-model="filterStartDate" class="form-input text-xs sm:text-sm rounded-lg border-gray-300 flex-1 sm:w-[138px] min-w-[125px]" />
                         <span>s/d</span>
-                        <input type="date" v-model="filterEndDate" class="form-input text-sm rounded-lg border-gray-300 w-[130px]" />
+                        <input type="date" v-model="filterEndDate" class="form-input text-xs sm:text-sm rounded-lg border-gray-300 flex-1 sm:w-[138px] min-w-[125px]" />
                     </div>
 
                     <!-- Status -->
-                    <select v-can="'invoices_filter_status'" v-model="filterStatusVal" class="form-select text-sm rounded-lg border-gray-300 text-gray-700 min-w-[140px]">
+                    <select v-can="'invoices_filter_status'" v-model="filterStatusVal" class="form-select text-xs sm:text-sm rounded-lg border-gray-300 text-gray-700 flex-1 sm:flex-initial min-w-[135px]">
                         <option value="">Semua Status</option>
                         <option value="unpaid">Unpaid</option>
                         <option value="paid">Paid</option>
@@ -114,12 +114,12 @@
                     </select>
 
                     <!-- Area -->
-                    <select v-can="'invoices_filter_area'" v-model="filterAreaVal" class="form-select text-sm rounded-lg border-gray-300 text-gray-700 min-w-[140px]">
+                    <select v-can="'invoices_filter_area'" v-model="filterAreaVal" class="form-select text-xs sm:text-sm rounded-lg border-gray-300 text-gray-700 flex-1 sm:flex-initial min-w-[135px]">
                         <option value="">Semua Area</option>
                         <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
                     </select>
 
-                    <button @click="applyFilters" class="btn-primary py-2 px-4 whitespace-nowrap ml-1 flex items-center gap-2 text-sm">
+                    <button @click="applyFilters" class="btn-primary py-2 px-4 whitespace-nowrap flex-1 sm:flex-initial justify-center flex items-center gap-2 text-xs sm:text-sm">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                         Terapkan
                     </button>
@@ -127,11 +127,11 @@
             </template>
             
             <template #actions>
-                <button v-can="'invoices_btn_export'" class="btn-secondary bg-white border border-gray-200 text-emerald-600 hover:bg-emerald-50 text-sm py-2 px-4 flex items-center gap-2">
+                <button v-can="'invoices_btn_export'" class="btn-secondary bg-white border border-gray-200 text-emerald-600 hover:bg-emerald-50 text-xs sm:text-sm py-2 px-3.5 sm:px-4 flex-1 sm:flex-initial justify-center whitespace-nowrap flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                     Export Excel
                 </button>
-                <button v-can="'invoices_print'" class="btn-secondary bg-white border border-gray-200 text-red-600 hover:bg-red-50 text-sm py-2 px-4 flex items-center gap-2">
+                <button v-can="'invoices_print'" class="btn-secondary bg-white border border-gray-200 text-red-600 hover:bg-red-50 text-xs sm:text-sm py-2 px-3.5 sm:px-4 flex-1 sm:flex-initial justify-center whitespace-nowrap flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                     Cetak PDF
                 </button>
@@ -380,7 +380,7 @@
             <div v-if="activeDropdownRow" class="fixed inset-0 z-[120]" @click="closeDropdown" @contextmenu.prevent="closeDropdown">
                 <div 
                     :style="{ top: `${dropdownPos.top}px`, left: `${dropdownPos.left}px` }"
-                    class="fixed w-60 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-[121] text-xs divide-y divide-gray-100 animate-fade-in-up"
+                    class="fixed w-60 max-w-[calc(100vw-20px)] max-h-[calc(100vh-20px)] overflow-y-auto bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-[121] text-xs divide-y divide-gray-100 animate-fade-in-up"
                     @click.stop
                 >
                     <!-- Header Info -->
@@ -583,7 +583,7 @@
 
         <!-- Payment Modal -->
         <Teleport to="body">
-            <div v-if="showPaymentModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0">
+            <div v-if="showPaymentModal" class="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
                 <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="closePaymentModal"></div>
 
                 <div class="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-md relative z-10 animate-fade-in-up">
@@ -604,7 +604,7 @@
                     </div>
 
                     <form @submit.prevent="submitPayment">
-                        <div class="p-6 space-y-4 max-h-[78vh] overflow-y-auto">
+                        <div class="p-4 sm:p-6 space-y-4 max-h-[72vh] overflow-y-auto">
                             
                             <!-- Info Tunggakan Smart Allocation -->
                             <div v-if="selectedInvoice?.customer?.overdue_count > 0" class="bg-rose-50 border border-rose-200 rounded-xl p-4 flex gap-3">
@@ -886,7 +886,7 @@
                         </div>
 
                         <!-- Footer -->
-                        <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-end gap-3">
+                        <div class="px-4 sm:px-6 py-3.5 border-t border-gray-100 bg-gray-50/50 flex flex-wrap items-center justify-end gap-2.5">
                             <button type="button" @click="closePaymentModal" class="px-5 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-200 bg-gray-100 rounded-xl transition-colors cursor-pointer">
                                 Batal
                             </button>
@@ -906,7 +906,7 @@
 
         <!-- Promise Modal -->
         <Teleport to="body">
-            <div v-if="showPromiseModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0">
+            <div v-if="showPromiseModal" class="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
                 <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="closePromiseModal"></div>
 
                 <div class="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-md relative z-10 animate-fade-in-up">
@@ -926,7 +926,7 @@
                     </div>
 
                     <form @submit.prevent="submitPromise">
-                        <div class="p-6 space-y-4 max-h-[78vh] overflow-y-auto">
+                        <div class="p-4 sm:p-6 space-y-4 max-h-[72vh] overflow-y-auto">
                             <!-- Info Sisa Tagihan -->
                             <div class="p-3 bg-amber-50/70 border border-amber-200/70 rounded-xl flex items-center justify-between">
                                 <span class="text-xs font-bold text-gray-600">Total Sisa Tagihan:</span>
@@ -947,7 +947,7 @@
                                 >
                                 
                                 <!-- Preset Cepat Tanggal -->
-                                <div class="flex items-center gap-1.5 mt-2">
+                                <div class="flex flex-wrap items-center gap-1.5 mt-2">
                                     <span class="text-[10px] text-gray-400 font-medium">Preset:</span>
                                     <button 
                                         type="button" 
@@ -1041,7 +1041,7 @@
                             </div>
                         </div>
 
-                        <div class="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between gap-2">
+                        <div class="px-4 sm:px-6 py-3.5 border-t border-gray-100 bg-gray-50/50 flex flex-wrap items-center justify-between gap-2">
                             <div class="flex items-center gap-2">
                                 <button 
                                     v-if="selectedInvoice?.promise_date"
@@ -1081,7 +1081,7 @@
 
         <!-- Edit Invoice Modal -->
         <Teleport to="body">
-            <div v-if="showEditModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0">
+            <div v-if="showEditModal" class="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
                 <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="closeEditModal"></div>
 
                 <div class="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-md relative z-10 animate-fade-in-up">
@@ -1107,7 +1107,7 @@
                                 </div>
                             </div>
                             
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-bold text-gray-700 mb-1">Tanggal Terbit</label>
                                     <input type="date" v-model="editForm.issued_date" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:bg-white focus:ring-2 focus:ring-blue-500" required>
@@ -1135,7 +1135,7 @@
 
         <!-- Stop Sementara Modal -->
         <Teleport to="body">
-            <div v-if="showStopSementaraModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-0">
+            <div v-if="showStopSementaraModal" class="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
                 <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="closeStopSementaraModal"></div>
 
                 <div class="bg-white rounded-2xl shadow-2xl overflow-hidden w-full max-w-sm relative z-10 animate-fade-in-up">
@@ -1727,7 +1727,7 @@ function toggleDropdown(event, row) {
         top = Math.max(10, rect.top - dropdownHeight - 6);
     }
 
-    let left = rect.right - dropdownWidth;
+    let left = Math.min(rect.right - dropdownWidth, window.innerWidth - dropdownWidth - 10);
     if (left < 10) {
         left = 10;
     }

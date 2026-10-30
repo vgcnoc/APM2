@@ -2,113 +2,113 @@
     <Head title="Tagihan & Kasbon Reseller" />
 
     <ClientAreaLayout>
-        <div class="space-y-6 pb-10">
+        <div class="w-full min-w-0 space-y-5 sm:space-y-6 pb-10">
             <!-- Header Section -->
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-gray-200/60">
-                <div>
-                    <div class="flex items-center gap-2 mb-1.5">
-                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2 mb-1.5">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60 shrink-0">
                             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                             Reseller Area
                         </span>
                         <span class="text-xs text-gray-300">•</span>
-                        <span class="text-xs font-medium text-gray-500">
+                        <span class="text-xs font-medium text-gray-500 truncate">
                             {{ reseller.name || 'Mitra Reseller' }}
                         </span>
                     </div>
-                    <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
+                    <h1 class="text-xl sm:text-2xl lg:text-3xl font-extrabold text-gray-900 tracking-tight">
                         Tagihan Kasbon & Saldo Reseller
                     </h1>
-                    <p class="text-sm text-gray-500 mt-1">
+                    <p class="text-xs sm:text-sm text-gray-500 mt-1">
                         Pantau rincian tagihan kasbon saldo modal voucher dan transaksi saldo Anda serta bayar online otomatis.
                     </p>
                 </div>
 
-                <div class="flex items-center gap-3">
-                    <Link href="/client-area/dashboard" class="px-4 py-2 bg-white border border-gray-200/80 hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-bold transition shadow-2xs flex items-center gap-1.5">
-                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                <div class="flex items-center gap-3 shrink-0">
+                    <Link href="/client-area/dashboard" class="w-full sm:w-auto justify-center px-4 py-2 bg-white border border-gray-200/80 hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-bold transition shadow-2xs flex items-center gap-1.5 whitespace-nowrap">
+                        <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
                         Kembali ke Dashboard
                     </Link>
                 </div>
             </div>
 
             <!-- 3 Ringkasan KPI Cards -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
                 <!-- Total Kasbon Belum Lunas -->
-                <div :class="total_unpaid_kasbon > 0 ? 'bg-gradient-to-br from-rose-50/60 via-amber-50/30 to-white border-rose-200/80' : 'bg-white border-gray-200/80'" class="rounded-2xl border p-5 shadow-sm">
-                    <div class="flex items-center justify-between mb-3">
-                        <span class="text-xs font-bold uppercase tracking-wider" :class="total_unpaid_kasbon > 0 ? 'text-rose-700' : 'text-gray-500'">Hutang Kasbon Saldo</span>
-                        <div class="w-10 h-10 rounded-xl flex items-center justify-center border" :class="total_unpaid_kasbon > 0 ? 'bg-rose-100 text-rose-600 border-rose-200' : 'bg-emerald-50 text-emerald-600 border-emerald-100'">
+                <div :class="total_unpaid_kasbon > 0 ? 'bg-gradient-to-br from-rose-50/60 via-amber-50/30 to-white border-rose-200/80' : 'bg-white border-gray-200/80'" class="rounded-2xl border p-4 sm:p-5 min-w-0 shadow-sm">
+                    <div class="flex items-center justify-between gap-2 mb-3">
+                        <span class="text-xs font-bold uppercase tracking-wider truncate" :class="total_unpaid_kasbon > 0 ? 'text-rose-700' : 'text-gray-500'">Hutang Kasbon Saldo</span>
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center border shrink-0" :class="total_unpaid_kasbon > 0 ? 'bg-rose-100 text-rose-600 border-rose-200' : 'bg-emerald-50 text-emerald-600 border-emerald-100'">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         </div>
                     </div>
-                    <div class="flex items-baseline gap-1">
+                    <div class="flex flex-wrap items-baseline gap-1 min-w-0">
                         <span class="text-sm font-bold" :class="total_unpaid_kasbon > 0 ? 'text-rose-400' : 'text-gray-400'">Rp</span>
-                        <span class="text-2xl font-extrabold tracking-tight" :class="total_unpaid_kasbon > 0 ? 'text-rose-600' : 'text-emerald-600'">{{ Number(total_unpaid_kasbon || 0).toLocaleString('id-ID') }}</span>
+                        <span class="text-xl sm:text-2xl font-extrabold tracking-tight break-words leading-tight" :class="total_unpaid_kasbon > 0 ? 'text-rose-600' : 'text-emerald-600'">{{ Number(total_unpaid_kasbon || 0).toLocaleString('id-ID') }}</span>
                     </div>
                     <p class="text-xs mt-2 flex items-center gap-1.5" :class="total_unpaid_kasbon > 0 ? 'text-rose-600 font-semibold' : 'text-gray-500'">
-                        <span class="w-1.5 h-1.5 rounded-full" :class="total_unpaid_kasbon > 0 ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'"></span>
-                        {{ total_unpaid_kasbon > 0 ? 'Wajib disetor / dilunasi' : 'Tidak ada tunggakan kasbon' }}
+                        <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="total_unpaid_kasbon > 0 ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'"></span>
+                        <span>{{ total_unpaid_kasbon > 0 ? 'Wajib disetor / dilunasi' : 'Tidak ada tunggakan kasbon' }}</span>
                     </p>
                 </div>
 
                 <!-- Sisa Saldo Modal Aktif -->
-                <div class="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm">
-                    <div class="flex items-center justify-between mb-3">
-                        <span class="text-xs font-bold uppercase tracking-wider text-gray-500">Sisa Saldo Dompet</span>
-                        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
+                <div class="bg-white rounded-2xl border border-gray-200/80 p-4 sm:p-5 min-w-0 shadow-sm">
+                    <div class="flex items-center justify-between gap-2 mb-3">
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-500 truncate">Sisa Saldo Dompet</span>
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shrink-0">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                         </div>
                     </div>
-                    <div class="flex items-baseline justify-between gap-1">
-                        <div class="flex items-baseline gap-1">
+                    <div class="flex flex-wrap items-center justify-between gap-2 min-w-0">
+                        <div class="flex items-baseline gap-1 min-w-0">
                             <span class="text-sm font-bold text-gray-400">Rp</span>
-                            <span class="text-2xl font-extrabold text-gray-900 tracking-tight">{{ Number(reseller.balance || 0).toLocaleString('id-ID') }}</span>
+                            <span class="text-xl sm:text-2xl font-extrabold text-gray-900 tracking-tight break-words leading-tight">{{ Number(reseller.balance || 0).toLocaleString('id-ID') }}</span>
                         </div>
-                        <button @click="showTopUpModal = true" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-bold shadow-xs transition cursor-pointer flex items-center gap-1">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                        <button @click="showTopUpModal = true" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-bold shadow-xs transition cursor-pointer flex items-center gap-1 whitespace-nowrap shrink-0">
+                            <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
                             Isi Saldo
                         </button>
                     </div>
                     <p class="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
-                        <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                        Saldo modal cetak voucher aktif
+                        <span class="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
+                        <span>Saldo modal cetak voucher aktif</span>
                     </p>
                 </div>
 
                 <!-- Total Invoice Terdata -->
-                <div class="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm">
-                    <div class="flex items-center justify-between mb-3">
-                        <span class="text-xs font-bold uppercase tracking-wider text-gray-500">Total Transaksi Faktur</span>
-                        <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100">
+                <div class="bg-white rounded-2xl border border-gray-200/80 p-4 sm:p-5 min-w-0 shadow-sm">
+                    <div class="flex items-center justify-between gap-2 mb-3">
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-500 truncate">Total Transaksi Faktur</span>
+                        <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100 shrink-0">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                         </div>
                     </div>
                     <div class="flex items-baseline gap-2">
-                        <span class="text-2xl font-extrabold text-gray-900 tracking-tight">{{ invoices.total || invoices.data.length }}</span>
+                        <span class="text-xl sm:text-2xl font-extrabold text-gray-900 tracking-tight">{{ invoices.total || invoices.data.length }}</span>
                         <span class="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">Invoice</span>
                     </div>
                     <p class="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
-                        <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
-                        Riwayat invoice tercatat di sistem
+                        <span class="w-1.5 h-1.5 rounded-full bg-purple-500 shrink-0"></span>
+                        <span>Riwayat invoice tercatat di sistem</span>
                     </p>
                 </div>
             </div>
 
             <!-- Filter Tabs Bar -->
-            <div class="bg-white rounded-2xl border border-gray-200/80 p-3 sm:p-4 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div class="bg-white rounded-2xl border border-gray-200/80 p-3 sm:p-4 shadow-sm flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 min-w-0">
                 <!-- Tipe Tagihan Tabs -->
-                <div class="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+                <div class="flex items-center gap-1.5 overflow-x-auto max-w-full overscroll-x-contain pb-1 lg:pb-0">
                     <button 
                         @click="filterType('')" 
-                        class="px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer"
+                        class="px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 cursor-pointer"
                         :class="!filters.type ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-100'"
                     >
                         Semua Faktur Saldo
                     </button>
                     <button 
                         @click="filterType('kasbon')" 
-                        class="px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1.5"
+                        class="px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-1.5"
                         :class="filters.type === 'kasbon' ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-100'"
                     >
                         <span>Kasbon Saldo</span>
@@ -116,7 +116,7 @@
                     </button>
                     <button 
                         @click="filterType('topup')" 
-                        class="px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer"
+                        class="px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap shrink-0 cursor-pointer"
                         :class="filters.type === 'topup' ? 'bg-indigo-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-100'"
                     >
                         Top Up Mandiri
@@ -124,25 +124,25 @@
                 </div>
 
                 <!-- Status Filter -->
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2">
                     <span class="text-xs font-semibold text-gray-500 hidden sm:inline">Status:</span>
                     <button 
                         @click="filterStatus('')" 
-                        class="px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer"
+                        class="px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer whitespace-nowrap"
                         :class="!filters.status ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
                     >
                         Semua
                     </button>
                     <button 
                         @click="filterStatus('unpaid')" 
-                        class="px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1"
+                        class="px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 whitespace-nowrap"
                         :class="filters.status === 'unpaid' ? 'bg-rose-600 text-white' : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200/60'"
                     >
                         Belum Lunas
                     </button>
                     <button 
                         @click="filterStatus('paid')" 
-                        class="px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer"
+                        class="px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer whitespace-nowrap"
                         :class="filters.status === 'paid' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/60'"
                     >
                         Lunas
@@ -151,8 +151,8 @@
             </div>
 
             <!-- Tabel Riwayat Tagihan & Kasbon -->
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-200/80 overflow-hidden flex flex-col">
-                <div class="overflow-x-auto flex-1">
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-200/80 overflow-hidden flex flex-col min-w-0">
+                <div class="overflow-x-auto w-full overscroll-x-contain flex-1">
                     <table class="min-w-full divide-y divide-gray-200 text-left text-sm">
                         <thead class="bg-gray-50/75">
                             <tr>
@@ -275,29 +275,29 @@
 
         <!-- Modal Top Up Saldo Mandiri Reseller -->
         <Teleport to="body">
-            <div v-if="showTopUpModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <div v-if="showTopUpModal" class="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-4">
                 <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" @click="showTopUpModal = false"></div>
-                <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up">
+                <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden animate-fade-in-up">
                     
                     <!-- Header Modal Top Up -->
-                    <div class="p-6 border-b border-gray-100 bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-white flex items-center justify-between">
-                        <div class="flex items-center gap-3">
+                    <div class="p-4 sm:p-6 border-b border-gray-100 bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-white flex items-center justify-between shrink-0">
+                        <div class="flex items-center gap-3 min-w-0">
                             <div class="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                             </div>
-                            <div>
+                            <div class="min-w-0">
                                 <h3 class="text-base font-black text-gray-900">Isi Saldo Dompet Modal</h3>
                                 <p class="text-xs text-gray-500">Top up instan otomatis via QRIS & Virtual Account</p>
                             </div>
                         </div>
-                        <button @click="showTopUpModal = false" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer">
+                        <button @click="showTopUpModal = false" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer shrink-0">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                     </div>
 
-                    <form @submit.prevent="submitTopUp" class="p-6 space-y-5">
+                    <form @submit.prevent="submitTopUp" class="p-4 sm:p-6 space-y-5 overflow-y-auto flex-1">
                         <!-- Saldo Saat Ini -->
-                        <div class="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center justify-between">
+                        <div class="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl flex flex-wrap items-center justify-between gap-2">
                             <span class="text-xs font-semibold text-gray-500">Saldo Dompet Saat Ini</span>
                             <span class="text-sm font-black text-gray-900 font-mono">Rp {{ Number(reseller.balance || 0).toLocaleString('id-ID') }}</span>
                         </div>
@@ -305,7 +305,7 @@
                         <!-- Pilihan Nominal Cepat -->
                         <div>
                             <label class="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Pilih Nominal Cepat</label>
-                            <div class="grid grid-cols-3 gap-2">
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                 <button 
                                     v-for="amt in presetAmounts" 
                                     :key="amt"
@@ -343,7 +343,7 @@
                         <!-- Pilihan Saluran Pembayaran -->
                         <div>
                             <label class="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Metode Pembayaran</label>
-                            <div class="grid grid-cols-2 gap-2">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 <label 
                                     v-for="ch in paymentChannels" 
                                     :key="ch.id"
@@ -354,9 +354,9 @@
                                         type="radio" 
                                         v-model="topUpForm.channel" 
                                         :value="ch.id" 
-                                        class="text-blue-600 focus:ring-blue-500 h-4 w-4 border-gray-300"
+                                        class="text-blue-600 focus:ring-blue-500 h-4 w-4 border-gray-300 shrink-0"
                                     />
-                                    <div>
+                                    <div class="min-w-0">
                                         <div class="text-xs font-bold text-gray-900">{{ ch.name }}</div>
                                         <div class="text-[10px] text-gray-500">{{ ch.desc }}</div>
                                     </div>
@@ -371,22 +371,22 @@
                         </div>
 
                         <!-- Action Buttons -->
-                        <div class="flex items-center justify-end gap-3 pt-2">
+                        <div class="flex flex-wrap items-center justify-end gap-2.5 pt-2">
                             <button 
                                 type="button" 
                                 @click="showTopUpModal = false" 
-                                class="px-4 py-2.5 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 transition cursor-pointer"
+                                class="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 transition cursor-pointer"
                             >
                                 Batal
                             </button>
                             <button 
                                 type="submit" 
                                 :disabled="topUpForm.processing || !topUpForm.amount || topUpForm.amount < 10000"
-                                class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                class="flex-1 sm:flex-initial justify-center px-6 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
                             >
-                                <svg v-if="topUpForm.processing" class="animate-spin -ml-1 mr-1 h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                <svg v-if="topUpForm.processing" class="animate-spin -ml-1 mr-1 h-3.5 w-3.5 text-white shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                 <span>{{ topUpForm.processing ? 'Memproses...' : 'Lanjut ke Pembayaran' }}</span>
-                                <svg v-if="!topUpForm.processing" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                                <svg v-if="!topUpForm.processing" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                             </button>
                         </div>
                     </form>

@@ -493,7 +493,7 @@
             </div>
 
             <!-- Page Content -->
-            <div id="workspace-content" tabindex="-1" :class="[fullBleed ? 'workspace-full-bleed p-0 flex-1 w-full max-w-full flex flex-col overflow-hidden' : 'workspace-content p-4 sm:p-6 lg:p-8 flex-1 w-full max-w-full overflow-hidden print:p-0 print:overflow-visible']">
+            <div id="workspace-content" tabindex="-1" :class="[fullBleed ? 'workspace-full-bleed p-0 flex-1 w-full max-w-full min-w-0 flex flex-col overflow-hidden' : 'workspace-content p-4 sm:p-6 lg:p-8 flex-1 w-full max-w-full min-w-0 overflow-x-hidden print:p-0 print:overflow-visible']">
                 <slot />
             </div>
 

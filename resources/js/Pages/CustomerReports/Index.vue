@@ -1,21 +1,21 @@
 <template>
     <AppLayout title="Laporan Keuangan Pelanggan" subtitle="Rekapitulasi pemasukan dan piutang pelanggan internet">
-        <div class="max-w-7xl mx-auto space-y-6">
+        <div class="w-full max-w-7xl mx-auto min-w-0 space-y-5 sm:space-y-6 pb-8">
             
             <!-- Filter Periode & Area -->
-            <div class="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-3xl shadow-sm border border-gray-100">
-                <div class="flex items-center gap-3">
-                    <div class="p-2.5 bg-sky-50 text-sky-600 rounded-xl">
+            <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white p-4 rounded-3xl shadow-sm border border-gray-100 min-w-0">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="p-2.5 bg-sky-50 text-sky-600 rounded-xl shrink-0">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                     </div>
-                    <div>
+                    <div class="min-w-0">
                         <h2 class="text-sm font-bold text-gray-900">Filter Laporan</h2>
                         <p class="text-xs text-gray-500">Sesuaikan periode bulan, tahun & wilayah</p>
                     </div>
                 </div>
-                <div class="flex flex-wrap sm:flex-nowrap gap-2 w-full sm:w-auto items-center">
+                <div class="grid grid-cols-2 sm:flex sm:flex-wrap lg:flex-nowrap gap-2 w-full lg:w-auto items-center">
                     <!-- Area Filter -->
-                    <select v-model="form.area_id" class="block w-full sm:w-36 border-gray-200 bg-gray-50 focus:bg-white rounded-xl text-xs sm:text-sm font-medium focus:ring-sky-500 focus:border-sky-500">
+                    <select v-model="form.area_id" class="col-span-2 sm:col-span-1 block w-full sm:w-36 border-gray-200 bg-gray-50 focus:bg-white rounded-xl text-xs sm:text-sm font-medium focus:ring-sky-500 focus:border-sky-500">
                         <option value="">Semua Area</option>
                         <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
                     </select>
@@ -27,26 +27,26 @@
                     <select v-model="form.year" class="block w-full sm:w-24 border-gray-200 bg-gray-50 focus:bg-white rounded-xl text-xs sm:text-sm font-medium focus:ring-sky-500 focus:border-sky-500">
                         <option v-for="y in years" :key="y" :value="y">{{ y }}</option>
                     </select>
-                    <button @click="applyFilter" class="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm transition-all hover:shadow whitespace-nowrap">
+                    <button @click="applyFilter" class="col-span-2 sm:col-span-1 bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-all hover:shadow whitespace-nowrap">
                         Filter
                     </button>
                 </div>
             </div>
 
             <!-- Summary Cards (Interactive & Linked to Table Tabs) -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 <!-- Card 1: Total Pemasukan -->
                 <div @click="activeTab = 'pembayaran'" 
-                     :class="['cursor-pointer transition-all duration-200 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden group select-none',
-                              activeTab === 'pembayaran' ? 'ring-4 ring-sky-300 scale-[1.02] shadow-xl' : 'hover:scale-[1.01]']"
+                     :class="['cursor-pointer transition-all duration-200 rounded-3xl p-5 sm:p-6 min-w-0 text-white shadow-lg relative overflow-hidden group select-none',
+                              activeTab === 'pembayaran' ? 'ring-4 ring-sky-300 shadow-xl' : 'hover:-translate-y-0.5']"
                      style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);">
                     <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700"></div>
-                    <div class="flex items-center justify-between mb-1">
-                        <p class="text-sky-100 text-xs font-bold uppercase tracking-wider">Total Pemasukan Pelanggan</p>
-                        <span class="text-[11px] bg-white/20 px-2 py-0.5 rounded-full font-semibold">{{ ledger.length }} Trx</span>
+                    <div class="flex items-center justify-between gap-2 mb-1">
+                        <p class="text-sky-100 text-xs font-bold uppercase tracking-wider truncate">Total Pemasukan Pelanggan</p>
+                        <span class="text-[11px] bg-white/20 px-2 py-0.5 rounded-full font-semibold shrink-0">{{ ledger.length }} Trx</span>
                     </div>
-                    <h3 class="text-2xl sm:text-3xl font-black mb-2">Rp {{ formatRupiah(summary.pemasukan) }}</h3>
-                    <div class="flex items-center justify-between text-xs text-sky-100/90 font-medium pt-2 border-t border-white/20">
+                    <h3 class="text-xl sm:text-2xl 2xl:text-3xl font-black mb-2 break-words leading-tight">Rp {{ formatRupiah(summary.pemasukan) }}</h3>
+                    <div class="flex flex-wrap items-center justify-between gap-1 text-xs text-sky-100/90 font-medium pt-2 border-t border-white/20">
                         <span>Bulan {{ months[props.month - 1] }} {{ props.year }}</span>
                         <span class="underline decoration-dashed group-hover:translate-x-1 transition-transform">Buka Tabel &rarr;</span>
                     </div>
@@ -54,16 +54,16 @@
 
                 <!-- Card 2: Piutang Berjalan (Aktif) -->
                 <div @click="activeTab = 'piutang_aktif'" 
-                     :class="['cursor-pointer transition-all duration-200 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden group select-none',
-                              activeTab === 'piutang_aktif' ? 'ring-4 ring-amber-300 scale-[1.02] shadow-xl' : 'hover:scale-[1.01]']"
+                     :class="['cursor-pointer transition-all duration-200 rounded-3xl p-5 sm:p-6 min-w-0 text-white shadow-lg relative overflow-hidden group select-none',
+                              activeTab === 'piutang_aktif' ? 'ring-4 ring-amber-300 shadow-xl' : 'hover:-translate-y-0.5']"
                      style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
                     <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700"></div>
-                    <div class="flex items-center justify-between mb-1">
-                        <p class="text-amber-100 text-xs font-bold uppercase tracking-wider">Piutang Pelanggan Aktif</p>
-                        <span class="text-[11px] bg-white/20 px-2 py-0.5 rounded-full font-semibold">{{ activePiutangList.length }} Tagihan</span>
+                    <div class="flex items-center justify-between gap-2 mb-1">
+                        <p class="text-amber-100 text-xs font-bold uppercase tracking-wider truncate">Piutang Pelanggan Aktif</p>
+                        <span class="text-[11px] bg-white/20 px-2 py-0.5 rounded-full font-semibold shrink-0">{{ activePiutangList.length }} Tagihan</span>
                     </div>
-                    <h3 class="text-2xl sm:text-3xl font-black mb-2">Rp {{ formatRupiah(summary.piutang) }}</h3>
-                    <div class="flex items-center justify-between text-xs text-amber-100/90 font-medium pt-2 border-t border-white/20">
+                    <h3 class="text-xl sm:text-2xl 2xl:text-3xl font-black mb-2 break-words leading-tight">Rp {{ formatRupiah(summary.piutang) }}</h3>
+                    <div class="flex flex-wrap items-center justify-between gap-1 text-xs text-amber-100/90 font-medium pt-2 border-t border-white/20">
                         <span>Tunggakan pelanggan berjalan</span>
                         <span class="underline decoration-dashed group-hover:translate-x-1 transition-transform">Buka Tabel &rarr;</span>
                     </div>
@@ -71,16 +71,16 @@
 
                 <!-- Card 3: Piutang Pelanggan Stop Permanen -->
                 <div @click="activeTab = 'piutang_terminated'" 
-                     :class="['cursor-pointer transition-all duration-200 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden group select-none',
-                              activeTab === 'piutang_terminated' ? 'ring-4 ring-rose-300 scale-[1.02] shadow-xl' : 'hover:scale-[1.01]']"
+                     :class="['sm:col-span-2 xl:col-span-1 cursor-pointer transition-all duration-200 rounded-3xl p-5 sm:p-6 min-w-0 text-white shadow-lg relative overflow-hidden group select-none',
+                              activeTab === 'piutang_terminated' ? 'ring-4 ring-rose-300 shadow-xl' : 'hover:-translate-y-0.5']"
                      style="background: linear-gradient(135deg, #e11d48 0%, #be123c 100%);">
                     <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700"></div>
-                    <div class="flex items-center justify-between mb-1">
-                        <p class="text-rose-100 text-xs font-bold uppercase tracking-wider">Piutang Stop Permanen</p>
-                        <span class="text-[11px] bg-white/20 px-2 py-0.5 rounded-full font-semibold">{{ terminatedPiutangList.length }} Tagihan</span>
+                    <div class="flex items-center justify-between gap-2 mb-1">
+                        <p class="text-rose-100 text-xs font-bold uppercase tracking-wider truncate">Piutang Stop Permanen</p>
+                        <span class="text-[11px] bg-white/20 px-2 py-0.5 rounded-full font-semibold shrink-0">{{ terminatedPiutangList.length }} Tagihan</span>
                     </div>
-                    <h3 class="text-2xl sm:text-3xl font-black mb-2">Rp {{ formatRupiah(summary.piutang_terminated || 0) }}</h3>
-                    <div class="flex items-center justify-between text-xs text-rose-100/90 font-medium pt-2 border-t border-white/20">
+                    <h3 class="text-xl sm:text-2xl 2xl:text-3xl font-black mb-2 break-words leading-tight">Rp {{ formatRupiah(summary.piutang_terminated || 0) }}</h3>
+                    <div class="flex flex-wrap items-center justify-between gap-1 text-xs text-rose-100/90 font-medium pt-2 border-t border-white/20">
                         <span>Pelanggan nonaktif / diputus</span>
                         <span class="underline decoration-dashed group-hover:translate-x-1 transition-transform">Buka Tabel &rarr;</span>
                     </div>
@@ -88,32 +88,32 @@
             </div>
 
             <!-- Grafik Tren -->
-            <div class="bg-white p-6 rounded-3xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-100">
-                <h3 class="text-base font-bold text-gray-900 mb-6 flex items-center gap-2">
-                    <svg class="w-5 h-5 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
-                    Tren Pemasukan Pelanggan (6 Bulan Terakhir)
+            <div class="bg-white p-4 sm:p-6 min-w-0 overflow-hidden rounded-3xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-100">
+                <h3 class="text-sm sm:text-base font-bold text-gray-900 mb-4 sm:mb-6 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-sky-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                    <span>Tren Pemasukan Pelanggan (6 Bulan Terakhir)</span>
                 </h3>
-                <div class="h-80 w-full relative z-10">
+                <div class="h-72 sm:h-80 w-full relative z-10 min-w-0">
                     <apexchart type="area" height="100%" :options="chartOptions" :series="chartSeries"></apexchart>
                 </div>
             </div>
 
             <!-- Bagian Rincian Data (Tabs Sinkron dengan Card) -->
-            <div class="bg-white rounded-3xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-100 overflow-hidden">
+            <div class="bg-white rounded-3xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-100 overflow-hidden min-w-0">
                 <!-- Header Tabs -->
-                <div class="p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
-                            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                            Rincian Data Laporan
+                <div class="p-4 sm:p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                    <div class="min-w-0">
+                        <h3 class="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-gray-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            <span>Rincian Data Laporan</span>
                         </h3>
                         <p class="text-xs text-gray-500 mt-1">Data rincian di bawah ini selaras 100% dengan nominal pada kartu summary di atas.</p>
                     </div>
 
                     <!-- Tab Buttons -->
-                    <div class="flex items-center gap-1.5 p-1 bg-gray-200/60 rounded-2xl w-fit">
+                    <div class="flex items-center gap-1.5 p-1 bg-gray-200/60 rounded-2xl w-full sm:w-fit max-w-full overflow-x-auto overscroll-x-contain">
                         <button @click="activeTab = 'pembayaran'" 
-                                :class="['px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2',
+                                :class="['px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap shrink-0',
                                          activeTab === 'pembayaran' ? 'bg-white text-sky-700 shadow-sm' : 'text-gray-600 hover:text-gray-900']">
                             <span>💵 Riwayat Pembayaran</span>
                             <span :class="['px-2 py-0.5 rounded-full text-[10px] font-bold', activeTab === 'pembayaran' ? 'bg-sky-100 text-sky-700' : 'bg-gray-300 text-gray-700']">
@@ -121,7 +121,7 @@
                             </span>
                         </button>
                         <button @click="activeTab = 'piutang_aktif'" 
-                                :class="['px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2',
+                                :class="['px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap shrink-0',
                                          activeTab === 'piutang_aktif' ? 'bg-white text-amber-700 shadow-sm' : 'text-gray-600 hover:text-gray-900']">
                             <span>⏳ Tunggakan Aktif</span>
                             <span :class="['px-2 py-0.5 rounded-full text-[10px] font-bold', activeTab === 'piutang_aktif' ? 'bg-amber-100 text-amber-700' : 'bg-gray-300 text-gray-700']">
@@ -129,7 +129,7 @@
                             </span>
                         </button>
                         <button @click="activeTab = 'piutang_terminated'" 
-                                :class="['px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2',
+                                :class="['px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap shrink-0',
                                          activeTab === 'piutang_terminated' ? 'bg-white text-rose-700 shadow-sm' : 'text-gray-600 hover:text-gray-900']">
                             <span>⛔ Stop Permanen</span>
                             <span :class="['px-2 py-0.5 rounded-full text-[10px] font-bold', activeTab === 'piutang_terminated' ? 'bg-rose-100 text-rose-700' : 'bg-gray-300 text-gray-700']">
@@ -140,7 +140,7 @@
                 </div>
                 
                 <!-- TAB 1: RIWAYAT PEMBAYARAN -->
-                <div v-if="activeTab === 'pembayaran'" class="overflow-x-auto">
+                <div v-if="activeTab === 'pembayaran'" class="overflow-x-auto w-full overscroll-x-contain">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50/80">
                             <tr>
@@ -187,7 +187,7 @@
                 </div>
 
                 <!-- TAB 2: DAFTAR TUNGGAKAN AKTIF -->
-                <div v-else-if="activeTab === 'piutang_aktif'" class="overflow-x-auto">
+                <div v-else-if="activeTab === 'piutang_aktif'" class="overflow-x-auto w-full overscroll-x-contain">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50/80">
                             <tr>
@@ -252,7 +252,7 @@
                 </div>
 
                 <!-- TAB 3: PIUTANG PELANGGAN STOP PERMANEN -->
-                <div v-else-if="activeTab === 'piutang_terminated'" class="overflow-x-auto">
+                <div v-else-if="activeTab === 'piutang_terminated'" class="overflow-x-auto w-full overscroll-x-contain">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50/80">
                             <tr>
