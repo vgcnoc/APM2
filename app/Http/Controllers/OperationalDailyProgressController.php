@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\User;
+use App\Models\Employee;
 use App\Models\Area;
 use App\Models\Odp;
 use App\Models\Odc;
@@ -54,7 +55,12 @@ class OperationalDailyProgressController extends Controller
 
         $targetAreaIds = null;
         if ($areaId) {
-            $targetAreaIds = [(int) $areaId];
+            $requestedAreaId = (int) $areaId;
+            if ($accessibleAreaIds !== null && !in_array($requestedAreaId, $accessibleAreaIds, true)) {
+                $targetAreaIds = $accessibleAreaIds;
+            } else {
+                $targetAreaIds = [$requestedAreaId];
+            }
         } elseif ($accessibleAreaIds !== null) {
             $targetAreaIds = $accessibleAreaIds;
         }
@@ -152,9 +158,24 @@ class OperationalDailyProgressController extends Controller
 
         // Ambil Daftar Teknisi Lapangan untuk Penugasan Cepat
         $availableTechnicians = User::where(function ($q) {
-            $q->whereHas('roles', fn($r) => $r->whereIn('name', ['teknisi', 'kepala teknisi', 'maintenance', 'teknisi lapangan']))
-              ->orWhereIn('role', ['teknisi', 'kepala teknisi', 'maintenance']);
-        })->orderBy('name')->get(['id', 'name', 'phone']);
+            $q->where('is_active', true)->orWhereNull('is_active');
+        })->where(function ($q) {
+            $q->whereHas('roles', function ($r) {
+                $r->where(function ($rq) {
+                    $rq->where('name', 'LIKE', '%teknisi%')
+                       ->orWhere('name', 'LIKE', '%maintenance%')
+                       ->orWhere('name', 'LIKE', '%lapangan%')
+                       ->orWhere('name', 'LIKE', '%jaringan%')
+                       ->orWhere('name', 'LIKE', '%serbu%');
+                });
+            })->orWhere(function ($uq) {
+                $uq->where('role', 'LIKE', '%teknisi%')
+                   ->orWhere('role', 'LIKE', '%maintenance%')
+                   ->orWhere('role', 'LIKE', '%lapangan%')
+                   ->orWhere('role', 'LIKE', '%jaringan%')
+                   ->orWhere('role', 'LIKE', '%serbu%');
+            });
+        })->orderBy('name')->get(['id', 'name', 'phone', 'area_id']);
 
         $availableOdps = Odp::select('id', 'name', 'area_id')->orderBy('name')->limit(500)->get();
         $availableOdcs = Odc::select('id', 'name', 'area_id')->orderBy('name')->limit(150)->get();
@@ -209,7 +230,7 @@ class OperationalDailyProgressController extends Controller
 
             $res = $waService->sendMessage($rawPhone, $validated['message']);
 
-            if (!empty($res['status']) && $res['status'] === 'success') {
+            if (!empty($res['success']) || (!empty($res['status']) && $res['status'] === 'success')) {
                 return response()->json([
                     'success' => true,
                     'message' => 'Laporan progress harian berhasil dikirim ke WhatsApp ' . $rawPhone . '!',
@@ -995,106 +1016,245 @@ class OperationalDailyProgressController extends Controller
     }
 
     /**
-     * Ambil Status Teknisi (On Duty, Libur, Masuk Malam) secara Cerdas
+     * Ambil Status Teknisi (On Duty, Libur, Masuk Malam) secara Cerdas & Sesuai Area
      */
     private function getTechnicianStatus(string $date, string|array|null $areaId, array $activeJobTechNames = []): array
     {
-        $areaIds = is_array($areaId) ? $areaId : ($areaId ? [$areaId] : []);
+        $areaIds = array_values(array_unique(array_filter(
+            array_map('intval', is_array($areaId) ? $areaId : ($areaId ? [$areaId] : []))
+        )));
 
-        // 1. Ambil seluruh teknisi
-        $allTechnicians = User::where(function ($q) {
-            $q->whereHas('roles', function ($r) {
-                $r->whereIn('name', ['teknisi', 'kepala teknisi', 'maintenance', 'teknisi lapangan']);
-            })->orWhereIn('role', ['teknisi', 'kepala teknisi', 'maintenance']);
-        });
+        $normKey = static fn(?string $v): string => mb_strtolower(trim((string) $v));
+        $normPhone = static fn(?string $v): string => preg_replace('/\D+/', '', (string) $v);
 
-        if (!empty($areaIds)) {
-            $allTechnicians->where(function ($q) use ($areaIds) {
-                $q->whereIn('area_id', $areaIds)->orWhereNull('area_id');
-            });
-        }
+        $targetAreaNames = !empty($areaIds)
+            ? Area::whereIn('id', $areaIds)
+                ->pluck('name')
+                ->map(fn($n) => $normKey((string) $n))
+                ->filter()
+                ->values()
+                ->toArray()
+            : [];
 
-        $techUsers = $allTechnicians->get(['id', 'name', 'phone', 'is_on_duty', 'area_id']);
-        $techNamesList = $techUsers->pluck('name')->toArray();
+        // 1. Ambil seluruh Karyawan HR aktif divisi teknisi / maintenance / lapangan
+        $allTechEmployees = Employee::query()
+            ->where(function ($q) {
+                $q->where('status', 'active')->orWhereNull('status');
+            })
+            ->where(function ($sq) {
+                $sq->where('position', 'LIKE', '%teknisi%')
+                   ->orWhere('position', 'LIKE', '%maintenance%')
+                   ->orWhere('position', 'LIKE', '%lapangan%')
+                   ->orWhere('position', 'LIKE', '%jaringan%')
+                   ->orWhere('position', 'LIKE', '%serbu%');
+            })
+            ->orderBy('name')
+            ->get(['id', 'name', 'email', 'phone', 'position', 'area_id', 'branch', 'status']);
 
-        // 2. Ambil WorkSchedule hari ini KHUSUS teknisi & maintenance
-        $schedules = WorkSchedule::with(['employee', 'shift'])
-            ->whereDate('date', $date)
-            ->whereHas('employee', function ($eq) {
-                $eq->where(function ($sq) {
-                    $sq->where('position', 'LIKE', '%teknisi%')
-                       ->orWhere('position', 'LIKE', '%maintenance%')
-                       ->orWhere('position', 'LIKE', '%lapangan%')
-                       ->orWhere('position', 'LIKE', '%jaringan%')
-                       ->orWhere('position', 'LIKE', '%serbu%');
+        // 2. Ambil seluruh User aktif dengan role teknisi / maintenance / lapangan
+        $allTechUsers = User::query()
+            ->where(function ($q) {
+                $q->where('is_active', true)->orWhereNull('is_active');
+            })
+            ->where(function ($q) {
+                $q->whereHas('roles', function ($r) {
+                    $r->where(function ($rq) {
+                        $rq->where('name', 'LIKE', '%teknisi%')
+                           ->orWhere('name', 'LIKE', '%maintenance%')
+                           ->orWhere('name', 'LIKE', '%lapangan%')
+                           ->orWhere('name', 'LIKE', '%jaringan%')
+                           ->orWhere('name', 'LIKE', '%serbu%');
+                    });
+                })->orWhere(function ($uq) {
+                    $uq->where('role', 'LIKE', '%teknisi%')
+                       ->orWhere('role', 'LIKE', '%maintenance%')
+                       ->orWhere('role', 'LIKE', '%lapangan%')
+                       ->orWhere('role', 'LIKE', '%jaringan%')
+                       ->orWhere('role', 'LIKE', '%serbu%');
                 });
             })
-            ->get();
+            ->orderBy('name')
+            ->get(['id', 'name', 'email', 'phone', 'is_on_duty', 'area_id', 'accessible_areas']);
+
+        // 3. Petakan relasi silang User <-> Employee (email -> telepon -> nama)
+        $empByEmail = [];
+        $empByPhone = [];
+        $empByName = [];
+        foreach ($allTechEmployees as $emp) {
+            if ($e = $normKey($emp->email)) $empByEmail[$e] ??= $emp;
+            if ($p = $normPhone($emp->phone)) $empByPhone[$p] ??= $emp;
+            if ($n = $normKey($emp->name)) $empByName[$n] ??= $emp;
+        }
+
+        $userByEmail = [];
+        $userByPhone = [];
+        $userByName = [];
+        foreach ($allTechUsers as $u) {
+            if ($e = $normKey($u->email)) $userByEmail[$e] ??= $u;
+            if ($p = $normPhone($u->phone)) $userByPhone[$p] ??= $u;
+            if ($n = $normKey($u->name)) $userByName[$n] ??= $u;
+        }
+
+        $findLinkedUser = static function ($emp) use ($userByEmail, $userByPhone, $userByName, $normKey, $normPhone) {
+            if (!$emp) return null;
+            if (($e = $normKey($emp->email)) && isset($userByEmail[$e])) return $userByEmail[$e];
+            if (($p = $normPhone($emp->phone)) && isset($userByPhone[$p])) return $userByPhone[$p];
+            if (($n = $normKey($emp->name)) && isset($userByName[$n])) return $userByName[$n];
+            return null;
+        };
+
+        $findLinkedEmp = static function ($u) use ($empByEmail, $empByPhone, $empByName, $normKey, $normPhone) {
+            if (!$u) return null;
+            if (($e = $normKey($u->email)) && isset($empByEmail[$e])) return $empByEmail[$e];
+            if (($p = $normPhone($u->phone)) && isset($empByPhone[$p])) return $empByPhone[$p];
+            if (($n = $normKey($u->name)) && isset($empByName[$n])) return $empByName[$n];
+            return null;
+        };
+
+        // 4. Filter teknisi berdasarkan penempatan Area yang dipilih
+        $matchesTargetArea = static function ($emp, $u) use ($areaIds, $targetAreaNames, $normKey): bool {
+            if (empty($areaIds)) {
+                return true;
+            }
+
+            $primaryAreaId = $emp?->area_id ?: $u?->area_id;
+            if (!empty($primaryAreaId)) {
+                return in_array((int) $primaryAreaId, $areaIds, true);
+            }
+
+            if (!empty($emp?->branch)) {
+                return in_array($normKey($emp->branch), $targetAreaNames, true);
+            }
+
+            if (!empty($u?->accessible_areas) && is_array($u->accessible_areas)) {
+                $accIds = array_map('intval', array_filter($u->accessible_areas));
+                if (!empty($accIds)) {
+                    return count(array_intersect($accIds, $areaIds)) > 0;
+                }
+            }
+
+            return false;
+        };
+
+        $scopedEmployees = $allTechEmployees
+            ->filter(fn($emp) => $matchesTargetArea($emp, $findLinkedUser($emp)))
+            ->values();
+
+        $scopedUsers = $allTechUsers
+            ->filter(fn($u) => $matchesTargetArea($findLinkedEmp($u), $u))
+            ->values();
+
+        $scopedEmpIds = $scopedEmployees->pluck('id')->all();
 
         $offList = [];
+        $offKeys = [];
         $nightList = [];
-        $scheduledEmpNames = [];
+        $nightKeys = [];
 
-        foreach ($schedules as $ws) {
-            $empName = $ws->employee?->name;
-            if (!$empName) continue;
+        // 5. Ambil WorkSchedule & Attendance hari ini KHUSUS teknisi di Area tersebut
+        if (!empty($scopedEmpIds)) {
+            $schedules = WorkSchedule::with(['employee', 'shift'])
+                ->whereDate('date', $date)
+                ->whereIn('employee_id', $scopedEmpIds)
+                ->get();
 
-            $scheduledEmpNames[] = $empName;
-            $shift = $ws->shift;
+            foreach ($schedules as $ws) {
+                $empName = trim((string) ($ws->employee?->name ?? ''));
+                if ($empName === '') continue;
 
-            // Cek status libur / cuti / sakit
-            if (in_array(strtolower((string)$ws->status), ['off', 'leave', 'sick']) || !$shift || stripos((string)$shift->name, 'libur') !== false || stripos((string)$shift->name, 'off') !== false) {
-                $offList[] = $empName;
-            } elseif ($shift && ($shift->is_night_shift || stripos($shift->name, 'malam') !== false || stripos($shift->name, 'night') !== false)) {
-                $nightList[] = $empName;
-            }
-        }
+                $k = $normKey($empName);
+                $shift = $ws->shift;
 
-        // Cek juga dari data Attendance jika ada status off / leave KHUSUS teknisi & maintenance
-        $attendances = Attendance::with('employee')
-            ->whereDate('date', $date)
-            ->whereIn('status', ['leave', 'sick', 'off'])
-            ->whereHas('employee', function ($eq) {
-                $eq->where(function ($sq) {
-                    $sq->where('position', 'LIKE', '%teknisi%')
-                       ->orWhere('position', 'LIKE', '%maintenance%')
-                       ->orWhere('position', 'LIKE', '%lapangan%')
-                       ->orWhere('position', 'LIKE', '%jaringan%')
-                       ->orWhere('position', 'LIKE', '%serbu%');
-                });
-            })
-            ->get();
-
-        foreach ($attendances as $att) {
-            $eName = $att->employee?->name;
-            if ($eName && !in_array($eName, $offList)) {
-                $offList[] = $eName;
-            }
-        }
-
-        // Petugas yang bertugas / On Duty
-        $onDutyList = [];
-        foreach ($techUsers as $tech) {
-            if (!in_array($tech->name, $offList)) {
-                $onDutyList[] = $tech->name;
-            }
-        }
-
-        // Tambahkan juga teknisi yang memiliki tugas aktif di hari ini (bila belum tercantum)
-        // HANYA jika ia terdaftar sebagai teknisi/maintenance, bukan staff non-lapangan
-        foreach ($activeJobTechNames as $aName) {
-            if ($aName && !in_array($aName, ['-', 'Belum Ditugaskan', 'Tim Maintenance Jalur', 'Petugas Survey', 'Petugas CBP', 'Teknisi Instalasi'])) {
-                if (!in_array($aName, $offList) && !in_array($aName, $onDutyList)) {
-                    $isTechStaff = User::where('name', $aName)
-                        ->where(function ($uq) {
-                            $uq->whereHas('roles', fn($r) => $r->whereIn('name', ['teknisi', 'kepala teknisi', 'maintenance', 'teknisi lapangan']))
-                               ->orWhereIn('role', ['teknisi', 'kepala teknisi', 'maintenance']);
-                        })->exists();
-
-                    if ($isTechStaff || in_array($aName, $techNamesList)) {
-                        $onDutyList[] = $aName;
+                // Cek status libur / cuti / sakit
+                if (
+                    in_array(strtolower((string) $ws->status), ['off', 'leave', 'sick'], true)
+                    || !$shift
+                    || stripos((string) $shift->name, 'libur') !== false
+                    || stripos((string) $shift->name, 'off') !== false
+                ) {
+                    if (!isset($offKeys[$k])) {
+                        $offKeys[$k] = true;
+                        $offList[] = $empName;
+                    }
+                } elseif (
+                    $shift
+                    && ($shift->is_night_shift || stripos((string) $shift->name, 'malam') !== false || stripos((string) $shift->name, 'night') !== false)
+                ) {
+                    if (!isset($nightKeys[$k]) && !isset($offKeys[$k])) {
+                        $nightKeys[$k] = true;
+                        $nightList[] = $empName;
                     }
                 }
+            }
+
+            $attendances = Attendance::with('employee')
+                ->whereDate('date', $date)
+                ->whereIn('status', ['leave', 'sick', 'off'])
+                ->whereIn('employee_id', $scopedEmpIds)
+                ->get();
+
+            foreach ($attendances as $att) {
+                $eName = trim((string) ($att->employee?->name ?? ''));
+                if ($eName === '') continue;
+
+                $k = $normKey($eName);
+                if (!isset($offKeys[$k])) {
+                    $offKeys[$k] = true;
+                    $offList[] = $eName;
+                }
+                if (isset($nightKeys[$k])) {
+                    unset($nightKeys[$k]);
+                    $nightList = array_values(array_filter($nightList, fn($n) => $normKey($n) !== $k));
+                }
+            }
+        }
+
+        // 6. Petugas yang bertugas / On Duty (sesuai Area, tidak sedang libur/shift malam)
+        $activeJobKeys = [];
+        foreach ($activeJobTechNames as $aName) {
+            $trimmed = trim((string) $aName);
+            if ($trimmed !== '' && !in_array($trimmed, ['-', 'Belum Ditugaskan', 'Tim Maintenance Jalur', 'Petugas Survey', 'Petugas CBP', 'Teknisi Instalasi'], true)) {
+                $activeJobKeys[$normKey($trimmed)] = $trimmed;
+            }
+        }
+
+        $onDutyList = [];
+        $onDutyKeys = [];
+
+        foreach ($scopedUsers as $tech) {
+            $tName = trim((string) $tech->name);
+            if ($tName === '') continue;
+
+            $k = $normKey($tName);
+            $linkedEmp = $findLinkedEmp($tech);
+            $empKey = $linkedEmp ? $normKey($linkedEmp->name) : null;
+
+            $isOff = isset($offKeys[$k]) || ($empKey && isset($offKeys[$empKey]));
+            $isNight = isset($nightKeys[$k]) || ($empKey && isset($nightKeys[$empKey]));
+
+            if (!$isOff && (!$isNight || isset($activeJobKeys[$k])) && !isset($onDutyKeys[$k])) {
+                $onDutyKeys[$k] = true;
+                if ($empKey) $onDutyKeys[$empKey] = true;
+                $onDutyList[] = $tName;
+            }
+        }
+
+        foreach ($scopedEmployees as $emp) {
+            $eName = trim((string) $emp->name);
+            if ($eName === '') continue;
+
+            $k = $normKey($eName);
+            $linkedUser = $findLinkedUser($emp);
+            $userKey = $linkedUser ? $normKey($linkedUser->name) : null;
+
+            $alreadyAdded = isset($onDutyKeys[$k]) || ($userKey && isset($onDutyKeys[$userKey]));
+            $isOff = isset($offKeys[$k]) || ($userKey && isset($offKeys[$userKey]));
+            $isNight = isset($nightKeys[$k]) || ($userKey && isset($nightKeys[$userKey]));
+
+            if (!$alreadyAdded && !$isOff && (!$isNight || isset($activeJobKeys[$k]))) {
+                $onDutyKeys[$k] = true;
+                if ($userKey) $onDutyKeys[$userKey] = true;
+                $onDutyList[] = $eName;
             }
         }
 

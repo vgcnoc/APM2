@@ -764,10 +764,15 @@
                     <!-- TAB 6: STATUS TEKNISI & ROSTER SHIFT -->
                     <div v-if="activeTab === 'teknisi'" class="space-y-4">
                         <div class="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 space-y-4">
-                            <h3 class="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                                <span>👷‍♂️</span>
-                                <span>Status Shift & Penugasan Teknisi</span>
-                            </h3>
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <h3 class="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                                    <span>👷‍♂️</span>
+                                    <span>Status Shift & Penugasan Teknisi</span>
+                                </h3>
+                                <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                    🏢 {{ areaLabel }}
+                                </span>
+                            </div>
 
                             <!-- On Duty -->
                             <div class="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 space-y-2">
@@ -1107,13 +1112,23 @@
 
                     <!-- 5. Pilih Teknisi Lapangan -->
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                            Petugas Teknisi Ditugaskan:
-                        </label>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                                Petugas Teknisi Ditugaskan:
+                            </label>
+                            <button
+                                v-if="createForm.area_id"
+                                type="button"
+                                @click="showAllAreaTechs = !showAllAreaTechs"
+                                class="text-[11px] font-semibold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                            >
+                                {{ showAllAreaTechs ? 'Filter Sesuai Area' : 'Tampilkan Semua Area' }}
+                            </button>
+                        </div>
                         <div class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 max-h-32 overflow-y-auto space-y-1">
-                            <div class="grid grid-cols-2 gap-1.5">
+                            <div v-if="filteredTechnicians.length" class="grid grid-cols-2 gap-1.5">
                                 <label 
-                                    v-for="tech in availableTechnicians" 
+                                    v-for="tech in filteredTechnicians" 
                                     :key="tech.id"
                                     class="flex items-center gap-1.5 p-1.5 rounded-lg text-xs cursor-pointer hover:bg-white dark:hover:bg-slate-700"
                                 >
@@ -1126,6 +1141,7 @@
                                     <span class="truncate">{{ tech.name }}</span>
                                 </label>
                             </div>
+                            <p v-else class="text-xs text-slate-400 italic py-1 text-center">Belum ada teknisi terdaftar pada area ini.</p>
                         </div>
                     </div>
 
@@ -1754,6 +1770,17 @@ const createForm = ref({
     technician_ids: [],
 });
 
+const showAllAreaTechs = ref(false);
+
+const filteredTechnicians = computed(() => {
+    if (!createForm.value.area_id || showAllAreaTechs.value) {
+        return props.availableTechnicians;
+    }
+    return props.availableTechnicians.filter(
+        t => String(t.area_id) === String(createForm.value.area_id) || createForm.value.technician_ids.includes(t.id)
+    );
+});
+
 const filteredOdps = computed(() => {
     if (!createForm.value.area_id) return props.availableOdps;
     return props.availableOdps.filter(o => String(o.area_id) === String(createForm.value.area_id));
@@ -1765,6 +1792,7 @@ const filteredOdcs = computed(() => {
 });
 
 function openCreateModal() {
+    showAllAreaTechs.value = false;
     createForm.value = {
         category: 'perapihan_jalur',
         title: '',

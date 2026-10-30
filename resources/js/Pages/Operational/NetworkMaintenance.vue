@@ -174,6 +174,7 @@ async function submitUpdateMaintenance() {
 // ══════════════════════════════════════════════════════════════════
 const showCreateModal = ref(false);
 const createPhotoBeforeFile = ref(null);
+const showAllAreaTechs = ref(false);
 
 const createForm = ref({
     category: 'perapihan_jalur',
@@ -190,12 +191,32 @@ const createForm = ref({
     technician_ids: [],
 });
 
+const filteredOdps = computed(() => {
+    if (!createForm.value.area_id) return props.availableOdps;
+    return props.availableOdps.filter(o => String(o.area_id) === String(createForm.value.area_id));
+});
+
+const filteredOdcs = computed(() => {
+    if (!createForm.value.area_id) return props.availableOdcs;
+    return props.availableOdcs.filter(c => String(c.area_id) === String(createForm.value.area_id));
+});
+
+const filteredTechnicians = computed(() => {
+    if (!createForm.value.area_id || showAllAreaTechs.value) {
+        return props.availableTechnicians;
+    }
+    return props.availableTechnicians.filter(
+        t => String(t.area_id) === String(createForm.value.area_id) || createForm.value.technician_ids.includes(t.id)
+    );
+});
+
 function openCreateModal() {
     createPhotoBeforeFile.value = null;
+    showAllAreaTechs.value = false;
     createForm.value = {
         category: 'perapihan_jalur',
         title: '',
-        area_id: props.areas?.[0]?.id || '',
+        area_id: filterArea.value || props.areas?.[0]?.id || '',
         asset_type: 'manual',
         odp_id: '',
         odc_id: '',
@@ -1097,7 +1118,7 @@ function getCategoryBadgeClass(category) {
                                 class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
                             >
                                 <option value="">Pilih Box ODP Target</option>
-                                <option v-for="odp in availableOdps" :key="odp.id" :value="odp.id">
+                                <option v-for="odp in filteredOdps" :key="odp.id" :value="odp.id">
                                     {{ odp.name }}
                                 </option>
                             </select>
@@ -1110,7 +1131,7 @@ function getCategoryBadgeClass(category) {
                                 class="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
                             >
                                 <option value="">Pilih Kabinet ODC Target</option>
-                                <option v-for="odc in availableOdcs" :key="odc.id" :value="odc.id">
+                                <option v-for="odc in filteredOdcs" :key="odc.id" :value="odc.id">
                                     {{ odc.name }}
                                 </option>
                             </select>
@@ -1150,23 +1171,36 @@ function getCategoryBadgeClass(category) {
 
                     <!-- Teknisi Bertugas (Multi Checkbox) -->
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                            Pilih Teknisi / Tim Maintenance Bertugas:
-                        </label>
-                        <div class="max-h-32 overflow-y-auto p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 space-y-1.5 text-xs">
-                            <label
-                                v-for="t in availableTechnicians"
-                                :key="t.id"
-                                class="flex items-center gap-2 cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700/50 p-1 rounded-lg"
-                            >
-                                <input
-                                    type="checkbox"
-                                    :value="t.id"
-                                    v-model="createForm.technician_ids"
-                                    class="rounded text-teal-600 focus:ring-teal-500"
-                                />
-                                <span class="text-slate-800 dark:text-slate-200 font-medium">{{ t.name }}</span>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                                Pilih Teknisi / Tim Maintenance Bertugas:
                             </label>
+                            <button
+                                v-if="createForm.area_id"
+                                type="button"
+                                @click="showAllAreaTechs = !showAllAreaTechs"
+                                class="text-[11px] font-semibold text-teal-600 dark:text-teal-400 hover:underline cursor-pointer"
+                            >
+                                {{ showAllAreaTechs ? 'Filter Sesuai Area' : 'Tampilkan Semua Area' }}
+                            </button>
+                        </div>
+                        <div class="max-h-32 overflow-y-auto p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 space-y-1.5 text-xs">
+                            <template v-if="filteredTechnicians.length">
+                                <label
+                                    v-for="t in filteredTechnicians"
+                                    :key="t.id"
+                                    class="flex items-center gap-2 cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700/50 p-1 rounded-lg"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        :value="t.id"
+                                        v-model="createForm.technician_ids"
+                                        class="rounded text-teal-600 focus:ring-teal-500"
+                                    />
+                                    <span class="text-slate-800 dark:text-slate-200 font-medium">{{ t.name }}</span>
+                                </label>
+                            </template>
+                            <p v-else class="text-xs text-slate-400 italic py-1 text-center">Belum ada teknisi terdaftar pada area ini.</p>
                         </div>
                     </div>
 

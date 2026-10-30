@@ -35,7 +35,12 @@ class NetworkMaintenanceController extends Controller
 
         $targetAreaIds = null;
         if ($areaId) {
-            $targetAreaIds = [(int) $areaId];
+            $requestedAreaId = (int) $areaId;
+            if ($accessibleAreaIds !== null && !in_array($requestedAreaId, $accessibleAreaIds, true)) {
+                $targetAreaIds = $accessibleAreaIds;
+            } else {
+                $targetAreaIds = [$requestedAreaId];
+            }
         } elseif ($accessibleAreaIds !== null) {
             $targetAreaIds = $accessibleAreaIds;
         }
@@ -153,9 +158,24 @@ class NetworkMaintenanceController extends Controller
 
         // Daftar teknisi lapangan untuk form create
         $availableTechnicians = User::where(function ($q) {
-            $q->whereHas('roles', fn($r) => $r->whereIn('name', ['teknisi', 'kepala teknisi', 'maintenance', 'teknisi lapangan']))
-              ->orWhereIn('role', ['teknisi', 'kepala teknisi', 'maintenance']);
-        })->orderBy('name')->get(['id', 'name', 'phone']);
+            $q->where('is_active', true)->orWhereNull('is_active');
+        })->where(function ($q) {
+            $q->whereHas('roles', function ($r) {
+                $r->where(function ($rq) {
+                    $rq->where('name', 'LIKE', '%teknisi%')
+                       ->orWhere('name', 'LIKE', '%maintenance%')
+                       ->orWhere('name', 'LIKE', '%lapangan%')
+                       ->orWhere('name', 'LIKE', '%jaringan%')
+                       ->orWhere('name', 'LIKE', '%serbu%');
+                });
+            })->orWhere(function ($uq) {
+                $uq->where('role', 'LIKE', '%teknisi%')
+                   ->orWhere('role', 'LIKE', '%maintenance%')
+                   ->orWhere('role', 'LIKE', '%lapangan%')
+                   ->orWhere('role', 'LIKE', '%jaringan%')
+                   ->orWhere('role', 'LIKE', '%serbu%');
+            });
+        })->orderBy('name')->get(['id', 'name', 'phone', 'area_id']);
 
         $availableOdps = Odp::select('id', 'name', 'area_id')->orderBy('name')->limit(500)->get();
         $availableOdcs = Odc::select('id', 'name', 'area_id')->orderBy('name')->limit(150)->get();
