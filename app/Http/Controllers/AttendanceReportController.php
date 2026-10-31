@@ -21,6 +21,8 @@ class AttendanceReportController extends Controller
     public function index(Request $request): Response
     {
         $data = $this->buildReportData($request);
+        $userRole = strtolower(auth()->user()?->role ?? '');
+        $data['canDelete'] = in_array($userRole, ['admin', 'hrd', 'finance']) || (bool) auth()->user()?->can('attendance_report_btn_delete');
         return Inertia::render('Attendances/Report', $data);
     }
 
@@ -460,6 +462,75 @@ class AttendanceReportController extends Controller
             'duty_location' => $item->duty_location,
             'is_synced' => (bool) $item->is_synced_to_payroll,
         ];
+    }
+
+    /**
+     * Otorisasi ketat untuk aksi hapus: Hanya akun HRD, Finance, dan Admin
+     */
+    protected function authorizeDelete(): void
+    {
+        $user = auth()->user();
+        if (!$user) {
+            abort(401);
+        }
+
+        $userRole = strtolower($user->role ?? '');
+        $isAllowedRole = in_array($userRole, ['admin', 'hrd', 'finance']);
+        $hasPermission = (bool) $user->can('attendance_report_btn_delete');
+
+        if (!$isAllowedRole && !$hasPermission) {
+            abort(403, 'Akses ditolak. Aksi hapus pada laporan absensi hanya diizinkan untuk akun HRD dan Finance.');
+        }
+    }
+
+    /**
+     * Hapus satu log rinci presensi
+     */
+    public function destroyLog(Request $request, Attendance $attendance)
+    {
+        $this->authorizeDelete();
+
+        $employeeName = $attendance->employee?->name ?? 'Karyawan';
+        $date = $attendance->date ? Carbon::parse($attendance->date)->translatedFormat('d M Y') : 'terpilih';
+
+        $attendance->delete();
+
+        return redirect()->back()->with('success', "Log presensi {$employeeName} pada tanggal {$date} berhasil dihapus.");
+    }
+
+    /**
+     * Hapus seluruh log presensi karyawan dalam rentang periode filter yang sedang aktif
+     */
+    public function destroyEmployeeRecap(Request $request, Employee $employee)
+    {
+        $this->authorizeDelete();
+
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+
+        if (!$startDate || !$endDate) {
+            $periodMode = $request->input('period_mode', 'month');
+            if ($periodMode === 'month') {
+                $month = $request->input('month', now()->format('Y-m'));
+                $startDate = Carbon::parse($month . '-01')->startOfMonth()->toDateString();
+                $endDate = Carbon::parse($month . '-01')->endOfMonth()->toDateString();
+            } else {
+                $startDate = now()->startOfMonth()->toDateString();
+                $endDate = now()->endOfMonth()->toDateString();
+            }
+        }
+
+        $count = Attendance::where('employee_id', $employee->id)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->count();
+
+        Attendance::where('employee_id', $employee->id)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->delete();
+
+        $periodFormatted = Carbon::parse($startDate)->format('d/m/Y') . ' s/d ' . Carbon::parse($endDate)->format('d/m/Y');
+
+        return redirect()->back()->with('success', "Sebanyak {$count} data presensi {$employee->name} periode {$periodFormatted} berhasil dihapus.");
     }
 }
 

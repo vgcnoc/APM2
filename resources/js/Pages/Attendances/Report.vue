@@ -373,13 +373,25 @@
                                     </span>
                                 </td>
                                 <td class="py-3 px-4 text-center">
-                                    <button
-                                        type="button"
-                                        @click="filterByEmployee(emp.employee_id)"
-                                        class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-bold text-xs hover:underline cursor-pointer"
-                                    >
-                                        Lihat Log
-                                    </button>
+                                    <div class="inline-flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            @click="filterByEmployee(emp.employee_id)"
+                                            class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-bold text-xs hover:underline cursor-pointer"
+                                        >
+                                            Lihat Log
+                                        </button>
+                                        <button
+                                            v-if="canDelete"
+                                            type="button"
+                                            @click="confirmDeleteEmployeeRecap(emp)"
+                                            class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-bold text-xs transition cursor-pointer"
+                                            title="Hapus / Reset semua log absensi karyawan ini pada periode yang dipilih"
+                                        >
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                            <span>Hapus</span>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                             <tr v-if="employeeRecap.length === 0">
@@ -409,6 +421,7 @@
                                 <th class="py-3 px-4 text-center">Tipe Presensi</th>
                                 <th class="py-3 px-4">Keterangan / Lokasi</th>
                                 <th class="py-3 px-4 text-center">Bukti / Foto</th>
+                                <th class="py-3 px-4 text-center">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-800/80">
@@ -484,9 +497,22 @@
                                     </button>
                                     <span v-else class="text-slate-400 text-[10px]">Tanpa Foto</span>
                                 </td>
+                                <td class="py-3 px-4 text-center">
+                                    <button
+                                        v-if="canDelete"
+                                        type="button"
+                                        @click="confirmDeleteLog(log)"
+                                        class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-bold text-xs transition cursor-pointer"
+                                        title="Hapus catatan presensi ini"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                        <span>Hapus</span>
+                                    </button>
+                                    <span v-else class="text-slate-400 text-[10px]">-</span>
+                                </td>
                             </tr>
                             <tr v-if="paginatedLogs.length === 0">
-                                <td colspan="9" class="py-10 text-center text-slate-400">
+                                <td colspan="10" class="py-10 text-center text-slate-400">
                                     Tidak ada catatan log absensi pada filter yang dipilih.
                                 </td>
                             </tr>
@@ -592,7 +618,8 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { router, Link } from '@inertiajs/vue3';
+import { router, Link, usePage } from '@inertiajs/vue3';
+import Swal from 'sweetalert2';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
@@ -604,6 +631,14 @@ const props = defineProps({
     employees: { type: Array, default: () => [] },
     filters: { type: Object, default: () => ({}) },
     filterPeriodLabel: { type: String, default: '' },
+    canDelete: { type: Boolean, default: false },
+});
+
+const page = usePage();
+const canDelete = computed(() => {
+    if (props.canDelete) return true;
+    const role = (page.props.auth?.user?.role || '').toLowerCase();
+    return ['admin', 'hrd', 'finance'].includes(role) || Boolean(page.props.auth?.can?.['attendance_report_btn_delete']);
 });
 
 const activeTab = ref(props.filters.tab || 'recap');
@@ -697,6 +732,74 @@ function openMediaModal(log) {
 function formatRupiah(num) {
     if (!num) return 'Rp 0';
     return 'Rp ' + Number(num).toLocaleString('id-ID');
+}
+
+function confirmDeleteEmployeeRecap(emp) {
+    Swal.fire({
+        title: 'Hapus Rekap Absensi?',
+        html: `Apakah Anda yakin ingin menghapus data presensi karyawan <b>${emp.name}</b> pada periode <b>${props.filterPeriodLabel}</b>?<br><br><span class="text-rose-600 text-xs font-semibold">Tindakan ini permanen dan akan menghapus semua log presensi karyawan tersebut pada periode yang dipilih.</span>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Hapus Data',
+        cancelButtonText: 'Batal',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.delete(`/attendance-reports/employee/${emp.employee_id}`, {
+                data: {
+                    start_date: props.filters?.start_date,
+                    end_date: props.filters?.end_date,
+                    period_mode: filterForm.value.period_mode,
+                    month: filterForm.value.month,
+                },
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil Dihapus',
+                        text: 'Catatan presensi karyawan pada periode ini telah dihapus.',
+                        timer: 2000,
+                        showConfirmButton: false,
+                    });
+                },
+                onError: (err) => {
+                    Swal.fire('Gagal!', err?.message || 'Terjadi kesalahan saat menghapus data.', 'error');
+                }
+            });
+        }
+    });
+}
+
+function confirmDeleteLog(log) {
+    Swal.fire({
+        title: 'Hapus Log Presensi?',
+        html: `Hapus catatan log presensi <b>${log.employee_name}</b> tanggal <b>${log.formatted_date}</b>?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Hapus',
+        cancelButtonText: 'Batal',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.delete(`/attendance-reports/log/${log.id}`, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Log Terhapus',
+                        text: 'Catatan presensi harian berhasil dihapus.',
+                        timer: 2000,
+                        showConfirmButton: false,
+                    });
+                },
+                onError: (err) => {
+                    Swal.fire('Gagal!', err?.message || 'Terjadi kesalahan saat menghapus log.', 'error');
+                }
+            });
+        }
+    });
 }
 </script>
 
