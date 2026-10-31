@@ -200,6 +200,10 @@ Route::middleware(['auth'])->group(function () {
         // Edit Hasil Survey
         Route::post('/{customer}/update-survey', [CustomerController::class, 'updateSurvey'])
             ->name('update-survey');
+
+        // Rollback hasil survey ke tahap pengisian laporan
+        Route::post('/{customer}/rollback-survey', [CustomerController::class, 'rollbackSurvey'])
+            ->name('rollback-survey');
             
         // Pindah ke tahap Instalasi
         Route::post('/{customer}/mark-installing', [CustomerController::class, 'markInstalling'])

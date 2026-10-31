@@ -666,260 +666,260 @@
 
             <!-- Simulation Panel -->
             <div class="lg:w-5/12 xl:w-1/3">
-                <div class="bg-gradient-to-br from-indigo-950 via-indigo-900 to-slate-900 rounded-3xl shadow-xl border border-indigo-700/60 text-white p-6 sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto space-y-5 custom-scrollbar">
+                <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white p-6 sticky top-6 max-h-[calc(100vh-3rem)] overflow-y-auto space-y-5 custom-scrollbar">
                     
                     <!-- Header -->
-                    <div class="flex items-start justify-between gap-3 pb-4 border-b border-indigo-700/40">
+                    <div class="flex items-start justify-between gap-3 pb-4 border-b border-slate-200 dark:border-slate-700">
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-md shadow-indigo-500/20">
-                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                            <div class="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center shadow-sm">
+                                <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
                             </div>
                             <div>
-                                <h3 class="font-bold text-base text-white flex items-center gap-2">
+                                <h3 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
                                     Simulasi AI
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase shadow-sm" :class="form.billing_type === 'pascabayar' ? (form.billing_cycle === 'anniversary' ? 'bg-purple-500/20 text-purple-300 border border-purple-400/30' : (form.prorata_first_month ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30' : 'bg-amber-500/20 text-amber-300 border border-amber-400/30')) : 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/30'">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase shadow-sm" :class="form.billing_type === 'pascabayar' ? (form.billing_cycle === 'anniversary' ? 'bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-500/20 dark:text-purple-300 dark:border-purple-400/30' : (form.prorata_first_month ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-400/30' : 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-400/30')) : 'bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-400/30'">
                                         {{ form.billing_type === 'pascabayar' ? (form.billing_cycle === 'anniversary' ? 'Pascabayar (Anniversary - Penuh)' : (form.prorata_first_month ? 'Pascabayar (Prorata Kalender)' : 'Pascabayar (Normal)')) : 'Prabayar (Prepaid)' }}
                                     </span>
                                 </h3>
-                                <p class="text-[11px] text-indigo-200 mt-0.5">Kalkulasi cerdas live sesuai pengaturan</p>
+                                <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Kalkulasi cerdas live sesuai pengaturan</p>
                             </div>
                         </div>
                     </div>
 
                     <!-- Sandbox Interactive Controls -->
-                    <div class="bg-indigo-900/40 rounded-xl p-3.5 border border-indigo-700/50 space-y-3">
-                        <div class="flex items-center justify-between text-xs font-semibold text-indigo-200">
+                    <div class="bg-slate-50 dark:bg-slate-800/70 rounded-xl p-3.5 border border-slate-200 dark:border-slate-700 space-y-3">
+                        <div class="flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-slate-300">
                             <span class="flex items-center gap-1.5">
-                                <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+                                <svg class="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
                                 Uji Coba Parameter
                             </span>
-                            <span class="text-[10px] text-indigo-400 font-normal">Klik untuk simulasi</span>
+                            <span class="text-[10px] text-slate-400 dark:text-slate-500 font-normal">Klik untuk simulasi</span>
                         </div>
 
                         <!-- Harga Paket -->
                         <div>
                             <div class="flex items-center justify-between mb-1.5">
-                                <label class="text-[10px] uppercase tracking-wider text-indigo-300 font-bold">Harga Paket / Bln</label>
-                                <span class="text-xs font-bold text-white">{{ formatCurrency(simPrice) }}</span>
+                                <label class="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold">Harga Paket / Bln</label>
+                                <span class="text-xs font-bold text-slate-900 dark:text-white">{{ formatCurrency(simPrice) }}</span>
                             </div>
                             <div class="grid grid-cols-4 gap-1.5 mb-1.5">
-                                <button v-for="price in quickPrices" :key="price" type="button" @click="simPrice = price" class="py-1 px-1 text-[11px] rounded-lg font-medium transition-all text-center cursor-pointer" :class="simPrice === price ? 'bg-indigo-500 text-white shadow-sm ring-1 ring-white/50 font-bold' : 'bg-white/10 text-indigo-200 hover:bg-white/20'">
+                                <button v-for="price in quickPrices" :key="price" type="button" @click="simPrice = price" class="py-1 px-1 text-[11px] rounded-lg font-medium transition-all text-center cursor-pointer" :class="simPrice === price ? 'bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-300 dark:ring-indigo-400/50 font-bold' : 'bg-white text-slate-600 border border-slate-200 hover:bg-indigo-50 hover:text-indigo-700 dark:bg-white/10 dark:text-indigo-200 dark:border-white/10 dark:hover:bg-white/20'">
                                     {{ price / 1000 }}rb
                                 </button>
                             </div>
                             <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center text-xs text-indigo-400 font-semibold">Rp</span>
-                                <input type="number" v-model.number="simPrice" step="10000" min="0" class="w-full pl-8 pr-2 py-1 text-xs bg-white/10 border border-indigo-700/60 rounded-lg text-white placeholder-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400" placeholder="Custom harga...">
+                                <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center text-xs text-slate-400 dark:text-indigo-400 font-semibold">Rp</span>
+                                <input type="number" v-model.number="simPrice" step="10000" min="0" class="w-full pl-8 pr-2 py-1 text-xs bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:bg-slate-900 dark:border-slate-700 dark:text-white dark:placeholder-indigo-400 dark:focus:ring-indigo-400" placeholder="Custom harga...">
                             </div>
                         </div>
 
                         <!-- Tanggal Aktivasi -->
                         <div>
                             <div class="flex items-center justify-between mb-1.5">
-                                <label class="text-[10px] uppercase tracking-wider text-indigo-300 font-bold">Simulasi Tanggal Aktivasi</label>
-                                <span class="text-[11px] font-semibold text-emerald-300">{{ simActivationDateFormatted }}</span>
+                                <label class="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-bold">Simulasi Tanggal Aktivasi</label>
+                                <span class="text-[11px] font-semibold text-emerald-600 dark:text-emerald-300">{{ simActivationDateFormatted }}</span>
                             </div>
                             <div class="flex items-center gap-1.5 mb-1.5">
-                                <input type="date" v-model="simActivationDate" class="w-full px-2 py-1 text-xs bg-white/10 border border-indigo-700/60 rounded-lg text-white focus:outline-none focus:ring-1 focus:ring-indigo-400 cursor-pointer">
+                                <input type="date" v-model="simActivationDate" class="w-full px-2 py-1 text-xs bg-white border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer dark:bg-slate-900 dark:border-slate-700 dark:text-white dark:focus:ring-indigo-400">
                             </div>
                             <div class="flex flex-wrap gap-1">
-                                <button type="button" @click="setQuickDate('today')" class="px-2 py-0.5 rounded text-[10px] bg-white/10 hover:bg-white/20 text-indigo-200 cursor-pointer">Hari Ini</button>
-                                <button type="button" @click="setQuickDate('day1')" class="px-2 py-0.5 rounded text-[10px] bg-white/10 hover:bg-white/20 text-indigo-200 cursor-pointer">Tgl 1</button>
-                                <button type="button" @click="setQuickDate('day10')" class="px-2 py-0.5 rounded text-[10px] bg-white/10 hover:bg-white/20 text-indigo-200 cursor-pointer">Tgl 10</button>
-                                <button type="button" @click="setQuickDate('day15')" class="px-2 py-0.5 rounded text-[10px] bg-white/10 hover:bg-white/20 text-indigo-200 cursor-pointer">Tgl 15</button>
-                                <button type="button" @click="setQuickDate('day20')" class="px-2 py-0.5 rounded text-[10px] bg-white/10 hover:bg-white/20 text-indigo-200 cursor-pointer">Tgl 20</button>
-                                <button type="button" @click="setQuickDate('day25')" class="px-2 py-0.5 rounded text-[10px] bg-white/10 hover:bg-white/20 text-indigo-200 cursor-pointer">Tgl 25</button>
+                                <button type="button" @click="setQuickDate('today')" class="px-2 py-0.5 rounded text-[10px] bg-white border border-slate-200 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 cursor-pointer dark:bg-white/10 dark:border-white/10 dark:hover:bg-white/20 dark:text-indigo-200">Hari Ini</button>
+                                <button type="button" @click="setQuickDate('day1')" class="px-2 py-0.5 rounded text-[10px] bg-white border border-slate-200 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 cursor-pointer dark:bg-white/10 dark:border-white/10 dark:hover:bg-white/20 dark:text-indigo-200">Tgl 1</button>
+                                <button type="button" @click="setQuickDate('day10')" class="px-2 py-0.5 rounded text-[10px] bg-white border border-slate-200 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 cursor-pointer dark:bg-white/10 dark:border-white/10 dark:hover:bg-white/20 dark:text-indigo-200">Tgl 10</button>
+                                <button type="button" @click="setQuickDate('day15')" class="px-2 py-0.5 rounded text-[10px] bg-white border border-slate-200 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 cursor-pointer dark:bg-white/10 dark:border-white/10 dark:hover:bg-white/20 dark:text-indigo-200">Tgl 15</button>
+                                <button type="button" @click="setQuickDate('day20')" class="px-2 py-0.5 rounded text-[10px] bg-white border border-slate-200 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 cursor-pointer dark:bg-white/10 dark:border-white/10 dark:hover:bg-white/20 dark:text-indigo-200">Tgl 20</button>
+                                <button type="button" @click="setQuickDate('day25')" class="px-2 py-0.5 rounded text-[10px] bg-white border border-slate-200 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 cursor-pointer dark:bg-white/10 dark:border-white/10 dark:hover:bg-white/20 dark:text-indigo-200">Tgl 25</button>
                             </div>
                         </div>
                     </div>
 
                     <!-- Siklus Terbit & Isolir -->
                     <div class="grid grid-cols-1 gap-2.5">
-                        <div class="bg-white/10 backdrop-blur-md border border-white/10 rounded-xl p-3.5">
+                        <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-3.5 dark:bg-slate-800/70 dark:border-slate-700">
                             <div class="flex items-center gap-2 mb-1">
-                                <div class="w-2 h-2 rounded-full" :class="form.billing_type === 'prabayar' ? 'bg-cyan-400' : 'bg-blue-400'"></div>
-                                <span class="text-[11px] font-bold text-indigo-200 uppercase tracking-wider">
+                                <div class="w-2 h-2 rounded-full" :class="form.billing_type === 'prabayar' ? 'bg-cyan-500 dark:bg-cyan-400' : 'bg-indigo-500 dark:bg-blue-400'"></div>
+                                <span class="text-[11px] font-bold text-indigo-700 dark:text-indigo-200 uppercase tracking-wider">
                                     {{ form.billing_type === 'prabayar' ? 'Tagihan Pertama (Aktivasi)' : 'Terbit Tagihan Rutin' }}
                                 </span>
                             </div>
-                            <p class="text-sm font-semibold pl-4 text-white">{{ nextRoutineBillingDateFormatted }}</p>
-                            <p class="text-[10px] text-indigo-300 pl-4 mt-0.5">
+                            <p class="text-sm font-semibold pl-4 text-slate-900 dark:text-white">{{ nextRoutineBillingDateFormatted }}</p>
+                            <p class="text-[10px] text-indigo-600 dark:text-indigo-300 pl-4 mt-0.5">
                                 {{ form.billing_type === 'prabayar' ? 'Pelanggan prabayar membayar invoice saat aktivasi sebelum layanan aktif' : (form.billing_cycle === 'anniversary' ? 'Tagihan otomatis terbit di tanggal yang sama tiap bulan (Anniversary)' : 'Sistem otomatis generate invoice pelanggan tiap bulannya') }}
                             </p>
                         </div>
 
-                        <div class="bg-white/10 backdrop-blur-md border border-red-500/30 rounded-xl p-3.5 relative overflow-hidden">
+                        <div class="bg-red-50 border border-red-200 rounded-xl p-3.5 relative overflow-hidden dark:bg-red-950/20 dark:border-red-500/30">
                             <div class="absolute right-0 top-0 w-16 h-16 bg-red-500/10 rounded-bl-full pointer-events-none"></div>
                             <div class="flex items-center gap-2 mb-1">
-                                <div class="w-2 h-2 rounded-full bg-red-400 animate-pulse"></div>
-                                <span class="text-[11px] font-bold text-red-200 uppercase tracking-wider">Tanggal & Jam Isolir</span>
+                                <div class="w-2 h-2 rounded-full bg-red-500 dark:bg-red-400 animate-pulse"></div>
+                                <span class="text-[11px] font-bold text-red-700 dark:text-red-200 uppercase tracking-wider">Tanggal & Jam Isolir</span>
                             </div>
-                            <p class="text-sm font-bold text-white pl-4">Tgl {{ isolateDateFormatted }}</p>
-                            <p class="text-[10px] text-red-200 pl-4 mt-0.5">Tanggal {{ form.isolate_day }}, pukul {{ form.isolate_time || '00:00' }} WIB · diperiksa setiap menit</p>
+                            <p class="text-sm font-bold text-slate-900 dark:text-white pl-4">Tgl {{ isolateDateFormatted }}</p>
+                            <p class="text-[10px] text-red-700 dark:text-red-200 pl-4 mt-0.5">Tanggal {{ form.isolate_day }}, pukul {{ form.isolate_time || '00:00' }} WIB · diperiksa setiap menit</p>
                         </div>
                     </div>
 
                     <!-- Hasil Perhitungan Tagihan Pertama (Simulasi) -->
                     <!-- Skenario 1: Pascabayar + Kalender Serentak + Prorata Aktif -->
-                    <div v-if="form.billing_type === 'pascabayar' && form.billing_cycle === 'calendar' && form.prorata_first_month" class="bg-gradient-to-b from-indigo-900/60 to-indigo-950/80 border border-indigo-500/40 rounded-xl p-4 space-y-3">
-                        <div class="flex items-center justify-between pb-2 border-b border-indigo-700/50">
+                    <div v-if="form.billing_type === 'pascabayar' && form.billing_cycle === 'calendar' && form.prorata_first_month" class="bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-500/40 rounded-xl p-4 space-y-3">
+                        <div class="flex items-center justify-between pb-2 border-b border-indigo-200 dark:border-indigo-700/50">
                             <div class="flex items-center gap-2">
-                                <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                                <h4 class="text-xs font-bold text-emerald-300 uppercase tracking-wide">Rincian Prorata Kalender</h4>
+                                <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 002 2v14a2 2 0 002 2z"/></svg>
+                                <h4 class="text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wide">Rincian Prorata Kalender</h4>
                             </div>
-                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold">1x di Bulan Pertama</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 font-bold">1x di Bulan Pertama</span>
                         </div>
                         
-                        <div class="space-y-2 text-xs text-indigo-100">
-                            <div class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
-                                <span class="text-indigo-300">Harga Paket Standar:</span>
-                                <span class="font-semibold text-white">{{ formatCurrency(simPrice) }} / bln</span>
+                        <div class="space-y-2 text-xs text-slate-600 dark:text-indigo-100">
+                            <div class="flex justify-between items-center border-b border-indigo-200 dark:border-indigo-800/40 pb-1.5">
+                                <span class="text-slate-500 dark:text-indigo-300">Harga Paket Standar:</span>
+                                <span class="font-semibold text-slate-900 dark:text-white">{{ formatCurrency(simPrice) }} / bln</span>
                             </div>
-                            <div class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
-                                <span class="text-indigo-300">Tanggal Aktivasi:</span>
-                                <span class="font-semibold text-white">{{ simActivationDateFormatted }}</span>
+                            <div class="flex justify-between items-center border-b border-indigo-200 dark:border-indigo-800/40 pb-1.5">
+                                <span class="text-slate-500 dark:text-indigo-300">Tanggal Aktivasi:</span>
+                                <span class="font-semibold text-slate-900 dark:text-white">{{ simActivationDateFormatted }}</span>
                             </div>
-                            <div class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
-                                <span class="text-indigo-300">Siklus Kalender ({{ simCycleDays }} Hari):</span>
-                                <span class="font-semibold text-white">s/d {{ prevIssueDateFormatted }}</span>
+                            <div class="flex justify-between items-center border-b border-indigo-200 dark:border-indigo-800/40 pb-1.5">
+                                <span class="text-slate-500 dark:text-indigo-300">Siklus Kalender ({{ simCycleDays }} Hari):</span>
+                                <span class="font-semibold text-slate-900 dark:text-white">s/d {{ prevIssueDateFormatted }}</span>
                             </div>
-                            <div class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
-                                <span class="text-indigo-300">Hari Pemakaian Aktif:</span>
-                                <span class="font-bold text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">{{ simDaysUsed }} Hari Aktif</span>
+                            <div class="flex justify-between items-center border-b border-indigo-200 dark:border-indigo-800/40 pb-1.5">
+                                <span class="text-slate-500 dark:text-indigo-300">Hari Pemakaian Aktif:</span>
+                                <span class="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200 dark:text-emerald-300 dark:bg-emerald-950/60 dark:border-emerald-500/30">{{ simDaysUsed }} Hari Aktif</span>
                             </div>
-                            <div class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
-                                <span class="text-indigo-300">Subtotal Prorata:</span>
-                                <span class="font-bold text-white">{{ formatCurrency(simSubtotal) }}</span>
+                            <div class="flex justify-between items-center border-b border-indigo-200 dark:border-indigo-800/40 pb-1.5">
+                                <span class="text-slate-500 dark:text-indigo-300">Subtotal Prorata:</span>
+                                <span class="font-bold text-slate-900 dark:text-white">{{ formatCurrency(simSubtotal) }}</span>
                             </div>
-                            <div v-if="simTaxRate > 0" class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
-                                <span class="text-indigo-300">PPN ({{ simTaxRate }}%):</span>
-                                <span class="font-medium text-amber-300">+ {{ formatCurrency(simTax) }}</span>
+                            <div v-if="simTaxRate > 0" class="flex justify-between items-center border-b border-indigo-200 dark:border-indigo-800/40 pb-1.5">
+                                <span class="text-slate-500 dark:text-indigo-300">PPN ({{ simTaxRate }}%):</span>
+                                <span class="font-medium text-amber-600 dark:text-amber-300">+ {{ formatCurrency(simTax) }}</span>
                             </div>
                             <div class="flex justify-between items-baseline pt-1">
-                                <span class="text-xs font-bold text-white">Total Tagihan Pertama:</span>
-                                <span class="font-extrabold text-xl text-emerald-400">{{ formatCurrency(simGrandTotal) }}</span>
+                                <span class="text-xs font-bold text-slate-900 dark:text-white">Total Tagihan Pertama:</span>
+                                <span class="font-extrabold text-xl text-emerald-600 dark:text-emerald-400">{{ formatCurrency(simGrandTotal) }}</span>
                             </div>
                         </div>
 
-                        <div class="bg-indigo-950/70 p-2.5 rounded-lg border border-indigo-800/50 text-[10px] space-y-1">
-                            <p class="text-indigo-300">
-                                <strong class="text-white">Rumusan Aktif:</strong>
+                        <div class="bg-white p-2.5 rounded-lg border border-indigo-100 text-[10px] space-y-1 dark:bg-indigo-950/70 dark:border-indigo-800/50">
+                            <p class="text-indigo-700 dark:text-indigo-300">
+                                <strong class="text-slate-900 dark:text-white">Rumusan Aktif:</strong>
                                 <span v-if="form.prorata_formula === 'fixed_30'"> Konstan 30 Hari &mdash; ({{ formatCurrency(simPrice) }} ÷ 30) × {{ simDaysUsed }} hr</span>
                                 <span v-else-if="form.prorata_formula === 'mid_month'"> Paruh Bulan &mdash; {{ simActivationDay > 15 ? 'Aktivasi > tgl 15 = Diskon 50%' : 'Aktivasi <= tgl 15 = 100% Penuh' }}</span>
                                 <span v-else> Sangat Akurat (Bulan Berjalan) &mdash; ({{ formatCurrency(simPrice) }} ÷ {{ simCycleDays }} hr) × {{ simDaysUsed }} hr</span>
                             </p>
-                            <p class="text-[9px] text-indigo-400 italic">
+                            <p class="text-[9px] text-slate-500 dark:text-indigo-400 italic">
                                 * Bulan ke-2 dan seterusnya tagihan otomatis normal {{ formatCurrency(simGrandTotalNormal) }} per tanggal kalender serentak.
                             </p>
                         </div>
                     </div>
 
                     <!-- Skenario 2: Pascabayar + Sesuai Tanggal Aktivasi (Anniversary Billing) -->
-                    <div v-else-if="form.billing_type === 'pascabayar' && form.billing_cycle === 'anniversary'" class="bg-gradient-to-b from-purple-900/40 to-indigo-950/80 border border-purple-500/40 rounded-xl p-4 space-y-3">
-                        <div class="flex items-center justify-between pb-2 border-b border-purple-700/40">
+                    <div v-else-if="form.billing_type === 'pascabayar' && form.billing_cycle === 'anniversary'" class="bg-purple-50/70 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-500/40 rounded-xl p-4 space-y-3">
+                        <div class="flex items-center justify-between pb-2 border-b border-purple-200 dark:border-purple-700/40">
                             <div class="flex items-center gap-2">
                                 <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                <h4 class="text-xs font-bold text-purple-300 uppercase tracking-wide">Siklus Anniversary (1 Bulan Penuh)</h4>
+                                <h4 class="text-xs font-bold text-purple-700 dark:text-purple-300 uppercase tracking-wide">Siklus Anniversary (1 Bulan Penuh)</h4>
                             </div>
-                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-bold">Tanpa Prorata</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300 font-bold">Tanpa Prorata</span>
                         </div>
                         
-                        <div class="space-y-2 text-xs text-indigo-100">
-                            <div class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
-                                <span class="text-indigo-300">Biaya Paket (1 Bulan):</span>
-                                <span class="font-semibold text-white">{{ formatCurrency(simPrice) }}</span>
+                        <div class="space-y-2 text-xs text-slate-600 dark:text-indigo-100">
+                            <div class="flex justify-between items-center border-b border-purple-200 dark:border-indigo-800/40 pb-1.5">
+                                <span class="text-slate-500 dark:text-indigo-300">Biaya Paket (1 Bulan):</span>
+                                <span class="font-semibold text-slate-900 dark:text-white">{{ formatCurrency(simPrice) }}</span>
                             </div>
-                            <div class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
-                                <span class="text-indigo-300">Tanggal Aktivasi:</span>
-                                <span class="font-semibold text-white">{{ simActivationDateFormatted }}</span>
+                            <div class="flex justify-between items-center border-b border-purple-200 dark:border-indigo-800/40 pb-1.5">
+                                <span class="text-slate-500 dark:text-indigo-300">Tanggal Aktivasi:</span>
+                                <span class="font-semibold text-slate-900 dark:text-white">{{ simActivationDateFormatted }}</span>
                             </div>
-                            <div class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
-                                <span class="text-indigo-300">Periode Berjalan:</span>
-                                <span class="font-medium text-white">{{ simActivationDateFormatted }} s/d {{ prabayarEndDateFormatted }}</span>
+                            <div class="flex justify-between items-center border-b border-purple-200 dark:border-indigo-800/40 pb-1.5">
+                                <span class="text-slate-500 dark:text-indigo-300">Periode Berjalan:</span>
+                                <span class="font-medium text-slate-900 dark:text-white">{{ simActivationDateFormatted }} s/d {{ prabayarEndDateFormatted }}</span>
                             </div>
-                            <div v-if="simTaxRate > 0" class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
-                                <span class="text-indigo-300">PPN ({{ simTaxRate }}%):</span>
-                                <span class="font-medium text-purple-300">+ {{ formatCurrency(simTaxNormal) }}</span>
+                            <div v-if="simTaxRate > 0" class="flex justify-between items-center border-b border-purple-200 dark:border-indigo-800/40 pb-1.5">
+                                <span class="text-slate-500 dark:text-indigo-300">PPN ({{ simTaxRate }}%):</span>
+                                <span class="font-medium text-purple-600 dark:text-purple-300">+ {{ formatCurrency(simTaxNormal) }}</span>
                             </div>
                             <div class="flex justify-between items-baseline pt-1">
-                                <span class="text-xs font-bold text-white">Total Tagihan Pertama:</span>
-                                <span class="font-extrabold text-xl text-purple-400">{{ formatCurrency(simGrandTotalNormal) }}</span>
+                                <span class="text-xs font-bold text-slate-900 dark:text-white">Total Tagihan Pertama:</span>
+                                <span class="font-extrabold text-xl text-purple-600 dark:text-purple-400">{{ formatCurrency(simGrandTotalNormal) }}</span>
                             </div>
                         </div>
 
-                        <div class="bg-purple-950/40 p-2.5 rounded-lg border border-purple-800/40 text-[10px] text-purple-200">
+                        <div class="bg-white p-2.5 rounded-lg border border-purple-100 text-[10px] text-purple-700 dark:bg-purple-950/40 dark:border-purple-800/40 dark:text-purple-200">
                             Tagihan dihitung flat 1 bulan penuh terhitung sejak tanggal aktivasi. Tagihan rutin bulan berikutnya otomatis terbit pada <strong>{{ nextRoutineBillingDateFormatted }}</strong>.
                         </div>
                     </div>
 
                     <!-- Skenario 3: Pascabayar Kalender + Prorata Non-Aktif -->
-                    <div v-else-if="form.billing_type === 'pascabayar' && !form.prorata_first_month" class="bg-gradient-to-b from-amber-900/40 to-indigo-950/80 border border-amber-500/40 rounded-xl p-4 space-y-3">
-                        <div class="flex items-center justify-between pb-2 border-b border-amber-700/40">
+                    <div v-else-if="form.billing_type === 'pascabayar' && !form.prorata_first_month" class="bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-500/40 rounded-xl p-4 space-y-3">
+                        <div class="flex items-center justify-between pb-2 border-b border-amber-200 dark:border-amber-700/40">
                             <div class="flex items-center gap-2">
                                 <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                                <h4 class="text-xs font-bold text-amber-300 uppercase tracking-wide">Prorata Tagihan Pertama Non-Aktif</h4>
+                                <h4 class="text-xs font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wide">Prorata Tagihan Pertama Non-Aktif</h4>
                             </div>
-                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold">1 Bulan Penuh</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300 font-bold">1 Bulan Penuh</span>
                         </div>
                         
-                        <div class="space-y-2 text-xs text-indigo-100">
-                            <div class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
-                                <span class="text-indigo-300">Biaya Paket Standar:</span>
-                                <span class="font-semibold text-white">{{ formatCurrency(simPrice) }}</span>
+                        <div class="space-y-2 text-xs text-slate-600 dark:text-indigo-100">
+                            <div class="flex justify-between items-center border-b border-amber-200 dark:border-indigo-800/40 pb-1.5">
+                                <span class="text-slate-500 dark:text-indigo-300">Biaya Paket Standar:</span>
+                                <span class="font-semibold text-slate-900 dark:text-white">{{ formatCurrency(simPrice) }}</span>
                             </div>
-                            <div v-if="simTaxRate > 0" class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
-                                <span class="text-indigo-300">PPN ({{ simTaxRate }}%):</span>
-                                <span class="font-medium text-amber-300">+ {{ formatCurrency(simTaxNormal) }}</span>
+                            <div v-if="simTaxRate > 0" class="flex justify-between items-center border-b border-amber-200 dark:border-indigo-800/40 pb-1.5">
+                                <span class="text-slate-500 dark:text-indigo-300">PPN ({{ simTaxRate }}%):</span>
+                                <span class="font-medium text-amber-600 dark:text-amber-300">+ {{ formatCurrency(simTaxNormal) }}</span>
                             </div>
                             <div class="flex justify-between items-baseline pt-1">
-                                <span class="text-xs font-bold text-white">Total Tagihan Pertama:</span>
-                                <span class="font-extrabold text-xl text-amber-400">{{ formatCurrency(simGrandTotalNormal) }}</span>
+                                <span class="text-xs font-bold text-slate-900 dark:text-white">Total Tagihan Pertama:</span>
+                                <span class="font-extrabold text-xl text-amber-600 dark:text-amber-400">{{ formatCurrency(simGrandTotalNormal) }}</span>
                             </div>
                         </div>
 
-                        <div class="bg-amber-950/40 p-2.5 rounded-lg border border-amber-800/40 text-[10px] text-amber-200">
+                        <div class="bg-white p-2.5 rounded-lg border border-amber-100 text-[10px] text-amber-700 dark:bg-amber-950/40 dark:border-amber-800/40 dark:text-amber-200">
                             Pelanggan baru langsung dikenakan tagihan normal 1 bulan penuh pascabayar tanpa kalkulasi pemotongan hari.
                         </div>
                     </div>
 
                     <!-- Skenario 4: Prabayar (Prepaid) -->
-                    <div v-else class="bg-gradient-to-b from-cyan-900/40 to-indigo-950/80 border border-cyan-500/40 rounded-xl p-4 space-y-3">
-                        <div class="flex items-center justify-between pb-2 border-b border-cyan-700/40">
+                    <div v-else class="bg-cyan-50/70 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-500/40 rounded-xl p-4 space-y-3">
+                        <div class="flex items-center justify-between pb-2 border-b border-cyan-200 dark:border-cyan-700/40">
                             <div class="flex items-center gap-2">
                                 <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                                <h4 class="text-xs font-bold text-cyan-300 uppercase tracking-wide">Siklus Prabayar (Prepaid)</h4>
+                                <h4 class="text-xs font-bold text-cyan-700 dark:text-cyan-300 uppercase tracking-wide">Siklus Prabayar (Prepaid)</h4>
                             </div>
-                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold">Bayar di Muka</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-700 dark:bg-cyan-500/20 dark:text-cyan-300 font-bold">Bayar di Muka</span>
                         </div>
                         
-                        <div class="space-y-2 text-xs text-indigo-100">
-                            <div class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
-                                <span class="text-indigo-300">Biaya Paket (1 Bulan):</span>
-                                <span class="font-semibold text-white">{{ formatCurrency(simPrice) }}</span>
+                        <div class="space-y-2 text-xs text-slate-600 dark:text-indigo-100">
+                            <div class="flex justify-between items-center border-b border-cyan-200 dark:border-indigo-800/40 pb-1.5">
+                                <span class="text-slate-500 dark:text-indigo-300">Biaya Paket (1 Bulan):</span>
+                                <span class="font-semibold text-slate-900 dark:text-white">{{ formatCurrency(simPrice) }}</span>
                             </div>
-                            <div v-if="simTaxRate > 0" class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
-                                <span class="text-indigo-300">PPN ({{ simTaxRate }}%):</span>
-                                <span class="font-medium text-cyan-300">+ {{ formatCurrency(simTaxNormal) }}</span>
+                            <div v-if="simTaxRate > 0" class="flex justify-between items-center border-b border-cyan-200 dark:border-indigo-800/40 pb-1.5">
+                                <span class="text-slate-500 dark:text-indigo-300">PPN ({{ simTaxRate }}%):</span>
+                                <span class="font-medium text-cyan-600 dark:text-cyan-300">+ {{ formatCurrency(simTaxNormal) }}</span>
                             </div>
-                            <div class="flex justify-between items-center border-b border-indigo-800/40 pb-1.5">
-                                <span class="text-indigo-300">Masa Aktif Layanan:</span>
-                                <span class="font-medium text-white">{{ simActivationDateFormatted }} s/d {{ prabayarEndDateFormatted }}</span>
+                            <div class="flex justify-between items-center border-b border-cyan-200 dark:border-indigo-800/40 pb-1.5">
+                                <span class="text-slate-500 dark:text-indigo-300">Masa Aktif Layanan:</span>
+                                <span class="font-medium text-slate-900 dark:text-white">{{ simActivationDateFormatted }} s/d {{ prabayarEndDateFormatted }}</span>
                             </div>
                             <div class="flex justify-between items-baseline pt-1">
-                                <span class="text-xs font-bold text-white">Total Bayar saat Aktivasi:</span>
-                                <span class="font-extrabold text-xl text-cyan-400">{{ formatCurrency(simGrandTotalNormal) }}</span>
+                                <span class="text-xs font-bold text-slate-900 dark:text-white">Total Bayar saat Aktivasi:</span>
+                                <span class="font-extrabold text-xl text-cyan-600 dark:text-cyan-400">{{ formatCurrency(simGrandTotalNormal) }}</span>
                             </div>
                         </div>
 
-                        <div class="bg-cyan-950/40 p-2.5 rounded-lg border border-cyan-800/40 text-[10px] text-cyan-200">
+                        <div class="bg-white p-2.5 rounded-lg border border-cyan-100 text-[10px] text-cyan-700 dark:bg-cyan-950/40 dark:border-cyan-800/40 dark:text-cyan-200">
                             Pelanggan membayar penuh di muka sebelum internet diaktifkan. Tagihan perpanjangan bulan berikutnya terbit otomatis sebelum masa aktif habis.
                         </div>
                     </div>
 
                     <!-- Catatan Sistem -->
-                    <div class="pt-3 border-t border-indigo-700/40">
-                        <p class="text-[10px] text-indigo-300 leading-relaxed">
-                            <span class="font-semibold text-white">Sinkronisasi Penuh:</span> Logika simulasi ini 100% identik dengan alur aktivasi pelanggan baru di menu Pelanggan & generator invoice otomatis sistem.
+                    <div class="pt-3 border-t border-slate-200 dark:border-slate-700">
+                        <p class="text-[10px] text-slate-500 dark:text-indigo-300 leading-relaxed">
+                            <span class="font-semibold text-slate-900 dark:text-white">Sinkronisasi Penuh:</span> Logika simulasi ini 100% identik dengan alur aktivasi pelanggan baru di menu Pelanggan & generator invoice otomatis sistem.
                         </p>
                     </div>
 

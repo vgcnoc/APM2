@@ -36,7 +36,7 @@ class OltController extends Controller
             ->orderBy('brand')
             ->pluck('brand');
 
-        $query = (clone $baseQuery)->with(['area'])->withCount('odcs');
+        $query = (clone $baseQuery)->with(['area', 'areas'])->withCount('odcs');
 
         $olts = $query
             ->when($request->search, function ($q, $s) {
@@ -50,7 +50,12 @@ class OltController extends Controller
                 });
             })
             ->when($request->status, fn ($q, $s) => $q->where('status', $s))
-            ->when($request->area_id, fn ($q, $id) => $q->where('area_id', $id))
+            ->when($request->area_id, function ($q, $id) {
+                $q->where(function ($areaQuery) use ($id) {
+                    $areaQuery->where('area_id', $id)
+                        ->orWhereHas('areas', fn ($areasQuery) => $areasQuery->where('areas.id', $id));
+                });
+            })
             ->when($request->brand, fn ($q, $b) => $q->where('brand', $b))
             ->when($request->pon_ports, fn ($q, $p) => $q->where('total_pon_ports', $p))
             ->when($request->odc_status, function ($q, $os) {
@@ -89,8 +94,14 @@ class OltController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        if (!$request->has('area_ids') && $request->filled('area_id')) {
+            $request->merge(['area_ids' => [$request->input('area_id')]]);
+        }
+
         $validated = $request->validate([
-            'area_id' => 'required|exists:areas,id',
+            'area_id' => 'nullable|exists:areas,id',
+            'area_ids' => 'required|array|min:1',
+            'area_ids.*' => 'required|integer|exists:areas,id',
             'name' => 'required|string|max:255',
             'hostname' => 'nullable|string|max:255',
             'ip_address' => 'nullable|string|max:255',
@@ -110,18 +121,25 @@ class OltController extends Controller
             $validated['ip_address'] = trim((string)$validated['ip_address']) ?: null;
         }
 
-        $olt = Olt::create($validated);
-        
-        // Auto-generate OltPon records
-        $capacity = $request->input('pon_capacity', 64);
-        for ($i = 1; $i <= $olt->total_pon_ports; $i++) {
-            $olt->pons()->create([
-                'port_number' => $i,
-                'name' => "PON {$i}",
-                'capacity' => $capacity,
-                'status' => 'active'
-            ]);
-        }
+        $areaIds = collect($validated['area_ids'])->map(fn ($id) => (int) $id)->unique()->values()->all();
+        $oltData = collect($validated)->except(['area_ids', 'pon_capacity'])->all();
+        $oltData['area_id'] = $areaIds[0];
+
+        DB::transaction(function () use (&$olt, $oltData, $areaIds, $request) {
+            $olt = Olt::create($oltData);
+            $olt->areas()->sync($areaIds);
+
+            // Auto-generate OltPon records
+            $capacity = $request->input('pon_capacity', 64);
+            for ($i = 1; $i <= $olt->total_pon_ports; $i++) {
+                $olt->pons()->create([
+                    'port_number' => $i,
+                    'name' => "PON {$i}",
+                    'capacity' => $capacity,
+                    'status' => 'active'
+                ]);
+            }
+        });
 
         return redirect()->route('olts.index')
             ->with('success', 'Data OLT berhasil ditambahkan.');
@@ -129,7 +147,7 @@ class OltController extends Controller
 
     public function show(Olt $olt): Response
     {
-        $olt->load(['odcs.odps', 'area', 'pons']);
+        $olt->load(['odcs.odps', 'area', 'areas', 'pons']);
 
         return Inertia::render('Infrastructure/Olt/Show', [
             'olt' => $olt,
@@ -138,8 +156,14 @@ class OltController extends Controller
 
     public function update(Request $request, Olt $olt): RedirectResponse
     {
+        if (!$request->has('area_ids') && $request->filled('area_id')) {
+            $request->merge(['area_ids' => [$request->input('area_id')]]);
+        }
+
         $validated = $request->validate([
-            'area_id' => 'required|exists:areas,id',
+            'area_id' => 'nullable|exists:areas,id',
+            'area_ids' => 'required|array|min:1',
+            'area_ids.*' => 'required|integer|exists:areas,id',
             'name' => 'required|string|max:255',
             'hostname' => 'nullable|string|max:255',
             'ip_address' => 'nullable|string|max:255',
@@ -159,26 +183,33 @@ class OltController extends Controller
             $validated['ip_address'] = trim((string)$validated['ip_address']) ?: null;
         }
 
-        $oldPonCount = $olt->total_pon_ports;
-        $olt->update($validated);
-        
-        $capacity = $request->input('pon_capacity', 64);
-        
-        // Add new PONs if increased
-        if ($olt->total_pon_ports > $oldPonCount) {
-            for ($i = $oldPonCount + 1; $i <= $olt->total_pon_ports; $i++) {
-                $olt->pons()->create([
-                    'port_number' => $i,
-                    'name' => "PON {$i}",
-                    'capacity' => $capacity,
-                    'status' => 'active'
-                ]);
-            }
-        }
+        $areaIds = collect($validated['area_ids'])->map(fn ($id) => (int) $id)->unique()->values()->all();
+        $oltData = collect($validated)->except(['area_ids', 'pon_capacity'])->all();
+        $oltData['area_id'] = $areaIds[0];
 
-        if ($request->has('pon_capacity')) {
-            $olt->pons()->update(['capacity' => $capacity]);
-        }
+        DB::transaction(function () use ($olt, $oltData, $areaIds, $request) {
+            $oldPonCount = $olt->total_pon_ports;
+            $olt->update($oltData);
+            $olt->areas()->sync($areaIds);
+
+            $capacity = $request->input('pon_capacity', 64);
+
+            // Add new PONs if increased
+            if ($olt->total_pon_ports > $oldPonCount) {
+                for ($i = $oldPonCount + 1; $i <= $olt->total_pon_ports; $i++) {
+                    $olt->pons()->create([
+                        'port_number' => $i,
+                        'name' => "PON {$i}",
+                        'capacity' => $capacity,
+                        'status' => 'active'
+                    ]);
+                }
+            }
+
+            if ($request->has('pon_capacity')) {
+                $olt->pons()->update(['capacity' => $capacity]);
+            }
+        });
 
         return redirect()->route('olts.index')
             ->with('success', 'Data OLT berhasil diperbarui.');
@@ -222,7 +253,11 @@ class OltController extends Controller
         // Scope check per role if not admin
         if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('network_olt_view_all')) {
             if (auth()->user()->can('network_olt_view_area')) {
-                $query->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
+                $accessibleAreas = auth()->user()->getAccessibleAreaIds();
+                $query->where(function ($areaQuery) use ($accessibleAreas) {
+                    $areaQuery->whereIn('area_id', $accessibleAreas)
+                        ->orWhereHas('areas', fn ($areasQuery) => $areasQuery->whereIn('areas.id', $accessibleAreas));
+                });
             } else {
                 return redirect()->back()->with('error', 'Anda tidak memiliki hak akses wilayah untuk menghapus data OLT.');
             }
@@ -251,7 +286,10 @@ class OltController extends Controller
                 $query->where('status', $request->status);
             }
             if ($request->filled('area_id')) {
-                $query->where('area_id', $request->area_id);
+                $query->where(function ($areaQuery) use ($request) {
+                    $areaQuery->where('area_id', $request->area_id)
+                        ->orWhereHas('areas', fn ($areasQuery) => $areasQuery->where('areas.id', $request->area_id));
+                });
             }
             if ($request->filled('brand')) {
                 $query->where('brand', $request->brand);

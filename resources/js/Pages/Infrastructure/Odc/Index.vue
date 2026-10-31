@@ -1217,18 +1217,23 @@ watch(() => form.olt_id, (newVal) => {
 
 const filteredOlts = computed(() => {
     if (!form.area_id) return [];
-    return props.olts.filter(o => o.area_id == form.area_id);
+    return props.olts.filter(o => oltServesArea(o, form.area_id));
 });
 
 watch(() => form.area_id, (newVal) => {
     // Reset OLT if the selected OLT doesn't belong to the new Area
     if (form.olt_id) {
         const olt = props.olts.find(o => o.id === form.olt_id);
-        if (olt && olt.area_id != newVal) {
+        if (olt && !oltServesArea(olt, newVal)) {
             form.olt_id = '';
         }
     }
 });
+
+function oltServesArea(olt, areaId) {
+    if (olt?.area_id == areaId) return true;
+    return (olt?.areas || []).some(area => area.id == areaId);
+}
 
 const totalSplitPorts = computed(() => {
     return Number(form.split_units[0].ratio || 0) + Number(form.split_units[1].ratio || 0);

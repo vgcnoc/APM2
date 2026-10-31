@@ -451,7 +451,9 @@
                                 </td>
                                 <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ olt.name }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-600">
-                                    <span v-if="olt.area" class="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-bold border border-blue-100">{{ olt.area.name }}</span>
+                                    <div v-if="getOltAreas(olt).length" class="flex flex-wrap gap-1.5">
+                                        <span v-for="area in getOltAreas(olt)" :key="area.id" class="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-bold border border-blue-100">{{ area.name }}</span>
+                                    </div>
                                     <span v-else class="text-xs text-gray-400 italic">Belum diset</span>
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-600 font-mono">{{ olt.ip_address || '-' }}</td>
@@ -538,11 +540,14 @@
                             <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Area / Wilayah</label>
-                                    <select v-model="form.area_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
-                                        <option value="" disabled>Pilih Area</option>
-                                        <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
-                                    </select>
-                                    <p v-if="form.errors.area_id" class="text-red-500 text-xs mt-1">{{ form.errors.area_id }}</p>
+                                    <div class="max-h-40 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-2 space-y-1.5">
+                                        <label v-for="area in areas" :key="area.id" class="flex items-center gap-2.5 cursor-pointer rounded-md px-2.5 py-2 hover:bg-white transition-colors">
+                                            <input v-model="form.area_ids" :value="area.id" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                                            <span class="text-sm font-medium text-gray-700">{{ area.name }}</span>
+                                        </label>
+                                    </div>
+                                    <p class="text-[11px] text-gray-500 mt-1">Centang satu atau beberapa area. Area pertama menjadi area utama untuk kompatibilitas data lama.</p>
+                                    <p v-if="form.errors.area_ids" class="text-red-500 text-xs mt-1">{{ form.errors.area_ids }}</p>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Nama OLT</label>
@@ -773,7 +778,7 @@ const isEditing = ref(false);
 const editId = ref(null);
 
 const form = useForm({
-    area_id: '',
+    area_ids: [],
     name: '',
     hostname: '',
     ip_address: '',
@@ -823,14 +828,14 @@ function openCreateModal() {
     editId.value = null;
     form.reset();
     form.clearErrors();
-    form.area_id = '';
+    form.area_ids = [];
     isModalOpen.value = true;
 }
 
 function openEditModal(olt) {
     isEditing.value = true;
     editId.value = olt.id;
-    form.area_id = olt.area_id || '';
+    form.area_ids = getOltAreas(olt).map(area => area.id);
     form.name = olt.name;
     form.hostname = olt.hostname || '';
     form.ip_address = olt.ip_address || '';
@@ -871,6 +876,14 @@ function getVlanAccessMode(vlan) {
     if (name.includes('trunk') || name.includes('tagged')) return 'Tagged';
     if (name.includes('access') || name.includes('untagged')) return 'Untagged';
     return 'PPPOE';
+}
+
+function getOltAreas(olt) {
+    if (Array.isArray(olt?.areas) && olt.areas.length) {
+        return olt.areas;
+    }
+
+    return olt?.area ? [olt.area] : [];
 }
 
 function getModeBadgeClass(mode) {

@@ -211,7 +211,15 @@ class Customer extends Model
      */
     public function surveys(): HasMany
     {
-        return $this->hasMany(Survey::class);
+        return $this->hasMany(Survey::class)->whereNull('rolled_back_at');
+    }
+
+    /**
+     * Arsip hasil survey yang dikembalikan untuk diisi ulang.
+     */
+    public function archivedSurveys(): HasMany
+    {
+        return $this->hasMany(Survey::class)->whereNotNull('rolled_back_at');
     }
 
     /**
@@ -539,7 +547,7 @@ class Customer extends Model
 
         static::updated(function (Customer $customer) {
             // 1. Sinkronisasi Affiliate Booking Commission jika sales_id berubah
-            if ($customer->status === 'active' && !static::$isMigrating && !$customer->is_migrated && $customer->wasChanged('sales_id') && $customer->sales_id && !in_array($customer->service_status, ['gratis', 'free_home'])) {
+            if ($customer->status === 'active' && !static::$isMigrating && \App\Services\AffiliateService::isOperationalFeeEligible($customer) && $customer->wasChanged('sales_id') && $customer->sales_id && !in_array($customer->service_status, ['gratis', 'free_home'])) {
                 try {
                     \App\Services\AffiliateService::recordBookingCommission($customer);
                 } catch (\Throwable $e) {

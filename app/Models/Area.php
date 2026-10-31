@@ -43,6 +43,11 @@ class Area extends Model
         return $this->hasMany(Odc::class, 'area_id');
     }
 
+    public function olts()
+    {
+        return $this->belongsToMany(Olt::class, 'area_olt')->orderBy('olts.name');
+    }
+
     public function users()
     {
         return $this->hasMany(User::class, 'area_id');

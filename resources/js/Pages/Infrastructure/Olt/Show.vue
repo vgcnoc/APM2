@@ -48,6 +48,13 @@
                                 <p class="text-xs text-gray-500 mb-1">Lokasi</p>
                                 <p class="text-sm font-medium text-gray-900">{{ olt.location || '-' }}</p>
                             </div>
+                            <div>
+                                <p class="text-xs text-gray-500 mb-1">Area / Wilayah Layanan</p>
+                                <div v-if="getOltAreas(olt).length" class="flex flex-wrap gap-1.5">
+                                    <span v-for="area in getOltAreas(olt)" :key="area.id" class="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-bold border border-blue-100">{{ area.name }}</span>
+                                </div>
+                                <p v-else class="text-sm font-medium text-gray-900">-</p>
+                            </div>
                             <div v-if="olt.latitude || olt.longitude">
                                 <p class="text-xs text-gray-500 mb-1">Titik Koordinat GPS</p>
                                 <div class="flex flex-wrap items-center gap-2 text-sm">
@@ -168,6 +175,14 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 const props = defineProps({
     olt: Object,
 });
+
+function getOltAreas(olt) {
+    if (Array.isArray(olt?.areas) && olt.areas.length) {
+        return olt.areas;
+    }
+
+    return olt?.area ? [olt.area] : [];
+}
 
 function getVlanAccessMode(vlan) {
     if (vlan.access_mode) return vlan.access_mode;
