@@ -351,6 +351,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('attendances/update-location', [\App\Http\Controllers\AttendanceController::class, 'updateAreaLocation'])->name('attendances.update-location');
     Route::post('attendances/sync-payroll', [\App\Http\Controllers\AttendanceController::class, 'syncToPayroll'])->name('attendances.sync-payroll');
 
+    // Laporan Absensi Karyawan
+    Route::get('attendance-reports', [\App\Http\Controllers\AttendanceReportController::class, 'index'])->name('attendance-reports.index');
+    Route::get('attendance-reports/export', [\App\Http\Controllers\AttendanceReportController::class, 'export'])->name('attendance-reports.export');
+    Route::get('attendance-reports/print', [\App\Http\Controllers\AttendanceReportController::class, 'print'])->name('attendance-reports.print');
+
     // Absen Terbaik (Papan Peringkat Kedisiplinan & Penghargaan Juara Top 3)
     Route::get('absen-terbaik', [\App\Http\Controllers\BestAttendanceController::class, 'index'])->name('best-attendances.index');
     Route::get('absen-terbaik/employee-detail/{employee}', [\App\Http\Controllers\BestAttendanceController::class, 'employeeDetail'])->name('best-attendances.employee-detail');

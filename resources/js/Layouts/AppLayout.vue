@@ -1268,14 +1268,15 @@ const menuItems = [
         icon: 'badge-check',
         label: 'Sistem Presensi & Absensi',
         theme: 'slate',
-        active: (url) => ['/attendances', '/absen-terbaik', '/absen-khusus', '/absen-tugas-luar', '/settings/attendance', '/employee-locations'].some(path => (url || '').startsWith(path)),
-        permission: ['menu_attendances', 'attendance_tab_reguler', 'attendance_tab_best', 'attendance_tab_special', 'attendance_tab_field', 'menu_settings_attendance', 'menu_hr_employees'],
+        active: (url) => ['/attendances', '/absen-terbaik', '/absen-khusus', '/absen-tugas-luar', '/settings/attendance', '/employee-locations', '/attendance-reports'].some(path => (url || '').startsWith(path)),
+        permission: ['menu_attendances', 'attendance_tab_reguler', 'attendance_tab_best', 'attendance_tab_special', 'attendance_tab_field', 'menu_settings_attendance', 'menu_hr_employees', 'menu_attendance_reports'],
         children: [
             { href: '/employee-locations', label: 'Pantauan Lokasi (Live GPS)', active: (url) => (url || '').startsWith('/employee-locations'), permission: ['menu_attendances', 'menu_hr_employees'] },
             { href: '/attendances', label: 'Absensi Reguler', active: (url) => (url || '').startsWith('/attendances'), permission: 'attendance_tab_reguler' },
             { href: '/absen-terbaik', label: 'Absen Terbaik', active: (url) => (url || '').startsWith('/absen-terbaik'), permission: 'attendance_tab_best' },
             { href: '/absen-khusus', label: 'Absen Tim Khusus', active: (url) => (url || '').startsWith('/absen-khusus'), permission: 'attendance_tab_special' },
             { href: '/absen-tugas-luar', label: 'Absen Tugas Luar', active: (url) => (url || '').startsWith('/absen-tugas-luar'), permission: 'attendance_tab_field' },
+            { href: '/attendance-reports', label: 'Laporan Absen', active: (url) => (url || '').startsWith('/attendance-reports'), permission: ['menu_attendance_reports', 'menu_attendances', 'menu_hr_employees'] },
             { href: '/settings/attendance', label: 'Pengaturan Absensi', active: (url) => (url || '').startsWith('/settings/attendance'), permission: 'menu_settings_attendance' },
         ]
     },
