@@ -14,7 +14,7 @@ class InvoiceController extends Controller
         $today = now()->startOfDay();
 
         $query = Invoice::with(['customer' => function($q) use ($today) {
-            $q->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'package_id', 'created_at', 'status', 'registration_date', 'activation_date')
+            $q->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'package_id', 'billing_type', 'tax_ppn', 'created_at', 'status', 'registration_date', 'activation_date')
               ->withCount(['invoices as unpaid_invoices_count' => function ($query) {
                   $query->whereIn('status', ['unpaid', 'partial', 'overdue'])
                         ->where('invoice_number', 'not like', 'INV-MIG-%')
@@ -80,6 +80,45 @@ class InvoiceController extends Controller
            })
                         ->where('is_reseller_balance', false);
                   $this->applyOverdueCondition($query, $today);
+              }], 'amount')
+              ->withSum(['payments as partial_paid_amount' => function ($query) {
+                  $query->where('status', 'verified')
+                        ->whereHas('invoice', function ($iq) {
+                            $iq->whereIn('status', ['unpaid', 'partial', 'overdue'])
+                               ->where('invoice_number', 'not like', 'INV-MIG-%')
+                               ->where('status', '!=', 'cancelled')
+                               ->where(function($q) {
+                                   $q->where('period_year', '>', 2026)
+                                     ->orWhere(function($sub) {
+                                         $sub->where('period_year', 2026)->where('period_month', '>', 10);
+                                     })
+                                     ->orWhere(function($sub) {
+                                         $sub->where('is_prorata', true)
+                                             ->orWhere('billing_type', 'prorata');
+                                     });
+                               })
+                               ->where('is_reseller_balance', false);
+                        });
+              }], 'amount')
+              ->withSum(['payments as overdue_partial_paid_amount' => function ($query) use ($today) {
+                  $query->where('status', 'verified')
+                        ->whereHas('invoice', function ($iq) use ($today) {
+                            $iq->whereIn('status', ['unpaid', 'partial', 'overdue'])
+                               ->where('invoice_number', 'not like', 'INV-MIG-%')
+                               ->where('status', '!=', 'cancelled')
+                               ->where(function($q) {
+                                   $q->where('period_year', '>', 2026)
+                                     ->orWhere(function($sub) {
+                                         $sub->where('period_year', 2026)->where('period_month', '>', 10);
+                                     })
+                                     ->orWhere(function($sub) {
+                                         $sub->where('is_prorata', true)
+                                             ->orWhere('billing_type', 'prorata');
+                                     });
+                               })
+                               ->where('is_reseller_balance', false);
+                            $this->applyOverdueCondition($iq, $today);
+                        });
               }], 'amount')
               ->withExists(['cbpRequests as has_open_cbp' => function ($query) {
                   $query->whereIn('status', ['pending', 'assigned']);
@@ -259,10 +298,12 @@ class InvoiceController extends Controller
             'total_stop_permanen_amount' => (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', 'terminated'))->whereIn('status', ['unpaid', 'partial', 'overdue'])->sum('amount'),
         ];
 
+        $defaultTaxPpn = (float) \App\Models\Setting::get('tax_ppn', '0');
+
         $invoices = $query->latest('id')
             ->paginate($request->per_page ?? 10)
             ->withQueryString()
-            ->through(function ($invoice) {
+            ->through(function ($invoice) use ($defaultTaxPpn) {
                 $lastPayment = $invoice->payments->first();
                 return [
                     'id' => $invoice->id,
@@ -276,15 +317,18 @@ class InvoiceController extends Controller
                         'area' => $invoice->customer->areaModel?->name,
                         'package_id' => $invoice->customer->package_id,
                         'package' => $invoice->customer->package?->name,
+                        'package_name' => $invoice->customer->package?->name,
+                        'package_speed' => (int) ($invoice->customer->package?->speed_mbps ?? 0),
                         'package_price' => (float) ($invoice->customer->package?->price ?? 0),
+                        'tax_ppn' => (float) ($invoice->customer->tax_ppn ?? $defaultTaxPpn),
                         'register_date' => $invoice->customer->registration_date ? $invoice->customer->registration_date->format('d M Y') : null,
                         'activation_date' => $invoice->customer->activation_date ? $invoice->customer->activation_date->format('d M Y') : null,
                         'status' => $invoice->customer->status,
                         'has_open_cbp' => (bool) ($invoice->customer->has_open_cbp ?? false),
                         'unpaid_count' => $invoice->customer->unpaid_invoices_count ?? 0,
-                        'total_unpaid' => $invoice->customer->total_unpaid_amount ?? 0,
+                        'total_unpaid' => max(0, (float) ($invoice->customer->total_unpaid_amount ?? 0) - (float) ($invoice->customer->partial_paid_amount ?? 0)),
                         'overdue_count' => $invoice->customer->overdue_invoices_count ?? 0,
-                        'total_overdue' => $invoice->customer->total_overdue_amount ?? 0,
+                        'total_overdue' => max(0, (float) ($invoice->customer->total_overdue_amount ?? 0) - (float) ($invoice->customer->overdue_partial_paid_amount ?? 0)),
                         'ont' => $invoice->customer->ont ? [
                             'serial_number' => $invoice->customer->ont->serial_number,
                             'brand' => $invoice->customer->ont->brand,
@@ -520,6 +564,15 @@ class InvoiceController extends Controller
             ]);
 
             \Illuminate\Support\Facades\DB::commit();
+
+            if ($invoice->customer) {
+                try {
+                    app(\App\Services\BillingIsolationService::class)->reconcile($invoice->customer);
+                } catch (\Throwable $e) {
+                    \Log::warning('[BILLING] Reconcile on rollback error: ' . $e->getMessage());
+                }
+            }
+
             return back()->with('success', 'Pembayaran berhasil dibatalkan (rollback). Status tagihan kembali belum lunas.');
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\DB::rollBack();
@@ -855,7 +908,9 @@ class InvoiceController extends Controller
             'logo' => \App\Models\Setting::get('company_logo', null),
         ];
 
-        return view('print.janji-bayar', compact('invoice', 'company'));
+        $customer = $invoice->customer;
+
+        return view('print.janji-bayar', compact('invoice', 'customer', 'company'));
     }
 
     /**

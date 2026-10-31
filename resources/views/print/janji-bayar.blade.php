@@ -393,29 +393,31 @@
 
     @php
         // Helper fungsi terbilang sederhana
-        function terbilangAngka($angka) {
-            $angka = abs((int)$angka);
-            $baca = ["", "Satu", "Dua", "Tiga", "Empat", "Lima", "Enam", "Tujuh", "Delapan", "Sembilan", "Sepuluh", "Sebelas"];
-            $terbilang = "";
+        if (!function_exists('terbilangAngka')) {
+            function terbilangAngka($angka) {
+                $angka = abs((int)$angka);
+                $baca = ["", "Satu", "Dua", "Tiga", "Empat", "Lima", "Enam", "Tujuh", "Delapan", "Sembilan", "Sepuluh", "Sebelas"];
+                $terbilang = "";
 
-            if ($angka < 12) {
-                $terbilang = " " . $baca[$angka];
-            } elseif ($angka < 20) {
-                $terbilang = terbilangAngka($angka - 10) . " Belas";
-            } elseif ($angka < 100) {
-                $terbilang = terbilangAngka((int)($angka / 10)) . " Puluh" . terbilangAngka($angka % 10);
-            } elseif ($angka < 200) {
-                $terbilang = " Seratus" . terbilangAngka($angka - 100);
-            } elseif ($angka < 1000) {
-                $terbilang = terbilangAngka((int)($angka / 100)) . " Ratus" . terbilangAngka($angka % 100);
-            } elseif ($angka < 2000) {
-                $terbilang = " Seribu" . terbilangAngka($angka - 1000);
-            } elseif ($angka < 1000000) {
-                $terbilang = terbilangAngka((int)($angka / 1000)) . " Ribu" . terbilangAngka($angka % 1000);
-            } elseif ($angka < 1000000000) {
-                $terbilang = terbilangAngka((int)($angka / 1000000)) . " Juta" . terbilangAngka($angka % 1000000);
+                if ($angka < 12) {
+                    $terbilang = " " . $baca[$angka];
+                } elseif ($angka < 20) {
+                    $terbilang = terbilangAngka($angka - 10) . " Belas";
+                } elseif ($angka < 100) {
+                    $terbilang = terbilangAngka((int)($angka / 10)) . " Puluh" . terbilangAngka($angka % 10);
+                } elseif ($angka < 200) {
+                    $terbilang = " Seratus" . terbilangAngka($angka - 100);
+                } elseif ($angka < 1000) {
+                    $terbilang = terbilangAngka((int)($angka / 100)) . " Ratus" . terbilangAngka($angka % 100);
+                } elseif ($angka < 2000) {
+                    $terbilang = " Seribu" . terbilangAngka($angka - 1000);
+                } elseif ($angka < 1000000) {
+                    $terbilang = terbilangAngka((int)($angka / 1000)) . " Ribu" . terbilangAngka($angka % 1000);
+                } elseif ($angka < 1000000000) {
+                    $terbilang = terbilangAngka((int)($angka / 1000000)) . " Juta" . terbilangAngka($angka % 1000000);
+                }
+                return trim($terbilang);
             }
-            return trim($terbilang);
         }
 
         $customer = $invoice->customer;
@@ -488,17 +490,17 @@
             <tr>
                 <td class="col-label">Nomor WhatsApp / HP</td>
                 <td class="col-sep">:</td>
-                <td class="col-val">{{ $customer->phone ?: '-' }}</td>
+                <td class="col-val">{{ $customer?->phone ?: '-' }}</td>
             </tr>
             <tr>
                 <td class="col-label">Alamat Pemasangan</td>
                 <td class="col-sep">:</td>
-                <td class="col-val">{{ $customer->address ?: '-' }} (Area: {{ $customer->areaModel->name ?? $customer->area ?? '-' }})</td>
+                <td class="col-val">{{ $customer?->address ?: '-' }} (Area: {{ $customer?->areaModel?->name ?? $customer?->area ?? '-' }})</td>
             </tr>
             <tr>
                 <td class="col-label">Paket Langganan</td>
                 <td class="col-sep">:</td>
-                <td class="col-val">{{ $customer->package->name ?? 'Internet Paket' }} ({{ $customer->package->speed ?? '-' }})</td>
+                <td class="col-val">{{ $customer?->package?->name ?? 'Internet Paket' }} ({{ $customer?->package?->speed_mbps ? $customer->package->speed_mbps . ' Mbps' : ($customer?->package?->speed ?? '-') }})</td>
             </tr>
         </table>
 

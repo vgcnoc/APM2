@@ -242,32 +242,115 @@
             </template>
 
             <template #row="{ row, index }">
-                <!-- Checkbox placeholder -->
-                <td class="text-center w-10">
-                    <input type="checkbox" class="form-checkbox h-4 w-4 text-indigo-600 border-gray-300 rounded" />
-                </td>
-                <td class="text-gray-500 text-xs text-center">
+                <td class="text-gray-500 text-xs text-center w-12">
                     {{ (invoices.current_page - 1) * invoices.per_page + index + 1 }}
                 </td>
                 <td>
-                    <div v-if="row.customer" class="flex items-center gap-3">
+                    <div v-if="row.customer" class="flex items-center gap-3 min-w-[200px]">
                         <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-gray-700 bg-gray-100 shrink-0">
                             {{ row.customer.name?.charAt(0).toUpperCase() }}
                         </div>
-                        <div class="flex flex-col gap-1">
-                            <Link :href="`/customers/${row.customer.id}`" class="text-gray-900 font-bold text-xs uppercase hover:underline">
+                        <div class="flex flex-col gap-0.5 min-w-0">
+                            <Link :href="`/customers/${row.customer.id}`" class="text-gray-900 font-bold text-xs uppercase hover:text-indigo-600 hover:underline truncate">
                                 {{ row.customer.name }}
                             </Link>
-                            <span v-if="row.customer.overdue_count > 0" class="inline-flex items-center gap-1 text-[9px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-md w-max border border-red-100" :title="'Total Tunggakan: ' + formatCurrency(row.customer.total_overdue)">
+                            <div class="flex items-center gap-1.5 text-[10px] text-gray-500 font-mono">
+                                <span>#{{ row.invoice_number }}</span>
+                                <span>&bull;</span>
+                                <span class="font-bold" :class="row.status === 'paid' ? 'text-emerald-600' : (row.status === 'partial' ? 'text-amber-700' : 'text-gray-700')">
+                                    {{ row.status === 'partial' ? 'Sisa ' + formatCurrency(row.remaining) : formatCurrency(row.amount) }}
+                                </span>
+                            </div>
+                            <span v-if="row.customer.overdue_count > 0" class="inline-flex items-center gap-1 text-[9px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-md w-max border border-red-100 mt-0.5" :title="'Total Tunggakan: ' + formatCurrency(row.customer.total_overdue)">
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                                 Nunggak {{ row.customer.overdue_count }} Bulan
                             </span>
-                            <span v-else-if="row.customer.unpaid_count > 1" class="inline-flex items-center gap-1 text-[9px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md w-max border border-amber-200" :title="'Total Tagihan: ' + formatCurrency(row.customer.total_unpaid)">
+                            <span v-else-if="row.customer.unpaid_count > 1" class="inline-flex items-center gap-1 text-[9px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md w-max border border-amber-200 mt-0.5" :title="'Total Tagihan: ' + formatCurrency(row.customer.total_unpaid)">
                                 {{ row.customer.unpaid_count }} Tagihan Berjalan
                             </span>
                         </div>
                     </div>
                     <span v-else class="text-gray-400 italic text-xs">Pelanggan Dihapus</span>
+                </td>
+                <!-- Kolom Aksi Tepat di Belakang Nama Pelanggan -->
+                <td class="whitespace-nowrap">
+                    <div class="flex items-center justify-start gap-1.5 whitespace-nowrap">
+                        <!-- Tombol Bayar Lunas (Unpaid / Overdue) -->
+                        <button 
+                            v-can="'invoices_pay'"
+                            v-if="row.status === 'unpaid' || row.status === 'overdue'" 
+                            type="button"
+                            @click="openPaymentModal(row, 'full')" 
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer"
+                            title="Proses Pembayaran Lunas"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zM7 15h2m1 0h6"/></svg>
+                            <span>Bayar Lunas</span>
+                        </button>
+
+                        <!-- Tombol Lunasi Sisa (Untuk Partial) -->
+                        <button 
+                            v-can="'invoices_pay'"
+                            v-else-if="row.status === 'partial'" 
+                            type="button"
+                            @click="openPaymentModal(row, 'full')" 
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer" 
+                            title="Bayar / Lunasi Sisa Tagihan"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span>Lunasi Sisa</span>
+                        </button>
+
+                        <!-- Tombol Bayar Sebagian (Cicil) untuk Unpaid, Overdue & Partial -->
+                        <button 
+                            v-can="'invoices_pay'"
+                            v-if="row.status === 'unpaid' || row.status === 'partial' || row.status === 'overdue'" 
+                            type="button"
+                            @click="openPaymentModal(row, 'partial')" 
+                            class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 hover:border-amber-400 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer" 
+                            title="Bayar Sebagian / Cicil Tagihan"
+                        >
+                            <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span>Bayar Sebagian</span>
+                        </button>
+
+                        <!-- Tombol Rollback (Paid atau Partial) -->
+                        <button 
+                            v-can="'invoices_rollback'"
+                            v-if="row.status === 'paid' || row.status === 'partial'" 
+                            type="button"
+                            @click="rollbackInvoice(row)" 
+                            class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 hover:border-rose-300 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer" 
+                            title="Batalkan pembayaran / Rollback status tagihan"
+                        >
+                            <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                            <span>Rollback</span>
+                        </button>
+
+                        <!-- Tombol Cetak Cepat -->
+                        <a 
+                            v-can="'invoices_print'"
+                            :href="'/invoices/' + row.id + '/print'" 
+                            target="_blank" 
+                            class="inline-flex items-center justify-center p-1.5 bg-white hover:bg-indigo-50 text-gray-500 hover:text-indigo-600 border border-gray-200 hover:border-indigo-200 rounded-lg transition-colors shadow-2xs" 
+                            title="Cetak Invoice / Struk"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                        </a>
+
+                        <!-- Tombol Menu Aksi Lainnya (...) -->
+                        <button 
+                            type="button" 
+                            @click="toggleDropdown($event, row)" 
+                            class="inline-flex items-center justify-center p-1.5 bg-white hover:bg-gray-100 text-gray-500 hover:text-gray-800 border border-gray-200 hover:border-gray-300 rounded-lg transition-colors shadow-2xs cursor-pointer"
+                            :class="{ 'ring-2 ring-indigo-500 bg-gray-50 text-indigo-600': activeDropdownRow?.id === row.id }"
+                            title="Menu Aksi Lainnya"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+                            </svg>
+                        </button>
+                    </div>
                 </td>
                 <td>
                     <span v-if="row.customer?.area" class="text-xs text-gray-600 flex items-center gap-1">
@@ -402,94 +485,15 @@
                     <span v-else class="text-gray-400 text-xs">-</span>
                 </td>
             </template>
-
-            <template #rowActions="{ row }">
-                <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
-                    <!-- Tombol Bayar Lunas (Unpaid) -->
-                    <button 
-                        v-can="'invoices_pay'"
-                        v-if="row.status === 'unpaid'" 
-                        type="button"
-                        @click="openPaymentModal(row, 'full')" 
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer"
-                        title="Proses Pembayaran Lunas"
-                    >
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zM7 15h2m1 0h6"/></svg>
-                        <span>Bayar Lunas</span>
-                    </button>
-
-                    <!-- Tombol Lunasi Sisa (Untuk Partial) -->
-                    <button 
-                        v-can="'invoices_pay'"
-                        v-else-if="row.status === 'partial'" 
-                        type="button"
-                        @click="openPaymentModal(row, 'full')" 
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer" 
-                        title="Bayar / Lunasi Sisa Tagihan"
-                    >
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <span>Lunasi Sisa</span>
-                    </button>
-
-                    <!-- Tombol Bayar Sebagian (Cicil) untuk Unpaid & Partial -->
-                    <button 
-                        v-can="'invoices_pay'"
-                        v-if="row.status === 'unpaid' || row.status === 'partial'" 
-                        type="button"
-                        @click="openPaymentModal(row, 'partial')" 
-                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 hover:border-amber-400 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer" 
-                        title="Bayar Sebagian / Cicil Tagihan"
-                    >
-                        <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <span>Bayar Sebagian</span>
-                    </button>
-
-                    <!-- Tombol Rollback (Paid atau Partial) -->
-                    <button 
-                        v-can="'invoices_rollback'"
-                        v-if="row.status === 'paid' || row.status === 'partial'" 
-                        type="button"
-                        @click="rollbackInvoice(row)" 
-                        class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 hover:border-rose-300 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer" 
-                        title="Batalkan pembayaran / Rollback status tagihan"
-                    >
-                        <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
-                        <span>Rollback</span>
-                    </button>
-
-                    <!-- Tombol Cetak Cepat -->
-                    <a 
-                        v-can="'invoices_print'"
-                        :href="'/invoices/' + row.id + '/print'" 
-                        target="_blank" 
-                        class="inline-flex items-center justify-center p-1.5 bg-white hover:bg-indigo-50 text-gray-500 hover:text-indigo-600 border border-gray-200 hover:border-indigo-200 rounded-lg transition-colors shadow-2xs" 
-                        title="Cetak Invoice / Struk"
-                    >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                    </a>
-
-                    <!-- Tombol Menu Aksi Lainnya (...) -->
-                    <button 
-                        type="button" 
-                        @click="toggleDropdown($event, row)" 
-                        class="inline-flex items-center justify-center p-1.5 bg-white hover:bg-gray-100 text-gray-500 hover:text-gray-800 border border-gray-200 hover:border-gray-300 rounded-lg transition-colors shadow-2xs cursor-pointer"
-                        :class="{ 'ring-2 ring-indigo-500 bg-gray-50 text-indigo-600': activeDropdownRow?.id === row.id }"
-                        title="Menu Aksi Lainnya"
-                    >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
-                        </svg>
-                    </button>
-                </div>
-            </template>
         </DataTable>
 
         <!-- Action Dropdown Menu Floating -->
         <Teleport to="body">
             <div v-if="activeDropdownRow" class="fixed inset-0 z-[120]" @click="closeDropdown" @contextmenu.prevent="closeDropdown">
                 <div 
-                    :style="{ top: `${dropdownPos.top}px`, left: `${dropdownPos.left}px` }"
-                    class="fixed w-60 max-w-[calc(100vw-20px)] max-h-[calc(100vh-20px)] overflow-y-auto bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-[121] text-xs divide-y divide-gray-100 animate-fade-in-up"
+                    ref="dropdownMenuRef"
+                    :style="dropdownStyle"
+                    class="fixed w-60 max-w-[calc(100vw-24px)] overflow-y-auto bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-[121] text-xs divide-y divide-gray-100 animate-fade-in-up"
                     @click.stop
                 >
                     <!-- Header Info -->
@@ -517,7 +521,7 @@
                         <!-- Bayar Lunas / Lunasi Sisa -->
                         <button 
                             v-can="'invoices_pay'"
-                            v-if="activeDropdownRow.status === 'unpaid' || activeDropdownRow.status === 'partial'"
+                            v-if="activeDropdownRow.status === 'unpaid' || activeDropdownRow.status === 'partial' || activeDropdownRow.status === 'overdue'"
                             type="button" 
                             @click="openPaymentModal(activeDropdownRow, 'full'); closeDropdown()"
                             class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-emerald-800 hover:bg-emerald-50 transition-colors font-medium cursor-pointer"
@@ -534,7 +538,7 @@
                         <!-- Bayar Sebagian (Cicil) -->
                         <button 
                             v-can="'invoices_pay'"
-                            v-if="activeDropdownRow.status === 'unpaid' || activeDropdownRow.status === 'partial'"
+                            v-if="activeDropdownRow.status === 'unpaid' || activeDropdownRow.status === 'partial' || activeDropdownRow.status === 'overdue'"
                             type="button" 
                             @click="openPaymentModal(activeDropdownRow, 'partial'); closeDropdown()"
                             class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-amber-800 hover:bg-amber-50 transition-colors font-medium cursor-pointer"
@@ -551,7 +555,7 @@
                         <!-- Janji Bayar -->
                         <button 
                             v-can="'invoices_promise'"
-                            v-if="activeDropdownRow.status === 'unpaid' || activeDropdownRow.status === 'partial'"
+                            v-if="activeDropdownRow.status === 'unpaid' || activeDropdownRow.status === 'partial' || activeDropdownRow.status === 'overdue'"
                             type="button" 
                             @click="openPromiseModal(activeDropdownRow); closeDropdown()"
                             class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-gray-700 hover:bg-amber-50 hover:text-amber-800 transition-colors font-medium cursor-pointer"
@@ -714,6 +718,9 @@
 
                     <form @submit.prevent="submitPayment">
                         <div class="p-4 sm:p-6 space-y-4 max-h-[72vh] overflow-y-auto">
+                            <div v-if="Object.keys(paymentForm.errors).length > 0" class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold">
+                                <p v-for="(err, key) in paymentForm.errors" :key="key">{{ err }}</p>
+                            </div>
                             
                             <!-- Info Tunggakan Smart Allocation -->
                             <div v-if="selectedInvoice?.customer?.overdue_count > 0" class="bg-rose-50 border border-rose-200 rounded-xl p-4 flex gap-3">
@@ -1036,6 +1043,9 @@
 
                     <form @submit.prevent="submitPromise">
                         <div class="p-4 sm:p-6 space-y-4 max-h-[72vh] overflow-y-auto">
+                            <div v-if="Object.keys(promiseForm.errors).length > 0" class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold">
+                                <p v-for="(err, key) in promiseForm.errors" :key="key">{{ err }}</p>
+                            </div>
                             <!-- Info Sisa Tagihan -->
                             <div class="p-3 bg-amber-50/70 border border-amber-200/70 rounded-xl flex items-center justify-between">
                                 <span class="text-xs font-bold text-gray-600">Total Sisa Tagihan:</span>
@@ -1051,7 +1061,7 @@
                                     type="date" 
                                     v-model="promiseForm.promise_date" 
                                     required 
-                                    :min="new Date().toISOString().split('T')[0]" 
+                                    :min="todayLocalStr" 
                                     class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
                                 >
                                 
@@ -1206,6 +1216,9 @@
 
                     <form @submit.prevent="submitEdit">
                         <div class="p-6 space-y-4">
+                            <div v-if="Object.keys(editForm.errors).length > 0" class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold">
+                                <p v-for="(err, key) in editForm.errors" :key="key">{{ err }}</p>
+                            </div>
                             <div>
                                 <label class="block text-xs font-bold text-gray-700 mb-1">Nominal Tagihan</label>
                                 <div class="relative">
@@ -1260,6 +1273,9 @@
 
                     <form @submit.prevent="submitStopSementara">
                         <div class="p-6 space-y-4">
+                            <div v-if="Object.keys(stopSementaraForm.errors).length > 0" class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold">
+                                <p v-for="(err, key) in stopSementaraForm.errors" :key="key">{{ err }}</p>
+                            </div>
                             <p class="text-sm text-gray-600 mb-4">
                                 Harap tentukan tanggal mulai dan tanggal selesai untuk menghentikan layanan (isolir) sementara. Tagihan baru tidak akan tercetak selama masa ini.
                             </p>
@@ -1309,12 +1325,15 @@
 
                     <form @submit.prevent="submitUpgrade">
                         <div class="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+                            <div v-if="Object.keys(upgradeForm.errors).length > 0" class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold">
+                                <p v-for="(err, key) in upgradeForm.errors" :key="key">{{ err }}</p>
+                            </div>
                             <!-- Paket Saat Ini vs Paket Baru -->
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <!-- Paket Saat Ini -->
                                 <div class="p-4 rounded-xl border border-gray-200 bg-gray-50/70">
                                     <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Paket Saat Ini</div>
-                                    <div class="text-sm font-bold text-gray-900 truncate">{{ selectedUpgradeInvoice?.customer?.package_name || 'Tidak ada paket' }}</div>
+                                    <div class="text-sm font-bold text-gray-900 truncate">{{ selectedUpgradeInvoice?.customer?.package_name || selectedUpgradeInvoice?.customer?.package || 'Tidak ada paket' }}</div>
                                     <div class="text-xs text-gray-500 mt-1">Kecepatan: <span class="font-semibold text-gray-700">{{ selectedUpgradeInvoice?.customer?.package_speed || 0 }} Mbps</span></div>
                                     <div class="text-xs text-indigo-600 font-bold mt-1">{{ formatCurrency(selectedUpgradeInvoice?.customer?.package_price || 0) }} / bln</div>
                                 </div>
@@ -1329,8 +1348,8 @@
                                     </div>
                                     <select v-model="upgradeForm.new_package_id" required class="w-full text-xs font-semibold px-2.5 py-2 bg-white border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none">
                                         <option value="" disabled>-- Pilih Paket --</option>
-                                        <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">
-                                            {{ pkg.name }} ({{ pkg.speed_mbps }} Mbps) - {{ formatCurrency(pkg.price) }}
+                                        <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id" :disabled="pkg.id == selectedUpgradeInvoice?.customer?.package_id">
+                                            {{ pkg.name }} ({{ pkg.speed_mbps }} Mbps) - {{ formatCurrency(pkg.price) }}{{ pkg.id == selectedUpgradeInvoice?.customer?.package_id ? ' (Saat Ini)' : '' }}
                                         </option>
                                     </select>
                                     <div v-if="selectedNewPackage" class="text-[11px] text-gray-600 mt-1.5 flex items-center justify-between">
@@ -1386,7 +1405,7 @@
                                             {{ formatShortDate(calculatedStartDate) }} s/d {{ formatShortDate(calculatedPastEndDate) }}
                                         </div>
                                         <div class="text-xs font-bold text-gray-800 truncate mt-0.5">
-                                            {{ selectedUpgradeInvoice?.customer?.package_name || 'Paket Lama' }}
+                                            {{ selectedUpgradeInvoice?.customer?.package_name || selectedUpgradeInvoice?.customer?.package || 'Paket Lama' }}
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
                                             ({{ calculatedPastDays }}/{{ calculatedTotalCycleDays }}) &times; {{ formatCurrency(currentPackagePrice) }}
@@ -1470,7 +1489,7 @@
                                             <div class="flex items-center justify-between">
                                                 <span class="text-xs font-bold text-gray-800">Ubah Nominal Penuh ke Tarif Paket Baru</span>
                                                 <span v-if="selectedNewPackage" class="text-xs font-black px-2 py-0.5 rounded bg-white border border-purple-200 text-purple-700">
-                                                    {{ formatCurrency(selectedNewPackage?.price) }}
+                                                    {{ formatCurrency(calculatedReplacePrice) }}
                                                 </span>
                                             </div>
                                             <p class="text-[11px] text-gray-500 mt-0.5">
@@ -1567,6 +1586,9 @@
 
                     <form @submit.prevent="submitStopPermanen">
                         <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                            <div v-if="Object.keys(stopPermanenForm.errors).length > 0" class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold">
+                                <p v-for="(err, key) in stopPermanenForm.errors" :key="key">{{ err }}</p>
+                            </div>
                             <!-- Ringkasan Pelanggan -->
                             <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2.5">
                                 <div class="flex items-start justify-between">
@@ -1723,10 +1745,19 @@ const props = defineProps({
     invoice_issue_date: Number,
 });
 
+function toLocalDateString(date = new Date()) {
+    const d = date instanceof Date ? date : new Date(date);
+    if (isNaN(d.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+const todayLocalStr = computed(() => toLocalDateString(new Date()));
+
 const columns = [
-    { key: 'checkbox', label: '' },
-    { key: 'index', label: 'NO' },
+    { key: 'index', label: 'NO', class: 'w-12 text-center' },
     { key: 'customer', label: 'NAMA PELANGGAN' },
+    { key: 'actions', label: 'AKSI', class: 'whitespace-nowrap' },
     { key: 'area', label: 'AREA' },
     { key: 'address', label: 'ALAMAT' },
     { key: 'package', label: 'NAMA PAKET' },
@@ -1866,6 +1897,7 @@ function formatCurrency(value) {
 function formatStatus(status) {
     if (status === 'paid') return 'Lunas';
     if (status === 'unpaid') return 'Belum Lunas';
+    if (status === 'overdue') return 'Jatuh Tempo';
     if (status === 'partial') return 'Bayar Sebagian';
     return status;
 }
@@ -1901,7 +1933,8 @@ function extractBankName(notes) {
 function statusClass(status) {
     switch (status) {
         case 'paid': return 'bg-emerald-100 text-emerald-700';
-        case 'unpaid': return 'bg-rose-100 text-rose-700';
+        case 'unpaid':
+        case 'overdue': return 'bg-rose-100 text-rose-700';
         case 'partial': return 'bg-amber-100 text-amber-700';
         default: return 'bg-gray-100 text-gray-700';
     }
@@ -1910,7 +1943,8 @@ function statusClass(status) {
 function statusDotClass(status) {
     switch (status) {
         case 'paid': return 'bg-emerald-500';
-        case 'unpaid': return 'bg-rose-500';
+        case 'unpaid':
+        case 'overdue': return 'bg-rose-500';
         case 'partial': return 'bg-amber-500';
         default: return 'bg-gray-500';
     }
@@ -1918,7 +1952,21 @@ function statusDotClass(status) {
 
 // Action Dropdown Floating Logic
 const activeDropdownRow = ref(null);
-const dropdownPos = ref({ top: 0, left: 0 });
+const dropdownMenuRef = ref(null);
+const dropdownPos = ref({ top: 0, bottom: null, left: 0, maxHeight: 420 });
+
+const dropdownStyle = computed(() => {
+    const style = {
+        left: `${dropdownPos.value.left}px`,
+        maxHeight: `${dropdownPos.value.maxHeight}px`,
+    };
+    if (dropdownPos.value.bottom !== null) {
+        style.bottom = `${dropdownPos.value.bottom}px`;
+    } else {
+        style.top = `${dropdownPos.value.top}px`;
+    }
+    return style;
+});
 
 function toggleDropdown(event, row) {
     if (activeDropdownRow.value && activeDropdownRow.value.id === row.id) {
@@ -1926,20 +1974,35 @@ function toggleDropdown(event, row) {
         return;
     }
     const rect = event.currentTarget.getBoundingClientRect();
-    const dropdownHeight = 310;
     const dropdownWidth = 240;
+    const viewportW = window.innerWidth;
+    const viewportH = window.innerHeight;
+    const spaceBelow = viewportH - rect.bottom - 12;
+    const spaceAbove = rect.top - 12;
 
-    let top = rect.bottom + 6;
-    if (top + dropdownHeight > window.innerHeight && rect.top > dropdownHeight) {
-        top = Math.max(10, rect.top - dropdownHeight - 6);
+    let left = rect.right - dropdownWidth;
+    if (left < 12) {
+        left = Math.max(12, Math.min(rect.left, viewportW - dropdownWidth - 12));
+    } else if (left + dropdownWidth > viewportW - 12) {
+        left = Math.max(12, viewportW - dropdownWidth - 12);
     }
 
-    let left = Math.min(rect.right - dropdownWidth, window.innerWidth - dropdownWidth - 10);
-    if (left < 10) {
-        left = 10;
+    if (spaceBelow >= 340 || spaceBelow >= spaceAbove) {
+        dropdownPos.value = {
+            top: rect.bottom + 6,
+            bottom: null,
+            left,
+            maxHeight: Math.max(180, spaceBelow - 6),
+        };
+    } else {
+        dropdownPos.value = {
+            top: null,
+            bottom: viewportH - rect.top + 6,
+            left,
+            maxHeight: Math.max(180, spaceAbove - 6),
+        };
     }
 
-    dropdownPos.value = { top, left };
     activeDropdownRow.value = row;
 }
 
@@ -1947,20 +2010,36 @@ function closeDropdown() {
     activeDropdownRow.value = null;
 }
 
-function handleWindowChange() {
+function handleScrollChange(event) {
+    if (!activeDropdownRow.value) return;
+    if (dropdownMenuRef.value && event?.target && dropdownMenuRef.value.contains(event.target)) {
+        return;
+    }
+    activeDropdownRow.value = null;
+}
+
+function handleWindowResize() {
     if (activeDropdownRow.value) {
         activeDropdownRow.value = null;
     }
 }
 
+function handleKeydown(event) {
+    if (event.key === 'Escape' && activeDropdownRow.value) {
+        activeDropdownRow.value = null;
+    }
+}
+
 onMounted(() => {
-    window.addEventListener('scroll', handleWindowChange, { passive: true });
-    window.addEventListener('resize', handleWindowChange);
+    window.addEventListener('scroll', handleScrollChange, { passive: true, capture: true });
+    window.addEventListener('resize', handleWindowResize);
+    window.addEventListener('keydown', handleKeydown);
 });
 
 onUnmounted(() => {
-    window.removeEventListener('scroll', handleWindowChange);
-    window.removeEventListener('resize', handleWindowChange);
+    window.removeEventListener('scroll', handleScrollChange, { capture: true });
+    window.removeEventListener('resize', handleWindowResize);
+    window.removeEventListener('keydown', handleKeydown);
 });
 
 // Payment Modal Logic
@@ -1997,8 +2076,8 @@ function setPaymentMode(mode) {
         paymentForm.internet_action = 'on';
     } else {
         // Mode Bayar Sebagian (Cicil)
-        if (paymentForm.amount >= totalRemaining) {
-            paymentForm.amount = Math.round(totalRemaining / 2);
+        if (!paymentForm.amount || paymentForm.amount <= 0 || paymentForm.amount >= totalRemaining) {
+            paymentForm.amount = Math.max(1, Math.round(totalRemaining / 2));
         }
         // Jika pelanggan saat ini suspended, defaultkan 'off' (tetap isolir sampai lunas),
         // namun admin tetap dapat memilih 'on' secara bebas
@@ -2041,7 +2120,9 @@ function removeProofFile() {
 
 function openPaymentModal(invoice, mode = 'full') {
     selectedInvoice.value = invoice;
+    paymentForm.clearErrors();
     paymentForm.method = 'cash';
+    paymentForm.amount = 0;
     paymentForm.notes = '';
     paymentForm.selected_bank = null;
     removeProofFile();
@@ -2079,7 +2160,8 @@ function submitPayment() {
 }
 
 function rollbackInvoice(row) {
-    if (confirm(`Apakah Anda yakin ingin membatalkan pembayaran untuk pelanggan ${row.customer.name}? Status tagihan akan kembali menjadi Belum Lunas.`)) {
+    const targetLabel = row.customer?.name || `#${row.invoice_number}`;
+    if (confirm(`Apakah Anda yakin ingin membatalkan pembayaran untuk pelanggan ${targetLabel}? Status tagihan akan kembali menjadi Belum Lunas.`)) {
         router.post(`/invoices/${row.id}/rollback`, {}, {
             preserveScroll: true,
         });
@@ -2097,13 +2179,13 @@ const promiseForm = useForm({
 function setPromisePreset(days) {
     const d = new Date();
     d.setDate(d.getDate() + days);
-    promiseForm.promise_date = d.toISOString().split('T')[0];
+    promiseForm.promise_date = toLocalDateString(d);
 }
 
 function setPromiseEndOfMonth() {
     const now = new Date();
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    promiseForm.promise_date = lastDay.toISOString().split('T')[0];
+    promiseForm.promise_date = toLocalDateString(lastDay);
 }
 
 // Stop Sementara Modal Logic
@@ -2115,7 +2197,8 @@ const stopSementaraForm = useForm({
 
 function stopSementara(row) {
     selectedInvoice.value = row;
-    stopSementaraForm.start_date = '';
+    stopSementaraForm.clearErrors();
+    stopSementaraForm.start_date = toLocalDateString(new Date());
     stopSementaraForm.end_date = '';
     showStopSementaraModal.value = true;
 }
@@ -2148,6 +2231,7 @@ const activeDispatchData = ref(null);
 
 function openStopPermanenModal(row) {
     selectedStopPermanenInvoice.value = row;
+    stopPermanenForm.clearErrors();
     stopPermanenForm.reason_preset = 'Menunggak Pembayaran';
     stopPermanenForm.custom_reason = '';
     stopPermanenForm.notes = '';
@@ -2202,6 +2286,7 @@ function sendWhatsAppToLead() {
 
 function openPromiseModal(invoice) {
     selectedInvoice.value = invoice;
+    promiseForm.clearErrors();
     promiseForm.promise_date = invoice.promise_date || '';
     // Defaultkan 'on' untuk memberikan akses internet / kompensasi selama masa janji bayar
     promiseForm.internet_action = 'on';
@@ -2254,6 +2339,7 @@ const editForm = useForm({
 
 function openEditModal(invoice) {
     selectedInvoice.value = invoice;
+    editForm.clearErrors();
     editForm.amount = invoice.amount;
     
     // Convert DD/MM/YYYY or YYYY-MM-DD to YYYY-MM-DD for input type="date"
@@ -2301,7 +2387,7 @@ const upgradeForm = useForm({
     new_package_id: '',
     billing_action: 'prorata_diff',
     start_date: '',
-    effective_date: new Date().toISOString().split('T')[0],
+    effective_date: toLocalDateString(new Date()),
     sync_radius: true,
     notes: '',
     pay_now: false,
@@ -2395,15 +2481,35 @@ const calculatedFutureEndDate = computed(() => {
     return d;
 });
 
+const customerTaxPpn = computed(() => {
+    return Number(selectedUpgradeInvoice.value?.customer?.tax_ppn || 0);
+});
+
 const calculatedPastAmount = computed(() => {
     if (!currentPackagePrice.value || calculatedPastDays.value <= 0) return 0;
-    return Math.round((currentPackagePrice.value / calculatedTotalCycleDays.value) * calculatedPastDays.value);
+    let base = Math.round((currentPackagePrice.value / calculatedTotalCycleDays.value) * calculatedPastDays.value);
+    if (customerTaxPpn.value > 0) {
+        base = Math.round(base + (base * (customerTaxPpn.value / 100)));
+    }
+    return base;
 });
 
 const calculatedFutureAmount = computed(() => {
     if (!selectedNewPackage.value) return 0;
     const newPrice = Number(selectedNewPackage.value.price || 0);
-    return Math.round((newPrice / calculatedTotalCycleDays.value) * calculatedFutureDays.value);
+    let base = Math.round((newPrice / calculatedTotalCycleDays.value) * calculatedFutureDays.value);
+    if (customerTaxPpn.value > 0) {
+        base = Math.round(base + (base * (customerTaxPpn.value / 100)));
+    }
+    return base;
+});
+
+const calculatedReplacePrice = computed(() => {
+    if (!selectedNewPackage.value) return 0;
+    const newPrice = Number(selectedNewPackage.value.price || 0);
+    return customerTaxPpn.value > 0
+        ? Math.round(newPrice + (newPrice * (customerTaxPpn.value / 100)))
+        : Math.round(newPrice);
 });
 
 const calculatedTotalProrata = computed(() => {
@@ -2412,6 +2518,7 @@ const calculatedTotalProrata = computed(() => {
 
 function openUpgradeModal(invoice) {
     selectedUpgradeInvoice.value = invoice;
+    upgradeForm.clearErrors();
     upgradeForm.new_package_id = '';
     upgradeForm.billing_action = 'prorata_diff';
 
@@ -2429,7 +2536,7 @@ function openUpgradeModal(invoice) {
         sDate = `${yr}-${mo}-${day}`;
     }
     upgradeForm.start_date = sDate;
-    upgradeForm.effective_date = new Date().toISOString().split('T')[0];
+    upgradeForm.effective_date = toLocalDateString(new Date());
     upgradeForm.sync_radius = true;
     upgradeForm.notes = '';
     upgradeForm.pay_now = false;
