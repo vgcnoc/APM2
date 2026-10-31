@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Invoice;
 use App\Models\Setting;
+use App\Services\CustomerBillingPrice;
 use App\Services\ProrataCalculator;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -38,9 +39,7 @@ class RecalculateMigrationProrata extends Command
 
         $changes = $invoices->map(function (Invoice $invoice) use ($formula, $globalTaxPpn) {
             $customer = $invoice->customer;
-            $baseAmount = $customer->base_amount > 0
-                ? (float) $customer->base_amount
-                : (float) ($customer->package?->price ?? 0);
+            $baseAmount = CustomerBillingPrice::monthly($customer);
             $amount = ProrataCalculator::firstMonthAmount($baseAmount, $customer->activation_date, $formula);
             $taxPpn = (float) ($customer->tax_ppn ?? $globalTaxPpn);
 

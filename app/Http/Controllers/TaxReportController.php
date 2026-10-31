@@ -145,7 +145,7 @@ class TaxReportController extends Controller
                 $basePrice = (int) round((float) $invoice->amount);
             }
         } else {
-            $basePrice = (int) round((float) ($customer->base_amount > 0 ? $customer->base_amount : ($customer->package ? $customer->package->price : 0)));
+            $basePrice = (int) round(\App\Services\CustomerBillingPrice::monthly($customer));
         }
 
         $ppn_amount = (int) round($basePrice * ($ppn_percent / 100));

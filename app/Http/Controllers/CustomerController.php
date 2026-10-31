@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\Invoice;
 use App\Models\Setting;
 use App\Services\RadiusService;
+use App\Services\CustomerBillingPrice;
 use App\Services\DataScopeService;
 use App\Services\ProrataCalculator;
 use Illuminate\Http\RedirectResponse;
@@ -3699,7 +3700,7 @@ class CustomerController extends Controller
 
                 // Create initial invoice
                 $activationDate = \Carbon\Carbon::parse($validated['activation_date']);
-                $basePrice = $customer->base_amount > 0 ? (float) $customer->base_amount : ($customer->package ? (float) $customer->package->price : 0);
+                $basePrice = CustomerBillingPrice::monthly($customer);
                 $amount = $basePrice;
                 $isProrata = false;
 
