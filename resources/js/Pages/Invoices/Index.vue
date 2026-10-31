@@ -274,82 +274,75 @@
                 </td>
                 <!-- Kolom Aksi Tepat di Belakang Nama Pelanggan -->
                 <td class="whitespace-nowrap">
-                    <div class="flex items-center justify-start gap-1.5 whitespace-nowrap">
-                        <!-- Tombol Bayar Lunas (Unpaid / Overdue) -->
-                        <button 
-                            v-can="'invoices_pay'"
-                            v-if="row.status === 'unpaid' || row.status === 'overdue'" 
-                            type="button"
-                            @click="openPaymentModal(row, 'full')" 
-                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer"
-                            title="Proses Pembayaran Lunas"
-                        >
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zM7 15h2m1 0h6"/></svg>
-                            <span>Bayar Lunas</span>
-                        </button>
+                    <div class="flex flex-col items-start gap-1">
+                        <div class="flex items-center justify-start gap-1.5 whitespace-nowrap">
+                            <!-- Tombol Bayar Lunas (Unpaid / Overdue) -->
+                            <button 
+                                v-can="'invoices_pay'"
+                                v-if="row.status === 'unpaid' || row.status === 'overdue'" 
+                                type="button"
+                                @click="openPaymentModal(row, 'full')" 
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer"
+                                title="Proses Pembayaran Lunas"
+                            >
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zM7 15h2m1 0h6"/></svg>
+                                <span>Bayar Lunas</span>
+                            </button>
 
-                        <!-- Tombol Lunasi Sisa (Untuk Partial) -->
-                        <button 
-                            v-can="'invoices_pay'"
-                            v-else-if="row.status === 'partial'" 
-                            type="button"
-                            @click="openPaymentModal(row, 'full')" 
-                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer" 
-                            title="Bayar / Lunasi Sisa Tagihan"
-                        >
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            <span>Lunasi Sisa</span>
-                        </button>
+                            <!-- Tombol Lunasi Sisa (Untuk Partial) -->
+                            <button 
+                                v-can="'invoices_pay'"
+                                v-else-if="row.status === 'partial'" 
+                                type="button"
+                                @click="openPaymentModal(row, 'full')" 
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer" 
+                                title="Bayar / Lunasi Sisa Tagihan"
+                            >
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <span>Lunasi Sisa</span>
+                            </button>
 
-                        <!-- Tombol Bayar Sebagian (Cicil) untuk Unpaid, Overdue & Partial -->
-                        <button 
-                            v-can="'invoices_pay'"
-                            v-if="row.status === 'unpaid' || row.status === 'partial' || row.status === 'overdue'" 
-                            type="button"
-                            @click="openPaymentModal(row, 'partial')" 
-                            class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 hover:border-amber-400 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer" 
-                            title="Bayar Sebagian / Cicil Tagihan"
-                        >
-                            <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            <span>Bayar Sebagian</span>
-                        </button>
+                            <!-- Badge Lunas (Untuk Paid) -->
+                            <div 
+                                v-else-if="row.status === 'paid'"
+                                class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold shadow-2xs"
+                            >
+                                <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <span>Lunas</span>
+                            </div>
 
-                        <!-- Tombol Rollback (Paid atau Partial) -->
-                        <button 
-                            v-can="'invoices_rollback'"
-                            v-if="row.status === 'paid' || row.status === 'partial'" 
-                            type="button"
-                            @click="rollbackInvoice(row)" 
-                            class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 hover:border-rose-300 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer" 
-                            title="Batalkan pembayaran / Rollback status tagihan"
-                        >
-                            <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
-                            <span>Rollback</span>
-                        </button>
+                            <!-- Tombol Menu Aksi Lainnya (...) -->
+                            <button 
+                                type="button" 
+                                @click="toggleDropdown($event, row)" 
+                                class="inline-flex items-center justify-center p-1.5 bg-white hover:bg-gray-100 text-gray-500 hover:text-gray-800 border border-gray-200 hover:border-gray-300 rounded-lg transition-colors shadow-2xs cursor-pointer"
+                                :class="{ 'ring-2 ring-indigo-500 bg-gray-50 text-indigo-600': activeDropdownRow?.id === row.id }"
+                                title="Menu Aksi Lainnya (Bayar Sebagian, Cetak, Janji Bayar, dll)"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+                                </svg>
+                            </button>
+                        </div>
 
-                        <!-- Tombol Cetak Cepat -->
-                        <a 
-                            v-can="'invoices_print'"
-                            :href="'/invoices/' + row.id + '/print'" 
-                            target="_blank" 
-                            class="inline-flex items-center justify-center p-1.5 bg-white hover:bg-indigo-50 text-gray-500 hover:text-indigo-600 border border-gray-200 hover:border-indigo-200 rounded-lg transition-colors shadow-2xs" 
-                            title="Cetak Invoice / Struk"
+                        <!-- Info Nama Petugas yang Melunaskan / Memproses -->
+                        <div 
+                            v-if="row.last_payment_collector || extractResellerName(row.last_payment_notes) || row.last_payment_method === 'payment_gateway'" 
+                            class="text-[10px] font-semibold flex items-center gap-1 truncate max-w-[200px]"
+                            :class="row.status === 'paid' ? 'text-emerald-700' : 'text-amber-700'"
+                            :title="'Diproses / Dilunaskan oleh: ' + (row.last_payment_collector || extractResellerName(row.last_payment_notes) || 'Sistem Otomatis')"
                         >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                        </a>
-
-                        <!-- Tombol Menu Aksi Lainnya (...) -->
-                        <button 
-                            type="button" 
-                            @click="toggleDropdown($event, row)" 
-                            class="inline-flex items-center justify-center p-1.5 bg-white hover:bg-gray-100 text-gray-500 hover:text-gray-800 border border-gray-200 hover:border-gray-300 rounded-lg transition-colors shadow-2xs cursor-pointer"
-                            :class="{ 'ring-2 ring-indigo-500 bg-gray-50 text-indigo-600': activeDropdownRow?.id === row.id }"
-                            title="Menu Aksi Lainnya"
+                            <svg class="w-3 h-3 shrink-0 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                            <span class="truncate">Petugas: <strong class="font-bold">{{ row.last_payment_collector || extractResellerName(row.last_payment_notes) || 'Sistem Otomatis' }}</strong></span>
+                        </div>
+                        <div 
+                            v-else-if="row.promise_date" 
+                            class="text-[9px] text-amber-700 font-medium flex items-center gap-1 truncate max-w-[200px]"
+                            :title="'Janji Bayar: ' + row.promise_date"
                         >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
-                            </svg>
-                        </button>
+                            <svg class="w-2.5 h-2.5 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            <span>Janji: <strong>{{ row.promise_date }}</strong></span>
+                        </div>
                     </div>
                 </td>
                 <td>
@@ -504,10 +497,23 @@
                             <span>&bull;</span>
                             <span class="font-semibold text-gray-700">{{ formatCurrency(activeDropdownRow.amount) }}</span>
                         </div>
-                        <div v-if="activeDropdownRow.last_payment_collector" class="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
-                            <svg class="w-3 h-3 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                            <span>Diproses: <strong class="text-slate-800 font-bold">{{ activeDropdownRow.last_payment_collector }}</strong></span>
+                        
+                        <!-- Kartu Info Petugas yang Memproses / Melunaskan -->
+                        <div v-if="activeDropdownRow.last_payment_collector || extractResellerName(activeDropdownRow.last_payment_notes) || activeDropdownRow.last_payment_method === 'payment_gateway'" class="mt-2 p-2 bg-emerald-50/90 border border-emerald-100 rounded-xl text-[10px]">
+                            <div class="flex items-center gap-1 text-emerald-800 font-bold">
+                                <svg class="w-3 h-3 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                <span>Petugas Pelunasan / Pemroses:</span>
+                            </div>
+                            <div class="text-emerald-950 font-extrabold text-xs mt-0.5 truncate">
+                                {{ activeDropdownRow.last_payment_collector || extractResellerName(activeDropdownRow.last_payment_notes) || 'Sistem Otomatis (Payment Gateway)' }}
+                            </div>
+                            <div v-if="activeDropdownRow.last_payment_date" class="text-[9px] text-emerald-700 mt-0.5 flex items-center gap-1">
+                                <span>{{ activeDropdownRow.last_payment_date }}</span>
+                                <span>&bull;</span>
+                                <span>{{ formatPaymentMethod(activeDropdownRow.last_payment_method) }}</span>
+                            </div>
                         </div>
+
                         <div v-if="activeDropdownRow.last_payment_proof" class="mt-1.5 pt-1.5 border-t border-gray-200/60">
                             <a :href="activeDropdownRow.last_payment_proof" target="_blank" class="inline-flex items-center gap-1.5 text-[11px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50/80 hover:bg-indigo-100 px-2 py-1 rounded-lg transition-colors w-full justify-center">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
@@ -549,6 +555,23 @@
                             <div>
                                 <span class="font-semibold text-amber-900">Bayar Sebagian (Cicil)</span>
                                 <p class="text-[10px] text-amber-600/80 font-normal">Bayar sebagian / cicilan tagihan</p>
+                            </div>
+                        </button>
+
+                        <!-- Rollback Pembayaran (Jika Paid atau Partial) -->
+                        <button 
+                            v-can="'invoices_rollback'"
+                            v-if="activeDropdownRow.status === 'paid' || activeDropdownRow.status === 'partial'"
+                            type="button" 
+                            @click="rollbackInvoice(activeDropdownRow); closeDropdown()"
+                            class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-rose-700 hover:bg-rose-50 transition-colors font-medium cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-md bg-rose-50 flex items-center justify-center shrink-0">
+                                <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                            </div>
+                            <div>
+                                <span class="font-semibold text-rose-900">Rollback Pembayaran</span>
+                                <p class="text-[10px] text-rose-500 font-normal">Batalkan status pembayaran</p>
                             </div>
                         </button>
 
@@ -718,6 +741,15 @@
 
                     <form @submit.prevent="submitPayment">
                         <div class="p-4 sm:p-6 space-y-4 max-h-[72vh] overflow-y-auto">
+                            <!-- Info Petugas yang Memproses -->
+                            <div class="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+                                <span class="text-slate-500 font-medium">Petugas yang Memproses:</span>
+                                <span class="font-bold text-slate-800 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                    {{ $page.props.auth?.user?.name }} (Anda)
+                                </span>
+                            </div>
+
                             <div v-if="Object.keys(paymentForm.errors).length > 0" class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold">
                                 <p v-for="(err, key) in paymentForm.errors" :key="key">{{ err }}</p>
                             </div>
@@ -740,6 +772,27 @@
                                 <div>
                                     <h4 class="text-xs font-bold text-amber-800">Pelanggan memiliki {{ selectedInvoice?.customer?.unpaid_count }} tagihan aktif berjalan.</h4>
                                     <p class="text-[11px] text-amber-700 mt-1">Total seluruh tagihan: <strong>{{ formatCurrency(selectedInvoice?.customer?.total_unpaid) }}</strong>.</p>
+                                </div>
+                            </div>
+
+                            <!-- Riwayat Pembayaran Sebelumnya (Cicilan / Sebagian) & Nama Petugas -->
+                            <div v-if="selectedInvoice?.payments && selectedInvoice.payments.length > 0" class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                                <div class="text-[11px] font-bold text-slate-700 flex items-center justify-between">
+                                    <span>Riwayat Pembayaran Sebelumnya:</span>
+                                    <span class="text-emerald-700 font-mono">{{ formatCurrency(selectedInvoice.total_paid) }} ({{ selectedInvoice.payments.length }}x)</span>
+                                </div>
+                                <div class="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                                    <div v-for="pay in selectedInvoice.payments" :key="pay.id" class="flex items-center justify-between text-[11px] bg-white p-2 rounded-lg border border-slate-100">
+                                        <div>
+                                            <span class="font-bold text-slate-800">{{ formatCurrency(pay.amount) }}</span>
+                                            <span class="text-slate-400 mx-1">&bull;</span>
+                                            <span class="text-slate-600">{{ pay.payment_date }}</span>
+                                            <div class="text-[10px] text-slate-500">
+                                                Petugas: <strong class="text-slate-700">{{ pay.collector || 'Sistem Otomatis' }}</strong> ({{ formatPaymentMethod(pay.payment_method) }})
+                                            </div>
+                                        </div>
+                                        <a v-if="pay.proof_image" :href="pay.proof_image" target="_blank" class="text-indigo-600 hover:text-indigo-800 text-[10px] font-bold">Bukti</a>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1043,6 +1096,15 @@
 
                     <form @submit.prevent="submitPromise">
                         <div class="p-4 sm:p-6 space-y-4 max-h-[72vh] overflow-y-auto">
+                            <!-- Info Petugas yang Memproses -->
+                            <div class="flex items-center justify-between p-2.5 bg-amber-50/60 border border-amber-200 rounded-xl text-xs">
+                                <span class="text-amber-800 font-medium">Petugas yang Memproses:</span>
+                                <span class="font-bold text-amber-950 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                    {{ $page.props.auth?.user?.name }} (Anda)
+                                </span>
+                            </div>
+
                             <div v-if="Object.keys(promiseForm.errors).length > 0" class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold">
                                 <p v-for="(err, key) in promiseForm.errors" :key="key">{{ err }}</p>
                             </div>
@@ -1216,6 +1278,15 @@
 
                     <form @submit.prevent="submitEdit">
                         <div class="p-6 space-y-4">
+                            <!-- Info Petugas yang Memproses -->
+                            <div class="flex items-center justify-between p-2.5 bg-blue-50/60 border border-blue-200 rounded-xl text-xs">
+                                <span class="text-blue-800 font-medium">Petugas yang Memproses:</span>
+                                <span class="font-bold text-blue-950 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                    {{ $page.props.auth?.user?.name }} (Anda)
+                                </span>
+                            </div>
+
                             <div v-if="Object.keys(editForm.errors).length > 0" class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold">
                                 <p v-for="(err, key) in editForm.errors" :key="key">{{ err }}</p>
                             </div>
@@ -1273,6 +1344,15 @@
 
                     <form @submit.prevent="submitStopSementara">
                         <div class="p-6 space-y-4">
+                            <!-- Info Petugas yang Memproses -->
+                            <div class="flex items-center justify-between p-2.5 bg-orange-50/60 border border-orange-200 rounded-xl text-xs">
+                                <span class="text-orange-800 font-medium">Petugas yang Memproses:</span>
+                                <span class="font-bold text-orange-950 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                    {{ $page.props.auth?.user?.name }} (Anda)
+                                </span>
+                            </div>
+
                             <div v-if="Object.keys(stopSementaraForm.errors).length > 0" class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold">
                                 <p v-for="(err, key) in stopSementaraForm.errors" :key="key">{{ err }}</p>
                             </div>
@@ -1325,6 +1405,15 @@
 
                     <form @submit.prevent="submitUpgrade">
                         <div class="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+                            <!-- Info Petugas yang Memproses -->
+                            <div class="flex items-center justify-between p-2.5 bg-purple-50/70 border border-purple-200 rounded-xl text-xs">
+                                <span class="text-purple-800 font-medium">Petugas yang Memproses:</span>
+                                <span class="font-bold text-purple-950 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                    {{ $page.props.auth?.user?.name }} (Anda)
+                                </span>
+                            </div>
+
                             <div v-if="Object.keys(upgradeForm.errors).length > 0" class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold">
                                 <p v-for="(err, key) in upgradeForm.errors" :key="key">{{ err }}</p>
                             </div>
@@ -1586,6 +1675,15 @@
 
                     <form @submit.prevent="submitStopPermanen">
                         <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                            <!-- Info Petugas yang Memproses -->
+                            <div class="flex items-center justify-between p-2.5 bg-rose-50/70 border border-rose-200 rounded-xl text-xs">
+                                <span class="text-rose-800 font-medium">Petugas yang Memproses:</span>
+                                <span class="font-bold text-rose-950 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                    {{ $page.props.auth?.user?.name }} (Anda)
+                                </span>
+                            </div>
+
                             <div v-if="Object.keys(stopPermanenForm.errors).length > 0" class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold">
                                 <p v-for="(err, key) in stopPermanenForm.errors" :key="key">{{ err }}</p>
                             </div>

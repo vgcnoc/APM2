@@ -410,3 +410,4 @@ const pendingInstallations = computed(() => {
     return customers;
 });
 </script>
+

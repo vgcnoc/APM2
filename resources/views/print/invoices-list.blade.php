@@ -198,8 +198,18 @@
                     </td>
                     <td>
                         @if($lastPayment)
+                            @php
+                                $cName = $lastPayment->collector?->name;
+                                if (!$cName) {
+                                    if ($lastPayment->payment_method === 'payment_gateway') {
+                                        $cName = 'Sistem Otomatis';
+                                    } elseif ($lastPayment->payment_method === 'reseller_balance' && preg_match('/(?:Reseller|Loket|Agen)\s*:\s*([^|,\n]+)/i', $lastPayment->notes ?? '', $m)) {
+                                        $cName = 'Loket ' . trim($m[1]);
+                                    }
+                                }
+                            @endphp
                             <div>{{ \Carbon\Carbon::parse($lastPayment->payment_date)->format('d/m/Y') }}</div>
-                            <div style="font-size: 8px; color: #64748b;">{{ strtoupper($lastPayment->payment_method) }} • {{ $lastPayment->collector?->name ?? '-' }}</div>
+                            <div style="font-size: 8px; color: #64748b;">{{ strtoupper($lastPayment->payment_method) }} • {{ $cName ?? '-' }}</div>
                         @else
                             <span style="color: #94a3b8;">-</span>
                         @endif

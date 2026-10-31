@@ -398,3 +398,4 @@ const getPairTotalPorts = (items) => {
     return items.reduce((sum, item) => sum + Number(item.odp.total_ports || 0), 0);
 };
 </script>
+

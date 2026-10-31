@@ -305,6 +305,35 @@ class InvoiceController extends Controller
             ->withQueryString()
             ->through(function ($invoice) use ($defaultTaxPpn) {
                 $lastPayment = $invoice->payments->first();
+                $collectorName = $lastPayment?->collector?->name;
+                if (!$collectorName && $lastPayment) {
+                    if ($lastPayment->payment_method === 'payment_gateway') {
+                        $collectorName = 'Sistem Otomatis (Payment Gateway)';
+                    } elseif ($lastPayment->payment_method === 'reseller_balance' && preg_match('/(?:Reseller|Loket|Agen)\s*:\s*([^|,\n]+)/i', $lastPayment->notes ?? '', $m)) {
+                        $collectorName = 'Loket ' . trim($m[1]);
+                    }
+                }
+
+                $paymentsList = $invoice->payments->map(function ($p) {
+                    $cName = $p->collector?->name;
+                    if (!$cName) {
+                        if ($p->payment_method === 'payment_gateway') {
+                            $cName = 'Sistem Otomatis';
+                        } elseif ($p->payment_method === 'reseller_balance' && preg_match('/(?:Reseller|Loket|Agen)\s*:\s*([^|,\n]+)/i', $p->notes ?? '', $m)) {
+                            $cName = 'Loket ' . trim($m[1]);
+                        }
+                    }
+                    return [
+                        'id' => $p->id,
+                        'amount' => (float) $p->amount,
+                        'payment_date' => $p->payment_date ? \Carbon\Carbon::parse($p->payment_date)->format('d M Y') : null,
+                        'payment_method' => $p->payment_method,
+                        'collector' => $cName,
+                        'notes' => $p->notes,
+                        'proof_image' => $p->proof_image ? asset('storage/' . $p->proof_image) : null,
+                    ];
+                })->values()->all();
+
                 return [
                     'id' => $invoice->id,
                     'invoice_number' => $invoice->invoice_number,
@@ -347,9 +376,10 @@ class InvoiceController extends Controller
                     'last_payment_date' => $lastPayment ? \Carbon\Carbon::parse($lastPayment->payment_date)->format('d M Y') : null,
                     'last_payment_method' => $lastPayment ? $lastPayment->payment_method : null,
                     'last_payment_channel' => $lastPayment ? $lastPayment->payment_channel : null,
-                    'last_payment_collector' => $lastPayment?->collector?->name ?? null,
+                    'last_payment_collector' => $collectorName,
                     'last_payment_notes' => $lastPayment ? $lastPayment->notes : null,
                     'last_payment_proof' => $lastPayment && $lastPayment->proof_image ? asset('storage/' . $lastPayment->proof_image) : null,
+                    'payments' => $paymentsList,
                     'due_date' => $invoice->due_date ? $invoice->due_date->format('Y-m-d') : null,
                     'issued_date' => $invoice->issued_date ? $invoice->issued_date->format('Y-m-d') : null,
                     'period_month' => $invoice->period_month,
@@ -431,11 +461,17 @@ class InvoiceController extends Controller
             ]);
 
             $totalPaid = (int) round($inv->payments()->where('status', 'verified')->sum('amount'));
-            if ($totalPaid >= (int) round($inv->amount)) {
-                $inv->update(['status' => 'paid']);
-            } else {
-                $inv->update(['status' => 'partial']);
-            }
+            $newInvStatus = $totalPaid >= (int) round($inv->amount) ? 'paid' : 'partial';
+            $oldInvStatus = $inv->status;
+            $inv->update(['status' => $newInvStatus]);
+
+            \App\Models\AuditLog::createLog(
+                'Pembayaran Tagihan (' . ($newInvStatus === 'paid' ? 'Lunas' : 'Sebagian') . ')',
+                $inv,
+                $oldInvStatus,
+                $newInvStatus,
+                "Pembayaran sebesar Rp " . number_format($payForThis, 0, ',', '.') . " melalui {$request->method} diproses oleh " . (auth()->user()?->name ?? 'Petugas') . ($request->notes ? " ({$request->notes})" : "")
+            );
 
             $remainingPayment -= $payForThis;
         }
@@ -563,6 +599,14 @@ class InvoiceController extends Controller
                 'status' => 'unpaid',
             ]);
 
+            \App\Models\AuditLog::createLog(
+                'Rollback Pembayaran Tagihan',
+                $invoice,
+                'paid',
+                'unpaid',
+                "Pembayaran tagihan #{$invoice->invoice_number} dibatalkan / di-rollback oleh " . (auth()->user()?->name ?? 'Petugas')
+            );
+
             \Illuminate\Support\Facades\DB::commit();
 
             if ($invoice->customer) {
@@ -596,6 +640,15 @@ class InvoiceController extends Controller
         }
 
         $invoice->update($updateData);
+
+        $operatorName = auth()->user()?->name ?? 'Petugas';
+        \App\Models\AuditLog::createLog(
+            'Atur Janji Bayar',
+            $invoice,
+            $invoice->promise_date ? $invoice->promise_date->format('Y-m-d') : null,
+            $request->promise_date,
+            "Janji bayar diatur ke " . ($request->promise_date ?: 'Dibatalkan') . " oleh {$operatorName}" . ($request->notes ? " ({$request->notes})" : "")
+        );
 
         $customer = $invoice->customer;
         $internetAction = $request->input('internet_action');
@@ -727,6 +780,7 @@ class InvoiceController extends Controller
 
         $customer = $invoice->customer;
         if ($customer && $customer->status !== 'terminated') {
+            $oldStatus = $customer->status;
             $customer->update([
                 'status' => 'suspended',
                 'suspend_start' => $request->start_date,
@@ -737,6 +791,14 @@ class InvoiceController extends Controller
             foreach (array_keys($accounts) as $username) {
                 $radius->guard(fn($r) => $r->disconnect($username));
             }
+
+            \App\Models\AuditLog::createLog(
+                'Stop Sementara Layanan Pelanggan',
+                $customer,
+                $oldStatus,
+                'suspended',
+                "Layanan pelanggan di-Stop Sementara ({$request->start_date} s/d {$request->end_date}) dari invoice #{$invoice->invoice_number} oleh " . (auth()->user()?->name ?? 'Petugas')
+            );
         }
         return redirect()->back()->with('success', 'Pelanggan berhasil di-Stop Sementara mulai ' . $request->start_date . ' sampai ' . $request->end_date . '.');
     }
@@ -777,6 +839,14 @@ class InvoiceController extends Controller
                     $r->disconnect($username);
                 }
             });
+
+            \App\Models\AuditLog::createLog(
+                'Stop Permanen Pelanggan (CBP)',
+                $customer,
+                'active',
+                'terminated',
+                "Pelanggan diputus permanen dari invoice #{$invoice->invoice_number} oleh " . (auth()->user()?->name ?? 'Petugas') . " - Alasan: {$reason}"
+            );
         }
 
         // 2. Otomatis buat data CBP / Cabut Perangkat
@@ -1125,6 +1195,14 @@ class InvoiceController extends Controller
             });
         }
 
+        \App\Models\AuditLog::createLog(
+            'Ubah Paket Internet (' . $actionLabel . ')',
+            $customer,
+            $oldPackage?->name ?? 'Paket Lama',
+            $newPackage->name,
+            "Perubahan paket dari " . ($oldPackage?->name ?? 'Paket Lama') . " ke {$newPackage->name} diproses dari invoice #{$invoice->invoice_number} oleh " . (auth()->user()?->name ?? 'Petugas')
+        );
+
         return redirect()->back()->with('success', "Pelanggan {$customer->name} berhasil di-{$actionLabel} ke paket {$newPackage->name}." . ($request->boolean('sync_radius', true) ? ' Profile kecepatan RADIUS telah disinkronkan.' : ''));
     }
 
@@ -1229,6 +1307,14 @@ class InvoiceController extends Controller
 
             foreach ($invoices as $idx => $inv) {
                 $lastPayment = $inv->payments->first();
+                $cName = $lastPayment?->collector?->name;
+                if (!$cName && $lastPayment) {
+                    if ($lastPayment->payment_method === 'payment_gateway') {
+                        $cName = 'Sistem Otomatis (Payment Gateway)';
+                    } elseif ($lastPayment->payment_method === 'reseller_balance' && preg_match('/(?:Reseller|Loket|Agen)\s*:\s*([^|,\n]+)/i', $lastPayment->notes ?? '', $m)) {
+                        $cName = 'Loket ' . trim($m[1]);
+                    }
+                }
                 fputcsv($handle, [
                     $idx + 1,
                     $inv->invoice_number,
@@ -1248,7 +1334,7 @@ class InvoiceController extends Controller
                     strtoupper($inv->customer?->status ?? 'ACTIVE'),
                     $lastPayment ? \Carbon\Carbon::parse($lastPayment->payment_date)->format('d/m/Y H:i') : '-',
                     $lastPayment?->payment_method ?? '-',
-                    $lastPayment?->collector?->name ?? '-'
+                    $cName ?? '-'
                 ]);
             }
 
