@@ -191,7 +191,7 @@
                 <td>
                     <div class="flex flex-col">
                         <span class="text-[11px] font-bold text-gray-800" :title="'Tanggal Aktivasi Layanan: ' + (row.customer?.activation_date || '-')">
-                            {{ row.customer?.activation_date || row.customer?.register_date || '-' }}
+                            {{ row.customer?.activation_date || '-' }}
                         </span>
                         <span v-if="row.customer?.register_date && row.customer?.activation_date && row.customer?.register_date !== row.customer?.activation_date" class="text-[9px] text-gray-400 mt-0.5" :title="'Tanggal Booking/Registrasi: ' + row.customer?.register_date">
                             Reg: {{ row.customer?.register_date }}

@@ -14,26 +14,70 @@ class InvoiceController extends Controller
         $today = now()->startOfDay();
 
         $query = Invoice::with(['customer' => function($q) use ($today) {
-            $q->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'package_id', 'created_at', 'status')
+            $q->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'package_id', 'created_at', 'status', 'registration_date', 'activation_date')
               ->withCount(['invoices as unpaid_invoices_count' => function ($query) {
                   $query->whereIn('status', ['unpaid', 'partial'])
                         ->where('invoice_number', 'not like', 'INV-MIG-%')
+           ->where('status', '!=', 'cancelled')
+           ->where(function($q) {
+               $q->where('period_year', '>', 2026)
+                 ->orWhere(function($sub) {
+                     $sub->where('period_year', 2026)->where('period_month', '>', 10);
+                 })
+                 ->orWhere(function($sub) {
+                     $sub->where('is_prorata', true)
+                         ->orWhere('billing_type', 'prorata');
+                 });
+           })
                         ->where('is_reseller_balance', false);
               }])
               ->withCount(['invoices as overdue_invoices_count' => function ($query) use ($today) {
                   $query->whereIn('status', ['unpaid', 'partial'])
                         ->where('invoice_number', 'not like', 'INV-MIG-%')
+           ->where('status', '!=', 'cancelled')
+           ->where(function($q) {
+               $q->where('period_year', '>', 2026)
+                 ->orWhere(function($sub) {
+                     $sub->where('period_year', 2026)->where('period_month', '>', 10);
+                 })
+                 ->orWhere(function($sub) {
+                     $sub->where('is_prorata', true)
+                         ->orWhere('billing_type', 'prorata');
+                 });
+           })
                         ->where('is_reseller_balance', false)
                         ->where('due_date', '<', $today);
               }])
               ->withSum(['invoices as total_unpaid_amount' => function ($query) {
                   $query->whereIn('status', ['unpaid', 'partial'])
                         ->where('invoice_number', 'not like', 'INV-MIG-%')
+           ->where('status', '!=', 'cancelled')
+           ->where(function($q) {
+               $q->where('period_year', '>', 2026)
+                 ->orWhere(function($sub) {
+                     $sub->where('period_year', 2026)->where('period_month', '>', 10);
+                 })
+                 ->orWhere(function($sub) {
+                     $sub->where('is_prorata', true)
+                         ->orWhere('billing_type', 'prorata');
+                 });
+           })
                         ->where('is_reseller_balance', false);
               }], 'amount')
               ->withSum(['invoices as total_overdue_amount' => function ($query) use ($today) {
                   $query->whereIn('status', ['unpaid', 'partial'])
                         ->where('invoice_number', 'not like', 'INV-MIG-%')
+           ->where('status', '!=', 'cancelled')
+           ->where(function($q) {
+               $q->where('period_year', '>', 2026)
+                 ->orWhere(function($sub) {
+                     $sub->where('period_year', 2026)->where('period_month', '>', 10);
+                 })
+                 ->orWhere(function($sub) {
+                     $sub->where('is_prorata', true)
+                         ->orWhere('billing_type', 'prorata');
+                 });
+           })
                         ->where('is_reseller_balance', false)
                         ->where('due_date', '<', $today);
               }], 'amount')
@@ -44,6 +88,17 @@ class InvoiceController extends Controller
             $q->with('collector')->latest('payment_date');
         }])->where('is_reseller_balance', false)
            ->where('invoice_number', 'not like', 'INV-MIG-%')
+           ->where('status', '!=', 'cancelled')
+           ->where(function($q) {
+               $q->where('period_year', '>', 2026)
+                 ->orWhere(function($sub) {
+                     $sub->where('period_year', 2026)->where('period_month', '>', 10);
+                 })
+                 ->orWhere(function($sub) {
+                     $sub->where('is_prorata', true)
+                         ->orWhere('billing_type', 'prorata');
+                 });
+           })
            ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
 
         $isAreaRestricted = auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('invoices_view_all');
@@ -121,6 +176,17 @@ class InvoiceController extends Controller
         // Get counts for tabs
         $baseQuery = Invoice::where('is_reseller_balance', false)
             ->where('invoice_number', 'not like', 'INV-MIG-%')
+           ->where('status', '!=', 'cancelled')
+           ->where(function($q) {
+               $q->where('period_year', '>', 2026)
+                 ->orWhere(function($sub) {
+                     $sub->where('period_year', 2026)->where('period_month', '>', 10);
+                 })
+                 ->orWhere(function($sub) {
+                     $sub->where('is_prorata', true)
+                         ->orWhere('billing_type', 'prorata');
+                 });
+           })
             ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
         $scopedAreaFilter($baseQuery);
 
@@ -198,7 +264,7 @@ class InvoiceController extends Controller
                         'package_id' => $invoice->customer->package_id,
                         'package' => $invoice->customer->package?->name,
                         'package_price' => (float) ($invoice->customer->package?->price ?? 0),
-                        'register_date' => $invoice->customer->registration_date ? $invoice->customer->registration_date->format('d M Y') : ($invoice->customer->created_at ? $invoice->customer->created_at->format('d M Y') : null),
+                        'register_date' => $invoice->customer->registration_date ? $invoice->customer->registration_date->format('d M Y') : null,
                         'activation_date' => $invoice->customer->activation_date ? $invoice->customer->activation_date->format('d M Y') : null,
                         'status' => $invoice->customer->status,
                         'has_open_cbp' => (bool) ($invoice->customer->has_open_cbp ?? false),

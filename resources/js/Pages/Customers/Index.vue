@@ -279,7 +279,10 @@
                             </div>
                             <div class="flex items-center gap-2 mt-0.5">
                                 <span :class="row.ont?.pppoe_user && onlineUsernames?.includes(row.ont.pppoe_user) ? 'text-emerald-700/80 font-medium' : 'text-gray-500'" class="text-[10px] font-mono">{{ row.customer_code }}</span>
-                                <span v-if="row.registration_date" class="text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-100/70 px-1.5 py-0.5 rounded font-medium" title="Tanggal Daftar">
+                                <span v-if="row.activation_date" class="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-100/70 px-1.5 py-0.5 rounded font-medium" :title="'Tanggal Aktivasi: ' + formatDate(row.activation_date)">
+                                    ⚡ {{ formatDate(row.activation_date) }}
+                                </span>
+                                <span v-else-if="row.registration_date" class="text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-100/70 px-1.5 py-0.5 rounded font-medium" title="Tanggal Daftar">
                                     📅 {{ formatDate(row.registration_date) }}
                                 </span>
                             </div>

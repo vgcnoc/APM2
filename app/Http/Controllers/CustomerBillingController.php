@@ -29,6 +29,17 @@ class CustomerBillingController extends Controller
         $buildFilteredQuery = function ($tabType) use ($request, $userAccessibleAreaIds) {
             $q = Invoice::where('is_reseller_balance', false)
                 ->where('invoice_number', 'not like', 'INV-MIG-%')
+                ->where('status', '!=', 'cancelled')
+                ->where(function($sq) {
+                    $sq->where('period_year', '>', 2026)
+                      ->orWhere(function($sub) {
+                          $sub->where('period_year', 2026)->where('period_month', '>', 10);
+                      })
+                      ->orWhere(function($sub) {
+                          $sub->where('is_prorata', true)
+                              ->orWhere('billing_type', 'prorata');
+                      });
+                })
                 ->whereHas('customer', fn($c) => $c->where('status', '!=', 'terminated')->whereNotIn('service_status', ['gratis', 'free_home']));
 
             if (!empty($userAccessibleAreaIds)) {
