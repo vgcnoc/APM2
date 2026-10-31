@@ -17,19 +17,23 @@ class InvoiceController extends Controller
             $q->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'package_id', 'created_at', 'status')
               ->withCount(['invoices as unpaid_invoices_count' => function ($query) {
                   $query->whereIn('status', ['unpaid', 'partial'])
+                        ->where('invoice_number', 'not like', 'INV-MIG-%')
                         ->where('is_reseller_balance', false);
               }])
               ->withCount(['invoices as overdue_invoices_count' => function ($query) use ($today) {
                   $query->whereIn('status', ['unpaid', 'partial'])
+                        ->where('invoice_number', 'not like', 'INV-MIG-%')
                         ->where('is_reseller_balance', false)
                         ->where('due_date', '<', $today);
               }])
               ->withSum(['invoices as total_unpaid_amount' => function ($query) {
                   $query->whereIn('status', ['unpaid', 'partial'])
+                        ->where('invoice_number', 'not like', 'INV-MIG-%')
                         ->where('is_reseller_balance', false);
               }], 'amount')
               ->withSum(['invoices as total_overdue_amount' => function ($query) use ($today) {
                   $query->whereIn('status', ['unpaid', 'partial'])
+                        ->where('invoice_number', 'not like', 'INV-MIG-%')
                         ->where('is_reseller_balance', false)
                         ->where('due_date', '<', $today);
               }], 'amount')
@@ -39,6 +43,7 @@ class InvoiceController extends Controller
         }, 'customer.areaModel', 'customer.package', 'customer.ont.odp', 'payments' => function($q) {
             $q->with('collector')->latest('payment_date');
         }])->where('is_reseller_balance', false)
+           ->where('invoice_number', 'not like', 'INV-MIG-%')
            ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
 
         $isAreaRestricted = auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('invoices_view_all');
@@ -62,7 +67,7 @@ class InvoiceController extends Controller
 
         $tab = $request->query('tab', 'semua');
         if ($tab === 'jatuh_tempo') {
-            $query->where('due_date', '<', now())->where('status', '!=', 'paid');
+            $query->where('due_date', '<', now())->whereIn('status', ['unpaid', 'partial']);
         } elseif ($tab === 'piutang') {
             $query->where('status', 'partial');
         } elseif ($tab === 'lunas') {
@@ -79,7 +84,7 @@ class InvoiceController extends Controller
                   ->orWhere('notes', 'like', '%Downgrade%');
             });
         } elseif ($tab === 'janji_bayar') {
-            $query->whereNotNull('promise_date')->where('status', '!=', 'paid');
+            $query->whereNotNull('promise_date')->whereIn('status', ['unpaid', 'partial']);
         } elseif ($tab === 'stop_sementara') {
             $query->whereHas('customer', fn($q) => $q->where('status', 'suspended'));
         } elseif ($tab === 'stop_permanen') {
@@ -115,6 +120,7 @@ class InvoiceController extends Controller
 
         // Get counts for tabs
         $baseQuery = Invoice::where('is_reseller_balance', false)
+            ->where('invoice_number', 'not like', 'INV-MIG-%')
             ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
         $scopedAreaFilter($baseQuery);
 
@@ -150,7 +156,7 @@ class InvoiceController extends Controller
         
         $stats = [
             'semua' => (clone $baseQuery)->count(),
-            'jatuh_tempo' => (clone $activeBaseQuery)->where('due_date', '<', now())->where('status', '!=', 'paid')->count(),
+            'jatuh_tempo' => (clone $activeBaseQuery)->where('due_date', '<', now())->whereIn('status', ['unpaid', 'partial'])->count(),
             'piutang' => (clone $activeBaseQuery)->where('status', 'partial')->count(),
             'lunas' => (clone $baseQuery)->where('status', 'paid')->count(),
             'prorata' => (clone $baseQuery)->where(function($q) {
@@ -162,7 +168,7 @@ class InvoiceController extends Controller
                   ->orWhere('notes', 'like', '%Upgrade%')
                   ->orWhere('notes', 'like', '%Downgrade%');
             })->count(),
-            'janji_bayar' => (clone $activeBaseQuery)->whereNotNull('promise_date')->where('status', '!=', 'paid')->count(),
+            'janji_bayar' => (clone $activeBaseQuery)->whereNotNull('promise_date')->whereIn('status', ['unpaid', 'partial'])->count(),
             'stop_sementara' => (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', 'suspended'))->count(),
             'stop_permanen' => (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', 'terminated'))->count(),
 
