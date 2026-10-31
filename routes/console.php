@@ -22,3 +22,6 @@ Schedule::command('vouchers:expire')->everyMinute();
 
 // Auto Generate Reward Absen Bulanan
 Schedule::command('attendance:generate-rewards')->hourly();
+
+// Auto Evaluasi Presensi Cerdas & Rekap Awal s/d Akhir Bulan
+Schedule::command('attendance:auto-evaluate')->dailyAt('23:30')->timezone('Asia/Jakarta');

@@ -360,6 +360,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('attendance-reports', [\App\Http\Controllers\AttendanceReportController::class, 'index'])->name('attendance-reports.index');
     Route::get('attendance-reports/export', [\App\Http\Controllers\AttendanceReportController::class, 'export'])->name('attendance-reports.export');
     Route::get('attendance-reports/print', [\App\Http\Controllers\AttendanceReportController::class, 'print'])->name('attendance-reports.print');
+    Route::post('attendance-reports/sync-payroll', [\App\Http\Controllers\AttendanceReportController::class, 'syncToPayroll'])->name('attendance-reports.sync-payroll');
     Route::delete('attendance-reports/log/{attendance}', [\App\Http\Controllers\AttendanceReportController::class, 'destroyLog'])->name('attendance-reports.destroy-log');
     Route::delete('attendance-reports/employee/{employee}', [\App\Http\Controllers\AttendanceReportController::class, 'destroyEmployeeRecap'])->name('attendance-reports.destroy-employee');
 

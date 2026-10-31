@@ -7,6 +7,8 @@ use App\Models\Attendance;
 use App\Models\Employee;
 use App\Models\Setting;
 use App\Models\User;
+use App\Models\WorkSchedule;
+use App\Services\AttendanceCalculatorService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -23,6 +25,7 @@ class AttendanceReportController extends Controller
         $data = $this->buildReportData($request);
         $userRole = strtolower(auth()->user()?->role ?? '');
         $data['canDelete'] = in_array($userRole, ['admin', 'hrd', 'finance']) || (bool) auth()->user()?->can('attendance_report_btn_delete');
+        $data['canSyncPayroll'] = in_array($userRole, ['admin', 'hrd', 'finance']) || (bool) auth()->user()?->can('attendances_sync_payroll');
         return Inertia::render('Attendances/Report', $data);
     }
 
@@ -90,7 +93,7 @@ class AttendanceReportController extends Controller
                     ]);
                 }
             } else {
-                // Header CSV Rekapitulasi per Karyawan
+                // Header CSV Rekapitulasi per Karyawan (Cerdas & Lengkap)
                 fputcsv($handle, [
                     'No',
                     'Nama Karyawan',
@@ -98,12 +101,17 @@ class AttendanceReportController extends Controller
                     'Jabatan',
                     'Wilayah / Cabang',
                     'Shift Default',
+                    'Total Hari Kerja',
+                    'Hari Kerja Berjalan',
                     'Total Hadir (Hari)',
                     'Tepat Waktu (Hari)',
                     'Terlambat (Kali)',
                     'Total Menit Terlambat',
                     'Tugas Luar / Dinas (Hari)',
                     'Tanpa Clock-Out (Kali)',
+                    'Pulang Cepat (Kali)',
+                    'Alpha / Tidak Hadir (Hari)',
+                    'Rasio Kehadiran (%)',
                     'Tingkat Disiplin (%)',
                     'Estimasi Potongan (Rp)',
                     'Status Payroll',
@@ -118,12 +126,17 @@ class AttendanceReportController extends Controller
                         $emp['position'] ?: '-',
                         $emp['area_name'] ?: '-',
                         $emp['shift_name'] ?: '-',
+                        $emp['total_work_days'] . ' Hari',
+                        $emp['elapsed_work_days'] . ' Hari',
                         $emp['total_present'],
                         $emp['total_on_time'],
                         $emp['total_late'],
                         $emp['total_late_minutes'],
                         $emp['total_field_duty'],
                         $emp['total_missing_out'],
+                        $emp['total_early_leave'] ?? 0,
+                        $emp['total_alpha'],
+                        $emp['attendance_rate'] . '%',
                         $emp['discipline_rate'] . '%',
                         $emp['estimated_penalty'],
                         $emp['is_all_synced'] ? 'Sudah Sinkron' : 'Belum Sinkron',
@@ -145,7 +158,28 @@ class AttendanceReportController extends Controller
     }
 
     /**
-     * Helper agregasi data laporan absensi
+     * Sinkronkan hasil kalkulasi presensi bulanan otomatis ke modul Penggajian (Payroll)
+     */
+    public function syncToPayroll(Request $request)
+    {
+        $user = auth()->user();
+        $userRole = strtolower($user?->role ?? '');
+        $isAllowed = in_array($userRole, ['admin', 'hrd', 'finance']) 
+            || (bool) $user?->can('attendances_sync_payroll') 
+            || (bool) $user?->can('attendance_report_btn_delete');
+
+        if (!$isAllowed) {
+            abort(403, 'Akses ditolak. Tindakan sinkronisasi presensi ke penggajian hanya diizinkan untuk akun HRD atau Finance.');
+        }
+
+        $month = $request->input('month', now('Asia/Jakarta')->format('Y-m'));
+        $result = AttendanceCalculatorService::syncMonthlyToPayroll($month);
+
+        return redirect()->back()->with('success', "Presensi periode {$result['period']} ({$month}) berhasil disinkronkan ke Penggajian: {$result['synced_deductions_count']} pemotongan diproses untuk {$result['affected_employees_count']} karyawan.");
+    }
+
+    /**
+     * Helper agregasi data laporan absensi secara cerdas & otomatis
      */
     protected function buildReportData(Request $request, bool $paginateDetail = true): array
     {
@@ -153,15 +187,17 @@ class AttendanceReportController extends Controller
         $periodMode = $request->get('period_mode', 'month'); // 'month' atau 'custom'
         $selectedMonth = $request->get('month', $today->format('Y-m'));
 
+        // Dapatkan detail cerdas awal s/d akhir bulan
+        $periodDetails = AttendanceCalculatorService::getMonthPeriodDetails($selectedMonth);
+
         if ($periodMode === 'custom' && $request->filled('start_date') && $request->filled('end_date')) {
-            $startDate = Carbon::parse($request->start_date)->startOfDay();
-            $endDate = Carbon::parse($request->end_date)->endOfDay();
+            $startDate = Carbon::parse($request->start_date, 'Asia/Jakarta')->startOfDay();
+            $endDate = Carbon::parse($request->end_date, 'Asia/Jakarta')->endOfDay();
             $filterPeriodLabel = $startDate->translatedFormat('d M Y') . ' s/d ' . $endDate->translatedFormat('d M Y');
         } else {
-            $monthCarbon = Carbon::parse($selectedMonth . '-01');
-            $startDate = (clone $monthCarbon)->startOfMonth()->startOfDay();
-            $endDate = (clone $monthCarbon)->endOfMonth()->endOfDay();
-            $filterPeriodLabel = $monthCarbon->translatedFormat('F Y');
+            $startDate = $periodDetails['start_datetime'];
+            $endDate = $periodDetails['end_datetime'];
+            $filterPeriodLabel = $periodDetails['period_label'];
         }
 
         // Scope Area User jika ada restriksi
@@ -191,7 +227,7 @@ class AttendanceReportController extends Controller
 
         $allEmployees = $employeesQuery->get();
 
-        // 2. Query Utama Data Absensi dalam Periode
+        // 2. Query Utama Data Absensi dalam Periode Awal s/d Akhir Bulan
         $attQuery = Attendance::with([
             'employee' => function ($q) {
                 $q->select('id', 'name', 'iak_number', 'position', 'area_id', 'shift_id', 'email', 'status');
@@ -225,118 +261,69 @@ class AttendanceReportController extends Controller
             $attQuery->where('attendance_type', $request->attendance_type);
         }
 
+        // Ambil semua records absensi periode untuk rekap
+        $allAttendancesInPeriod = (clone $attQuery)->get();
+
+        // Ambil data jadwal kerja jika ada
+        $workSchedules = WorkSchedule::whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+            ->where('status', 'work')
+            ->get();
+
+        // 3. Rekapitulasi per Karyawan (Cerdas & Otomatis)
+        $employeeRecap = AttendanceCalculatorService::calculateMonthlyRecap(
+            $allEmployees,
+            $allAttendancesInPeriod,
+            $periodDetails,
+            null,
+            $workSchedules
+        );
+
+        // Filter search jika ada pencarian teks
         if ($request->filled('search')) {
             $search = strtolower($request->search);
+            $employeeRecap = $employeeRecap->filter(function ($r) use ($search) {
+                return str_contains(strtolower($r['name'] ?? ''), $search)
+                    || str_contains(strtolower($r['iak_number'] ?? ''), $search);
+            })->values();
+
             $attQuery->whereHas('employee', function ($eq) use ($search) {
                 $eq->where('name', 'like', "%{$search}%")
                    ->orWhere('iak_number', 'like', "%{$search}%");
             });
         }
 
-        // Ambil semua records untuk kalkulasi statistik dan rekap
-        $allAttendancesInPeriod = (clone $attQuery)->get();
-
-        // Parameter Aturan Potongan & Sanksi
-        $latePenaltyMode = Setting::get('attendance_late_mode', 'flat');
-        $fixedPenalty = (float) Setting::get('attendance_late_amount', 10000);
-        $perMinutePenalty = (float) Setting::get('attendance_late_penalty_per_minute', 1000);
-        $missingOutPenalty = (float) Setting::get('attendance_missing_out_amount', 10000);
-        $latePenaltyEnabled = Setting::get('attendance_late_enabled', Setting::get('attendance_late_penalty_enabled', '1')) === '1';
-        $missingOutPenaltyEnabled = Setting::get('attendance_missing_out_enabled', Setting::get('attendance_missing_out_penalty_enabled', '1')) === '1';
-
-        // 3. Rekapitulasi per Karyawan (Matrix)
-        $employeeRecap = $allEmployees->map(function ($emp) use (
-            $allAttendancesInPeriod,
-            $latePenaltyEnabled,
-            $missingOutPenaltyEnabled,
-            $latePenaltyMode,
-            $fixedPenalty,
-            $perMinutePenalty,
-            $missingOutPenalty,
-            $today
-        ) {
-            $empAtts = $allAttendancesInPeriod->where('employee_id', $emp->id);
-
-            $totalPresent = $empAtts->whereNotNull('clock_in')->count();
-            $totalLate = $empAtts->filter(fn($a) => $a->status === 'late' || (int)$a->late_minutes > 0)->count();
-            $totalLateMinutes = (int) $empAtts->sum('late_minutes');
-            $totalFieldDuty = $empAtts->where('attendance_type', 'dinas_luar')->count();
-
-            // Missing clock out: ada clock-in, tidak ada clock-out, dan tanggalnya sudah lewat hari ini
-            $totalMissingOut = $empAtts->filter(function ($a) use ($today) {
-                return !empty($a->clock_in) && empty($a->clock_out) && Carbon::parse($a->date)->isBefore($today);
-            })->count();
-
-            $totalOnTime = max(0, $totalPresent - $totalLate - $totalFieldDuty);
-
-            // Tingkat kedisiplinan persentase
-            $disciplineRate = $totalPresent > 0 ? round(($totalOnTime / $totalPresent) * 100, 1) : 0;
-
-            // Estimasi Potongan
-            $latePenalty = 0;
-            if ($latePenaltyEnabled && $totalLate > 0) {
-                $latePenalty = ($latePenaltyMode === 'per_menit')
-                    ? ($totalLateMinutes * $perMinutePenalty)
-                    : ($totalLate * $fixedPenalty);
-            }
-
-            $missingOutDeduction = 0;
-            if ($missingOutPenaltyEnabled && $totalMissingOut > 0) {
-                $missingOutDeduction = $totalMissingOut * $missingOutPenalty;
-            }
-
-            $estimatedPenalty = $latePenalty + $missingOutDeduction;
-
-            $totalSynced = $empAtts->where('is_synced_to_payroll', true)->count();
-            $isAllSynced = $totalLate > 0 ? ($totalSynced >= $totalLate) : true;
-
-            return [
-                'employee_id' => $emp->id,
-                'name' => $emp->name,
-                'iak_number' => $emp->iak_number,
-                'position' => $emp->position,
-                'area_name' => $emp->area?->name ?? '-',
-                'shift_name' => $emp->shift?->name ?? 'Reguler',
-                'total_present' => $totalPresent,
-                'total_on_time' => $totalOnTime,
-                'total_late' => $totalLate,
-                'total_late_minutes' => $totalLateMinutes,
-                'total_field_duty' => $totalFieldDuty,
-                'total_missing_out' => $totalMissingOut,
-                'discipline_rate' => $disciplineRate,
-                'estimated_penalty' => $estimatedPenalty,
-                'is_all_synced' => $isAllSynced,
-            ];
-        })->values();
-
         // 4. Kalkulasi Summary Cards (Statistik Global Periode)
         $totalLogs = $allAttendancesInPeriod->count();
-        $totalPresentCount = $allAttendancesInPeriod->whereNotNull('clock_in')->count();
-        $totalLateCount = $allAttendancesInPeriod->filter(fn($a) => $a->status === 'late' || (int)$a->late_minutes > 0)->count();
-        $totalLateMinutesCount = (int) $allAttendancesInPeriod->sum('late_minutes');
-        $totalFieldDutyCount = $allAttendancesInPeriod->where('attendance_type', 'dinas_luar')->count();
-        $totalMissingOutCount = $allAttendancesInPeriod->filter(function ($a) use ($today) {
-            return !empty($a->clock_in) && empty($a->clock_out) && Carbon::parse($a->date)->isBefore($today);
-        })->count();
-        $totalOnTimeCount = max(0, $totalPresentCount - $totalLateCount - $totalFieldDutyCount);
+        $totalPresentCount = $employeeRecap->sum('total_present');
+        $totalLateCount = $employeeRecap->sum('total_late');
+        $totalLateMinutesCount = $employeeRecap->sum('total_late_minutes');
+        $totalFieldDutyCount = $employeeRecap->sum('total_field_duty');
+        $totalMissingOutCount = $employeeRecap->sum('total_missing_out');
+        $totalAlphaCount = $employeeRecap->sum('total_alpha');
+        $totalOnTimeCount = $employeeRecap->sum('total_on_time');
         $totalPenaltySum = $employeeRecap->sum('estimated_penalty');
+        $avgAttendance = $employeeRecap->avg('attendance_rate') ?: 0;
         $avgDiscipline = $employeeRecap->where('total_present', '>', 0)->avg('discipline_rate') ?: 0;
 
         $stats = [
             'total_employees' => $allEmployees->count(),
             'total_logs' => $totalLogs,
+            'total_calendar_days' => $periodDetails['total_calendar_days'],
+            'total_work_days' => $periodDetails['total_work_days'],
+            'elapsed_work_days' => $periodDetails['elapsed_work_days'],
             'total_present' => $totalPresentCount,
             'total_on_time' => $totalOnTimeCount,
             'total_late' => $totalLateCount,
             'total_late_minutes' => $totalLateMinutesCount,
             'total_field_duty' => $totalFieldDutyCount,
             'total_missing_out' => $totalMissingOutCount,
+            'total_alpha' => $totalAlphaCount,
             'total_penalty_amount' => $totalPenaltySum,
+            'avg_attendance_rate' => round($avgAttendance, 1),
             'avg_discipline_rate' => round($avgDiscipline, 1),
         ];
 
         // 5. Query Log Rinci Harian (Detail Tab)
-        // Filter status khusus pada query detail jika diminta
         $detailQuery = clone $attQuery;
         if ($request->filled('status') && $request->status !== 'all') {
             if ($request->status === 'on_time') {
@@ -373,6 +360,7 @@ class AttendanceReportController extends Controller
 
         return [
             'stats' => $stats,
+            'periodDetails' => $periodDetails,
             'employeeRecap' => $employeeRecap,
             'detailLogs' => $detailLogs,
             'paginatedDetails' => $paginatedDetails,
@@ -511,12 +499,12 @@ class AttendanceReportController extends Controller
         if (!$startDate || !$endDate) {
             $periodMode = $request->input('period_mode', 'month');
             if ($periodMode === 'month') {
-                $month = $request->input('month', now()->format('Y-m'));
-                $startDate = Carbon::parse($month . '-01')->startOfMonth()->toDateString();
-                $endDate = Carbon::parse($month . '-01')->endOfMonth()->toDateString();
+                $month = $request->input('month', now('Asia/Jakarta')->format('Y-m'));
+                $startDate = Carbon::parse($month . '-01', 'Asia/Jakarta')->startOfMonth()->toDateString();
+                $endDate = Carbon::parse($month . '-01', 'Asia/Jakarta')->endOfMonth()->toDateString();
             } else {
-                $startDate = now()->startOfMonth()->toDateString();
-                $endDate = now()->endOfMonth()->toDateString();
+                $startDate = now('Asia/Jakarta')->startOfMonth()->toDateString();
+                $endDate = now('Asia/Jakarta')->endOfMonth()->toDateString();
             }
         }
 
@@ -533,4 +521,3 @@ class AttendanceReportController extends Controller
         return redirect()->back()->with('success', "Sebanyak {$count} data presensi {$employee->name} periode {$periodFormatted} berhasil dihapus.");
     }
 }
-
