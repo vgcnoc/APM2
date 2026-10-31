@@ -350,6 +350,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('attendances/quick-assign-shift', [\App\Http\Controllers\AttendanceController::class, 'quickAssignShift'])->name('attendances.quick-assign-shift');
     Route::post('attendances/update-location', [\App\Http\Controllers\AttendanceController::class, 'updateAreaLocation'])->name('attendances.update-location');
     Route::post('attendances/sync-payroll', [\App\Http\Controllers\AttendanceController::class, 'syncToPayroll'])->name('attendances.sync-payroll');
+    Route::delete('attendances/{attendance}', [\App\Http\Controllers\AttendanceController::class, 'destroy'])->name('attendances.destroy');
 
     // Laporan Absensi Karyawan
     Route::get('attendance-reports', [\App\Http\Controllers\AttendanceReportController::class, 'index'])->name('attendance-reports.index');
