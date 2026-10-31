@@ -13,6 +13,7 @@ use App\Models\Invoice;
 use App\Models\Setting;
 use App\Services\RadiusService;
 use App\Services\DataScopeService;
+use App\Services\ProrataCalculator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -3722,24 +3723,7 @@ class CustomerController extends Controller
                     if ($isProrataFirstMonth) {
                         // Tagihan pertama dihitung prorata sampai akhir bulan berjalan
                         $endOfMonth = $activationDate->copy()->endOfMonth();
-                        $totalDaysInCycle = (int) $activationDate->daysInMonth;
-                        $daysUsed = (int) ($endOfMonth->day - $activationDate->day + 1);
-
-                        if ($amount > 0 && $daysUsed > 0 && $totalDaysInCycle > 0) {
-                            if ($daysUsed < $totalDaysInCycle) {
-                                if ($prorataFormula === 'fixed_30') {
-                                    $amount = ($amount / 30) * $daysUsed;
-                                } elseif ($prorataFormula === 'mid_month') {
-                                    if ($activationDate->day > 15) {
-                                        $amount = $amount / 2;
-                                    }
-                                } else {
-                                    // default: exact_days
-                                    $amount = ($amount / $totalDaysInCycle) * $daysUsed;
-                                }
-                                $amount = (int) round($amount);
-                            }
-                        }
+                        $amount = ProrataCalculator::firstMonthAmount($amount, $activationDate, $prorataFormula);
 
                         $isProrata = true;
                         $invoiceBillingType = 'prorata';
@@ -3753,23 +3737,7 @@ class CustomerController extends Controller
                     // Prabayar
                     if ($isProrataFirstMonth) {
                         $endOfMonth = $activationDate->copy()->endOfMonth();
-                        $totalDaysInCycle = (int) $activationDate->daysInMonth;
-                        $daysUsed = (int) ($endOfMonth->day - $activationDate->day + 1);
-
-                        if ($amount > 0 && $daysUsed > 0 && $totalDaysInCycle > 0) {
-                            if ($daysUsed < $totalDaysInCycle) {
-                                if ($prorataFormula === 'fixed_30') {
-                                    $amount = ($amount / 30) * $daysUsed;
-                                } elseif ($prorataFormula === 'mid_month') {
-                                    if ($activationDate->day > 15) {
-                                        $amount = $amount / 2;
-                                    }
-                                } else {
-                                    $amount = ($amount / $totalDaysInCycle) * $daysUsed;
-                                }
-                                $amount = (int) round($amount);
-                            }
-                        }
+                        $amount = ProrataCalculator::firstMonthAmount($amount, $activationDate, $prorataFormula);
 
                         $isProrata = true;
                         $invoiceBillingType = 'prorata';

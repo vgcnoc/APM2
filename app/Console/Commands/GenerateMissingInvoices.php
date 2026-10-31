@@ -5,6 +5,8 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\Customer;
 use App\Models\Invoice;
+use App\Models\Setting;
+use App\Services\ProrataCalculator;
 use Carbon\Carbon;
 
 class GenerateMissingInvoices extends Command
@@ -73,10 +75,11 @@ class GenerateMissingInvoices extends Command
                 // Jika aktivasi pada bulan berjalan (cth: Oktober 2026), terbitkan tagihan prorata
                 if ($isCurrentMonth || $this->option('october-prorata')) {
                     $endOfMonth = $activationDate->copy()->endOfMonth();
-                    $totalDays = (int) $activationDate->daysInMonth;
-                    $daysUsed = (int) ($endOfMonth->day - $activationDate->day + 1);
-                    $amount = ($totalDays > 0) ? ($basePrice / $totalDays) * $daysUsed : $basePrice;
-                    $amount = (int) round($amount);
+                    $amount = ProrataCalculator::firstMonthAmount(
+                        $basePrice,
+                        $activationDate,
+                        Setting::get('prorata_formula', 'exact_days'),
+                    );
                     $isProrata = true;
                     $billingType = 'prorata';
                     $notes = 'Tagihan Pertama (Prorata s/d Akhir Bulan: ' . $activationDate->format('d M') . ' - ' . $endOfMonth->format('d M Y') . ')';

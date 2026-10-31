@@ -2952,11 +2952,12 @@ class DataMigrationService
 
                     if (!$invExists) {
                         $endOfMonth = $actDate->copy()->endOfMonth();
-                        $totalDays = (int) $actDate->daysInMonth;
-                        $daysUsed = (int) ($endOfMonth->day - $actDate->day + 1);
                         $basePrice = $targetCust->base_amount > 0 ? (float) $targetCust->base_amount : ($targetCust->package ? (float) $targetCust->package->price : 0);
-                        $prorataAmount = ($totalDays > 0) ? ($basePrice / $totalDays) * $daysUsed : $basePrice;
-                        $prorataAmount = (int) round($prorataAmount);
+                        $prorataAmount = ProrataCalculator::firstMonthAmount(
+                            $basePrice,
+                            $actDate,
+                            Setting::get('prorata_formula', 'exact_days'),
+                        );
 
                         $issueDateSetting = (int) Setting::get('invoice_issue_date', '1');
                         $nextBillingDate = $actDate->copy();
