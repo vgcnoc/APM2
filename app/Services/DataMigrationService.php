@@ -1957,6 +1957,10 @@ class DataMigrationService
         $baseAmount = (float) ($row['tarif_bulanan'] ?? $row['base_amount'] ?? 0);
         if ($serviceStatus === 'gratis' || $serviceStatus === 'free_home') {
             $baseAmount = 0;
+        } elseif ($packageId && ($package = InternetPackage::find($packageId))) {
+            // Tarif master adalah sumber nominal tagihan pelanggan migrasi.
+            // Nilai workbook lama sering sudah termasuk PPN.
+            $baseAmount = (float) $package->current_price;
         }
         if ($serviceStatus === 'free_home') {
             $packageId = null;
@@ -2952,12 +2956,16 @@ class DataMigrationService
 
                     if (!$invExists) {
                         $endOfMonth = $actDate->copy()->endOfMonth();
-                        $basePrice = $targetCust->base_amount > 0 ? (float) $targetCust->base_amount : ($targetCust->package ? (float) $targetCust->package->price : 0);
+                        $basePrice = CustomerBillingPrice::monthly($targetCust);
                         $prorataAmount = ProrataCalculator::firstMonthAmount(
                             $basePrice,
                             $actDate,
                             Setting::get('prorata_formula', 'exact_days'),
                         );
+                        $taxPpn = (float) ($targetCust->tax_ppn ?? Setting::get('tax_ppn', '0'));
+                        if ($taxPpn > 0) {
+                            $prorataAmount = (int) round($prorataAmount * (1 + ($taxPpn / 100)));
+                        }
 
                         $issueDateSetting = (int) Setting::get('invoice_issue_date', '1');
                         $nextBillingDate = $actDate->copy();

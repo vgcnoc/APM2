@@ -102,7 +102,7 @@ class GenerateInvoices extends Command
             }
 
             if (!$exists) {
-                $amount = $customer->package ? $customer->package->price : 0;
+                $amount = $customer->package?->current_price ?? 0;
                 $status = 'unpaid';
 
                 // Hanya PPN yang ditambahkan ke invoice tagihan pelanggan

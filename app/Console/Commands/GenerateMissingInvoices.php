@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Setting;
+use App\Services\CustomerBillingPrice;
 use App\Services\ProrataCalculator;
 use Carbon\Carbon;
 
@@ -63,7 +64,7 @@ class GenerateMissingInvoices extends Command
                 ->exists();
 
             if (!$exists) {
-                $basePrice = $customer->base_amount > 0 ? (float) $customer->base_amount : ($customer->package ? (float) $customer->package->price : 0);
+                $basePrice = CustomerBillingPrice::monthly($customer);
                 
                 $now = now();
                 $isCurrentMonth = ($activationDate->month === $now->month && $activationDate->year === $now->year);
@@ -85,12 +86,13 @@ class GenerateMissingInvoices extends Command
                     $notes = 'Tagihan Pertama (Prorata s/d Akhir Bulan: ' . $activationDate->format('d M') . ' - ' . $endOfMonth->format('d M Y') . ')';
                 } else {
                     $amount = $basePrice;
-                    $taxPpn = (float) ($customer->tax_ppn ?? \App\Models\Setting::get('tax_ppn', '0'));
-                    if ($taxPpn > 0) {
-                        $amount = $amount + ($amount * ($taxPpn / 100));
-                    }
-                    $amount = (int) round($amount);
                 }
+
+                $taxPpn = (float) ($customer->tax_ppn ?? \App\Models\Setting::get('tax_ppn', '0'));
+                if ($taxPpn > 0) {
+                    $amount = $amount + ($amount * ($taxPpn / 100));
+                }
+                $amount = (int) round($amount);
                 
                 $issueDateSetting = (int) \App\Models\Setting::get('invoice_issue_date', '1');
                 $nextBillingDate = $activationDate->copy();
