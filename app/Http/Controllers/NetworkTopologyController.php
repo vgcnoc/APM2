@@ -18,9 +18,16 @@ class NetworkTopologyController extends Controller
         $query = Olt::with([
             'area',
             'areas',
-            'pons.odcs.odps.ports.ont.customer',
+            'pons' => fn ($pq) => $pq->orderBy('port_number'),
+            'pons.odcs' => fn ($oq) => $oq->orderByRaw('COALESCE(parent_odc_id, id) ASC, CASE WHEN parent_odc_id IS NULL THEN 0 ELSE 1 END ASC, id ASC'),
+            'pons.odcs.parent:id,name,parent_odc_id',
+            'pons.odcs.children:id,name,parent_odc_id',
+            'pons.odcs.area',
+            'pons.odcs.odps' => fn ($odpq) => $odpq->orderByRaw('COALESCE(parent_odp_id, id) ASC, CASE WHEN parent_odp_id IS NULL THEN 0 ELSE 1 END ASC, id ASC'),
+            'pons.odcs.odps.parent:id,name,parent_odp_id',
+            'pons.odcs.odps.children:id,name,parent_odp_id',
             'pons.odcs.odps.area',
-            'pons.odcs.area'
+            'pons.odcs.odps.ports.ont.customer',
         ]);
 
         DataScopeService::applyOltScope($query, $user);

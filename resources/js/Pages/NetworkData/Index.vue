@@ -6,7 +6,7 @@
                 <div>
                     <h2 class="text-2xl font-bold text-gray-800 tracking-tight">Data Jaringan</h2>
                     <p class="text-sm text-gray-500 mt-1 flex items-center gap-2">
-                        <span class="text-indigo-600 font-medium">Home</span> 
+                        <span class="text-indigo-600 font-medium">Home</span>
                         <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                         <span>Data Jaringan</span>
                     </p>
@@ -106,7 +106,7 @@
                         </div>
                         <input v-model="form.search" @input="debouncedSearch" type="text" class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 placeholder-gray-400" placeholder="Cari ODC, ODP, Pelanggan..." />
                     </div>
-                    
+
                     <div class="w-full h-px md:h-8 md:w-px bg-gray-200 hidden md:block"></div>
 
                     <!-- Filter Selects -->
@@ -117,11 +117,11 @@
                         </select>
                         <select v-model="form.odc_id" @change="applyFilters" class="w-full border-gray-200 rounded-lg text-sm text-gray-700 py-2 focus:ring-1 focus:ring-indigo-500">
                             <option value="">Semua ODC</option>
-                            <option v-for="odc in filteredOdcs" :key="odc.id" :value="odc.id">{{ odc.name }}</option>
+                            <option v-for="odc in filteredOdcs" :key="odc.id" :value="odc.id">{{ formatOdcDropdownLabel(odc) }}</option>
                         </select>
                         <select v-model="form.odp_id" @change="applyFilters" class="w-full border-gray-200 rounded-lg text-sm text-gray-700 py-2 focus:ring-1 focus:ring-indigo-500">
                             <option value="">Semua ODP</option>
-                            <option v-for="odp in filteredOdpsDropdown" :key="odp.id" :value="odp.id">{{ odp.name }}</option>
+                            <option v-for="odp in filteredOdpsDropdown" :key="odp.id" :value="odp.id">{{ formatOdpDropdownLabel(odp) }}</option>
                         </select>
                         <select v-model="form.area_id" @change="applyFilters" class="w-full border-gray-200 rounded-lg text-sm text-gray-700 py-2 focus:ring-1 focus:ring-indigo-500">
                             <option value="">Semua Area</option>
@@ -134,368 +134,130 @@
                             <option value="maintenance">Maintenance</option>
                         </select>
                     </div>
-                    
+
                     <button @click="resetFilters" class="px-3 py-2 text-sm text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100 shrink-0">
                         Reset Filter
                     </button>
                 </div>
             </div>
 
-
             <!-- Anchor for smooth scrolling -->
             <div id="network-data-container" class="scroll-mt-6"></div>
 
             <!-- CARD VIEW -->
             <div v-if="viewMode === 'card'" class="space-y-8">
-                <!-- Group by ODC -->
-                <div v-for="odcGroup in paginatedOdcGroups" :key="odcGroup.odc.id" class="animate-fade-in-up">
-                    <div class="relative overflow-hidden bg-gradient-to-r from-[#20053b] via-[#3b0764] to-[#20053b] text-white p-5 rounded-t-xl flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-purple-800/60 shadow-lg">
-                        <!-- Modern Tech Motif & Ambient Glow Pattern -->
-                        <div class="absolute inset-0 pointer-events-none overflow-hidden select-none">
-                            <!-- High-Tech Micro Dot Matrix Grid Overlay -->
-                            <svg class="absolute inset-0 w-full h-full opacity-20" xmlns="http://www.w3.org/2000/svg">
-                                <defs>
-                                    <pattern :id="'odc-dots-' + odcGroup.odc.id" width="22" height="22" patternUnits="userSpaceOnUse">
-                                        <circle cx="2" cy="2" r="1.1" fill="#d8b4fe" />
-                                    </pattern>
-                                </defs>
-                                <rect width="100%" height="100%" :fill="'url(#odc-dots-' + odcGroup.odc.id + ')'" />
-                            </svg>
+                <div v-for="unit in paginatedOdcUnits" :key="unit.key" class="animate-fade-in-up">
+                    <!-- CONNECTED ODC SPLIT PAIR FRAME (Berdampingan Induk <-> Lanjutan) -->
+                    <div
+                        v-if="unit.isSplitPair"
+                        class="rounded-2xl border-2 border-purple-400/90 bg-gradient-to-br from-emerald-50/50 via-white to-purple-50/60 p-3.5 md:p-4 shadow-md space-y-4"
+                    >
+                        <!-- Top Relationship Header Banner -->
+                        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-[#111827] via-[#1e1b4b] to-[#2e1065] text-white shadow-sm border border-purple-500/30">
+                            <div class="flex items-center flex-wrap gap-2 text-xs">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-400/20 border border-amber-300/40 text-amber-200 font-black uppercase tracking-wider text-[10px]">
+                                    🔗 PASANGAN ODC SPLIT SALING BERHUBUNGAN
+                                </span>
 
-                            <!-- Fiber-Optic & Circuit Network Constellation Motif (Center & Right Area) -->
-                            <svg class="absolute right-0 top-0 h-full w-full max-w-4xl opacity-50 md:opacity-65 overflow-visible" viewBox="0 0 800 120" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <defs>
-                                    <!-- Linear Gradients for Optical Lines -->
-                                    <linearGradient :id="'odc-line-grad-' + odcGroup.odc.id" x1="0%" y1="0%" x2="100%" y2="0%">
-                                        <stop offset="0%" stop-color="#9333ea" stop-opacity="0" />
-                                        <stop offset="25%" stop-color="#c084fc" stop-opacity="0.85" />
-                                        <stop offset="65%" stop-color="#f472b6" stop-opacity="0.95" />
-                                        <stop offset="100%" stop-color="#a855f7" stop-opacity="0.15" />
-                                    </linearGradient>
-                                    <linearGradient :id="'odc-line-grad2-' + odcGroup.odc.id" x1="0%" y1="0%" x2="100%" y2="0%">
-                                        <stop offset="0%" stop-color="#6366f1" stop-opacity="0" />
-                                        <stop offset="35%" stop-color="#a855f7" stop-opacity="0.8" />
-                                        <stop offset="75%" stop-color="#e879f9" stop-opacity="0.85" />
-                                        <stop offset="100%" stop-color="#c084fc" stop-opacity="0.1" />
-                                    </linearGradient>
-                                    <!-- Soft Glow Filter -->
-                                    <filter :id="'odc-glow-' + odcGroup.odc.id" x="-40%" y="-40%" width="180%" height="180%">
-                                        <feGaussianBlur stdDeviation="3.5" result="glow" />
-                                        <feComposite in="SourceGraphic" in2="glow" operator="over" />
-                                    </filter>
-                                </defs>
+                                <template v-for="(item, idx) in unit.items" :key="'odc-chip-' + item.odc.id">
+                                    <span v-if="idx > 0" class="text-amber-300 font-black px-1 text-xs" title="Terhubung Splitter / Kabel Lanjutan">
+                                        ━━⚡ SPLIT━━&gt;
+                                    </span>
+                                    <span
+                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold text-[11px] border"
+                                        :class="idx === 0 ? 'bg-emerald-500/25 border-emerald-400/50 text-emerald-100' : 'bg-purple-500/25 border-purple-400/50 text-purple-100'"
+                                    >
+                                        <span>{{ idx === 0 ? '🟢 INDUK:' : '🟣 LANJUTAN:' }}</span>
+                                        <strong class="text-white">{{ item.odc.name }}</strong>
+                                        <span class="text-[10px] opacity-80">(PON {{ item.odc.pon_port || '?' }})</span>
+                                    </span>
+                                </template>
+                            </div>
 
-                                <!-- Isometric Network & Fiber Traces -->
-                                <path d="M 80 68 L 220 68 L 280 28 L 430 28 L 480 72 L 670 72" 
-                                      :stroke="'url(#odc-line-grad-' + odcGroup.odc.id + ')'" stroke-width="1.8" fill="none" />
-                                <path d="M 180 98 L 300 98 L 350 58 L 500 58 L 550 98 L 710 98" 
-                                      :stroke="'url(#odc-line-grad2-' + odcGroup.odc.id + ')'" stroke-width="1.4" stroke-dasharray="5 3" fill="none" />
-                                <path d="M 330 18 L 440 18 L 490 48 L 620 48" 
-                                      stroke="#f472b6" stroke-width="1.2" stroke-dasharray="3 4" fill="none" opacity="0.5" />
-
-                                <!-- Geometric Optical Nodes (Hexagons & Diamonds) -->
-                                <polygon points="280,20 288,28 280,36 272,28" fill="#c084fc" fill-opacity="0.35" stroke="#f3e8ff" stroke-width="1.2" />
-                                <polygon points="480,64 488,72 480,80 472,72" fill="#f472b6" fill-opacity="0.4" stroke="#ffffff" stroke-width="1.2" />
-                                <polygon points="350,50 358,58 350,66 342,58" fill="#a855f7" fill-opacity="0.3" stroke="#d8b4fe" stroke-width="1" />
-                                <polygon points="500,50 508,58 500,66 492,58" fill="#e879f9" fill-opacity="0.35" stroke="#fdf4ff" stroke-width="1.2" />
-
-                                <!-- Glowing Pulse Nodes -->
-                                <circle cx="220" cy="68" r="4" fill="#ffffff" :filter="'url(#odc-glow-' + odcGroup.odc.id + ')'" />
-                                <circle cx="220" cy="68" r="9" stroke="#c084fc" stroke-width="1.2" stroke-opacity="0.75" fill="none" />
-                                
-                                <circle cx="430" cy="28" r="3.5" fill="#fdf4ff" :filter="'url(#odc-glow-' + odcGroup.odc.id + ')'" />
-                                <circle cx="430" cy="28" r="8" stroke="#f472b6" stroke-width="1" stroke-dasharray="2 2" fill="none" />
-
-                                <circle cx="670" cy="72" r="4.5" fill="#ffffff" :filter="'url(#odc-glow-' + odcGroup.odc.id + ')'" />
-                                <circle cx="670" cy="72" r="11" stroke="#c084fc" stroke-width="1" stroke-opacity="0.65" fill="none" />
-
-                                <!-- Futuristic Concentric Radar / Wave Rings in Center Void -->
-                                <circle cx="390" cy="62" r="30" stroke="#c084fc" stroke-width="1.2" stroke-dasharray="4 4" stroke-opacity="0.4" fill="none" />
-                                <circle cx="390" cy="62" r="52" stroke="#a855f7" stroke-width="1" stroke-dasharray="2 6" stroke-opacity="0.25" fill="none" />
-                                <circle cx="390" cy="62" r="2.5" fill="#e879f9" />
-                            </svg>
-
-                            <!-- Ambient Glowing Light Orbs -->
-                            <div class="absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/4 w-80 h-36 bg-purple-500/25 rounded-full blur-3xl pointer-events-none"></div>
-                            <div class="absolute top-0 right-12 w-64 h-36 bg-fuchsia-600/20 rounded-full blur-2xl pointer-events-none"></div>
-                            <div class="absolute -bottom-6 left-10 w-52 h-32 bg-indigo-600/25 rounded-full blur-3xl pointer-events-none"></div>
+                            <div class="flex items-center flex-wrap gap-2 shrink-0 text-[11px] font-bold">
+                                <span class="px-2.5 py-1 rounded-lg bg-white/10 border border-white/15 text-purple-100">
+                                    {{ getOdcUnitTotalOdps(unit.items) }} Total ODP
+                                </span>
+                                <span class="px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-200">
+                                    {{ getOdcUnitFreePorts(unit.items) }} Free Port Gabungan
+                                </span>
+                            </div>
                         </div>
-                        
-                        <div class="relative z-10">
-                            <div class="flex items-center gap-3 mb-2">
-                                <span class="px-2.5 py-1 bg-white/20 text-white rounded-md text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm shadow-sm flex items-center gap-1.5">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/></svg>
-                                    SERVER: {{ odcGroup.odc.olt?.name || 'Unknown' }}
-                                </span>
-                                <h3 class="text-xl font-black tracking-tight text-white">{{ odcGroup.odc.name }}</h3>
-                            </div>
-                            <div class="flex items-center gap-5 text-xs text-purple-200 font-medium">
-                                <span class="flex items-center gap-1.5 hover:text-white transition-colors cursor-default">
-                                    <svg class="w-3.5 h-3.5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg> 
-                                    {{ odcGroup.odc.address || 'Tanpa Alamat' }}
-                                </span>
-                                <span class="flex items-center gap-1.5 hover:text-white transition-colors cursor-default">
-                                    <svg class="w-3.5 h-3.5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> 
-                                    PON {{ odcGroup.odc.pon_port || '?' }}
-                                </span>
-                                <span v-if="odcGroup.odc.splitter_ratio" class="flex items-center gap-1.5 bg-white/10 px-2 py-0.5 rounded text-[11px] font-bold text-white border border-white/15">
-                                    SPLITTER: {{ odcGroup.odc.splitter_ratio }}
-                                </span>
+
+                        <!-- Side-by-Side ODC Cards -->
+                        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 xl:gap-6 relative items-stretch">
+                            <!-- Floating Center Optical Connector Badge (Desktop XL) -->
+                            <div
+                                v-if="unit.items.length === 2"
+                                class="hidden xl:flex absolute left-1/2 top-16 -translate-x-1/2 z-20 pointer-events-none"
+                            >
+                                <div class="px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-600 via-indigo-600 to-purple-600 text-white text-[10px] font-black shadow-lg border-2 border-white flex items-center gap-1.5 tracking-wider">
+                                    <span>INDUK</span>
+                                    <span>⇄</span>
+                                    <span>LANJUTAN</span>
+                                </div>
                             </div>
 
-                            <!-- VLAN & Mode Akses ODC dari OLT -->
-                            <div v-if="getPonVlans(odcGroup.odc).length > 0" class="flex flex-wrap items-center gap-1.5 mt-2.5">
-                                <span class="text-[10px] text-purple-300 font-bold uppercase tracking-wider">VLAN OLT:</span>
-                                <div v-for="(vlan, vIdx) in getPonVlans(odcGroup.odc)" :key="vIdx" class="inline-flex items-center gap-1 bg-black/20 backdrop-blur-xs px-2 py-0.5 rounded text-[11px] font-medium border border-white/10 shadow-xs">
-                                    <span class="font-bold text-white">VLAN {{ getVlanDisplayId(vlan) }}</span>
-                                    <span v-if="vlan && typeof vlan === 'object' && vlan.name && vlan.name !== getVlanDisplayId(vlan)" class="text-purple-200 text-[10px]">({{ vlan.name }})</span>
-                                    <span :class="['px-1.5 py-0.2 text-[9px] font-bold rounded-full uppercase', getModeBadgeClass(getVlanAccessMode(vlan))]">
-                                        {{ getVlanAccessMode(vlan) }}
+                            <template v-for="(item, idx) in unit.items" :key="item.odc.id">
+                                <!-- Mobile/Tablet vertical connector -->
+                                <div v-if="idx > 0" class="flex xl:hidden items-center justify-center -my-2 z-10">
+                                    <span class="px-3 py-1 rounded-full bg-gradient-to-r from-emerald-600 to-purple-600 text-white text-[10px] font-black shadow border border-white">
+                                        ⬇ TERHUBUNG SPLIT DARI ODC INDUK ⬇
                                     </span>
                                 </div>
-                            </div>
-                        </div>
-                        <div class="flex gap-3 relative z-10">
-                            <div class="flex flex-col items-center justify-center bg-black/20 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 shadow-inner min-w-[75px]">
-                                <span class="block text-2xl font-black text-white leading-none mb-1">{{ odcGroup.odps.length }}</span>
-                                <span class="block text-[9px] font-bold text-purple-200 uppercase tracking-[0.2em]">ODP</span>
-                            </div>
-                            <div class="flex flex-col items-center justify-center bg-black/20 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 shadow-inner min-w-[75px]">
-                                <span class="block text-2xl font-black text-white leading-none mb-1">{{ getOdcTotalPorts(odcGroup.odps).available }}</span>
-                                <span class="block text-[9px] font-bold text-purple-200 uppercase tracking-[0.2em]">Free Port</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-white border border-gray-200 border-t-0 p-4 rounded-b-xl shadow-sm">
-                        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                            <!-- ODP Card -->
-                            <div v-for="odp in odcGroup.odps" :key="odp.id" class="border border-gray-200 rounded-xl hover:border-indigo-300 hover:shadow-md transition-all group bg-white flex flex-col relative overflow-hidden">
-                                <!-- Status Strip -->
-                                <div class="absolute top-0 left-0 w-full h-1" :class="getOdpStatusColor(odp)"></div>
-                                
-                                <div class="p-4 flex-1">
-                                    <div class="flex justify-between items-start mb-3">
-                                        <div>
-                                            <h4 class="font-bold text-gray-800 text-lg leading-tight">{{ odp.name }}</h4>
-                                            <p class="text-[11px] font-medium text-gray-500 mt-0.5">{{ odp.kode_odp || '-' }}</p>
-                                        </div>
-                                        <div class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider" :class="getOdpStatusBadge(odp)">
-                                            {{ odp.status }}
-                                        </div>
-                                    </div>
 
-                                    <!-- Address & Coord Pills -->
-                                    <div class="flex flex-wrap gap-2 mb-3">
-                                        <!-- Alamat (jika ada) -->
-                                        <div v-if="odp.address && odp.address !== '-'" class="bg-gray-50 border border-gray-200 text-gray-600 text-[10px] px-2 py-1 rounded-md flex items-center gap-1" :title="odp.address">
-                                            <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                                            <span class="truncate max-w-[150px]">{{ odp.address }}</span>
-                                        </div>
-
-                                        <!-- Latitude Terpisah -->
-                                        <div class="bg-gray-50 border border-gray-200 text-gray-700 text-[10px] px-2 py-1 rounded-md flex items-center gap-1 font-mono">
-                                            <svg class="w-3 h-3 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                            <span class="font-bold text-slate-500 uppercase">Lat:</span>
-                                            <span :class="odp.latitude ? 'text-gray-900 font-semibold' : 'text-gray-400 italic'">{{ odp.latitude || '-' }}</span>
-                                        </div>
-
-                                        <!-- Longitude Terpisah -->
-                                        <div class="bg-gray-50 border border-gray-200 text-gray-700 text-[10px] px-2 py-1 rounded-md flex items-center gap-1 font-mono">
-                                            <svg class="w-3 h-3 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                            <span class="font-bold text-slate-500 uppercase">Long:</span>
-                                            <span :class="odp.longitude ? 'text-gray-900 font-semibold' : 'text-gray-400 italic'">{{ odp.longitude || '-' }}</span>
-                                        </div>
-
-                                        <!-- Tombol Maps -->
-                                        <a v-if="odp.latitude && odp.longitude" :href="`https://www.google.com/maps?q=${odp.latitude},${odp.longitude}`" target="_blank" class="bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 text-[10px] font-bold px-1.5 py-1 rounded-md flex items-center gap-1 transition-colors" title="Buka Titik Koordinat di Google Maps">
-                                            <svg class="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-                                            Maps
-                                        </a>
-                                        <div class="bg-gray-50 border border-gray-200 text-gray-800 font-bold text-[10px] px-2 py-1 rounded-md flex items-center gap-1">
-                                            <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                            {{ odp.total_ports }} Port
-                                        </div>
-                                        <div class="bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] px-2 py-1 rounded-md flex items-center gap-1">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                            {{ odp.area?.name || 'Belum ada area' }}
-                                        </div>
-                                        <!-- Pill Proses CBP jika ada port yang sedang dicabut -->
-                                        <div v-if="getOdpCbpCount(odp) > 0" class="bg-rose-50 border border-rose-300 text-rose-700 font-black text-[10px] px-2 py-1 rounded-md flex items-center gap-1 shadow-xs">
-                                            <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
-                                            ⏳ {{ getOdpCbpCount(odp) }} Port Proses CBP
-                                        </div>
-                                        <!-- Pill Pelanggan Gratis jika ada di ODP ini -->
-                                        <div v-if="getOdpGratisCount(odp) > 0" class="bg-emerald-50 border border-emerald-300 text-emerald-800 font-black text-[10px] px-2 py-1 rounded-md flex items-center gap-1 shadow-xs" title="Terdapat pelanggan gratis pada ODP ini">
-                                            <span>🎁</span>
-                                            <span>{{ getOdpGratisCount(odp) }} Gratis</span>
-                                        </div>
-                                    </div>
-
-                                    <!-- VLAN Sinkron OLT PON -->
-                                    <div class="mb-4 p-2 bg-indigo-50/60 rounded-lg border border-indigo-100/80">
-                                        <div class="flex items-center justify-between mb-1">
-                                            <span class="text-[10px] font-bold text-indigo-900 uppercase tracking-wider flex items-center gap-1">
-                                                <svg class="w-3 h-3 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                                                VLAN Sinkron OLT
-                                            </span>
-                                            <span v-if="odp.odc?.pon_port" class="text-[9px] font-bold text-indigo-600 bg-indigo-100 px-1.5 py-0.2 rounded">PON {{ odp.odc.pon_port }}</span>
-                                        </div>
-                                        <div v-if="getOdpPonVlans(odp).length > 0" class="flex flex-wrap gap-1.5">
-                                            <div v-for="(vlan, vIdx) in getOdpPonVlans(odp)" :key="vIdx" class="inline-flex items-center gap-1 bg-white border border-indigo-200 px-1.5 py-0.5 rounded text-[10px] shadow-xs">
-                                                <span class="font-bold text-indigo-700">VLAN {{ vlan.vlan_id || vlan }}</span>
-                                                <span v-if="vlan.name" class="text-gray-600 text-[9px]">({{ vlan.name }})</span>
-                                                <span :class="['px-1 py-0.2 text-[8px] font-bold rounded-full uppercase', getModeBadgeClass(getVlanAccessMode(vlan))]">
-                                                    {{ getVlanAccessMode(vlan) }}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <span v-else class="text-[10px] text-gray-400 italic">Tidak ada VLAN diset pada OLT</span>
-                                    </div>
-
-                                    <!-- Ports List (Directly in Card) -->
-                                    <div class="space-y-2 mb-4 max-h-56 overflow-y-auto pr-1 text-xs">
-                                        <div v-for="portNum in odp.total_ports" :key="portNum" class="flex items-start gap-2 py-1 border-b border-gray-50 last:border-b-0">
-                                            <span class="text-gray-400 font-mono w-4 text-right pt-0.5 shrink-0">{{ portNum }}</span>
-                                            <template v-if="getPortData(odp, portNum)">
-                                                <div class="w-2.5 h-2.5 rounded-full shrink-0 mt-1" :class="getCustomerStatusColor(getPortData(odp, portNum).customer?.status, getCbpForCustomer(getPortData(odp, portNum).customer?.id))"></div>
-                                                <div v-if="getPortData(odp, portNum).customer" class="flex flex-col min-w-0 flex-1">
-                                                    <!-- Status & Nama Pelanggan Sebelahan -->
-                                                    <div class="flex items-center gap-1.5 flex-wrap leading-tight">
-                                                        <span v-if="getCbpForCustomer(getPortData(odp, portNum).customer.id)" class="text-rose-700 font-black text-[10px] bg-rose-100 px-1.5 py-0.2 rounded border border-rose-300 uppercase tracking-wider">
-                                                            ⏳ Proses CBP
-                                                        </span>
-                                                        <span v-else-if="getPortData(odp, portNum).customer.status === 'active'" class="text-emerald-600 font-bold text-xs">Aktif</span>
-                                                        <span v-else-if="getPortData(odp, portNum).customer.status === 'installing'" class="text-amber-600 font-bold text-xs">Proses Instalasi</span>
-                                                        <span v-else-if="getPortData(odp, portNum).customer.status === 'suspended'" class="text-orange-600 font-bold text-xs">Isolir</span>
-                                                        <span v-else-if="getPortData(odp, portNum).customer.status === 'terminated'" class="text-rose-700 font-bold text-xs">Stop Permanen</span>
-                                                        <span v-else class="text-gray-600 font-bold text-xs">{{ getPortData(odp, portNum).customer.status }}</span>
-
-                                                        <span class="text-gray-400 text-xs">•</span>
-
-                                                        <span class="font-bold text-gray-800 truncate text-xs">
-                                                            {{ getPortData(odp, portNum).customer.customer_code }} - {{ getPortData(odp, portNum).customer.name }}
-                                                        </span>
-
-                                                        <!-- Keterangan Pelanggan Gratis -->
-                                                        <span v-if="getPortData(odp, portNum).customer.service_status === 'gratis'" class="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-xs" title="Pelanggan Bebas Tagihan (Gratis)">
-                                                            <span>🎁</span>
-                                                            <span>Gratis</span>
-                                                        </span>
-                                                    </div>
-
-                                                    <!-- Tgl & VLAN Layanan -->
-                                                    <div class="flex items-center gap-2 mt-0.5 flex-wrap text-[9px] text-gray-500">
-                                                        <span v-if="getPortData(odp, portNum).customer.status === 'active' && getPortData(odp, portNum).customer.activation_date">
-                                                            Tgl: {{ getPortData(odp, portNum).customer.activation_date }}
-                                                        </span>
-                                                        <span v-else-if="getPortData(odp, portNum).start_time">
-                                                            Tgl: {{ getPortData(odp, portNum).updated_at ? getPortData(odp, portNum).updated_at.substring(0, 10) : '' }}
-                                                        </span>
-                                                        <span v-else>
-                                                            Tgl: {{ getPortData(odp, portNum).customer.created_at?.substring(0, 10) }}
-                                                        </span>
-
-                                                        <span v-if="getPortData(odp, portNum).vlan_id" class="bg-purple-100 text-purple-700 px-1 rounded font-bold border border-purple-200">VLAN: {{ getPortData(odp, portNum).vlan_id }}</span>
-                                                        <span v-if="getPortData(odp, portNum).hotspot_vlan_id" class="bg-orange-100 text-orange-700 px-1 rounded font-bold border border-orange-200">HS: {{ getPortData(odp, portNum).hotspot_vlan_id }}</span>
-                                                    </div>
-
-                                                    <!-- Keterangan Proses CBP Sebelum Selesai Cabut Perangkat -->
-                                                    <div v-if="getCbpForCustomer(getPortData(odp, portNum).customer.id)" class="mt-1 p-2 rounded-xl bg-gradient-to-r from-rose-50 to-orange-50 border border-rose-200 text-[10px] space-y-1">
-                                                        <div class="flex items-center justify-between text-rose-800 font-black">
-                                                            <span class="flex items-center gap-1">
-                                                                <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                                                                Proses Cabut Perangkat (CBP)
-                                                            </span>
-                                                            <span class="font-mono bg-white px-1.5 py-0.2 rounded border border-rose-200 text-rose-800 text-[9px] font-bold">
-                                                                {{ getCbpForCustomer(getPortData(odp, portNum).customer.id).cbp_number }}
-                                                            </span>
-                                                        </div>
-                                                        <div class="text-[9px] text-slate-700 flex items-center justify-between flex-wrap gap-1">
-                                                            <span>
-                                                                Status: <strong :class="getCbpForCustomer(getPortData(odp, portNum).customer.id).status === 'assigned' ? 'text-blue-700' : 'text-amber-700'">
-                                                                    {{ getCbpForCustomer(getPortData(odp, portNum).customer.id).status === 'assigned' ? '🔧 Teknisi Ditugaskan' : '⏳ Menunggu Jadwal' }}
-                                                                </strong>
-                                                            </span>
-                                                            <span v-if="getCbpForCustomer(getPortData(odp, portNum).customer.id).technicians?.length" class="text-slate-600 font-semibold truncate max-w-[130px]" :title="getCbpForCustomer(getPortData(odp, portNum).customer.id).technicians.map(t => t.name).join(', ')">
-                                                                {{ getCbpForCustomer(getPortData(odp, portNum).customer.id).technicians.map(t => t.name).join(', ') }}
-                                                            </span>
-                                                        </div>
-                                                        <div class="text-[9px] text-rose-800/90 italic flex items-center justify-between pt-1 border-t border-rose-100">
-                                                            <span>⚠️ Port belum dicabut / belum kosong</span>
-                                                            <Link :href="route('cbp.jadwal')" class="text-rose-700 hover:text-rose-900 font-bold underline">Kelola Jadwal &rarr;</Link>
-                                                        </div>
-                                                    </div>
-                                                    <!-- Jika Stop Permanen tapi belum dibuatkan tiket CBP -->
-                                                    <div v-else-if="getPortData(odp, portNum).customer.status === 'terminated'" class="mt-1 p-1.5 rounded-lg bg-amber-50 border border-amber-200 text-[9px] text-amber-800 flex items-center justify-between">
-                                                        <span>⛔ Stop Permanen (Perlu Cabut Port)</span>
-                                                        <Link :href="route('cbp.index')" class="text-amber-900 font-bold underline">Buat CBP &rarr;</Link>
-                                                    </div>
-                                                </div>
-                                                <span v-else class="font-medium text-gray-400 italic">ONT Inventori</span>
-                                            </template>
-                                            <template v-else>
-                                                <div class="w-2 h-2 rounded-full shrink-0 mt-1 bg-gray-300"></div>
-                                                <span class="font-medium text-emerald-600/70 italic text-xs">Kosong / Available</span>
-                                            </template>
-                                        </div>
-                                    </div>
-
-                                    <!-- Pending Installations -->
-                                    <div v-if="getPendingInstallationsForOdp(odp).length > 0" class="mt-4 pt-4 border-t border-gray-100">
-                                        <h5 class="text-[11px] font-bold text-gray-800 mb-2">Antrean Instalasi (Menunggu Kabel & Port)</h5>
-                                        <div class="space-y-1">
-                                            <div v-for="cust in getPendingInstallationsForOdp(odp)" :key="cust.id" class="flex items-start gap-1.5 text-[10px]">
-                                                <div class="w-1.5 h-1.5 rounded-full bg-cyan-500 shrink-0 mt-1"></div>
-                                                <span class="text-gray-600">
-                                                    <span class="font-medium text-gray-800">{{ cust.customer_code }}</span> - {{ cust.name }}
-                                                    <span v-if="cust.service_status === 'gratis'" class="inline-flex items-center gap-0.5 px-1 py-0.2 ml-1 rounded text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                                        🎁 Gratis
-                                                    </span>
-                                                    <span class="text-gray-400">[{{ cust.status === 'installing' ? 'Ready Instalasi' : 'Proses Survey' }}]</span>
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <button @click="openOdpDetail(odp)" class="mt-4 w-full text-center bg-indigo-50 text-indigo-600 hover:bg-indigo-100 text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-1">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                        Lihat Foto
-                                    </button>
-
-
-                                </div>
-                            </div>
+                                <OdcGroupCard
+                                    :odc-group="item"
+                                    :split-info="item.splitInfo"
+                                    :is-inside-split-pair="unit.items.length >= 2"
+                                    :pon-vlans="getPonVlans(item.odc)"
+                                    :get-odp-split-info-fn="getOdpSplitInfo"
+                                    :get-odp-pon-vlans-fn="getOdpPonVlans"
+                                    :cbp-requests="cbp_requests"
+                                    @open-photo="openOdpDetail"
+                                />
+                            </template>
                         </div>
                     </div>
+
+                    <!-- NORMAL / STANDALONE ODC GROUP -->
+                    <OdcGroupCard
+                        v-else
+                        :odc-group="unit.items[0]"
+                        :split-info="unit.items[0].splitInfo"
+                        :is-inside-split-pair="false"
+                        :pon-vlans="getPonVlans(unit.items[0].odc)"
+                        :get-odp-split-info-fn="getOdpSplitInfo"
+                        :get-odp-pon-vlans-fn="getOdpPonVlans"
+                        :cbp-requests="cbp_requests"
+                        @open-photo="openOdpDetail"
+                    />
                 </div>
 
                 <!-- Pagination Footer Card View -->
-                <div v-if="odpsGroupedByOdc.length > 0" class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <!-- Summary & Per-Page Selector -->
+                <div v-if="odcDisplayUnits.length > 0" class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div class="flex items-center flex-wrap gap-4 text-xs text-gray-600">
                         <div>
-                            Menampilkan <span class="font-bold text-gray-900">{{ cardPaginationInfo.from }}</span> - 
-                            <span class="font-bold text-gray-900">{{ cardPaginationInfo.to }}</span> dari 
+                            Menampilkan <span class="font-bold text-gray-900">{{ cardPaginationInfo.from }}</span> -
+                            <span class="font-bold text-gray-900">{{ cardPaginationInfo.to }}</span> dari
                             <span class="font-bold text-gray-900">{{ cardPaginationInfo.total }}</span> ODC
                             <span class="text-gray-400 ml-1">({{ odps.length }} total ODP)</span>
                         </div>
                         <div class="flex items-center gap-1.5 border-l border-gray-200 pl-4">
                             <span class="text-gray-500 font-medium">Tampilkan:</span>
                             <select v-model="cardPerPage" class="border border-gray-200 rounded-lg text-xs py-1 px-2.5 bg-gray-50 text-gray-700 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500">
-                                <option :value="3">3 ODC</option>
-                                <option :value="5">5 ODC</option>
-                                <option :value="10">10 ODC</option>
-                                <option :value="15">15 ODC</option>
+                                <option :value="3">3 Grup ODC</option>
+                                <option :value="5">5 Grup ODC</option>
+                                <option :value="10">10 Grup ODC</option>
+                                <option :value="15">15 Grup ODC</option>
                                 <option value="all">Semua ODC</option>
                             </select>
                         </div>
                     </div>
 
-                    <!-- Navigation Buttons -->
                     <div v-if="totalCardPages > 1" class="flex items-center gap-1">
-                        <button 
-                            @click="goToCardPage(cardCurrentPage - 1)" 
+                        <button
+                            @click="goToCardPage(cardCurrentPage - 1)"
                             :disabled="cardCurrentPage === 1"
                             class="px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1"
                             :class="cardCurrentPage === 1 ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50' : 'border-gray-200 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 bg-white'"
@@ -507,8 +269,8 @@
 
                         <template v-for="p in getPageNumbers(cardCurrentPage, totalCardPages)" :key="'card-' + p">
                             <span v-if="p === '...'" class="px-2 py-1 text-gray-400 text-xs">...</span>
-                            <button 
-                                v-else 
+                            <button
+                                v-else
                                 @click="goToCardPage(p)"
                                 class="min-w-[32px] h-8 px-2 rounded-lg text-xs font-bold transition-all"
                                 :class="p === cardCurrentPage ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white border border-gray-200 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200'"
@@ -517,8 +279,8 @@
                             </button>
                         </template>
 
-                        <button 
-                            @click="goToCardPage(cardCurrentPage + 1)" 
+                        <button
+                            @click="goToCardPage(cardCurrentPage + 1)"
                             :disabled="cardCurrentPage === totalCardPages"
                             class="px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1"
                             :class="cardCurrentPage === totalCardPages ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50' : 'border-gray-200 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 bg-white'"
@@ -530,7 +292,7 @@
                     </div>
                 </div>
 
-                <div v-if="odps.length === 0" class="text-center py-12 bg-white rounded-xl border border-gray-200">
+                <div v-if="odcDisplayUnits.length === 0" class="text-center py-12 bg-white rounded-xl border border-gray-200">
                     <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     <p class="text-gray-500 font-medium">Tidak ada data jaringan yang cocok dengan filter.</p>
                 </div>
@@ -554,24 +316,94 @@
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
-                            <tr v-for="odp in paginatedOdpsTable" :key="odp.id" class="hover:bg-gray-50 transition-colors">
+                            <tr
+                                v-for="(row, rIdx) in paginatedOdpsTable"
+                                :key="row.odp.id"
+                                class="transition-colors"
+                                :class="[
+                                    row.odpSplit.role === 'induk'
+                                        ? 'bg-emerald-50/35 hover:bg-emerald-50/70 border-l-4 border-l-emerald-500'
+                                        : row.odpSplit.role === 'lanjutan'
+                                            ? 'bg-purple-50/35 hover:bg-purple-50/70 border-l-4 border-l-purple-500'
+                                            : row.odpSplit.isSplit
+                                                ? 'bg-amber-50/25 hover:bg-amber-50/60 border-l-4 border-l-amber-400'
+                                                : 'hover:bg-gray-50'
+                                ]"
+                            >
+                                <!-- ODP / Kode + Relasi Split 2 -->
                                 <td class="px-6 py-3 whitespace-nowrap">
-                                    <div class="flex items-center gap-2">
-                                        <div class="font-bold text-gray-900 text-sm">{{ odp.name }}</div>
-                                        <span v-if="getOdpCbpCount(odp) > 0" class="px-1.5 py-0.5 rounded text-[9px] font-black bg-rose-100 text-rose-700 border border-rose-300 flex items-center gap-1">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <span
+                                            v-if="row.odpSplit.role === 'lanjutan' && rIdx > 0 && paginatedOdpsTable[rIdx - 1]?.odpSplit?.rootId === row.odpSplit.rootId"
+                                            class="text-purple-600 font-black text-sm leading-none"
+                                            title="Unit Lanjutan dari ODP Induk tepat di atasnya"
+                                        >
+                                            ↳
+                                        </span>
+                                        <div class="font-bold text-gray-900 text-sm">{{ row.odp.name }}</div>
+                                        <span v-if="getOdpCbpCount(row.odp) > 0" class="px-1.5 py-0.5 rounded text-[9px] font-black bg-rose-100 text-rose-700 border border-rose-300 flex items-center gap-1">
                                             <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
-                                            ⏳ {{ getOdpCbpCount(odp) }} CBP
+                                            ⏳ {{ getOdpCbpCount(row.odp) }} CBP
                                         </span>
                                     </div>
-                                    <div class="text-[11px] text-gray-500">{{ odp.kode_odp || '-' }}</div>
+                                    <div class="text-[11px] text-gray-500">{{ row.odp.kode_odp || '-' }}</div>
+
+                                    <!-- Indikator Pasangan ODP Split 2 -->
+                                    <div v-if="row.odpSplit.isSplit" class="mt-1 flex items-center gap-1.5 flex-wrap">
+                                        <span
+                                            class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider"
+                                            :class="[
+                                                row.odpSplit.role === 'induk'
+                                                    ? 'bg-emerald-600 text-white'
+                                                    : row.odpSplit.role === 'lanjutan'
+                                                        ? 'bg-purple-600 text-white'
+                                                        : 'bg-amber-500 text-white'
+                                            ]"
+                                        >
+                                            <span v-if="row.odpSplit.role === 'induk'">🟢 SPLIT 2 • INDUK</span>
+                                            <span v-else-if="row.odpSplit.role === 'lanjutan'">🟣 SPLIT 2 • LANJUTAN</span>
+                                            <span v-else>⚡ SPLIT 2</span>
+                                        </span>
+                                        <span
+                                            v-if="row.odpSplit.partnerLabel"
+                                            class="text-[10px] font-semibold px-1.5 py-0.5 rounded border bg-white"
+                                            :class="row.odpSplit.role === 'induk' ? 'border-emerald-200 text-emerald-800' : 'border-purple-200 text-purple-800'"
+                                        >
+                                            {{ row.odpSplit.role === 'induk' ? '↱ Lanjutan:' : '↳ Induk:' }}
+                                            <strong>{{ row.odpSplit.partnerLabel }}</strong>
+                                        </span>
+                                    </div>
                                 </td>
+
+                                <!-- ODC / Server + Relasi ODC Split -->
                                 <td class="px-6 py-3 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900">{{ odp.odc?.name || '-' }}</div>
-                                    <div class="text-[11px] text-gray-500">{{ odp.odc?.olt?.name || '-' }} (PON {{ odp.odc?.pon_port || '?' }})</div>
+                                    <div class="text-sm font-semibold text-gray-900">{{ row.odp.odc?.name || '-' }}</div>
+                                    <div class="text-[11px] text-gray-500">{{ row.odp.odc?.olt?.name || '-' }} (PON {{ row.odp.odc?.pon_port || '?' }})</div>
+                                    <div v-if="row.odcSplit.isSplit" class="mt-1 flex items-center gap-1 flex-wrap">
+                                        <span
+                                            class="inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-bold uppercase"
+                                            :class="[
+                                                row.odcSplit.role === 'induk'
+                                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                                    : row.odcSplit.role === 'lanjutan'
+                                                        ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                                                        : 'bg-amber-100 text-amber-800 border border-amber-200'
+                                            ]"
+                                        >
+                                            <span v-if="row.odcSplit.role === 'induk'">🟢 ODC INDUK</span>
+                                            <span v-else-if="row.odcSplit.role === 'lanjutan'">🟣 ODC LANJUTAN</span>
+                                            <span v-else>⚡ ODC SPLIT</span>
+                                        </span>
+                                        <span v-if="row.odcSplit.partnerLabel" class="text-[10px] text-gray-600">
+                                            ({{ row.odcSplit.role === 'induk' ? '↱' : '↳' }} {{ row.odcSplit.partnerLabel }})
+                                        </span>
+                                    </div>
                                 </td>
+
+                                <!-- VLAN & Mode Akses -->
                                 <td class="px-6 py-3 whitespace-nowrap">
-                                    <div v-if="getOdpPonVlans(odp).length > 0" class="flex flex-wrap gap-1 max-w-xs">
-                                        <div v-for="(vlan, vIdx) in getOdpPonVlans(odp)" :key="vIdx" class="inline-flex items-center gap-1 bg-white border border-gray-200 px-1.5 py-0.5 rounded text-[10px] shadow-xs">
+                                    <div v-if="getOdpPonVlans(row.odp).length > 0" class="flex flex-wrap gap-1 max-w-xs">
+                                        <div v-for="(vlan, vIdx) in getOdpPonVlans(row.odp)" :key="vIdx" class="inline-flex items-center gap-1 bg-white border border-gray-200 px-1.5 py-0.5 rounded text-[10px] shadow-xs">
                                             <span class="font-bold text-indigo-700">VLAN {{ vlan.vlan_id || vlan }}</span>
                                             <span v-if="vlan.name" class="text-gray-600 text-[9px]">({{ vlan.name }})</span>
                                             <span :class="['px-1.5 py-0.2 text-[8px] font-bold rounded-full uppercase', getModeBadgeClass(getVlanAccessMode(vlan))]">
@@ -581,28 +413,43 @@
                                     </div>
                                     <span v-else class="text-xs text-gray-400 italic">-</span>
                                 </td>
-                                <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-900">{{ odp.area?.name || '-' }}</td>
+
+                                <!-- Area -->
+                                <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-900">{{ row.odp.area?.name || '-' }}</td>
+
+                                <!-- Kapasitas -->
+                                <td class="px-6 py-3 whitespace-nowrap text-sm font-bold text-gray-800">
+                                    {{ row.odp.total_ports }} Port
+                                </td>
+
+                                <!-- Terpakai -->
                                 <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-900 font-medium">
-                                    <div>{{ odp.used_ports }}</div>
-                                    <div v-if="getOdpGratisCount(odp) > 0" class="text-[10px] font-bold text-emerald-700 flex items-center gap-0.5 mt-0.5" title="Pelanggan Gratis di ODP ini">
-                                        <span>🎁 {{ getOdpGratisCount(odp) }} Gratis</span>
+                                    <div>{{ row.odp.used_ports }}</div>
+                                    <div v-if="getOdpGratisCount(row.odp) > 0" class="text-[10px] font-bold text-emerald-700 flex items-center gap-0.5 mt-0.5" title="Pelanggan Gratis di ODP ini">
+                                        <span>🎁 {{ getOdpGratisCount(row.odp) }} Gratis</span>
                                     </div>
                                 </td>
+
+                                <!-- Tersedia -->
                                 <td class="px-6 py-3 whitespace-nowrap">
-                                    <span class="px-2.5 py-1 rounded text-xs font-bold" :class="Math.max(0, odp.total_ports - odp.used_ports) > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'">
-                                        {{ Math.max(0, odp.total_ports - odp.used_ports) }}
+                                    <span class="px-2.5 py-1 rounded text-xs font-bold" :class="Math.max(0, row.odp.total_ports - row.odp.used_ports) > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'">
+                                        {{ Math.max(0, row.odp.total_ports - row.odp.used_ports) }}
                                     </span>
                                 </td>
+
+                                <!-- Status -->
                                 <td class="px-6 py-3 whitespace-nowrap">
-                                    <span class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider" :class="getOdpStatusBadge(odp)">
-                                        {{ odp.status }}
+                                    <span class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider" :class="getOdpStatusBadge(row.odp)">
+                                        {{ row.odp.status }}
                                     </span>
                                 </td>
+
+                                <!-- Aksi -->
                                 <td class="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
-                                    <button @click="openOdpDetail(odp)" class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded transition-colors text-xs font-bold">Lihat Foto</button>
+                                    <button @click="openOdpDetail(row.odp)" class="text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded transition-colors text-xs font-bold">Lihat Foto</button>
                                 </td>
                             </tr>
-                            <tr v-if="odps.length === 0">
+                            <tr v-if="sortedOdpsForTable.length === 0">
                                 <td colspan="9" class="px-6 py-8 text-center text-sm text-gray-500">Tidak ada data</td>
                             </tr>
                         </tbody>
@@ -610,11 +457,11 @@
                 </div>
 
                 <!-- Pagination Footer Table View -->
-                <div v-if="odps.length > 0" class="p-3.5 border-t border-gray-200 bg-gray-50/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div v-if="sortedOdpsForTable.length > 0" class="p-3.5 border-t border-gray-200 bg-gray-50/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                     <div class="flex items-center flex-wrap gap-4 text-gray-600">
                         <div>
-                            Menampilkan <span class="font-bold text-gray-900">{{ tablePaginationInfo.from }}</span> - 
-                            <span class="font-bold text-gray-900">{{ tablePaginationInfo.to }}</span> dari 
+                            Menampilkan <span class="font-bold text-gray-900">{{ tablePaginationInfo.from }}</span> -
+                            <span class="font-bold text-gray-900">{{ tablePaginationInfo.to }}</span> dari
                             <span class="font-bold text-gray-900">{{ tablePaginationInfo.total }}</span> ODP
                         </div>
                         <div class="flex items-center gap-1.5 border-l border-gray-200 pl-4">
@@ -629,10 +476,9 @@
                         </div>
                     </div>
 
-                    <!-- Navigation Buttons -->
                     <div v-if="totalTablePages > 1" class="flex items-center gap-1">
-                        <button 
-                            @click="goToTablePage(tableCurrentPage - 1)" 
+                        <button
+                            @click="goToTablePage(tableCurrentPage - 1)"
                             :disabled="tableCurrentPage === 1"
                             class="px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1"
                             :class="tableCurrentPage === 1 ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50' : 'border-gray-200 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 bg-white'"
@@ -644,8 +490,8 @@
 
                         <template v-for="p in getPageNumbers(tableCurrentPage, totalTablePages)" :key="'table-' + p">
                             <span v-if="p === '...'" class="px-2 py-1 text-gray-400 text-xs">...</span>
-                            <button 
-                                v-else 
+                            <button
+                                v-else
                                 @click="goToTablePage(p)"
                                 class="min-w-[32px] h-8 px-2 rounded-lg text-xs font-bold transition-all"
                                 :class="p === tableCurrentPage ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white border border-gray-200 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200'"
@@ -654,8 +500,8 @@
                             </button>
                         </template>
 
-                        <button 
-                            @click="goToTablePage(tableCurrentPage + 1)" 
+                        <button
+                            @click="goToTablePage(tableCurrentPage + 1)"
                             :disabled="tableCurrentPage === totalTablePages"
                             class="px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1"
                             :class="tableCurrentPage === totalTablePages ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50' : 'border-gray-200 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 bg-white'"
@@ -677,6 +523,7 @@
                     <div class="flex items-center gap-2"><div class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></div> ⏳ Proses CBP (Belum Dicabut)</div>
                     <div class="flex items-center gap-2"><div class="w-2.5 h-2.5 rounded-full bg-amber-500"></div> Reservasi / Proses Pasang</div>
                     <div class="flex items-center gap-2"><div class="w-2.5 h-2.5 rounded-full bg-gray-500"></div> Port Kosong</div>
+                    <div class="pt-1 border-t border-gray-700 flex items-center gap-2 text-emerald-300">🟢 Induk Split &harr; 🟣 Lanjutan Split</div>
                 </div>
 
                 <div class="font-mono text-xs text-gray-300 leading-relaxed whitespace-pre">
@@ -685,10 +532,12 @@
 <template v-for="odc in serverGroup.odcs" :key="odc.id">
    │
    ▼
-<span class="text-indigo-400 font-bold">ODC {{ odc.name }}</span> <span class="text-gray-400 text-[11px]">[PON {{ odc.pon_port || '?' }}]</span> <span v-if="getPonVlans(odc.odc).length > 0" class="text-purple-300 text-[11px]">[VLAN: {{ getPonVlans(odc.odc).map(v => getVlanDisplayId(v) + ' ' + getVlanAccessMode(v)).join(', ') }}]</span> <span class="text-gray-500">[{{ getOdcTotalPorts(odc.odps).available }} Port Free]</span>
-   │
+<span v-if="odc.splitInfo?.role === 'lanjutan'" class="text-purple-400 font-bold">   ↳ [SPLIT LANJUTAN] </span><span class="text-indigo-400 font-bold">ODC {{ odc.name }}</span> <span class="text-gray-400 text-[11px]">[PON {{ odc.pon_port || '?' }}]</span> <span v-if="odc.splitInfo?.role === 'induk'" class="bg-emerald-900/80 text-emerald-300 border border-emerald-500/50 px-1.5 py-0.2 rounded text-[10px] font-bold">🟢 ODC SPLIT INDUK ━━&gt; Lanjutan: {{ odc.splitInfo.partnerLabel }}</span><span v-else-if="odc.splitInfo?.role === 'lanjutan'" class="bg-purple-900/80 text-purple-200 border border-purple-500/50 px-1.5 py-0.2 rounded text-[10px] font-bold">🟣 ODC SPLIT LANJUTAN &lt;━━ Induk: {{ odc.splitInfo.partnerLabel }}</span><span v-else-if="odc.splitInfo?.isSplit" class="bg-amber-900/80 text-amber-200 border border-amber-500/50 px-1.5 py-0.2 rounded text-[10px] font-bold">⚡ TIPE ODC SPLIT</span> <span v-if="getPonVlans(odc.odc).length > 0" class="text-purple-300 text-[11px]">[VLAN: {{ getPonVlans(odc.odc).map(v => getVlanDisplayId(v) + ' ' + getVlanAccessMode(v)).join(', ') }}]</span> <span class="text-gray-500">[{{ getOdcTotalPorts(odc.odps).available }} Port Free]</span>
+   │<template v-if="odc.odps.length === 0">
+   └──────── <span class="text-gray-500 italic">(Belum ada distribusi ODP pada ODC ini)</span>
+</template>
 <template v-for="(odp, odpIndex) in odc.odps" :key="odp.id">
-   {{ odpIndex === odc.odps.length - 1 ? '└' : '├' }}──────── <button @click="openOdpDetail(odp)" class="text-gray-200 hover:text-white font-bold bg-gray-800 hover:bg-gray-700 px-2 py-0.5 rounded transition-colors cursor-pointer">ODP {{ odp.name }}</button> <span v-if="getOdpPonVlans(odp).length > 0" class="text-indigo-300 text-[10px]">[VLAN: {{ getOdpPonVlans(odp).map(v => getVlanDisplayId(v) + ' ' + getVlanAccessMode(v)).join(', ') }}]</span> <span class="text-gray-500 text-[10px]">{{ Math.max(0, odp.total_ports - odp.used_ports) }} Free / {{ odp.total_ports }} Cap</span>
+   {{ odpIndex === odc.odps.length - 1 ? '└' : '├' }}──────── <span v-if="getOdpSplitInfo(odp).role === 'lanjutan'" class="text-purple-400 font-bold">↳ </span><button @click="openOdpDetail(odp)" class="text-gray-200 hover:text-white font-bold bg-gray-800 hover:bg-gray-700 px-2 py-0.5 rounded transition-colors cursor-pointer">ODP {{ odp.name }}</button> <span v-if="getOdpSplitInfo(odp).role === 'induk'" class="bg-emerald-900/80 text-emerald-300 border border-emerald-500/50 px-1.5 py-0.2 rounded text-[10px] font-bold">🟢 SPLIT 2 INDUK ━━&gt; {{ getOdpSplitInfo(odp).partnerLabel }}</span><span v-else-if="getOdpSplitInfo(odp).role === 'lanjutan'" class="bg-purple-900/80 text-purple-200 border border-purple-500/50 px-1.5 py-0.2 rounded text-[10px] font-bold">🟣 SPLIT 2 LANJUTAN &lt;━━ {{ getOdpSplitInfo(odp).partnerLabel }}</span><span v-else-if="getOdpSplitInfo(odp).isSplit" class="bg-amber-900/80 text-amber-200 border border-amber-500/50 px-1.5 py-0.2 rounded text-[10px] font-bold">⚡ SPLIT 2</span> <span v-if="getOdpPonVlans(odp).length > 0" class="text-indigo-300 text-[10px]">[VLAN: {{ getOdpPonVlans(odp).map(v => getVlanDisplayId(v) + ' ' + getVlanAccessMode(v)).join(', ') }}]</span> <span class="text-gray-500 text-[10px]">{{ Math.max(0, odp.total_ports - odp.used_ports) }} Free / {{ odp.total_ports }} Cap</span>
 <template v-for="portNum in odp.total_ports" :key="portNum">
    │              {{ odpIndex === odc.odps.length - 1 ? ' ' : '│' }}
    │              {{ odpIndex === odc.odps.length - 1 ? ' ' : '│' }}  ├── Port {{ portNum.toString().padStart(2, '0') }} <span v-html="renderPortTopology(odp, portNum)"></span>
@@ -700,34 +549,35 @@
                     </template>
                 </div>
             </div>
-
         </div>
 
         <!-- FOTO ODP LIGHTBOX -->
         <Teleport to="body">
             <div v-if="selectedDetailOdp" class="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8">
-                <!-- Dark overlay with click outside to close -->
                 <div class="absolute inset-0 bg-black/90 backdrop-blur-sm transition-opacity" @click="selectedDetailOdp = null"></div>
-                
-                <!-- Close Button (Top Right) -->
+
                 <button @click="selectedDetailOdp = null" class="absolute top-4 right-4 md:top-6 md:right-6 text-gray-400 hover:text-white bg-black/50 hover:bg-black/80 p-2 rounded-full transition-all z-10">
                     <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
 
-                <!-- Modal Content -->
                 <div class="relative w-full max-w-5xl max-h-[90vh] flex flex-col items-center justify-center animate-fade-in-up">
                     <template v-if="selectedDetailOdp.photo">
-                        <!-- Photo container maintaining aspect ratio -->
-                        <img :src="`/storage/${selectedDetailOdp.photo}`" alt="Foto ODP" class="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl" />
-                        
-                        <!-- Optional Download / Full Link -->
-                        <a :href="`/storage/${selectedDetailOdp.photo}`" target="_blank" class="mt-4 px-6 py-2.5 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-full font-medium transition-colors flex items-center gap-2 backdrop-blur">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                            Buka / Download Original
-                        </a>
+                        <img :src="`/storage/${selectedDetailOdp.photo}`" alt="Foto ODP" class="max-w-full max-h-[82vh] object-contain rounded-lg shadow-2xl" />
+
+                        <div class="mt-4 flex items-center flex-wrap justify-center gap-3">
+                            <span class="px-4 py-2 rounded-full bg-white/10 text-white text-xs font-bold border border-white/20 backdrop-blur">
+                                {{ selectedDetailOdp.name }}
+                                <template v-if="getOdpSplitInfo(selectedDetailOdp).isSplit">
+                                    • {{ getOdpSplitInfo(selectedDetailOdp).role === 'induk' ? '🟢 SPLIT 2 INDUK' : getOdpSplitInfo(selectedDetailOdp).role === 'lanjutan' ? '🟣 SPLIT 2 LANJUTAN' : '⚡ SPLIT 2' }}
+                                </template>
+                            </span>
+                            <a :href="`/storage/${selectedDetailOdp.photo}`" target="_blank" class="px-6 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-full font-medium transition-colors flex items-center gap-2 backdrop-blur text-xs">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                Buka / Download Original
+                            </a>
+                        </div>
                     </template>
                     <template v-else>
-                        <!-- No Photo Placeholder -->
                         <div class="bg-gray-800/80 backdrop-blur border border-gray-700 rounded-2xl p-10 md:p-16 text-center max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl">
                             <div class="w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-500">
                                 <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
@@ -833,19 +683,21 @@ import { ref, computed, watch } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { usePermission } from '@/Composables/usePermission';
+import OdcGroupCard from './Partials/OdcGroupCard.vue';
 
 const { can } = usePermission();
 
 const props = defineProps({
-    olts: Array,
-    odcs: Array,
-    odps_filter: Array,
-    areas: Array,
-    odps: Array,
-    stats: Object,
-    filters: Object,
-    terminated_customers: Array,
-    cbp_requests: Array
+    olts: { type: Array, default: () => [] },
+    odcs: { type: Array, default: () => [] },
+    display_odcs: { type: Array, default: () => [] },
+    odps_filter: { type: Array, default: () => [] },
+    areas: { type: Array, default: () => [] },
+    odps: { type: Array, default: () => [] },
+    stats: { type: Object, default: () => ({}) },
+    filters: { type: Object, default: () => ({}) },
+    terminated_customers: { type: Array, default: () => [] },
+    cbp_requests: { type: Array, default: () => [] },
 });
 
 const viewMode = ref('card');
@@ -862,6 +714,162 @@ const form = useForm({
     search: props.filters?.search || '',
 });
 
+// ================= SMART LOOKUP MAPS UNTUK RELASI SPLIT ODC & ODP =================
+const allKnownOdcsMap = computed(() => {
+    const map = new Map();
+    (props.odcs || []).forEach(o => { if (o?.id) map.set(Number(o.id), o); });
+    (props.display_odcs || []).forEach(o => { if (o?.id) map.set(Number(o.id), { ...(map.get(Number(o.id)) || {}), ...o }); });
+    (props.odps || []).forEach(odp => {
+        if (odp?.odc?.id) {
+            map.set(Number(odp.odc.id), { ...(map.get(Number(odp.odc.id)) || {}), ...odp.odc });
+        }
+    });
+    return map;
+});
+
+const allKnownOdpsMap = computed(() => {
+    const map = new Map();
+    (props.odps_filter || []).forEach(o => { if (o?.id) map.set(Number(o.id), o); });
+    (props.odps || []).forEach(o => { if (o?.id) map.set(Number(o.id), { ...(map.get(Number(o.id)) || {}), ...o }); });
+    return map;
+});
+
+const getOdcSplitInfo = (odc) => {
+    if (!odc || !odc.id || odc.id === 'null') {
+        return { isSplit: false, role: null, roleLabel: null, partnerLabel: null, rootId: null };
+    }
+
+    const id = Number(odc.id);
+    const parentId = odc.parent_odc_id ? Number(odc.parent_odc_id) : (odc.parent?.id ? Number(odc.parent.id) : null);
+    const parentObj = odc.parent || (parentId ? allKnownOdcsMap.value.get(parentId) : null);
+
+    const childrenMap = new Map();
+    if (Array.isArray(odc.children)) {
+        odc.children.forEach(c => { if (c?.id) childrenMap.set(Number(c.id), c); });
+    }
+    allKnownOdcsMap.value.forEach(candidate => {
+        if (Number(candidate.parent_odc_id) === id) {
+            childrenMap.set(Number(candidate.id), candidate);
+        }
+    });
+    const childrenList = Array.from(childrenMap.values());
+
+    const isSplit = Boolean(
+        odc.is_split ||
+        odc.type === 'Split' ||
+        parentId ||
+        childrenList.length > 0
+    );
+
+    if (!isSplit) {
+        return { isSplit: false, role: null, roleLabel: null, partnerLabel: null, rootId: null };
+    }
+
+    if (parentId) {
+        return {
+            isSplit: true,
+            role: 'lanjutan',
+            roleLabel: 'LANJUTAN',
+            partnerLabel: parentObj?.name || `ODC #${parentId}`,
+            rootId: parentId,
+        };
+    }
+
+    if (childrenList.length > 0) {
+        return {
+            isSplit: true,
+            role: 'induk',
+            roleLabel: 'INDUK',
+            partnerLabel: childrenList.map(c => c.name).join(', '),
+            rootId: id,
+        };
+    }
+
+    return {
+        isSplit: true,
+        role: 'split_standalone',
+        roleLabel: 'SPLIT',
+        partnerLabel: null,
+        rootId: id,
+    };
+};
+
+const getOdpSplitInfo = (odp) => {
+    if (!odp || !odp.id) {
+        return { isSplit: false, role: null, roleLabel: null, partnerLabel: null, rootId: null };
+    }
+
+    const id = Number(odp.id);
+    const parentId = odp.parent_odp_id ? Number(odp.parent_odp_id) : (odp.parent?.id ? Number(odp.parent.id) : null);
+    const parentObj = odp.parent || (parentId ? allKnownOdpsMap.value.get(parentId) : null);
+
+    const childrenMap = new Map();
+    if (Array.isArray(odp.children)) {
+        odp.children.forEach(c => { if (c?.id) childrenMap.set(Number(c.id), c); });
+    }
+    allKnownOdpsMap.value.forEach(candidate => {
+        if (Number(candidate.parent_odp_id) === id) {
+            childrenMap.set(Number(candidate.id), candidate);
+        }
+    });
+    const childrenList = Array.from(childrenMap.values());
+
+    const isSplit = Boolean(
+        odp.is_split ||
+        odp.type === 'Split 2' ||
+        odp.type === 'Split' ||
+        parentId ||
+        childrenList.length > 0
+    );
+
+    if (!isSplit) {
+        return { isSplit: false, role: null, roleLabel: null, partnerLabel: null, rootId: null };
+    }
+
+    if (parentId) {
+        return {
+            isSplit: true,
+            role: 'lanjutan',
+            roleLabel: 'LANJUTAN',
+            partnerLabel: parentObj?.name || `ODP #${parentId}`,
+            rootId: parentId,
+        };
+    }
+
+    if (childrenList.length > 0) {
+        return {
+            isSplit: true,
+            role: 'induk',
+            roleLabel: 'INDUK',
+            partnerLabel: childrenList.map(c => c.name).join(', '),
+            rootId: id,
+        };
+    }
+
+    return {
+        isSplit: true,
+        role: 'split_standalone',
+        roleLabel: 'SPLIT 2',
+        partnerLabel: null,
+        rootId: id,
+    };
+};
+
+const getExpandedOdcPartnerIds = (odcId) => {
+    if (!odcId) return [];
+    const target = allKnownOdcsMap.value.get(Number(odcId));
+    const info = getOdcSplitInfo(target);
+    if (!info.isSplit || !info.rootId) return [Number(odcId)];
+
+    const ids = new Set([Number(odcId), Number(info.rootId)]);
+    allKnownOdcsMap.value.forEach(o => {
+        if (Number(o.parent_odc_id) === Number(info.rootId)) {
+            ids.add(Number(o.id));
+        }
+    });
+    return Array.from(ids);
+};
+
 watch(() => form.olt_id, (newVal) => {
     if (form.odc_id) {
         const odcExists = props.odcs?.some(o => o.id == form.odc_id && (!newVal || o.olt_id == newVal));
@@ -874,7 +882,8 @@ watch(() => form.olt_id, (newVal) => {
 
 watch(() => form.odc_id, (newVal) => {
     if (form.odp_id) {
-        const odpExists = props.odps_filter?.some(o => o.id == form.odp_id && (!newVal || o.odc_id == newVal));
+        const validOdcIds = newVal ? getExpandedOdcPartnerIds(newVal) : [];
+        const odpExists = props.odps_filter?.some(o => o.id == form.odp_id && (!newVal || validOdcIds.includes(Number(o.odc_id))));
         if (!odpExists) {
             form.odp_id = '';
         }
@@ -893,7 +902,10 @@ watch(() => props.filters, (newFilters) => {
 
 const refreshData = () => {
     isRefreshing.value = true;
-    router.reload({ only: ['odps', 'stats', 'terminated_customers'], onFinish: () => isRefreshing.value = false });
+    router.reload({
+        only: ['odps', 'display_odcs', 'stats', 'terminated_customers', 'cbp_requests'],
+        onFinish: () => { isRefreshing.value = false; }
+    });
 };
 
 const applyFilters = () => {
@@ -919,39 +931,118 @@ const resetFilters = () => {
 };
 
 const filteredOdcs = computed(() => {
-    if (!form.olt_id) return props.odcs;
-    return props.odcs.filter(o => o.olt_id == form.olt_id);
+    if (!form.olt_id) return props.odcs || [];
+    return (props.odcs || []).filter(o => o.olt_id == form.olt_id);
 });
 
 const filteredOdpsDropdown = computed(() => {
-    let result = props.odps_filter;
-    if (form.odc_id) result = result.filter(o => o.odc_id == form.odc_id);
-    else if (form.olt_id) {
-        const odcIds = props.odcs.filter(o => o.olt_id == form.olt_id).map(o => o.id);
-        result = result.filter(o => odcIds.includes(o.odc_id));
+    let result = props.odps_filter || [];
+    if (form.odc_id) {
+        const validOdcIds = getExpandedOdcPartnerIds(form.odc_id);
+        result = result.filter(o => validOdcIds.includes(Number(o.odc_id)));
+    } else if (form.olt_id) {
+        const odcIds = (props.odcs || []).filter(o => o.olt_id == form.olt_id).map(o => Number(o.id));
+        result = result.filter(o => odcIds.includes(Number(o.odc_id)));
     }
     return result;
 });
+
+const formatOdcDropdownLabel = (odc) => {
+    const info = getOdcSplitInfo(odc);
+    if (info.role === 'induk') return `🟢 ${odc.name} [SPLIT - INDUK]`;
+    if (info.role === 'lanjutan') return `   ↳ 🟣 ${odc.name} [SPLIT - LANJUTAN]`;
+    if (info.isSplit) return `⚡ ${odc.name} [SPLIT]`;
+    return odc.name;
+};
+
+const formatOdpDropdownLabel = (odp) => {
+    const info = getOdpSplitInfo(odp);
+    if (info.role === 'induk') return `🟢 ${odp.name} [SPLIT 2 - INDUK]`;
+    if (info.role === 'lanjutan') return `   ↳ 🟣 ${odp.name} [SPLIT 2 - LANJUTAN]`;
+    if (info.isSplit) return `⚡ ${odp.name} [SPLIT 2]`;
+    return odp.name;
+};
 
 const formatNumber = (num) => {
     return new Intl.NumberFormat('id-ID').format(num || 0);
 };
 
-// Grouping for Card View
-const odpsGroupedByOdc = computed(() => {
-    const groups = {};
-    props.odps.forEach(odp => {
-        const odcId = odp.odc_id;
-        if (!groups[odcId]) {
-            groups[odcId] = {
-                odc: odp.odc || { id: 'null', name: 'Tanpa ODC' },
-                odps: []
-            };
+// ================= CARD VIEW GROUPING (ODC SPLIT BERDAMPINGAN) =================
+const odcDisplayUnits = computed(() => {
+    const groupsMap = new Map();
+
+    // 1. Seed dari display_odcs agar pasangan ODC Split (termasuk yang 0 ODP) selalu tampil utuh
+    (props.display_odcs || []).forEach(odc => {
+        const key = String(odc.id);
+        if (!groupsMap.has(key)) {
+            groupsMap.set(key, {
+                odc,
+                odps: [],
+                splitInfo: getOdcSplitInfo(odc),
+            });
         }
-        groups[odcId].odps.push(odp);
     });
-    return Object.values(groups).sort((a, b) => a.odc.name.localeCompare(b.odc.name));
+
+    // 2. Masukkan seluruh ODP ke masing-masing ODC
+    (props.odps || []).forEach(odp => {
+        const key = odp.odc_id ? String(odp.odc_id) : 'null';
+        if (!groupsMap.has(key)) {
+            const odcObj = odp.odc || { id: 'null', name: 'Tanpa ODC' };
+            groupsMap.set(key, {
+                odc: odcObj,
+                odps: [],
+                splitInfo: getOdcSplitInfo(odcObj),
+            });
+        }
+        groupsMap.get(key).odps.push(odp);
+    });
+
+    // 3. Pasangkan ODC Split (Induk + Lanjutan) ke dalam satu Unit Berdampingan
+    const familyMap = new Map();
+    groupsMap.forEach((group, key) => {
+        const sInfo = group.splitInfo;
+        const familyKey = (sInfo.isSplit && sInfo.rootId)
+            ? `split-odc-${sInfo.rootId}`
+            : `single-odc-${key}`;
+
+        if (!familyMap.has(familyKey)) {
+            familyMap.set(familyKey, []);
+        }
+        familyMap.get(familyKey).push(group);
+    });
+
+    const units = [];
+    familyMap.forEach((items, familyKey) => {
+        // Pastikan Unit Induk di urutan pertama (kiri) dan Unit Lanjutan di urutan kedua (kanan)
+        items.sort((a, b) => {
+            const aRank = a.odc.parent_odc_id ? 1 : 0;
+            const bRank = b.odc.parent_odc_id ? 1 : 0;
+            if (aRank !== bRank) return aRank - bRank;
+            return Number(a.odc.id || 0) - Number(b.odc.id || 0);
+        });
+
+        units.push({
+            key: familyKey,
+            isSplitPair: items.length > 1,
+            sortName: items[0]?.odc?.name || '',
+            items,
+        });
+    });
+
+    units.sort((a, b) => a.sortName.localeCompare(b.sortName, undefined, { numeric: true, sensitivity: 'base' }));
+    return units;
 });
+
+const getOdcUnitTotalOdps = (items) => {
+    return items.reduce((sum, item) => sum + (item.odps?.length || 0), 0);
+};
+
+const getOdcUnitFreePorts = (items) => {
+    return items.reduce((sum, item) => {
+        const avail = (item.odps || []).reduce((s, o) => s + Math.max(0, Number(o.total_ports || 0) - Number(o.used_ports || 0)), 0);
+        return sum + avail;
+    }, 0);
+};
 
 // ================= PAGINASI CARD VIEW & TABLE VIEW =================
 const cardPerPage = ref(5);
@@ -960,52 +1051,143 @@ const cardCurrentPage = ref(1);
 const tablePerPage = ref(25);
 const tableCurrentPage = ref(1);
 
-// Card View Pagination
 const totalCardPages = computed(() => {
     if (cardPerPage.value === 'all') return 1;
     const perPage = Number(cardPerPage.value) || 5;
-    return Math.max(1, Math.ceil(odpsGroupedByOdc.value.length / perPage));
+    return Math.max(1, Math.ceil(odcDisplayUnits.value.length / perPage));
 });
 
-const paginatedOdcGroups = computed(() => {
-    if (cardPerPage.value === 'all') return odpsGroupedByOdc.value;
+const paginatedOdcUnits = computed(() => {
+    if (cardPerPage.value === 'all') return odcDisplayUnits.value;
     const perPage = Number(cardPerPage.value) || 5;
     const start = (cardCurrentPage.value - 1) * perPage;
-    return odpsGroupedByOdc.value.slice(start, start + perPage);
+    return odcDisplayUnits.value.slice(start, start + perPage);
 });
 
 const cardPaginationInfo = computed(() => {
-    const total = odpsGroupedByOdc.value.length;
-    if (total === 0) return { from: 0, to: 0, total: 0 };
-    if (cardPerPage.value === 'all') return { from: 1, to: total, total };
+    const allUnits = odcDisplayUnits.value;
+    const totalOdcsCount = allUnits.reduce((sum, u) => sum + u.items.length, 0);
+    if (totalOdcsCount === 0) return { from: 0, to: 0, total: 0 };
+    if (cardPerPage.value === 'all') return { from: 1, to: totalOdcsCount, total: totalOdcsCount };
+
     const perPage = Number(cardPerPage.value) || 5;
-    const from = (cardCurrentPage.value - 1) * perPage + 1;
-    const to = Math.min(cardCurrentPage.value * perPage, total);
-    return { from, to, total };
+    const startUnitIdx = (cardCurrentPage.value - 1) * perPage;
+    const beforeCount = allUnits.slice(0, startUnitIdx).reduce((sum, u) => sum + u.items.length, 0);
+    const currentCount = paginatedOdcUnits.value.reduce((sum, u) => sum + u.items.length, 0);
+
+    return {
+        from: beforeCount + 1,
+        to: beforeCount + currentCount,
+        total: totalOdcsCount,
+    };
 });
 
-// Table View Pagination
-const totalTablePages = computed(() => {
-    if (tablePerPage.value === 'all') return 1;
-    const perPage = Number(tablePerPage.value) || 25;
-    return Math.max(1, Math.ceil(props.odps.length / perPage));
+// ================= TABLE VIEW SORTING & SPLIT-SAFE PAGINATION =================
+const sortedOdpsForTable = computed(() => {
+    const rows = (props.odps || []).map(odp => {
+        const odcSplit = getOdcSplitInfo(odp.odc);
+        const odpSplit = getOdpSplitInfo(odp);
+
+        const rootOdc = odcSplit.rootId ? allKnownOdcsMap.value.get(Number(odcSplit.rootId)) : odp.odc;
+        const rootOdp = odpSplit.rootId ? allKnownOdpsMap.value.get(Number(odpSplit.rootId)) : odp;
+
+        return {
+            odp,
+            odcSplit,
+            odpSplit,
+            odcRootName: rootOdc?.name || odp.odc?.name || 'ZZZ',
+            odcRoleRank: odp.odc?.parent_odc_id ? 1 : 0,
+            odpRootName: rootOdp?.name || odp.name || '',
+            odpRoleRank: odp.parent_odp_id ? 1 : 0,
+        };
+    });
+
+    rows.sort((a, b) => {
+        // 1. Grup ODC Split berdampingan
+        const odcNameCmp = a.odcRootName.localeCompare(b.odcRootName, undefined, { numeric: true, sensitivity: 'base' });
+        if (odcNameCmp !== 0) return odcNameCmp;
+        if (a.odcRoleRank !== b.odcRoleRank) return a.odcRoleRank - b.odcRoleRank;
+        const odcIdCmp = Number(a.odp.odc_id || 0) - Number(b.odp.odc_id || 0);
+        if (odcIdCmp !== 0) return odcIdCmp;
+
+        // 2. Grup ODP Split 2 berdampingan (Induk tepat di atas Lanjutan)
+        if (a.odpSplit.rootId && b.odpSplit.rootId && a.odpSplit.rootId === b.odpSplit.rootId) {
+            if (a.odpRoleRank !== b.odpRoleRank) return a.odpRoleRank - b.odpRoleRank;
+            return Number(a.odp.id) - Number(b.odp.id);
+        }
+
+        const odpNameCmp = a.odpRootName.localeCompare(b.odpRootName, undefined, { numeric: true, sensitivity: 'base' });
+        if (odpNameCmp !== 0) return odpNameCmp;
+        if (a.odpRoleRank !== b.odpRoleRank) return a.odpRoleRank - b.odpRoleRank;
+        return Number(a.odp.id) - Number(b.odp.id);
+    });
+
+    return rows;
 });
+
+const tablePages = computed(() => {
+    const rows = sortedOdpsForTable.value;
+    if (rows.length === 0) return [[]];
+    if (tablePerPage.value === 'all') return [rows];
+
+    const perPage = Number(tablePerPage.value) || 25;
+    const pages = [];
+    let current = [];
+
+    let i = 0;
+    while (i < rows.length) {
+        const row = rows[i];
+        const group = [row];
+
+        // Jika baris ini adalah ODP Split Induk yang diikuti langsung oleh Lanjutannya, jaga agar tidak terpotong halaman!
+        if (row.odpSplit.isSplit && row.odpSplit.rootId) {
+            while (
+                i + 1 < rows.length &&
+                rows[i + 1].odpSplit.isSplit &&
+                rows[i + 1].odpSplit.rootId === row.odpSplit.rootId
+            ) {
+                i++;
+                group.push(rows[i]);
+            }
+        }
+
+        if (current.length > 0 && current.length + group.length > perPage) {
+            pages.push(current);
+            current = [...group];
+        } else {
+            current.push(...group);
+        }
+        i++;
+    }
+
+    if (current.length > 0) {
+        pages.push(current);
+    }
+
+    return pages;
+});
+
+const totalTablePages = computed(() => Math.max(1, tablePages.value.length));
 
 const paginatedOdpsTable = computed(() => {
-    if (tablePerPage.value === 'all') return props.odps;
-    const perPage = Number(tablePerPage.value) || 25;
-    const start = (tableCurrentPage.value - 1) * perPage;
-    return props.odps.slice(start, start + perPage);
+    const idx = Math.min(Math.max(0, tableCurrentPage.value - 1), tablePages.value.length - 1);
+    return tablePages.value[idx] || [];
 });
 
 const tablePaginationInfo = computed(() => {
-    const total = props.odps.length;
+    const total = sortedOdpsForTable.value.length;
     if (total === 0) return { from: 0, to: 0, total: 0 };
     if (tablePerPage.value === 'all') return { from: 1, to: total, total };
-    const perPage = Number(tablePerPage.value) || 25;
-    const from = (tableCurrentPage.value - 1) * perPage + 1;
-    const to = Math.min(tableCurrentPage.value * perPage, total);
-    return { from, to, total };
+
+    const idx = Math.min(Math.max(0, tableCurrentPage.value - 1), tablePages.value.length - 1);
+    const beforeCount = tablePages.value.slice(0, idx).reduce((sum, p) => sum + p.length, 0);
+    const currentCount = (tablePages.value[idx] || []).length;
+
+    return {
+        from: beforeCount + 1,
+        to: beforeCount + currentCount,
+        total,
+    };
 });
 
 const getPageNumbers = (current, total) => {
@@ -1058,7 +1240,7 @@ const goToTablePage = (page) => {
     scrollToContent();
 };
 
-watch([() => props.odps, () => form.olt_id, () => form.odc_id, () => form.odp_id, () => form.area_id, () => form.status, () => form.search], () => {
+watch([() => props.odps, () => props.display_odcs, () => form.olt_id, () => form.odc_id, () => form.odp_id, () => form.area_id, () => form.status, () => form.search], () => {
     cardCurrentPage.value = 1;
     tableCurrentPage.value = 1;
 });
@@ -1083,32 +1265,70 @@ watch(totalTablePages, (newTotal) => {
     }
 });
 
-// Grouping for Topology
+// ================= TOPOLOGY VIEW GROUPING (SPLIT ADJACENT) =================
 const groupedForTopology = computed(() => {
     const servers = {};
-    props.odps.forEach(odp => {
-        const serverName = odp.odc?.olt?.name || 'Tanpa Server';
+
+    const ensureOdcEntry = (odcObj) => {
+        const serverName = odcObj?.olt?.name || 'Tanpa Server';
         if (!servers[serverName]) servers[serverName] = { id: serverName, name: serverName, odcs: {} };
-        
-        const odcName = odp.odc?.name || 'Tanpa ODC';
-        if (!servers[serverName].odcs[odcName]) {
-            servers[serverName].odcs[odcName] = {
-                id: odcName,
-                name: odcName,
-                odc: odp.odc,
-                pon_port: odp.odc?.pon_port,
-                odps: []
+
+        const odcKey = odcObj?.id ? String(odcObj.id) : (odcObj?.name || 'Tanpa ODC');
+        if (!servers[serverName].odcs[odcKey]) {
+            const splitInfo = getOdcSplitInfo(odcObj);
+            const rootOdc = splitInfo.rootId ? allKnownOdcsMap.value.get(Number(splitInfo.rootId)) : odcObj;
+            servers[serverName].odcs[odcKey] = {
+                id: odcKey,
+                name: odcObj?.name || 'Tanpa ODC',
+                odc: odcObj,
+                pon_port: odcObj?.pon_port,
+                splitInfo,
+                rootName: rootOdc?.name || odcObj?.name || '',
+                roleRank: odcObj?.parent_odc_id ? 1 : 0,
+                odps: [],
             };
         }
-        
-        servers[serverName].odcs[odcName].odps.push(odp);
+        return servers[serverName].odcs[odcKey];
+    };
+
+    (props.display_odcs || []).forEach(odc => {
+        ensureOdcEntry(odc);
     });
-    
-    // Convert to arrays
-    return Object.values(servers).map(s => ({
-        ...s,
-        odcs: Object.values(s.odcs).sort((a, b) => a.name.localeCompare(b.name))
-    })).sort((a, b) => a.name.localeCompare(b.name));
+
+    (props.odps || []).forEach(odp => {
+        const odcEntry = ensureOdcEntry(odp.odc || { id: 'null', name: 'Tanpa ODC' });
+        odcEntry.odps.push(odp);
+    });
+
+    return Object.values(servers).map(s => {
+        const sortedOdcs = Object.values(s.odcs).map(odcEntry => {
+            const sortedOdps = [...odcEntry.odps].sort((a, b) => {
+                const aSplit = getOdpSplitInfo(a);
+                const bSplit = getOdpSplitInfo(b);
+                if (aSplit.rootId && bSplit.rootId && aSplit.rootId === bSplit.rootId) {
+                    const aRank = a.parent_odp_id ? 1 : 0;
+                    const bRank = b.parent_odp_id ? 1 : 0;
+                    if (aRank !== bRank) return aRank - bRank;
+                    return Number(a.id) - Number(b.id);
+                }
+                const aRoot = (aSplit.rootId ? allKnownOdpsMap.value.get(Number(aSplit.rootId))?.name : a.name) || a.name || '';
+                const bRoot = (bSplit.rootId ? allKnownOdpsMap.value.get(Number(bSplit.rootId))?.name : b.name) || b.name || '';
+                return aRoot.localeCompare(bRoot, undefined, { numeric: true, sensitivity: 'base' });
+            });
+
+            return { ...odcEntry, odps: sortedOdps };
+        }).sort((a, b) => {
+            if (a.splitInfo?.rootId && b.splitInfo?.rootId && a.splitInfo.rootId === b.splitInfo.rootId) {
+                if (a.roleRank !== b.roleRank) return a.roleRank - b.roleRank;
+                return Number(a.odc?.id || 0) - Number(b.odc?.id || 0);
+            }
+            const nameCmp = a.rootName.localeCompare(b.rootName, undefined, { numeric: true, sensitivity: 'base' });
+            if (nameCmp !== 0) return nameCmp;
+            return a.roleRank - b.roleRank;
+        });
+
+        return { ...s, odcs: sortedOdcs };
+    }).sort((a, b) => a.name.localeCompare(b.name));
 });
 
 const getPonVlans = (odcItem) => {
@@ -1177,38 +1397,14 @@ const getModeBadgeClass = (mode) => {
 
 const getOdcTotalPorts = (odpsArray) => {
     let available = 0;
-    odpsArray.forEach(o => { available += Math.max(0, o.total_ports - o.used_ports); });
+    (odpsArray || []).forEach(o => { available += Math.max(0, o.total_ports - o.used_ports); });
     return { available };
-};
-
-const getOdpStatusColor = (odp) => {
-    if (odp.status === 'full') return 'bg-red-500';
-    if (odp.status === 'maintenance') return 'bg-amber-500';
-    return 'bg-emerald-500'; // active
 };
 
 const getOdpStatusBadge = (odp) => {
     if (odp.status === 'full') return 'bg-red-100 text-red-700';
     if (odp.status === 'maintenance') return 'bg-amber-100 text-amber-700';
-    return 'bg-emerald-100 text-emerald-700'; // active
-};
-
-const getOdpCustomerStats = (odp) => {
-    let active = 0;
-    let offline = 0;
-    if (odp.onts) {
-        odp.onts.forEach(ont => {
-            if (ont.customer) {
-                if (ont.customer.status === 'active') active++;
-                else offline++;
-            }
-        });
-    }
-    return { active, offline };
-};
-
-const getTerminatedCustomersForOdp = (odpId) => {
-    return props.terminated_customers.filter(cust => cust.ont && cust.ont.odp_id == odpId);
+    return 'bg-emerald-100 text-emerald-700';
 };
 
 const openOdpDetail = (odp) => {
@@ -1217,17 +1413,15 @@ const openOdpDetail = (odp) => {
 
 const getPortData = (odp, portNum) => {
     if (!odp) return null;
-    
-    // 1. Cek dari data ONT
+
     let portData = odp.onts ? odp.onts.find(o => o.port_number == portNum) : null;
     if (portData) return portData;
-    
-    // 2. Cek dari reservasi Survey (jika belum ada ONT)
+
     if (odp.surveys) {
-        let survey = [...odp.surveys]
+        const survey = [...odp.surveys]
             .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
             .find(s => s.port_number == portNum && s.customer && ['survey', 'installing'].includes(s.customer.status));
-            
+
         if (survey) {
             return {
                 customer: survey.customer,
@@ -1237,47 +1431,8 @@ const getPortData = (odp, portNum) => {
             };
         }
     }
-    
-    return null;
-};
 
-const getPendingInstallationsForOdp = (odp) => {
-    if (!odp.surveys) return [];
-    
-    // Kumpulkan customer ID yang sudah memiliki port di ODP ini
-    const customersInPorts = new Set();
-    if (odp.onts) {
-        odp.onts.forEach(ont => {
-            if (ont.port_number && ont.customer_id) {
-                customersInPorts.add(ont.customer_id);
-            }
-        });
-    }
-    odp.surveys.forEach(survey => {
-        if (survey.port_number && survey.customer_id) {
-            customersInPorts.add(survey.customer_id);
-        }
-    });
-    
-    const customers = [];
-    const seen = new Set();
-    
-    // Sort so newest is processed first if there are multiple surveys for the same customer
-    const sortedSurveys = [...odp.surveys].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    
-    for (const survey of sortedSurveys) {
-        if (!survey.customer) continue;
-        
-        // JANGAN tampilkan di Antrean jika sudah masuk ke dalam Port!
-        if (customersInPorts.has(survey.customer.id)) continue;
-        
-        if (['survey', 'installing'].includes(survey.customer.status) && !seen.has(survey.customer.id)) {
-            seen.add(survey.customer.id);
-            customers.push(survey.customer);
-        }
-    }
-    
-    return customers;
+    return null;
 };
 
 const getCbpForCustomer = (custOrId) => {
@@ -1296,9 +1451,8 @@ const getOdpCbpCount = (odp) => {
     if (!odp || !odp.onts) return 0;
     let count = 0;
     odp.onts.forEach(ont => {
-        if (ont.customer) {
-            const cbp = getCbpForCustomer(ont.customer);
-            if (cbp) count++;
+        if (ont.customer && getCbpForCustomer(ont.customer)) {
+            count++;
         }
     });
     return count;
@@ -1309,19 +1463,10 @@ const getOdpGratisCount = (odp) => {
     return odp.onts.filter(o => o.customer && o.customer.service_status === 'gratis').length;
 };
 
-const getCustomerStatusColor = (status, cbp) => {
-    if (cbp) return 'bg-rose-500 animate-pulse ring-2 ring-rose-300';
-    if (status === 'active') return 'bg-emerald-500';
-    if (status === 'suspended') return 'bg-orange-500';
-    if (status === 'terminated') return 'bg-rose-600';
-    if (status === 'installing' || status === 'booking' || status === 'survey') return 'bg-amber-500';
-    return 'bg-gray-400';
-};
-
 const renderPortTopology = (odp, portNum) => {
     const data = getPortData(odp, portNum);
     if (!data) return `<span class="text-emerald-400 font-bold">➔ Available</span>`;
-    
+
     if (data.customer) {
         const cbp = getCbpForCustomer(data.customer);
         const color = data.customer.status === 'active' ? 'text-indigo-300' : 'text-amber-400';

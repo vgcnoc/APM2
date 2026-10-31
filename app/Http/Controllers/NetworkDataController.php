@@ -15,6 +15,40 @@ use Inertia\Response;
 
 class NetworkDataController extends Controller
 {
+    /**
+     * Ekspansi daftar ID ODC agar selalu menyertakan pasangan Split-nya (Induk <-> Lanjutan).
+     */
+    protected function expandSplitOdcIds(array $odcIds): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $odcIds))));
+        if (empty($ids)) {
+            return [];
+        }
+
+        $parents = Odc::whereIn('id', $ids)->whereNotNull('parent_odc_id')->pluck('parent_odc_id')->map(fn ($v) => (int) $v)->all();
+        $rootIds = array_values(array_unique(array_merge($ids, $parents)));
+        $children = Odc::whereIn('parent_odc_id', $rootIds)->pluck('id')->map(fn ($v) => (int) $v)->all();
+
+        return array_values(array_unique(array_merge($rootIds, $children)));
+    }
+
+    /**
+     * Ekspansi daftar ID ODP agar selalu menyertakan pasangan Split 2-nya (Induk <-> Lanjutan).
+     */
+    protected function expandSplitOdpIds(array $odpIds): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $odpIds))));
+        if (empty($ids)) {
+            return [];
+        }
+
+        $parents = Odp::whereIn('id', $ids)->whereNotNull('parent_odp_id')->pluck('parent_odp_id')->map(fn ($v) => (int) $v)->all();
+        $rootIds = array_values(array_unique(array_merge($ids, $parents)));
+        $children = Odp::whereIn('parent_odp_id', $rootIds)->pluck('id')->map(fn ($v) => (int) $v)->all();
+
+        return array_values(array_unique(array_merge($rootIds, $children)));
+    }
+
     public function index(Request $request): Response
     {
         $user = auth()->user();
@@ -30,8 +64,30 @@ class NetworkDataController extends Controller
         $status = $request->input('status');
         $search = $request->input('search');
 
+        $odcRelations = [
+            'olt',
+            'area',
+            'parent:id,name,capacity,olt_id,pon_port,splitter_ratio,type,is_split,location,parent_odc_id',
+            'children:id,name,capacity,olt_id,pon_port,splitter_ratio,type,is_split,location,parent_odc_id',
+        ];
+
+        $odpRelations = [
+            'odc.olt',
+            'odc.area',
+            'odc.parent:id,name,capacity,olt_id,pon_port,splitter_ratio,type,is_split,location,parent_odc_id',
+            'odc.children:id,name,capacity,olt_id,pon_port,splitter_ratio,type,is_split,location,parent_odc_id',
+            'area',
+            'parent:id,name,odc_id,total_ports,used_ports,type,is_split,parent_odp_id',
+            'children:id,name,odc_id,total_ports,used_ports,type,is_split,parent_odp_id',
+            'onts.customer.latestCbpRequest.technicians',
+            'surveys.customer',
+        ];
+
+        $expandedOdcFilterIds = $odcId ? $this->expandSplitOdcIds([(int) $odcId]) : [];
+        $expandedOdpFilterIds = $odpId ? $this->expandSplitOdpIds([(int) $odpId]) : [];
+
         // Base ODP query with relations
-        $odpQuery = Odp::with(['odc.olt', 'area', 'onts.customer.latestCbpRequest.technicians', 'surveys.customer']);
+        $odpQuery = Odp::with($odpRelations);
         DataScopeService::applyOdpScope($odpQuery, $user);
 
         // Apply filters
@@ -40,11 +96,11 @@ class NetworkDataController extends Controller
                 $q->where('olt_id', $oltId);
             });
         }
-        if ($odcId) {
-            $odpQuery->where('odc_id', $odcId);
+        if (!empty($expandedOdcFilterIds)) {
+            $odpQuery->whereIn('odc_id', $expandedOdcFilterIds);
         }
-        if ($odpId) {
-            $odpQuery->where('id', $odpId);
+        if (!empty($expandedOdpFilterIds)) {
+            $odpQuery->whereIn('id', $expandedOdpFilterIds);
         }
         if ($areaId) {
             $odpQuery->where(function ($q) use ($areaId) {
@@ -73,6 +129,14 @@ class NetworkDataController extends Controller
                   ->orWhere('description', 'like', "%{$search}%")
                   ->orWhere('start_point', 'like', "%{$search}%")
                   ->orWhere('end_point', 'like', "%{$search}%")
+                  ->orWhereHas('parent', fn ($pq) => $pq->where('name', 'like', "%{$search}%")->orWhere('address', 'like', "%{$search}%"))
+                  ->orWhereHas('children', fn ($cq) => $cq->where('name', 'like', "%{$search}%")->orWhere('address', 'like', "%{$search}%"))
+                  ->orWhereHas('odc', function ($odcq) use ($search) {
+                      $odcq->where('name', 'like', "%{$search}%")
+                           ->orWhere('location', 'like', "%{$search}%")
+                           ->orWhereHas('parent', fn ($pq) => $pq->where('name', 'like', "%{$search}%"))
+                           ->orWhereHas('children', fn ($cq) => $cq->where('name', 'like', "%{$search}%"));
+                  })
                   ->orWhereHas('onts', function ($oq) use ($search) {
                       $oq->where('vlan_id', 'like', "%{$search}%")
                          ->orWhere('hotspot_vlan_id', 'like', "%{$search}%")
@@ -83,12 +147,87 @@ class NetworkDataController extends Controller
                          });
                   })
                   ->orWhereHas('odc.olt', function ($olq) use ($search) {
-                      $olq->where('pon_vlans', 'like', "%{$search}%");
+                      $olq->where('name', 'like', "%{$search}%")
+                          ->orWhere('pon_vlans', 'like', "%{$search}%");
                   });
             });
         }
 
-        $odps = $odpQuery->get();
+        $odps = $odpQuery
+            ->orderByRaw('COALESCE(parent_odp_id, id) ASC, CASE WHEN parent_odp_id IS NULL THEN 0 ELSE 1 END ASC, id ASC')
+            ->get();
+
+        // Jika hasil pencarian Pelanggan/ONT mengenai salah satu unit dari pasangan ODP Split 2,
+        // sertakan juga unit pasangannya (Induk / Lanjutan) agar keduanya tetap tampil berdampingan utuh!
+        if ($odps->isNotEmpty() && !$status) {
+            $currentOdpIds = $odps->pluck('id')->map(fn ($v) => (int) $v)->all();
+            $allSplitPartnerOdpIds = $this->expandSplitOdpIds($currentOdpIds);
+            $missingPartnerOdpIds = array_values(array_diff($allSplitPartnerOdpIds, $currentOdpIds));
+
+            if (!empty($missingPartnerOdpIds)) {
+                $partnerOdpQuery = Odp::with($odpRelations)->whereIn('id', $missingPartnerOdpIds);
+                DataScopeService::applyOdpScope($partnerOdpQuery, $user);
+                $partnerOdps = $partnerOdpQuery->get();
+                if ($partnerOdps->isNotEmpty()) {
+                    $odps = $odps->concat($partnerOdps)->unique('id')->values();
+                }
+            }
+        }
+
+        // Kumpulkan seluruh ODC yang relevan agar pasangan ODC Split (termasuk unit yang belum punya ODP) selalu tampil berdampingan!
+        $candidateOdcIds = $odps->pluck('odc_id')->filter()->map(fn ($v) => (int) $v)->unique()->values()->all();
+
+        if (!$odpId && !$status) {
+            $extraOdcQuery = Odc::query();
+            DataScopeService::applyOdcScope($extraOdcQuery, $user);
+
+            if ($oltId) {
+                $extraOdcQuery->where('olt_id', $oltId);
+            }
+            if ($areaId) {
+                $extraOdcQuery->where(function ($q) use ($areaId) {
+                    if (is_numeric($areaId)) {
+                        $q->where('area_id', (int) $areaId);
+                    } else {
+                        $q->whereHas('area', fn ($aq) => $aq->where('name', $areaId));
+                    }
+                });
+            }
+
+            if (!empty($expandedOdcFilterIds)) {
+                $extraOdcQuery->whereIn('id', $expandedOdcFilterIds);
+            } elseif ($search) {
+                $extraOdcQuery->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('location', 'like', "%{$search}%")
+                      ->orWhere('description', 'like', "%{$search}%")
+                      ->orWhereHas('parent', fn ($pq) => $pq->where('name', 'like', "%{$search}%"))
+                      ->orWhereHas('children', fn ($cq) => $cq->where('name', 'like', "%{$search}%"))
+                      ->orWhereHas('olt', fn ($oq) => $oq->where('name', 'like', "%{$search}%"));
+                });
+            } else {
+                // Tanpa filter ODP/Status/Search: sertakan seluruh ODC bertipe Split agar pasangan Induk & Lanjutan tidak pernah hilang meskipun 0 ODP
+                $extraOdcQuery->where(function ($q) {
+                    $q->where('is_split', true)
+                      ->orWhere('type', 'Split')
+                      ->orWhereNotNull('parent_odc_id')
+                      ->orWhereHas('children');
+                });
+            }
+
+            $extraIds = $extraOdcQuery->pluck('id')->map(fn ($v) => (int) $v)->all();
+            $candidateOdcIds = array_values(array_unique(array_merge($candidateOdcIds, $extraIds)));
+        }
+
+        $finalDisplayOdcIds = $this->expandSplitOdcIds($candidateOdcIds);
+        $displayOdcs = collect();
+        if (!empty($finalDisplayOdcIds)) {
+            $displayOdcQuery = Odc::with($odcRelations)
+                ->whereIn('id', $finalDisplayOdcIds)
+                ->orderByRaw('COALESCE(parent_odc_id, id) ASC, CASE WHEN parent_odc_id IS NULL THEN 0 ELSE 1 END ASC, id ASC');
+            DataScopeService::applyOdcScope($displayOdcQuery, $user);
+            $displayOdcs = $displayOdcQuery->get();
+        }
 
         // Analytics/Stats with data scope
         $baseOdcQuery = Odc::query();
@@ -109,8 +248,8 @@ class NetworkDataController extends Controller
         if ($oltId) {
             $baseOdpQuery->whereHas('odc', fn($q) => $q->where('olt_id', $oltId));
         }
-        if ($odcId) {
-            $baseOdpQuery->where('odc_id', $odcId);
+        if (!empty($expandedOdcFilterIds)) {
+            $baseOdpQuery->whereIn('odc_id', $expandedOdcFilterIds);
         }
         if ($areaId) {
             $baseOdpQuery->where(function ($q) use ($areaId) {
@@ -163,18 +302,21 @@ class NetworkDataController extends Controller
         DataScopeService::applyCbpScope($cbpQuery, $user);
         $cbpRequests = $cbpQuery->get();
 
-        $oltFilterQuery = Olt::query();
+        $oltFilterQuery = Olt::query()->orderBy('name');
         DataScopeService::applyOltScope($oltFilterQuery, $user);
 
-        $odcFilterQuery = Odc::query();
+        $odcFilterQuery = Odc::with(['parent:id,name,parent_odc_id', 'children:id,name,parent_odc_id'])
+            ->orderByRaw('COALESCE(parent_odc_id, id) ASC, CASE WHEN parent_odc_id IS NULL THEN 0 ELSE 1 END ASC, id ASC');
         DataScopeService::applyOdcScope($odcFilterQuery, $user);
 
-        $odpFilterQuery = Odp::query();
+        $odpFilterQuery = Odp::with(['parent:id,name,parent_odp_id', 'children:id,name,parent_odp_id'])
+            ->orderByRaw('COALESCE(parent_odp_id, id) ASC, CASE WHEN parent_odp_id IS NULL THEN 0 ELSE 1 END ASC, id ASC');
         DataScopeService::applyOdpScope($odpFilterQuery, $user);
 
         return Inertia::render('NetworkData/Index', [
             'olts' => $oltFilterQuery->get(),
             'odcs' => $odcFilterQuery->get(),
+            'display_odcs' => $displayOdcs,
             'odps_filter' => $odpFilterQuery->get(),
             'areas' => DataScopeService::getScopedAreas($user, 'network_data'),
             'odps' => $odps,

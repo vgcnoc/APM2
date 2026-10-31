@@ -408,8 +408,16 @@
                             <tr 
                                 v-for="odp in odps.data" 
                                 :key="odp.id" 
-                                class="hover:bg-indigo-50/20 transition-colors"
-                                :class="{'bg-indigo-50/40': selectedIds.includes(odp.id)}"
+                                class="transition-colors"
+                                :class="[
+                                    selectedIds.includes(odp.id)
+                                        ? 'bg-indigo-50/50'
+                                        : odp.parent_odp_id
+                                            ? 'bg-purple-50/30 hover:bg-purple-50/60 border-l-4 border-l-purple-500'
+                                            : (odp.children && odp.children.length > 0)
+                                                ? 'bg-emerald-50/30 hover:bg-emerald-50/60 border-l-4 border-l-emerald-500'
+                                                : 'hover:bg-indigo-50/20'
+                                ]"
                             >
                                 <td class="w-12 px-4 py-4 text-center">
                                     <input 
@@ -420,18 +428,27 @@
                                     />
                                 </td>
                                 <td class="px-6 py-4 text-sm font-medium text-gray-900">
-                                    <div class="flex items-center gap-2">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <span v-if="odp.parent_odp_id" class="text-purple-600 font-black">↳</span>
                                         <div class="font-bold text-gray-900">{{ odp.name }}</div>
-                                        <span v-if="odp.is_split" class="px-1.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold rounded">Split</span>
-                                        <span v-if="odp.type && odp.type !== 'Normal'" class="px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold rounded">
+                                        <span v-if="odp.children && odp.children.length > 0" class="px-2 py-0.5 bg-emerald-600 text-white text-[10px] font-black rounded">
+                                            🟢 SPLIT 2 • INDUK
+                                        </span>
+                                        <span v-else-if="odp.parent_odp_id || odp.parent" class="px-2 py-0.5 bg-purple-600 text-white text-[10px] font-black rounded">
+                                            🟣 SPLIT 2 • LANJUTAN
+                                        </span>
+                                        <span v-else-if="odp.is_split || odp.type === 'Split 2'" class="px-1.5 py-0.5 bg-amber-500 text-white text-[10px] font-black rounded">
+                                            ⚡ SPLIT 2
+                                        </span>
+                                        <span v-else-if="odp.type && odp.type !== 'Normal'" class="px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold rounded">
                                             {{ odp.type }}
                                         </span>
                                     </div>
-                                    <div v-if="odp.parent" class="text-[11px] text-purple-600 font-semibold mt-0.5 flex items-center gap-1">
-                                        <span>↳ Lanjutan dari {{ odp.parent.name }}</span>
+                                    <div v-if="odp.parent" class="text-[11px] text-purple-700 font-semibold mt-1 flex items-center gap-1">
+                                        <span>↳ Lanjutan dari Induk: <strong>{{ odp.parent.name }}</strong></span>
                                     </div>
-                                    <div v-else-if="odp.children && odp.children.length > 0" class="text-[11px] text-indigo-600 font-semibold mt-0.5 flex items-center gap-1">
-                                        <span>↱ Induk cabang ({{ odp.children.map(c => c.name).join(', ') }})</span>
+                                    <div v-else-if="odp.children && odp.children.length > 0" class="text-[11px] text-emerald-700 font-semibold mt-1 flex items-center gap-1">
+                                        <span>↱ Terhubung ke Lanjutan: <strong>{{ odp.children.map(c => c.name).join(', ') }}</strong></span>
                                     </div>
                                     <div v-if="odp.address" class="text-xs text-gray-400 mt-0.5 truncate max-w-xs">{{ odp.address }}</div>
                                 </td>
@@ -440,7 +457,15 @@
                                     <span v-else class="text-xs text-gray-400 italic">Belum diset</span>
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-600">
-                                    <div class="font-bold text-gray-900">{{ odp.odc ? odp.odc.name : '-' }}</div>
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <div class="font-bold text-gray-900">{{ odp.odc ? odp.odc.name : '-' }}</div>
+                                        <span v-if="odp.odc?.children?.length" class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                            🟢 ODC Induk
+                                        </span>
+                                        <span v-else-if="odp.odc?.parent_odc_id || odp.odc?.parent" class="px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                                            🟣 ODC Lanjutan
+                                        </span>
+                                    </div>
                                     <div v-if="odp.odc" class="mt-1">
                                         <div class="text-[11px] text-gray-500 flex flex-wrap items-center gap-1.5">
                                             <span class="font-medium text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
@@ -655,12 +680,18 @@
                                     <select v-model="form.type" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
                                         <option value="Normal">Normal</option>
                                         <option value="Split 2">Split 2</option>
+                                        <option value="Closure">Closure</option>
+                                        <option value="Pedestal">Pedestal</option>
+                                        <option value="Pole Mount">Pole Mount</option>
+                                        <option value="Wall Mount">Wall Mount</option>
+                                        <option value="FAT Mini">FAT Mini</option>
+                                        <option value="Inline Closure">Inline Closure</option>
                                     </select>
                                     <p v-if="form.errors.type" class="text-red-500 text-xs mt-1">{{ form.errors.type }}</p>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Kapasitas Port</label>
-                                    <input v-model="form.total_ports" type="number" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
+                                    <input v-model="form.total_ports" type="number" min="1" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
                                     <p v-if="form.errors.total_ports" class="text-red-500 text-xs mt-1">{{ form.errors.total_ports }}</p>
                                 </div>
                                 <div>
@@ -775,8 +806,50 @@
                             </div>
                         </div>
 
-                        <!-- UI untuk Normal / Edit -->
-                        <div v-if="isEditing || form.type === 'Normal'" class="space-y-6">
+                        <!-- UI untuk Non-Split / Edit -->
+                        <div v-if="isEditing || form.type !== 'Split 2'" class="space-y-6">
+                            <!-- Relasi Pasangan ODP Split 2 saat Edit -->
+                            <div v-if="isEditing && form.type === 'Split 2'" class="border border-purple-200 rounded-xl overflow-hidden bg-white">
+                                <div class="bg-purple-50/70 px-4 py-3 border-b border-purple-100 flex items-center justify-between">
+                                    <span class="text-sm font-bold text-purple-900">🔗 Relasi Pasangan ODP Split 2 (Induk &harr; Lanjutan)</span>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-black" :class="form.parent_odp_id ? 'bg-purple-600 text-white' : 'bg-emerald-600 text-white'">
+                                        {{ form.parent_odp_id ? '🟣 UNIT LANJUTAN' : '🟢 UNIT INDUK' }}
+                                    </span>
+                                </div>
+                                <div class="p-4 space-y-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Peran & Tautan ODP Induk</label>
+                                        <select v-model="form.parent_odp_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                            <option value="">🟢 Jadikan sebagai ODP INDUK (Sumber Utama Split 2)</option>
+                                            <option v-for="pOdp in availableParentOdpOptions" :key="pOdp.id" :value="pOdp.id">
+                                                🟣 Lanjutan dari Induk: {{ pOdp.name }} ({{ pOdp.total_ports }} Port)
+                                            </option>
+                                        </select>
+                                        <p class="text-[11px] text-gray-500 mt-1">
+                                            Pilih ODP Induk jika unit ini adalah <strong>ODP Lanjutan</strong>, agar keduanya tampil saling berdampingan di Data Jaringan.
+                                        </p>
+                                        <p v-if="form.errors.parent_odp_id" class="text-red-500 text-xs mt-1">{{ form.errors.parent_odp_id }}</p>
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Titik Awal</label>
+                                            <input v-model="form.start_point" type="text" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm" placeholder="Nama sumber kabel" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Titik Akhir</label>
+                                            <input v-model="form.end_point" type="text" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm" placeholder="Nama tujuan kabel" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Penarikan Kabel</label>
+                                            <select v-model="form.cable_pull" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                                                <option value="Individu">Individu</option>
+                                                <option value="Bersama">Bersama</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Alamat -->
                             <div class="border border-green-100 rounded-xl overflow-hidden bg-white">
                                 <div class="bg-white px-4 py-3 border-b border-green-100 flex items-center gap-2">
@@ -931,6 +1004,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 const props = defineProps({
     odps: Object,
     odcs: Array,
+    parentOdpOptions: { type: Array, default: () => [] },
     areas: Array,
     types: Array,
     portOptions: Array,
@@ -1121,11 +1195,15 @@ const form = useForm({
     odc_id: '',
     area_id: '',
     type: 'Normal',
+    parent_odp_id: '',
     total_ports: 8,
     core_capacity: 8,
     address: '',
     latitude: '',
     longitude: '',
+    start_point: '',
+    end_point: '',
+    cable_pull: 'Individu',
     status: 'active',
     description: '',
     photo: null,
@@ -1156,17 +1234,28 @@ const form = useForm({
     ]
 });
 
-// Initialize default ratio when type changes to Split 2
-watch(() => form.type, (newType) => {
-    if (newType === 'Split 2') {
-        const half = Math.floor(form.total_ports / 2);
+// Initialize default ratio when type changes to Split 2 or total_ports changes in Create mode
+watch([() => form.type, () => form.total_ports], ([newType, newTotal]) => {
+    if (!isEditing.value && newType === 'Split 2') {
+        const total = Math.max(2, Number(newTotal) || 2);
+        const half = Math.floor(total / 2);
+        const rem = total - half;
         form.split_units[0].ratio = half;
-        form.split_units[1].ratio = half;
+        form.split_units[1].ratio = rem;
         form.split_units[0].name = `ODP Induk 1:${half}`;
-        form.split_units[1].name = `ODP Lanjutan 1:${half}`;
+        form.split_units[1].name = `ODP Lanjutan 1:${rem}`;
         form.split_units[0].end_point = `ODP Induk 1:${half}`;
-        form.split_units[1].end_point = `ODP Lanjutan 1:${half}`;
+        form.split_units[1].end_point = `ODP Lanjutan 1:${rem}`;
     }
+});
+
+const availableParentOdpOptions = computed(() => {
+    return (props.parentOdpOptions || []).filter(o => {
+        if (editId.value && Number(o.id) === Number(editId.value)) return false;
+        if (form.odc_id && Number(o.odc_id) === Number(form.odc_id)) return true;
+        if (form.area_id && Number(o.area_id) === Number(form.area_id)) return true;
+        return !form.area_id && !form.odc_id;
+    });
 });
 
 // Watch ratio changes to update names dynamically (only if they still match the default pattern)
@@ -1231,11 +1320,15 @@ function openEditModal(odp) {
     form.odc_id = odp.odc_id;
     form.area_id = odp.area_id;
     form.type = odp.type || 'Normal';
+    form.parent_odp_id = odp.parent_odp_id || '';
     form.total_ports = odp.total_ports;
     form.core_capacity = odp.core_capacity || 8;
     form.address = odp.address;
     form.latitude = odp.latitude;
     form.longitude = odp.longitude;
+    form.start_point = odp.start_point || '';
+    form.end_point = odp.end_point || '';
+    form.cable_pull = odp.cable_pull || 'Individu';
     form.status = odp.status;
     form.description = odp.description;
     form.photo = null; // Clear file input

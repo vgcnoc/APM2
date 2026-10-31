@@ -23,6 +23,56 @@ use Illuminate\Support\Str;
 class InfrastructureWorkOrderService
 {
     /**
+     * Parse informasi pasangan Split dari teks catatan lama `[Split Unit 1: ...] | [Split Unit 2: ...]`.
+     */
+    public static function parseSplitUnitsFromNotes(?string $notes): array
+    {
+        if (empty($notes) || !str_contains($notes, '[Split Unit')) {
+            return [];
+        }
+
+        $units = [];
+        $pattern = '/\[Split Unit \d+:\s*(.+?)\s*\((\d+)\s*Port\)\s*-\s*Lokasi:\s*(.*?),\s*GPS:\s*([^\/,\]]+)\/([^,\]]+)(?:,\s*Kabel:\s*(.*?)\s*->\s*(.+?)\s*\(([^()]+)\))?\]/u';
+
+        if (preg_match_all($pattern, $notes, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as $m) {
+                $cleanVal = static function ($val): ?string {
+                    $v = trim((string) ($val ?? ''));
+                    return ($v === '' || $v === '-' || strtolower($v) === 'null') ? null : $v;
+                };
+
+                $latRaw = $cleanVal($m[4] ?? null);
+                $lngRaw = $cleanVal($m[5] ?? null);
+
+                $units[] = [
+                    'name' => $cleanVal($m[1] ?? null),
+                    'ratio' => max(1, (int) ($m[2] ?? 4)),
+                    'location' => $cleanVal($m[3] ?? null),
+                    'latitude' => ($latRaw !== null && is_numeric($latRaw)) ? (float) $latRaw : null,
+                    'longitude' => ($lngRaw !== null && is_numeric($lngRaw)) ? (float) $lngRaw : null,
+                    'start_point' => $cleanVal($m[6] ?? null),
+                    'end_point' => $cleanVal($m[7] ?? null),
+                    'cable_pull' => $cleanVal($m[8] ?? null) ?: 'Individu',
+                ];
+            }
+        }
+
+        return $units;
+    }
+
+    /**
+     * Ambil daftar konfigurasi 2 unit Split dari kolom JSON `split_units` atau fallback dari `notes`.
+     */
+    public static function resolveSplitUnits(InfrastructureWorkOrder $workOrder): array
+    {
+        if (is_array($workOrder->split_units) && count($workOrder->split_units) >= 2) {
+            return array_values($workOrder->split_units);
+        }
+
+        return self::parseSplitUnitsFromNotes($workOrder->notes);
+    }
+
+    /**
      * Generate Nomor Work Order Unik (WO-ODC-YYYYMM-XXXX / WO-ODP-YYYYMM-XXXX).
      */
     public static function generateWoNumber(string $type): string
@@ -59,7 +109,7 @@ class InfrastructureWorkOrderService
                 $suggestions[] = [
                     'material_id' => $box->id,
                     'name' => $box->name,
-                    'quantity' => 1,
+                    'quantity' => ($deviceType === 'Split') ? 2 : 1,
                     'unit' => $box->unit ?? 'pcs',
                     'note' => $odcLabel,
                 ];
@@ -68,7 +118,7 @@ class InfrastructureWorkOrderService
             // Splitter ODC
             $splitter = Material::where('name', 'like', '%Splitter%')->first();
             if ($splitter) {
-                $splitterNote = ($deviceType === 'Split') ? 'Splitter FBT Feeder ODC' : 'PLC Splitter Modular ODC';
+                $splitterNote = ($deviceType === 'Split') ? 'Splitter FBT Feeder ODC (Induk & Lanjutan)' : 'PLC Splitter Modular ODC';
                 $suggestions[] = [
                     'material_id' => $splitter->id,
                     'name' => $splitter->name,
@@ -86,7 +136,7 @@ class InfrastructureWorkOrderService
                 $suggestions[] = [
                     'material_id' => $box->id,
                     'name' => $box->name,
-                    'quantity' => 1,
+                    'quantity' => ($deviceType === 'Split 2') ? 2 : 1,
                     'unit' => $box->unit ?? 'pcs',
                     'note' => $odpLabel,
                 ];
@@ -95,7 +145,7 @@ class InfrastructureWorkOrderService
             // Splitter ODP
             $splitter = Material::where('name', 'like', '%Splitter%')->first();
             if ($splitter) {
-                $odpSplitterNote = ($deviceType === 'Split 2') ? "PLC Splitter 1:{$capacity} + FBT Split 2" : "PLC Splitter 1:{$capacity} Mini Box";
+                $odpSplitterNote = ($deviceType === 'Split 2') ? "PLC Splitter 1:{$capacity} + FBT Split 2 (Induk & Lanjutan)" : "PLC Splitter 1:{$capacity} Mini Box";
                 $suggestions[] = [
                     'material_id' => $splitter->id,
                     'name' => $splitter->name,
@@ -202,6 +252,9 @@ class InfrastructureWorkOrderService
             }
             $leadTechId = $data['technician_id'] ?? ($technicianIds[0] ?? null);
 
+            $isSplitDevice = ($data['type'] === 'odc_deployment' && ($data['device_type'] ?? '') === 'Split')
+                || ($data['type'] === 'odp_deployment' && ($data['device_type'] ?? '') === 'Split 2');
+
             $workOrder = InfrastructureWorkOrder::create([
                 'wo_number' => $woNumber,
                 'type' => $data['type'],
@@ -224,7 +277,11 @@ class InfrastructureWorkOrderService
                 'status' => 'pending_material',
                 'start_point' => $data['start_point'] ?? null,
                 'end_point' => $data['end_point'] ?? null,
+                'cable_pull' => $data['cable_pull'] ?? null,
                 'notes' => $data['notes'] ?? null,
+                'split_units' => ($isSplitDevice && !empty($data['split_units']) && is_array($data['split_units']))
+                    ? array_values($data['split_units'])
+                    : null,
             ]);
 
             // Hubungkan semua teknisi / tim pelaksana yang dipilih
@@ -262,7 +319,7 @@ class InfrastructureWorkOrderService
     public static function approveMaterialDispatch(InfrastructureWorkOrder $workOrder, ?User $warehouseUser = null): void
     {
         DB::transaction(function () use ($workOrder, $warehouseUser) {
-            $userId = $warehouseUser?->id ?? Auth::id() ?? User::value('id');
+            $userId = $warehouseUser?->id ?? auth()->id() ?? User::value('id');
 
             // Potong stok gudang
             $area = Area::find($workOrder->area_id);
@@ -457,6 +514,7 @@ class InfrastructureWorkOrderService
 
     /**
      * Persetujuan / Komisioning Otomatis ke Master Database ODC / ODP & GIS.
+     * Mendukung penuh komisioning 2 unit saling terhubung (Unit Induk & Unit Lanjutan) untuk tipe Split / Split 2!
      */
     public static function approveAndCommission(InfrastructureWorkOrder $workOrder, ?User $approver = null): void
     {
@@ -469,73 +527,242 @@ class InfrastructureWorkOrderService
             $lat = $workOrder->actual_latitude ?: $workOrder->planned_latitude;
             $lng = $workOrder->actual_longitude ?: $workOrder->planned_longitude;
             $photo = $workOrder->photo_odp ?: ($workOrder->photo_pole ?: $workOrder->photo_splicing);
+            $defaultCablePull = $workOrder->cable_pull ?: ($workOrder->cable_length_used ? "{$workOrder->cable_length_used}m" : 'Individu');
+            $techName = $workOrder->technician?->name ?? 'Teknisi';
 
             if ($workOrder->type === 'odc_deployment') {
-                // 1. Buat / Perbarui Record ODC Baru
+                // 1. Buat / Perbarui Record ODC Baru (Mendukung Mode Split: Induk + Lanjutan)
                 $odcType = $workOrder->device_type ?: ($workOrder->splitter_ratio === 'Split' ? 'Split' : 'Normal');
-                $isSplit = in_array($odcType, ['Split']) || str_contains(strtolower($workOrder->splitter_ratio ?? ''), 'split');
+                $isSplit = ($odcType === 'Split') || str_contains(strtolower($workOrder->splitter_ratio ?? ''), 'split');
+                $splitUnits = $isSplit ? self::resolveSplitUnits($workOrder) : [];
 
-                $odcPayload = [
-                    'olt_id' => $workOrder->olt_id,
-                    'pon_port' => $workOrder->pon_port,
-                    'area_id' => $workOrder->area_id,
-                    'name' => $workOrder->target_name,
-                    'type' => $odcType,
-                    'photo' => $photo,
-                    'location' => $workOrder->location,
-                    'latitude' => $lat,
-                    'longitude' => $lng,
-                    'capacity' => $workOrder->capacity ?: 8,
-                    'splitter_ratio' => $workOrder->splitter_ratio,
-                    'description' => "Dibangun otomatis via Rollout {$workOrder->wo_number} oleh " . ($workOrder->technician?->name ?? 'Teknisi'),
-                    'status' => 'active',
-                    'start_point' => $workOrder->start_point,
-                    'end_point' => $workOrder->end_point,
-                    'cable_pull' => $workOrder->cable_pull ?: ($workOrder->cable_length_used ? "{$workOrder->cable_length_used}m" : 'Individu'),
-                    'is_split' => $isSplit,
-                ];
+                if ($isSplit && count($splitUnits) >= 2) {
+                    $halfCap = max(1, intdiv((int) ($workOrder->capacity ?: 8), 2));
+                    $u0 = $splitUnits[0] ?? [];
+                    $u1 = $splitUnits[1] ?? [];
 
-                $existingOdc = Odc::where('name', $workOrder->target_name)->first();
-                if ($existingOdc) {
-                    $existingOdc->update($odcPayload);
-                    $odc = $existingOdc;
+                    $indukName = trim((string) ($u0['name'] ?? '')) ?: "{$workOrder->target_name}-A";
+                    $lanjutanName = trim((string) ($u1['name'] ?? '')) ?: "{$workOrder->target_name}-B";
+                    if (strcasecmp($indukName, $lanjutanName) === 0) {
+                        $indukName = "{$indukName}-A";
+                        $lanjutanName = "{$lanjutanName}-B";
+                    }
+
+                    $u0Lat = (isset($u0['latitude']) && $u0['latitude'] !== '' && is_numeric($u0['latitude'])) ? $u0['latitude'] : $lat;
+                    $u0Lng = (isset($u0['longitude']) && $u0['longitude'] !== '' && is_numeric($u0['longitude'])) ? $u0['longitude'] : $lng;
+                    $u1Lat = (isset($u1['latitude']) && $u1['latitude'] !== '' && is_numeric($u1['latitude'])) ? $u1['latitude'] : null;
+                    $u1Lng = (isset($u1['longitude']) && $u1['longitude'] !== '' && is_numeric($u1['longitude'])) ? $u1['longitude'] : null;
+
+                    $indukPayload = [
+                        'olt_id' => $workOrder->olt_id,
+                        'pon_port' => $workOrder->pon_port,
+                        'area_id' => $workOrder->area_id,
+                        'name' => $indukName,
+                        'type' => 'Split',
+                        'photo' => $photo,
+                        'location' => !empty($u0['location']) ? $u0['location'] : $workOrder->location,
+                        'latitude' => $u0Lat,
+                        'longitude' => $u0Lng,
+                        'capacity' => max(1, (int) ($u0['ratio'] ?? $halfCap)),
+                        'splitter_ratio' => $workOrder->splitter_ratio ?: 'Split 1:2 FBT',
+                        'description' => "Dibangun otomatis (Unit Induk Split, pasangan: {$lanjutanName}) via Rollout {$workOrder->wo_number} oleh {$techName}",
+                        'status' => 'active',
+                        'start_point' => !empty($u0['start_point']) ? $u0['start_point'] : $workOrder->start_point,
+                        'end_point' => !empty($u0['end_point']) ? $u0['end_point'] : $indukName,
+                        'cable_pull' => !empty($u0['cable_pull']) ? $u0['cable_pull'] : $defaultCablePull,
+                        'is_split' => true,
+                        'parent_odc_id' => null,
+                    ];
+
+                    $existingInduk = ($workOrder->created_odc_id ? Odc::find($workOrder->created_odc_id) : null)
+                        ?? Odc::where('name', $indukName)->where('area_id', $workOrder->area_id)->first();
+
+                    if ($existingInduk) {
+                        $existingInduk->update($indukPayload);
+                        $indukOdc = $existingInduk;
+                    } else {
+                        $indukOdc = Odc::create($indukPayload);
+                    }
+
+                    $lanjutanPayload = [
+                        'olt_id' => $workOrder->olt_id,
+                        'pon_port' => $workOrder->pon_port,
+                        'area_id' => $workOrder->area_id,
+                        'name' => $lanjutanName,
+                        'type' => 'Split',
+                        'photo' => $photo,
+                        'location' => !empty($u1['location']) ? $u1['location'] : $workOrder->location,
+                        'latitude' => $u1Lat,
+                        'longitude' => $u1Lng,
+                        'capacity' => max(1, (int) ($u1['ratio'] ?? $halfCap)),
+                        'splitter_ratio' => $workOrder->splitter_ratio ?: 'Split 1:2 FBT',
+                        'description' => "Dibangun otomatis (Unit Lanjutan Split dari Induk: {$indukOdc->name}) via Rollout {$workOrder->wo_number} oleh {$techName}",
+                        'status' => 'active',
+                        'start_point' => !empty($u1['start_point']) ? $u1['start_point'] : $indukOdc->name,
+                        'end_point' => !empty($u1['end_point']) ? $u1['end_point'] : $lanjutanName,
+                        'cable_pull' => !empty($u1['cable_pull']) ? $u1['cable_pull'] : $defaultCablePull,
+                        'is_split' => true,
+                        'parent_odc_id' => $indukOdc->id,
+                    ];
+
+                    $existingLanjutan = Odc::where('parent_odc_id', $indukOdc->id)->first()
+                        ?? Odc::where('name', $lanjutanName)->where('area_id', $workOrder->area_id)->where('id', '!=', $indukOdc->id)->first();
+
+                    if ($existingLanjutan) {
+                        $existingLanjutan->update($lanjutanPayload);
+                    } else {
+                        Odc::create($lanjutanPayload);
+                    }
+
+                    $createdOdcId = $indukOdc->id;
                 } else {
-                    $odc = Odc::create($odcPayload);
+                    $odcPayload = [
+                        'olt_id' => $workOrder->olt_id,
+                        'pon_port' => $workOrder->pon_port,
+                        'area_id' => $workOrder->area_id,
+                        'name' => $workOrder->target_name,
+                        'type' => $odcType,
+                        'photo' => $photo,
+                        'location' => $workOrder->location,
+                        'latitude' => $lat,
+                        'longitude' => $lng,
+                        'capacity' => $workOrder->capacity ?: 8,
+                        'splitter_ratio' => $workOrder->splitter_ratio,
+                        'description' => "Dibangun otomatis via Rollout {$workOrder->wo_number} oleh {$techName}",
+                        'status' => 'active',
+                        'start_point' => $workOrder->start_point,
+                        'end_point' => $workOrder->end_point,
+                        'cable_pull' => $defaultCablePull,
+                        'is_split' => $isSplit,
+                    ];
+
+                    $existingOdc = ($workOrder->created_odc_id ? Odc::find($workOrder->created_odc_id) : null)
+                        ?? Odc::where('name', $workOrder->target_name)->first();
+                    if ($existingOdc) {
+                        $existingOdc->update($odcPayload);
+                        $odc = $existingOdc;
+                    } else {
+                        $odc = Odc::create($odcPayload);
+                    }
+                    $createdOdcId = $odc->id;
                 }
-                $createdOdcId = $odc->id;
             } else {
-                // 2. Buat / Perbarui Record ODP Baru
+                // 2. Buat / Perbarui Record ODP Baru (Mendukung Mode Split 2: Induk + Lanjutan)
                 $odpType = $workOrder->device_type ?: ($workOrder->splitter_ratio === 'Split 2' ? 'Split 2' : 'Normal');
-                $isSplit = in_array($odpType, ['Split 2']) || str_contains(strtolower($workOrder->splitter_ratio ?? ''), 'split');
+                $isSplit = ($odpType === 'Split 2') || str_contains(strtolower($workOrder->splitter_ratio ?? ''), 'split');
+                $splitUnits = $isSplit ? self::resolveSplitUnits($workOrder) : [];
 
-                $odpPayload = [
-                    'odc_id' => $workOrder->odc_id,
-                    'area_id' => $workOrder->area_id,
-                    'name' => $workOrder->target_name,
-                    'type' => $odpType,
-                    'address' => $workOrder->location,
-                    'latitude' => $lat,
-                    'longitude' => $lng,
-                    'start_point' => $workOrder->start_point,
-                    'end_point' => $workOrder->end_point,
-                    'cable_pull' => $workOrder->cable_pull ?: ($workOrder->cable_length_used ? "{$workOrder->cable_length_used}m" : 'Individu'),
-                    'photo' => $photo,
-                    'is_split' => $isSplit,
-                    'total_ports' => $workOrder->capacity ?: 8,
-                    'core_capacity' => $workOrder->core_capacity ?: null,
-                    'used_ports' => 0,
-                    'status' => 'active',
-                    'description' => "Dibangun otomatis via Rollout {$workOrder->wo_number} oleh " . ($workOrder->technician?->name ?? 'Teknisi'),
-                ];
+                if ($isSplit && count($splitUnits) >= 2) {
+                    $halfPorts = max(1, intdiv((int) ($workOrder->capacity ?: 8), 2));
+                    $u0 = $splitUnits[0] ?? [];
+                    $u1 = $splitUnits[1] ?? [];
 
-                $existingOdp = Odp::where('name', $workOrder->target_name)->first();
-                if ($existingOdp) {
-                    $existingOdp->update($odpPayload);
-                    $odp = $existingOdp;
+                    $indukName = trim((string) ($u0['name'] ?? '')) ?: "{$workOrder->target_name}-A";
+                    $lanjutanName = trim((string) ($u1['name'] ?? '')) ?: "{$workOrder->target_name}-B";
+                    if (strcasecmp($indukName, $lanjutanName) === 0) {
+                        $indukName = "{$indukName}-A";
+                        $lanjutanName = "{$lanjutanName}-B";
+                    }
+
+                    $u0Lat = (isset($u0['latitude']) && $u0['latitude'] !== '' && is_numeric($u0['latitude'])) ? $u0['latitude'] : $lat;
+                    $u0Lng = (isset($u0['longitude']) && $u0['longitude'] !== '' && is_numeric($u0['longitude'])) ? $u0['longitude'] : $lng;
+                    $u1Lat = (isset($u1['latitude']) && $u1['latitude'] !== '' && is_numeric($u1['latitude'])) ? $u1['latitude'] : null;
+                    $u1Lng = (isset($u1['longitude']) && $u1['longitude'] !== '' && is_numeric($u1['longitude'])) ? $u1['longitude'] : null;
+
+                    $existingInduk = ($workOrder->created_odp_id ? Odp::find($workOrder->created_odp_id) : null)
+                        ?? Odp::where('name', $indukName)->where('area_id', $workOrder->area_id)->first();
+
+                    $indukPayload = [
+                        'odc_id' => $workOrder->odc_id,
+                        'area_id' => $workOrder->area_id,
+                        'name' => $indukName,
+                        'type' => 'Split 2',
+                        'address' => !empty($u0['location']) ? $u0['location'] : (!empty($u0['address']) ? $u0['address'] : $workOrder->location),
+                        'latitude' => $u0Lat,
+                        'longitude' => $u0Lng,
+                        'start_point' => !empty($u0['start_point']) ? $u0['start_point'] : $workOrder->start_point,
+                        'end_point' => !empty($u0['end_point']) ? $u0['end_point'] : $indukName,
+                        'cable_pull' => !empty($u0['cable_pull']) ? $u0['cable_pull'] : $defaultCablePull,
+                        'photo' => $photo,
+                        'is_split' => true,
+                        'parent_odp_id' => null,
+                        'total_ports' => max(1, (int) ($u0['ratio'] ?? $halfPorts)),
+                        'core_capacity' => $workOrder->core_capacity ?: null,
+                        'used_ports' => $existingInduk ? $existingInduk->used_ports : 0,
+                        'status' => $existingInduk ? $existingInduk->status : 'active',
+                        'description' => "Dibangun otomatis (Unit Induk Split 2, pasangan: {$lanjutanName}) via Rollout {$workOrder->wo_number} oleh {$techName}",
+                    ];
+
+                    if ($existingInduk) {
+                        $existingInduk->update($indukPayload);
+                        $indukOdp = $existingInduk;
+                    } else {
+                        $indukOdp = Odp::create($indukPayload);
+                    }
+
+                    $existingLanjutan = Odp::where('parent_odp_id', $indukOdp->id)->first()
+                        ?? Odp::where('name', $lanjutanName)->where('area_id', $workOrder->area_id)->where('id', '!=', $indukOdp->id)->first();
+
+                    $lanjutanPayload = [
+                        'odc_id' => $workOrder->odc_id,
+                        'area_id' => $workOrder->area_id,
+                        'name' => $lanjutanName,
+                        'type' => 'Split 2',
+                        'address' => !empty($u1['location']) ? $u1['location'] : (!empty($u1['address']) ? $u1['address'] : $workOrder->location),
+                        'latitude' => $u1Lat,
+                        'longitude' => $u1Lng,
+                        'start_point' => !empty($u1['start_point']) ? $u1['start_point'] : $indukOdp->name,
+                        'end_point' => !empty($u1['end_point']) ? $u1['end_point'] : $lanjutanName,
+                        'cable_pull' => !empty($u1['cable_pull']) ? $u1['cable_pull'] : $defaultCablePull,
+                        'photo' => $photo,
+                        'is_split' => true,
+                        'parent_odp_id' => $indukOdp->id,
+                        'total_ports' => max(1, (int) ($u1['ratio'] ?? $halfPorts)),
+                        'core_capacity' => $workOrder->core_capacity ?: null,
+                        'used_ports' => $existingLanjutan ? $existingLanjutan->used_ports : 0,
+                        'status' => $existingLanjutan ? $existingLanjutan->status : 'active',
+                        'description' => "Dibangun otomatis (Unit Lanjutan Split 2 dari Induk: {$indukOdp->name}) via Rollout {$workOrder->wo_number} oleh {$techName}",
+                    ];
+
+                    if ($existingLanjutan) {
+                        $existingLanjutan->update($lanjutanPayload);
+                    } else {
+                        Odp::create($lanjutanPayload);
+                    }
+
+                    $createdOdpId = $indukOdp->id;
                 } else {
-                    $odp = Odp::create($odpPayload);
+                    $existingOdp = ($workOrder->created_odp_id ? Odp::find($workOrder->created_odp_id) : null)
+                        ?? Odp::where('name', $workOrder->target_name)->first();
+
+                    $odpPayload = [
+                        'odc_id' => $workOrder->odc_id,
+                        'area_id' => $workOrder->area_id,
+                        'name' => $workOrder->target_name,
+                        'type' => $odpType,
+                        'address' => $workOrder->location,
+                        'latitude' => $lat,
+                        'longitude' => $lng,
+                        'start_point' => $workOrder->start_point,
+                        'end_point' => $workOrder->end_point,
+                        'cable_pull' => $defaultCablePull,
+                        'photo' => $photo,
+                        'is_split' => $isSplit,
+                        'total_ports' => $workOrder->capacity ?: 8,
+                        'core_capacity' => $workOrder->core_capacity ?: null,
+                        'used_ports' => $existingOdp ? $existingOdp->used_ports : 0,
+                        'status' => $existingOdp ? $existingOdp->status : 'active',
+                        'description' => "Dibangun otomatis via Rollout {$workOrder->wo_number} oleh {$techName}",
+                    ];
+
+                    if ($existingOdp) {
+                        $existingOdp->update($odpPayload);
+                        $odp = $existingOdp;
+                    } else {
+                        $odp = Odp::create($odpPayload);
+                    }
+                    $createdOdpId = $odp->id;
                 }
-                $createdOdpId = $odp->id;
             }
 
             // 3. Kembalikan material retur ke Inventory Gudang melalui Serah Terima Pengembalian
@@ -590,6 +817,7 @@ class InfrastructureWorkOrderService
         if ($workOrder->type === 'odc_deployment') {
             if ($workOrder->created_odc_id) {
                 Odc::where('id', $workOrder->created_odc_id)->update(['photo' => $photoPath]);
+                Odc::where('parent_odc_id', $workOrder->created_odc_id)->whereNull('photo')->update(['photo' => $photoPath]);
             } else {
                 Odc::where('name', $workOrder->target_name)
                     ->where('area_id', $workOrder->area_id)
@@ -598,6 +826,7 @@ class InfrastructureWorkOrderService
         } else {
             if ($workOrder->created_odp_id) {
                 Odp::where('id', $workOrder->created_odp_id)->update(['photo' => $photoPath]);
+                Odp::where('parent_odp_id', $workOrder->created_odp_id)->whereNull('photo')->update(['photo' => $photoPath]);
             } else {
                 Odp::where('name', $workOrder->target_name)
                     ->where('area_id', $workOrder->area_id)

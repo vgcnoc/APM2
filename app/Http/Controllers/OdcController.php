@@ -14,6 +14,15 @@ use Inertia\Response;
 
 class OdcController extends Controller
 {
+    protected function oltServesArea(Olt $olt, $areaId): bool
+    {
+        if ((int) $olt->area_id === (int) $areaId) {
+            return true;
+        }
+
+        return $olt->areas()->where('areas.id', $areaId)->exists();
+    }
+
     public function index(Request $request): Response
     {
         $user = $request->user();
@@ -34,15 +43,24 @@ class OdcController extends Controller
         $capacities = (clone $baseQuery)->whereNotNull('capacity')->distinct()->orderBy('capacity')->pluck('capacity')->filter()->values();
         $types = (clone $baseQuery)->whereNotNull('type')->distinct()->orderBy('type')->pluck('type')->filter()->values();
 
-        $query = (clone $baseQuery)->with(['olt', 'area'])->withCount('odps');
+        $query = (clone $baseQuery)
+            ->with([
+                'olt',
+                'area',
+                'parent:id,name,capacity,olt_id,pon_port,type,is_split,parent_odc_id',
+                'children:id,name,capacity,olt_id,pon_port,type,is_split,parent_odc_id',
+            ])
+            ->withCount('odps');
 
-        // Search Filter (Debounced)
+        // Search Filter (Debounced) - sertakan pasangan Split (Induk / Lanjutan) agar tetap berdampingan
         if ($request->filled('search')) {
             $s = trim($request->search);
             $query->where(function ($sub) use ($s) {
                 $sub->where('name', 'like', "%{$s}%")
                     ->orWhere('location', 'like', "%{$s}%")
                     ->orWhere('description', 'like', "%{$s}%")
+                    ->orWhereHas('parent', fn ($pq) => $pq->where('name', 'like', "%{$s}%"))
+                    ->orWhereHas('children', fn ($cq) => $cq->where('name', 'like', "%{$s}%"))
                     ->orWhereHas('olt', fn ($oq) => $oq->where('name', 'like', "%{$s}%"))
                     ->orWhereHas('area', fn ($aq) => $aq->where('name', 'like', "%{$s}%"));
             });
@@ -111,17 +129,24 @@ class OdcController extends Controller
 
         $perPage = in_array((int) $request->input('per_page'), [10, 15, 25, 50, 100, 250]) ? (int) $request->input('per_page') : 15;
 
+        // Urutkan agar pasangan ODC Split (Unit Induk diikuti langsung oleh Unit Lanjutan) selalu berdampingan!
         $odcs = $query
-            ->orderByDesc('id')
+            ->orderByRaw('COALESCE(parent_odc_id, id) DESC, CASE WHEN parent_odc_id IS NULL THEN 0 ELSE 1 END ASC, id ASC')
             ->paginate($perPage)
             ->withQueryString();
 
         $oltQuery = Olt::where('status', 'active');
         DataScopeService::applyOltScope($oltQuery, $user);
 
+        $parentOdcOptions = (clone $baseQuery)
+            ->whereNull('parent_odc_id')
+            ->orderBy('name')
+            ->get(['id', 'name', 'area_id', 'olt_id', 'pon_port', 'capacity', 'type', 'is_split']);
+
         return Inertia::render('Infrastructure/Odc/Index', [
             'odcs' => $odcs,
             'olts' => $oltQuery->with('areas:id,name')->get(['id', 'name', 'total_pon_ports', 'area_id', 'pon_vlans']),
+            'parentOdcOptions' => $parentOdcOptions,
             'areas' => DataScopeService::getScopedAreas($user, 'network_odc'),
             'capacities' => $capacities,
             'types' => $types,
@@ -141,7 +166,7 @@ class OdcController extends Controller
             'splitter_ratio' => 'nullable|string|max:50',
             'area_id' => 'required|exists:areas,id',
             'name' => 'nullable|string|max:255',
-            'type' => 'required|in:Normal,Split,Pedestal,Pole Mount',
+            'type' => 'required|in:Normal,Split,Pedestal,Pole Mount,Wall Mount,Mini ODC',
             'location' => 'nullable|string',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
@@ -153,38 +178,45 @@ class OdcController extends Controller
         ]);
 
         $olt = Olt::findOrFail($validated['olt_id']);
-        if ($olt->area_id != $validated['area_id']) {
-            return back()->withErrors(['area_id' => 'Area ODC harus sama dengan Area OLT yang dipilih.']);
+        if (!$this->oltServesArea($olt, $validated['area_id'])) {
+            return back()->withErrors(['area_id' => 'Area ODC harus sesuai dengan Area layanan OLT yang dipilih.']);
         }
 
         if ($validated['type'] === 'Split' && !empty($validated['split_units'])) {
             $parentOdc = null;
-            foreach ($validated['split_units'] as $unit) {
+            foreach ($validated['split_units'] as $index => $unit) {
+                $unitPhoto = null;
+                if ($request->hasFile("split_units.{$index}.photo")) {
+                    $unitPhoto = $request->file("split_units.{$index}.photo")->store('odcs', 'public');
+                } elseif ($request->hasFile('photo')) {
+                    $unitPhoto = $request->file('photo')->store('odcs', 'public');
+                }
+
+                $unitName = trim((string) ($unit['name'] ?? '')) ?: ($parentOdc ? 'ODC Lanjutan' : 'ODC Induk');
+                if ($parentOdc && strcasecmp($unitName, $parentOdc->name) === 0) {
+                    $unitName = "{$unitName} (Lanjutan)";
+                }
+
                 $odcData = [
                     'olt_id' => $validated['olt_id'],
                     'pon_port' => $validated['pon_port'] ?? null,
-                    'splitter_ratio' => $validated['splitter_ratio'] ?? null,
+                    'splitter_ratio' => $validated['splitter_ratio'] ?? 'Split 1:2 FBT',
                     'area_id' => $validated['area_id'],
                     'type' => 'Split',
-                    'name' => $unit['name'] ?? 'ODC Split',
+                    'name' => $unitName,
                     'location' => $unit['location'] ?? null,
-                    'latitude' => $unit['latitude'] ?? null,
-                    'longitude' => $unit['longitude'] ?? null,
-                    'start_point' => $unit['start_point'] ?? null,
-                    'end_point' => $unit['end_point'] ?? null,
-                    'cable_pull' => $unit['cable_pull'] ?? null,
-                    'capacity' => $unit['ratio'] ?? ($validated['capacity'] / 2),
+                    'latitude' => ($unit['latitude'] ?? '') !== '' ? $unit['latitude'] : null,
+                    'longitude' => ($unit['longitude'] ?? '') !== '' ? $unit['longitude'] : null,
+                    'start_point' => $unit['start_point'] ?? ($parentOdc ? $parentOdc->name : null),
+                    'end_point' => $unit['end_point'] ?? $unitName,
+                    'cable_pull' => $unit['cable_pull'] ?? 'Individu',
+                    'capacity' => max(1, (int) ($unit['ratio'] ?? intdiv((int) $validated['capacity'], 2))),
                     'status' => $validated['status'] ?? 'active',
                     'description' => $validated['description'] ?? null,
+                    'photo' => $unitPhoto,
                     'is_split' => true,
                     'parent_odc_id' => $parentOdc ? $parentOdc->id : null,
                 ];
-                
-                // Note: File upload for split units is a bit tricky if they are sent in an array. 
-                // We'll skip file upload for individual splits via array for now, or assume the parent photo applies.
-                if ($request->hasFile('photo')) {
-                    $odcData['photo'] = $request->file('photo')->store('odcs', 'public');
-                }
 
                 $created = Odc::create($odcData);
                 if (!$parentOdc) {
@@ -195,6 +227,7 @@ class OdcController extends Controller
             if ($request->hasFile('photo')) {
                 $validated['photo'] = $request->file('photo')->store('odcs', 'public');
             }
+            $validated['is_split'] = ($validated['type'] === 'Split');
             Odc::create($validated);
         }
 
@@ -204,7 +237,17 @@ class OdcController extends Controller
 
     public function show(Odc $odc): Response
     {
-        $odc->load(['olt', 'odps.onts.customer']);
+        $odc->load([
+            'olt',
+            'area',
+            'parent.olt',
+            'children.odps',
+            'odps' => fn ($q) => $q->with([
+                'parent:id,name,parent_odp_id',
+                'children:id,name,parent_odp_id',
+                'onts.customer',
+            ])->orderByRaw('COALESCE(parent_odp_id, id) ASC, CASE WHEN parent_odp_id IS NULL THEN 0 ELSE 1 END ASC, id ASC'),
+        ]);
 
         return Inertia::render('Infrastructure/Odc/Show', [
             'odc' => $odc,
@@ -213,13 +256,18 @@ class OdcController extends Controller
 
     public function update(Request $request, Odc $odc): RedirectResponse
     {
+        if ($request->has('parent_odc_id') && ($request->input('parent_odc_id') === '' || $request->input('parent_odc_id') === 'null')) {
+            $request->merge(['parent_odc_id' => null]);
+        }
+
         $validated = $request->validate([
             'olt_id' => 'required|exists:olts,id',
             'pon_port' => 'nullable|integer|min:1',
             'splitter_ratio' => 'nullable|string|max:50',
             'area_id' => 'required|exists:areas,id',
             'name' => 'required|string|max:255',
-            'type' => 'required|in:Normal,Split,Pedestal,Pole Mount',
+            'type' => 'required|in:Normal,Split,Pedestal,Pole Mount,Wall Mount,Mini ODC',
+            'parent_odc_id' => 'nullable|exists:odcs,id',
             'location' => 'nullable|string',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
@@ -233,8 +281,26 @@ class OdcController extends Controller
         ]);
 
         $olt = Olt::findOrFail($validated['olt_id']);
-        if ($olt->area_id != $validated['area_id']) {
-            return back()->withErrors(['area_id' => 'Area ODC harus sama dengan Area OLT yang dipilih.']);
+        if (!$this->oltServesArea($olt, $validated['area_id'])) {
+            return back()->withErrors(['area_id' => 'Area ODC harus sesuai dengan Area layanan OLT yang dipilih.']);
+        }
+
+        if ($validated['type'] !== 'Split') {
+            $validated['parent_odc_id'] = null;
+            $validated['is_split'] = $odc->children()->exists();
+        } else {
+            $validated['is_split'] = true;
+            if (!empty($validated['parent_odc_id'])) {
+                $parentId = (int) $validated['parent_odc_id'];
+                if ($parentId === (int) $odc->id) {
+                    $validated['parent_odc_id'] = null;
+                } else {
+                    $childIds = $odc->children()->pluck('id')->map(fn ($id) => (int) $id)->all();
+                    if (in_array($parentId, $childIds, true)) {
+                        return back()->withErrors(['parent_odc_id' => 'ODC Lanjutan tidak dapat dipilih sebagai ODC Induk (referensi melingkar).']);
+                    }
+                }
+            }
         }
 
         if ($request->hasFile('photo')) {

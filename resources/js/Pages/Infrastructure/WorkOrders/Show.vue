@@ -583,13 +583,44 @@ const formatDate = (dateStr) => {
                         <p class="text-xs text-emerald-100 max-w-2xl leading-relaxed">
                             Pengerjaan lapangan telah diselesaikan oleh teknisi. Sistem otomatis mendaftarkan perangkat dengan kapasitas <b>{{ workOrder.capacity }} Port</b>, titik koordinat aktual (<b>{{ workOrder.actual_latitude || workOrder.planned_latitude || '-' }}, {{ workOrder.actual_longitude || workOrder.planned_longitude || '-' }}</b>), foto bukti fisik, dan langsung aktif di peta GIS. Sisa material tidak terpakai telah otomatis direstok kembali ke gudang.
                         </p>
+
+                        <!-- Tautan Langsung Pasangan Unit Split (Induk & Lanjutan) -->
+                        <div v-if="workOrder.created_odc && workOrder.created_odc.children && workOrder.created_odc.children.length > 0" class="pt-2 flex flex-wrap items-center gap-2">
+                            <Link :href="`/odcs/${workOrder.created_odc.id}`" class="px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 border border-white/30 text-white text-xs font-black inline-flex items-center gap-1.5">
+                                <span>🟢 ODC Induk: {{ workOrder.created_odc.name }} ({{ workOrder.created_odc.capacity }}P)</span>
+                            </Link>
+                            <span class="text-amber-200 font-black text-xs">━━⚡━━&gt;</span>
+                            <Link
+                                v-for="child in workOrder.created_odc.children"
+                                :key="child.id"
+                                :href="`/odcs/${child.id}`"
+                                class="px-3 py-1.5 rounded-lg bg-purple-900/50 hover:bg-purple-900/70 border border-purple-300/40 text-white text-xs font-black inline-flex items-center gap-1.5"
+                            >
+                                <span>🟣 ODC Lanjutan: {{ child.name }} ({{ child.capacity }}P)</span>
+                            </Link>
+                        </div>
+
+                        <div v-if="workOrder.created_odp && workOrder.created_odp.children && workOrder.created_odp.children.length > 0" class="pt-2 flex flex-wrap items-center gap-2">
+                            <Link :href="`/odps/${workOrder.created_odp.id}`" class="px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 border border-white/30 text-white text-xs font-black inline-flex items-center gap-1.5">
+                                <span>🟢 ODP Induk: {{ workOrder.created_odp.name }} ({{ workOrder.created_odp.total_ports }}P)</span>
+                            </Link>
+                            <span class="text-amber-200 font-black text-xs">━━⚡━━&gt;</span>
+                            <Link
+                                v-for="child in workOrder.created_odp.children"
+                                :key="child.id"
+                                :href="`/odps/${child.id}`"
+                                class="px-3 py-1.5 rounded-lg bg-purple-900/50 hover:bg-purple-900/70 border border-purple-300/40 text-white text-xs font-black inline-flex items-center gap-1.5"
+                            >
+                                <span>🟣 ODP Lanjutan: {{ child.name }} ({{ child.total_ports }}P)</span>
+                            </Link>
+                        </div>
                     </div>
 
                     <div class="flex flex-wrap items-center gap-2.5 shrink-0">
                         <!-- Direct Link to Master ODC -->
                         <Link
                             v-if="workOrder.type === 'odc_deployment'"
-                            :href="route('odcs.index', { search: workOrder.target_name })"
+                            :href="route('odcs.index', { search: workOrder.created_odc?.name || workOrder.target_name })"
                             class="px-5 py-2.5 bg-white text-emerald-900 hover:bg-emerald-50 rounded-xl font-black text-xs shadow-lg transition-all flex items-center gap-2 cursor-pointer active:scale-95"
                         >
                             <span>🏢 Buka di Master Data ODC</span>
@@ -599,7 +630,7 @@ const formatDate = (dateStr) => {
                         <!-- Direct Link to Master ODP -->
                         <Link
                             v-else
-                            :href="route('odps.index', { search: workOrder.target_name })"
+                            :href="route('odps.index', { search: workOrder.created_odp?.name || workOrder.target_name })"
                             class="px-5 py-2.5 bg-white text-emerald-900 hover:bg-emerald-50 rounded-xl font-black text-xs shadow-lg transition-all flex items-center gap-2 cursor-pointer active:scale-95"
                         >
                             <span>📦 Buka di Master Data ODP</span>

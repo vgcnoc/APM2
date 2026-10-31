@@ -40,6 +40,7 @@ class Odp extends Model
             'total_ports' => 'integer',
             'used_ports' => 'integer',
             'core_capacity' => 'integer',
+            'is_split' => 'boolean',
         ];
     }
 
@@ -47,8 +48,24 @@ class Odp extends Model
 
     protected static function booted(): void
     {
+        static::saving(function (Odp $odp) {
+            if ($odp->id && $odp->parent_odp_id && (int) $odp->parent_odp_id === (int) $odp->id) {
+                $odp->parent_odp_id = null;
+            }
+
+            if ($odp->type === 'Split 2' || !empty($odp->parent_odp_id)) {
+                $odp->is_split = true;
+            }
+        });
+
         static::saved(function (Odp $odp) {
-            // 1. Pastikan OdpPort 1..total_ports tersedia
+            if ($odp->parent_odp_id) {
+                static::where('id', $odp->parent_odp_id)
+                    ->where('is_split', false)
+                    ->update(['is_split' => true]);
+            }
+
+            // 1. Pastikan OdpPort 1..total_ports tersedia dan bersihkan port kosong berlebih jika kapasitas diperkecil
             if ($odp->total_ports > 0) {
                 for ($p = 1; $p <= $odp->total_ports; $p++) {
                     \App\Models\OdpPort::firstOrCreate(
@@ -56,6 +73,12 @@ class Odp extends Model
                         ['status' => 'available']
                     );
                 }
+
+                \App\Models\OdpPort::where('odp_id', $odp->id)
+                    ->where('port_number', '>', $odp->total_ports)
+                    ->where('status', 'available')
+                    ->whereDoesntHave('ont')
+                    ->delete();
             }
 
             // 2. Sinkronkan total used_ports & status ODP

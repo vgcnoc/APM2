@@ -157,7 +157,7 @@ class InfrastructureWorkOrderController extends Controller
         return Inertia::render('Infrastructure/WorkOrders/Create', [
             'areas' => DataScopeService::getScopedAreas($user, 'infrastructure_work_orders'),
             'olts' => $oltQuery->with('areas:id,name')->get(['id', 'name', 'area_id', 'total_pon_ports', 'pon_vlans']),
-            'odcs' => $odcQuery->get(['id', 'name', 'area_id', 'capacity', 'olt_id', 'pon_port', 'splitter_ratio']),
+            'odcs' => $odcQuery->get(['id', 'name', 'area_id', 'capacity', 'olt_id', 'pon_port', 'splitter_ratio', 'type', 'is_split', 'parent_odc_id']),
             'technicians' => $this->getEligibleTechnicians(),
             'materials' => $materials,
             'materialTransactions' => $materialTransactions,
@@ -190,6 +190,31 @@ class InfrastructureWorkOrderController extends Controller
     }
 
     /**
+     * Normalisasi array `split_units` agar nilai kosong menjadi null sebelum validasi.
+     */
+    protected function normalizeSplitUnitsInput(Request $request): void
+    {
+        if (!$request->has('split_units') || !is_array($request->input('split_units'))) {
+            return;
+        }
+
+        $units = [];
+        foreach ($request->input('split_units') as $unit) {
+            if (!is_array($unit)) {
+                continue;
+            }
+            foreach (['name', 'ratio', 'location', 'address', 'latitude', 'longitude', 'start_point', 'end_point', 'cable_pull'] as $field) {
+                if (array_key_exists($field, $unit) && ($unit[$field] === '' || $unit[$field] === 'null')) {
+                    $unit[$field] = null;
+                }
+            }
+            $units[] = $unit;
+        }
+
+        $request->merge(['split_units' => $units]);
+    }
+
+    /**
      * Simpan Work Order Baru / Langsung Aktifkan ke Data ODC & ODP.
      */
     public function store(Request $request)
@@ -204,6 +229,7 @@ class InfrastructureWorkOrderController extends Controller
                 $request->merge([$f => null]);
             }
         }
+        $this->normalizeSplitUnitsInput($request);
 
         // Auto-fallback jika target_name kosong
         if (empty($request->target_name)) {
@@ -248,7 +274,17 @@ class InfrastructureWorkOrderController extends Controller
             'start_point' => 'nullable|string|max:255',
             'end_point' => 'nullable|string|max:255',
             'cable_pull' => 'nullable|string|max:50',
-            'notes' => 'nullable|string|max:1000',
+            'notes' => 'nullable|string|max:2000',
+            'split_units' => 'nullable|array',
+            'split_units.*.name' => 'nullable|string|max:255',
+            'split_units.*.ratio' => 'nullable|integer|min:1',
+            'split_units.*.location' => 'nullable|string|max:500',
+            'split_units.*.address' => 'nullable|string|max:500',
+            'split_units.*.latitude' => 'nullable|numeric|between:-90,90',
+            'split_units.*.longitude' => 'nullable|numeric|between:-180,180',
+            'split_units.*.start_point' => 'nullable|string|max:255',
+            'split_units.*.end_point' => 'nullable|string|max:255',
+            'split_units.*.cable_pull' => 'nullable|string|max:50',
             'materials' => 'required|array|min:1',
             'materials.*.material_id' => 'required|exists:materials,id',
             'materials.*.material_transaction_item_id' => 'nullable|integer',
@@ -268,8 +304,13 @@ class InfrastructureWorkOrderController extends Controller
         // Jika user memilih aksi langsung aktifkan ke master data ODC / ODP & GIS
         if ($request->boolean('direct_commission') || $request->input('action') === 'direct_commission') {
             InfrastructureWorkOrderService::approveAndCommission($workOrder, Auth::user());
+            $workOrder->refresh();
             $targetRoute = ($workOrder->type === 'odc_deployment') ? 'odcs.index' : 'odps.index';
-            return redirect()->route($targetRoute, ['search' => $workOrder->target_name])
+            $searchKeyword = ($workOrder->type === 'odc_deployment')
+                ? ($workOrder->createdOdc?->name ?? $workOrder->target_name)
+                : ($workOrder->createdOdp?->name ?? $workOrder->target_name);
+
+            return redirect()->route($targetRoute, ['search' => $searchKeyword])
                 ->with('success', "Perangkat {$workOrder->target_name} berhasil dibangun dan langsung terdaftar aktif di Master Data & GIS!");
         }
 
@@ -292,8 +333,8 @@ class InfrastructureWorkOrderController extends Controller
             'approver',
             'materials.material',
             'opticalChecks',
-            'createdOdc',
-            'createdOdp',
+            'createdOdc.children',
+            'createdOdp.children',
             'materialRequests.material',
             'materialRequests.requester',
             'materialRequests.reviewer',
@@ -318,6 +359,8 @@ class InfrastructureWorkOrderController extends Controller
             abort(403, 'Anda tidak memiliki hak akses untuk mengedit penugasan pembangunan ODC/ODP.');
         }
 
+        $this->normalizeSplitUnitsInput($request);
+
         $validated = $request->validate([
             'target_name' => 'sometimes|required|string|max:255',
             'device_type' => 'nullable|string|max:50',
@@ -334,7 +377,17 @@ class InfrastructureWorkOrderController extends Controller
             'start_point' => 'nullable|string|max:255',
             'end_point' => 'nullable|string|max:255',
             'cable_pull' => 'nullable|string|max:50',
-            'notes' => 'nullable|string|max:1000',
+            'notes' => 'nullable|string|max:2000',
+            'split_units' => 'nullable|array',
+            'split_units.*.name' => 'nullable|string|max:255',
+            'split_units.*.ratio' => 'nullable|integer|min:1',
+            'split_units.*.location' => 'nullable|string|max:500',
+            'split_units.*.address' => 'nullable|string|max:500',
+            'split_units.*.latitude' => 'nullable|numeric|between:-90,90',
+            'split_units.*.longitude' => 'nullable|numeric|between:-180,180',
+            'split_units.*.start_point' => 'nullable|string|max:255',
+            'split_units.*.end_point' => 'nullable|string|max:255',
+            'split_units.*.cable_pull' => 'nullable|string|max:50',
         ]);
 
         $workOrder->update(collect($validated)->except('technician_ids')->toArray());
@@ -416,7 +469,7 @@ class InfrastructureWorkOrderController extends Controller
             'photo_pole' => 'nullable|image|max:10240',
             'photo_splicing' => 'nullable|image|max:10240',
             'photo_opm' => 'nullable|image|max:10240',
-            'notes' => 'nullable|string|max:1000',
+            'notes' => 'nullable|string|max:2000',
             'optical_checks' => 'nullable|array',
             'optical_checks.*.port_number' => 'required|integer|min:1',
             'optical_checks.*.rx_power_dbm' => 'required|numeric',

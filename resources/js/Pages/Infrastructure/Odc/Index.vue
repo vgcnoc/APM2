@@ -401,10 +401,18 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             <tr 
-                                v-for="odc in odcs.data" 
+                                v-for="(odc, rowIdx) in odcs.data" 
                                 :key="odc.id" 
-                                class="hover:bg-indigo-50/20 transition-colors"
-                                :class="{'bg-indigo-50/40': selectedIds.includes(odc.id)}"
+                                class="transition-colors"
+                                :class="[
+                                    selectedIds.includes(odc.id)
+                                        ? 'bg-indigo-50/50'
+                                        : odc.parent_odc_id
+                                            ? 'bg-purple-50/30 hover:bg-purple-50/60 border-l-4 border-l-purple-500'
+                                            : (odc.children && odc.children.length > 0)
+                                                ? 'bg-emerald-50/30 hover:bg-emerald-50/60 border-l-4 border-l-emerald-500'
+                                                : 'hover:bg-indigo-50/20'
+                                ]"
                             >
                                 <td class="px-4 py-4 text-center">
                                     <input 
@@ -415,11 +423,28 @@
                                     />
                                 </td>
                                 <td class="px-6 py-4 text-sm font-medium text-gray-900">
-                                    <div class="flex items-center gap-2">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <span
+                                            v-if="odc.parent_odc_id && rowIdx > 0 && odcs.data[rowIdx - 1]?.id === odc.parent_odc_id"
+                                            class="text-purple-600 font-black"
+                                            title="Unit Lanjutan tepat di bawah ODC Induknya"
+                                        >↳</span>
                                         <div class="font-bold text-gray-900">{{ odc.name }}</div>
-                                        <span v-if="odc.type && odc.type !== 'Normal'" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                        <span v-if="odc.children && odc.children.length > 0" class="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-600 text-white">
+                                            🟢 SPLIT • INDUK
+                                        </span>
+                                        <span v-else-if="odc.parent_odc_id || odc.parent" class="px-2 py-0.5 rounded text-[10px] font-black bg-purple-600 text-white">
+                                            🟣 SPLIT • LANJUTAN
+                                        </span>
+                                        <span v-else-if="odc.type && odc.type !== 'Normal'" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
                                             {{ odc.type }}
                                         </span>
+                                    </div>
+                                    <div v-if="odc.children && odc.children.length > 0" class="mt-1 text-[11px] font-semibold text-emerald-700">
+                                        ↱ Terhubung ke Lanjutan: <strong>{{ odc.children.map(c => c.name).join(', ') }}</strong>
+                                    </div>
+                                    <div v-else-if="odc.parent" class="mt-1 text-[11px] font-semibold text-purple-700">
+                                        ↳ Lanjutan dari Induk: <strong>{{ odc.parent.name }}</strong>
                                     </div>
                                     <div v-if="odc.location" class="text-xs text-gray-400 mt-0.5 truncate max-w-xs">{{ odc.location }}</div>
                                 </td>
@@ -692,12 +717,16 @@
                                     </div>
                                 </div>
 
-                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div class="col-span-1 sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     <div>
                                         <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Tipe ODC</label>
                                         <select v-model="form.type" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
                                             <option value="Normal">Normal</option>
                                             <option value="Split">Split</option>
+                                            <option value="Pedestal">Pedestal</option>
+                                            <option value="Pole Mount">Pole Mount</option>
+                                            <option value="Wall Mount">Wall Mount</option>
+                                            <option value="Mini ODC">Mini ODC</option>
                                         </select>
                                         <p v-if="form.errors.type" class="text-red-500 text-xs mt-1">{{ form.errors.type }}</p>
                                     </div>
@@ -811,6 +840,48 @@
 
                         <!-- UI untuk Lokasi & Detail (Normal, atau saat Edit ODC) -->
                         <div v-if="isEditing || form.type !== 'Split'" class="space-y-6">
+                            <!-- Relasi Pasangan ODC Split saat Edit -->
+                            <div v-if="isEditing && form.type === 'Split'" class="border border-purple-200 rounded-xl overflow-hidden bg-white">
+                                <div class="bg-purple-50/70 px-4 py-3 border-b border-purple-100 flex items-center justify-between">
+                                    <span class="text-sm font-bold text-purple-900">🔗 Relasi Pasangan ODC Split (Induk &harr; Lanjutan)</span>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-black" :class="form.parent_odc_id ? 'bg-purple-600 text-white' : 'bg-emerald-600 text-white'">
+                                        {{ form.parent_odc_id ? '🟣 UNIT LANJUTAN' : '🟢 UNIT INDUK' }}
+                                    </span>
+                                </div>
+                                <div class="p-4 space-y-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Peran & Tautan ODC Induk</label>
+                                        <select v-model="form.parent_odc_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                            <option value="">🟢 Jadikan sebagai ODC INDUK (Sumber Utama Split)</option>
+                                            <option v-for="pOdc in availableParentOdcOptions" :key="pOdc.id" :value="pOdc.id">
+                                                🟣 Lanjutan dari Induk: {{ pOdc.name }} ({{ pOdc.capacity }} Port)
+                                            </option>
+                                        </select>
+                                        <p class="text-[11px] text-gray-500 mt-1">
+                                            Pilih ODC Induk jika unit ini adalah <strong>ODC Lanjutan</strong>, agar keduanya tampil saling berdampingan di Data Jaringan.
+                                        </p>
+                                        <p v-if="form.errors.parent_odc_id" class="text-red-500 text-xs mt-1">{{ form.errors.parent_odc_id }}</p>
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Titik Awal</label>
+                                            <input v-model="form.start_point" type="text" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm" placeholder="Nama sumber kabel" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Titik Akhir</label>
+                                            <input v-model="form.end_point" type="text" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm" placeholder="Nama tujuan kabel" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Penarikan Kabel</label>
+                                            <select v-model="form.cable_pull" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                                                <option value="Individu">Individu</option>
+                                                <option value="Bersama">Bersama</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Lokasi -->
                             <div class="border border-green-100 rounded-xl overflow-hidden bg-white">
                                 <div class="bg-green-50/50 px-4 py-3 border-b border-green-100 flex items-center gap-2">
@@ -889,6 +960,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
     odcs: Object,
+    parentOdcOptions: { type: Array, default: () => [] },
     olts: Array,
     areas: Array,
     capacities: Array,
@@ -1151,6 +1223,7 @@ const form = useForm({
     splitter_ratio: '1:4',
     area_id: '',
     type: 'Normal',
+    parent_odc_id: '',
     capacity: 144,
     location: '',
     latitude: '',
@@ -1187,13 +1260,22 @@ const form = useForm({
     ]
 });
 
-// Initialize default ratio when type changes to Split
-watch(() => form.type, (newType) => {
-    if (newType === 'Split') {
-        const half = Math.floor(form.capacity / 2);
+// Initialize default ratio when type changes to Split or capacity changes in Create mode
+watch([() => form.type, () => form.capacity], ([newType, newCap]) => {
+    if (!isEditing.value && newType === 'Split') {
+        const total = Math.max(2, Number(newCap) || 2);
+        const half = Math.floor(total / 2);
         form.split_units[0].ratio = half;
-        form.split_units[1].ratio = half;
+        form.split_units[1].ratio = total - half;
     }
+});
+
+const availableParentOdcOptions = computed(() => {
+    return (props.parentOdcOptions || []).filter(o => {
+        if (editId.value && Number(o.id) === Number(editId.value)) return false;
+        if (form.area_id && Number(o.area_id) !== Number(form.area_id)) return false;
+        return true;
+    });
 });
 
 const selectedOltPonPorts = computed(() => {
@@ -1257,6 +1339,7 @@ function openEditModal(odc) {
     form.splitter_ratio = odc.splitter_ratio || '1:4';
     form.area_id = odc.area_id || '';
     form.type = odc.type || 'Normal';
+    form.parent_odc_id = odc.parent_odc_id || '';
     form.capacity = odc.capacity;
     form.location = odc.location;
     form.latitude = odc.latitude;
