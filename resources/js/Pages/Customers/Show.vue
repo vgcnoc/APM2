@@ -2522,7 +2522,7 @@
                             <select v-model="installScheduleForm.ont_id" class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-slate-700 focus:ring-2 focus:ring-amber-500 shadow-sm">
                                 <option value="">-- Pilih ONT dari Surat Jalan / Stok --</option>
                                 <option v-for="ontOption in filteredOnts" :key="ontOption.id" :value="ontOption.id">
-                                    {{ ontOption.brand }} {{ ontOption.model || '' }} - SN: {{ ontOption.serial_number }}
+                                    {{ ontOption.brand }} {{ ontOption.model || '' }} - SN: {{ ontOption.serial_number }}{{ customer?.ont?.id == ontOption.id ? ' (Terpasang Saat Ini)' : '' }}
                                 </option>
                             </select>
                             <div v-if="installScheduleForm.ont_id && getSelectedOntDetails(installScheduleForm.ont_id)" class="bg-amber-100/70 p-2.5 rounded-lg border border-amber-200 text-xs text-slate-700 grid grid-cols-2 gap-2">
@@ -2550,8 +2550,11 @@
                                 <div v-for="(mItem, index) in installScheduleForm.material_items" :key="'mat-'+index" class="flex gap-2 items-center bg-slate-50 p-2 rounded-lg border border-slate-200">
                                     <select v-model="installScheduleForm.material_items[index].id" @change="updateScheduleMaterialDetails(index)" class="flex-1 bg-white border border-gray-300 rounded-lg px-2.5 py-2 text-xs text-slate-700 focus:ring-2 focus:ring-amber-500 min-w-0">
                                         <option value="">-- Pilih Material dari Surat Jalan --</option>
+                                        <option v-if="mItem.id && !availableMaterialItems.some(i => String(i.id) === String(mItem.id))" :value="mItem.id">
+                                            {{ mItem.name }} — Alokasi Saat Ini ({{ mItem.qty }} {{ mItem.unit || 'pcs' }})
+                                        </option>
                                         <option v-for="item in availableMaterialItems" :key="item.id" :value="item.id">
-                                            {{ item.name }} (SJ: {{ item.trx_number }}) - Stok: {{ item.area_stock }} {{ item.unit }}
+                                            {{ item.name }} {{ item.trx_number && item.trx_number !== 'STOK-UTAMA' ? '(SJ: ' + item.trx_number + ')' : '(Stok Gudang)' }} - Stok: {{ item.area_stock }} {{ item.unit }}
                                         </option>
                                     </select>
                                     <div class="flex items-center gap-1 shrink-0" v-if="installScheduleForm.material_items[index].id">
@@ -4685,9 +4688,16 @@ const customerAreaId = computed(() => {
 const filteredOnts = computed(() => {
     let onts = (props.availableOnts || []);
     const areaId = customerAreaId.value;
-    if (!areaId) return onts;
-    const matched = onts.filter(ont => ont.area_id == areaId);
-    return matched.length > 0 ? matched : onts;
+    let result = onts;
+    if (areaId) {
+        const matched = onts.filter(ont => ont.area_id == areaId);
+        result = matched.length > 0 ? matched : onts;
+    }
+    const currentOnt = props.customer?.ont;
+    if (currentOnt && !result.some(o => String(o.id) === String(currentOnt.id))) {
+        return [currentOnt, ...result];
+    }
+    return result;
 });
 
 function getSelectedOntDetails(val) {
@@ -4737,16 +4747,23 @@ const availableMaterialItems = computed(() => {
 
     if (props.materials && props.materials.length > 0) {
         props.materials.forEach(mat => {
-            const name = mat.name.toLowerCase();
+            const name = (mat.name || '').toLowerCase();
             const category = (mat.category || '').toLowerCase();
             if (!name.includes('ont') && !name.includes('modem') && !category.includes('ont') && !category.includes('modem')) {
                 if (!items.some(i => i.name.toLowerCase() === name)) {
-                    let stock = parseFloat(mat.stock) || 100;
+                    let stock = 0;
+                    if (mat.stocks && areaId) {
+                        const stockObj = mat.stocks.find(s => s.area_id == areaId);
+                        if (stockObj) stock = parseFloat(stockObj.stock) || 0;
+                    }
+                    if (stock <= 0 && mat.stock) {
+                        stock = parseFloat(mat.stock) || 0;
+                    }
                     items.push({
                         id: 'mat-' + mat.id,
                         material_id: mat.id,
                         name: mat.name,
-                        trx_number: 'STOK-UTAMA',
+                        trx_number: '',
                         area_stock: stock,
                         unit: mat.unit || 'pcs',
                         material: mat,
@@ -4814,55 +4831,77 @@ function validateScheduleMaterialQty(index) {
 
 function openEditInstallScheduleModal() {
     const installSchedules = (props.customer.technician_schedules || []).filter(s => s.type === 'installation');
-    installScheduleForm.technician_ids = installSchedules.map(s => s.technician_id).filter(Boolean);
+    installScheduleForm.technician_ids = [...new Set(installSchedules.map(s => Number(s.technician_id)).filter(Boolean))];
     if (installScheduleForm.technician_ids.length === 0 && props.technicians?.[0]?.id) {
         installScheduleForm.technician_ids = [props.technicians[0].id];
     }
     installScheduleForm.technician_id = installScheduleForm.technician_ids[0] || '';
     
+    const nowLocal = new Date();
+    const todayStr = `${nowLocal.getFullYear()}-${String(nowLocal.getMonth() + 1).padStart(2, '0')}-${String(nowLocal.getDate()).padStart(2, '0')}`;
     const sched = installSchedules[0] || props.customer.technician_schedules?.find(s => s.type === 'installation');
-    installScheduleForm.scheduled_date = sched?.scheduled_date ? sched.scheduled_date.split('T')[0] : (props.customer.activation_date ? props.customer.activation_date.split('T')[0] : new Date().toISOString().split('T')[0]);
-    installScheduleForm.scheduled_time = sched?.scheduled_time ? sched.scheduled_time.substring(0, 5) : '10:00';
+    const rawSchedDate = sched?.scheduled_date || props.customer.activation_date;
+    if (rawSchedDate) {
+        const sStr = String(rawSchedDate).trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(sStr)) {
+            installScheduleForm.scheduled_date = sStr;
+        } else {
+            const parsedD = new Date(sStr);
+            installScheduleForm.scheduled_date = !isNaN(parsedD.getTime())
+                ? `${parsedD.getFullYear()}-${String(parsedD.getMonth() + 1).padStart(2, '0')}-${String(parsedD.getDate()).padStart(2, '0')}`
+                : sStr.substring(0, 10);
+        }
+    } else {
+        installScheduleForm.scheduled_date = todayStr;
+    }
+    installScheduleForm.scheduled_time = sched?.scheduled_time ? String(sched.scheduled_time).substring(0, 5) : '10:00';
     installScheduleForm.status = sched?.status || 'scheduled';
-    installScheduleForm.ont_id = props.customer.ont?.id || (filteredOnts.value?.[0]?.id || '');
+    installScheduleForm.ont_id = props.customer.ont?.id || '';
     installScheduleForm.send_wa = true;
 
     // Parse existing notes or load materials
     const existingNotes = sched?.notes || '';
     const cleanNotes = [];
     const matItems = [];
+    let lastTrxNo = '';
 
     if (existingNotes) {
-        const lines = existingNotes.split('\n');
+        const lines = existingNotes.split(/\r?\n/);
         lines.forEach(line => {
             const trimmed = line.trim();
-            if (trimmed.startsWith('Material: ')) {
-                const matMatch = trimmed.match(/^Material:\s*(.+?)\s*\(([\d\.]+)\s*(.+?)\)$/i);
-                if (matMatch) {
-                    matItems.push({
-                        id: 'custom-' + Math.random(),
-                        name: matMatch[1].trim(),
-                        qty: parseFloat(matMatch[2]) || 1,
-                        unit: matMatch[3].trim(),
-                        trx_number: '',
-                        area_stock: 999
-                    });
-                } else {
-                    const rawMat = trimmed.replace('Material: ', '');
-                    matItems.push({
-                        id: 'custom-' + Math.random(),
-                        name: rawMat,
-                        qty: 1,
-                        unit: 'pcs',
-                        trx_number: '',
-                        area_stock: 999
-                    });
-                }
-            } else if (!trimmed.startsWith('Material diambil dari Surat Jalan') && !trimmed.startsWith('ONT: ')) {
-                if (trimmed.startsWith('Catatan Khusus: ')) {
-                    cleanNotes.push(trimmed.replace('Catatan Khusus: ', ''));
-                } else if (trimmed) {
-                    cleanNotes.push(trimmed);
+            if (!trimmed) return;
+            if (trimmed.startsWith('Material diambil dari Surat Jalan')) {
+                const mTrx = trimmed.match(/:\s*(.+)$/);
+                if (mTrx) lastTrxNo = mTrx[1].split(',')[0].trim();
+                return;
+            }
+            if (trimmed.startsWith('ONT:')) {
+                return;
+            }
+            if (trimmed.startsWith('Material:')) {
+                const matMatch = trimmed.match(/^Material:\s*(.+?)\s*\(([\d.]+)\s*(.+?)\)$/i);
+                const matName = matMatch ? matMatch[1].trim() : trimmed.replace(/^Material:\s*/i, '').trim();
+                const matQty = matMatch ? (parseFloat(matMatch[2]) || 1) : 1;
+                const matUnit = matMatch ? matMatch[3].trim() : 'pcs';
+
+                const matchedOpt = availableMaterialItems.value.find(
+                    i => i.name.toLowerCase() === matName.toLowerCase() && (!lastTrxNo || i.trx_number === lastTrxNo)
+                ) || availableMaterialItems.value.find(
+                    i => i.name.toLowerCase() === matName.toLowerCase()
+                );
+
+                matItems.push({
+                    id: matchedOpt ? matchedOpt.id : ('custom-' + matItems.length + '-' + matName),
+                    name: matName,
+                    qty: matQty,
+                    unit: matchedOpt?.unit || matUnit,
+                    trx_number: matchedOpt?.trx_number || lastTrxNo || '',
+                    area_stock: matchedOpt ? Math.max(matchedOpt.area_stock, matQty) : Math.max(matQty, 9999)
+                });
+            } else {
+                const cleaned = trimmed.replace(/^Catatan(\s+(Tambahan|Khusus))?:\s*/i, '').trim();
+                if (cleaned && cleaned !== 'Jadwal pasang') {
+                    cleanNotes.push(cleaned);
                 }
             }
         });

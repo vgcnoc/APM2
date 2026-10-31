@@ -164,36 +164,57 @@ class Ont extends Model
 
             // Sinkronisasi data edit: Jika kredensial PPPoE/Hotspot diedit di ONT, sinkronkan ke FreeRADIUS & Customer (Requirement 4)
             if ($ont->customer_id) {
-                try {
-                    $customer = $ont->customer;
-                    if ($customer) {
-                        $radius = app(\App\Services\RadiusService::class);
-                        if ($radius && $radius->enabled()) {
-                            $oldPppoe = $ont->getOriginal('pppoe_user');
-                            if ($oldPppoe && $oldPppoe !== $ont->pppoe_user) {
-                                $radius->guard(function ($rad) use ($oldPppoe) {
-                                    $rad->removeUser($oldPppoe);
-                                    $rad->disconnect($oldPppoe);
-                                });
-                            }
-                            $oldHotspot = $ont->getOriginal('hotspot_user');
-                            if ($oldHotspot && $oldHotspot !== $ont->hotspot_user) {
-                                $radius->guard(function ($rad) use ($oldHotspot) {
-                                    $rad->removeUser($oldHotspot);
-                                    $rad->disconnect($oldHotspot);
-                                });
-                            }
-                            $radius->syncCustomer($customer);
-                        }
+                $customerId = $ont->customer_id;
+                $oldPppoe = $ont->getOriginal('pppoe_user');
+                $newPppoe = $ont->pppoe_user;
+                $oldHotspot = $ont->getOriginal('hotspot_user');
+                $newHotspot = $ont->hotspot_user;
 
-                        // Sinkronisasi area_id jika berbeda
-                        if ($ont->wasChanged('area_id') && $ont->area_id && $customer->area_id !== $ont->area_id) {
+                try {
+                    if ($ont->wasChanged('area_id') && $ont->area_id) {
+                        $customer = $ont->customer;
+                        if ($customer && $customer->area_id !== $ont->area_id) {
                             $customer->update(['area_id' => $ont->area_id]);
                         }
                     }
                 } catch (\Throwable $e) {
-                    \Illuminate\Support\Facades\Log::warning('[Ont::saved] Sync error: ' . $e->getMessage());
+                    \Illuminate\Support\Facades\Log::warning('[Ont::saved] Area sync error: ' . $e->getMessage());
                 }
+
+                // Jalankan sinkronisasi RADIUS setelah transaksi DB commit agar tidak memicu CoA/cross-connection lock di dalam transaksi
+                \Illuminate\Support\Facades\DB::afterCommit(function () use ($customerId, $oldPppoe, $newPppoe, $oldHotspot, $newHotspot) {
+                    try {
+                        $customer = \App\Models\Customer::find($customerId);
+                        if (!$customer) {
+                            return;
+                        }
+
+                        $radius = app(\App\Services\RadiusService::class);
+                        if (!$radius || !$radius->enabled()) {
+                            return;
+                        }
+
+                        if ($oldPppoe && $oldPppoe !== $newPppoe) {
+                            $radius->guard(function ($rad) use ($oldPppoe) {
+                                $rad->removeUser($oldPppoe);
+                                $rad->disconnect($oldPppoe);
+                            });
+                        }
+                        if ($oldHotspot && $oldHotspot !== $newHotspot) {
+                            $radius->guard(function ($rad) use ($oldHotspot) {
+                                $rad->removeUser($oldHotspot);
+                                $rad->disconnect($oldHotspot);
+                            });
+                        }
+
+                        // Jangan jalankan syncCustomer/CoA disconnect pada pelanggan tahap pra-aktivasi (booking/survey/installing)
+                        if (!in_array($customer->status, ['booking', 'survey', 'installing'], true)) {
+                            $radius->syncCustomer($customer);
+                        }
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::warning('[Ont::saved] Sync error: ' . $e->getMessage());
+                    }
+                });
             }
         });
 
@@ -211,23 +232,29 @@ class Ont extends Model
                 }
             }
 
-            // 2. Hapus akun FreeRADIUS PPPoE dan Hotspot jika ada
-            try {
-                $radius = app(\App\Services\RadiusService::class);
-                if ($radius && $radius->enabled()) {
-                    $radius->guard(function ($rad) use ($ont) {
-                        if ($ont->pppoe_user) {
-                            $rad->removeUser($ont->pppoe_user);
-                            $rad->disconnect($ont->pppoe_user);
+            // 2. Hapus akun FreeRADIUS PPPoE dan Hotspot setelah commit transaksi
+            $pppoeUser = $ont->pppoe_user;
+            $hotspotUser = $ont->hotspot_user;
+            if ($pppoeUser || $hotspotUser) {
+                \Illuminate\Support\Facades\DB::afterCommit(function () use ($pppoeUser, $hotspotUser) {
+                    try {
+                        $radius = app(\App\Services\RadiusService::class);
+                        if ($radius && $radius->enabled()) {
+                            $radius->guard(function ($rad) use ($pppoeUser, $hotspotUser) {
+                                if ($pppoeUser) {
+                                    $rad->removeUser($pppoeUser);
+                                    $rad->disconnect($pppoeUser);
+                                }
+                                if ($hotspotUser) {
+                                    $rad->removeUser($hotspotUser);
+                                    $rad->disconnect($hotspotUser);
+                                }
+                            });
                         }
-                        if ($ont->hotspot_user) {
-                            $rad->removeUser($ont->hotspot_user);
-                            $rad->disconnect($ont->hotspot_user);
-                        }
-                    });
-                }
-            } catch (\Throwable $e) {
-                // ignore
+                    } catch (\Throwable $e) {
+                        // ignore
+                    }
+                });
             }
 
             // 3. Kembalikan unit ONT ke stok Gudang (Requirement 1)

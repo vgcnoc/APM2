@@ -1756,17 +1756,17 @@ class CustomerController extends Controller
             'semua' => (clone $filteredBaseQuery)->count(),
             'jadwal_pasang' => (clone $filteredBaseQuery)
                 ->where('status', 'installing')
-                ->whereDoesntHave('technicianSchedules', fn($q) => $q->where('type', 'installation'))->count(),
+                ->whereDoesntHave('technicianSchedules', fn($q) => $q->where('type', 'installation')->where('status', '!=', 'cancelled'))->count(),
             'laporan_pasang' => (clone $filteredBaseQuery)
                 ->where('status', 'installing')
                 ->whereHas('technicianSchedules', function($q) {
-                    $q->where('type', 'installation')->where('status', 'scheduled');
+                    $q->where('type', 'installation')->whereIn('status', ['scheduled', 'on_the_way', 'working']);
                 })->count(),
             'audit' => (clone $filteredBaseQuery)
                 ->where('status', 'installing')
                 ->where('is_audited', false)
                 ->whereDoesntHave('technicianSchedules', function($q) {
-                    $q->where('type', 'installation')->where('status', 'scheduled');
+                    $q->where('type', 'installation')->whereIn('status', ['scheduled', 'on_the_way', 'working']);
                 })
                 ->whereHas('ont', function ($q) {
                     $q->whereNotNull('rx_power');
@@ -1785,14 +1785,14 @@ class CustomerController extends Controller
         
         if ($currentTab) {
             if ($currentTab === 'jadwal_pasang') {
-                $customerQuery->where('status', 'installing')->whereDoesntHave('technicianSchedules', fn($q) => $q->where('type', 'installation'));
+                $customerQuery->where('status', 'installing')->whereDoesntHave('technicianSchedules', fn($q) => $q->where('type', 'installation')->where('status', '!=', 'cancelled'));
             } elseif ($currentTab === 'laporan_pasang') {
                 $customerQuery->where('status', 'installing')->whereHas('technicianSchedules', function($q) {
-                    $q->where('type', 'installation')->where('status', 'scheduled');
+                    $q->where('type', 'installation')->whereIn('status', ['scheduled', 'on_the_way', 'working']);
                 });
             } elseif ($currentTab === 'audit') {
                 $customerQuery->where('status', 'installing')->where('is_audited', false)->whereDoesntHave('technicianSchedules', function($q) {
-                    $q->where('type', 'installation')->where('status', 'scheduled');
+                    $q->where('type', 'installation')->whereIn('status', ['scheduled', 'on_the_way', 'working']);
                 })->whereHas('ont', function ($q) {
                         $q->whereNotNull('rx_power');
                     });
@@ -2718,7 +2718,12 @@ class CustomerController extends Controller
             'packages' => InternetPackage::active()->get(),
             'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
             'salesUsers' => User::where('is_active', true)->orderBy('name')->get(['id', 'name']),
-            'materials' => \App\Models\Material::orderBy('name')->get(),
+            'materials' => \App\Models\Material::with('stocks')
+                ->where(function ($q) {
+                    $q->where('is_active', true)->orWhereNull('is_active');
+                })
+                ->orderBy('name')
+                ->get(),
             'materialRequests' => $materialRequests,
             'installationReturns' => $installationReturns,
             'installationUsages' => $installationUsages,
@@ -3225,7 +3230,7 @@ class CustomerController extends Controller
             }
 
             // Update status jadwal teknisi ke done jika ada
-            $schedules = $customer->technicianSchedules()->where('type', 'installation')->whereIn('status', ['scheduled', 'done'])->get();
+            $schedules = $customer->technicianSchedules()->where('type', 'installation')->whereIn('status', ['scheduled', 'on_the_way', 'working', 'done'])->get();
             $usageDetails = [];
             
             // Restore previous usage from old notes if this is an edit to prevent double-deduction
@@ -4272,64 +4277,99 @@ class CustomerController extends Controller
             $validated['scheduled_time'] = substr($validated['scheduled_time'], 0, 5);
         }
 
-        $customNotes = [];
-
-        // 1. Link / Update ONT jika dipilih
-        if (!empty($validated['ont_id'])) {
-            $ont = Ont::find($validated['ont_id']);
-            if ($ont) {
-                $ont->update([
-                    'customer_id' => $customer->id,
-                ]);
-                $name = $ont->brand . ($ont->model ? ' ' . $ont->model : '') . ' (SN: ' . $ont->serial_number . ')';
-                $customNotes[] = "ONT: " . $name;
-            }
+        $customerAreaId = $customer->area_id ?: \App\Models\Area::where('name', $customer->area)->value('id');
+        if (!$customer->area_id && $customerAreaId) {
+            $customer->update(['area_id' => $customerAreaId]);
         }
 
-        // 2. Format Material Items
-        if (!empty($validated['material_items'])) {
-            $matLines = [];
-            $trxNumbers = [];
-            foreach ($validated['material_items'] as $m) {
-                if (!empty($m['name']) && !empty($m['qty'])) {
-                    $matLines[] = "Material: " . $m['name'] . " (" . $m['qty'] . " " . ($m['unit'] ?? 'pcs') . ")";
-                    if (!empty($m['trx_number'])) {
-                        $trxNumbers[] = $m['trx_number'];
+        $finalNotes = '';
+        DB::transaction(function () use ($customer, $customerAreaId, $techIds, $validated, &$finalNotes) {
+            $customNotes = [];
+
+            // 1. Link / Update ONT jika dipilih
+            if (!empty($validated['ont_id'])) {
+                $ont = Ont::find($validated['ont_id']);
+                if ($ont) {
+                    if ($customer->status === 'installing') {
+                        Ont::where('customer_id', $customer->id)
+                            ->where('id', '!=', $ont->id)
+                            ->whereNull('rx_power')
+                            ->update(['customer_id' => null]);
+                    }
+                    if ((int) $ont->customer_id !== (int) $customer->id) {
+                        $ont->update([
+                            'customer_id' => $customer->id,
+                        ]);
+                    }
+                    $name = $ont->brand . ($ont->model ? ' ' . $ont->model : '') . ' (SN: ' . $ont->serial_number . ')';
+                    $customNotes[] = "ONT: " . $name;
+                }
+            }
+
+            // 2. Format Material Items
+            if (!empty($validated['material_items'])) {
+                $matLines = [];
+                $trxNumbers = [];
+                foreach ($validated['material_items'] as $m) {
+                    if (!empty($m['name']) && !empty($m['qty']) && (float) $m['qty'] > 0) {
+                        $matLines[] = "Material: " . trim($m['name']) . " (" . $m['qty'] . " " . ($m['unit'] ?: 'pcs') . ")";
+                        if (!empty($m['trx_number']) && $m['trx_number'] !== 'STOK-UTAMA') {
+                            $trxNumbers[] = $m['trx_number'];
+                        }
+                    }
+                }
+                if (!empty($trxNumbers)) {
+                    $customNotes[] = "Material diambil dari Surat Jalan / Order: " . implode(', ', array_unique($trxNumbers));
+                }
+                if (!empty($matLines)) {
+                    $customNotes = array_merge($customNotes, $matLines);
+                }
+            }
+
+            $cleanNoteLines = [];
+            if (!empty($validated['notes'])) {
+                foreach (preg_split('/\r\n|\r|\n/', (string) $validated['notes']) as $rawLine) {
+                    $trimmed = trim($rawLine);
+                    if (
+                        $trimmed === '' ||
+                        $trimmed === 'Jadwal pasang' ||
+                        str_starts_with($trimmed, 'ONT:') ||
+                        str_starts_with($trimmed, 'Material:') ||
+                        str_starts_with($trimmed, 'Material diambil dari Surat Jalan')
+                    ) {
+                        continue;
+                    }
+                    $trimmed = trim((string) preg_replace('/^Catatan(\s+(Tambahan|Khusus))?:\s*/i', '', $trimmed));
+                    if ($trimmed !== '') {
+                        $cleanNoteLines[] = $trimmed;
                     }
                 }
             }
-            if (!empty($trxNumbers)) {
-                $customNotes[] = "Material diambil dari Surat Jalan / Order: " . implode(', ', array_unique($trxNumbers));
+
+            if (!empty($cleanNoteLines)) {
+                $customNotes[] = "Catatan Khusus: " . implode("\n", $cleanNoteLines);
             }
-            if (!empty($matLines)) {
-                $customNotes = array_merge($customNotes, $matLines);
+
+            $finalNotes = !empty($customNotes) ? implode("\n", $customNotes) : 'Jadwal pasang';
+
+            // Hapus jadwal instalasi sebelumnya agar penugasan akurat sesuai petugas terpilih tanpa duplikat
+            $customer->technicianSchedules()
+                ->where('type', 'installation')
+                ->delete();
+
+            foreach ($techIds as $tId) {
+                \App\Models\TechnicianSchedule::create([
+                    'customer_id' => $customer->id,
+                    'technician_id' => $tId,
+                    'type' => 'installation',
+                    'status' => $validated['status'],
+                    'scheduled_date' => $validated['scheduled_date'],
+                    'scheduled_time' => $validated['scheduled_time'] ?: null,
+                    'notes' => $finalNotes,
+                    'area_id' => $customerAreaId,
+                ]);
             }
-        }
-
-        if (!empty($validated['notes'])) {
-            $customNotes[] = "Catatan Khusus: " . $validated['notes'];
-        }
-
-        $finalNotes = !empty($customNotes) ? implode("\n", $customNotes) : ($validated['notes'] ?: 'Jadwal pasang');
-
-        // Hapus jadwal instalasi sebelumnya agar penugasan akurat sesuai petugas terpilih
-        $customer->technicianSchedules()
-            ->where('type', 'installation')
-            ->whereIn('status', ['scheduled', 'on_the_way', 'working', 'rescheduled'])
-            ->delete();
-
-        foreach ($techIds as $tId) {
-            \App\Models\TechnicianSchedule::create([
-                'customer_id' => $customer->id,
-                'technician_id' => $tId,
-                'type' => 'installation',
-                'status' => $validated['status'],
-                'scheduled_date' => $validated['scheduled_date'],
-                'scheduled_time' => $validated['scheduled_time'] ?: null,
-                'notes' => $finalNotes,
-                'area_id' => $customer->area_id,
-            ]);
-        }
+        });
 
         // Kirim notifikasi WA ke teknisi jika diminta
         if ($request->boolean('send_wa', false)) {
@@ -4353,7 +4393,11 @@ class CustomerController extends Controller
             }
         }
 
-        \App\Models\AuditLog::createLog('Edit Jadwal Pasang', $customer, $customer->status, $customer->status, 'Memperbarui jadwal instalasi, perangkat ONT & alokasi material');
+        try {
+            \App\Models\AuditLog::createLog('Edit Jadwal Pasang', $customer, $customer->status, $customer->status, 'Memperbarui jadwal instalasi, perangkat ONT & alokasi material');
+        } catch (\Throwable $e) {
+            \Log::warning('[updateInstallationSchedule] AuditLog Error: ' . $e->getMessage());
+        }
 
         return back()->with('success', 'Jadwal pasang & alokasi material berhasil disimpan.');
     }
@@ -4664,6 +4708,7 @@ class CustomerController extends Controller
             'material_items.*.name' => 'nullable|string',
             'material_items.*.qty' => 'nullable|numeric',
             'material_items.*.unit' => 'nullable|string',
+            'material_items.*.trx_number' => 'nullable|string',
             'notes' => 'nullable|string',
             'send_wa' => 'nullable|boolean',
         ]);
@@ -4671,42 +4716,37 @@ class CustomerController extends Controller
         \Log::info('assignInstall validated OK', ['customer_id' => $customer->id]);
 
         $customNotes = [];
-        $ontsToUpdate = [];
-        $transactionsToUpdate = [];
+        $ontsToUpdate = collect();
+        $transactionsToUpdate = collect();
+
+        $customerAreaId = $customer->area_id ?: \App\Models\Area::where('name', $customer->area)->value('id');
+        if (!$customer->area_id && $customerAreaId) {
+            $customer->update(['area_id' => $customerAreaId]);
+        }
 
         // 1. VALIDASI ONT
-        if (!empty($validated['ont_models'])) {
-            $ontIds = array_filter($validated['ont_models']);
-            if (count($ontIds) > 0) {
-                $ontsToUpdate = Ont::whereIn('id', $ontIds)->get();
-                
-                // VALIDASI AREA ONT
-                $customerAreaId = $customer->area_id ?: \App\Models\Area::where('name', $customer->area)->value('id');
-                if (!$customer->area_id && $customerAreaId) {
-                    $customer->update(['area_id' => $customerAreaId]);
-                }
-                if ($customerAreaId) {
-                    foreach ($ontsToUpdate as $ont) {
-                        if ($ont->area_id && (int) $ont->area_id !== (int) $customerAreaId) {
-                            return redirect()->back()->withErrors(['ont_models' => 'ONT ' . $ont->serial_number . ' tidak sesuai dengan Area/Wilayah pelanggan.'])->with('error', 'Data ONT/Material tidak sesuai dengan Area/Wilayah pelanggan.');
-                        }
+        $ontIds = !empty($validated['ont_models']) ? array_values(array_filter($validated['ont_models'])) : [];
+        if (count($ontIds) > 0) {
+            $ontsToUpdate = Ont::whereIn('id', $ontIds)->get();
+
+            // VALIDASI AREA ONT
+            if ($customerAreaId) {
+                foreach ($ontsToUpdate as $ont) {
+                    if ($ont->area_id && (int) $ont->area_id !== (int) $customerAreaId) {
+                        return redirect()->back()->withErrors(['ont_models' => 'ONT ' . $ont->serial_number . ' tidak sesuai dengan Area/Wilayah pelanggan.'])->with('error', 'Data ONT/Material tidak sesuai dengan Area/Wilayah pelanggan.');
                     }
                 }
             }
         }
 
         // 2. VALIDASI MATERIAL TRANSACTION
-        if (!empty($validated['material_transaction_ids'])) {
-            $trxs = array_filter($validated['material_transaction_ids']);
-            if (count($trxs) > 0) {
-                $transactionsToUpdate = \App\Models\MaterialTransaction::whereIn('transaction_number', $trxs)->get();
-                // VALIDASI AREA MATERIAL TRANSACTION
-                $customerAreaId = $customer->area_id ?: \App\Models\Area::where('name', $customer->area)->value('id');
-                if ($customerAreaId) {
-                    foreach ($transactionsToUpdate as $trx) {
-                        if ($trx->area_id && (int) $trx->area_id !== (int) $customerAreaId) {
-                            return redirect()->back()->withErrors(['material_transaction_ids' => 'Material/Surat Jalan ' . $trx->transaction_number . ' tidak sesuai dengan Area/Wilayah pelanggan.'])->with('error', 'Data ONT/Material tidak sesuai dengan Area/Wilayah pelanggan.');
-                        }
+        $trxs = !empty($validated['material_transaction_ids']) ? array_values(array_filter($validated['material_transaction_ids'])) : [];
+        if (count($trxs) > 0) {
+            $transactionsToUpdate = \App\Models\MaterialTransaction::whereIn('transaction_number', $trxs)->get();
+            if ($customerAreaId) {
+                foreach ($transactionsToUpdate as $trx) {
+                    if ($trx->area_id && (int) $trx->area_id !== (int) $customerAreaId) {
+                        return redirect()->back()->withErrors(['material_transaction_ids' => 'Material/Surat Jalan ' . $trx->transaction_number . ' tidak sesuai dengan Area/Wilayah pelanggan.'])->with('error', 'Data ONT/Material tidak sesuai dengan Area/Wilayah pelanggan.');
                     }
                 }
             }
@@ -4714,24 +4754,34 @@ class CustomerController extends Controller
 
         // 3. EXECUTE UPDATES
         $finalNotes = '';
-        DB::transaction(function () use ($ontsToUpdate, $transactionsToUpdate, $validated, $customer, &$customNotes, &$finalNotes) {
-            
+        DB::transaction(function () use ($ontsToUpdate, $ontIds, $validated, $customer, $customerAreaId, &$customNotes, &$finalNotes) {
+            // Lepaskan ONT lama yang belum terpasang bila diganti saat penjadwalan ulang
+            if ($customer->status === 'installing') {
+                $unlinkQuery = Ont::where('customer_id', $customer->id)->whereNull('rx_power');
+                if (count($ontIds) > 0) {
+                    $unlinkQuery->whereNotIn('id', $ontIds);
+                }
+                $unlinkQuery->update(['customer_id' => null]);
+            }
+
             // Update ONT
-            if (count($ontsToUpdate) > 0) {
+            if ($ontsToUpdate->count() > 0) {
                 $ontNames = [];
                 foreach ($ontsToUpdate as $ont) {
-                    $ont->update([
-                        'customer_id' => $customer->id,
-                        'rx_power' => null,
-                        'start_time' => null,
-                        'end_time' => null,
-                        'photo_odp' => null,
-                        'photo_installation' => null,
-                        'photo_ont' => null,
-                        'photo_customer' => null,
-                        'photo_redaman' => null,
-                    ]);
-                    
+                    if ((int) $ont->customer_id !== (int) $customer->id) {
+                        $ont->update([
+                            'customer_id' => $customer->id,
+                            'rx_power' => null,
+                            'start_time' => null,
+                            'end_time' => null,
+                            'photo_odp' => null,
+                            'photo_installation' => null,
+                            'photo_ont' => null,
+                            'photo_customer' => null,
+                            'photo_redaman' => null,
+                        ]);
+                    }
+
                     $name = $ont->brand;
                     if ($ont->model) $name .= ' ' . $ont->model;
                     $name .= ' (SN: ' . $ont->serial_number . ')';
@@ -4742,31 +4792,68 @@ class CustomerController extends Controller
                 }
             }
 
-            // Material Transaction Notes
-            if (count($transactionsToUpdate) > 0) {
-                $trxs = array_filter($validated['material_transaction_ids']);
-                $trxNotes = ["Material diambil dari Surat Jalan / Order: " . implode(', ', $trxs)];
-                if (!empty($validated['material_items'])) {
-                    foreach ($validated['material_items'] as $mItem) {
-                        $trxNotes[] = "Material: " . $mItem['name'] . " (" . $mItem['qty'] . " " . $mItem['unit'] . ")";
+            // Material Notes (mendukung material dari Surat Jalan/PO maupun langsung dari Inventory Gudang)
+            $trxNumbers = [];
+            if (!empty($validated['material_transaction_ids'])) {
+                foreach ($validated['material_transaction_ids'] as $trxNo) {
+                    if (!empty($trxNo) && $trxNo !== 'STOK-UTAMA') {
+                        $trxNumbers[] = $trxNo;
                     }
                 }
-                $customNotes[] = implode("\n", $trxNotes);
+            }
+            $matLines = [];
+            if (!empty($validated['material_items'])) {
+                foreach ($validated['material_items'] as $mItem) {
+                    if (!empty($mItem['name']) && !empty($mItem['qty']) && (float) $mItem['qty'] > 0) {
+                        $matLines[] = "Material: " . trim($mItem['name']) . " (" . $mItem['qty'] . " " . ($mItem['unit'] ?: 'pcs') . ")";
+                        if (!empty($mItem['trx_number']) && $mItem['trx_number'] !== 'STOK-UTAMA') {
+                            $trxNumbers[] = $mItem['trx_number'];
+                        }
+                    }
+                }
+            }
+            $trxBlock = [];
+            if (!empty($trxNumbers)) {
+                $trxBlock[] = "Material diambil dari Surat Jalan / Order: " . implode(', ', array_unique($trxNumbers));
+            }
+            if (!empty($matLines)) {
+                $trxBlock = array_merge($trxBlock, $matLines);
+            }
+            if (!empty($trxBlock)) {
+                $customNotes[] = implode("\n", $trxBlock);
             }
 
+            $cleanNoteLines = [];
             if (!empty($validated['notes'])) {
-                $customNotes[] = "Catatan Tambahan: " . $validated['notes'];
+                foreach (preg_split('/\r\n|\r|\n/', (string) $validated['notes']) as $rawLine) {
+                    $trimmed = trim($rawLine);
+                    if (
+                        $trimmed === '' ||
+                        str_starts_with($trimmed, 'ONT:') ||
+                        str_starts_with($trimmed, 'Material:') ||
+                        str_starts_with($trimmed, 'Material diambil dari Surat Jalan')
+                    ) {
+                        continue;
+                    }
+                    $trimmed = trim((string) preg_replace('/^Catatan(\s+(Tambahan|Khusus))?:\s*/i', '', $trimmed));
+                    if ($trimmed !== '') {
+                        $cleanNoteLines[] = $trimmed;
+                    }
+                }
+            }
+            if (!empty($cleanNoteLines)) {
+                $customNotes[] = "Catatan Tambahan: " . implode("\n", $cleanNoteLines);
             }
             $finalNotes = implode("\n\n", $customNotes);
 
             // Hapus jadwal instalasi sebelumnya agar penugasan baru akurat & menggantikan teknisi lama
             $customer->technicianSchedules()
                 ->where('type', 'installation')
-                ->whereIn('status', ['scheduled', 'on_the_way', 'working', 'rescheduled'])
+                ->whereIn('status', ['scheduled', 'on_the_way', 'working', 'cancelled'])
                 ->delete();
 
             // Create Technician Schedules
-            foreach ($validated['technician_ids'] as $techId) {
+            foreach (array_unique($validated['technician_ids']) as $techId) {
                 TechnicianSchedule::create([
                     'customer_id' => $customer->id,
                     'technician_id' => $techId,
@@ -4775,12 +4862,16 @@ class CustomerController extends Controller
                     'type' => 'installation',
                     'status' => 'scheduled',
                     'notes' => $finalNotes,
-                    'area_id' => $customer->area_id,
+                    'area_id' => $customerAreaId,
                 ]);
             }
-
-            \App\Models\AuditLog::createLog('Jadwal Instalasi', $customer, 'installing', 'installing', 'Menjadwalkan pemasangan');
         });
+
+        try {
+            \App\Models\AuditLog::createLog('Jadwal Instalasi', $customer, 'installing', 'installing', 'Menjadwalkan pemasangan');
+        } catch (\Throwable $e) {
+            \Log::warning('[assignInstall] AuditLog exception: ' . $e->getMessage());
+        }
 
         // 4. Kirim Notifikasi WhatsApp Otomatis ke Teknisi jika diminta
         $waNotifiedCount = 0;
@@ -4813,7 +4904,7 @@ class CustomerController extends Controller
             $successMsg .= " 💬 Notifikasi WhatsApp berhasil terkirim ke {$waNotifiedCount} teknisi.";
         }
 
-        return redirect()->route('customers.installed')
+        return redirect()->back()
             ->with('success', $successMsg);
     }
 
@@ -5384,12 +5475,15 @@ class CustomerController extends Controller
                     ->where('port_number', $cOnt->port_number)
                     ->update(['status' => 'available']);
             }
+            $restoredOntStatus = ($cOnt->pppoe_user || $cOnt->hotspot_user || $cOnt->status === 'Sudah Set')
+                ? 'Sudah Set'
+                : 'Belum Set/Baru Input';
             $cOnt->update([
                 'customer_id' => null,
                 'odp_id' => null,
                 'odp_port_id' => null,
                 'port_number' => null,
-                'status' => 'Belum Set/Baru Input',
+                'status' => $restoredOntStatus,
                 'rx_power' => null,
                 'tx_power' => null,
                 'description' => 'Kembali ke Gudang (Batal Instalasi Pelanggan ' . $customer->name . ' [' . ($customer->customer_code ?? $customer->id) . '])',
@@ -5402,8 +5496,8 @@ class CustomerController extends Controller
             ->delete();
 
         $customer->technicianSchedules()
-            ->whereIn('status', ['scheduled', 'in_progress'])
-            ->update(['status' => 'canceled']);
+            ->whereIn('status', ['scheduled', 'on_the_way', 'working'])
+            ->update(['status' => 'cancelled']);
 
         \App\Models\AuditLog::createLog('Pelanggan Dibatalkan', $customer, $oldStatus, 'canceled', "Pendaftaran dibatalkan: {$reason}");
 
