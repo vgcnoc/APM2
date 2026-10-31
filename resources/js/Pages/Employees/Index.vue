@@ -334,6 +334,7 @@
                                     </div>
                                 </th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider">Area</th>
+                                <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Gaji Pokok</th>
                                 <th class="py-4 px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Aksi</th>
                             </tr>
                         </thead>
@@ -459,7 +460,17 @@
                                     </div>
                                 </td>
 
-                                <!-- 7. Aksi -->
+                                <!-- 7. Gaji Pokok -->
+                                <td class="py-4 px-6 text-right">
+                                    <p class="text-sm font-black text-slate-800 font-mono">
+                                        Rp {{ formatNumber(emp.base_salary || 0) }}
+                                    </p>
+                                    <p v-if="emp.payment_method" class="text-[11px] text-slate-400 mt-0.5">
+                                        {{ emp.payment_method }}
+                                    </p>
+                                </td>
+
+                                <!-- 8. Aksi -->
                                 <td class="py-4 px-6 text-right">
                                     <div class="flex items-center justify-end gap-1.5">
                                         <!-- Aksi View / Detail Karyawan -->
@@ -526,7 +537,7 @@
                                 </td>
                             </tr>
                             <tr v-if="employees.data.length === 0">
-                                <td colspan="8" class="py-12 text-center">
+                                <td colspan="9" class="py-12 text-center">
                                     <div class="flex flex-col items-center justify-center text-gray-400">
                                         <svg class="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -664,6 +675,24 @@
                                 <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                                 <span class="truncate">{{ selectedEmployee.email || '-' }}</span>
                             </p>
+                        </div>
+
+                        <!-- Gaji Pokok -->
+                        <div class="p-3 bg-emerald-50/70 rounded-xl border border-emerald-200/80 sm:col-span-2 flex items-center justify-between">
+                            <div>
+                                <p class="text-emerald-700 uppercase tracking-wider text-[10px] font-bold mb-0.5 flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <span>Gaji Pokok (Base Salary)</span>
+                                </p>
+                                <p class="text-lg font-black text-emerald-900 font-mono">
+                                    Rp {{ formatNumber(selectedEmployee.base_salary || 0) }}
+                                </p>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200 inline-block">
+                                    {{ selectedEmployee.employee_type || 'Pegawai Tetap' }}
+                                </span>
+                            </div>
                         </div>
 
                         <!-- Metode Pembayaran -->
@@ -908,6 +937,30 @@
                                     :class="form.payment_method === 'Transfer Bank' ? 'bg-blue-100 text-blue-700' : (form.payment_method === 'E-Wallet' ? 'bg-cyan-100 text-cyan-700' : 'bg-emerald-100 text-emerald-700')">
                                     {{ form.payment_method }}
                                 </span>
+                            </div>
+
+                            <!-- Input Gaji Pokok -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+                                    <span class="flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        <span>Gaji Pokok Bulanan (Rp)</span>
+                                    </span>
+                                    <span v-if="form.base_salary" class="font-mono text-emerald-700 font-bold text-xs bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                        Rp {{ formatNumber(form.base_salary) }}
+                                    </span>
+                                </label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-xs font-bold text-slate-400">Rp</span>
+                                    <input 
+                                        v-model.number="form.base_salary" 
+                                        type="number" 
+                                        min="0" 
+                                        step="10000"
+                                        class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 bg-white text-sm font-mono font-bold text-slate-800" 
+                                        placeholder="0"
+                                    >
+                                </div>
                             </div>
 
                             <!-- Dropdown Metode Pembayaran Utama -->
@@ -1601,6 +1654,7 @@ const form = useForm({
     allowed_attendance_areas: [],
     join_date: '',
     employee_type: '',
+    base_salary: 0,
     payment_method: '',
     bank_name: '',
     bank_account_number: '',
@@ -1800,6 +1854,10 @@ const formatDate = (date) => {
     }
 };
 
+const formatNumber = (val) => {
+    return new Intl.NumberFormat('id-ID').format(Number(val) || 0);
+};
+
 const countByType = (type) => {
     return props.employees.data?.filter(e => e.employee_type === type).length || 0;
 };
@@ -1864,6 +1922,7 @@ function openModal(emp = null) {
             form.join_date = '';
         }
         form.employee_type = emp.employee_type || '';
+        form.base_salary = emp.base_salary ? Number(emp.base_salary) : 0;
         form.payment_method = emp.payment_method || '';
         form.bank_name = emp.bank_name || '';
         form.bank_account_number = emp.bank_account_number || '';
@@ -1880,6 +1939,7 @@ function openModal(emp = null) {
         isEditing.value = false;
         editingId.value = null;
         form.reset();
+        form.base_salary = 0;
         form.allowed_attendance_areas = [];
         form.bank_name = '';
         form.bank_account_number = '';
@@ -1893,6 +1953,7 @@ function openModal(emp = null) {
 function closeModal() {
     showModal.value = false;
     form.reset();
+    form.base_salary = 0;
     form.bank_name = '';
     form.bank_account_number = '';
     form.bank_account_holder = '';
