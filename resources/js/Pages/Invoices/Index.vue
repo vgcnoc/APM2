@@ -97,43 +97,147 @@
         >
             <template #filters>
                 <div class="flex flex-wrap items-center gap-2.5 w-full">
-                    <!-- Tanggal (Start Date -> End Date) -->
-                    <div v-can="'invoices_filter_period'" class="flex flex-wrap sm:flex-nowrap items-center gap-2 text-xs sm:text-sm text-gray-600 font-medium w-full sm:w-auto">
-                        <span>Tanggal</span>
-                        <input type="date" v-model="filterStartDate" class="form-input text-xs sm:text-sm rounded-lg border-gray-300 flex-1 sm:w-[138px] min-w-[125px]" />
-                        <span>s/d</span>
-                        <input type="date" v-model="filterEndDate" class="form-input text-xs sm:text-sm rounded-lg border-gray-300 flex-1 sm:w-[138px] min-w-[125px]" />
+                    <!-- 1. Rentang Tanggal (Pill Capsule Rapi) -->
+                    <div v-can="'invoices_filter_period'" class="flex items-center gap-1.5 bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 shadow-2xs">
+                        <svg class="w-3.5 h-3.5 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        <input 
+                            type="date" 
+                            v-model="filterStartDate" 
+                            class="border-0 p-0 text-xs text-gray-700 font-medium focus:ring-0 bg-transparent w-[115px] cursor-pointer" 
+                            title="Tanggal Mulai (Terbit Tagihan)" 
+                        />
+                        <span class="text-xs text-gray-400 font-medium select-none">s/d</span>
+                        <input 
+                            type="date" 
+                            v-model="filterEndDate" 
+                            class="border-0 p-0 text-xs text-gray-700 font-medium focus:ring-0 bg-transparent w-[115px] cursor-pointer" 
+                            title="Tanggal Selesai (Terbit Tagihan)" 
+                        />
+                        <!-- Quick Presets -->
+                        <div class="hidden sm:flex items-center gap-1 pl-1 border-l border-gray-200">
+                            <button 
+                                type="button" 
+                                @click="setDatePreset('this_month')" 
+                                class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 hover:bg-blue-100 text-slate-600 hover:text-blue-700 transition cursor-pointer"
+                                title="Set filter ke bulan ini"
+                            >
+                                Bulan Ini
+                            </button>
+                            <button 
+                                type="button" 
+                                @click="setDatePreset('today')" 
+                                class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 hover:bg-blue-100 text-slate-600 hover:text-blue-700 transition cursor-pointer"
+                                title="Set filter ke hari ini"
+                            >
+                                Hari Ini
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- Status -->
-                    <select v-can="'invoices_filter_status'" v-model="filterStatusVal" class="form-select text-xs sm:text-sm rounded-lg border-gray-300 text-gray-700 flex-1 sm:flex-initial min-w-[135px]">
-                        <option value="">Semua Status</option>
-                        <option value="unpaid">Unpaid</option>
-                        <option value="paid">Paid</option>
-                        <option value="partial">Partial</option>
-                    </select>
+                    <!-- 2. Status Tagihan -->
+                    <div v-can="'invoices_filter_status'">
+                        <select 
+                            v-model="filterStatusVal" 
+                            @change="applyFilters"
+                            class="form-select text-xs rounded-xl border-gray-200 bg-white text-gray-700 py-1.5 pl-3 pr-8 font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-200 shadow-2xs cursor-pointer w-auto min-w-[135px]"
+                        >
+                            <option value="">Semua Status</option>
+                            <option value="unpaid">Belum Lunas (Unpaid)</option>
+                            <option value="paid">Lunas (Paid)</option>
+                            <option value="partial">Bayar Sebagian (Partial)</option>
+                        </select>
+                    </div>
 
-                    <!-- Area -->
-                    <select v-can="'invoices_filter_area'" v-model="filterAreaVal" class="form-select text-xs sm:text-sm rounded-lg border-gray-300 text-gray-700 flex-1 sm:flex-initial min-w-[135px]">
-                        <option value="">Semua Area</option>
-                        <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
-                    </select>
+                    <!-- 3. Wilayah / Area Cabang -->
+                    <div v-can="'invoices_filter_area'">
+                        <select 
+                            v-model="filterAreaVal" 
+                            @change="applyFilters"
+                            class="form-select text-xs rounded-xl border-gray-200 bg-white text-gray-700 py-1.5 pl-3 pr-8 font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-200 shadow-2xs cursor-pointer w-auto min-w-[135px]"
+                        >
+                            <option value="">Semua Area</option>
+                            <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
+                        </select>
+                    </div>
 
-                    <button @click="applyFilters" class="btn-primary py-2 px-4 whitespace-nowrap flex-1 sm:flex-initial justify-center flex items-center gap-2 text-xs sm:text-sm">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                        Terapkan
-                    </button>
+                    <!-- 4. Paket Layanan Internet -->
+                    <div>
+                        <select 
+                            v-model="filterPackageVal" 
+                            @change="applyFilters"
+                            class="form-select text-xs rounded-xl border-gray-200 bg-white text-gray-700 py-1.5 pl-3 pr-8 font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-200 shadow-2xs cursor-pointer w-auto min-w-[140px]"
+                        >
+                            <option value="">Semua Paket</option>
+                            <option v-for="pkg in (packages || [])" :key="pkg.id" :value="pkg.id">
+                                {{ pkg.name }} ({{ pkg.speed_mbps }}M)
+                            </option>
+                        </select>
+                    </div>
+
+                    <!-- 5. Tipe Tagihan (Billing Type) -->
+                    <div>
+                        <select 
+                            v-model="filterBillingTypeVal" 
+                            @change="applyFilters"
+                            class="form-select text-xs rounded-xl border-gray-200 bg-white text-gray-700 py-1.5 pl-3 pr-8 font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-200 shadow-2xs cursor-pointer w-auto min-w-[130px]"
+                        >
+                            <option value="">Semua Tipe</option>
+                            <option value="regular">Reguler Bulanan</option>
+                            <option value="prorata">Prorata</option>
+                        </select>
+                    </div>
+
+                    <!-- 6. Action: Terapkan & Reset (Sejajar ke Samping) -->
+                    <div class="flex items-center gap-1.5 ml-auto">
+                        <span v-if="activeFiltersCount > 0" class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-700 border border-blue-200">
+                            {{ activeFiltersCount }} Filter Aktif
+                        </span>
+
+                        <button 
+                            type="button"
+                            @click="applyFilters" 
+                            class="btn-primary py-1.5 px-3.5 rounded-xl whitespace-nowrap flex items-center gap-1.5 text-xs font-bold shadow-2xs hover:shadow-xs transition cursor-pointer"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                            <span>Terapkan</span>
+                        </button>
+
+                        <button 
+                            v-if="hasActiveFilters"
+                            type="button"
+                            @click="resetFilters" 
+                            class="py-1.5 px-3 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 whitespace-nowrap flex items-center gap-1 text-xs font-bold transition cursor-pointer shadow-2xs"
+                            title="Bersihkan semua filter"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            <span>Reset</span>
+                        </button>
+                    </div>
                 </div>
             </template>
             
             <template #actions>
-                <button v-can="'invoices_btn_export'" class="btn-secondary bg-white border border-gray-200 text-emerald-600 hover:bg-emerald-50 text-xs sm:text-sm py-2 px-3.5 sm:px-4 flex-1 sm:flex-initial justify-center whitespace-nowrap flex items-center gap-2">
+                <button 
+                    v-can="'invoices_btn_export'" 
+                    type="button"
+                    @click="exportExcel"
+                    class="btn-secondary bg-white border border-gray-200 text-emerald-600 hover:bg-emerald-50 text-xs sm:text-sm py-2 px-3.5 sm:px-4 flex-1 sm:flex-initial justify-center whitespace-nowrap flex items-center gap-2 shadow-2xs cursor-pointer"
+                    title="Export tagihan sesuai filter ke spreadsheet Excel / CSV"
+                >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                    Export Excel
+                    <span>Export Excel</span>
                 </button>
-                <button v-can="'invoices_print'" class="btn-secondary bg-white border border-gray-200 text-red-600 hover:bg-red-50 text-xs sm:text-sm py-2 px-3.5 sm:px-4 flex-1 sm:flex-initial justify-center whitespace-nowrap flex items-center gap-2">
+                <button 
+                    v-can="'invoices_print'" 
+                    type="button"
+                    @click="printList"
+                    class="btn-secondary bg-white border border-gray-200 text-red-600 hover:bg-red-50 text-xs sm:text-sm py-2 px-3.5 sm:px-4 flex-1 sm:flex-initial justify-center whitespace-nowrap flex items-center gap-2 shadow-2xs cursor-pointer"
+                    title="Cetak daftar tagihan sesuai filter ke format PDF / Print"
+                >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                    Cetak PDF
+                    <span>Cetak PDF</span>
                 </button>
             </template>
 
@@ -1632,8 +1736,31 @@ const columns = [
 const filterTabVal = ref(props.filters?.tab || 'semua');
 const filterStatusVal = ref(props.filters?.status || '');
 const filterAreaVal = ref(props.filters?.area_id || '');
+const filterPackageVal = ref(props.filters?.package_id || '');
+const filterBillingTypeVal = ref(props.filters?.billing_type || '');
 const filterStartDate = ref(props.filters?.start_date || '');
 const filterEndDate = ref(props.filters?.end_date || '');
+
+const hasActiveFilters = computed(() => {
+    return !!(
+        filterStatusVal.value ||
+        filterAreaVal.value ||
+        filterPackageVal.value ||
+        filterBillingTypeVal.value ||
+        filterStartDate.value ||
+        filterEndDate.value
+    );
+});
+
+const activeFiltersCount = computed(() => {
+    let count = 0;
+    if (filterStatusVal.value) count++;
+    if (filterAreaVal.value) count++;
+    if (filterPackageVal.value) count++;
+    if (filterBillingTypeVal.value) count++;
+    if (filterStartDate.value || filterEndDate.value) count++;
+    return count;
+});
 
 function applyFilters() {
     router.get('/invoices', {
@@ -1641,10 +1768,85 @@ function applyFilters() {
         tab: filterTabVal.value || undefined,
         status: filterStatusVal.value || undefined,
         area_id: filterAreaVal.value || undefined,
+        package_id: filterPackageVal.value || undefined,
+        billing_type: filterBillingTypeVal.value || undefined,
         start_date: filterStartDate.value || undefined,
         end_date: filterEndDate.value || undefined,
-    }, { preserveState: true, preserveScroll: true });
+    }, { preserveState: true, preserveScroll: true, replace: true });
 }
+
+function resetFilters() {
+    filterStatusVal.value = '';
+    filterAreaVal.value = '';
+    filterPackageVal.value = '';
+    filterBillingTypeVal.value = '';
+    filterStartDate.value = '';
+    filterEndDate.value = '';
+    applyFilters();
+}
+
+function setDatePreset(preset) {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    
+    if (preset === 'today') {
+        const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+        filterStartDate.value = todayStr;
+        filterEndDate.value = todayStr;
+    } else if (preset === 'this_month') {
+        const firstDay = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`;
+        const lastDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const lastDay = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(lastDate)}`;
+        filterStartDate.value = firstDay;
+        filterEndDate.value = lastDay;
+    } else if (preset === 'last_month') {
+        const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const firstDay = `${prevMonthDate.getFullYear()}-${pad(prevMonthDate.getMonth() + 1)}-01`;
+        const lastDate = new Date(prevMonthDate.getFullYear(), prevMonthDate.getMonth() + 1, 0).getDate();
+        const lastDay = `${prevMonthDate.getFullYear()}-${pad(prevMonthDate.getMonth() + 1)}-${pad(lastDate)}`;
+        filterStartDate.value = firstDay;
+        filterEndDate.value = lastDay;
+    }
+    applyFilters();
+}
+
+function exportExcel() {
+    const params = new URLSearchParams();
+    if (props.filters?.search) params.set('search', props.filters.search);
+    if (filterTabVal.value && filterTabVal.value !== 'semua') params.set('tab', filterTabVal.value);
+    if (filterStatusVal.value) params.set('status', filterStatusVal.value);
+    if (filterAreaVal.value) params.set('area_id', filterAreaVal.value);
+    if (filterPackageVal.value) params.set('package_id', filterPackageVal.value);
+    if (filterBillingTypeVal.value) params.set('billing_type', filterBillingTypeVal.value);
+    if (filterStartDate.value) params.set('start_date', filterStartDate.value);
+    if (filterEndDate.value) params.set('end_date', filterEndDate.value);
+    
+    window.location.href = `/invoices/export?${params.toString()}`;
+}
+
+function printList() {
+    const params = new URLSearchParams();
+    if (props.filters?.search) params.set('search', props.filters.search);
+    if (filterTabVal.value && filterTabVal.value !== 'semua') params.set('tab', filterTabVal.value);
+    if (filterStatusVal.value) params.set('status', filterStatusVal.value);
+    if (filterAreaVal.value) params.set('area_id', filterAreaVal.value);
+    if (filterPackageVal.value) params.set('package_id', filterPackageVal.value);
+    if (filterBillingTypeVal.value) params.set('billing_type', filterBillingTypeVal.value);
+    if (filterStartDate.value) params.set('start_date', filterStartDate.value);
+    if (filterEndDate.value) params.set('end_date', filterEndDate.value);
+    
+    window.open(`/invoices/print-list?${params.toString()}`, '_blank');
+}
+
+watch(() => props.filters, (newFilters) => {
+    filterTabVal.value = newFilters?.tab || 'semua';
+    filterStatusVal.value = newFilters?.status || '';
+    filterAreaVal.value = newFilters?.area_id || '';
+    filterPackageVal.value = newFilters?.package_id || '';
+    filterBillingTypeVal.value = newFilters?.billing_type || '';
+    filterStartDate.value = newFilters?.start_date || '';
+    filterEndDate.value = newFilters?.end_date || '';
+}, { deep: true });
 
 function filterTab(tab) {
     filterTabVal.value = tab;

@@ -194,8 +194,31 @@ class InvoiceController extends Controller
             });
         }
 
+        if ($request->filled('package_id')) {
+            $query->whereHas('customer', function($q) use ($request) {
+                $q->where('package_id', $request->package_id);
+            });
+        }
+
+        if ($request->filled('billing_type')) {
+            if ($request->billing_type === 'prorata') {
+                $query->where(function($q) {
+                    $q->where('is_prorata', true)->orWhere('billing_type', 'prorata');
+                });
+            } else {
+                $query->where(function($q) use ($request) {
+                    $q->where('billing_type', $request->billing_type)
+                      ->orWhereHas('customer', fn($cq) => $cq->where('billing_type', $request->billing_type));
+                });
+            }
+        }
+
         if ($request->filled('start_date') && $request->filled('end_date')) {
             $query->whereBetween('issued_date', [$request->start_date, $request->end_date]);
+        } elseif ($request->filled('start_date')) {
+            $query->where('issued_date', '>=', $request->start_date);
+        } elseif ($request->filled('end_date')) {
+            $query->where('issued_date', '<=', $request->end_date);
         }
 
         // Get counts for tabs
@@ -226,8 +249,31 @@ class InvoiceController extends Controller
             });
         }
 
+        if ($request->filled('package_id')) {
+            $baseQuery->whereHas('customer', function($q) use ($request) {
+                $q->where('package_id', $request->package_id);
+            });
+        }
+
+        if ($request->filled('billing_type')) {
+            if ($request->billing_type === 'prorata') {
+                $baseQuery->where(function($q) {
+                    $q->where('is_prorata', true)->orWhere('billing_type', 'prorata');
+                });
+            } else {
+                $baseQuery->where(function($q) use ($request) {
+                    $q->where('billing_type', $request->billing_type)
+                      ->orWhereHas('customer', fn($cq) => $cq->where('billing_type', $request->billing_type));
+                });
+            }
+        }
+
         if ($request->filled('start_date') && $request->filled('end_date')) {
             $baseQuery->whereBetween('issued_date', [$request->start_date, $request->end_date]);
+        } elseif ($request->filled('start_date')) {
+            $baseQuery->where('issued_date', '>=', $request->start_date);
+        } elseif ($request->filled('end_date')) {
+            $baseQuery->where('issued_date', '<=', $request->end_date);
         }
 
         // Active base excludes terminated customers for regular operational cards
@@ -241,10 +287,17 @@ class InvoiceController extends Controller
                 if ($request->filled('area_id')) {
                     $q->whereHas('customer', fn($cq) => $cq->where('area_id', $request->area_id));
                 }
+                if ($request->filled('package_id')) {
+                    $q->whereHas('customer', fn($cq) => $cq->where('package_id', $request->package_id));
+                }
             });
 
         if ($request->filled('start_date') && $request->filled('end_date')) {
             $paidQuery->whereBetween('payment_date', [$request->start_date, $request->end_date]);
+        } elseif ($request->filled('start_date')) {
+            $paidQuery->where('payment_date', '>=', $request->start_date);
+        } elseif ($request->filled('end_date')) {
+            $paidQuery->where('payment_date', '<=', $request->end_date);
         } else {
             $paidQuery->whereMonth('payment_date', now()->month)->whereYear('payment_date', now()->year);
         }
@@ -347,7 +400,7 @@ class InvoiceController extends Controller
                 ? \App\Models\Area::whereIn('id', $userAreaIds)->orderBy('name')->get(['id', 'name'])
                 : \App\Models\Area::orderBy('name')->get(['id', 'name']),
             'lead_technicians' => $leadTechnicians,
-            'filters' => $request->only(['search', 'status', 'start_date', 'end_date', 'area_id', 'tab']),
+            'filters' => $request->only(['search', 'status', 'start_date', 'end_date', 'area_id', 'package_id', 'billing_type', 'tab']),
             'payment_banks' => fn () => json_decode(\App\Models\Setting::get('payment_banks', '[]'), true),
         ]);
     }
@@ -1065,5 +1118,292 @@ class InvoiceController extends Controller
         }
 
         return redirect()->back()->with('success', "Pelanggan {$customer->name} berhasil di-{$actionLabel} ke paket {$newPackage->name}." . ($request->boolean('sync_radius', true) ? ' Profile kecepatan RADIUS telah disinkronkan.' : ''));
+    }
+
+    public function export(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $today = now()->startOfDay();
+        $query = Invoice::with(['customer.areaModel', 'customer.package', 'payments.collector'])
+            ->where('is_reseller_balance', false)
+            ->where('invoice_number', 'not like', 'INV-MIG-%')
+            ->where('status', '!=', 'cancelled')
+            ->where(function($q) {
+                $q->where('period_year', '>', 2026)
+                  ->orWhere(function($sub) {
+                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
+                  })
+                  ->orWhere(function($sub) {
+                      $sub->where(function($prorata) {
+                          $prorata->where('is_prorata', true)
+                              ->orWhere('billing_type', 'prorata');
+                      })->whereHas('customer', function($customer) {
+                          $customer->whereDate('activation_date', '>=', '2026-10-01')
+                              ->whereDate('activation_date', '<', '2026-11-01');
+                      });
+                  });
+            })
+            ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
+
+        $isAreaRestricted = auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('invoices_view_all');
+        $userAreaIds = auth()->check() ? auth()->user()->getAccessibleAreaIds() : [];
+
+        if ($isAreaRestricted) {
+            if (auth()->user()->can('invoices_view_area')) {
+                $query->whereHas('customer', fn($cq) => $cq->whereIn('area_id', $userAreaIds));
+            } else {
+                $query->whereHas('customer', fn($cq) => $cq->where('sales_id', auth()->id()));
+            }
+        }
+
+        $tab = $request->query('tab', 'semua');
+        if ($tab === 'jatuh_tempo') {
+            $query->where('due_date', '<', now())->whereIn('status', ['unpaid', 'partial']);
+        } elseif ($tab === 'piutang') {
+            $query->where('status', 'partial');
+        } elseif ($tab === 'lunas') {
+            $query->where('status', 'paid');
+        } elseif ($tab === 'prorata') {
+            $query->where(function($q) {
+                $q->where('is_prorata', true)->orWhere('billing_type', 'prorata');
+            });
+        } elseif ($tab === 'upgrade') {
+            $query->where(function($q) {
+                $q->whereIn('billing_type', ['upgrade', 'downgrade'])
+                  ->orWhere('notes', 'like', '%Upgrade%')
+                  ->orWhere('notes', 'like', '%Downgrade%');
+            });
+        } elseif ($tab === 'janji_bayar') {
+            $query->whereNotNull('promise_date')->whereIn('status', ['unpaid', 'partial']);
+        } elseif ($tab === 'stop_sementara') {
+            $query->whereHas('customer', fn($q) => $q->where('status', 'suspended'));
+        } elseif ($tab === 'stop_permanen') {
+            $query->whereHas('customer', fn($q) => $q->where('status', 'terminated'));
+        }
+
+        if ($request->filled('search')) {
+            $search = strtolower($request->search);
+            $query->where(function($q) use ($search) {
+                $q->where('invoice_number', 'like', "%{$search}%")
+                  ->orWhereHas('customer', function($q2) use ($search) {
+                      $q2->where('name', 'like', "%{$search}%")
+                         ->orWhere('phone', 'like', "%{$search}%")
+                         ->orWhere('customer_code', 'like', "%{$search}%")
+                         ->orWhereHas('areaModel', fn($q3) => $q3->where('name', 'like', "%{$search}%"));
+                  });
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('area_id')) {
+            $query->whereHas('customer', fn($q) => $q->where('area_id', $request->area_id));
+        }
+
+        if ($request->filled('package_id')) {
+            $query->whereHas('customer', fn($q) => $q->where('package_id', $request->package_id));
+        }
+
+        if ($request->filled('billing_type')) {
+            if ($request->billing_type === 'prorata') {
+                $query->where(function($q) {
+                    $q->where('is_prorata', true)->orWhere('billing_type', 'prorata');
+                });
+            } else {
+                $query->where(function($q) use ($request) {
+                    $q->where('billing_type', $request->billing_type)
+                      ->orWhereHas('customer', fn($cq) => $cq->where('billing_type', $request->billing_type));
+                });
+            }
+        }
+
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('issued_date', [$request->start_date, $request->end_date]);
+        } elseif ($request->filled('start_date')) {
+            $query->where('issued_date', '>=', $request->start_date);
+        } elseif ($request->filled('end_date')) {
+            $query->where('issued_date', '<=', $request->end_date);
+        }
+
+        $invoices = $query->latest('id')->get();
+        $filename = "Laporan_Tagihan_Invoice_" . date('Ymd_His') . ".csv";
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        return response()->stream(function () use ($invoices) {
+            $handle = fopen('php://output', 'w');
+            fputs($handle, "\xEF\xBB\xBF");
+
+            fputcsv($handle, [
+                'No',
+                'No. Invoice',
+                'Nama Pelanggan',
+                'ID Pelanggan',
+                'Telepon / WA',
+                'Area Cabang',
+                'Alamat',
+                'Paket Internet',
+                'Tipe Tagihan',
+                'Tanggal Terbit',
+                'Jatuh Tempo',
+                'Total Tagihan (Rp)',
+                'Total Terbayar (Rp)',
+                'Sisa Tagihan (Rp)',
+                'Status Invoice',
+                'Status Pelanggan',
+                'Tgl Bayar Terakhir',
+                'Metode Bayar',
+                'Kolektor'
+            ]);
+
+            foreach ($invoices as $idx => $inv) {
+                $lastPayment = $inv->payments->first();
+                fputcsv($handle, [
+                    $idx + 1,
+                    $inv->invoice_number,
+                    $inv->customer?->name ?? '-',
+                    $inv->customer?->customer_code ?? '-',
+                    $inv->customer?->phone ?? '-',
+                    $inv->customer?->areaModel?->name ?? '-',
+                    $inv->customer?->address ?? '-',
+                    $inv->customer?->package?->name ?? '-',
+                    $inv->is_prorata || $inv->billing_type === 'prorata' ? 'Prorata' : 'Reguler',
+                    $inv->issued_date ? $inv->issued_date->format('d/m/Y') : '-',
+                    $inv->due_date ? $inv->due_date->format('d/m/Y') : '-',
+                    (float) $inv->amount,
+                    (float) $inv->total_paid,
+                    (float) $inv->remaining,
+                    strtoupper($inv->status),
+                    strtoupper($inv->customer?->status ?? 'ACTIVE'),
+                    $lastPayment ? \Carbon\Carbon::parse($lastPayment->payment_date)->format('d/m/Y H:i') : '-',
+                    $lastPayment?->payment_method ?? '-',
+                    $lastPayment?->collector?->name ?? '-'
+                ]);
+            }
+
+            fclose($handle);
+        }, 200, $headers);
+    }
+
+    public function printList(Request $request)
+    {
+        $today = now()->startOfDay();
+        $query = Invoice::with(['customer.areaModel', 'customer.package', 'payments.collector'])
+            ->where('is_reseller_balance', false)
+            ->where('invoice_number', 'not like', 'INV-MIG-%')
+            ->where('status', '!=', 'cancelled')
+            ->where(function($q) {
+                $q->where('period_year', '>', 2026)
+                  ->orWhere(function($sub) {
+                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
+                  })
+                  ->orWhere(function($sub) {
+                      $sub->where(function($prorata) {
+                          $prorata->where('is_prorata', true)
+                              ->orWhere('billing_type', 'prorata');
+                      })->whereHas('customer', function($customer) {
+                          $customer->whereDate('activation_date', '>=', '2026-10-01')
+                              ->whereDate('activation_date', '<', '2026-11-01');
+                      });
+                  });
+            })
+            ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
+
+        $isAreaRestricted = auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('invoices_view_all');
+        $userAreaIds = auth()->check() ? auth()->user()->getAccessibleAreaIds() : [];
+
+        if ($isAreaRestricted) {
+            if (auth()->user()->can('invoices_view_area')) {
+                $query->whereHas('customer', fn($cq) => $cq->whereIn('area_id', $userAreaIds));
+            } else {
+                $query->whereHas('customer', fn($cq) => $cq->where('sales_id', auth()->id()));
+            }
+        }
+
+        $tab = $request->query('tab', 'semua');
+        if ($tab === 'jatuh_tempo') {
+            $query->where('due_date', '<', now())->whereIn('status', ['unpaid', 'partial']);
+        } elseif ($tab === 'piutang') {
+            $query->where('status', 'partial');
+        } elseif ($tab === 'lunas') {
+            $query->where('status', 'paid');
+        } elseif ($tab === 'prorata') {
+            $query->where(function($q) {
+                $q->where('is_prorata', true)->orWhere('billing_type', 'prorata');
+            });
+        } elseif ($tab === 'upgrade') {
+            $query->where(function($q) {
+                $q->whereIn('billing_type', ['upgrade', 'downgrade'])
+                  ->orWhere('notes', 'like', '%Upgrade%')
+                  ->orWhere('notes', 'like', '%Downgrade%');
+            });
+        } elseif ($tab === 'janji_bayar') {
+            $query->whereNotNull('promise_date')->whereIn('status', ['unpaid', 'partial']);
+        } elseif ($tab === 'stop_sementara') {
+            $query->whereHas('customer', fn($q) => $q->where('status', 'suspended'));
+        } elseif ($tab === 'stop_permanen') {
+            $query->whereHas('customer', fn($q) => $q->where('status', 'terminated'));
+        }
+
+        if ($request->filled('search')) {
+            $search = strtolower($request->search);
+            $query->where(function($q) use ($search) {
+                $q->where('invoice_number', 'like', "%{$search}%")
+                  ->orWhereHas('customer', function($q2) use ($search) {
+                      $q2->where('name', 'like', "%{$search}%")
+                         ->orWhere('phone', 'like', "%{$search}%")
+                         ->orWhere('customer_code', 'like', "%{$search}%")
+                         ->orWhereHas('areaModel', fn($q3) => $q3->where('name', 'like', "%{$search}%"));
+                  });
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('area_id')) {
+            $query->whereHas('customer', fn($q) => $q->where('area_id', $request->area_id));
+        }
+
+        if ($request->filled('package_id')) {
+            $query->whereHas('customer', fn($q) => $q->where('package_id', $request->package_id));
+        }
+
+        if ($request->filled('billing_type')) {
+            if ($request->billing_type === 'prorata') {
+                $query->where(function($q) {
+                    $q->where('is_prorata', true)->orWhere('billing_type', 'prorata');
+                });
+            } else {
+                $query->where(function($q) use ($request) {
+                    $q->where('billing_type', $request->billing_type)
+                      ->orWhereHas('customer', fn($cq) => $cq->where('billing_type', $request->billing_type));
+                });
+            }
+        }
+
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('issued_date', [$request->start_date, $request->end_date]);
+        } elseif ($request->filled('start_date')) {
+            $query->where('issued_date', '>=', $request->start_date);
+        } elseif ($request->filled('end_date')) {
+            $query->where('issued_date', '<=', $request->end_date);
+        }
+
+        $invoices = $query->latest('id')->get();
+
+        return view('print.invoices-list', [
+            'invoices' => $invoices,
+            'filters' => $request->all(),
+            'printDate' => now()->format('d F Y H:i'),
+        ]);
     }
 }
