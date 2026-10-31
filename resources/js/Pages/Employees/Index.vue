@@ -443,16 +443,22 @@
                                     </div>
                                 </td>
 
-                                <!-- 6. Area -->
+                                <!-- 6. Area & Tim Khusus -->
                                 <td class="py-4 px-6">
                                     <p class="text-sm font-semibold text-gray-800">{{ emp.area?.name || '-' }}</p>
+                                    <div v-if="emp.special_team_name" class="mt-1">
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs" :title="'Tim Khusus: ' + emp.special_team_name + ' (Absen Lapangan Bebas Radius)'">
+                                            <span>⚡</span>
+                                            <span class="truncate max-w-[130px]">{{ emp.special_team_name }}</span>
+                                        </span>
+                                    </div>
                                     <div v-if="emp.allowed_attendance_areas && emp.allowed_attendance_areas.length > 0" class="mt-1">
                                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs" :title="'Kunci Absen Reguler: ' + (emp.allowed_attendance_areas_text || 'Area Terpilih')">
                                             <span>🔒</span>
                                             <span class="truncate max-w-[120px]">{{ emp.allowed_attendance_areas_text || 'Terkunci Area' }}</span>
                                         </span>
                                     </div>
-                                    <div v-else-if="emp.area_id" class="mt-1">
+                                    <div v-else-if="emp.area_id && !emp.special_team_name" class="mt-1">
                                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-slate-50 text-slate-500 border border-slate-200" title="Bebas Absen di Semua Cabang">
                                             <span>🌐</span>
                                             <span>Semua Area</span>
@@ -724,6 +730,17 @@
                                 {{ selectedEmployee.area?.name || 'Semua Area' }}
                             </p>
                         </div>
+
+                        <!-- Penugasan Tim Khusus -->
+                        <div class="p-3 bg-blue-50/70 rounded-xl border border-blue-200/80">
+                            <p class="text-blue-700 uppercase tracking-wider text-[10px] font-bold mb-1 flex items-center gap-1">
+                                <span>⚡</span>
+                                <span>Tim Khusus (Tanpa Radius)</span>
+                            </p>
+                            <p class="font-bold text-blue-900 text-sm">
+                                {{ selectedEmployee.special_team_name || (selectedEmployee.special_teams && selectedEmployee.special_teams.length > 0 ? selectedEmployee.special_teams[0].name : 'Tidak Terdaftar (Reguler)') }}
+                            </p>
+                        </div>
                     </div>
 
                     <!-- Alamat Domisili -->
@@ -872,6 +889,42 @@
                                         {{ area.name }}
                                     </span>
                                 </label>
+                            </div>
+                        </div>
+
+                        <!-- PENUGASAN ABSEN TIM KHUSUS (Tanpa Batasan Radius Kantor) -->
+                        <div class="p-4 rounded-2xl bg-blue-50/70 border border-blue-200 space-y-3">
+                            <div class="flex items-center justify-between flex-wrap gap-2">
+                                <label class="block text-xs font-black text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
+                                    <span class="text-sm">⚡</span>
+                                    <span>Penugasan Tim Khusus (Bebas Radius)</span>
+                                </label>
+                                <span v-if="form.special_team_id" class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-200 text-blue-900 border border-blue-300">
+                                    Aktif di Tim Khusus
+                                </span>
+                                <span v-else class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                                    Reguler Biasa
+                                </span>
+                            </div>
+                            <p class="text-[11px] text-blue-800 leading-relaxed">
+                                Tentukan grup tim khusus jika karyawan bertugas di lapangan atau operasional mobile. Anggota Tim Khusus dapat melakukan absensi di menu <strong>Absen Tim Khusus</strong> secara bebas tanpa batasan radius kantor.
+                            </p>
+                            <div>
+                                <select 
+                                    v-model="form.special_team_id" 
+                                    class="w-full px-4 py-2.5 rounded-xl border border-blue-200 bg-white text-sm font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-200 cursor-pointer"
+                                >
+                                    <option value="">-- Bukan Anggota Tim Khusus (Hanya Absen Reguler) --</option>
+                                    <option v-for="team in (special_teams || [])" :key="team.id" :value="String(team.id)">
+                                        ⭐ {{ team.name }} {{ team.code ? `(${team.code})` : '' }} — Bebas Radius Kantor
+                                    </option>
+                                </select>
+                            </div>
+                            <div v-if="form.special_team_id" class="p-2.5 rounded-xl bg-blue-100/70 border border-blue-200 text-[11px] text-blue-900 flex items-start gap-2">
+                                <svg class="w-4 h-4 text-blue-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <span>
+                                    Karyawan ini otomatis dapat melakukan presensi di menu <strong>Absen Tim Khusus</strong> dengan selfie dan koordinat GPS aktual langsung dari lapangan tanpa diblokir oleh kunci area reguler.
+                                </span>
                             </div>
                         </div>
 
@@ -1385,6 +1438,7 @@ const props = defineProps({
     employees: Object,
     areas: Array,
     positions: Array,
+    special_teams: Array,
     avg_tenure: String,
     counts: Object,
     filters: Object,
@@ -1651,6 +1705,7 @@ const form = useForm({
     email: '',
     phone: '',
     area_id: '',
+    special_team_id: '',
     allowed_attendance_areas: [],
     join_date: '',
     employee_type: '',
@@ -1912,6 +1967,7 @@ function openModal(emp = null) {
         form.email = emp.email || '';
         form.phone = emp.phone || '';
         form.area_id = emp.area_id || '';
+        form.special_team_id = emp.special_team_id ? String(emp.special_team_id) : (emp.special_teams && emp.special_teams.length > 0 ? String(emp.special_teams[0].id) : '');
         form.allowed_attendance_areas = Array.isArray(emp.allowed_attendance_areas) 
             ? emp.allowed_attendance_areas.map(Number) 
             : (emp.area_id ? [Number(emp.area_id)] : []);
@@ -1940,6 +1996,7 @@ function openModal(emp = null) {
         editingId.value = null;
         form.reset();
         form.base_salary = 0;
+        form.special_team_id = '';
         form.allowed_attendance_areas = [];
         form.bank_name = '';
         form.bank_account_number = '';
@@ -1954,6 +2011,7 @@ function closeModal() {
     showModal.value = false;
     form.reset();
     form.base_salary = 0;
+    form.special_team_id = '';
     form.bank_name = '';
     form.bank_account_number = '';
     form.bank_account_holder = '';
