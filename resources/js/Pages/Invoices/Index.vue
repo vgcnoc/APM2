@@ -96,17 +96,17 @@
             :filters="filters"
         >
             <template #filters>
-                <div class="flex flex-wrap items-center gap-2.5 w-full">
+                <div class="flex flex-col gap-2.5 w-full lg:flex-row lg:flex-nowrap lg:items-center lg:gap-3">
                     <!-- Tanggal (Start Date -> End Date) -->
-                    <div v-can="'invoices_filter_period'" class="flex flex-wrap sm:flex-nowrap items-center gap-2 text-xs sm:text-sm text-gray-600 font-medium w-full sm:w-auto">
-                        <span>Tanggal</span>
-                        <input type="date" v-model="filterStartDate" class="form-input text-xs sm:text-sm rounded-lg border-gray-300 flex-1 sm:w-[138px] min-w-[125px]" />
-                        <span>s/d</span>
-                        <input type="date" v-model="filterEndDate" class="form-input text-xs sm:text-sm rounded-lg border-gray-300 flex-1 sm:w-[138px] min-w-[125px]" />
+                    <div v-can="'invoices_filter_period'" class="flex items-center gap-2 text-xs sm:text-sm text-gray-600 font-medium shrink-0 whitespace-nowrap">
+                        <span class="shrink-0">Tanggal</span>
+                        <input type="date" v-model="filterStartDate" class="form-input text-xs sm:text-sm rounded-lg border-gray-300 w-[132px] min-w-0" />
+                        <span class="shrink-0">s/d</span>
+                        <input type="date" v-model="filterEndDate" class="form-input text-xs sm:text-sm rounded-lg border-gray-300 w-[132px] min-w-0" />
                     </div>
 
                     <!-- Status -->
-                    <select v-can="'invoices_filter_status'" v-model="filterStatusVal" class="form-select text-xs sm:text-sm rounded-lg border-gray-300 text-gray-700 flex-1 sm:flex-initial min-w-[135px]">
+                    <select v-can="'invoices_filter_status'" v-model="filterStatusVal" class="form-select text-xs sm:text-sm rounded-lg border-gray-300 text-gray-700 w-full lg:w-[150px] lg:flex-none min-w-0">
                         <option value="">Semua Status</option>
                         <option value="unpaid">Unpaid</option>
                         <option value="paid">Paid</option>
@@ -114,12 +114,12 @@
                     </select>
 
                     <!-- Area -->
-                    <select v-can="'invoices_filter_area'" v-model="filterAreaVal" class="form-select text-xs sm:text-sm rounded-lg border-gray-300 text-gray-700 flex-1 sm:flex-initial min-w-[135px]">
+                    <select v-can="'invoices_filter_area'" v-model="filterAreaVal" class="form-select text-xs sm:text-sm rounded-lg border-gray-300 text-gray-700 w-full lg:w-[150px] lg:flex-none min-w-0">
                         <option value="">Semua Area</option>
                         <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
                     </select>
 
-                    <button @click="applyFilters" class="btn-primary py-2 px-4 whitespace-nowrap flex-1 sm:flex-initial justify-center flex items-center gap-2 text-xs sm:text-sm">
+                    <button @click="applyFilters" class="btn-primary py-2 px-4 whitespace-nowrap w-full lg:w-auto lg:flex-none justify-center flex items-center gap-2 text-xs sm:text-sm">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                         Terapkan
                     </button>
