@@ -170,6 +170,8 @@ class InvoiceController extends Controller
                       $q2->where('name', 'like', "%{$search}%")
                          ->orWhere('phone', 'like', "%{$search}%")
                          ->orWhere('customer_code', 'like', "%{$search}%")
+                         ->orWhere('area', 'like', "%{$search}%")
+                         ->orWhere('address', 'like', "%{$search}%")
                          ->orWhereHas('areaModel', function($q3) use ($search) {
                              $q3->where('name', 'like', "%{$search}%");
                          });
@@ -1247,6 +1249,8 @@ class InvoiceController extends Controller
                       $q2->where('name', 'like', "%{$search}%")
                          ->orWhere('phone', 'like', "%{$search}%")
                          ->orWhere('customer_code', 'like', "%{$search}%")
+                         ->orWhere('area', 'like', "%{$search}%")
+                         ->orWhere('address', 'like', "%{$search}%")
                          ->orWhereHas('areaModel', fn($q3) => $q3->where('name', 'like', "%{$search}%"));
                   });
             });
@@ -1383,6 +1387,8 @@ class InvoiceController extends Controller
                       $q2->where('name', 'like', "%{$search}%")
                          ->orWhere('phone', 'like', "%{$search}%")
                          ->orWhere('customer_code', 'like', "%{$search}%")
+                         ->orWhere('area', 'like', "%{$search}%")
+                         ->orWhere('address', 'like', "%{$search}%")
                          ->orWhereHas('areaModel', fn($q3) => $q3->where('name', 'like', "%{$search}%"));
                   });
             });

@@ -4,25 +4,41 @@
         <div class="p-3.5 sm:p-4 border-b border-gray-200 space-y-3.5">
             <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
                 <!-- Search -->
-                <div :class="['relative min-w-0 shrink-0', $slots.actions ? 'w-full lg:w-72 xl:w-96' : 'w-full sm:max-w-md lg:max-w-xl']">
-                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                    </svg>
+                <div :class="['relative min-w-0 flex-1', $slots.actions ? 'max-w-full lg:max-w-md xl:max-w-lg' : 'w-full sm:max-w-md lg:max-w-xl']">
+                    <!-- Search Icon / Loading Spinner -->
+                    <div class="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none z-10">
+                        <svg v-if="!isSearching" class="w-4 h-4 text-gray-400 transition-colors" :class="{ '!text-indigo-600': isFocused }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                        <svg v-else class="animate-spin w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </div>
+
                     <input
+                        ref="searchInputRef"
                         type="text"
                         v-model="searchQuery"
-                        @input="onSearch"
+                        @input="onInput"
+                        @focus="onFocus"
+                        @blur="onBlur"
+                        @keydown="onKeydown"
                         :placeholder="searchPlaceholder"
-                        class="form-input !pl-9 !pr-8 w-full rounded-lg border-gray-200 text-sm focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                        autocomplete="off"
+                        spellcheck="false"
+                        class="form-input !pl-10 !pr-10 w-full rounded-xl border-gray-200 bg-white/95 text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-2xs transition-all"
                     />
+
+                    <!-- Clear Button -->
                     <button
                         v-if="searchQuery"
                         @click="clearSearch"
                         type="button"
-                        class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5 rounded-full hover:bg-gray-100 transition-colors"
-                        title="Hapus pencarian"
+                        class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 transition-colors cursor-pointer z-10"
+                        title="Hapus pencarian (Esc)"
                     >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
                     </button>
@@ -163,56 +179,112 @@ function toggleAll(e) {
 }
 
 const page = usePage();
+const searchInputRef = ref(null);
 const searchQuery = ref(typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('search') || '') : '');
+const isFocused = ref(false);
+const isSearching = ref(false);
 let searchTimeout = null;
 
+// Watch for external URL changes (e.g. browser back/forward or tab clicks),
+// but NEVER overwrite what the user is currently typing in the input!
 watch(() => page.url, () => {
+    if (isFocused.value) return; // Do not interrupt or overwrite active typing!
     if (typeof window !== 'undefined') {
         const currentUrlSearch = new URLSearchParams(window.location.search).get('search') || '';
         if (searchQuery.value !== currentUrlSearch) {
             searchQuery.value = currentUrlSearch;
         }
     }
-}, { immediate: true });
+});
 
-function clearSearch() {
-    searchQuery.value = '';
-    onSearch();
+function onFocus() {
+    isFocused.value = true;
 }
 
-function onSearch() {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => {
-        if (props.searchRoute) {
-            const [baseRoute, existingQuery] = props.searchRoute.split('?');
-            const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
-            if (existingQuery) {
-                const parsedExisting = new URLSearchParams(existingQuery);
-                for (const [k, v] of parsedExisting.entries()) {
-                    urlParams.set(k, v);
-                }
-            }
-            if (props.filters && typeof props.filters === 'object') {
-                for (const [k, v] of Object.entries(props.filters)) {
-                    if (v !== undefined && v !== null && v !== '') {
-                        urlParams.set(k, v);
-                    } else {
-                        urlParams.delete(k);
-                    }
-                }
-            }
-            const queryParams = Object.fromEntries(urlParams);
-            delete queryParams.page;
-            if (searchQuery.value) {
-                queryParams.search = searchQuery.value;
-            } else {
-                delete queryParams.search;
-            }
-            router.get(baseRoute, queryParams, {
-                preserveState: true,
-                preserveScroll: true,
-            });
+function onBlur() {
+    isFocused.value = false;
+    // If user typed and immediately clicked away or blurred before debounce fired, execute search immediately:
+    if (searchTimeout) {
+        clearTimeout(searchTimeout);
+        searchTimeout = null;
+        executeSearch(searchQuery.value);
+    }
+}
+
+function onKeydown(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        clearTimeout(searchTimeout);
+        searchTimeout = null;
+        executeSearch(searchQuery.value);
+    } else if (e.key === 'Escape') {
+        e.preventDefault();
+        if (searchQuery.value) {
+            clearSearch();
+        } else {
+            searchInputRef.value?.blur();
         }
-    }, 300);
+    }
+}
+
+function onInput() {
+    clearTimeout(searchTimeout);
+    // 400ms smooth debounce: responsive yet gives user time to type whole words comfortably
+    searchTimeout = setTimeout(() => {
+        searchTimeout = null;
+        executeSearch(searchQuery.value);
+    }, 400);
+}
+
+function clearSearch() {
+    clearTimeout(searchTimeout);
+    searchTimeout = null;
+    searchQuery.value = '';
+    executeSearch('');
+    searchInputRef.value?.focus();
+}
+
+function executeSearch(query) {
+    if (!props.searchRoute) return;
+
+    const [baseRoute, existingQuery] = props.searchRoute.split('?');
+    const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+
+    if (existingQuery) {
+        const parsedExisting = new URLSearchParams(existingQuery);
+        for (const [k, v] of parsedExisting.entries()) {
+            urlParams.set(k, v);
+        }
+    }
+
+    if (props.filters && typeof props.filters === 'object') {
+        for (const [k, v] of Object.entries(props.filters)) {
+            if (v !== undefined && v !== null && v !== '') {
+                urlParams.set(k, v);
+            } else {
+                urlParams.delete(k);
+            }
+        }
+    }
+
+    const queryParams = Object.fromEntries(urlParams);
+    delete queryParams.page; // Reset pagination to first page on new search query
+
+    const cleanQuery = (query ?? '').trim();
+    if (cleanQuery) {
+        queryParams.search = cleanQuery;
+    } else {
+        delete queryParams.search;
+    }
+
+    isSearching.value = true;
+    router.get(baseRoute, queryParams, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true, // Crucial: avoid polluting history stack with intermediate keystrokes
+        onFinish: () => {
+            isSearching.value = false;
+        },
+    });
 }
 </script>
