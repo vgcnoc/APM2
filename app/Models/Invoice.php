@@ -64,11 +64,15 @@ class Invoice extends Model
     {
         static::creating(function (Invoice $invoice) {
             if (empty($invoice->invoice_number)) {
-                $prefix = 'INV-' . date('Ym') . '-';
+                $ym = $invoice->issued_date
+                    ? \Carbon\Carbon::parse($invoice->issued_date)->format('Ym')
+                    : now(config('billing.timezone', 'Asia/Jakarta'))->format('Ym');
+                $prefix = 'INV-' . $ym . '-';
                 $lastNum = static::where('invoice_number', 'like', $prefix . '%')
-                    ->orderByDesc('id')->value('invoice_number');
-                $next = $lastNum ? (int) substr($lastNum, -4) + 1 : 1;
-                $invoice->invoice_number = $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
+                    ->orderByRaw('LENGTH(invoice_number) DESC, invoice_number DESC')
+                    ->value('invoice_number');
+                $next = $lastNum ? ((int) substr($lastNum, strlen($prefix))) + 1 : 1;
+                $invoice->invoice_number = $prefix . str_pad((string) $next, 4, '0', STR_PAD_LEFT);
             }
         });
 

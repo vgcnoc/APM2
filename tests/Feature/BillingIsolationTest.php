@@ -24,6 +24,7 @@ class BillingIsolationTest extends TestCase
         config(['database.default' => 'sqlite', 'database.connections.sqlite.database' => ':memory:',
             'radius.connection' => 'sqlite', 'radius.enabled' => false, 'cache.default' => 'array', 'session.driver' => 'array',
             'app.timezone' => 'UTC', 'billing.timezone' => 'Asia/Jakarta']);
+        date_default_timezone_set('UTC');
         DB::purge('sqlite');
         Carbon::setTestNow(Carbon::parse('2026-10-13 13:43:59', 'UTC'));
         Schema::create('settings', function (Blueprint $t) { $t->id(); $t->string('key')->unique(); $t->text('value')->nullable(); $t->timestamps(); });
@@ -219,5 +220,67 @@ class BillingIsolationTest extends TestCase
         $this->post('/settings/billing', ['isolate_day' => 15, 'isolate_time' => '09:30:00', 'invoice_issue_date' => 1])->assertRedirect();
         $this->assertDatabaseHas('settings', ['key' => 'isolate_day', 'value' => '15']);
         $this->assertSame('2026-10-15 02:30:00', $invoice->fresh()->isolation_at->format('Y-m-d H:i:s'));
+    }
+
+    public function test_generate_invoices_skips_same_day_pascabayar_prorata_and_ignores_cancelled_or_migrated_records(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-31 17:05:00', 'UTC')); // 2026-11-01 00:05:00 WIB
+        Setting::set('billing_cycle', 'calendar');
+        Setting::set('billing_type', 'pascabayar');
+        Setting::set('invoice_issue_date', '1');
+        Setting::set('tax_ppn', '11');
+        DB::table('internet_packages')->insert(['id' => 1, 'name' => 'Paket 150K', 'price' => 150000]);
+
+        // 1. Pelanggan baru bulan lalu yang sudah punya tagihan pertama prorata terbit 2026-11-01 -> tidak boleh double-billing
+        $octProrataCustomer = $this->customer(['billing_cycle' => 'default', 'billing_type' => 'pascabayar', 'package_id' => 1]);
+        $this->invoice($octProrataCustomer, [
+            'invoice_number' => 'INV-202610-0001',
+            'period_month' => 10,
+            'period_year' => 2026,
+            'issued_date' => '2026-11-01',
+            'due_date' => '2026-11-13',
+            'billing_type' => 'prorata',
+            'amount' => 80000,
+            'status' => 'unpaid',
+        ]);
+
+        // 2. Pelanggan lama dengan histori INV-MIG-% dan invoice cancelled -> tetap harus terbit tagihan normal 1 Nov
+        $veteranCustomer = $this->customer(['billing_cycle' => 'default', 'billing_type' => 'pascabayar', 'package_id' => 1]);
+        $this->invoice($veteranCustomer, [
+            'invoice_number' => 'INV-MIG-0001',
+            'period_month' => 9,
+            'period_year' => 2026,
+            'issued_date' => '2026-09-01',
+            'due_date' => '2026-09-13',
+            'status' => 'unpaid',
+        ]);
+        $this->invoice($veteranCustomer, [
+            'invoice_number' => 'INV-MIG-0002',
+            'period_month' => 8,
+            'period_year' => 2026,
+            'issued_date' => '2026-08-01',
+            'due_date' => '2026-08-13',
+            'status' => 'unpaid',
+        ]);
+        $this->invoice($veteranCustomer, [
+            'invoice_number' => 'INV-202610-0022',
+            'period_month' => 10,
+            'period_year' => 2026,
+            'issued_date' => '2026-11-01',
+            'due_date' => '2026-11-13',
+            'billing_type' => 'prorata',
+            'status' => 'cancelled',
+        ]);
+
+        $this->artisan('app:generate-invoices')->assertExitCode(0);
+
+        $this->assertSame(1, Invoice::where('customer_id', $octProrataCustomer->id)->count());
+        $novInvoice = Invoice::where('customer_id', $veteranCustomer->id)
+            ->where('period_year', 2026)
+            ->where('period_month', 11)
+            ->firstOrFail();
+        $this->assertSame('2026-11-01', $novInvoice->issued_date->toDateString());
+        $this->assertSame(166500, $novInvoice->amount);
+        $this->assertStringStartsWith('INV-202611-', $novInvoice->invoice_number);
     }
 }
