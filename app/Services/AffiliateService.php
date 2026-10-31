@@ -12,9 +12,43 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class AffiliateService
 {
+    private const MONTHLY_COMMISSION_START_DATE = '2026-09-28';
+    private const OPERATIONAL_FEE_START_DATE = '2026-10-01';
+
+    /**
+     * Komisi bulanan dan upline/downline berlaku bagi booking baru sejak
+     * 28 September 2026. Pelanggan impor/migrasi selalu dikecualikan.
+     */
+    public static function isMonthlyCommissionEligible(Customer $customer): bool
+    {
+        return self::isEligibleFrom($customer, self::MONTHLY_COMMISSION_START_DATE);
+    }
+
+    /**
+     * Fee booking, survey, dan pemasangan berlaku mulai 1 Oktober 2026.
+     */
+    public static function isOperationalFeeEligible(Customer $customer): bool
+    {
+        return self::isEligibleFrom($customer, self::OPERATIONAL_FEE_START_DATE);
+    }
+
+    private static function isEligibleFrom(Customer $customer, string $startDate): bool
+    {
+        if ($customer->is_migrated) {
+            return false;
+        }
+
+        $bookingDate = $customer->registration_date ?: $customer->created_at;
+
+        return $bookingDate && Carbon::parse($bookingDate)->startOfDay()->greaterThanOrEqualTo(
+            Carbon::parse($startDate)->startOfDay()
+        );
+    }
+
     public static function canAccessPortal(?User $user): bool
     {
         if (!$user || !$user->is_active) {
@@ -176,7 +210,7 @@ class AffiliateService
      */
     public static function recordBookingCommission(Customer $customer): ?AffiliateCommission
     {
-        if (\App\Models\Customer::$isMigrating) {
+        if (\App\Models\Customer::$isMigrating || !self::isOperationalFeeEligible($customer)) {
             return null;
         }
 
@@ -195,13 +229,6 @@ class AffiliateService
         }
 
         $isEmployee = self::isInternalEmployee($user);
-
-        // Khusus migrasi:
-        // - Insentif booking karyawan internal JANGAN DIMUNCULKAN
-        // - Fee market affiliate orang luar yang 35.000 BOLEH DIMUNCULKAN setelah aktivasi
-        if ($customer->is_migrated && $isEmployee) {
-            return null;
-        }
 
         // Cek apakah komisi booking sudah pernah dicatat di tabel AffiliateCommission
         $alreadyRecorded = AffiliateCommission::where('affiliate_id', $customer->sales_id)
@@ -302,7 +329,7 @@ class AffiliateService
      */
     public static function handleEarlyTerminationPenalty(Customer $customer, ?string $cancelDate = null): ?array
     {
-        if ($customer->is_migrated) {
+        if (!self::isOperationalFeeEligible($customer)) {
             return null;
         }
         // 1. Hitung masa aktif pelanggan
@@ -565,7 +592,7 @@ class AffiliateService
         }
 
         $customer = $invoice->customer;
-        if (!$customer || !$customer->sales_id) {
+        if (!$customer || !$customer->sales_id || !self::isMonthlyCommissionEligible($customer)) {
             return [];
         }
 

@@ -460,7 +460,10 @@ class DataScopeService
 
         $accessibleAreas = $user->getAccessibleAreaIds();
         if (empty($accessibleAreas)) return $query->whereRaw('1 = 0');
-        return $query->whereIn('area_id', $accessibleAreas);
+        return $query->where(function ($q) use ($accessibleAreas) {
+            $q->whereIn('area_id', $accessibleAreas)
+                ->orWhereHas('areas', fn ($areaQuery) => $areaQuery->whereIn('areas.id', $accessibleAreas));
+        });
     }
 
     /**
@@ -479,7 +482,12 @@ class DataScopeService
             $q->whereIn('area_id', $accessibleAreas)
               ->orWhere(function ($fallback) use ($accessibleAreas) {
                   $fallback->whereNull('area_id')
-                      ->whereHas('olt', fn($oq) => $oq->whereIn('area_id', $accessibleAreas));
+                      ->whereHas('olt', function ($oltQuery) use ($accessibleAreas) {
+                          $oltQuery->where(function ($oltAreaQuery) use ($accessibleAreas) {
+                              $oltAreaQuery->whereIn('area_id', $accessibleAreas)
+                                  ->orWhereHas('areas', fn ($areasQuery) => $areasQuery->whereIn('areas.id', $accessibleAreas));
+                          });
+                      });
               });
         });
     }
@@ -504,7 +512,12 @@ class DataScopeService
                           $odcq->whereIn('area_id', $accessibleAreas)
                                ->orWhere(function ($odcFallback) use ($accessibleAreas) {
                                    $odcFallback->whereNull('area_id')
-                                       ->whereHas('olt', fn($oq) => $oq->whereIn('area_id', $accessibleAreas));
+                                       ->whereHas('olt', function ($oltQuery) use ($accessibleAreas) {
+                                           $oltQuery->where(function ($oltAreaQuery) use ($accessibleAreas) {
+                                               $oltAreaQuery->whereIn('area_id', $accessibleAreas)
+                                                   ->orWhereHas('areas', fn ($areasQuery) => $areasQuery->whereIn('areas.id', $accessibleAreas));
+                                           });
+                                       });
                                });
                       });
               });

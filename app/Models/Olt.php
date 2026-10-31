@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Olt extends Model
@@ -51,9 +53,20 @@ class Olt extends Model
         return $this->hasMany(Odc::class);
     }
 
-    public function area()
+    /**
+     * Area utama lama. Dipertahankan untuk kompatibilitas data jaringan lama.
+     */
+    public function area(): BelongsTo
     {
         return $this->belongsTo(Area::class);
+    }
+
+    /**
+     * Seluruh area/wilayah layanan OLT.
+     */
+    public function areas(): BelongsToMany
+    {
+        return $this->belongsToMany(Area::class, 'area_olt')->orderBy('areas.name');
     }
 
     // ── Computed ───────────────────────────────────────────────

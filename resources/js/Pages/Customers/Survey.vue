@@ -1,6 +1,6 @@
 <template>
     <AppLayout title="Data Survey" subtitle="Manajemen jadwal & pelaporan hasil survey ODP">
-        
+
         <!-- Panduan & SOP Penggunaan Fitur -->
         <PipelineGuideCard stage="survey" />
         
@@ -164,7 +164,7 @@
                         </template>
 
                         <!-- Tombol Dropdown Menu Aksi -->
-                        <button 
+                        <button
                             type="button" 
                             @click.stop="toggleDropdown($event, row)" 
                             class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 rounded-lg transition-all shadow-2xs hover:shadow-xs cursor-pointer text-xs font-semibold focus:outline-none"
@@ -378,6 +378,22 @@
                             <div class="min-w-0 flex-1">
                                 <span class="font-semibold text-xs block text-slate-800 group-hover:text-sky-700">Edit Laporan Survey</span>
                                 <p class="text-[10px] text-slate-400 group-hover:text-sky-500 font-normal leading-tight">Koreksi data ODP, port, atau foto</p>
+                            </div>
+                        </button>
+
+                        <!-- Rollback Survey (ulangi pengisian laporan dari awal) -->
+                        <button
+                            v-if="activeDropdownRow.status === 'survey' && activeDropdownRow.surveys?.length && hasPermission('customers_survey_rollback', 'customers_survey_edit')"
+                            type="button"
+                            @click="rollbackSurvey(activeDropdownRow); closeDropdown()"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-amber-50/80 hover:text-amber-700 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-amber-50 group-hover:bg-amber-100/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-slate-800 group-hover:text-amber-700">Rollback Survey</span>
+                                <p class="text-[10px] text-slate-400 group-hover:text-amber-500 font-normal leading-tight">Arsipkan laporan dan isi ulang dari awal</p>
                             </div>
                         </button>
                     </div>
@@ -1407,6 +1423,19 @@ function submitReport() {
     });
 }
 
+function rollbackSurvey(customer) {
+    if (!customer?.id) return;
+
+    const confirmed = window.confirm(
+        `Ulangi laporan survey untuk ${customer.name}?\n\nLaporan, pilihan ODP/port, jarak, redaman, dan foto sebelumnya akan diarsipkan. Jadwal serta petugas survey tetap dipertahankan agar dapat langsung mengisi laporan baru.`
+    );
+    if (!confirmed) return;
+
+    router.post(`/customers/${customer.id}/rollback-survey`, {}, {
+        preserveScroll: true,
+    });
+}
+
 function checkAutoOpenReport() {
     const cust = props.openCustomer || (props.customers?.data?.find(c => c.id == (new URLSearchParams(window.location.search)).get('open_report')));
     if (cust && hasPermission('customers_survey_report')) {
@@ -1428,7 +1457,7 @@ function toggleDropdown(event, row) {
         return;
     }
     const rect = event.currentTarget.getBoundingClientRect();
-    const dropdownHeight = 360;
+    const dropdownHeight = 430;
     const dropdownWidth = 288; // w-72 = 288px
 
     let top = rect.bottom + 6;

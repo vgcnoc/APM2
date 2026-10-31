@@ -156,7 +156,7 @@ class InfrastructureWorkOrderController extends Controller
 
         return Inertia::render('Infrastructure/WorkOrders/Create', [
             'areas' => DataScopeService::getScopedAreas($user, 'infrastructure_work_orders'),
-            'olts' => $oltQuery->get(['id', 'name', 'area_id', 'total_pon_ports', 'pon_vlans']),
+            'olts' => $oltQuery->with('areas:id,name')->get(['id', 'name', 'area_id', 'total_pon_ports', 'pon_vlans']),
             'odcs' => $odcQuery->get(['id', 'name', 'area_id', 'capacity', 'olt_id', 'pon_port', 'splitter_ratio']),
             'technicians' => $this->getEligibleTechnicians(),
             'materials' => $materials,
@@ -413,9 +413,9 @@ class InfrastructureWorkOrderController extends Controller
             'cable_meter_end' => 'nullable|integer|min:0',
             'cable_length_used' => 'nullable|integer|min:0',
             'photo_odp' => 'nullable|image|max:10240',
-            'photo_pole' => 'nullable|image|max:5120',
-            'photo_splicing' => 'nullable|image|max:5120',
-            'photo_opm' => 'nullable|image|max:5120',
+            'photo_pole' => 'nullable|image|max:10240',
+            'photo_splicing' => 'nullable|image|max:10240',
+            'photo_opm' => 'nullable|image|max:10240',
             'notes' => 'nullable|string|max:1000',
             'optical_checks' => 'nullable|array',
             'optical_checks.*.port_number' => 'required|integer|min:1',

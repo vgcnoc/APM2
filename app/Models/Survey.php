@@ -14,6 +14,7 @@ class Survey extends Model
         'customer_id', 'area_id', 'odp_id', 'port_number', 'surveyor_id', 'signal_loss',
         'distance_meters', 'port_available', 'feasibility',
         'survey_date', 'notes', 'photos',
+        'rolled_back_at', 'rolled_back_by',
     ];
 
     protected function casts(): array
@@ -23,6 +24,7 @@ class Survey extends Model
             'distance_meters' => 'decimal:2',
             'port_available' => 'boolean',
             'survey_date' => 'date',
+            'rolled_back_at' => 'datetime',
             'photos' => 'array',
         ];
     }

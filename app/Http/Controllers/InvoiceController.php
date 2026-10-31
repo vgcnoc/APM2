@@ -25,8 +25,13 @@ class InvoiceController extends Controller
                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
                  })
                  ->orWhere(function($sub) {
-                     $sub->where('is_prorata', true)
-                         ->orWhere('billing_type', 'prorata');
+                     $sub->where(function($prorata) {
+                         $prorata->where('is_prorata', true)
+                             ->orWhere('billing_type', 'prorata');
+                     })->whereHas('customer', function($customer) {
+                         $customer->whereDate('activation_date', '>=', '2026-10-01')
+                             ->whereDate('activation_date', '<', '2026-11-01');
+                     });
                  });
            })
                         ->where('is_reseller_balance', false);
@@ -41,8 +46,13 @@ class InvoiceController extends Controller
                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
                  })
                  ->orWhere(function($sub) {
-                     $sub->where('is_prorata', true)
-                         ->orWhere('billing_type', 'prorata');
+                     $sub->where(function($prorata) {
+                         $prorata->where('is_prorata', true)
+                             ->orWhere('billing_type', 'prorata');
+                     })->whereHas('customer', function($customer) {
+                         $customer->whereDate('activation_date', '>=', '2026-10-01')
+                             ->whereDate('activation_date', '<', '2026-11-01');
+                     });
                  });
            })
                         ->where('is_reseller_balance', false)
@@ -58,8 +68,13 @@ class InvoiceController extends Controller
                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
                  })
                  ->orWhere(function($sub) {
-                     $sub->where('is_prorata', true)
-                         ->orWhere('billing_type', 'prorata');
+                     $sub->where(function($prorata) {
+                         $prorata->where('is_prorata', true)
+                             ->orWhere('billing_type', 'prorata');
+                     })->whereHas('customer', function($customer) {
+                         $customer->whereDate('activation_date', '>=', '2026-10-01')
+                             ->whereDate('activation_date', '<', '2026-11-01');
+                     });
                  });
            })
                         ->where('is_reseller_balance', false);
@@ -74,8 +89,13 @@ class InvoiceController extends Controller
                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
                  })
                  ->orWhere(function($sub) {
-                     $sub->where('is_prorata', true)
-                         ->orWhere('billing_type', 'prorata');
+                     $sub->where(function($prorata) {
+                         $prorata->where('is_prorata', true)
+                             ->orWhere('billing_type', 'prorata');
+                     })->whereHas('customer', function($customer) {
+                         $customer->whereDate('activation_date', '>=', '2026-10-01')
+                             ->whereDate('activation_date', '<', '2026-11-01');
+                     });
                  });
            })
                         ->where('is_reseller_balance', false)
@@ -95,8 +115,13 @@ class InvoiceController extends Controller
                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
                  })
                  ->orWhere(function($sub) {
-                     $sub->where('is_prorata', true)
-                         ->orWhere('billing_type', 'prorata');
+                     $sub->where(function($prorata) {
+                         $prorata->where('is_prorata', true)
+                             ->orWhere('billing_type', 'prorata');
+                     })->whereHas('customer', function($customer) {
+                         $customer->whereDate('activation_date', '>=', '2026-10-01')
+                             ->whereDate('activation_date', '<', '2026-11-01');
+                     });
                  });
            })
            ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
@@ -183,8 +208,13 @@ class InvoiceController extends Controller
                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
                  })
                  ->orWhere(function($sub) {
-                     $sub->where('is_prorata', true)
-                         ->orWhere('billing_type', 'prorata');
+                     $sub->where(function($prorata) {
+                         $prorata->where('is_prorata', true)
+                             ->orWhere('billing_type', 'prorata');
+                     })->whereHas('customer', function($customer) {
+                         $customer->whereDate('activation_date', '>=', '2026-10-01')
+                             ->whereDate('activation_date', '<', '2026-11-01');
+                     });
                  });
            })
             ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
@@ -328,7 +358,7 @@ class InvoiceController extends Controller
             'amount' => 'required|numeric|min:1',
             'method' => 'required|string',
             'notes' => 'nullable|string',
-            'proof_image' => 'nullable|file|mimes:jpeg,png,jpg,webp,pdf|max:5120',
+            'proof_image' => 'nullable|file|mimes:jpeg,png,jpg,webp,pdf|max:10240',
             'internet_action' => 'nullable|in:on,off',
         ]);
 

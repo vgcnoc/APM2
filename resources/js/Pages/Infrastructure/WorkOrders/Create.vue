@@ -176,8 +176,13 @@ const setLeadTechnician = (id) => {
 // Filter OLT dan ODC berdasarkan Area yang dipilih
 const filteredOlts = computed(() => {
     if (!form.area_id) return [];
-    return props.olts.filter(o => o.area_id == form.area_id);
+    return props.olts.filter(o => oltServesArea(o, form.area_id));
 });
+
+const oltServesArea = (olt, areaId) => {
+    if (olt?.area_id == areaId) return true;
+    return (olt?.areas || []).some(area => area.id == areaId);
+};
 
 const filteredOdcs = computed(() => {
     if (!form.area_id) return [];

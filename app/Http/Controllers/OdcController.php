@@ -121,7 +121,7 @@ class OdcController extends Controller
 
         return Inertia::render('Infrastructure/Odc/Index', [
             'odcs' => $odcs,
-            'olts' => $oltQuery->get(['id', 'name', 'total_pon_ports', 'area_id', 'pon_vlans']),
+            'olts' => $oltQuery->with('areas:id,name')->get(['id', 'name', 'total_pon_ports', 'area_id', 'pon_vlans']),
             'areas' => DataScopeService::getScopedAreas($user, 'network_odc'),
             'capacities' => $capacities,
             'types' => $types,

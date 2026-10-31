@@ -132,6 +132,7 @@ class PermissionRegistry
                     ['name' => 'customers_survey_report', 'type' => 'button', 'label' => 'Tombol Input Laporan Hasil Survey'],
                     ['name' => 'customers_survey_mark_ready', 'type' => 'button', 'label' => 'Tombol Validasi Siap Pasang (Ready Install)'],
                     ['name' => 'customers_survey_edit', 'type' => 'button', 'label' => 'Tombol Edit Data Hasil Survey'],
+                    ['name' => 'customers_survey_rollback', 'type' => 'button', 'label' => 'Tombol Rollback Hasil Survey'],
                     ['name' => 'customers_survey_cancel', 'type' => 'button', 'label' => 'Tombol Batalkan Pelanggan'],
                     ['name' => 'customers_survey_delete', 'type' => 'button', 'label' => 'Tombol Hapus Pelanggan'],
                     ['name' => 'customers_survey_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Data Survey'],

@@ -81,7 +81,7 @@ class FtthController extends Controller
         $user = $request->user();
         $areaId = $request->area_id;
 
-        $oltsQuery = Olt::with('area')->whereNotNull('latitude')->whereNotNull('longitude');
+        $oltsQuery = Olt::with(['area', 'areas'])->whereNotNull('latitude')->whereNotNull('longitude');
         $odcsQuery = Odc::with(['area', 'olt'])->whereNotNull('latitude')->whereNotNull('longitude');
         $odpsQuery = Odp::with(['area', 'odc'])->whereNotNull('latitude')->whereNotNull('longitude');
         $customersQuery = Customer::where('status', 'active')
@@ -94,7 +94,10 @@ class FtthController extends Controller
         DataScopeService::applyCustomerScope($customersQuery, $user);
 
         if ($areaId) {
-            $oltsQuery->where('area_id', $areaId);
+            $oltsQuery->where(function ($query) use ($areaId) {
+                $query->where('area_id', $areaId)
+                    ->orWhereHas('areas', fn ($areasQuery) => $areasQuery->where('areas.id', $areaId));
+            });
             $odcsQuery->where('area_id', $areaId);
             $odpsQuery->where('area_id', $areaId);
             $customersQuery->where('area_id', $areaId);

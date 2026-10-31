@@ -17,6 +17,7 @@ class NetworkTopologyController extends Controller
 
         $query = Olt::with([
             'area',
+            'areas',
             'pons.odcs.odps.ports.ont.customer',
             'pons.odcs.odps.area',
             'pons.odcs.area'
@@ -25,7 +26,10 @@ class NetworkTopologyController extends Controller
         DataScopeService::applyOltScope($query, $user);
 
         if ($areaId) {
-            $query->where('area_id', $areaId);
+            $query->where(function ($areaQuery) use ($areaId) {
+                $areaQuery->where('area_id', $areaId)
+                    ->orWhereHas('areas', fn ($areasQuery) => $areasQuery->where('areas.id', $areaId));
+            });
         }
 
         $olts = $query->get();

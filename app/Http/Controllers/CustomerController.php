@@ -2459,7 +2459,7 @@ class CustomerController extends Controller
             'phone' => 'required|string|max:20',
             'address' => 'required|string',
             'area' => 'nullable|string',
-            'identity_photo' => 'nullable|image|max:5120', // Max 5MB
+            'identity_photo' => 'nullable|image|max:10240', // Max 10MB
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
             'package_id' => [
@@ -2878,7 +2878,7 @@ class CustomerController extends Controller
             ],
             'address' => 'required|string',
             'area' => 'nullable|string',
-            'identity_photo' => 'nullable|image|max:5120',
+            'identity_photo' => 'nullable|image|max:10240',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
             'package_id' => 'nullable|exists:internet_packages,id',
@@ -3090,11 +3090,11 @@ class CustomerController extends Controller
         ];
 
         // Photos are optional (can be uploaded now or edited manually later)
-        $rules['photo_odp'] = 'nullable|image|max:5120';
-        $rules['photo_installation'] = 'nullable|image|max:5120';
-        $rules['photo_ont'] = 'nullable|image|max:5120';
-        $rules['photo_customer'] = 'nullable|image|max:5120';
-        $rules['photo_redaman'] = 'nullable|image|max:5120';
+        $rules['photo_odp'] = 'nullable|image|max:10240';
+        $rules['photo_installation'] = 'nullable|image|max:10240';
+        $rules['photo_ont'] = 'nullable|image|max:10240';
+        $rules['photo_customer'] = 'nullable|image|max:10240';
+        $rules['photo_redaman'] = 'nullable|image|max:10240';
 
         $validated = $request->validate($rules);
         $validated['rx_power'] = number_format(\App\Services\DataMigrationService::parseRxPower($validated['rx_power'] ?? null), 2, '.', '');
@@ -3813,7 +3813,7 @@ class CustomerController extends Controller
                     ? " ({$customer->customer_code})"
                     : '';
 
-                $isMigrated = (bool) $customer->is_migrated;
+                $isOperationalFeeEligible = \App\Services\AffiliateService::isOperationalFeeEligible($customer);
 
                 // 1. Fee Booking (Sales / Referral)
                 if ($customer->sales_id) {
@@ -3821,10 +3821,8 @@ class CustomerController extends Controller
                     if ($salesUser) {
                         $isEmployee = \App\Services\AffiliateService::isInternalEmployee($salesUser);
 
-                        // Aturan:
-                        // - Khusus migrasi: insentif fee booking karyawan internal JANGAN DIMUNCULKAN
-                        // - Non-migrasi: insentif fee booking karyawan dibentuk setelah aktivasi
-                        if (!$isMigrated && $isEmployee) {
+                        // Fee booking hanya berlaku untuk booking baru sejak 1 Oktober 2026.
+                        if ($isOperationalFeeEligible && $isEmployee) {
                             $masterBooking = (float) (\App\Models\MasterFee::where('type', 'Fee Booking')->where('is_active', true)->value('nominal') ?? 35000);
                             $bookingAmount = ($salesUser->booking_fee && (float)$salesUser->booking_fee > 0)
                                 ? (float) $salesUser->booking_fee
@@ -3858,10 +3856,8 @@ class CustomerController extends Controller
                             }
                         }
 
-                        // Catat juga di AffiliateCommission untuk modul afiliasi:
-                        // - Untuk orang luar / mitra non-karyawan: fee booking 35.000 dimunculkan setelah aktivasi (berlaku untuk migrasi maupun non-migrasi)
-                        // - Untuk karyawan: dicatat riwayat payroll hanya jika non-migrasi
-                        if (!in_array($customer->service_status, ['gratis', 'free_home'])) {
+                        // Catat juga di AffiliateCommission untuk modul afiliasi.
+                        if ($isOperationalFeeEligible && !in_array($customer->service_status, ['gratis', 'free_home'])) {
                             try {
                                 \App\Services\AffiliateService::recordBookingCommission($customer);
                             } catch (\Throwable $e) {
@@ -3872,8 +3868,7 @@ class CustomerController extends Controller
                 }
 
                 // 2. Fee Survey (Surveyor / Teknisi Survey)
-                // Aturan khusus migrasi: Insentif survey JANGAN DIMUNCULKAN
-                if (!$isMigrated) {
+                if ($isOperationalFeeEligible) {
                     $surveyorIds = collect();
                     $allSurveys = $customer->surveys()->get();
                     foreach ($allSurveys as $survey) {
@@ -3932,8 +3927,7 @@ class CustomerController extends Controller
                     ->update(['status' => 'done']);
 
                 // 3. Fee Pasang / Instalasi (Setiap Teknisi yang bertugas mendapatkan insentif penuh masing-masing)
-                // Aturan khusus migrasi: Insentif pasang teknisi JANGAN DIMUNCULKAN
-                if (!$isMigrated) {
+                if ($isOperationalFeeEligible) {
                     $installSchedules = $customer->technicianSchedules()
                         ->where('type', 'installation')
                         ->whereIn('status', ['scheduled', 'on_the_way', 'working', 'done'])
@@ -4207,7 +4201,7 @@ class CustomerController extends Controller
             'notes' => 'nullable|string',
             'photos' => 'nullable|array',
             'photos.*.label' => 'nullable|string',
-            'photos.*.file' => 'nullable|image|max:5120',
+            'photos.*.file' => 'nullable|image|max:10240',
         ]);
 
         $survey = $customer->surveys()->first();
@@ -4385,11 +4379,11 @@ class CustomerController extends Controller
             'rx_power' => 'nullable|string',
             'start_time' => 'nullable|string',
             'end_time' => 'nullable|string',
-            'photo_odp' => 'nullable|image|max:5120',
-            'photo_installation' => 'nullable|image|max:5120',
-            'photo_ont' => 'nullable|image|max:5120',
-            'photo_customer' => 'nullable|image|max:5120',
-            'photo_redaman' => 'nullable|image|max:5120',
+            'photo_odp' => 'nullable|image|max:10240',
+            'photo_installation' => 'nullable|image|max:10240',
+            'photo_ont' => 'nullable|image|max:10240',
+            'photo_customer' => 'nullable|image|max:10240',
+            'photo_redaman' => 'nullable|image|max:10240',
         ]);
 
         $cleanMac = !empty($validated['mac_address']) 
@@ -4993,7 +4987,7 @@ class CustomerController extends Controller
             'notes' => 'nullable|string',
             'photos' => 'nullable|array',
             'photos.*.label' => 'nullable|string',
-            'photos.*.file' => 'nullable|image|max:5120',
+            'photos.*.file' => 'nullable|image|max:10240',
         ], [
             'odp_id.required_if' => 'ODP harus dipilih jika status Feasible.',
             'port_number.required_if' => 'Port ODP harus dipilih jika status Feasible.',
@@ -5107,7 +5101,7 @@ class CustomerController extends Controller
             'notes' => 'nullable|string',
             'photos' => 'nullable|array',
             'photos.*.label' => 'nullable|string',
-            'photos.*.file' => 'nullable|image|max:5120',
+            'photos.*.file' => 'nullable|image|max:10240',
         ]);
 
         if (!empty($validated['odp_id'])) {
@@ -5196,6 +5190,65 @@ class CustomerController extends Controller
         }
 
         return redirect()->route('customers.survey')->with('success', 'Hasil survey berhasil diubah.');
+    }
+
+    /**
+     * Arsipkan hasil survey dan buka kembali tahap pengisian laporan.
+     */
+    public function rollbackSurvey(Customer $customer): RedirectResponse
+    {
+        if (!auth()->user()->can('customers_survey_rollback') && !auth()->user()->can('customers_survey_edit')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengulang laporan survey.');
+        }
+
+        if ($customer->status !== 'survey') {
+            return back()->with('error', 'Rollback hanya dapat dilakukan pada pelanggan yang masih berada di tahap Survey.');
+        }
+
+        $surveys = $customer->surveys()->get();
+        if ($surveys->isEmpty()) {
+            return back()->with('error', 'Tidak ada laporan survey yang dapat di-roll back.');
+        }
+
+        $oldStatus = $customer->status;
+        DB::transaction(function () use ($customer, $surveys, $oldStatus) {
+            foreach ($surveys as $survey) {
+                // Port hanya dilepas bila masih berupa reservasi survey.
+                if ($survey->odp_id && $survey->port_number) {
+                    \App\Models\OdpPort::where('odp_id', $survey->odp_id)
+                        ->where('port_number', $survey->port_number)
+                        ->where('status', 'reserved')
+                        ->update([
+                            'status' => 'available',
+                            'description' => null,
+                        ]);
+                }
+
+                $survey->update([
+                    'rolled_back_at' => now(),
+                    'rolled_back_by' => auth()->id(),
+                ]);
+            }
+
+            // Pertahankan teknisi dan jadwal yang sama, tetapi buka kembali tahap pelaporannya.
+            $customer->technicianSchedules()
+                ->where('type', 'survey')
+                ->where('status', 'done')
+                ->update(['status' => 'scheduled']);
+
+            $customer->update(['status' => 'survey']);
+
+            \App\Models\AuditLog::createLog(
+                'Rollback Survey',
+                $customer,
+                $oldStatus,
+                'survey',
+                'Mengarsipkan hasil laporan survey agar teknisi dapat mengisi laporan ulang.'
+            );
+        });
+
+        return redirect()->route('customers.survey')
+            ->with('success', 'Laporan survey lama diarsipkan. Jadwal dan petugas tetap dipertahankan untuk mengisi laporan baru.');
     }
 
     /**
