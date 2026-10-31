@@ -937,6 +937,14 @@ class DashboardController extends Controller
             $housePhotoSource = null;
             $allPhotos = [];
 
+            // 0. Ekstraksi langsung dari profil pelanggan (house_photo)
+            if (!empty($cust->house_photo)) {
+                $clean = ltrim($cust->house_photo, '/');
+                $housePhotoUrl = \Illuminate\Support\Str::startsWith($clean, ['http://', 'https://']) ? $clean : asset('storage/' . $clean);
+                $housePhotoSource = 'Foto Rumah Pelanggan';
+                $allPhotos[] = ['type' => 'house', 'label' => 'Foto Rumah Pelanggan', 'url' => $housePhotoUrl];
+            }
+
             // 1. Ekstraksi dari dokumentasi survey (label 'Foto Rumah' atau foto survey)
             if ($cust->surveys) {
                 foreach ($cust->surveys as $survey) {

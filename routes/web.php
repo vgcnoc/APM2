@@ -234,6 +234,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{customer}/update-installation-schedule', [CustomerController::class, 'updateInstallationSchedule'])->name('update-installation-schedule');
         Route::post('/{customer}/update-installation-report', [CustomerController::class, 'updateInstallationReport'])->name('update-installation-report');
         Route::post('/{customer}/update-activation', [CustomerController::class, 'updateActivation'])->name('update-activation');
+        Route::post('/{customer}/quick-update', [CustomerController::class, 'quickUpdate'])->name('quick-update');
             
         // Update Pelanggan POST
         Route::post('/{customer}/update', [CustomerController::class, 'update'])

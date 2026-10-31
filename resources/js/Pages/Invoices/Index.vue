@@ -251,9 +251,19 @@
                             {{ row.customer.name?.charAt(0).toUpperCase() }}
                         </div>
                         <div class="flex flex-col gap-0.5 min-w-0">
-                            <Link :href="`/customers/${row.customer.id}`" class="text-gray-900 font-bold text-xs uppercase hover:text-indigo-600 hover:underline truncate">
-                                {{ row.customer.name }}
-                            </Link>
+                            <div class="flex items-center gap-1.5 min-w-0">
+                                <Link :href="`/customers/${row.customer.id}`" class="text-gray-900 font-bold text-xs uppercase hover:text-indigo-600 hover:underline truncate">
+                                    {{ row.customer.name }}
+                                </Link>
+                                <button
+                                    type="button"
+                                    @click.stop="openCustomerModal(row.customer)"
+                                    class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-indigo-50 hover:bg-indigo-100 text-[10px] text-indigo-600 font-bold border border-indigo-200 transition-colors shadow-2xs shrink-0 cursor-pointer"
+                                    title="Klik untuk melihat & mengedit GPS, foto KTP, foto rumah, dan nomor HP"
+                                >
+                                    ℹ️
+                                </button>
+                            </div>
                             <div class="flex items-center gap-1.5 text-[10px] text-gray-500 font-mono">
                                 <span>#{{ row.invoice_number }}</span>
                                 <span>&bull;</span>
@@ -1831,6 +1841,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { Link, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
+import CustomerQuickDetailModal from '@/Components/CustomerQuickDetailModal.vue';
 
 const props = defineProps({
     invoices: Object,
@@ -1868,6 +1879,33 @@ const columns = [
 ];
 
 const filterTabVal = ref(props.filters?.tab || 'semua');
+
+// Customer Quick Detail & Edit Modal State
+const showCustomerModal = ref(false);
+const selectedCustomer = ref(null);
+
+const openCustomerModal = (customer) => {
+    if (!customer) return;
+    selectedCustomer.value = customer;
+    showCustomerModal.value = true;
+};
+
+const onCustomerUpdated = (updatedCust) => {
+    if (!updatedCust) return;
+    selectedCustomer.value = updatedCust;
+    if (props.invoices?.data) {
+        props.invoices.data.forEach(inv => {
+            if (inv.customer && inv.customer.id === updatedCust.id) {
+                inv.customer.phone = updatedCust.phone;
+                inv.customer.address = updatedCust.address;
+                inv.customer.latitude = updatedCust.latitude;
+                inv.customer.longitude = updatedCust.longitude;
+                inv.customer.identity_photo_url = updatedCust.identity_photo_url;
+                inv.customer.house_photo_url = updatedCust.house_photo_url;
+            }
+        });
+    }
+};
 const filterStatusVal = ref(props.filters?.status || '');
 const filterAreaVal = ref(props.filters?.area_id || '');
 const filterPackageVal = ref(props.filters?.package_id || '');

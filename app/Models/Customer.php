@@ -44,6 +44,7 @@ class Customer extends Model
         'user_id',
         'area',
         'identity_photo',
+        'house_photo',
         'latitude',
         'longitude',
         'package_id',
@@ -1038,6 +1039,9 @@ class Customer extends Model
         try {
             if ($this->identity_photo && Storage::disk('public')->exists($this->identity_photo)) {
                 Storage::disk('public')->delete($this->identity_photo);
+            }
+            if ($this->house_photo && Storage::disk('public')->exists($this->house_photo)) {
+                Storage::disk('public')->delete($this->house_photo);
             }
         } catch (\Throwable $e) {
             Log::warning('[Customer::purgeConnectedData] Error deleting identity photo: ' . $e->getMessage());

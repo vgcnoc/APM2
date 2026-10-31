@@ -15,6 +15,8 @@ use App\Services\RadiusService;
 use App\Services\CustomerBillingPrice;
 use App\Services\DataScopeService;
 use App\Services\ProrataCalculator;
+use App\Services\ImageCompressionService;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -4127,6 +4129,159 @@ class CustomerController extends Controller
         \App\Models\AuditLog::createLog('Edit Booking & Lokasi', $customer, $customer->status, $customer->status, $logDesc);
 
         return back()->with('success', 'Data booking & lokasi berhasil diperbarui.');
+    }
+
+    /**
+     * Quick update for customer coordinates (lat/long), address, KTP photo, house photo, and phone.
+     * Automatically syncs to linked user and ONT record.
+     */
+    public function quickUpdate(Request $request, Customer $customer)
+    {
+        $request->validate([
+            'phone' => 'nullable|string|max:50',
+            'address' => 'nullable|string|max:1000',
+            'latitude' => 'nullable|string|max:60',
+            'longitude' => 'nullable|string|max:60',
+            'identity_photo' => 'nullable|file|mimes:jpeg,png,jpg,webp,heic|max:15360',
+            'house_photo' => 'nullable|file|mimes:jpeg,png,jpg,webp,heic|max:15360',
+            'remove_identity_photo' => 'nullable',
+            'remove_house_photo' => 'nullable',
+        ]);
+
+        $updateData = [];
+
+        // Parse coordinates if pasted in combined format (e.g. "-6.1234, 106.5678" or URL)
+        $lat = $request->input('latitude');
+        $lng = $request->input('longitude');
+
+        if ($lat) {
+            $lat = trim((string)$lat);
+            if (str_contains($lat, ',') && empty($lng)) {
+                $coords = explode(',', $lat);
+                $lat = trim($coords[0]);
+                $lng = trim($coords[1] ?? '');
+            }
+        }
+        if ($lng) {
+            $lng = trim((string)$lng);
+        }
+
+        if ($request->has('latitude')) {
+            $updateData['latitude'] = $lat ?: null;
+        }
+        if ($request->has('longitude')) {
+            $updateData['longitude'] = $lng ?: null;
+        }
+
+        if ($request->has('address')) {
+            $updateData['address'] = $request->input('address');
+        }
+
+        if ($request->has('phone')) {
+            $updateData['phone'] = $request->input('phone');
+        }
+
+        // 1. Process Foto KTP
+        $removeKtp = filter_var($request->input('remove_identity_photo'), FILTER_VALIDATE_BOOLEAN);
+        if ($removeKtp) {
+            if ($customer->identity_photo && Storage::disk('public')->exists($customer->identity_photo)) {
+                Storage::disk('public')->delete($customer->identity_photo);
+            }
+            $updateData['identity_photo'] = null;
+        } elseif ($request->hasFile('identity_photo')) {
+            if ($customer->identity_photo && Storage::disk('public')->exists($customer->identity_photo)) {
+                Storage::disk('public')->delete($customer->identity_photo);
+            }
+            $updateData['identity_photo'] = ImageCompressionService::compressAndStore(
+                $request->file('identity_photo'),
+                'ktp',
+                'public'
+            );
+        }
+
+        // 2. Process Foto Rumah
+        $removeHouse = filter_var($request->input('remove_house_photo'), FILTER_VALIDATE_BOOLEAN);
+        if ($removeHouse) {
+            if ($customer->house_photo && Storage::disk('public')->exists($customer->house_photo)) {
+                Storage::disk('public')->delete($customer->house_photo);
+            }
+            $updateData['house_photo'] = null;
+            if ($customer->ont && $customer->ont->photo_customer) {
+                $customer->ont->update(['photo_customer' => null]);
+            }
+        } elseif ($request->hasFile('house_photo')) {
+            if ($customer->house_photo && Storage::disk('public')->exists($customer->house_photo)) {
+                Storage::disk('public')->delete($customer->house_photo);
+            }
+            $housePath = ImageCompressionService::compressAndStore(
+                $request->file('house_photo'),
+                'house_photos',
+                'public'
+            );
+            $updateData['house_photo'] = $housePath;
+
+            // Sinkronkan ke ONT (agar pemantauan teknisi & ODP langsung menampilkan foto rumah terbaru)
+            if ($customer->ont) {
+                $customer->ont->update(['photo_customer' => $housePath]);
+            }
+        }
+
+        $customer->update($updateData);
+
+        // 3. Sinkronkan nomor telepon ke user terhubung jika ada
+        if (isset($updateData['phone']) && $customer->user_id) {
+            $user = User::find($customer->user_id);
+            if ($user && $user->phone !== $updateData['phone']) {
+                $user->update(['phone' => $updateData['phone']]);
+            }
+        }
+
+        // 4. Catat Audit Log
+        $actor = auth()->user()?->name ?? 'Admin/Petugas';
+        \App\Models\AuditLog::createLog(
+            'Update Cepat Pelanggan',
+            $customer,
+            $customer->status,
+            $customer->status,
+            "Petugas {$actor} memperbarui info cepat pelanggan {$customer->name} ({$customer->customer_code}) [Alamat/GPS/Foto/Kontak]."
+        );
+
+        // Fresh URLs
+        $identityPhotoUrl = null;
+        if ($customer->identity_photo) {
+            $identityPhotoUrl = str_starts_with($customer->identity_photo, 'http')
+                ? $customer->identity_photo
+                : asset('storage/' . $customer->identity_photo);
+        }
+
+        $housePhotoUrl = null;
+        if ($customer->house_photo) {
+            $housePhotoUrl = str_starts_with($customer->house_photo, 'http')
+                ? $customer->house_photo
+                : asset('storage/' . $customer->house_photo);
+        } elseif ($customer->ont?->photo_customer) {
+            $housePhotoUrl = asset('storage/' . $customer->ont->photo_customer);
+        }
+
+        $customerData = [
+            'id' => $customer->id,
+            'customer_code' => $customer->customer_code,
+            'name' => $customer->name,
+            'phone' => $customer->phone,
+            'address' => $customer->address,
+            'latitude' => $customer->latitude,
+            'longitude' => $customer->longitude,
+            'area' => $customer->areaModel?->name ?? $customer->area,
+            'package' => $customer->package?->name,
+            'identity_photo_url' => $identityPhotoUrl,
+            'house_photo_url' => $housePhotoUrl,
+        ];
+
+        return response()->json([
+            'success' => true,
+            'message' => "Data pelanggan {$customer->name} berhasil diperbarui & disinkronkan!",
+            'customer' => $customerData,
+        ]);
     }
 
     /**
