@@ -106,3 +106,4 @@ class AutoEvaluateAttendance extends Command
         return Command::SUCCESS;
     }
 }
+
