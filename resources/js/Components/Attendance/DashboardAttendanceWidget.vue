@@ -62,9 +62,9 @@
                     </span>
                 </div>
 
-                <!-- Tombol Atur Shift / Libur Cepat untuk Admin/HRD -->
+                <!-- Tombol Atur Shift / Libur Cepat untuk Admin/HRD (Hidden per request) -->
                 <button
-                    v-if="can('attendance_btn_set_shift_holiday') || can('attendances_manage_shifts') || can('work_schedules_manage')"
+                    v-if="false"
                     type="button"
                     @click="openShiftModal"
                     class="hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-blue-300 border border-slate-700/80 transition cursor-pointer active:scale-95 shadow-2xs"
@@ -123,8 +123,8 @@
                     </div>
                 </div>
 
-                <!-- Switcher Karyawan untuk Admin/HRD -->
-                <div v-if="allEmployees && allEmployees.length > 1" class="pt-1">
+                <!-- Switcher Karyawan untuk Admin/HRD (Hidden per request) -->
+                <div v-if="false" class="pt-1">
                     <div class="flex items-center gap-2">
                         <span class="text-[11px] font-semibold text-slate-400 shrink-0">Ganti Staf:</span>
                         <select
@@ -219,9 +219,9 @@
                             </span>
                         </div>
 
-                        <!-- Tombol Ubah Shift / Libur -->
+                        <!-- Tombol Ubah Shift / Libur (Hidden per request) -->
                         <button
-                            v-if="can('attendance_btn_set_shift_holiday') || can('attendances_manage_shifts') || can('work_schedules_manage')"
+                            v-if="false"
                             type="button"
                             @click="openShiftModal"
                             class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold text-blue-600 dark:text-blue-400 bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950/60 border border-slate-200 dark:border-slate-700 hover:border-blue-300 transition shrink-0 flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95"
