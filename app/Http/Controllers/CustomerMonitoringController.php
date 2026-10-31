@@ -93,6 +93,7 @@ class CustomerMonitoringController extends Controller
         $menunggakCustomerQuery = Customer::where('status', '!=', 'terminated')
             ->whereHas('invoices', function ($q) use ($today) {
                 $q->whereIn('status', ['unpaid', 'partial'])
+                  ->where('invoice_number', 'not like', 'INV-MIG-%')
                   ->where('is_reseller_balance', false)
                   ->where('due_date', '<', $today);
             });
@@ -101,6 +102,7 @@ class CustomerMonitoringController extends Controller
         $menunggakCustomersCount = $menunggakCustomerQuery->count();
 
         $nominalMenunggakQuery = Invoice::whereIn('status', ['unpaid', 'partial'])
+            ->where('invoice_number', 'not like', 'INV-MIG-%')
             ->where('is_reseller_balance', false)
             ->where('due_date', '<', $today)
             ->whereHas('customer', fn($c) => $c->where('status', '!=', 'terminated'));
@@ -110,6 +112,7 @@ class CustomerMonitoringController extends Controller
 
         // Janji bayar (hanya pelanggan yang belum terminated)
         $janjiBayarQuery = Invoice::whereIn('status', ['unpaid', 'partial'])
+            ->where('invoice_number', 'not like', 'INV-MIG-%')
             ->where('is_reseller_balance', false)
             ->whereNotNull('promise_date')
             ->whereHas('customer', fn($c) => $c->where('status', '!=', 'terminated'));
@@ -131,6 +134,7 @@ class CustomerMonitoringController extends Controller
         $stopKarenaTunggakanQuery = Customer::where('status', 'suspended')
             ->whereHas('invoices', function ($q) use ($today) {
                 $q->whereIn('status', ['unpaid', 'partial'])
+                  ->where('invoice_number', 'not like', 'INV-MIG-%')
                   ->where('is_reseller_balance', false)
                   ->where('due_date', '<', $today);
             });
@@ -203,10 +207,10 @@ class CustomerMonitoringController extends Controller
             ])
             ->where('status', 'suspended')
             ->withCount(['invoices as unpaid_count' => function ($sub) {
-                $sub->whereIn('status', ['unpaid', 'partial'])->where('is_reseller_balance', false);
+                $sub->whereIn('status', ['unpaid', 'partial'])->where('invoice_number', 'not like', 'INV-MIG-%')->where('is_reseller_balance', false);
             }])
             ->withSum(['invoices as total_unpaid_amount' => function ($sub) {
-                $sub->whereIn('status', ['unpaid', 'partial'])->where('is_reseller_balance', false);
+                $sub->whereIn('status', ['unpaid', 'partial'])->where('invoice_number', 'not like', 'INV-MIG-%')->where('is_reseller_balance', false);
             }], 'amount');
 
             if ($search) {
@@ -226,12 +230,14 @@ class CustomerMonitoringController extends Controller
             if ($stopReason === 'tunggakan') {
                 $q->whereHas('invoices', function ($sub) use ($today) {
                     $sub->whereIn('status', ['unpaid', 'partial'])
+                        ->where('invoice_number', 'not like', 'INV-MIG-%')
                         ->where('is_reseller_balance', false)
                         ->where('due_date', '<', $today);
                 });
             } elseif ($stopReason === 'manual') {
                 $q->whereDoesntHave('invoices', function ($sub) use ($today) {
                     $sub->whereIn('status', ['unpaid', 'partial'])
+                        ->where('invoice_number', 'not like', 'INV-MIG-%')
                         ->where('is_reseller_balance', false)
                         ->where('due_date', '<', $today);
                 });
@@ -248,21 +254,25 @@ class CustomerMonitoringController extends Controller
                 'package:id,name,price',
                 'invoices' => function ($inv) {
                     $inv->whereIn('status', ['unpaid', 'partial'])
+                        ->where('invoice_number', 'not like', 'INV-MIG-%')
                         ->where('is_reseller_balance', false)
                         ->orderBy('due_date', 'asc');
                 }
             ])
             ->whereHas('invoices', function ($inv) use ($today) {
                 $inv->whereIn('status', ['unpaid', 'partial'])
+                    ->where('invoice_number', 'not like', 'INV-MIG-%')
                     ->where('is_reseller_balance', false)
                     ->where('due_date', '<', $today);
             })
             ->withCount(['invoices as unpaid_count' => function ($inv) {
                 $inv->whereIn('status', ['unpaid', 'partial'])
+                    ->where('invoice_number', 'not like', 'INV-MIG-%')
                     ->where('is_reseller_balance', false);
             }])
             ->withSum(['invoices as total_unpaid_amount' => function ($inv) {
                 $inv->whereIn('status', ['unpaid', 'partial'])
+                    ->where('invoice_number', 'not like', 'INV-MIG-%')
                     ->where('is_reseller_balance', false);
             }], 'amount');
 

@@ -25,13 +25,8 @@ class InvoiceController extends Controller
                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
                  })
                  ->orWhere(function($sub) {
-                     $sub->where(function($prorata) {
-                         $prorata->where('is_prorata', true)
-                             ->orWhere('billing_type', 'prorata');
-                     })->whereHas('customer', function($customer) {
-                         $customer->whereDate('activation_date', '>=', '2026-10-01')
-                             ->whereDate('activation_date', '<', '2026-11-01');
-                     });
+                     $sub->where('is_prorata', true)
+                         ->orWhere('billing_type', 'prorata');
                  });
            })
                         ->where('is_reseller_balance', false);
@@ -46,13 +41,8 @@ class InvoiceController extends Controller
                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
                  })
                  ->orWhere(function($sub) {
-                     $sub->where(function($prorata) {
-                         $prorata->where('is_prorata', true)
-                             ->orWhere('billing_type', 'prorata');
-                     })->whereHas('customer', function($customer) {
-                         $customer->whereDate('activation_date', '>=', '2026-10-01')
-                             ->whereDate('activation_date', '<', '2026-11-01');
-                     });
+                     $sub->where('is_prorata', true)
+                         ->orWhere('billing_type', 'prorata');
                  });
            })
                         ->where('is_reseller_balance', false)
@@ -68,13 +58,8 @@ class InvoiceController extends Controller
                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
                  })
                  ->orWhere(function($sub) {
-                     $sub->where(function($prorata) {
-                         $prorata->where('is_prorata', true)
-                             ->orWhere('billing_type', 'prorata');
-                     })->whereHas('customer', function($customer) {
-                         $customer->whereDate('activation_date', '>=', '2026-10-01')
-                             ->whereDate('activation_date', '<', '2026-11-01');
-                     });
+                     $sub->where('is_prorata', true)
+                         ->orWhere('billing_type', 'prorata');
                  });
            })
                         ->where('is_reseller_balance', false);
@@ -89,13 +74,8 @@ class InvoiceController extends Controller
                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
                  })
                  ->orWhere(function($sub) {
-                     $sub->where(function($prorata) {
-                         $prorata->where('is_prorata', true)
-                             ->orWhere('billing_type', 'prorata');
-                     })->whereHas('customer', function($customer) {
-                         $customer->whereDate('activation_date', '>=', '2026-10-01')
-                             ->whereDate('activation_date', '<', '2026-11-01');
-                     });
+                     $sub->where('is_prorata', true)
+                         ->orWhere('billing_type', 'prorata');
                  });
            })
                         ->where('is_reseller_balance', false)
@@ -115,13 +95,8 @@ class InvoiceController extends Controller
                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
                  })
                  ->orWhere(function($sub) {
-                     $sub->where(function($prorata) {
-                         $prorata->where('is_prorata', true)
-                             ->orWhere('billing_type', 'prorata');
-                     })->whereHas('customer', function($customer) {
-                         $customer->whereDate('activation_date', '>=', '2026-10-01')
-                             ->whereDate('activation_date', '<', '2026-11-01');
-                     });
+                     $sub->where('is_prorata', true)
+                         ->orWhere('billing_type', 'prorata');
                  });
            })
            ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
@@ -213,13 +188,7 @@ class InvoiceController extends Controller
             }
         }
 
-        if ($request->filled('start_date') && $request->filled('end_date')) {
-            $query->whereBetween('issued_date', [$request->start_date, $request->end_date]);
-        } elseif ($request->filled('start_date')) {
-            $query->where('issued_date', '>=', $request->start_date);
-        } elseif ($request->filled('end_date')) {
-            $query->where('issued_date', '<=', $request->end_date);
-        }
+        $this->applyFlexibleDateFilter($query, $request);
 
         // Get counts for tabs
         $baseQuery = Invoice::where('is_reseller_balance', false)
@@ -231,13 +200,8 @@ class InvoiceController extends Controller
                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
                  })
                  ->orWhere(function($sub) {
-                     $sub->where(function($prorata) {
-                         $prorata->where('is_prorata', true)
-                             ->orWhere('billing_type', 'prorata');
-                     })->whereHas('customer', function($customer) {
-                         $customer->whereDate('activation_date', '>=', '2026-10-01')
-                             ->whereDate('activation_date', '<', '2026-11-01');
-                     });
+                     $sub->where('is_prorata', true)
+                         ->orWhere('billing_type', 'prorata');
                  });
            })
             ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
@@ -268,13 +232,7 @@ class InvoiceController extends Controller
             }
         }
 
-        if ($request->filled('start_date') && $request->filled('end_date')) {
-            $baseQuery->whereBetween('issued_date', [$request->start_date, $request->end_date]);
-        } elseif ($request->filled('start_date')) {
-            $baseQuery->where('issued_date', '>=', $request->start_date);
-        } elseif ($request->filled('end_date')) {
-            $baseQuery->where('issued_date', '<=', $request->end_date);
-        }
+        $this->applyFlexibleDateFilter($baseQuery, $request);
 
         // Active base excludes terminated customers for regular operational cards
         $activeBaseQuery = (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', '!=', 'terminated'));
@@ -426,6 +384,7 @@ class InvoiceController extends Controller
         // Cari semua tagihan unpaid/partial milik pelanggan ini, urutkan dari yang tertua
         $unpaidInvoices = Invoice::where('customer_id', $customerId)
             ->whereIn('status', ['unpaid', 'partial'])
+            ->where('invoice_number', 'not like', 'INV-MIG-%')
             ->orderBy('due_date', 'asc')
             ->get();
             
@@ -1133,13 +1092,8 @@ class InvoiceController extends Controller
                       $sub->where('period_year', 2026)->where('period_month', '>', 10);
                   })
                   ->orWhere(function($sub) {
-                      $sub->where(function($prorata) {
-                          $prorata->where('is_prorata', true)
-                              ->orWhere('billing_type', 'prorata');
-                      })->whereHas('customer', function($customer) {
-                          $customer->whereDate('activation_date', '>=', '2026-10-01')
-                              ->whereDate('activation_date', '<', '2026-11-01');
-                      });
+                      $sub->where('is_prorata', true)
+                          ->orWhere('billing_type', 'prorata');
                   });
             })
             ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
@@ -1218,13 +1172,7 @@ class InvoiceController extends Controller
             }
         }
 
-        if ($request->filled('start_date') && $request->filled('end_date')) {
-            $query->whereBetween('issued_date', [$request->start_date, $request->end_date]);
-        } elseif ($request->filled('start_date')) {
-            $query->where('issued_date', '>=', $request->start_date);
-        } elseif ($request->filled('end_date')) {
-            $query->where('issued_date', '<=', $request->end_date);
-        }
+        $this->applyFlexibleDateFilter($query, $request);
 
         $invoices = $query->latest('id')->get();
         $filename = "Laporan_Tagihan_Invoice_" . date('Ymd_His') . ".csv";
@@ -1305,13 +1253,8 @@ class InvoiceController extends Controller
                       $sub->where('period_year', 2026)->where('period_month', '>', 10);
                   })
                   ->orWhere(function($sub) {
-                      $sub->where(function($prorata) {
-                          $prorata->where('is_prorata', true)
-                              ->orWhere('billing_type', 'prorata');
-                      })->whereHas('customer', function($customer) {
-                          $customer->whereDate('activation_date', '>=', '2026-10-01')
-                              ->whereDate('activation_date', '<', '2026-11-01');
-                      });
+                      $sub->where('is_prorata', true)
+                          ->orWhere('billing_type', 'prorata');
                   });
             })
             ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
@@ -1390,13 +1333,7 @@ class InvoiceController extends Controller
             }
         }
 
-        if ($request->filled('start_date') && $request->filled('end_date')) {
-            $query->whereBetween('issued_date', [$request->start_date, $request->end_date]);
-        } elseif ($request->filled('start_date')) {
-            $query->where('issued_date', '>=', $request->start_date);
-        } elseif ($request->filled('end_date')) {
-            $query->where('issued_date', '<=', $request->end_date);
-        }
+        $this->applyFlexibleDateFilter($query, $request);
 
         $invoices = $query->latest('id')->get();
 
@@ -1405,5 +1342,53 @@ class InvoiceController extends Controller
             'filters' => $request->all(),
             'printDate' => now()->format('d F Y H:i'),
         ]);
+    }
+
+    /**
+     * Filter tanggal fleksibel yang cerdas: mencocokkan issued_date, created_at, dan periode invoice.
+     */
+    private function applyFlexibleDateFilter($targetQuery, Request $request): void
+    {
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $startDate = $request->start_date;
+            $endDate = $request->end_date;
+            $startCarbon = \Carbon\Carbon::parse($startDate)->startOfDay();
+            $endCarbon = \Carbon\Carbon::parse($endDate)->endOfDay();
+
+            $targetQuery->where(function($sub) use ($startDate, $endDate, $startCarbon, $endCarbon) {
+                $sub->whereBetween('issued_date', [$startDate, $endDate])
+                    ->orWhereBetween('created_at', [$startCarbon, $endCarbon])
+                    ->orWhere(function($pq) use ($startCarbon, $endCarbon) {
+                        $pq->whereBetween(
+                            \Illuminate\Support\Facades\DB::raw("STR_TO_DATE(CONCAT(period_year, '-', LPAD(period_month, 2, '00'), '-01'), '%Y-%m-%d')"),
+                            [$startCarbon->copy()->startOfMonth()->toDateString(), $endCarbon->copy()->endOfMonth()->toDateString()]
+                        );
+                    });
+            });
+        } elseif ($request->filled('start_date')) {
+            $startDate = $request->start_date;
+            $startCarbon = \Carbon\Carbon::parse($startDate)->startOfDay();
+            $targetQuery->where(function($sub) use ($startDate, $startCarbon) {
+                $sub->where('issued_date', '>=', $startDate)
+                    ->orWhere('created_at', '>=', $startCarbon)
+                    ->orWhere(
+                        \Illuminate\Support\Facades\DB::raw("STR_TO_DATE(CONCAT(period_year, '-', LPAD(period_month, 2, '00'), '-01'), '%Y-%m-%d')"),
+                        '>=',
+                        $startCarbon->copy()->startOfMonth()->toDateString()
+                    );
+            });
+        } elseif ($request->filled('end_date')) {
+            $endDate = $request->end_date;
+            $endCarbon = \Carbon\Carbon::parse($endDate)->endOfDay();
+            $targetQuery->where(function($sub) use ($endDate, $endCarbon) {
+                $sub->where('issued_date', '<=', $endDate)
+                    ->orWhere('created_at', '<=', $endCarbon)
+                    ->orWhere(
+                        \Illuminate\Support\Facades\DB::raw("STR_TO_DATE(CONCAT(period_year, '-', LPAD(period_month, 2, '00'), '-01'), '%Y-%m-%d')"),
+                        '<=',
+                        $endCarbon->copy()->endOfMonth()->toDateString()
+                    );
+            });
+        }
     }
 }

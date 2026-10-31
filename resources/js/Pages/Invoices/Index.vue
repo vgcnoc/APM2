@@ -344,8 +344,13 @@
                     </div>
                 </td>
                 <td>
-                    <span v-if="row.customer" :class="['px-2 py-1 text-[10px] font-medium rounded-md text-white whitespace-nowrap', row.customer.status === 'aktif' ? 'bg-blue-500' : 'bg-gray-500']">
-                        {{ row.customer.status }}
+                    <span v-if="row.customer" :class="[
+                        'px-2 py-1 text-[10px] font-bold uppercase rounded-md text-white whitespace-nowrap',
+                        (row.customer.status === 'active' || row.customer.status === 'aktif') ? 'bg-emerald-600' :
+                        row.customer.status === 'suspended' ? 'bg-amber-600' :
+                        row.customer.status === 'terminated' ? 'bg-rose-600' : 'bg-gray-500'
+                    ]">
+                        {{ (row.customer.status === 'active' || row.customer.status === 'aktif') ? 'Aktif' : row.customer.status }}
                     </span>
                 </td>
                 <td>

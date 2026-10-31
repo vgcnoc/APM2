@@ -21,6 +21,7 @@ class BillingIsolationService
         $settings = $this->schedule->settings();
         $now = now();
         $invoices = Invoice::where('customer_id', $customer->id)->where('is_reseller_balance', false)
+            ->where('invoice_number', 'not like', 'INV-MIG-%')
             ->whereIn('status', ['unpaid', 'partial', 'overdue'])->whereNotNull('issued_date')
             ->withSum(['payments as verified_paid' => fn ($q) => $q->where('status', 'verified')], 'amount')->get();
         foreach ($invoices as $invoice) {

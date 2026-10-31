@@ -761,13 +761,16 @@ class CustomerController extends Controller
             ->where('period_month', $selectedMonth)
             ->where('period_year', $selectedYear)
             ->where('is_reseller_balance', false)
+            ->where('invoice_number', 'not like', 'INV-MIG-%')
+            ->where('status', '!=', 'cancelled')
             ->with('payments')
             ->get()
             ->groupBy('customer_id');
 
-        // Ambil tunggakan masa lalu (invoice sebelum periode terpilih yang belum paid)
+        // Ambil tunggakan masa lalu (invoice sebelum periode terpilih yang belum paid dan bukan migrasi)
         $pastUnpaidInvoices = \App\Models\Invoice::whereIn('customer_id', $customerIds)
-            ->where('status', '!=', 'paid')
+            ->whereIn('status', ['unpaid', 'partial'])
+            ->where('invoice_number', 'not like', 'INV-MIG-%')
             ->where('is_reseller_balance', false)
             ->where(function($q) use ($selectedMonth, $selectedYear) {
                 $q->where('period_year', '<', $selectedYear)
@@ -873,6 +876,7 @@ class CustomerController extends Controller
                     $iq->where('period_month', $selectedMonth)
                        ->where('period_year', $selectedYear)
                        ->where('status', 'paid')
+                       ->where('invoice_number', 'not like', 'INV-MIG-%')
                        ->where('is_reseller_balance', false);
                 });
             } elseif ($pStatus === 'unpaid') {
@@ -880,6 +884,7 @@ class CustomerController extends Controller
                     $iq->where('period_month', $selectedMonth)
                        ->where('period_year', $selectedYear)
                        ->where('status', 'unpaid')
+                       ->where('invoice_number', 'not like', 'INV-MIG-%')
                        ->where(function($sq) use ($today) {
                            $sq->whereNull('due_date')->orWhere('due_date', '>=', $today);
                        })
@@ -890,12 +895,14 @@ class CustomerController extends Controller
                     $qOverdue->whereHas('invoices', function($iq) use ($selectedMonth, $selectedYear, $today) {
                         $iq->where('period_month', $selectedMonth)
                            ->where('period_year', $selectedYear)
-                           ->where('status', '!=', 'paid')
+                           ->whereIn('status', ['unpaid', 'partial'])
+                           ->where('invoice_number', 'not like', 'INV-MIG-%')
                            ->whereNotNull('due_date')
                            ->where('due_date', '<', $today)
                            ->where('is_reseller_balance', false);
                     })->orWhereHas('invoices', function($iqPast) use ($selectedMonth, $selectedYear) {
-                        $iqPast->where('status', '!=', 'paid')
+                        $iqPast->whereIn('status', ['unpaid', 'partial'])
+                               ->where('invoice_number', 'not like', 'INV-MIG-%')
                                ->where('is_reseller_balance', false)
                                ->where(function($subQ) use ($selectedMonth, $selectedYear) {
                                    $subQ->where('period_year', '<', $selectedYear)
@@ -913,12 +920,15 @@ class CustomerController extends Controller
                     $iq->where('period_month', $selectedMonth)
                        ->where('period_year', $selectedYear)
                        ->where('status', 'partial')
+                       ->where('invoice_number', 'not like', 'INV-MIG-%')
                        ->where('is_reseller_balance', false);
                 });
             } elseif ($pStatus === 'no_invoice') {
                 $query->whereDoesntHave('invoices', function($iq) use ($selectedMonth, $selectedYear) {
                     $iq->where('period_month', $selectedMonth)
                        ->where('period_year', $selectedYear)
+                       ->where('invoice_number', 'not like', 'INV-MIG-%')
+                       ->where('status', '!=', 'cancelled')
                        ->where('is_reseller_balance', false);
                 });
             }
@@ -2060,15 +2070,20 @@ class CustomerController extends Controller
                 'clawbackSurveyCommission.affiliate:id,name',
                 'invoices' => function($q) {
                     $q->whereIn('status', ['unpaid', 'partial'])
+                      ->where('invoice_number', 'not like', 'INV-MIG-%')
                       ->where('is_reseller_balance', false)
                       ->orderBy('due_date', 'asc');
                 }
             ])
             ->withCount(['invoices as unpaid_invoices_count' => function ($q) {
-                $q->whereIn('status', ['unpaid', 'partial'])->where('is_reseller_balance', false);
+                $q->whereIn('status', ['unpaid', 'partial'])
+                  ->where('invoice_number', 'not like', 'INV-MIG-%')
+                  ->where('is_reseller_balance', false);
             }])
             ->withSum(['invoices as total_unpaid_amount' => function ($q) {
-                $q->whereIn('status', ['unpaid', 'partial'])->where('is_reseller_balance', false);
+                $q->whereIn('status', ['unpaid', 'partial'])
+                  ->where('invoice_number', 'not like', 'INV-MIG-%')
+                  ->where('is_reseller_balance', false);
             }], 'amount')
             ->search($search)
             ->when($areaId, fn($q) => $this->applyAreaFilter($q, $areaId))
@@ -2080,12 +2095,16 @@ class CustomerController extends Controller
             ->when($ontStatus === 'returned', fn($q) => $q->whereDoesntHave('ont'))
             ->when($billingStatus === 'unpaid', function($q) {
                 $q->whereHas('invoices', function($iq) {
-                    $iq->whereIn('status', ['unpaid', 'partial'])->where('is_reseller_balance', false);
+                    $iq->whereIn('status', ['unpaid', 'partial'])
+                       ->where('invoice_number', 'not like', 'INV-MIG-%')
+                       ->where('is_reseller_balance', false);
                 });
             })
             ->when($billingStatus === 'paid', function($q) {
                 $q->whereDoesntHave('invoices', function($iq) {
-                    $iq->whereIn('status', ['unpaid', 'partial'])->where('is_reseller_balance', false);
+                    $iq->whereIn('status', ['unpaid', 'partial'])
+                       ->where('invoice_number', 'not like', 'INV-MIG-%')
+                       ->where('is_reseller_balance', false);
                 });
             })
             ->when($tab === 'under_4_months', function ($q) {
@@ -2633,7 +2652,12 @@ class CustomerController extends Controller
             'areaModel',
             'ont.odp.odc.olt',
             'ont.odp.odc.pon',
-            'invoices' => fn ($q) => $q->orderByDesc('period_year')->orderByDesc('period_month')->limit(12),
+            'invoices' => fn ($q) => $q->where('is_reseller_balance', false)
+                ->where('invoice_number', 'not like', 'INV-MIG-%')
+                ->where('status', '!=', 'cancelled')
+                ->orderByDesc('period_year')
+                ->orderByDesc('period_month')
+                ->limit(12),
             'invoices.payments',
             'tickets' => fn ($q) => $q->orderByDesc('created_at')->limit(10),
             'tickets.assignee',
