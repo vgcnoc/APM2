@@ -6,7 +6,9 @@ use App\Models\Attendance;
 use App\Models\Deduction;
 use App\Models\Employee;
 use App\Models\Setting;
+use App\Models\Shift;
 use App\Models\SpecialAttendance;
+use App\Models\SpecialTeam;
 use App\Models\User;
 use App\Models\WorkSchedule;
 use Carbon\Carbon;
@@ -96,13 +98,247 @@ class AttendanceCalculatorService
 
             'early_leave_enabled' => Setting::get('attendance_early_leave_enabled', Setting::get('attendance_early_leave_penalty_enabled', '1')) === '1',
             'early_leave_amount' => (float) Setting::get('attendance_early_leave_amount', 10000),
+            'early_leave_tolerance' => self::resolveEarlyLeaveTolerance(),
 
             'alpha_enabled' => Setting::get('attendance_alpha_enabled', Setting::get('attendance_alpha_penalty_enabled', '1')) === '1',
             'alpha_amount' => (float) Setting::get('attendance_alpha_amount', 35000),
 
-            'checkout_deadline_time' => Setting::get('attendance_checkout_deadline_time', '18:30'),
+            'checkout_auto_lock' => Setting::get('attendance_checkout_auto_lock', '1') === '1',
+            'checkout_deadline_mode' => Setting::get('attendance_checkout_deadline_mode', 'shift_relative'),
+            'checkout_deadline_time' => self::normalizeTimeStr(Setting::get('attendance_checkout_deadline_time', '23:30'), '23:30'),
+            'checkout_deadline_hours' => max(1, (int) Setting::get('attendance_checkout_deadline_hours', 4)),
+            'checkout_min_work_hours' => max(0, (int) Setting::get('attendance_checkout_min_work_hours', 4)),
+            'special_deadline_time' => self::normalizeTimeStr(Setting::get('attendance_special_deadline_time', '23:30'), '23:30'),
             'cron_enabled' => Setting::get('attendance_cron_enabled', '1') === '1',
         ];
+    }
+
+    /**
+     * Normalisasi string jam ke format HH:MM yang valid
+     */
+    public static function normalizeTimeStr(?string $time, string $fallback = '23:30'): string
+    {
+        if (!$time) {
+            return $fallback;
+        }
+
+        $trimmed = trim($time);
+        if (preg_match('/^(\d{1,2}):(\d{2})/', $trimmed, $m)) {
+            $h = max(0, min(23, (int) $m[1]));
+            $min = max(0, min(59, (int) $m[2]));
+            return sprintf('%02d:%02d', $h, $min);
+        }
+
+        return $fallback;
+    }
+
+    /**
+     * Toleransi pulang lebih awal (dalam menit)
+     */
+    public static function resolveEarlyLeaveTolerance(): int
+    {
+        $checkoutTol = (int) Setting::get('attendance_checkout_early_tolerance', 15);
+        $deductionTol = (int) Setting::get('attendance_early_leave_tolerance', 0);
+
+        return max(0, $deductionTol > 0 ? $deductionTol : $checkoutTol);
+    }
+
+    /**
+     * Hitung rentang waktu mulai & selesai shift untuk tanggal presensi tertentu (mendukung lintas hari / shift malam)
+     */
+    public static function resolveShiftWindow(string $dateStr, ?Shift $shift, string $tz = 'Asia/Jakarta'): ?array
+    {
+        if (!$shift || !$shift->start_time || !$shift->end_time) {
+            return null;
+        }
+
+        $cleanDate = substr($dateStr, 0, 10);
+        $startStr = self::normalizeTimeStr($shift->start_time, '08:00');
+        $endStr = self::normalizeTimeStr($shift->end_time, '17:00');
+
+        $start = Carbon::createFromFormat('Y-m-d H:i', "{$cleanDate} {$startStr}", $tz)->startOfMinute();
+        $end = Carbon::createFromFormat('Y-m-d H:i', "{$cleanDate} {$endStr}", $tz)->startOfMinute();
+
+        $isCrossMidnight = $shift->isCrossMidnight();
+        if ($isCrossMidnight) {
+            $end->addDay();
+        }
+
+        return [
+            'start' => $start,
+            'end' => $end,
+            'is_cross_midnight' => $isCrossMidnight,
+        ];
+    }
+
+    /**
+     * Resolusi timestamp lengkap jam masuk (clock_in), termasuk bila karyawan shift malam absen masuk lewat pukul 00:00
+     */
+    public static function resolveClockInDateTime(Attendance $att, ?Shift $shift = null, string $tz = 'Asia/Jakarta'): ?Carbon
+    {
+        if (empty($att->clock_in)) {
+            return null;
+        }
+
+        $dateStr = is_string($att->date) ? substr($att->date, 0, 10) : $att->date->format('Y-m-d');
+        $sameDayClockIn = Carbon::parse("{$dateStr} {$att->clock_in}", $tz);
+
+        $resolvedShift = $shift ?? ($att->relationLoaded('shift') ? $att->shift : ($att->shift_id ? Shift::find($att->shift_id) : null));
+        if ($resolvedShift && $resolvedShift->isCrossMidnight()) {
+            $window = self::resolveShiftWindow($dateStr, $resolvedShift, $tz);
+            if ($window) {
+                $nextDayClockIn = $sameDayClockIn->copy()->addDay();
+                $diffSame = abs($sameDayClockIn->diffInMinutes($window['start']));
+                $diffNext = abs($nextDayClockIn->diffInMinutes($window['start']));
+                if ($diffNext < $diffSame) {
+                    return $nextDayClockIn;
+                }
+            }
+        }
+
+        return $sameDayClockIn;
+    }
+
+    /**
+     * Hitung batas waktu terakhir absen pulang (Clock-Out Cut-Off) berdasarkan tanggal & shift kerja.
+     *
+     * - Mode 'shift_relative': Jam Selesai Shift + N Jam (mendukung lintas hari / shift malam).
+     * - Mode 'before_cron' / 'fixed_time': Menggunakan jam cut-off pengaturan untuk shift pagi/reguler,
+     *   dan otomatis menyesuaikan ke (Jam Selesai Shift + N Jam) apabila shift berakhir mendekati (<30 menit)
+     *   atau melewati jam cut-off (contoh: Shift 2 sampai 21:00/23:00 atau Shift Malam 23:00-08:00).
+     */
+    public static function resolveCheckoutDeadlineForShift(
+        string $dateStr,
+        ?Shift $shift = null,
+        ?array $settings = null,
+        string $tz = 'Asia/Jakarta'
+    ): Carbon {
+        $cleanDate = substr($dateStr, 0, 10);
+        $mode = $settings['checkout_deadline_mode'] ?? Setting::get('attendance_checkout_deadline_mode', 'shift_relative');
+        $deadlineTime = self::normalizeTimeStr(
+            $settings['checkout_deadline_time'] ?? Setting::get('attendance_checkout_deadline_time', '23:30'),
+            '23:30'
+        );
+        $deadlineHours = max(1, (int) ($settings['checkout_deadline_hours'] ?? Setting::get('attendance_checkout_deadline_hours', 4)));
+
+        $baseStaticDeadline = Carbon::createFromFormat('Y-m-d H:i', "{$cleanDate} {$deadlineTime}", $tz)->endOfMinute();
+
+        $window = self::resolveShiftWindow($cleanDate, $shift, $tz);
+        if (!$window) {
+            return $baseStaticDeadline;
+        }
+
+        $shiftEnd = $window['end'];
+        $shiftRelativeDeadline = $shiftEnd->copy()->addHours($deadlineHours)->endOfMinute();
+
+        if ($mode === 'shift_relative') {
+            return $shiftRelativeDeadline;
+        }
+
+        // Proteksi cerdas Shift Sore & Shift Malam pada mode 'before_cron' / 'fixed_time':
+        // Jika jadwal selesai shift melewati (atau sisa < 30 menit dari) jam cut-off statis, berikan +N jam dari jam selesai shift.
+        if ($shiftEnd->copy()->addMinutes(30)->greaterThan($baseStaticDeadline)) {
+            return $shiftRelativeDeadline;
+        }
+
+        return $baseStaticDeadline;
+    }
+
+    /**
+     * Hitung batas waktu terakhir absen pulang untuk record Attendance tertentu
+     */
+    public static function resolveCheckoutDeadline(
+        Attendance $att,
+        ?array $settings = null,
+        ?Collection $shiftsById = null,
+        string $tz = 'Asia/Jakarta'
+    ): Carbon {
+        $dateStr = is_string($att->date) ? substr($att->date, 0, 10) : $att->date->format('Y-m-d');
+
+        $shift = null;
+        if ($att->relationLoaded('shift')) {
+            $shift = $att->shift;
+        } elseif ($att->shift_id) {
+            $shift = $shiftsById ? $shiftsById->get($att->shift_id) : Shift::find($att->shift_id);
+        }
+
+        return self::resolveCheckoutDeadlineForShift($dateStr, $shift, $settings, $tz);
+    }
+
+    /**
+     * Cek apakah suatu record Attendance Reguler sudah berstatus Lupa Absen Pulang (Missing Clock-Out)
+     */
+    public static function isMissingClockOut(
+        Attendance $att,
+        ?Carbon $now = null,
+        ?array $settings = null,
+        ?Collection $shiftsById = null,
+        string $tz = 'Asia/Jakarta'
+    ): bool {
+        if (empty($att->clock_in) || !empty($att->clock_out)) {
+            return false;
+        }
+
+        $now = $now ?? Carbon::now($tz);
+        $deadline = self::resolveCheckoutDeadline($att, $settings, $shiftsById, $tz);
+
+        return $now->greaterThan($deadline);
+    }
+
+    /**
+     * Hitung batas waktu terakhir absen pulang untuk Grup Tim Khusus
+     */
+    public static function resolveSpecialCheckoutDeadline(
+        string $dateStr,
+        ?SpecialTeam $team = null,
+        ?string $specialDeadlineTime = null,
+        string $tz = 'Asia/Jakarta'
+    ): Carbon {
+        $cleanDate = substr($dateStr, 0, 10);
+        $deadlineTime = self::normalizeTimeStr(
+            $specialDeadlineTime ?? Setting::get('attendance_special_deadline_time', Setting::get('attendance_checkout_deadline_time', '23:30')),
+            '23:30'
+        );
+
+        $baseDeadline = Carbon::createFromFormat('Y-m-d H:i', "{$cleanDate} {$deadlineTime}", $tz)->endOfMinute();
+
+        if ($team && $team->start_time && $team->end_time) {
+            $startStr = self::normalizeTimeStr($team->start_time, '08:30');
+            $endStr = self::normalizeTimeStr($team->end_time, '18:00');
+            $teamEnd = Carbon::createFromFormat('Y-m-d H:i', "{$cleanDate} {$endStr}", $tz)->startOfMinute();
+            if ($endStr < $startStr) {
+                $teamEnd->addDay();
+            }
+
+            if ($teamEnd->copy()->addMinutes(30)->greaterThan($baseDeadline)) {
+                $graceHours = max(1, (int) Setting::get('attendance_checkout_deadline_hours', 2));
+                return $teamEnd->copy()->addHours($graceHours)->endOfMinute();
+            }
+        }
+
+        return $baseDeadline;
+    }
+
+    /**
+     * Cek apakah suatu record SpecialAttendance sudah berstatus Tanpa Absen Pulang
+     */
+    public static function isSpecialMissingClockOut(
+        SpecialAttendance $att,
+        ?SpecialTeam $team = null,
+        ?Carbon $now = null,
+        ?string $specialDeadlineTime = null,
+        string $tz = 'Asia/Jakarta'
+    ): bool {
+        if (empty($att->clock_in) || !empty($att->clock_out)) {
+            return false;
+        }
+
+        $now = $now ?? Carbon::now($tz);
+        $dateStr = is_string($att->date) ? substr($att->date, 0, 10) : $att->date->format('Y-m-d');
+        $resolvedTeam = $team ?? ($att->relationLoaded('team') ? $att->team : ($att->special_team_id ? SpecialTeam::find($att->special_team_id) : null));
+        $deadline = self::resolveSpecialCheckoutDeadline($dateStr, $resolvedTeam, $specialDeadlineTime, $tz);
+
+        return $now->greaterThan($deadline);
     }
 
     /**
@@ -116,19 +352,21 @@ class AttendanceCalculatorService
         ?Collection $workSchedules = null
     ): Collection {
         $settings = $settings ?? self::getAttendanceSettings();
+        $now = Carbon::now('Asia/Jakarta');
         $today = Carbon::today('Asia/Jakarta');
         $todayDate = $today->format('Y-m-d');
         $elapsedWorkDays = $periodDetails['elapsed_work_days'];
         $totalWorkDays = $periodDetails['total_work_days'];
-        $cutoffTime = $settings['checkout_deadline_time'];
+        $shiftsById = Shift::all()->keyBy('id');
 
         return $employees->map(function ($emp) use (
             $attendances,
             $workSchedules,
             $settings,
+            $now,
             $today,
             $todayDate,
-            $cutoffTime,
+            $shiftsById,
             $elapsedWorkDays,
             $totalWorkDays
         ) {
@@ -147,19 +385,9 @@ class AttendanceCalculatorService
             // 3. Dinas Luar
             $totalFieldDuty = $empAtts->where('attendance_type', 'dinas_luar')->count();
 
-            // 4. Lupa Clock-Out (Missing Out)
-            $missingOutAtts = $empAtts->filter(function ($a) use ($todayDate, $cutoffTime) {
-                $attDateStr = is_string($a->date) ? substr($a->date, 0, 10) : $a->date->format('Y-m-d');
-                if (empty($a->clock_in) || !empty($a->clock_out)) {
-                    return false;
-                }
-                if ($attDateStr < $todayDate) {
-                    return true;
-                }
-                if ($attDateStr === $todayDate && Carbon::now('Asia/Jakarta')->greaterThan(Carbon::parse($attDateStr . ' ' . $cutoffTime, 'Asia/Jakarta'))) {
-                    return true;
-                }
-                return false;
+            // 4. Lupa Clock-Out (Missing Out) - berbasis batas pulang masing-masing shift (mendukung shift sore & lintas hari)
+            $missingOutAtts = $empAtts->filter(function ($a) use ($now, $settings, $shiftsById) {
+                return self::isMissingClockOut($a, $now, $settings, $shiftsById, 'Asia/Jakarta');
             });
             $totalMissingOut = $missingOutAtts->count();
 
@@ -184,9 +412,22 @@ class AttendanceCalculatorService
                 if ($empSchedules->isNotEmpty()) {
                     $empWorkDays = $empSchedules->where('status', 'work')->count();
                     $empElapsedWorkDays = $empSchedules->where('status', 'work')
-                        ->filter(function ($s) use ($todayDate) {
+                        ->filter(function ($s) use ($todayDate, $now, $shiftsById) {
                             $sDate = is_string($s->date) ? substr($s->date, 0, 10) : $s->date->format('Y-m-d');
-                            return $sDate <= $todayDate;
+                            if ($sDate < $todayDate) {
+                                return true;
+                            }
+                            if ($sDate === $todayDate) {
+                                $schedShift = $s->shift_id ? $shiftsById->get($s->shift_id) : null;
+                                if ($schedShift && $schedShift->start_time) {
+                                    $win = self::resolveShiftWindow($sDate, $schedShift, 'Asia/Jakarta');
+                                    if ($win && $now->lessThan($win['start'])) {
+                                        return false;
+                                    }
+                                }
+                                return true;
+                            }
+                            return false;
                         })->count();
                 }
             }
@@ -276,7 +517,7 @@ class AttendanceCalculatorService
         $settings = array_merge(self::getAttendanceSettings(), $overrideSettings ?? []);
         $monthEnd = $periodDetails['end_datetime'];
 
-        $attendances = Attendance::with('employee')
+        $attendances = Attendance::with(['employee', 'shift'])
             ->whereBetween('date', [$periodDetails['start_date'], $periodDetails['end_date']])
             ->get();
 

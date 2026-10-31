@@ -10,6 +10,7 @@ use App\Models\SpecialAttendance;
 use App\Models\SpecialTeam;
 use App\Models\SpecialTeamMember;
 use App\Models\User;
+use App\Services\AttendanceCalculatorService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -126,14 +127,39 @@ class SpecialAttendanceController extends Controller
                 ->exists();
         }
 
-        // 3. Absensi Hari Ini untuk Karyawan Aktif
+        // 3. Absensi Hari Ini untuk Karyawan Aktif (mendukung sesi lintas hari jika grup khusus berakhir lewat 00:00)
+        $now = Carbon::now();
+        $yesterday = $now->copy()->subDay()->format('Y-m-d');
         $todayAttendance = null;
+        $activeSpecialDate = $today;
         if ($currentEmployee && $currentTeam) {
             $todayAttendance = SpecialAttendance::where('special_team_id', $currentTeam->id)
                 ->where('employee_id', $currentEmployee->id)
                 ->where('date', $today)
                 ->first();
+
+            if (!$todayAttendance || !$todayAttendance->clock_in) {
+                $yesterdayOpen = SpecialAttendance::where('special_team_id', $currentTeam->id)
+                    ->where('employee_id', $currentEmployee->id)
+                    ->where('date', $yesterday)
+                    ->whereNotNull('clock_in')
+                    ->whereNull('clock_out')
+                    ->first();
+
+                if ($yesterdayOpen) {
+                    $yDeadline = AttendanceCalculatorService::resolveSpecialCheckoutDeadline($yesterday, $currentTeam);
+                    if ($now->lessThanOrEqualTo($yDeadline)) {
+                        $todayAttendance = $yesterdayOpen;
+                        $activeSpecialDate = $yesterday;
+                    }
+                }
+            }
         }
+
+        $activeSpecialDeadline = AttendanceCalculatorService::resolveSpecialCheckoutDeadline($activeSpecialDate, $currentTeam);
+        $checkoutDeadlineLabel = $activeSpecialDeadline->format('Y-m-d') !== $now->format('Y-m-d')
+            ? $activeSpecialDeadline->translatedFormat('d M Y, H:i') . ' WIB (Lintas Hari)'
+            : $activeSpecialDeadline->format('H:i') . ' WIB';
 
         // 4. Semua Absensi Hari Ini untuk Tim Aktif (Kolom Kanan)
         $todayAttendancesQuery = SpecialAttendance::with('employee')
@@ -209,7 +235,7 @@ class SpecialAttendanceController extends Controller
             $presents = $memberAtts->whereNotNull('clock_in')->count();
             $lates = $memberAtts->where('status', 'late')->count();
             $lateMinutes = (int) $memberAtts->sum('late_minutes');
-            $noClockOut = $memberAtts->whereNotNull('clock_in')->whereNull('clock_out')->count();
+            $noClockOut = $memberAtts->filter(fn($att) => AttendanceCalculatorService::isSpecialMissingClockOut($att, $currentTeam, $now))->count();
 
             $score = ($presents > 0) ? max(0, ($presents * 100) - ($lateMinutes * 2)) : 0;
 
@@ -250,15 +276,15 @@ class SpecialAttendanceController extends Controller
 
             $tLateCount = $tAtts->where('status', 'late')->count();
             $tLateMins = (int) $tAtts->sum('late_minutes');
-            $tNoOutCount = $tAtts->whereNotNull('clock_in')->whereNull('clock_out')->count();
+            $tNoOutCount = $tAtts->filter(fn($att) => AttendanceCalculatorService::isSpecialMissingClockOut($att, $t, $now))->count();
 
             $estDeductions = ($tLateCount * (float) $t->late_deduction_amount) + ($tNoOutCount * (float) $t->no_out_deduction_amount);
 
-            $violationRecords = $tAtts->filter(function ($att) {
-                return $att->status === 'late' || ($att->clock_in && !$att->clock_out);
-            })->map(function ($att) use ($t) {
+            $violationRecords = $tAtts->filter(function ($att) use ($t, $now) {
+                return $att->status === 'late' || AttendanceCalculatorService::isSpecialMissingClockOut($att, $t, $now);
+            })->map(function ($att) use ($t, $now) {
                 $isLate = ($att->status === 'late');
-                $isNoOut = (!empty($att->clock_in) && empty($att->clock_out));
+                $isNoOut = AttendanceCalculatorService::isSpecialMissingClockOut($att, $t, $now);
                 $lateFine = $isLate ? (float) $t->late_deduction_amount : 0;
                 $noOutFine = $isNoOut ? (float) $t->no_out_deduction_amount : 0;
 
@@ -317,6 +343,7 @@ class SpecialAttendanceController extends Controller
             'allTeamsDeductions' => $allTeamsDeductions,
             'allEmployees' => $allEmployees,
             'isCurrentEmployeeMember' => $isCurrentEmployeeMember,
+            'checkoutDeadlineLabel' => $checkoutDeadlineLabel,
             'filters' => $request->only(['team_id', 'start_date', 'end_date', 'filter_employee_id', 'filter_status', 'month']),
         ]);
     }
@@ -351,7 +378,7 @@ class SpecialAttendanceController extends Controller
 
         if ($now->greaterThan($lateThreshold)) {
             $status = 'late';
-            $lateMinutes = $scheduledStartTime->diffInMinutes($now);
+            $lateMinutes = (int) round($scheduledStartTime->diffInMinutes($now));
         }
 
         // Simpan Foto Selfie
@@ -399,6 +426,7 @@ class SpecialAttendanceController extends Controller
 
         $team = SpecialTeam::findOrFail($request->special_team_id);
         $today = Carbon::today()->format('Y-m-d');
+        $yesterday = Carbon::yesterday()->format('Y-m-d');
         $now = Carbon::now();
         $currentTimeStr = $now->format('H:i:s');
 
@@ -408,6 +436,22 @@ class SpecialAttendanceController extends Controller
             ->first();
 
         if (!$attendance || !$attendance->clock_in) {
+            $yesterdayOpen = SpecialAttendance::where('special_team_id', $team->id)
+                ->where('employee_id', $request->employee_id)
+                ->where('date', $yesterday)
+                ->whereNotNull('clock_in')
+                ->whereNull('clock_out')
+                ->first();
+
+            if ($yesterdayOpen) {
+                $yDeadline = AttendanceCalculatorService::resolveSpecialCheckoutDeadline($yesterday, $team);
+                if ($now->lessThanOrEqualTo($yDeadline) || $yDeadline->format('Y-m-d') === $today) {
+                    $attendance = $yesterdayOpen;
+                }
+            }
+        }
+
+        if (!$attendance || !$attendance->clock_in) {
             return back()->with('error', 'Anda belum melakukan absensi masuk hari ini.');
         }
 
@@ -415,25 +459,32 @@ class SpecialAttendanceController extends Controller
             return back()->with('error', 'Anda sudah melakukan absensi pulang hari ini.');
         }
 
+        $attDateStr = is_string($attendance->date) ? substr($attendance->date, 0, 10) : $attendance->date->format('Y-m-d');
+
         // Batas Waktu Terakhir Absen Pulang Tim Khusus
-        $deadlineTime = Setting::get('attendance_special_deadline_time', Setting::get('attendance_checkout_deadline_time', '23:30'));
-        $deadlineCarbon = Carbon::parse($today . ' ' . $deadlineTime);
+        $deadlineCarbon = AttendanceCalculatorService::resolveSpecialCheckoutDeadline($attDateStr, $team);
         if ($now->greaterThan($deadlineCarbon)) {
-            return back()->with('error', "Batas waktu terakhir absen pulang Tim Khusus telah berakhir pada pukul {$deadlineTime} WIB. Absensi dikunci otomatis (Lupa Absen Pulang). Silakan hubungi Admin / Koordinator Tim.");
+            $deadlineLabel = $deadlineCarbon->format('Y-m-d') !== $attDateStr
+                ? $deadlineCarbon->translatedFormat('d M Y \p\u\k\u\l H:i')
+                : 'pukul ' . $deadlineCarbon->format('H:i');
+            return back()->with('error', "Batas waktu terakhir absen pulang Tim Khusus ({$team->name}) telah berakhir pada {$deadlineLabel} WIB. Absensi dikunci otomatis (Lupa Absen Pulang). Silakan hubungi Admin / Koordinator Tim.");
         }
 
         // Evaluasi Pulang Awal
-        $scheduledEndTime = Carbon::parse($today . ' ' . $team->end_time);
+        $scheduledEndTime = Carbon::parse($attDateStr . ' ' . $team->end_time);
+        if ($team->start_time && $team->end_time && substr($team->end_time, 0, 5) < substr($team->start_time, 0, 5)) {
+            $scheduledEndTime->addDay();
+        }
         $earlyMinutes = 0;
         if ($now->lessThan($scheduledEndTime)) {
-            $earlyMinutes = $now->diffInMinutes($scheduledEndTime);
+            $earlyMinutes = (int) round($now->diffInMinutes($scheduledEndTime));
         }
 
         // Simpan Foto Selfie Pulang
         $photoPath = $this->saveBase64Photo(
             $request->photo,
             'special_attendances',
-            "out_{$request->employee_id}_{$today}"
+            "out_{$request->employee_id}_{$attDateStr}"
         );
 
         $notesCombined = $attendance->notes;
@@ -677,7 +728,8 @@ class SpecialAttendanceController extends Controller
                 $presents = $atts->whereNotNull('clock_in')->count();
                 $lates = $atts->where('status', 'late')->count();
                 $lateMinutes = (int) $atts->sum('late_minutes');
-                $noOutCount = $atts->whereNotNull('clock_in')->whereNull('clock_out')->count();
+                $nowSync = Carbon::now();
+                $noOutCount = $atts->filter(fn($att) => AttendanceCalculatorService::isSpecialMissingClockOut($att, $team, $nowSync))->count();
 
                 // 1. Potongan Keterlambatan Tim Khusus
                 $totalDeduction = ($lates * (float) $team->late_deduction_amount) + ($noOutCount * (float) $team->no_out_deduction_amount);

@@ -290,6 +290,13 @@
                                     <span>✓</span>
                                     <span>Absensi Lengkap Hari Ini</span>
                                 </div>
+
+                                <div
+                                    v-if="checkoutDeadlineLabel && (!todayAttendance?.clock_out)"
+                                    class="text-[11px] text-slate-500 text-center pt-1.5 font-medium"
+                                >
+                                    ⏰ Batas terakhir absen pulang Tim Khusus: <strong class="text-slate-700">{{ checkoutDeadlineLabel }}</strong>
+                                </div>
                             </div>
                         </div>
 
@@ -1364,6 +1371,7 @@ const props = defineProps({
     allTeamsDeductions: Object,
     allEmployees: Array,
     isCurrentEmployeeMember: Boolean,
+    checkoutDeadlineLabel: String,
     filters: Object,
 });
 

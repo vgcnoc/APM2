@@ -57,6 +57,22 @@ class Shift extends Model
     }
 
     /**
+     * Apakah shift ini melewati tengah malam (lintas hari, contoh: 23:00 - 08:00)
+     */
+    public function isCrossMidnight(): bool
+    {
+        if ($this->is_night_shift) {
+            return true;
+        }
+
+        if (!$this->start_time || !$this->end_time) {
+            return false;
+        }
+
+        return substr($this->end_time, 0, 5) < substr($this->start_time, 0, 5);
+    }
+
+    /**
      * Hitung durasi jam kerja secara otomatis
      */
     public function getDurationTextAttribute(): string

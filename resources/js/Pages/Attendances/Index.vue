@@ -184,7 +184,15 @@
                                 </div>
                                 <p class="text-xs text-slate-500 mt-0.5">
                                     {{ todayDateStr }} • 
-                                    <span v-if="shiftToday">Jadwal kerja resmi Anda hari ini</span>
+                                    <span v-if="shiftToday">
+                                        Jadwal kerja resmi Anda
+                                        <span v-if="checkoutDeadlineInfo?.is_cross_midnight_session" class="font-bold text-indigo-700">
+                                            (Sesi Shift {{ checkoutDeadlineInfo.session_date_label }})
+                                        </span>
+                                        <span v-if="checkoutDeadlineInfo?.deadline_full_label" class="text-slate-600 font-semibold">
+                                            • Batas pulang: {{ checkoutDeadlineInfo.deadline_full_label }}
+                                        </span>
+                                    </span>
                                     <span v-else-if="todaySchedule && todaySchedule.status === 'off'">
                                         Hari libur terjadwal (OFF). <span v-if="can('attendance_select_shift')">Anda dapat memilih shift di sebelah kanan jika bertugas lembur/pengganti.</span>
                                     </span>
@@ -266,6 +274,9 @@
                                             Telat {{ todayAttendance.late_minutes }}m
                                         </span>
                                     </div>
+                                    <div v-if="checkoutDeadlineInfo?.is_cross_midnight_session && todayAttendance?.clock_in" class="mt-1 text-[10px] text-indigo-700 font-bold">
+                                        Shift {{ checkoutDeadlineInfo.session_date_label }}
+                                    </div>
                                 </div>
 
                                 <!-- Badge Pulang -->
@@ -283,6 +294,9 @@
                                     </div>
                                     <div v-if="todayAttendance?.clock_out" class="mt-1 text-[10px] text-blue-600 font-semibold">
                                         Selesai Bertugas
+                                    </div>
+                                    <div v-else-if="checkoutDeadlineInfo?.deadline_full_label" class="mt-1 text-[10px] text-amber-700 font-semibold">
+                                        Maks: {{ checkoutDeadlineInfo.deadline_full_label }}
                                     </div>
                                 </div>
                             </div>
@@ -1251,6 +1265,7 @@ const props = defineProps({
     areas: Array,
     positions: Array,
     canBypassAreaLock: Boolean,
+    checkoutDeadlineInfo: Object,
     settings: Object,
     filters: Object,
 });

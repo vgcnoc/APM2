@@ -123,13 +123,18 @@
                                 <div class="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4 space-y-1">
                                     <div class="text-[11px] text-blue-200 font-semibold flex items-center gap-1.5">
                                         <span>⏰</span>
-                                        <span>Jam Cut-Off Terakhir</span>
+                                        <span>Batas Terakhir Pulang</span>
                                     </div>
-                                    <div class="text-2xl font-black text-amber-300 font-mono">
+                                    <div v-if="form.attendance_checkout_deadline_mode === 'shift_relative'" class="text-xl sm:text-2xl font-black text-amber-300 font-mono">
+                                        Shift +{{ form.attendance_checkout_deadline_hours || 4 }} <span class="text-xs font-normal text-slate-300">Jam</span>
+                                    </div>
+                                    <div v-else class="text-2xl font-black text-amber-300 font-mono">
                                         {{ form.attendance_checkout_deadline_time || '23:30' }} <span class="text-xs font-normal text-slate-300">WIB</span>
                                     </div>
                                     <div class="text-[10px] text-slate-300">
-                                        {{ form.attendance_checkout_deadline_mode === 'shift_relative' ? `Maks +${form.attendance_checkout_deadline_hours} Jam pasca shift` : 'Sebelum cron cut-off harian' }}
+                                        {{ form.attendance_checkout_deadline_mode === 'shift_relative'
+                                            ? 'Mengikuti tiap shift & lintas hari'
+                                            : `Shift sore/malam otomatis +${form.attendance_checkout_deadline_hours || 4} jam` }}
                                     </div>
                                 </div>
 
@@ -197,7 +202,11 @@
                                     </div>
                                     <div class="p-2.5 rounded-xl bg-white/5 border border-white/5">
                                         <div class="font-bold text-amber-300 text-[11px]">4. Batas Pulang</div>
-                                        <div class="text-[10px] text-slate-300 mt-0.5">Maksimal pukul {{ form.attendance_checkout_deadline_time }} WIB hari yang sama.</div>
+                                        <div class="text-[10px] text-slate-300 mt-0.5">
+                                            {{ form.attendance_checkout_deadline_mode === 'shift_relative'
+                                                ? `Maks. +${form.attendance_checkout_deadline_hours || 4} jam pasca shift berakhir (lintas hari aktif).`
+                                                : `Maks. ${form.attendance_checkout_deadline_time} WIB (Shift sore/malam +${form.attendance_checkout_deadline_hours || 4} jam).` }}
+                                        </div>
                                     </div>
                                     <div class="p-2.5 rounded-xl bg-white/5 border border-white/5">
                                         <div class="font-bold text-rose-300 text-[11px]">5. Lewat Batas</div>
@@ -235,30 +244,16 @@
                                     v-model="form.attendance_checkout_deadline_mode"
                                     class="w-full text-xs rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
                                 >
-                                    <option value="before_cron">Sebelum Jam Cut-Off Malam (Rekomendasi - Tetap)</option>
-                                    <option value="shift_relative">Berdasarkan Shift (+N Jam Setelah Shift Selesai)</option>
-                                    <option value="fixed_time">Jam Khusus Tertentu</option>
+                                    <option value="shift_relative">Berdasarkan Shift (+N Jam Setelah Shift Selesai) — Rekomendasi</option>
+                                    <option value="before_cron">Sebelum Jam Cut-Off Harian (+Otomatis Shift Sore/Malam)</option>
+                                    <option value="fixed_time">Jam Khusus Tertentu (+Otomatis Shift Sore/Malam)</option>
                                 </select>
                                 <p class="text-[11px] text-slate-400 mt-1">
-                                    {{ form.attendance_checkout_deadline_mode === 'before_cron'
-                                        ? 'Karyawan bebas absen pulang kapan pun setelah shift hingga jam cut-off malam'
-                                        : (form.attendance_checkout_deadline_mode === 'shift_relative'
-                                            ? 'Batas pulang dihitung dinamis dari jam akhir shift masing-masing karyawan'
-                                            : 'Batas pulang dipatok pada jam tepat di bawah ini') }}
-                                </p>
-                            </div>
-
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-700 mb-1">
-                                    Jam Cut-Off Terakhir Absen Pulang (WIB)
-                                </label>
-                                <input
-                                    type="time"
-                                    v-model="form.attendance_checkout_deadline_time"
-                                    class="w-full text-xs rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 font-mono font-semibold"
-                                />
-                                <p class="text-[11px] text-slate-400 mt-1">
-                                    Standar default: <strong class="text-slate-700">23:30 WIB</strong>. Lewat jam ini tombol absen pulang terkunci.
+                                    {{ form.attendance_checkout_deadline_mode === 'shift_relative'
+                                        ? 'Batas pulang dihitung otomatis dari jam akhir masing-masing shift (mendukung Shift 2 & Shift Malam lintas hari)'
+                                        : (form.attendance_checkout_deadline_mode === 'before_cron'
+                                            ? 'Shift pagi mengikuti jam cut-off; shift sore/malam yang melewati cut-off otomatis diberi +N jam pasca shift'
+                                            : 'Batas pulang dipatok pada jam di samping (shift yang selesai lewat jam tersebut tetap diberi +N jam)') }}
                                 </p>
                             </div>
 
@@ -271,12 +266,59 @@
                                     min="1"
                                     max="12"
                                     v-model="form.attendance_checkout_deadline_hours"
-                                    :disabled="form.attendance_checkout_deadline_mode !== 'shift_relative'"
-                                    class="w-full text-xs rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 disabled:bg-slate-100 disabled:text-slate-400"
+                                    class="w-full text-xs rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 font-mono font-semibold"
                                 />
                                 <p class="text-[11px] text-slate-400 mt-1">
-                                    Hanya berlaku jika mode shift dipilih (contoh: 4 jam setelah shift).
+                                    Toleransi waktu absen pulang setelah jam selesai shift (contoh: <strong class="text-slate-700">+4 jam</strong> pasca shift usai).
                                 </p>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-700 mb-1">
+                                    Jam Cut-Off Fallback / Non-Shift (WIB)
+                                </label>
+                                <input
+                                    type="time"
+                                    v-model="form.attendance_checkout_deadline_time"
+                                    class="w-full text-xs rounded-xl border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 font-mono font-semibold"
+                                />
+                                <p class="text-[11px] text-slate-400 mt-1">
+                                    Dipakai pada mode Cut-Off atau bila staf belum memiliki jadwal shift kerja.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- SIMULASI OTOMATIS BATAS PULANG PER SHIFT -->
+                        <div class="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200/80 space-y-2">
+                            <div class="text-[11px] font-extrabold text-blue-900 flex items-center gap-1.5">
+                                <span>🔄</span>
+                                <span>Simulasi Aktif Batas Terakhir Absen Pulang per Jenis Shift:</span>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-[11px]">
+                                <div class="p-2.5 rounded-lg bg-white border border-blue-100">
+                                    <div class="font-bold text-slate-800">Shift Pagi (08:35 - 17:10)</div>
+                                    <div class="text-blue-700 font-mono font-bold mt-0.5">
+                                        Maks: {{ previewShiftDeadline('08:35', '17:10') }}
+                                    </div>
+                                </div>
+                                <div class="p-2.5 rounded-lg bg-white border border-blue-100">
+                                    <div class="font-bold text-slate-800">Shift 2 Admin (13:00 - 21:00)</div>
+                                    <div class="text-blue-700 font-mono font-bold mt-0.5">
+                                        Maks: {{ previewShiftDeadline('13:00', '21:00') }}
+                                    </div>
+                                </div>
+                                <div class="p-2.5 rounded-lg bg-white border border-blue-100">
+                                    <div class="font-bold text-slate-800">Shift 2 CS / Long (s/d 23:00)</div>
+                                    <div class="text-blue-700 font-mono font-bold mt-0.5">
+                                        Maks: {{ previewShiftDeadline('15:00', '23:00') }}
+                                    </div>
+                                </div>
+                                <div class="p-2.5 rounded-lg bg-white border border-blue-100">
+                                    <div class="font-bold text-slate-800">Shift Malam (23:00 - 08:00)</div>
+                                    <div class="text-indigo-700 font-mono font-bold mt-0.5">
+                                        Maks: {{ previewShiftDeadline('23:00', '08:00') }}
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -1572,7 +1614,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { useForm, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Swal from 'sweetalert2';
@@ -1585,7 +1627,7 @@ const activeTab = ref('rules'); // Default tab peraturan semua jenis absen & jam
 
 const form = useForm({
     // PERATURAN SEMUA JENIS ABSEN & BATAS TERAKHIR PULANG
-    attendance_checkout_deadline_mode: props.settings?.attendance_checkout_deadline_mode ?? 'before_cron',
+    attendance_checkout_deadline_mode: props.settings?.attendance_checkout_deadline_mode ?? 'shift_relative',
     attendance_checkout_deadline_time: props.settings?.attendance_checkout_deadline_time ?? '23:30',
     attendance_checkout_deadline_hours: props.settings?.attendance_checkout_deadline_hours ?? 4,
     attendance_checkout_min_work_hours: props.settings?.attendance_checkout_min_work_hours ?? 4,
@@ -1676,6 +1718,42 @@ const form = useForm({
     attendance_reward_auto_hour: props.settings?.attendance_reward_auto_hour ?? 0,
     attendance_reward_auto_minute: props.settings?.attendance_reward_auto_minute ?? 6,
 });
+
+watch(() => form.attendance_checkout_early_tolerance, (val) => {
+    form.attendance_early_leave_tolerance = val;
+});
+
+watch(() => form.attendance_early_leave_tolerance, (val) => {
+    if (form.attendance_checkout_early_tolerance !== val) {
+        form.attendance_checkout_early_tolerance = val;
+    }
+});
+
+const previewShiftDeadline = (startStr, endStr) => {
+    const parseMins = (t) => {
+        const [h, m] = String(t || '00:00').split(':').map(Number);
+        return (h || 0) * 60 + (m || 0);
+    };
+    const startMins = parseMins(startStr);
+    let endMins = parseMins(endStr);
+    if (endMins < startMins) {
+        endMins += 1440; // lintas hari
+    }
+    const hrs = Math.max(1, Number(form.attendance_checkout_deadline_hours || 4));
+    const shiftRelMins = endMins + hrs * 60;
+    const staticMins = parseMins(form.attendance_checkout_deadline_time || '23:30');
+
+    let finalMins = shiftRelMins;
+    if (form.attendance_checkout_deadline_mode !== 'shift_relative') {
+        finalMins = (endMins + 30 > staticMins) ? shiftRelMins : staticMins;
+    }
+
+    const isNextDay = finalMins >= 1440;
+    const modMins = ((finalMins % 1440) + 1440) % 1440;
+    const hh = String(Math.floor(modMins / 60)).padStart(2, '0');
+    const mm = String(modMins % 60).padStart(2, '0');
+    return isNextDay ? `${hh}:${mm} WIB (H+1)` : `${hh}:${mm} WIB`;
+};
 
 const submit = () => {
     form.post(route('settings.attendance.update'), {

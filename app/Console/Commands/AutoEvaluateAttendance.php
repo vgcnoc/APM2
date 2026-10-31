@@ -37,35 +37,37 @@ class AutoEvaluateAttendance extends Command
 
         $this->info("Menjalankan Evaluasi Presensi Cerdas Periode: {$periodDetails['period_label']} ({$month})...");
 
-        // 1. Auto-evaluate absensi hari ini yang belum clock-out setelah batas waktu
-        $cutoffTime = Setting::get('attendance_checkout_deadline_time', '18:30');
+        // 1. Auto-evaluate absensi yang belum clock-out setelah batas waktu masing-masing shift (kemarin & hari ini)
         $now = Carbon::now('Asia/Jakarta');
-        $cutoffCarbon = Carbon::parse($today->format('Y-m-d') . ' ' . $cutoffTime, 'Asia/Jakarta');
+        $yesterday = $today->copy()->subDay();
+        $attSettings = AttendanceCalculatorService::getAttendanceSettings();
 
         $missingOutCount = 0;
-        if ($now->greaterThanOrEqualTo($cutoffCarbon)) {
-            $unclosedAttendances = Attendance::where('date', $today->format('Y-m-d'))
-                ->whereNotNull('clock_in')
-                ->whereNull('clock_out')
-                ->get();
+        $unclosedAttendances = Attendance::with('shift')
+            ->whereBetween('date', [$yesterday->format('Y-m-d'), $today->format('Y-m-d')])
+            ->whereNotNull('clock_in')
+            ->whereNull('clock_out')
+            ->get();
 
-            foreach ($unclosedAttendances as $att) {
-                // Beri catatan sistem jika belum ada
+        foreach ($unclosedAttendances as $att) {
+            $deadlineCarbon = AttendanceCalculatorService::resolveCheckoutDeadline($att, $attSettings, null, 'Asia/Jakarta');
+            if ($now->greaterThan($deadlineCarbon)) {
                 if (empty($att->notes)) {
-                    $att->notes = "Auto-Closed oleh Sistem (Melewati batas checkout {$cutoffTime} WIB)";
+                    $deadlineLabel = $deadlineCarbon->format('H:i');
+                    $att->notes = "Auto-Closed oleh Sistem (Melewati batas checkout {$deadlineLabel} WIB)";
                     $att->save();
                 }
                 $missingOutCount++;
             }
-            $this->info("Evaluasi Clock-Out Hari Ini: {$missingOutCount} karyawan tidak absen pulang.");
         }
+        $this->info("Evaluasi Clock-Out (Berbasis Shift): {$missingOutCount} sesi melewati batas absen pulang.");
 
         // 2. Kalkulasi Rekapitulasi Periode Awal s/d Akhir Bulan
         $employees = Employee::where(function ($q) {
             $q->where('status', 'active')->orWhereNull('status');
         })->get();
 
-        $attendances = Attendance::whereBetween('date', [$periodDetails['start_date'], $periodDetails['end_date']])->get();
+        $attendances = Attendance::with('shift')->whereBetween('date', [$periodDetails['start_date'], $periodDetails['end_date']])->get();
         $recap = AttendanceCalculatorService::calculateMonthlyRecap($employees, $attendances, $periodDetails);
 
         $totalPresent = $recap->sum('total_present');
