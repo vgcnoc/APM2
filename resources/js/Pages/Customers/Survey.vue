@@ -949,6 +949,31 @@ import PipelineGuideCard from '@/Components/Customers/PipelineGuideCard.vue';
 import DataTable from '@/Components/DataTable.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 import StatCard from '@/Components/StatCard.vue';
+import CustomerQuickDetailModal from '@/Components/CustomerQuickDetailModal.vue';
+
+// ── Customer Quick Detail & Edit Modal (GPS, KTP, Rumah, HP) ──
+const showQuickDetailModal = ref(false);
+const quickDetailCustomer = ref(null);
+
+function openQuickDetailModal(customer) {
+    if (!customer) return;
+    quickDetailCustomer.value = customer;
+    showQuickDetailModal.value = true;
+}
+
+function onQuickDetailUpdated(updatedCustomer) {
+    if (!updatedCustomer) return;
+    quickDetailCustomer.value = updatedCustomer;
+    if (selectedCustomer.value && selectedCustomer.value.id === updatedCustomer.id) {
+        selectedCustomer.value = { ...selectedCustomer.value, ...updatedCustomer };
+    }
+    if (props.customers?.data) {
+        const row = props.customers.data.find(c => c.id === updatedCustomer.id);
+        if (row) {
+            Object.assign(row, updatedCustomer);
+        }
+    }
+}
 
 const props = defineProps({ 
     customers: Object, 

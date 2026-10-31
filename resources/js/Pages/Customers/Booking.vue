@@ -487,6 +487,18 @@
                                 Cetak Formulir (Print)
                             </a>
 
+                            <!-- Tombol Edit Cepat Foto KTP & GPS -->
+                            <button 
+                                type="button" 
+                                @click="openQuickDetailModal(selectedCustomer)" 
+                                class="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+                            >
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                                <span>Edit KTP / GPS / HP</span>
+                            </button>
+
                             <!-- Tombol Edit dari Modal -->
                             <Link 
                                 v-can="'customers_booking_edit'"
@@ -752,6 +764,13 @@
                 </div>
             </div>
         </Teleport>
+        <!-- Quick Detail & Edit Modal -->
+        <CustomerQuickDetailModal
+            :show="showQuickDetailModal"
+            :customer="quickDetailCustomer"
+            @close="showQuickDetailModal = false"
+            @updated="onQuickDetailUpdated"
+        />
     </AppLayout>
 </template>
 
@@ -761,8 +780,33 @@ import { Link, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import PipelineGuideCard from '@/Components/Customers/PipelineGuideCard.vue';
 import DataTable from '@/Components/DataTable.vue';
+import CustomerQuickDetailModal from '@/Components/CustomerQuickDetailModal.vue';
 
 const props = defineProps({ customers: Object, filters: Object, areas: Array, stats: Object, technicians: Array, cs_officers: Array });
+
+// ── Customer Quick Detail & Edit Modal (GPS, KTP, Rumah, HP) ──
+const showQuickDetailModal = ref(false);
+const quickDetailCustomer = ref(null);
+
+function openQuickDetailModal(customer) {
+    if (!customer) return;
+    quickDetailCustomer.value = customer;
+    showQuickDetailModal.value = true;
+}
+
+function onQuickDetailUpdated(updatedCustomer) {
+    if (!updatedCustomer) return;
+    quickDetailCustomer.value = updatedCustomer;
+    if (selectedCustomer.value && selectedCustomer.value.id === updatedCustomer.id) {
+        selectedCustomer.value = { ...selectedCustomer.value, ...updatedCustomer };
+    }
+    if (props.customers?.data) {
+        const row = props.customers.data.find(c => c.id === updatedCustomer.id);
+        if (row) {
+            Object.assign(row, updatedCustomer);
+        }
+    }
+}
 const page = usePage();
 
 // ── WA Permintaan Jadwal Survey Logic ──────────────────────

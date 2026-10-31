@@ -4083,6 +4083,8 @@ class CustomerController extends Controller
             'area_id' => 'nullable|exists:areas,id',
             'address' => 'nullable|string',
             'phone' => 'nullable|string',
+            'identity_photo' => 'nullable|file|mimes:jpeg,png,jpg,webp,heic|max:15360',
+            'remove_identity_photo' => 'nullable',
         ], [
             'email.unique' => 'Email ini sudah terdaftar pada pelanggan lain. Silakan gunakan email berbeda.',
             'email.email' => 'Format penulisan email tidak valid.',
@@ -4104,6 +4106,35 @@ class CustomerController extends Controller
             $area = \App\Models\Area::find($validated['area_id']);
             if ($area) {
                 $validated['area'] = $area->name;
+            }
+        }
+
+        // Proses Foto KTP jika diunggah dari form booking
+        if ($request->hasFile('identity_photo')) {
+            if ($customer->identity_photo && Storage::disk('public')->exists($customer->identity_photo)) {
+                try { Storage::disk('public')->delete($customer->identity_photo); } catch (\Throwable $e) {}
+            }
+            $validated['identity_photo'] = ImageCompressionService::compressAndStore(
+                $request->file('identity_photo'),
+                'ktp',
+                'public'
+            );
+        } elseif ($request->boolean('remove_identity_photo')) {
+            if ($customer->identity_photo && Storage::disk('public')->exists($customer->identity_photo)) {
+                try { Storage::disk('public')->delete($customer->identity_photo); } catch (\Throwable $e) {}
+            }
+            $validated['identity_photo'] = null;
+        }
+
+        // Sinkronisasi nomor kontak jika ada perubahan
+        if (!empty($validated['phone'])) {
+            $rawPhone = trim($validated['phone']);
+            if ($customer->user_id) {
+                User::where('id', $customer->user_id)->update(['phone' => $rawPhone]);
+                Customer::where('user_id', $customer->user_id)->where('id', '!=', $customer->id)->update(['phone' => $rawPhone]);
+            }
+            if (!empty($customer->customer_code)) {
+                Customer::where('customer_code', $customer->customer_code)->where('id', '!=', $customer->id)->update(['phone' => $rawPhone]);
             }
         }
 
@@ -4133,155 +4164,283 @@ class CustomerController extends Controller
 
     /**
      * Quick update for customer coordinates (lat/long), address, KTP photo, house photo, and phone.
-     * Automatically syncs to linked user and ONT record.
+     * Automatically syncs to:
+     * 1. Booking data (customers.identity_photo and all connected customer records)
+     * 2. Survey data (surveys.photos for this customer)
+     * 3. ONT device records (ont.photo_customer)
+     * 4. All customer phone data (customers, users, pgk_tickets)
      */
     public function quickUpdate(Request $request, Customer $customer)
     {
-        $request->validate([
-            'phone' => 'nullable|string|max:50',
-            'address' => 'nullable|string|max:1000',
-            'latitude' => 'nullable|string|max:60',
-            'longitude' => 'nullable|string|max:60',
-            'identity_photo' => 'nullable|file|mimes:jpeg,png,jpg,webp,heic|max:15360',
-            'house_photo' => 'nullable|file|mimes:jpeg,png,jpg,webp,heic|max:15360',
-            'remove_identity_photo' => 'nullable',
-            'remove_house_photo' => 'nullable',
-        ]);
-
-        $updateData = [];
-
-        // Parse coordinates if pasted in combined format (e.g. "-6.1234, 106.5678" or URL)
-        $lat = $request->input('latitude');
-        $lng = $request->input('longitude');
-
-        if ($lat) {
-            $lat = trim((string)$lat);
-            if (str_contains($lat, ',') && empty($lng)) {
-                $coords = explode(',', $lat);
-                $lat = trim($coords[0]);
-                $lng = trim($coords[1] ?? '');
-            }
-        }
-        if ($lng) {
-            $lng = trim((string)$lng);
+        try {
+            $request->validate([
+                'phone' => 'nullable|string|max:50',
+                'address' => 'nullable|string|max:1000',
+                'latitude' => 'nullable|string|max:60',
+                'longitude' => 'nullable|string|max:60',
+                'identity_photo' => 'nullable|file|mimes:jpeg,png,jpg,webp,heic|max:15360',
+                'house_photo' => 'nullable|file|mimes:jpeg,png,jpg,webp,heic|max:15360',
+                'remove_identity_photo' => 'nullable',
+                'remove_house_photo' => 'nullable',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $ve) {
+            $firstErr = collect($ve->errors())->flatten()->first() ?? 'Validasi input gagal.';
+            return response()->json([
+                'success' => false,
+                'message' => $firstErr,
+                'errors' => $ve->errors(),
+            ], 422);
         }
 
-        if ($request->has('latitude')) {
-            $updateData['latitude'] = $lat ?: null;
+        try {
+            return DB::transaction(function () use ($request, $customer) {
+                $updateData = [];
+
+                // 1. Parsing Titik Koordinat GPS
+                $lat = $request->input('latitude');
+                $lng = $request->input('longitude');
+
+                if ($lat) {
+                    $lat = trim((string)$lat);
+                    if (str_contains($lat, ',') && empty($lng)) {
+                        $coords = explode(',', $lat);
+                        $lat = trim($coords[0]);
+                        $lng = trim($coords[1] ?? '');
+                    }
+                }
+                if ($lng) {
+                    $lng = trim((string)$lng);
+                }
+
+                if ($request->has('latitude')) {
+                    $updateData['latitude'] = $lat ?: null;
+                }
+                if ($request->has('longitude')) {
+                    $updateData['longitude'] = $lng ?: null;
+                }
+
+                // 2. Alamat Pelanggan
+                if ($request->has('address')) {
+                    $updateData['address'] = $request->input('address');
+                }
+
+                // 3. Nomor Kontak Pelanggan (Sinkronkan ke SEMUA data pelanggan terkait)
+                if ($request->has('phone')) {
+                    $rawPhone = trim((string)$request->input('phone'));
+                    $updateData['phone'] = $rawPhone ?: null;
+
+                    if ($rawPhone !== '') {
+                        // A. Sinkronkan ke akun user login (users) jika ada user_id
+                        if ($customer->user_id) {
+                            User::where('id', $customer->user_id)->update(['phone' => $rawPhone]);
+                            // Sinkronkan ke semua langganan pelanggan yang memakai user_id yang sama
+                            Customer::where('user_id', $customer->user_id)
+                                ->where('id', '!=', $customer->id)
+                                ->update(['phone' => $rawPhone]);
+                        }
+
+                        // B. Sinkronkan ke semua profil pelanggan yang memiliki customer_code yang sama
+                        if (!empty($customer->customer_code)) {
+                            Customer::where('customer_code', $customer->customer_code)
+                                ->where('id', '!=', $customer->id)
+                                ->update(['phone' => $rawPhone]);
+                        }
+
+                        // C. Sinkronkan ke tiket komplain aktif (PGK tickets) jika ada
+                        try {
+                            DB::table('pgk_tickets')
+                                ->where('customer_id', $customer->id)
+                                ->whereIn('status', ['open', 'in_progress', 'pending'])
+                                ->update(['complainant_phone' => $rawPhone]);
+                        } catch (\Throwable $te) {
+                            Log::warning('[quickUpdate] PGK phone sync ignored: ' . $te->getMessage());
+                        }
+                    }
+                }
+
+                // 4. Proses Foto KTP -> Sinkron ke Data Booking
+                $removeKtp = filter_var($request->input('remove_identity_photo'), FILTER_VALIDATE_BOOLEAN);
+                if ($removeKtp) {
+                    if ($customer->identity_photo && Storage::disk('public')->exists($customer->identity_photo)) {
+                        try { Storage::disk('public')->delete($customer->identity_photo); } catch (\Throwable $e) {}
+                    }
+                    $updateData['identity_photo'] = null;
+
+                    // Sinkronkan ke akun / profil booking lain jika terhubung
+                    if ($customer->user_id) {
+                        Customer::where('user_id', $customer->user_id)->update(['identity_photo' => null]);
+                    } elseif (!empty($customer->customer_code)) {
+                        Customer::where('customer_code', $customer->customer_code)->update(['identity_photo' => null]);
+                    }
+                } elseif ($request->hasFile('identity_photo')) {
+                    if ($customer->identity_photo && Storage::disk('public')->exists($customer->identity_photo)) {
+                        try { Storage::disk('public')->delete($customer->identity_photo); } catch (\Throwable $e) {}
+                    }
+                    $ktpPath = ImageCompressionService::compressAndStore(
+                        $request->file('identity_photo'),
+                        'ktp',
+                        'public'
+                    );
+                    $updateData['identity_photo'] = $ktpPath;
+
+                    // Sinkronkan ke akun / profil booking lain jika terhubung
+                    if ($customer->user_id) {
+                        Customer::where('user_id', $customer->user_id)->update(['identity_photo' => $ktpPath]);
+                    } elseif (!empty($customer->customer_code)) {
+                        Customer::where('customer_code', $customer->customer_code)->update(['identity_photo' => $ktpPath]);
+                    }
+                }
+
+                // 5. Proses Foto Rumah -> Sinkron ke Data Survey & ONT
+                $removeHouse = filter_var($request->input('remove_house_photo'), FILTER_VALIDATE_BOOLEAN);
+                if ($removeHouse) {
+                    if ($customer->house_photo && Storage::disk('public')->exists($customer->house_photo)) {
+                        try { Storage::disk('public')->delete($customer->house_photo); } catch (\Throwable $e) {}
+                    }
+                    $updateData['house_photo'] = null;
+
+                    // A. Hapus/sinkron dari perangkat ONT
+                    if ($customer->ont && $customer->ont->photo_customer) {
+                        $customer->ont->update(['photo_customer' => null]);
+                    }
+
+                    // B. Hapus/sinkron dari data survey pelanggan
+                    try {
+                        $surveys = $customer->surveys;
+                        if ($surveys && $surveys->isNotEmpty()) {
+                            foreach ($surveys as $survey) {
+                                $sPhotos = is_array($survey->photos) ? $survey->photos : (json_decode($survey->photos ?? '[]', true) ?: []);
+                                $filtered = array_values(array_filter($sPhotos, function ($item) {
+                                    $lbl = is_array($item) ? ($item['label'] ?? '') : '';
+                                    return stripos($lbl, 'rumah') === false;
+                                }));
+                                $survey->photos = !empty($filtered) ? $filtered : null;
+                                $survey->save();
+                            }
+                        }
+                    } catch (\Throwable $se) {
+                        Log::warning('[quickUpdate] Survey remove house photo warning: ' . $se->getMessage());
+                    }
+
+                } elseif ($request->hasFile('house_photo')) {
+                    if ($customer->house_photo && Storage::disk('public')->exists($customer->house_photo)) {
+                        try { Storage::disk('public')->delete($customer->house_photo); } catch (\Throwable $e) {}
+                    }
+                    $housePath = ImageCompressionService::compressAndStore(
+                        $request->file('house_photo'),
+                        'house_photos',
+                        'public'
+                    );
+                    $updateData['house_photo'] = $housePath;
+
+                    // A. Sinkronkan ke ONT photo_customer
+                    if ($customer->ont) {
+                        $customer->ont->update(['photo_customer' => $housePath]);
+                    }
+
+                    // B. Sinkronkan ke data survey (surveys table)
+                    try {
+                        $surveys = $customer->surveys;
+                        if ($surveys && $surveys->isNotEmpty()) {
+                            foreach ($surveys as $survey) {
+                                $sPhotos = is_array($survey->photos) ? $survey->photos : (json_decode($survey->photos ?? '[]', true) ?: []);
+                                $foundHouse = false;
+                                foreach ($sPhotos as &$p) {
+                                    $label = is_array($p) ? ($p['label'] ?? '') : '';
+                                    if (stripos($label, 'rumah') !== false) {
+                                        $p['path'] = $housePath;
+                                        $foundHouse = true;
+                                        break;
+                                    }
+                                }
+                                unset($p);
+                                if (!$foundHouse) {
+                                    $sPhotos[] = [
+                                        'label' => 'Foto Rumah Pelanggan',
+                                        'path' => $housePath,
+                                    ];
+                                }
+                                $survey->photos = !empty($sPhotos) ? $sPhotos : null;
+                                $survey->save();
+                            }
+                        } elseif ($customer->status === 'survey' || $customer->status === 'booking') {
+                            // Jika pelanggan belum punya record survey di database, buatkan draft survey
+                            \App\Models\Survey::create([
+                                'customer_id' => $customer->id,
+                                'survey_date' => now()->toDateString(),
+                                'feasibility' => 'feasible',
+                                'photos' => [
+                                    [
+                                        'label' => 'Foto Rumah Pelanggan',
+                                        'path' => $housePath,
+                                    ]
+                                ],
+                            ]);
+                        }
+                    } catch (\Throwable $se) {
+                        Log::warning('[quickUpdate] Survey sync house photo warning: ' . $se->getMessage());
+                    }
+                }
+
+                // Update data model Customer
+                $customer->update($updateData);
+
+                // Catat Audit Log
+                $actor = auth()->user()?->name ?? 'Admin/Petugas';
+                \App\Models\AuditLog::createLog(
+                    'Update Cepat Pelanggan',
+                    $customer,
+                    $customer->status,
+                    $customer->status,
+                    "Petugas {$actor} memperbarui info cepat pelanggan {$customer->name} ({$customer->customer_code}) [Alamat/GPS/Foto KTP/Foto Rumah/Kontak]."
+                );
+
+                // Siapkan URL respons terbaru
+                $identityPhotoUrl = null;
+                if ($customer->identity_photo) {
+                    $identityPhotoUrl = str_starts_with($customer->identity_photo, 'http')
+                        ? $customer->identity_photo
+                        : asset('storage/' . $customer->identity_photo);
+                }
+
+                $housePhotoUrl = null;
+                if ($customer->house_photo) {
+                    $housePhotoUrl = str_starts_with($customer->house_photo, 'http')
+                        ? $customer->house_photo
+                        : asset('storage/' . $customer->house_photo);
+                } elseif ($customer->ont?->photo_customer) {
+                    $housePhotoUrl = asset('storage/' . $customer->ont->photo_customer);
+                }
+
+                $customerData = [
+                    'id' => $customer->id,
+                    'customer_code' => $customer->customer_code,
+                    'name' => $customer->name,
+                    'phone' => $customer->phone,
+                    'address' => $customer->address,
+                    'latitude' => $customer->latitude,
+                    'longitude' => $customer->longitude,
+                    'area' => $customer->areaModel?->name ?? $customer->area,
+                    'package' => $customer->package?->name,
+                    'identity_photo' => $customer->identity_photo,
+                    'identity_photo_url' => $identityPhotoUrl,
+                    'house_photo' => $customer->house_photo,
+                    'house_photo_url' => $housePhotoUrl,
+                ];
+
+                return response()->json([
+                    'success' => true,
+                    'message' => "Data pelanggan {$customer->name} berhasil diperbarui & disinkronkan ke data booking, survey, dan kontak!",
+                    'customer' => $customerData,
+                ]);
+            });
+        } catch (\Throwable $e) {
+            Log::error('[CustomerController::quickUpdate] Fatal error: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat menyimpan data: ' . $e->getMessage(),
+            ], 500);
         }
-        if ($request->has('longitude')) {
-            $updateData['longitude'] = $lng ?: null;
-        }
-
-        if ($request->has('address')) {
-            $updateData['address'] = $request->input('address');
-        }
-
-        if ($request->has('phone')) {
-            $updateData['phone'] = $request->input('phone');
-        }
-
-        // 1. Process Foto KTP
-        $removeKtp = filter_var($request->input('remove_identity_photo'), FILTER_VALIDATE_BOOLEAN);
-        if ($removeKtp) {
-            if ($customer->identity_photo && Storage::disk('public')->exists($customer->identity_photo)) {
-                Storage::disk('public')->delete($customer->identity_photo);
-            }
-            $updateData['identity_photo'] = null;
-        } elseif ($request->hasFile('identity_photo')) {
-            if ($customer->identity_photo && Storage::disk('public')->exists($customer->identity_photo)) {
-                Storage::disk('public')->delete($customer->identity_photo);
-            }
-            $updateData['identity_photo'] = ImageCompressionService::compressAndStore(
-                $request->file('identity_photo'),
-                'ktp',
-                'public'
-            );
-        }
-
-        // 2. Process Foto Rumah
-        $removeHouse = filter_var($request->input('remove_house_photo'), FILTER_VALIDATE_BOOLEAN);
-        if ($removeHouse) {
-            if ($customer->house_photo && Storage::disk('public')->exists($customer->house_photo)) {
-                Storage::disk('public')->delete($customer->house_photo);
-            }
-            $updateData['house_photo'] = null;
-            if ($customer->ont && $customer->ont->photo_customer) {
-                $customer->ont->update(['photo_customer' => null]);
-            }
-        } elseif ($request->hasFile('house_photo')) {
-            if ($customer->house_photo && Storage::disk('public')->exists($customer->house_photo)) {
-                Storage::disk('public')->delete($customer->house_photo);
-            }
-            $housePath = ImageCompressionService::compressAndStore(
-                $request->file('house_photo'),
-                'house_photos',
-                'public'
-            );
-            $updateData['house_photo'] = $housePath;
-
-            // Sinkronkan ke ONT (agar pemantauan teknisi & ODP langsung menampilkan foto rumah terbaru)
-            if ($customer->ont) {
-                $customer->ont->update(['photo_customer' => $housePath]);
-            }
-        }
-
-        $customer->update($updateData);
-
-        // 3. Sinkronkan nomor telepon ke user terhubung jika ada
-        if (isset($updateData['phone']) && $customer->user_id) {
-            $user = User::find($customer->user_id);
-            if ($user && $user->phone !== $updateData['phone']) {
-                $user->update(['phone' => $updateData['phone']]);
-            }
-        }
-
-        // 4. Catat Audit Log
-        $actor = auth()->user()?->name ?? 'Admin/Petugas';
-        \App\Models\AuditLog::createLog(
-            'Update Cepat Pelanggan',
-            $customer,
-            $customer->status,
-            $customer->status,
-            "Petugas {$actor} memperbarui info cepat pelanggan {$customer->name} ({$customer->customer_code}) [Alamat/GPS/Foto/Kontak]."
-        );
-
-        // Fresh URLs
-        $identityPhotoUrl = null;
-        if ($customer->identity_photo) {
-            $identityPhotoUrl = str_starts_with($customer->identity_photo, 'http')
-                ? $customer->identity_photo
-                : asset('storage/' . $customer->identity_photo);
-        }
-
-        $housePhotoUrl = null;
-        if ($customer->house_photo) {
-            $housePhotoUrl = str_starts_with($customer->house_photo, 'http')
-                ? $customer->house_photo
-                : asset('storage/' . $customer->house_photo);
-        } elseif ($customer->ont?->photo_customer) {
-            $housePhotoUrl = asset('storage/' . $customer->ont->photo_customer);
-        }
-
-        $customerData = [
-            'id' => $customer->id,
-            'customer_code' => $customer->customer_code,
-            'name' => $customer->name,
-            'phone' => $customer->phone,
-            'address' => $customer->address,
-            'latitude' => $customer->latitude,
-            'longitude' => $customer->longitude,
-            'area' => $customer->areaModel?->name ?? $customer->area,
-            'package' => $customer->package?->name,
-            'identity_photo_url' => $identityPhotoUrl,
-            'house_photo_url' => $housePhotoUrl,
-        ];
-
-        return response()->json([
-            'success' => true,
-            'message' => "Data pelanggan {$customer->name} berhasil diperbarui & disinkronkan!",
-            'customer' => $customerData,
-        ]);
     }
 
     /**
@@ -4389,7 +4548,22 @@ class CustomerController extends Controller
             $survey->update($payload);
         } else {
             $payload['customer_id'] = $customer->id;
-            \App\Models\Survey::create($payload);
+            $survey = \AppModels\Survey::create($payload);
+        }
+
+        // Sinkronisasi otomatis ke profil pelanggan jika ada foto berlabel Rumah
+        if (!empty($photoPaths)) {
+            foreach ($photoPaths as $pItem) {
+                $lbl = is_array($pItem) ? ($pItem['label'] ?? '') : '';
+                $pth = is_array($pItem) ? ($pItem['path'] ?? '') : '';
+                if (stripos($lbl, 'rumah') !== false && !empty($pth)) {
+                    $customer->update(['house_photo' => $pth]);
+                    if ($customer->ont) {
+                        $customer->ont->update(['photo_customer' => $pth]);
+                    }
+                    break;
+                }
+            }
         }
 
         \App\Models\AuditLog::createLog('Edit Laporan Survey', $customer, $customer->status, $customer->status, 'Memperbarui hasil laporan survey');
@@ -5283,6 +5457,21 @@ class CustomerController extends Controller
 
         $survey = Survey::create($validated);
 
+        // Sinkronisasi otomatis foto rumah ke pelanggan jika diisi saat survey
+        if (!empty($photoPaths)) {
+            foreach ($photoPaths as $pItem) {
+                $lbl = is_array($pItem) ? ($pItem['label'] ?? '') : '';
+                $pth = is_array($pItem) ? ($pItem['path'] ?? '') : '';
+                if (stripos($lbl, 'rumah') !== false && !empty($pth)) {
+                    $customer->update(['house_photo' => $pth]);
+                    if ($customer->ont) {
+                        $customer->ont->update(['photo_customer' => $pth]);
+                    }
+                    break;
+                }
+            }
+        }
+
         if (!empty($validated['odp_id']) && !empty($validated['port_number'])) {
             \App\Models\OdpPort::updateOrCreate(
                 ['odp_id' => $validated['odp_id'], 'port_number' => $validated['port_number']],
@@ -5405,6 +5594,21 @@ class CustomerController extends Controller
         $validated['photos'] = empty($photoPaths) ? null : $photoPaths;
 
         $survey->update($validated);
+
+        // Sinkronisasi otomatis foto rumah ke pelanggan jika diisi saat update survey
+        if (!empty($photoPaths)) {
+            foreach ($photoPaths as $pItem) {
+                $lbl = is_array($pItem) ? ($pItem['label'] ?? '') : '';
+                $pth = is_array($pItem) ? ($pItem['path'] ?? '') : '';
+                if (stripos($lbl, 'rumah') !== false && !empty($pth)) {
+                    $customer->update(['house_photo' => $pth]);
+                    if ($customer->ont) {
+                        $customer->ont->update(['photo_customer' => $pth]);
+                    }
+                    break;
+                }
+            }
+        }
 
         if (!empty($validated['odp_id']) && !empty($validated['port_number'])) {
             \App\Models\OdpPort::updateOrCreate(
