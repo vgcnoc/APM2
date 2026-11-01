@@ -289,6 +289,30 @@
                     <!-- Pilih Pelanggan -->
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Pilih Pelanggan <span class="text-red-500">*</span></label>
+                        <div class="flex gap-2 mb-2">
+                            <div class="relative flex-1">
+                                <input
+                                    v-model="customerSearch"
+                                    type="search"
+                                    @keydown.enter.prevent="customerSearch = customerSearch.trim()"
+                                    placeholder="Cari nama, ID pelanggan, nomor HP, atau alamat..."
+                                    class="w-full rounded-xl border-gray-200 pr-9 text-sm focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                                />
+                                <button
+                                    v-if="customerSearch"
+                                    type="button"
+                                    @click="customerSearch = ''"
+                                    class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-700"
+                                    title="Bersihkan pencarian"
+                                >&times;</button>
+                            </div>
+                            <button
+                                type="button"
+                                @click="customerSearch = customerSearch.trim()"
+                                class="rounded-xl bg-sky-600 px-4 text-sm font-bold text-white transition-colors hover:bg-sky-700"
+                            >Cari</button>
+                        </div>
+                        <p v-if="customerSearch" class="mb-1 text-[11px] text-gray-500">Menampilkan {{ filteredCustomers.length }} pelanggan yang sesuai.</p>
                         <select 
                             v-model="createForm.customer_id" 
                             @change="onCustomerChange"
@@ -723,18 +747,33 @@ const escalateForm = useForm({
     admin_notes: '',
 });
 
-// Pelanggan terfilter berdasarkan area yang dipilih di form
+const customerSearch = ref('');
+
+// Pelanggan terfilter berdasarkan area dan kata kunci yang dipilih di form.
 const filteredCustomers = computed(() => {
     if (!props.customers || !props.customers.length) return [];
-    if (!createForm.area_id) return props.customers;
     const selectedArea = props.areas?.find(a => String(a.id) === String(createForm.area_id));
-    return props.customers.filter(c => {
-        if (c.area_id && String(c.area_id) === String(createForm.area_id)) return true;
-        if (c.customer_area_id && String(c.customer_area_id) === String(createForm.area_id)) return true;
-        if (selectedArea && c.area && c.area.trim().toLowerCase() === selectedArea.name.trim().toLowerCase()) return true;
-        if (selectedArea && c.area_model?.name && c.area_model.name.trim().toLowerCase() === selectedArea.name.trim().toLowerCase()) return true;
-        return false;
-    });
+    const customersInArea = !createForm.area_id
+        ? props.customers
+        : props.customers.filter(c => {
+            if (c.area_id && String(c.area_id) === String(createForm.area_id)) return true;
+            if (c.customer_area_id && String(c.customer_area_id) === String(createForm.area_id)) return true;
+            if (selectedArea && c.area && c.area.trim().toLowerCase() === selectedArea.name.trim().toLowerCase()) return true;
+            if (selectedArea && c.area_model?.name && c.area_model.name.trim().toLowerCase() === selectedArea.name.trim().toLowerCase()) return true;
+            return false;
+        });
+
+    const keyword = customerSearch.value.trim().toLowerCase();
+    if (!keyword) return customersInArea;
+
+    return customersInArea.filter(c => [
+        c.name,
+        c.customer_code,
+        c.phone,
+        c.address,
+        c.area,
+        c.area_model?.name,
+    ].some(value => String(value || '').toLowerCase().includes(keyword)));
 });
 
 // Info pelanggan terpilih
