@@ -385,6 +385,19 @@
                         </div>
                     </div>
 
+                    <!-- Jam Masuk & Jam Pulang -->
+                    <div class="mt-3.5 py-2 px-3 rounded-2xl bg-amber-100/70 border border-amber-300/80 flex items-center justify-around text-xs shadow-2xs">
+                        <div class="text-center">
+                            <span class="text-[10px] text-amber-900/80 font-bold uppercase tracking-wider block">Jam Masuk</span>
+                            <span class="font-black text-slate-900 text-xs">{{ podium[0].avg_clock_in_formatted || '-' }}</span>
+                        </div>
+                        <div class="w-px h-6 bg-amber-300"></div>
+                        <div class="text-center">
+                            <span class="text-[10px] text-amber-900/80 font-bold uppercase tracking-wider block">Jam Pulang</span>
+                            <span class="font-black text-slate-900 text-xs">{{ podium[0].avg_clock_out_formatted || '-' }}</span>
+                        </div>
+                    </div>
+
                     <!-- Action Button -->
                     <button
                         type="button"
@@ -477,6 +490,19 @@
                         </div>
                         <div class="text-right">
                             Pulang cepat: <strong class="text-slate-900 font-bold">{{ podium[1].early_leaves }}</strong>
+                        </div>
+                    </div>
+
+                    <!-- Jam Masuk & Jam Pulang -->
+                    <div class="mt-3.5 py-2 px-3 rounded-2xl bg-slate-100 border border-slate-300/80 flex items-center justify-around text-xs shadow-2xs">
+                        <div class="text-center">
+                            <span class="text-[10px] text-slate-600 font-bold uppercase tracking-wider block">Jam Masuk</span>
+                            <span class="font-black text-slate-900 text-xs">{{ podium[1].avg_clock_in_formatted || '-' }}</span>
+                        </div>
+                        <div class="w-px h-6 bg-slate-300"></div>
+                        <div class="text-center">
+                            <span class="text-[10px] text-slate-600 font-bold uppercase tracking-wider block">Jam Pulang</span>
+                            <span class="font-black text-slate-900 text-xs">{{ podium[1].avg_clock_out_formatted || '-' }}</span>
                         </div>
                     </div>
 
@@ -575,6 +601,19 @@
                         </div>
                     </div>
 
+                    <!-- Jam Masuk & Jam Pulang -->
+                    <div class="mt-3.5 py-2 px-3 rounded-2xl bg-orange-100/70 border border-orange-300/80 flex items-center justify-around text-xs shadow-2xs">
+                        <div class="text-center">
+                            <span class="text-[10px] text-orange-900/80 font-bold uppercase tracking-wider block">Jam Masuk</span>
+                            <span class="font-black text-slate-900 text-xs">{{ podium[2].avg_clock_in_formatted || '-' }}</span>
+                        </div>
+                        <div class="w-px h-6 bg-orange-300"></div>
+                        <div class="text-center">
+                            <span class="text-[10px] text-orange-900/80 font-bold uppercase tracking-wider block">Jam Pulang</span>
+                            <span class="font-black text-slate-900 text-xs">{{ podium[2].avg_clock_out_formatted || '-' }}</span>
+                        </div>
+                    </div>
+
                     <!-- Action Button -->
                     <button
                         type="button"
@@ -653,6 +692,7 @@
                                 <th class="px-5 py-3.5">Karyawan</th>
                                 <th class="px-5 py-3.5">Cabang / Divisi</th>
                                 <th class="px-5 py-3.5 text-center">Kehadiran</th>
+                                <th class="px-5 py-3.5 text-center">Jam Kerja (Masuk / Pulang)</th>
                                 <th class="px-5 py-3.5 text-center">Kedisiplinan</th>
                                 <th class="px-5 py-3.5 text-center">Skor Akhir</th>
                                 <th class="px-5 py-3.5 text-center">Status Reward</th>
@@ -727,6 +767,27 @@
                                     </div>
                                 </td>
 
+                                <!-- Jam Kerja (Masuk / Pulang) -->
+                                <td class="px-5 py-4 text-center">
+                                    <div v-if="emp.presents === 0" class="text-slate-400 text-[11px] italic">
+                                        -
+                                    </div>
+                                    <div v-else class="inline-flex flex-col items-center gap-1">
+                                        <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-200/60 shadow-2xs whitespace-nowrap">
+                                            <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+                                            </svg>
+                                            <span>Masuk: {{ emp.avg_clock_in_formatted || '-' }}</span>
+                                        </div>
+                                        <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[11px] font-bold border border-blue-200/60 shadow-2xs whitespace-nowrap">
+                                            <svg class="w-3.5 h-3.5 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                                            </svg>
+                                            <span>Pulang: {{ emp.avg_clock_out_formatted || '-' }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+
                                 <!-- Kedisiplinan -->
                                 <td class="px-5 py-4 text-center">
                                     <div v-if="emp.presents === 0" class="text-slate-400 text-[11px] italic">
@@ -796,7 +857,7 @@
                             </tr>
 
                             <tr v-if="filteredLeaderboard.length === 0">
-                                <td colspan="8" class="text-center py-12 text-slate-400">
+                                <td colspan="9" class="text-center py-12 text-slate-400">
                                     Tidak ada data karyawan yang cocok dengan filter.
                                 </td>
                             </tr>
@@ -839,28 +900,40 @@
                     <!-- Modal Body -->
                     <div class="p-5 sm:p-6 overflow-y-auto space-y-5">
                         <!-- Score Breakdown Box -->
-                        <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                        <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 text-center">
                             <div>
-                                <div class="text-xs text-slate-500 font-medium">Kehadiran</div>
-                                <div class="text-base font-black text-slate-900 mt-0.5">
+                                <div class="text-[11px] text-slate-500 font-medium">Kehadiran</div>
+                                <div class="text-sm font-black text-slate-900 mt-0.5">
                                     {{ detailEmployee?.presents }} / {{ detailEmployee?.target_days }} hari
                                 </div>
                             </div>
                             <div>
-                                <div class="text-xs text-slate-500 font-medium">Keterlambatan</div>
-                                <div class="text-base font-black text-amber-700 mt-0.5">
+                                <div class="text-[11px] text-slate-500 font-medium">Jam Masuk (Avg)</div>
+                                <div class="text-sm font-black text-emerald-700 mt-0.5">
+                                    {{ detailEmployee?.avg_clock_in_formatted || '-' }}
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-[11px] text-slate-500 font-medium">Jam Pulang (Avg)</div>
+                                <div class="text-sm font-black text-blue-700 mt-0.5">
+                                    {{ detailEmployee?.avg_clock_out_formatted || '-' }}
+                                </div>
+                            </div>
+                            <div>
+                                <div class="text-[11px] text-slate-500 font-medium">Keterlambatan</div>
+                                <div class="text-sm font-black text-amber-700 mt-0.5">
                                     {{ detailEmployee?.lates }}x ({{ detailEmployee?.late_minutes }}m)
                                 </div>
                             </div>
                             <div>
-                                <div class="text-xs text-slate-500 font-medium">Alpha</div>
-                                <div class="text-base font-black text-rose-600 mt-0.5">
+                                <div class="text-[11px] text-slate-500 font-medium">Alpha</div>
+                                <div class="text-sm font-black text-rose-600 mt-0.5">
                                     {{ detailEmployee?.alphas }} hari
                                 </div>
                             </div>
                             <div>
-                                <div class="text-xs text-slate-500 font-medium">Skor Akhir</div>
-                                <div class="text-xl font-black text-emerald-700 mt-0.5">
+                                <div class="text-[11px] text-slate-500 font-medium">Skor Akhir</div>
+                                <div class="text-base font-black text-emerald-700 mt-0.5">
                                     {{ detailEmployee?.score }}
                                 </div>
                             </div>
@@ -886,9 +959,16 @@
                                 >
                                     <div>
                                         <div class="font-bold text-slate-800">{{ hist.formatted_date || hist.date }}</div>
-                                        <div class="text-slate-500 text-[11px] mt-0.5">
-                                            Masuk: <strong class="text-slate-700">{{ hist.clock_in ? hist.clock_in.substring(11, 16) : '-' }}</strong> •
-                                            Pulang: <strong class="text-slate-700">{{ hist.clock_out ? hist.clock_out.substring(11, 16) : '-' }}</strong>
+                                        <div class="text-slate-500 text-[11px] mt-0.5 flex items-center gap-2">
+                                            <span class="inline-flex items-center gap-1 text-emerald-700 font-semibold">
+                                                <span>Masuk:</span>
+                                                <strong class="text-slate-800">{{ hist.formatted_clock_in || formatTime(hist.clock_in) }}</strong>
+                                            </span>
+                                            <span class="text-slate-300">•</span>
+                                            <span class="inline-flex items-center gap-1 text-blue-700 font-semibold">
+                                                <span>Pulang:</span>
+                                                <strong class="text-slate-800">{{ hist.formatted_clock_out || formatTime(hist.clock_out) }}</strong>
+                                            </span>
                                         </div>
                                     </div>
                                     <div class="text-right">
@@ -986,6 +1066,10 @@
                                 <div class="font-black text-sm text-slate-900 truncate">{{ podium[0]?.name || '-' }}</div>
                                 <div class="text-[11px] text-slate-500 truncate">{{ podium[0]?.position || '-' }}</div>
                                 <div class="text-xs font-black text-emerald-700">Rp {{ formatRupiah(podium[0]?.reward_amount || 0) }}</div>
+                                <div class="pt-1.5 border-t border-amber-200/60 flex items-center justify-between text-[10px] text-slate-600 font-medium">
+                                    <span>Masuk: <strong class="text-slate-900">{{ podium[0]?.avg_clock_in_formatted || '-' }}</strong></span>
+                                    <span>Pulang: <strong class="text-slate-900">{{ podium[0]?.avg_clock_out_formatted || '-' }}</strong></span>
+                                </div>
                             </div>
                             <!-- Juara 2 -->
                             <div class="border-2 border-slate-300 bg-slate-50 p-4 rounded-xl space-y-2">
@@ -994,6 +1078,10 @@
                                 <div class="font-black text-sm text-slate-900 truncate">{{ podium[1]?.name || '-' }}</div>
                                 <div class="text-[11px] text-slate-500 truncate">{{ podium[1]?.position || '-' }}</div>
                                 <div class="text-xs font-black text-emerald-700">Rp {{ formatRupiah(podium[1]?.reward_amount || 0) }}</div>
+                                <div class="pt-1.5 border-t border-slate-200 flex items-center justify-between text-[10px] text-slate-600 font-medium">
+                                    <span>Masuk: <strong class="text-slate-900">{{ podium[1]?.avg_clock_in_formatted || '-' }}</strong></span>
+                                    <span>Pulang: <strong class="text-slate-900">{{ podium[1]?.avg_clock_out_formatted || '-' }}</strong></span>
+                                </div>
                             </div>
                             <!-- Juara 3 -->
                             <div class="border-2 border-amber-500/60 bg-orange-50/30 p-4 rounded-xl space-y-2">
@@ -1002,6 +1090,10 @@
                                 <div class="font-black text-sm text-slate-900 truncate">{{ podium[2]?.name || '-' }}</div>
                                 <div class="text-[11px] text-slate-500 truncate">{{ podium[2]?.position || '-' }}</div>
                                 <div class="text-xs font-black text-emerald-700">Rp {{ formatRupiah(podium[2]?.reward_amount || 0) }}</div>
+                                <div class="pt-1.5 border-t border-amber-200/60 flex items-center justify-between text-[10px] text-slate-600 font-medium">
+                                    <span>Masuk: <strong class="text-slate-900">{{ podium[2]?.avg_clock_in_formatted || '-' }}</strong></span>
+                                    <span>Pulang: <strong class="text-slate-900">{{ podium[2]?.avg_clock_out_formatted || '-' }}</strong></span>
+                                </div>
                             </div>
                         </div>
 
@@ -1174,6 +1266,16 @@ const getInitials = (name) => {
 const formatRupiah = (val) => {
     if (!val) return '0';
     return Number(val).toLocaleString('id-ID');
+};
+
+const formatTime = (val) => {
+    if (!val) return '-';
+    const str = String(val).trim();
+    if (str.includes(' ') || str.includes('T')) {
+        const parts = str.split(/[ T]/);
+        return parts[1] ? parts[1].substring(0, 5) + ' WIB' : str;
+    }
+    return str.substring(0, 5) + ' WIB';
 };
 
 const openDetail = async (emp) => {

@@ -48,7 +48,8 @@ class BestAttendanceController extends Controller
         $allEmployees = $employeesQuery->get();
 
         // 2. Ambil seluruh catatan presensi periode ini
-        $attendances = Attendance::whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+        $attendances = Attendance::with('shift')
+            ->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
             ->get()
             ->groupBy('employee_id');
 
@@ -101,11 +102,16 @@ class BestAttendanceController extends Controller
             ],
         ];
 
+        // 3b. Pengaturan Batas Waktu Masuk Lebih Awal (Early Clock-in Limit)
+        $clockInEarlyLimitEnabled = Setting::get('attendance_clock_in_early_limit_enabled', '1') === '1';
+        $clockInEarlyLimitMinutes = max(1, (int) Setting::get('attendance_clock_in_early_limit_minutes', 60));
+
         // 4. Kalkulasi Performa Setiap Karyawan
         $calculatedEmployees = [];
 
         $isCurrentMonth = ($year === Carbon::now()->year && $month === Carbon::now()->month);
         $asOfDate = $isCurrentMonth ? Carbon::now()->endOfDay() : $endDate;
+        $todayStr = Carbon::today()->format('Y-m-d');
 
         // Hitung perkiraan hari kerja default (Senin - Sabtu) pada periode yang telah berjalan
         $defaultTargetDays = 0;
@@ -182,6 +188,76 @@ class BestAttendanceController extends Controller
                 }
             }
 
+            // Hitung Jam Masuk dan Jam Pulang Karyawan
+            $clockInSecs = [];
+            $rawClockInSecs = [];
+            $clockOutSecs = [];
+
+            foreach ($empAtts as $att) {
+                if (!empty($att->clock_in)) {
+                    $cIn = Carbon::parse($att->clock_in);
+                    $actualSec = ($cIn->hour * 3600) + ($cIn->minute * 60) + $cIn->second;
+                    $rawClockInSecs[] = $actualSec;
+
+                    // Evaluasi batas buka absen masuk
+                    $attShift = $att->shift ?: ($emp->shift ?: null);
+                    $officialOpenSec = 0;
+                    if ($attShift && !empty($attShift->start_time)) {
+                        $shiftStart = Carbon::parse(substr($attShift->start_time, 0, 5));
+                        $earliestAllowed = $shiftStart->copy()->subMinutes($clockInEarlyLimitMinutes);
+                        $officialOpenSec = ($earliestAllowed->hour * 3600) + ($earliestAllowed->minute * 60) + $earliestAllowed->second;
+                    }
+
+                    // Aturan: Absen masuk sebelum batas jam yang ditentukan kamera menolak / jika lolos dihitung jam 08.00
+                    if ($clockInEarlyLimitEnabled && $officialOpenSec > 0 && $actualSec < $officialOpenSec) {
+                        $clockInSecs[] = 8 * 3600; // 08:00:00 WIB penalty rule
+                    } else {
+                        $clockInSecs[] = $actualSec;
+                    }
+                }
+
+                if (!empty($att->clock_out)) {
+                    $cOut = Carbon::parse($att->clock_out);
+                    $outSec = ($cOut->hour * 3600) + ($cOut->minute * 60) + $cOut->second;
+                    $clockOutSecs[] = $outSec;
+                }
+            }
+
+            foreach ($empDuties as $fd) {
+                if (!empty($fd->check_in_time)) {
+                    $cIn = Carbon::parse($fd->check_in_time);
+                    $actualSec = ($cIn->hour * 3600) + ($cIn->minute * 60) + $cIn->second;
+                    $rawClockInSecs[] = $actualSec;
+                    $clockInSecs[] = $actualSec;
+                }
+                if (!empty($fd->check_out_time)) {
+                    $cOut = Carbon::parse($fd->check_out_time);
+                    $outSec = ($cOut->hour * 3600) + ($cOut->minute * 60) + $cOut->second;
+                    $clockOutSecs[] = $outSec;
+                }
+            }
+
+            // Rata-rata jam masuk & jam pulang
+            $avgClockIn = !empty($clockInSecs) ? (array_sum($clockInSecs) / count($clockInSecs)) : 86400;
+            $avgClockInDisplaySec = !empty($rawClockInSecs) ? (array_sum($rawClockInSecs) / count($rawClockInSecs)) : null;
+            $avgClockInFormatted = $avgClockInDisplaySec !== null
+                ? sprintf("%02d:%02d WIB", floor($avgClockInDisplaySec / 3600), floor(($avgClockInDisplaySec % 3600) / 60))
+                : '-';
+
+            $avgClockOutSec = !empty($clockOutSecs) ? (array_sum($clockOutSecs) / count($clockOutSecs)) : null;
+            $avgClockOutFormatted = $avgClockOutSec !== null
+                ? sprintf("%02d:%02d WIB", floor($avgClockOutSec / 3600), floor(($avgClockOutSec % 3600) / 60))
+                : '-';
+
+            // Jika hari ini hadir dan belum absen pulang
+            $hasActiveAttendanceToday = $empAtts->contains(function ($a) use ($todayStr) {
+                $d = Carbon::parse($a->date)->format('Y-m-d');
+                return $d === $todayStr && !empty($a->clock_in) && empty($a->clock_out);
+            });
+            if ($avgClockOutFormatted === '-' && $hasActiveAttendanceToday) {
+                $avgClockOutFormatted = 'Belum Pulang';
+            }
+
             // FORMULA SKOR:
             // Base Kehadiran = (Hadir / Target Hari) * 100
             // Penalti = keterlambatan + alpha + pulang cepat
@@ -199,10 +275,10 @@ class BestAttendanceController extends Controller
             $branchName = $emp->area ? $emp->area->name : ($emp->branch ?: 'Pusat');
             $position = $emp->position ?: 'Karyawan';
 
-            // 1. Identifikasi apakah karyawan adalah Tim Khusus / Tim Serbu:
+            // 1. Identifikasi apakah karyawan adalah Tim Khusus / Tim Serbu / Tim BC-4:
             // - Terdaftar di specialTeamMembers
             // - Memiliki riwayat SpecialAttendance
-            // - Posisi atau tipe karyawan mengandung kata 'khusus', 'special', atau 'serbu'
+            // - Posisi atau tipe karyawan mengandung kata 'khusus', 'special', 'serbu', atau 'bc-4'
             $isSpecialTeam = false;
             if (method_exists($emp, 'specialTeamMembers') && $emp->specialTeamMembers && $emp->specialTeamMembers->isNotEmpty()) {
                 $isSpecialTeam = true;
@@ -213,7 +289,7 @@ class BestAttendanceController extends Controller
                 }
             }
             if (!$isSpecialTeam) {
-                $isSpecialTeam = (bool) preg_match('/(khusus|special|serbu)/i', $position . ' ' . ($emp->employee_type ?? ''));
+                $isSpecialTeam = (bool) preg_match('/(khusus|special|serbu|bc-?4)/i', $position . ' ' . ($emp->employee_type ?? ''));
             }
 
             // Tim Khusus dan Tim Serbu memiliki modul absen dan reward tersendiri,
@@ -248,6 +324,10 @@ class BestAttendanceController extends Controller
                 'is_branch_winner' => false,
                 'is_global_winner' => false,
                 'is_maintenance_winner' => false,
+                'avg_clock_in' => $avgClockIn,
+                'avg_clock_in_formatted' => $avgClockInFormatted,
+                'avg_clock_out' => $avgClockOutSec,
+                'avg_clock_out_formatted' => $avgClockOutFormatted,
             ];
         }
 
@@ -263,7 +343,12 @@ class BestAttendanceController extends Controller
             });
         }
 
-        // Urutkan berdasarkan Skor tertinggi, Kehadiran terbanyak, Keterlambatan terendah
+        // Urutkan berdasarkan:
+        // 1. Skor tertinggi
+        // 2. Kehadiran terbanyak
+        // 3. Keterlambatan terendah
+        // 4. Pulang cepat terendah
+        // 5. Tie-breaker keadilan: Jam masuk rata-rata lebih awal (avg_clock_in)
         $sortedEmployees = $filteredCollection->sort(function ($a, $b) {
             if ($b['score'] != $a['score']) {
                 return $b['score'] <=> $a['score'];
@@ -271,7 +356,13 @@ class BestAttendanceController extends Controller
             if ($b['presents'] != $a['presents']) {
                 return $b['presents'] <=> $a['presents'];
             }
-            return $a['late_minutes'] <=> $b['late_minutes'];
+            if ($a['late_minutes'] != $b['late_minutes']) {
+                return $a['late_minutes'] <=> $b['late_minutes'];
+            }
+            if ($a['early_leaves'] != $b['early_leaves']) {
+                return $a['early_leaves'] <=> $b['early_leaves'];
+            }
+            return ($a['avg_clock_in'] ?? 86400) <=> ($b['avg_clock_in'] ?? 86400);
         })->values();
 
         // 5. PENETAPAN JUARA & REWARD BERDASARKAN SCOPE
@@ -297,12 +388,21 @@ class BestAttendanceController extends Controller
                 }
             }
 
-            // Juara cabang berkompetisi untuk Top 3 Global
+            // Juara cabang berkompetisi untuk Top 3 Global dengan tie-breaker transparan
             $sortedBranchWinners = collect($branchWinners)->sort(function ($a, $b) {
                 if ($b['score'] != $a['score']) {
                     return $b['score'] <=> $a['score'];
                 }
-                return $b['presents'] <=> $a['presents'];
+                if ($b['presents'] != $a['presents']) {
+                    return $b['presents'] <=> $a['presents'];
+                }
+                if ($a['late_minutes'] != $b['late_minutes']) {
+                    return $a['late_minutes'] <=> $b['late_minutes'];
+                }
+                if ($a['early_leaves'] != $b['early_leaves']) {
+                    return $a['early_leaves'] <=> $b['early_leaves'];
+                }
+                return ($a['avg_clock_in'] ?? 86400) <=> ($b['avg_clock_in'] ?? 86400);
             })->values();
 
             // Ambil Top 3 Global
@@ -337,27 +437,6 @@ class BestAttendanceController extends Controller
 
             $podium = $podiumList;
 
-            // Seluruh karyawan di-rank untuk tabel
-            $rankedLeaderboard = [];
-            $podiumMap = collect($podium)->keyBy('id');
-
-            $currentRank = 1;
-            foreach ($sortedEmployees as $emp) {
-                if ($podiumMap->has($emp['id'])) {
-                    $rankedLeaderboard[] = $podiumMap->get($emp['id']);
-                } else {
-                    $hasAttended = ($emp['presents'] > 0 && $emp['score'] > 0);
-                    $emp['rank'] = $hasAttended ? $currentRank : '-';
-                    $emp['reward_amount'] = 0;
-                    $emp['reward_title'] = null;
-                    $rankedLeaderboard[] = $emp;
-                }
-                if ($emp['presents'] > 0 && $emp['score'] > 0) {
-                    $currentRank++;
-                }
-            }
-            $leaderboard = $rankedLeaderboard;
-
         } elseif ($scope === 'maintenance') {
             // "Reward Maintenance: Top 3 Karyawan Maintenance"
             $podiumList = [];
@@ -373,25 +452,6 @@ class BestAttendanceController extends Controller
             }
             $podium = $podiumList;
 
-            $rankedLeaderboard = [];
-            $podiumMap = collect($podium)->keyBy('id');
-            $currentRank = 1;
-            foreach ($sortedEmployees as $emp) {
-                if ($podiumMap->has($emp['id'])) {
-                    $rankedLeaderboard[] = $podiumMap->get($emp['id']);
-                } else {
-                    $hasAttended = ($emp['presents'] > 0 && $emp['score'] > 0);
-                    $emp['rank'] = $hasAttended ? $currentRank : '-';
-                    $emp['reward_amount'] = 0;
-                    $emp['reward_title'] = null;
-                    $rankedLeaderboard[] = $emp;
-                }
-                if ($emp['presents'] > 0 && $emp['score'] > 0) {
-                    $currentRank++;
-                }
-            }
-            $leaderboard = $rankedLeaderboard;
-
         } else {
             // Scope: 'branch' (Per Cabang)
             $podiumList = [];
@@ -406,26 +466,34 @@ class BestAttendanceController extends Controller
                 $podiumList[] = $winner;
             }
             $podium = $podiumList;
-
-            $rankedLeaderboard = [];
-            $podiumMap = collect($podium)->keyBy('id');
-            $currentRank = 1;
-            foreach ($sortedEmployees as $emp) {
-                if ($podiumMap->has($emp['id'])) {
-                    $rankedLeaderboard[] = $podiumMap->get($emp['id']);
-                } else {
-                    $hasAttended = ($emp['presents'] > 0 && $emp['score'] > 0);
-                    $emp['rank'] = $hasAttended ? $currentRank : '-';
-                    $emp['reward_amount'] = 0;
-                    $emp['reward_title'] = null;
-                    $rankedLeaderboard[] = $emp;
-                }
-                if ($emp['presents'] > 0 && $emp['score'] > 0) {
-                    $currentRank++;
-                }
-            }
-            $leaderboard = $rankedLeaderboard;
         }
+
+        // Klasemen Seluruh Karyawan (Leaderboard Table)
+        $rankedLeaderboard = [];
+        $podiumMap = collect($podium)->keyBy('id');
+        $podiumIds = $podiumMap->keys()->all();
+
+        // 1. Tempatkan Juara Podium (Rank 1, 2, 3) di posisi teratas
+        foreach ($podium as $winner) {
+            $rankedLeaderboard[] = $winner;
+        }
+
+        // 2. Tempatkan sisa karyawan secara berurutan
+        $currentRank = count($podium) + 1;
+        foreach ($sortedEmployees as $emp) {
+            if (in_array($emp['id'], $podiumIds)) {
+                continue;
+            }
+            $hasAttended = ($emp['presents'] > 0 && $emp['score'] > 0);
+            $emp['rank'] = $hasAttended ? $currentRank : '-';
+            $emp['reward_amount'] = 0;
+            $emp['reward_title'] = null;
+            $rankedLeaderboard[] = $emp;
+            if ($hasAttended) {
+                $currentRank++;
+            }
+        }
+        $leaderboard = $rankedLeaderboard;
 
         // 6. Ringkasan Statistik KPI Cards (5 Cards)
         $totalEmployeesCount = $filteredCollection->count();
@@ -486,6 +554,35 @@ class BestAttendanceController extends Controller
             ->orderBy('date', 'desc')
             ->get();
 
+        $formattedAttendances = $attendances->map(function ($att) {
+            $inStr = '-';
+            if (!empty($att->clock_in)) {
+                $cIn = Carbon::parse($att->clock_in);
+                $inStr = $cIn->format('H:i') . ' WIB';
+            }
+            $outStr = '-';
+            if (!empty($att->clock_out)) {
+                $cOut = Carbon::parse($att->clock_out);
+                $outStr = $cOut->format('H:i') . ' WIB';
+            }
+            return [
+                'id' => $att->id,
+                'date' => $att->date ? Carbon::parse($att->date)->format('Y-m-d') : null,
+                'formatted_date' => $att->formatted_date ?: ($att->date ? Carbon::parse($att->date)->translatedFormat('l, d F Y') : '-'),
+                'clock_in' => $att->clock_in,
+                'clock_out' => $att->clock_out,
+                'formatted_clock_in' => $inStr,
+                'formatted_clock_out' => $outStr,
+                'status' => $att->status,
+                'late_minutes' => (int) $att->late_minutes,
+                'shift' => $att->shift ? [
+                    'name' => $att->shift->name,
+                    'start_time' => substr($att->shift->start_time, 0, 5),
+                    'end_time' => substr($att->shift->end_time, 0, 5),
+                ] : null,
+            ];
+        });
+
         $schedules = WorkSchedule::with('shift')
             ->where('employee_id', $employeeId)
             ->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
@@ -499,7 +596,7 @@ class BestAttendanceController extends Controller
 
         return response()->json([
             'employee' => $employee,
-            'attendances' => $attendances,
+            'attendances' => $formattedAttendances,
             'schedules' => $schedules,
             'duties' => $duties,
         ]);
