@@ -945,11 +945,13 @@ const targetHolidayNotes = ref('');
 const isSavingShift = ref(false);
 
 const holidayPresetOptions = [
-    'Libur Rutin Mingguan',
-    'Libur Nasional',
+    'Sakit (Surat Dokter)',
+    'Sakit (Tanpa Surat Dokter)',
+    'Izin Tidak Masuk',
     'Cuti Tahunan',
     'Libur Pengganti',
-    'Izin Tidak Masuk',
+    'Libur Rutin Mingguan',
+    'Libur Nasional',
 ];
 
 const openShiftModal = () => {

@@ -266,7 +266,6 @@ class AttendanceReportController extends Controller
 
         // Ambil data jadwal kerja jika ada
         $workSchedules = WorkSchedule::whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
-            ->where('status', 'work')
             ->get();
 
         // 3. Rekapitulasi per Karyawan (Cerdas & Otomatis)

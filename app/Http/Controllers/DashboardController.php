@@ -1846,11 +1846,20 @@ class DashboardController extends Controller
 
             // Target hari kerja
             if ($empSchedules->count() > 0) {
-                $workDays = $empSchedules->filter(function ($s) use ($now) {
-                    $d = Carbon::parse($s->date);
-                    return $d->lte($now) && $s->status !== 'off' && !empty($s->shift_id);
-                })->count();
-                $targetDays = $workDays > 0 ? $workDays : $defaultTargetDays;
+                $hasScheduledWork = $empSchedules->where('status', 'work')->whereNotNull('shift_id')->count() > 0;
+                if ($hasScheduledWork) {
+                    $workDays = $empSchedules->filter(function ($s) use ($now) {
+                        $d = Carbon::parse($s->date);
+                        return $d->lte($now) && $s->status === 'work' && !empty($s->shift_id);
+                    })->count();
+                    $targetDays = max(1, $workDays);
+                } else {
+                    $offDaysCount = $empSchedules->filter(function ($s) use ($now) {
+                        $d = Carbon::parse($s->date);
+                        return $d->lte($now) && ($s->status !== 'work' || empty($s->shift_id));
+                    })->count();
+                    $targetDays = max(1, $defaultTargetDays - $offDaysCount);
+                }
             } else {
                 $targetDays = $defaultTargetDays;
             }

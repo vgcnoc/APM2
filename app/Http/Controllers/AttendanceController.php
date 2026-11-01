@@ -1094,6 +1094,14 @@ class AttendanceController extends Controller
 
         if ($isOff) {
             $notes = $request->notes ?: 'Jadwal Libur (OFF)';
+            $lowerNotes = strtolower($notes);
+            $schedStatus = 'off';
+            if (str_contains($lowerNotes, 'sakit')) {
+                $schedStatus = 'sick';
+            } elseif (str_contains($lowerNotes, 'izin') || str_contains($lowerNotes, 'cuti')) {
+                $schedStatus = 'leave';
+            }
+
             WorkSchedule::updateOrCreate(
                 [
                     'employee_id' => $request->employee_id,
@@ -1101,12 +1109,12 @@ class AttendanceController extends Controller
                 ],
                 [
                     'shift_id' => null,
-                    'status'   => 'off',
+                    'status'   => $schedStatus,
                     'notes'    => $notes,
                 ]
             );
 
-            return back()->with('success', "Jadwal berhasil diubah menjadi Libur (OFF): {$notes}");
+            return back()->with('success', "Jadwal berhasil diubah menjadi Libur/Izin: {$notes}");
         }
 
         $shift = Shift::findOrFail($shiftId);
@@ -1172,7 +1180,6 @@ class AttendanceController extends Controller
             ->get();
 
         $allWorkSchedules = WorkSchedule::whereBetween('date', [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
-            ->where('status', 'work')
             ->get();
 
         $employees = Employee::with('area')
@@ -1295,6 +1302,8 @@ class AttendanceController extends Controller
                 $alphaCount = 0;
                 if ($alphaPenaltyEnabled) {
                     $scheduledDates = $allWorkSchedules->where('employee_id', $employee->id)
+                        ->where('status', 'work')
+                        ->whereNotNull('shift_id')
                         ->pluck('date')
                         ->map(fn($d) => is_string($d) ? substr($d, 0, 10) : $d->format('Y-m-d'))
                         ->unique()
@@ -1331,6 +1340,68 @@ class AttendanceController extends Controller
                         );
                         $syncedDeductionsCount++;
                     }
+                }
+
+                // --- 4b. POTONGAN SAKIT TANPA SURAT DOKTER & IZIN TIDAK MASUK ---
+                $empSchedules = $allWorkSchedules->where('employee_id', $employee->id);
+                $sickNoCertCount = 0;
+                $permitCount = 0;
+
+                foreach ($empSchedules as $s) {
+                    $sDate = is_string($s->date) ? substr($s->date, 0, 10) : $s->date->format('Y-m-d');
+                    if ($sDate > $todayDate) continue;
+
+                    $st = strtolower($s->status ?? '');
+                    $nt = strtolower($s->notes ?? '');
+
+                    $isSick = ($st === 'sick') || str_contains($nt, 'sakit');
+                    $isLeaveOrPermit = ($st === 'leave') || ($st === 'permit') || str_contains($nt, 'izin');
+
+                    if ($isSick && (str_contains($nt, 'tanpa surat') || str_contains($nt, 'tanpa dokter') || $st === 'sick_no_cert')) {
+                        $sickNoCertCount++;
+                    } elseif ($isLeaveOrPermit && (str_contains($nt, 'izin') || $st === 'permit')) {
+                        $permitCount++;
+                    }
+                }
+
+                $sickNoCertEnabled = Setting::get('attendance_sick_no_cert_enabled', '1') === '1';
+                $sickNoCertAmount = (float) Setting::get('attendance_sick_no_cert_amount', 20000);
+                if ($sickNoCertEnabled && $sickNoCertCount > 0) {
+                    $sickNoCertDeduction = $sickNoCertCount * $sickNoCertAmount;
+                    Deduction::updateOrCreate(
+                        [
+                            'user_id' => $linkedUser->id,
+                            'reference_id' => "ATT_SICK_NO_CERT_{$employee->id}_{$month}",
+                        ],
+                        [
+                            'type' => 'auto',
+                            'description' => "Potongan Sakit Tanpa Surat Dokter Periode {$month} ({$sickNoCertCount} hari)",
+                            'amount' => $sickNoCertDeduction,
+                            'deduction_date' => $monthEnd->format('Y-m-d'),
+                            'status' => 'pending',
+                        ]
+                    );
+                    $syncedDeductionsCount++;
+                }
+
+                $permitEnabled = Setting::get('attendance_permit_enabled', '1') === '1';
+                $permitAmount = (float) Setting::get('attendance_permit_amount', 25000);
+                if ($permitEnabled && $permitCount > 0) {
+                    $permitDeduction = $permitCount * $permitAmount;
+                    Deduction::updateOrCreate(
+                        [
+                            'user_id' => $linkedUser->id,
+                            'reference_id' => "ATT_PERMIT_{$employee->id}_{$month}",
+                        ],
+                        [
+                            'type' => 'auto',
+                            'description' => "Potongan Izin Tidak Masuk Periode {$month} ({$permitCount} hari)",
+                            'amount' => $permitDeduction,
+                            'deduction_date' => $monthEnd->format('Y-m-d'),
+                            'status' => 'pending',
+                        ]
+                    );
+                    $syncedDeductionsCount++;
                 }
 
                 // --- 5. POTONGAN TIM KHUSUS (JIKA ANGGOTA TIM KHUSUS) ---

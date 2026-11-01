@@ -103,6 +103,12 @@ class AttendanceCalculatorService
             'alpha_enabled' => Setting::get('attendance_alpha_enabled', Setting::get('attendance_alpha_penalty_enabled', '1')) === '1',
             'alpha_amount' => (float) Setting::get('attendance_alpha_amount', 35000),
 
+            'sick_no_cert_enabled' => Setting::get('attendance_sick_no_cert_enabled', '1') === '1',
+            'sick_no_cert_amount' => (float) Setting::get('attendance_sick_no_cert_amount', 20000),
+
+            'permit_enabled' => Setting::get('attendance_permit_enabled', '1') === '1',
+            'permit_amount' => (float) Setting::get('attendance_permit_amount', 25000),
+
             'checkout_auto_lock' => Setting::get('attendance_checkout_auto_lock', '1') === '1',
             'checkout_deadline_mode' => Setting::get('attendance_checkout_deadline_mode', 'shift_relative'),
             'checkout_deadline_time' => self::normalizeTimeStr(Setting::get('attendance_checkout_deadline_time', '23:30'), '23:30'),
@@ -597,33 +603,77 @@ class AttendanceCalculatorService
             // 6. Tepat Waktu
             $totalOnTime = max(0, $totalPresent - $totalLate - $totalFieldDuty);
 
-            // 7. Hitung Hari Kerja Individu & Alpha Secara Cerdas
+            // 7. Hitung Hari Kerja Individu, Sakit, Izin & Alpha Secara Cerdas
             // Jika ada WorkSchedule terjadwal, gunakan data jadwal kerja
             $empWorkDays = $totalWorkDays;
             $empElapsedWorkDays = $elapsedWorkDays;
+            $totalSickWithCert = 0;
+            $totalSickNoCert = 0;
+            $totalPermit = 0;
 
             if ($workSchedules && $workSchedules->isNotEmpty()) {
                 $empSchedules = $workSchedules->where('employee_id', $emp->id);
                 if ($empSchedules->isNotEmpty()) {
-                    $empWorkDays = $empSchedules->where('status', 'work')->count();
-                    $empElapsedWorkDays = $empSchedules->where('status', 'work')
-                        ->filter(function ($s) use ($todayDate, $now, $shiftsById) {
-                            $sDate = is_string($s->date) ? substr($s->date, 0, 10) : $s->date->format('Y-m-d');
-                            if ($sDate < $todayDate) {
-                                return true;
-                            }
-                            if ($sDate === $todayDate) {
-                                $schedShift = $s->shift_id ? $shiftsById->get($s->shift_id) : null;
-                                if ($schedShift && $schedShift->start_time) {
-                                    $win = self::resolveShiftWindow($sDate, $schedShift, 'Asia/Jakarta');
-                                    if ($win && $now->lessThan($win['start'])) {
-                                        return false;
-                                    }
+                    $workSchedulesCount = $empSchedules->where('status', 'work')->count();
+                    if ($workSchedulesCount > 0) {
+                        $empWorkDays = $workSchedulesCount;
+                        $empElapsedWorkDays = $empSchedules->where('status', 'work')
+                            ->filter(function ($s) use ($todayDate, $now, $shiftsById) {
+                                $sDate = is_string($s->date) ? substr($s->date, 0, 10) : $s->date->format('Y-m-d');
+                                if ($sDate < $todayDate) {
+                                    return true;
                                 }
-                                return true;
-                            }
-                            return false;
+                                if ($sDate === $todayDate) {
+                                    $schedShift = $s->shift_id ? $shiftsById->get($s->shift_id) : null;
+                                    if ($schedShift && $schedShift->start_time) {
+                                        $win = self::resolveShiftWindow($sDate, $schedShift, 'Asia/Jakarta');
+                                        if ($win && $now->lessThan($win['start'])) {
+                                            return false;
+                                        }
+                                    }
+                                    return true;
+                                }
+                                return false;
+                            })->count();
+                    } else {
+                        // Karyawan standar (Senin-Sabtu), kurangi jika ada jadwal OFF / Sakit / Izin
+                        $offOrLeaveSchedules = $empSchedules->filter(function ($s) {
+                            return $s->status !== 'work' || empty($s->shift_id);
+                        });
+
+                        $empWorkDays = max(0, $totalWorkDays - $offOrLeaveSchedules->count());
+
+                        $elapsedOffDaysCount = $offOrLeaveSchedules->filter(function ($s) use ($todayDate) {
+                            $sDate = is_string($s->date) ? substr($s->date, 0, 10) : $s->date->format('Y-m-d');
+                            return $sDate <= $todayDate;
                         })->count();
+                        $empElapsedWorkDays = max(0, $elapsedWorkDays - $elapsedOffDaysCount);
+                    }
+
+                    // Identifikasi Sakit & Izin dari jadwal / notes
+                    foreach ($empSchedules as $s) {
+                        $sDate = is_string($s->date) ? substr($s->date, 0, 10) : $s->date->format('Y-m-d');
+                        if ($sDate > $todayDate) continue; // Jangan kenakan potongan untuk tanggal mendatang
+
+                        $st = strtolower($s->status ?? '');
+                        $nt = strtolower($s->notes ?? '');
+
+                        $isSick = ($st === 'sick') || str_contains($nt, 'sakit');
+                        $isLeaveOrPermit = ($st === 'leave') || ($st === 'permit') || str_contains($nt, 'izin');
+
+                        if ($isSick) {
+                            // Cek apakah tanpa surat dokter
+                            if (str_contains($nt, 'tanpa surat') || str_contains($nt, 'tanpa dokter') || $st === 'sick_no_cert') {
+                                $totalSickNoCert++;
+                            } else {
+                                $totalSickWithCert++;
+                            }
+                        } elseif ($isLeaveOrPermit) {
+                            if (str_contains($nt, 'izin') || $st === 'permit') {
+                                $totalPermit++;
+                            }
+                        }
+                    }
                 }
             }
 
@@ -640,7 +690,7 @@ class AttendanceCalculatorService
                 ? round(($totalOnTime / $totalPresent) * 100, 1) 
                 : ($totalAlpha > 0 ? 0 : 100);
 
-            // 9. Kalkulasi Penalti / Estimasi Potongan Cerdas
+            // 9. Kalkulasi Penalti / Estimasi Potongan Cerdas Sesuai Pengaturan
             $latePenalty = 0;
             if ($settings['late_enabled'] && $totalLate > 0) {
                 $latePenalty = ($settings['late_mode'] === 'per_menit')
@@ -663,7 +713,19 @@ class AttendanceCalculatorService
                 $alphaPenalty = $totalAlpha * $settings['alpha_amount'];
             }
 
-            $totalEstimatedPenalty = $latePenalty + $missingOutPenalty + $earlyLeavePenalty + $alphaPenalty;
+            // Potongan Sakit Tanpa Surat Dokter (Sakit dengan Surat Dokter = Rp 0 Bebas Denda)
+            $sickNoCertPenalty = 0;
+            if (!empty($settings['sick_no_cert_enabled']) && $totalSickNoCert > 0) {
+                $sickNoCertPenalty = $totalSickNoCert * ($settings['sick_no_cert_amount'] ?? 20000);
+            }
+
+            // Potongan Izin Tidak Masuk
+            $permitPenalty = 0;
+            if (!empty($settings['permit_enabled']) && $totalPermit > 0) {
+                $permitPenalty = $totalPermit * ($settings['permit_amount'] ?? 25000);
+            }
+
+            $totalEstimatedPenalty = $latePenalty + $missingOutPenalty + $earlyLeavePenalty + $alphaPenalty + $sickNoCertPenalty + $permitPenalty;
 
             // 10. Status Payroll Sync
             $syncedCount = $empAtts->where('is_synced_to_payroll', true)->count();
@@ -688,6 +750,9 @@ class AttendanceCalculatorService
                 'total_missing_out' => $totalMissingOut,
                 'total_early_leave' => $totalEarlyLeave,
                 'total_alpha' => $totalAlpha,
+                'total_sick_with_cert' => $totalSickWithCert,
+                'total_sick_no_cert' => $totalSickNoCert,
+                'total_permit' => $totalPermit,
                 'attendance_rate' => $attendanceRate,
                 'discipline_rate' => $disciplineRate,
                 'penalties' => [
@@ -695,6 +760,8 @@ class AttendanceCalculatorService
                     'missing_out' => $missingOutPenalty,
                     'early_leave' => $earlyLeavePenalty,
                     'alpha' => $alphaPenalty,
+                    'sick_no_cert' => $sickNoCertPenalty,
+                    'permit' => $permitPenalty,
                     'total' => $totalEstimatedPenalty,
                 ],
                 'estimated_penalty' => $totalEstimatedPenalty,
@@ -721,7 +788,6 @@ class AttendanceCalculatorService
             ->get();
 
         $workSchedules = WorkSchedule::whereBetween('date', [$periodDetails['start_date'], $periodDetails['end_date']])
-            ->where('status', 'work')
             ->get();
 
         $employees = Employee::with('area', 'shift')
@@ -821,6 +887,44 @@ class AttendanceCalculatorService
                             'type' => 'auto',
                             'description' => "Potongan Alpha / Mangkir Kerja Periode {$month} ({$row['total_alpha']} hari)",
                             'amount' => $row['penalties']['alpha'],
+                            'deduction_date' => $monthEnd->format('Y-m-d'),
+                            'status' => 'pending',
+                        ]
+                    );
+                    $syncedDeductionsCount++;
+                    $hasAnyPenalty = true;
+                }
+
+                // 5. Potongan Sakit Tanpa Surat Dokter
+                if (($row['penalties']['sick_no_cert'] ?? 0) > 0) {
+                    Deduction::updateOrCreate(
+                        [
+                            'user_id' => $user->id,
+                            'reference_id' => "ATT_SICK_NO_CERT_{$emp->id}_{$month}",
+                        ],
+                        [
+                            'type' => 'auto',
+                            'description' => "Potongan Sakit Tanpa Surat Dokter Periode {$month} ({$row['total_sick_no_cert']} hari)",
+                            'amount' => $row['penalties']['sick_no_cert'],
+                            'deduction_date' => $monthEnd->format('Y-m-d'),
+                            'status' => 'pending',
+                        ]
+                    );
+                    $syncedDeductionsCount++;
+                    $hasAnyPenalty = true;
+                }
+
+                // 6. Potongan Izin Tidak Masuk
+                if (($row['penalties']['permit'] ?? 0) > 0) {
+                    Deduction::updateOrCreate(
+                        [
+                            'user_id' => $user->id,
+                            'reference_id' => "ATT_PERMIT_{$emp->id}_{$month}",
+                        ],
+                        [
+                            'type' => 'auto',
+                            'description' => "Potongan Izin Tidak Masuk Periode {$month} ({$row['total_permit']} hari)",
+                            'amount' => $row['penalties']['permit'],
                             'deduction_date' => $monthEnd->format('Y-m-d'),
                             'status' => 'pending',
                         ]

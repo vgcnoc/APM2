@@ -526,19 +526,76 @@
                     </button>
                 </div>
 
-                <div class="space-y-1 max-h-56 overflow-y-auto pr-1">
-                    <!-- Option OFF (Libur) -->
+                <div class="space-y-1 max-h-64 overflow-y-auto pr-1">
+                    <div class="px-2 pt-1 pb-0.5 text-[10px] uppercase font-bold text-slate-400">Pilihan Libur & Izin:</div>
+                    
+                    <!-- Option OFF (Libur Rutin) -->
                     <button
-                        @click="selectShiftForActiveCell('OFF')"
+                        @click="selectShiftForActiveCell('OFF', 'off', 'Libur Rutin')"
                         type="button"
                         class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 hover:bg-rose-100 transition"
                     >
                         <div class="flex items-center gap-2">
                             <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-                            <span>OFF (Libur)</span>
+                            <span>OFF (Libur Rutin)</span>
                         </div>
-                        <span class="text-[10px] text-rose-400">Hari Libur</span>
+                        <span class="text-[10px] text-rose-400">Day Off</span>
                     </button>
+
+                    <!-- Option Sakit (Surat Dokter) -->
+                    <button
+                        @click="selectShiftForActiveCell('OFF', 'sick', 'Sakit (Surat Dokter)')"
+                        type="button"
+                        class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition"
+                    >
+                        <div class="flex items-center gap-2">
+                            <span>🩺</span>
+                            <span>Sakit (Surat Dokter)</span>
+                        </div>
+                        <span class="text-[10px] text-emerald-600 font-bold">Bebas Denda</span>
+                    </button>
+
+                    <!-- Option Sakit (Tanpa Surat Dokter) -->
+                    <button
+                        @click="selectShiftForActiveCell('OFF', 'sick', 'Sakit (Tanpa Surat Dokter)')"
+                        type="button"
+                        class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-50 text-amber-800 hover:bg-amber-100 transition"
+                    >
+                        <div class="flex items-center gap-2">
+                            <span>💊</span>
+                            <span>Sakit (Tanpa Surat)</span>
+                        </div>
+                        <span class="text-[10px] text-amber-600">Sesuai Aturan</span>
+                    </button>
+
+                    <!-- Option Izin Tidak Masuk -->
+                    <button
+                        @click="selectShiftForActiveCell('OFF', 'leave', 'Izin Tidak Masuk')"
+                        type="button"
+                        class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-purple-50 text-purple-800 hover:bg-purple-100 transition"
+                    >
+                        <div class="flex items-center gap-2">
+                            <span>📝</span>
+                            <span>Izin Tidak Masuk</span>
+                        </div>
+                        <span class="text-[10px] text-purple-600">Sesuai Aturan</span>
+                    </button>
+
+                    <!-- Option Cuti Tahunan -->
+                    <button
+                        @click="selectShiftForActiveCell('OFF', 'leave', 'Cuti Tahunan')"
+                        type="button"
+                        class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-teal-50 text-teal-800 hover:bg-teal-100 transition"
+                    >
+                        <div class="flex items-center gap-2">
+                            <span>🏖️</span>
+                            <span>Cuti Tahunan</span>
+                        </div>
+                        <span class="text-[10px] text-teal-600 font-bold">Bebas Denda</span>
+                    </button>
+
+                    <div class="my-1 border-t border-slate-100"></div>
+                    <div class="px-2 pt-1 pb-0.5 text-[10px] uppercase font-bold text-slate-400">Pilihan Shift Kerja:</div>
 
                     <!-- Shift Options -->
                     <button
@@ -1448,7 +1505,34 @@
 
                 <button
                     type="button"
-                    @click="contextActionSetOff"
+                    @click="contextActionSetOff('sick', 'Sakit (Surat Dokter)')"
+                    class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-emerald-800 hover:bg-emerald-50 text-[11px] font-semibold transition"
+                >
+                    <span>🩺</span>
+                    <span>Set Sakit (Surat Dokter)</span>
+                </button>
+
+                <button
+                    type="button"
+                    @click="contextActionSetOff('sick', 'Sakit (Tanpa Surat Dokter)')"
+                    class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-amber-800 hover:bg-amber-50 text-[11px] font-semibold transition"
+                >
+                    <span>💊</span>
+                    <span>Set Sakit (Tanpa Surat)</span>
+                </button>
+
+                <button
+                    type="button"
+                    @click="contextActionSetOff('leave', 'Izin Tidak Masuk')"
+                    class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-purple-800 hover:bg-purple-50 text-[11px] font-semibold transition"
+                >
+                    <span>📝</span>
+                    <span>Set Izin Tidak Masuk</span>
+                </button>
+
+                <button
+                    type="button"
+                    @click="contextActionSetOff('off', 'Libur Rutin')"
                     class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-slate-700 hover:bg-slate-100 font-medium transition"
                 >
                     <span class="text-sm">🏖️</span>
@@ -1628,7 +1712,7 @@ const contextActionClear = () => {
     contextMenu.value = null;
 };
 
-const contextActionSetOff = () => {
+const contextActionSetOff = (customStatus = 'off', customNotes = 'Libur Rutin') => {
     if (!contextMenu.value) return;
     const empId = contextMenu.value.employee.id;
     const date = contextMenu.value.date;
@@ -1638,13 +1722,15 @@ const contextActionSetOff = () => {
         employee_id: empId,
         date: date,
         shift_id: null,
-        status: 'off',
+        status: customStatus,
+        notes: customNotes,
     };
     pendingChanges.value[changeKey] = {
         employee_id: empId,
         date: date,
         shift_id: 'OFF',
-        status: 'off',
+        status: customStatus,
+        notes: customNotes,
     };
     contextMenu.value = null;
 };
@@ -1743,8 +1829,8 @@ const closeCellPicker = () => {
     activePopover.value = null;
 };
 
-// Select Shift untuk active cell
-const selectShiftForActiveCell = (shiftVal) => {
+// Select Shift untuk active cell (mendukung OFF, Sakit, Izin, Cuti, dan Shift Kerja)
+const selectShiftForActiveCell = (shiftVal, customStatus = null, customNotes = null) => {
     if (!activePopover.value) return;
 
     const empId = activePopover.value.employee.id;
@@ -1754,12 +1840,13 @@ const selectShiftForActiveCell = (shiftVal) => {
 
     let shiftId = null;
     let status = 'work';
+    let notes = customNotes || null;
     let shiftName = '';
     let shiftColor = '';
 
     if (shiftVal === 'OFF') {
         shiftId = null;
-        status = 'off';
+        status = customStatus || 'off';
     } else if (shiftVal !== null) {
         shiftId = Number(shiftVal);
         status = 'work';
@@ -1787,6 +1874,7 @@ const selectShiftForActiveCell = (shiftVal) => {
             date: date,
             shift_id: shiftId,
             status: status,
+            notes: notes,
             shift_name: shiftName,
             shift_color: shiftColor,
         };
@@ -1798,6 +1886,7 @@ const selectShiftForActiveCell = (shiftVal) => {
         date: date,
         shift_id: shiftVal === 'OFF' ? 'OFF' : shiftId,
         status: status,
+        notes: notes,
     };
 
     closeCellPicker();
@@ -1813,14 +1902,32 @@ const getSchedule = (empId, date) => {
 
 const getScheduleLabel = (sched) => {
     if (!sched) return '';
+    const st = (sched.status || '').toLowerCase();
+    const nt = (sched.notes || '').toLowerCase();
+    if (st === 'sick' || nt.includes('sakit')) return 'SAKIT';
+    if (st === 'leave' && nt.includes('cuti')) return 'CUTI';
+    if (st === 'permit' || nt.includes('izin') || st === 'leave') return 'IZIN';
     if (sched.status === 'off' || sched.shift_id === null) return 'OFF';
     return sched.shift_name || 'Shift';
 };
 
 const getCellBadgeClass = (sched) => {
     if (!sched) return '';
+    const st = (sched.status || '').toLowerCase();
+    const nt = (sched.notes || '').toLowerCase();
+    if (st === 'sick' || nt.includes('sakit')) {
+        return nt.includes('tanpa surat')
+            ? 'bg-amber-100 text-amber-900 border border-amber-300 font-extrabold'
+            : 'bg-emerald-100 text-emerald-900 border border-emerald-300 font-extrabold';
+    }
+    if (st === 'leave' && nt.includes('cuti')) {
+        return 'bg-teal-100 text-teal-900 border border-teal-300 font-extrabold';
+    }
+    if (st === 'permit' || nt.includes('izin') || st === 'leave') {
+        return 'bg-purple-100 text-purple-900 border border-purple-300 font-extrabold';
+    }
     if (sched.status === 'off' || sched.shift_id === null) {
-        return 'bg-rose-50 text-rose-600 border border-rose-200/80';
+        return 'bg-rose-50 text-rose-600 border border-rose-200/80 font-bold';
     }
     const color = sched.shift_color || 'blue';
     return getShiftBadgeStyle(color);
@@ -1859,7 +1966,12 @@ const getDotColor = (color) => {
 const getCellTooltip = (emp, date) => {
     const sched = getSchedule(emp.id, date);
     if (!sched) return `${emp.name} (${date}): Belum ada jadwal`;
-    if (sched.status === 'off') return `${emp.name} (${date}): Hari Libur (OFF)`;
+    const st = (sched.status || '').toLowerCase();
+    const nt = (sched.notes || '').toLowerCase();
+    if (st === 'sick' || nt.includes('sakit')) return `${emp.name} (${date}): Sakit - ${sched.notes || 'Istirahat Sakit'}`;
+    if (st === 'leave' && nt.includes('cuti')) return `${emp.name} (${date}): Cuti - ${sched.notes || 'Cuti Tahunan'}`;
+    if (st === 'permit' || nt.includes('izin') || st === 'leave') return `${emp.name} (${date}): Izin - ${sched.notes || 'Izin Tidak Masuk'}`;
+    if (sched.status === 'off' || sched.shift_id === null) return `${emp.name} (${date}): Hari Libur (OFF) - ${sched.notes || 'Libur Rutin'}`;
     return `${emp.name} (${date}): ${sched.shift_name}`;
 };
 
