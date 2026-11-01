@@ -420,6 +420,7 @@ Route::middleware(['auth'])->group(function () {
 
     // ── INVENTORY & LOGISTIK (NEW SYSTEM) ─────────────────────
     Route::resource('produk', \App\Http\Controllers\ProductController::class);
+    Route::get('order-toko/{id}/print', [\App\Http\Controllers\PurchaseOrderController::class, 'print'])->name('order-toko.print');
     Route::resource('order-toko', \App\Http\Controllers\PurchaseOrderController::class);
     Route::post('order-toko/{id}/send-ont', [\App\Http\Controllers\PurchaseOrderController::class, 'sendOnt'])->name('order-toko.send-ont');
     Route::resource('stok-in-out', \App\Http\Controllers\StockInOutController::class);

@@ -33,7 +33,10 @@ class PurchaseOrderController extends Controller
                                     })->with('material', 'onts');
                                 },
                                 'expense.category',
-                                'areaModel'
+                                'areaModel',
+                                'user',
+                                'orderUser',
+                                'giverUser',
                             ]);
 
         // Terapkan filter scope pada query
@@ -47,6 +50,10 @@ class PurchaseOrderController extends Controller
                   ->orWhere('technician_name', 'like', "%{$search}%")
                   ->orWhere('area', 'like', "%{$search}%")
                   ->orWhere('notes', 'like', "%{$search}%")
+                  ->orWhere('order_account_name', 'like', "%{$search}%")
+                  ->orWhere('giver_account_name', 'like', "%{$search}%")
+                  ->orWhereHas('orderUser', fn($uq) => $uq->where('name', 'like', "%{$search}%"))
+                  ->orWhereHas('giverUser', fn($uq) => $uq->where('name', 'like', "%{$search}%"))
                   ->orWhereHas('items.material', function ($mq) use ($search) {
                       $mq->where('name', 'like', "%{$search}%")
                          ->orWhere('category', 'like', "%{$search}%");
@@ -130,6 +137,8 @@ class PurchaseOrderController extends Controller
             'transactions' => $transactions,
             'materials' => $materials,
             'areas' => $areas,
+            'users' => \App\Models\User::orderBy('name')->get(['id', 'name', 'role']),
+            'currentUser' => $user ? ['id' => $user->id, 'name' => $user->name, 'role' => $user->role] : null,
             'filters' => $request->only(['search', 'area', 'material_id', 'date_from', 'date_to', 'ont_filter']),
             'summary' => [
                 'total_cost' => $totalCost,
@@ -143,6 +152,10 @@ class PurchaseOrderController extends Controller
         $validated = $request->validate([
             'date' => 'nullable|date',
             'area_name' => 'required|string|max:255',
+            'order_user_id' => 'nullable|exists:users,id',
+            'giver_user_id' => 'nullable|exists:users,id',
+            'order_account_name' => 'nullable|string|max:255',
+            'giver_account_name' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.material_id' => 'required|exists:materials,id',
@@ -170,6 +183,15 @@ class PurchaseOrderController extends Controller
             $count = MaterialTransaction::whereDate('created_at', today())->count() + 1;
             $transactionNumber = 'PO-' . now()->format('Ymd') . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
 
+            $orderUserId = !empty($validated['order_user_id']) ? (int) $validated['order_user_id'] : auth()->id();
+            $giverUserId = !empty($validated['giver_user_id']) ? (int) $validated['giver_user_id'] : null;
+
+            $orderUser = $orderUserId ? \App\Models\User::find($orderUserId) : null;
+            $giverUser = $giverUserId ? \App\Models\User::find($giverUserId) : null;
+
+            $orderAccountName = $orderUser ? $orderUser->name : ($validated['order_account_name'] ?? auth()->user()?->name ?? 'Pemesan Toko');
+            $giverAccountName = $giverUser ? $giverUser->name : ($validated['giver_account_name'] ?? 'Super Admin (Gudang Pusat)');
+
             $transaction = MaterialTransaction::create([
                 'transaction_number' => $transactionNumber,
                 'type' => 'in',
@@ -180,6 +202,10 @@ class PurchaseOrderController extends Controller
                 'area' => $validated['area_name'],
                 'notes' => $validated['notes'] ?? null,
                 'user_id' => auth()->id(),
+                'order_user_id' => $orderUserId,
+                'giver_user_id' => $giverUserId,
+                'order_account_name' => $orderAccountName,
+                'giver_account_name' => $giverAccountName,
                 'total_cost' => 0 // Will calculate below
             ]);
 
@@ -301,6 +327,10 @@ class PurchaseOrderController extends Controller
         $validated = $request->validate([
             'date' => 'nullable|date',
             'area_name' => 'required|string|max:255',
+            'order_user_id' => 'nullable|exists:users,id',
+            'giver_user_id' => 'nullable|exists:users,id',
+            'order_account_name' => 'nullable|string|max:255',
+            'giver_account_name' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.material_id' => 'required|exists:materials,id',
@@ -359,12 +389,25 @@ class PurchaseOrderController extends Controller
                 }
             }
 
+            $orderUserId = !empty($validated['order_user_id']) ? (int) $validated['order_user_id'] : $transaction->order_user_id;
+            $giverUserId = !empty($validated['giver_user_id']) ? (int) $validated['giver_user_id'] : $transaction->giver_user_id;
+
+            $orderUser = $orderUserId ? \App\Models\User::find($orderUserId) : null;
+            $giverUser = $giverUserId ? \App\Models\User::find($giverUserId) : null;
+
+            $orderAccountName = $orderUser ? $orderUser->name : ($validated['order_account_name'] ?? $transaction->order_account_name);
+            $giverAccountName = $giverUser ? $giverUser->name : ($validated['giver_account_name'] ?? $transaction->giver_account_name);
+
             // 2. Update info transaksi
             $transaction->update([
                 'date' => $validated['date'],
                 'technician_name' => $validated['area_name'],
                 'area_id' => $area ? $area->id : null,
                 'area' => $validated['area_name'],
+                'order_user_id' => $orderUserId,
+                'giver_user_id' => $giverUserId,
+                'order_account_name' => $orderAccountName,
+                'giver_account_name' => $giverAccountName,
                 'notes' => $validated['notes'] ?? null,
             ]);
 
@@ -645,5 +688,30 @@ class PurchaseOrderController extends Controller
             DB::rollBack();
             return redirect()->back()->with('error', 'Gagal mengirim data ONT: ' . $e->getMessage());
         }
+    }
+
+    public function print($id)
+    {
+        $transaction = MaterialTransaction::with([
+            'items' => function ($iq) {
+                $iq->whereHas('material', function ($mq) {
+                    $mq->where('is_active', true)->orWhereNull('is_active');
+                })->with('material', 'onts');
+            },
+            'expense.category',
+            'areaModel',
+            'user',
+            'orderUser',
+            'giverUser',
+        ])->findOrFail($id);
+
+        $company = [
+            'name' => \App\Models\Setting::get('company_name', 'VIZBILL ISP'),
+            'address' => \App\Models\Setting::get('company_address', 'Sistem Manajemen Gudang & Logistik'),
+            'phone' => \App\Models\Setting::get('company_phone', '0812-XXXX-XXXX'),
+            'email' => \App\Models\Setting::get('company_email', 'admin@viruzs.my.id'),
+        ];
+
+        return view('print.order-toko', compact('transaction', 'company'));
     }
 }

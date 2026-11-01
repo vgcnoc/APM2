@@ -26,6 +26,10 @@ class MaterialTransaction extends Model
         'notes',
         'total_cost',
         'user_id',
+        'order_user_id',
+        'giver_user_id',
+        'order_account_name',
+        'giver_account_name',
         'received_by',
         'received_at',
         'received_notes',
@@ -99,6 +103,16 @@ class MaterialTransaction extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function orderUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'order_user_id');
+    }
+
+    public function giverUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'giver_user_id');
     }
 
     public function receiver(): BelongsTo

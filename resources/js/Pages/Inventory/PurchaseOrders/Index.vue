@@ -231,6 +231,21 @@
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                             {{ trx.technician_name }}
                                         </div>
+                                        <!-- Akun Serah Terima (Order & Pemberi) -->
+                                        <div class="mt-2 space-y-1 text-xs bg-slate-50/90 border border-slate-200/80 rounded-xl p-2 max-w-[220px]">
+                                            <div class="flex items-center gap-1.5 text-slate-600">
+                                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide shrink-0">Order:</span>
+                                                <span class="font-bold text-slate-800 truncate" :title="getOrderAccount(trx)">
+                                                    {{ getOrderAccount(trx) }}
+                                                </span>
+                                            </div>
+                                            <div class="flex items-center gap-1.5 text-slate-600">
+                                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide shrink-0">Pemberi:</span>
+                                                <span class="font-bold text-emerald-700 truncate" :title="getGiverAccount(trx)">
+                                                    {{ getGiverAccount(trx) }}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </td>
                                     <td class="px-6 py-4">
                                         <div class="space-y-2">
@@ -251,7 +266,10 @@
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <div class="flex items-center justify-end gap-2">
+                                        <div class="flex items-center justify-end gap-1.5">
+                                            <button @click="printOrder(trx.id)" class="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors inline-flex items-center justify-center" title="Cetak Surat Serah Terima (Print)">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                            </button>
                                             <button @click="viewOrder(trx)" class="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors inline-flex items-center justify-center" title="Lihat Detail">
                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                             </button>
@@ -321,20 +339,41 @@
 
                             <form @submit.prevent="submitForm" class="relative flex flex-col flex-1 overflow-hidden">
                                 <div class="px-6 pb-4 overflow-y-auto flex-1 space-y-5">
-                                    <!-- Area / Wilayah -->
-                                    <div>
-                                        <label for="order-area" class="block text-sm font-semibold text-gray-800 mb-1.5">Area / Wilayah <span class="text-rose-500">*</span></label>
-                                        <div class="relative">
-                                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-indigo-500 pointer-events-none">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                            </span>
-                                            <select id="order-area" v-model="form.area_name" required class="w-full pl-10 pr-10 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all appearance-none">
-                                                <option value="" disabled>Pilih area / wilayah</option>
-                                                <option v-for="area in areas" :key="area.id" :value="area.name">{{ area.name }}</option>
-                                            </select>
+                                    <!-- Area & Pihak Serah Terima -->
+                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                        <!-- Area / Wilayah -->
+                                        <div>
+                                            <label for="order-area" class="block text-xs font-bold text-gray-700 mb-1">Area / Wilayah <span class="text-rose-500">*</span></label>
+                                            <div class="relative">
+                                                <select id="order-area" v-model="form.area_name" required :disabled="isViewing" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all font-medium">
+                                                    <option value="" disabled>Pilih area / wilayah</option>
+                                                    <option v-for="area in areas" :key="area.id" :value="area.name">{{ area.name }}</option>
+                                                </select>
+                                            </div>
+                                            <p v-if="form.errors.area_name" class="mt-1 text-[11px] text-rose-500">{{ form.errors.area_name }}</p>
                                         </div>
-                                        <p v-if="form.errors.area_name" class="mt-1 text-xs text-rose-500">{{ form.errors.area_name }}</p>
-                                        <p v-if="!areas || areas.length === 0" class="mt-1 text-xs text-amber-600">Belum ada data area. Tambahkan area terlebih dahulu.</p>
+
+                                        <!-- Akun Yang Order (Pemesan) -->
+                                        <div>
+                                            <label for="order-user" class="block text-xs font-bold text-gray-700 mb-1">Akun Yang Order <span class="text-rose-500">*</span></label>
+                                            <div class="relative">
+                                                <select id="order-user" v-model="form.order_user_id" required :disabled="isViewing" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all font-medium">
+                                                    <option :value="null" disabled>Pilih pemesan</option>
+                                                    <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }} ({{ u.role || 'User' }})</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <!-- Akun Yang Memberi (Gudang/Pemberi) -->
+                                        <div>
+                                            <label for="giver-user" class="block text-xs font-bold text-gray-700 mb-1">Akun Yang Memberi <span class="text-rose-500">*</span></label>
+                                            <div class="relative">
+                                                <select id="giver-user" v-model="form.giver_user_id" required :disabled="isViewing" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all font-medium">
+                                                    <option :value="null" disabled>Pilih pemberi</option>
+                                                    <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }} ({{ u.role || 'User' }})</option>
+                                                </select>
+                                            </div>
+                                        </div>
                                     </div>
 
                                     <!-- Keranjang Belanja -->
@@ -441,6 +480,10 @@
                                         </div>
                                     </div>
                                     <div class="flex items-center gap-2">
+                                        <button v-if="isViewing && form.id" type="button" @click="printOrder(form.id)" class="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold text-white rounded-xl bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-500/20 transition-all">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                            Cetak Surat Jalan
+                                        </button>
                                         <button id="btn-cancel-order" type="button" @click="closeModal" class="px-5 py-2.5 text-sm font-bold text-gray-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">{{ isViewing ? 'Tutup' : 'Batal' }}</button>
                                         <button v-if="!isViewing" id="btn-submit-order" type="submit" :disabled="form.processing || form.items.length === 0 || !form.area_name || hasOverstockItems" class="inline-flex items-center px-5 py-2.5 text-sm font-bold text-white rounded-xl bg-gradient-to-r from-indigo-700 to-blue-600 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all">
                                             <svg v-if="form.processing" class="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
@@ -468,6 +511,8 @@ const props = defineProps({
     transactions: Object,
     materials: Array,
     areas: { type: Array, default: () => [] },
+    users: { type: Array, default: () => [] },
+    currentUser: { type: Object, default: () => null },
     filters: { type: Object, default: () => ({}) },
     summary: { type: Object, default: () => ({}) },
 });
@@ -563,6 +608,10 @@ const isViewing = ref(false);
 const form = useForm({
     id: null,
     area_name: '',
+    order_user_id: null,
+    giver_user_id: 1,
+    order_account_name: '',
+    giver_account_name: '',
     date: new Date().toISOString().slice(0, 10),
     notes: '',
     items: [],
@@ -798,6 +847,10 @@ const formatDate = (dateString) => {
 const openModal = () => {
     form.id = null;
     form.area_name = '';
+    form.order_user_id = props.currentUser?.id || (props.users && props.users[0]?.id) || null;
+    form.giver_user_id = 1;
+    form.order_account_name = '';
+    form.giver_account_name = '';
     form.date = new Date().toISOString().slice(0, 10);
     form.notes = '';
     form.items = [];
@@ -812,6 +865,10 @@ const viewOrder = (trx) => {
     form.clearErrors();
     form.id = trx.id;
     form.area_name = trx.technician_name;
+    form.order_user_id = trx.order_user_id || trx.user_id || null;
+    form.giver_user_id = trx.giver_user_id || 1;
+    form.order_account_name = getOrderAccount(trx);
+    form.giver_account_name = getGiverAccount(trx);
     form.date = trx.date;
     form.notes = trx.notes;
     form.items = trx.items.map(item => {
@@ -860,6 +917,10 @@ const editOrder = (trx) => {
     form.clearErrors();
     form.id = trx.id;
     form.area_name = trx.technician_name;
+    form.order_user_id = trx.order_user_id || trx.user_id || null;
+    form.giver_user_id = trx.giver_user_id || 1;
+    form.order_account_name = getOrderAccount(trx);
+    form.giver_account_name = getGiverAccount(trx);
     form.date = trx.date;
     form.notes = trx.notes;
     form.items = trx.items.map(item => {
@@ -915,6 +976,19 @@ const confirmDelete = (id) => {
     if (confirm('Yakin ingin membatalkan transaksi ini? Stok barang akan dikembalikan ke Gudang Utama dan ditarik dari Area!')) {
         useForm({}).delete(`/order-toko/${id}`, { preserveScroll: true });
     }
+};
+
+const getOrderAccount = (trx) => {
+    return trx.order_user?.name || trx.order_account_name || trx.user?.name || '-';
+};
+
+const getGiverAccount = (trx) => {
+    return trx.giver_user?.name || trx.giver_account_name || 'Super Admin (Gudang Pusat)';
+};
+
+const printOrder = (id) => {
+    if (!id) return;
+    window.open(`/order-toko/${id}/print?auto=true`, '_blank');
 };
 </script>
 
