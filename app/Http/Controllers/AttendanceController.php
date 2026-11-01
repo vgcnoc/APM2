@@ -1250,7 +1250,8 @@ class AttendanceController extends Controller
             }
 
             // --- 6. PROSES REWARD ABSEN TERBAIK OTOMATIS ---
-            if (Setting::get('attendance_reward_enabled', '1') === '1' && !empty($performance)) {
+            $isMonthCompleted = $monthEnd->endOfDay()->isPast();
+            if ($isMonthCompleted && Setting::get('attendance_reward_enabled', '1') === '1' && !empty($performance)) {
                 // A. Reward Per Cabang (Top 3 per Cabang)
                 if (Setting::get('attendance_reward_branch_enabled', '1') === '1') {
                     $byArea = collect($performance)->groupBy('area_id');
@@ -1399,7 +1400,8 @@ class AttendanceController extends Controller
             }
         });
 
-        return back()->with('success', "Berhasil menyinkronkan data presensi & jadwal kerja ke Penggajian untuk periode {$month}: {$syncedDeductionsCount} potongan otomatis & {$syncedRewardsCount} reward insentif!");
+        $rewardMsg = $syncedRewardsCount > 0 ? " & {$syncedRewardsCount} reward insentif" : ($isMonthCompleted ? "" : " (Reward absen terbaik dievaluasi setelah 1 bulan selesai)");
+        return back()->with('success', "Berhasil menyinkronkan data presensi & jadwal kerja ke Penggajian untuk periode {$month}: {$syncedDeductionsCount} potongan otomatis{$rewardMsg}!");
     }
 
     /**

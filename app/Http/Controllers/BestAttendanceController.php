@@ -519,6 +519,8 @@ class BestAttendanceController extends Controller
                 'department' => $department,
                 'scope' => $scope,
                 'area_id' => $selectedAreaId,
+                'is_month_completed' => $endDate->endOfDay()->isPast(),
+                'is_current_month' => $isCurrentMonth,
             ],
             'kpi' => [
                 'total_employees' => $totalEmployeesCount,
@@ -625,6 +627,10 @@ class BestAttendanceController extends Controller
         }
 
         $endDate = Carbon::createFromDate($year, $month, 1)->endOfMonth();
+        if ($endDate->endOfDay()->isFuture()) {
+            return redirect()->back()->with('error', 'Reward Absen Terbaik untuk periode bulan berjalan belum dapat disinkronkan ke payroll karena periode belum berakhir. Reward baru dapat disinkronkan setelah 1 bulan penuh selesai.');
+        }
+
         $syncedCount = 0;
 
         DB::transaction(function () use ($validWinners, $month, $year, $endDate, &$syncedCount) {

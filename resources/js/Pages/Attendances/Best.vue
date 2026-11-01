@@ -13,7 +13,11 @@
                         </div>
                         <div>
                             <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                                Absen Terbaik
+                                <span>Absen Terbaik</span>
+                                <span v-if="!props.filters?.is_month_completed" class="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
+                                    <span>⏳</span>
+                                    <span>Periode Berjalan (Sementara)</span>
+                                </span>
                             </h1>
                             <p class="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
                                 <span v-if="currentScope === 'global'">
@@ -80,12 +84,27 @@
                             v-if="can('attendance_best_btn_sync')"
                             type="button"
                             @click="syncToPayroll"
-                            class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition shadow-md shadow-emerald-600/20 flex items-center gap-1.5 active:scale-95"
-                            title="Kirim bonus reward ke modul penggajian"
+                            :class="[
+                                'px-4 py-2.5 font-bold text-xs rounded-xl transition shadow-md flex items-center gap-1.5 active:scale-95',
+                                props.filters?.is_month_completed
+                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
+                                    : 'bg-slate-100 hover:bg-slate-200 text-slate-500 border border-slate-200 cursor-not-allowed'
+                            ]"
+                            :title="props.filters?.is_month_completed ? 'Kirim bonus reward ke modul penggajian' : 'Reward baru dapat disinkronkan setelah 1 bulan penuh selesai'"
                         >
                             <span>⚡</span>
                             <span>Sinkron ke Payroll</span>
+                            <span v-if="!props.filters?.is_month_completed" class="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-semibold ml-1">Setelah 1 Bln</span>
                         </button>
+                    </div>
+                </div>
+
+                <!-- Banner Info: Periode Bulan Berjalan -->
+                <div v-if="!props.filters?.is_month_completed" class="mt-4 p-3.5 bg-amber-50/80 border border-amber-200/90 rounded-2xl flex items-center gap-3 text-xs text-amber-900">
+                    <span class="text-base flex-shrink-0">⏳</span>
+                    <div>
+                        <strong class="font-bold">Periode {{ monthNames[selectedMonth - 1] }} {{ selectedYear }} masih berjalan:</strong>
+                        <span class="text-amber-800 ml-1">Klasemen & ranking di bawah ini bersifat kalkulasi sementara. Sesuai ketentuan, reward absen terbaik baru dapat disinkronkan ke payroll setelah 1 bulan penuh selesai (akhir bulan).</span>
                     </div>
                 </div>
 
@@ -1309,6 +1328,16 @@ const handlePrintClick = () => {
 };
 
 const syncToPayroll = async () => {
+    if (!props.filters?.is_month_completed) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Periode Belum Berakhir',
+            text: `Reward Absen Terbaik untuk periode ${monthNames[selectedMonth.value - 1]} ${selectedYear.value} baru dapat disinkronkan ke payroll setelah 1 bulan penuh selesai (akhir bulan).`,
+            confirmButtonColor: '#2563eb',
+        });
+        return;
+    }
+
     if (!props.podium || props.podium.length === 0) {
         Swal.fire({
             icon: 'info',

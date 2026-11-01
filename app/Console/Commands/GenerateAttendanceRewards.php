@@ -71,6 +71,11 @@ class GenerateAttendanceRewards extends Command
         $monthStart = Carbon::parse($month . '-01')->startOfMonth();
         $monthEnd = Carbon::parse($month . '-01')->endOfMonth();
         $todayDate = $today->format('Y-m-d');
+        if (!$this->option('force') && $monthEnd->endOfDay()->isFuture()) {
+            $this->warn("Periode {$month} belum selesai (bulan berjalan). Reward absen terbaik hanya dievaluasi setelah 1 bulan penuh selesai.");
+            return 0;
+        }
+
         $cutoffTime = Setting::get('attendance_checkout_deadline_time', '23:30');
 
         $this->info("Memproses sinkronisasi data presensi & jadwal untuk periode: {$month} ({$monthStart->format('d M Y')} s/d {$monthEnd->format('d M Y')})");

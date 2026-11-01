@@ -1030,7 +1030,8 @@ class SpecialAttendanceController extends Controller
 
             // 2. Reward Absen Terbaik Tim Khusus (Top 3 Global Seluruh Tim Khusus)
             // Selalu dievaluasi secara GLOBAL (Top 3 se-tim khusus), BUKAN per tim / grup!
-            if ($isSyncAll && Setting::get('attendance_reward_special_team_enabled', '1') === '1') {
+            $isMonthCompleted = Carbon::parse($month . '-01')->endOfMonth()->endOfDay()->isPast();
+            if ($isSyncAll && $isMonthCompleted && Setting::get('attendance_reward_special_team_enabled', '1') === '1') {
                 $nominals = [
                     1 => (float) Setting::get('attendance_reward_special_1', 200000),
                     2 => (float) Setting::get('attendance_reward_special_2', 150000),
@@ -1147,7 +1148,9 @@ class SpecialAttendanceController extends Controller
         });
 
         $label = $isSyncAll ? 'Seluruh Tim Khusus (3 Tim)' : ($targetTeams->first()?->name ?? 'Tim Khusus');
-        return back()->with('success', "Berhasil menyinkronkan data {$label} ke Penggajian: {$totalSyncedDeductions} potongan & {$totalSyncedRewards} reward absen terbaik.");
+        $isMonthCompleted = Carbon::parse($month . '-01')->endOfMonth()->endOfDay()->isPast();
+        $rewardNote = $totalSyncedRewards > 0 ? " & {$totalSyncedRewards} reward absen terbaik." : ($isMonthCompleted ? "." : " (Reward tim khusus dievaluasi setelah 1 bulan selesai).");
+        return back()->with('success', "Berhasil menyinkronkan data {$label} ke Penggajian: {$totalSyncedDeductions} potongan{$rewardNote}");
     }
 
     /**
