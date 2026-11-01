@@ -820,6 +820,7 @@
                                     <th class="px-4 py-3">Foto Pulang</th>
                                     <th class="px-4 py-3">Jam Pulang</th>
                                     <th class="px-4 py-3">Status</th>
+                                    <th class="px-4 py-3 text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100">
@@ -887,9 +888,22 @@
                                             Tepat Waktu
                                         </span>
                                     </td>
+                                    <td class="px-4 py-3 text-center">
+                                        <button
+                                            v-if="['admin', 'hrd', 'finance'].includes(($page.props.auth?.user?.role || '').toLowerCase()) || can('attendance_report_btn_delete')"
+                                            type="button"
+                                            @click="deleteTodayAttendance(att)"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition cursor-pointer"
+                                            title="Hapus data presensi karyawan ini hari ini"
+                                        >
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                            <span>Hapus</span>
+                                        </button>
+                                        <span v-else class="text-slate-400 text-[10px]">-</span>
+                                    </td>
                                 </tr>
                                 <tr v-if="monitoring.attendances.length === 0">
-                                    <td colspan="7" class="py-10 text-center text-slate-400 italic">
+                                    <td colspan="8" class="py-10 text-center text-slate-400 italic">
                                         Belum ada staf yang melakukan presensi hari ini.
                                     </td>
                                 </tr>
@@ -1213,6 +1227,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { router, Link } from '@inertiajs/vue3';
+import Swal from 'sweetalert2';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { usePermission } from '@/Composables/usePermission';
 
@@ -1824,6 +1839,37 @@ const saveAreaLocation = () => {
         preserveScroll: true,
         onSuccess: () => {
             editAreaModal.value = null;
+        }
+    });
+};
+
+const deleteTodayAttendance = (att) => {
+    Swal.fire({
+        title: 'Hapus Absen Hari Ini?',
+        html: `Apakah Anda yakin ingin menghapus data presensi <b>${att.employee?.name}</b> hari ini?<br><br><span class="text-xs text-rose-600 font-semibold">Karyawan akan kembali ke status belum absen hari ini.</span>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Hapus Data',
+        cancelButtonText: 'Batal',
+    }).then((res) => {
+        if (res.isConfirmed) {
+            router.delete(`/attendances/${att.id}`, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil Dihapus',
+                        text: 'Catatan presensi hari ini berhasil dihapus.',
+                        timer: 2000,
+                        showConfirmButton: false,
+                    });
+                },
+                onError: (err) => {
+                    Swal.fire('Gagal!', err?.message || 'Gagal menghapus absensi.', 'error');
+                }
+            });
         }
     });
 };

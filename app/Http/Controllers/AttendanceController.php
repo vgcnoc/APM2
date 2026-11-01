@@ -1346,5 +1346,29 @@ class AttendanceController extends Controller
         // Fallback ke shift aktif pertama
         return Shift::where('is_active', true)->orderBy('start_time')->first();
     }
+
+    /**
+     * Hapus satu data presensi (Khusus HRD, Finance, Admin)
+     */
+    public function destroy(Attendance $attendance)
+    {
+        $user = auth()->user();
+        if (!$user) {
+            abort(401);
+        }
+
+        $userRole = strtolower($user->role ?? '');
+        $isAllowed = in_array($userRole, ['admin', 'hrd', 'finance']) || $user->can('attendance_report_btn_delete') || $user->can('attendances_manage');
+
+        if (!$isAllowed) {
+            abort(403, 'Akses ditolak. Tindakan hapus absensi hanya dapat dilakukan oleh akun HRD atau Finance.');
+        }
+
+        $empName = $attendance->employee?->name ?? 'Karyawan';
+        $date = $attendance->date;
+        $attendance->delete();
+
+        return redirect()->back()->with('success', "Data absensi {$empName} tanggal {$date} berhasil dihapus.");
+    }
 }
 
