@@ -1001,6 +1001,14 @@ const categoriesWithSpecial = computed(() => {
     if (!cats.includes('Splitter')) cats.push('Splitter');
     if (!cats.includes('Aksesoris')) cats.push('Aksesoris');
     if (!cats.includes('Peralatan')) cats.push('Peralatan');
+    if (!cats.includes('Umum')) cats.push('Umum');
+
+    // Sembunyikan 'Kabel Drop / Frecon' khusus di Tambah/Edit Material Fisik Area
+    cats = cats.filter(c => {
+        const lower = (c || '').toLowerCase().trim();
+        return lower !== 'kabel drop / frecon' && lower !== 'kabel drop/frecon' && lower !== 'frecon';
+    });
+
     return Array.from(new Set(cats)).sort();
 });
 
