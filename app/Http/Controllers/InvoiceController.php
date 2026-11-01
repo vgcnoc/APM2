@@ -14,9 +14,9 @@ class InvoiceController extends Controller
         $today = now()->startOfDay();
 
         $query = Invoice::with(['customer' => function($q) use ($today) {
-            $q->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'package_id', 'created_at', 'status', 'registration_date', 'activation_date')
+            $q->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'package_id', 'billing_type', 'tax_ppn', 'created_at', 'status', 'registration_date', 'activation_date')
               ->withCount(['invoices as unpaid_invoices_count' => function ($query) {
-                  $query->whereIn('status', ['unpaid', 'partial'])
+                  $query->whereIn('status', ['unpaid', 'partial', 'overdue'])
                         ->where('invoice_number', 'not like', 'INV-MIG-%')
            ->where('status', '!=', 'cancelled')
            ->where(function($q) {
@@ -25,19 +25,14 @@ class InvoiceController extends Controller
                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
                  })
                  ->orWhere(function($sub) {
-                     $sub->where(function($prorata) {
-                         $prorata->where('is_prorata', true)
-                             ->orWhere('billing_type', 'prorata');
-                     })->whereHas('customer', function($customer) {
-                         $customer->whereDate('activation_date', '>=', '2026-10-01')
-                             ->whereDate('activation_date', '<', '2026-11-01');
-                     });
+                     $sub->where('is_prorata', true)
+                         ->orWhere('billing_type', 'prorata');
                  });
            })
                         ->where('is_reseller_balance', false);
               }])
               ->withCount(['invoices as overdue_invoices_count' => function ($query) use ($today) {
-                  $query->whereIn('status', ['unpaid', 'partial'])
+                  $query->whereIn('status', ['unpaid', 'partial', 'overdue'])
                         ->where('invoice_number', 'not like', 'INV-MIG-%')
            ->where('status', '!=', 'cancelled')
            ->where(function($q) {
@@ -46,20 +41,15 @@ class InvoiceController extends Controller
                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
                  })
                  ->orWhere(function($sub) {
-                     $sub->where(function($prorata) {
-                         $prorata->where('is_prorata', true)
-                             ->orWhere('billing_type', 'prorata');
-                     })->whereHas('customer', function($customer) {
-                         $customer->whereDate('activation_date', '>=', '2026-10-01')
-                             ->whereDate('activation_date', '<', '2026-11-01');
-                     });
+                     $sub->where('is_prorata', true)
+                         ->orWhere('billing_type', 'prorata');
                  });
            })
-                        ->where('is_reseller_balance', false)
-                        ->where('due_date', '<', $today);
+                        ->where('is_reseller_balance', false);
+                  $this->applyOverdueCondition($query, $today);
               }])
               ->withSum(['invoices as total_unpaid_amount' => function ($query) {
-                  $query->whereIn('status', ['unpaid', 'partial'])
+                  $query->whereIn('status', ['unpaid', 'partial', 'overdue'])
                         ->where('invoice_number', 'not like', 'INV-MIG-%')
            ->where('status', '!=', 'cancelled')
            ->where(function($q) {
@@ -68,19 +58,14 @@ class InvoiceController extends Controller
                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
                  })
                  ->orWhere(function($sub) {
-                     $sub->where(function($prorata) {
-                         $prorata->where('is_prorata', true)
-                             ->orWhere('billing_type', 'prorata');
-                     })->whereHas('customer', function($customer) {
-                         $customer->whereDate('activation_date', '>=', '2026-10-01')
-                             ->whereDate('activation_date', '<', '2026-11-01');
-                     });
+                     $sub->where('is_prorata', true)
+                         ->orWhere('billing_type', 'prorata');
                  });
            })
                         ->where('is_reseller_balance', false);
               }], 'amount')
               ->withSum(['invoices as total_overdue_amount' => function ($query) use ($today) {
-                  $query->whereIn('status', ['unpaid', 'partial'])
+                  $query->whereIn('status', ['unpaid', 'partial', 'overdue'])
                         ->where('invoice_number', 'not like', 'INV-MIG-%')
            ->where('status', '!=', 'cancelled')
            ->where(function($q) {
@@ -89,17 +74,51 @@ class InvoiceController extends Controller
                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
                  })
                  ->orWhere(function($sub) {
-                     $sub->where(function($prorata) {
-                         $prorata->where('is_prorata', true)
-                             ->orWhere('billing_type', 'prorata');
-                     })->whereHas('customer', function($customer) {
-                         $customer->whereDate('activation_date', '>=', '2026-10-01')
-                             ->whereDate('activation_date', '<', '2026-11-01');
-                     });
+                     $sub->where('is_prorata', true)
+                         ->orWhere('billing_type', 'prorata');
                  });
            })
-                        ->where('is_reseller_balance', false)
-                        ->where('due_date', '<', $today);
+                        ->where('is_reseller_balance', false);
+                  $this->applyOverdueCondition($query, $today);
+              }], 'amount')
+              ->withSum(['payments as partial_paid_amount' => function ($query) {
+                  $query->where('status', 'verified')
+                        ->whereHas('invoice', function ($iq) {
+                            $iq->whereIn('status', ['unpaid', 'partial', 'overdue'])
+                               ->where('invoice_number', 'not like', 'INV-MIG-%')
+                               ->where('status', '!=', 'cancelled')
+                               ->where(function($q) {
+                                   $q->where('period_year', '>', 2026)
+                                     ->orWhere(function($sub) {
+                                         $sub->where('period_year', 2026)->where('period_month', '>', 10);
+                                     })
+                                     ->orWhere(function($sub) {
+                                         $sub->where('is_prorata', true)
+                                             ->orWhere('billing_type', 'prorata');
+                                     });
+                               })
+                               ->where('is_reseller_balance', false);
+                        });
+              }], 'amount')
+              ->withSum(['payments as overdue_partial_paid_amount' => function ($query) use ($today) {
+                  $query->where('status', 'verified')
+                        ->whereHas('invoice', function ($iq) use ($today) {
+                            $iq->whereIn('status', ['unpaid', 'partial', 'overdue'])
+                               ->where('invoice_number', 'not like', 'INV-MIG-%')
+                               ->where('status', '!=', 'cancelled')
+                               ->where(function($q) {
+                                   $q->where('period_year', '>', 2026)
+                                     ->orWhere(function($sub) {
+                                         $sub->where('period_year', 2026)->where('period_month', '>', 10);
+                                     })
+                                     ->orWhere(function($sub) {
+                                         $sub->where('is_prorata', true)
+                                             ->orWhere('billing_type', 'prorata');
+                                     });
+                               })
+                               ->where('is_reseller_balance', false);
+                            $this->applyOverdueCondition($iq, $today);
+                        });
               }], 'amount')
               ->withExists(['cbpRequests as has_open_cbp' => function ($query) {
                   $query->whereIn('status', ['pending', 'assigned']);
@@ -115,13 +134,8 @@ class InvoiceController extends Controller
                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
                  })
                  ->orWhere(function($sub) {
-                     $sub->where(function($prorata) {
-                         $prorata->where('is_prorata', true)
-                             ->orWhere('billing_type', 'prorata');
-                     })->whereHas('customer', function($customer) {
-                         $customer->whereDate('activation_date', '>=', '2026-10-01')
-                             ->whereDate('activation_date', '<', '2026-11-01');
-                     });
+                     $sub->where('is_prorata', true)
+                         ->orWhere('billing_type', 'prorata');
                  });
            })
            ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
@@ -146,30 +160,7 @@ class InvoiceController extends Controller
         $scopedAreaFilter($query);
 
         $tab = $request->query('tab', 'semua');
-        if ($tab === 'jatuh_tempo') {
-            $query->where('due_date', '<', now())->whereIn('status', ['unpaid', 'partial']);
-        } elseif ($tab === 'piutang') {
-            $query->where('status', 'partial');
-        } elseif ($tab === 'lunas') {
-            $query->where('status', 'paid');
-        } elseif ($tab === 'prorata') {
-            $query->where(function($q) {
-                $q->where('is_prorata', true)
-                  ->orWhere('billing_type', 'prorata');
-            });
-        } elseif ($tab === 'upgrade') {
-            $query->where(function($q) {
-                $q->whereIn('billing_type', ['upgrade', 'downgrade'])
-                  ->orWhere('notes', 'like', '%Upgrade%')
-                  ->orWhere('notes', 'like', '%Downgrade%');
-            });
-        } elseif ($tab === 'janji_bayar') {
-            $query->whereNotNull('promise_date')->whereIn('status', ['unpaid', 'partial']);
-        } elseif ($tab === 'stop_sementara') {
-            $query->whereHas('customer', fn($q) => $q->where('status', 'suspended'));
-        } elseif ($tab === 'stop_permanen') {
-            $query->whereHas('customer', fn($q) => $q->where('status', 'terminated'));
-        }
+        $this->applyTabFilter($query, $tab, $today);
 
         if ($request->filled('search')) {
             $search = strtolower($request->search);
@@ -177,6 +168,10 @@ class InvoiceController extends Controller
                 $q->where('invoice_number', 'like', "%{$search}%")
                   ->orWhereHas('customer', function($q2) use ($search) {
                       $q2->where('name', 'like', "%{$search}%")
+                         ->orWhere('phone', 'like', "%{$search}%")
+                         ->orWhere('customer_code', 'like', "%{$search}%")
+                         ->orWhere('area', 'like', "%{$search}%")
+                         ->orWhere('address', 'like', "%{$search}%")
                          ->orWhereHas('areaModel', function($q3) use ($search) {
                              $q3->where('name', 'like', "%{$search}%");
                          });
@@ -194,9 +189,15 @@ class InvoiceController extends Controller
             });
         }
 
-        if ($request->filled('start_date') && $request->filled('end_date')) {
-            $query->whereBetween('issued_date', [$request->start_date, $request->end_date]);
+        if ($request->filled('package_id')) {
+            $query->whereHas('customer', function($q) use ($request) {
+                $q->where('package_id', $request->package_id);
+            });
         }
+
+        $this->applyBillingTypeFilter($query, $request);
+
+        $this->applyFlexibleDateFilter($query, $request);
 
         // Get counts for tabs
         $baseQuery = Invoice::where('is_reseller_balance', false)
@@ -208,13 +209,8 @@ class InvoiceController extends Controller
                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
                  })
                  ->orWhere(function($sub) {
-                     $sub->where(function($prorata) {
-                         $prorata->where('is_prorata', true)
-                             ->orWhere('billing_type', 'prorata');
-                     })->whereHas('customer', function($customer) {
-                         $customer->whereDate('activation_date', '>=', '2026-10-01')
-                             ->whereDate('activation_date', '<', '2026-11-01');
-                     });
+                     $sub->where('is_prorata', true)
+                         ->orWhere('billing_type', 'prorata');
                  });
            })
             ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
@@ -226,33 +222,60 @@ class InvoiceController extends Controller
             });
         }
 
-        if ($request->filled('start_date') && $request->filled('end_date')) {
-            $baseQuery->whereBetween('issued_date', [$request->start_date, $request->end_date]);
+        if ($request->filled('package_id')) {
+            $baseQuery->whereHas('customer', function($q) use ($request) {
+                $q->where('package_id', $request->package_id);
+            });
         }
+
+        $this->applyBillingTypeFilter($baseQuery, $request);
+
+        $this->applyFlexibleDateFilter($baseQuery, $request);
 
         // Active base excludes terminated customers for regular operational cards
         $activeBaseQuery = (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', '!=', 'terminated'));
 
-        // Paid query respects area and date filter
+        // Paid query respects area, package, billing_type, and date filter
         $paidQuery = \App\Models\Payment::where('status', 'verified')
             ->whereHas('invoice', function($q) use ($request, $scopedAreaFilter) {
-                $q->where('is_reseller_balance', false);
+                $q->where('is_reseller_balance', false)
+                  ->where('invoice_number', 'not like', 'INV-MIG-%')
+                  ->where('status', '!=', 'cancelled');
                 $scopedAreaFilter($q);
                 if ($request->filled('area_id')) {
                     $q->whereHas('customer', fn($cq) => $cq->where('area_id', $request->area_id));
                 }
+                if ($request->filled('package_id')) {
+                    $q->whereHas('customer', fn($cq) => $cq->where('package_id', $request->package_id));
+                }
+                $this->applyBillingTypeFilter($q, $request);
             });
 
         if ($request->filled('start_date') && $request->filled('end_date')) {
             $paidQuery->whereBetween('payment_date', [$request->start_date, $request->end_date]);
+        } elseif ($request->filled('start_date')) {
+            $paidQuery->where('payment_date', '>=', $request->start_date);
+        } elseif ($request->filled('end_date')) {
+            $paidQuery->where('payment_date', '<=', $request->end_date);
         } else {
             $paidQuery->whereMonth('payment_date', now()->month)->whereYear('payment_date', now()->year);
         }
         $totalPaidAmount = (float) $paidQuery->sum('amount');
+
+        $partialIdsSubquery = (clone $activeBaseQuery)->where('status', 'partial')->select('id');
+        $partialPaidSum = (float) \App\Models\Payment::whereIn('invoice_id', $partialIdsSubquery)
+            ->where('status', 'verified')
+            ->sum('amount');
+
+        $overdueActiveQuery = tap(clone $activeBaseQuery, fn($q) => $this->applyOverdueCondition($q, $today));
+        $overduePartialIdsSubquery = (clone $overdueActiveQuery)->where('status', 'partial')->select('id');
+        $overduePartialPaidSum = (float) \App\Models\Payment::whereIn('invoice_id', $overduePartialIdsSubquery)
+            ->where('status', 'verified')
+            ->sum('amount');
         
         $stats = [
             'semua' => (clone $baseQuery)->count(),
-            'jatuh_tempo' => (clone $activeBaseQuery)->where('due_date', '<', now())->whereIn('status', ['unpaid', 'partial'])->count(),
+            'jatuh_tempo' => (clone $overdueActiveQuery)->whereIn('status', ['unpaid', 'partial', 'overdue'])->count(),
             'piutang' => (clone $activeBaseQuery)->where('status', 'partial')->count(),
             'lunas' => (clone $baseQuery)->where('status', 'paid')->count(),
             'prorata' => (clone $baseQuery)->where(function($q) {
@@ -264,23 +287,55 @@ class InvoiceController extends Controller
                   ->orWhere('notes', 'like', '%Upgrade%')
                   ->orWhere('notes', 'like', '%Downgrade%');
             })->count(),
-            'janji_bayar' => (clone $activeBaseQuery)->whereNotNull('promise_date')->whereIn('status', ['unpaid', 'partial'])->count(),
+            'janji_bayar' => (clone $activeBaseQuery)->whereNotNull('promise_date')->whereIn('status', ['unpaid', 'partial', 'overdue'])->count(),
             'stop_sementara' => (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', 'suspended'))->count(),
             'stop_permanen' => (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', 'terminated'))->count(),
 
             // Amounts for cards (Konsisten dengan data aktif & filter)
-            'total_unpaid_amount' => (clone $activeBaseQuery)->where('status', 'unpaid')->sum('amount'),
+            'total_unpaid_amount' => (clone $activeBaseQuery)->whereIn('status', ['unpaid', 'overdue'])->sum('amount'),
             'total_paid_amount' => $totalPaidAmount,
-            'total_piutang_amount' => (clone $activeBaseQuery)->where('status', 'partial')->sum('amount') - \App\Models\Payment::whereHas('invoice', fn($q) => (clone $activeBaseQuery)->where('status', 'partial'))->where('status', 'verified')->sum('amount'),
-            'total_jatuh_tempo_amount' => (clone $activeBaseQuery)->where('due_date', '<', now())->where('status', 'unpaid')->sum('amount') + ((clone $activeBaseQuery)->where('due_date', '<', now())->where('status', 'partial')->sum('amount') - \App\Models\Payment::whereHas('invoice', fn($q) => (clone $activeBaseQuery)->where('due_date', '<', now())->where('status', 'partial'))->where('status', 'verified')->sum('amount')),
-            'total_stop_permanen_amount' => (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', 'terminated'))->whereIn('status', ['unpaid', 'partial'])->sum('amount'),
+            'total_piutang_amount' => max(0, (float) (clone $activeBaseQuery)->where('status', 'partial')->sum('amount') - $partialPaidSum),
+            'total_jatuh_tempo_amount' => (float) (clone $overdueActiveQuery)->whereIn('status', ['unpaid', 'overdue'])->sum('amount')
+                + max(0, (float) (clone $overdueActiveQuery)->where('status', 'partial')->sum('amount') - $overduePartialPaidSum),
+            'total_stop_permanen_amount' => (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', 'terminated'))->whereIn('status', ['unpaid', 'partial', 'overdue'])->sum('amount'),
         ];
+
+        $defaultTaxPpn = (float) \App\Models\Setting::get('tax_ppn', '0');
 
         $invoices = $query->latest('id')
             ->paginate($request->per_page ?? 10)
             ->withQueryString()
-            ->through(function ($invoice) {
+            ->through(function ($invoice) use ($defaultTaxPpn) {
                 $lastPayment = $invoice->payments->first();
+                $collectorName = $lastPayment?->collector?->name;
+                if (!$collectorName && $lastPayment) {
+                    if ($lastPayment->payment_method === 'payment_gateway') {
+                        $collectorName = 'Sistem Otomatis (Payment Gateway)';
+                    } elseif ($lastPayment->payment_method === 'reseller_balance' && preg_match('/(?:Reseller|Loket|Agen)\s*:\s*([^|,\n]+)/i', $lastPayment->notes ?? '', $m)) {
+                        $collectorName = 'Loket ' . trim($m[1]);
+                    }
+                }
+
+                $paymentsList = $invoice->payments->map(function ($p) {
+                    $cName = $p->collector?->name;
+                    if (!$cName) {
+                        if ($p->payment_method === 'payment_gateway') {
+                            $cName = 'Sistem Otomatis';
+                        } elseif ($p->payment_method === 'reseller_balance' && preg_match('/(?:Reseller|Loket|Agen)\s*:\s*([^|,\n]+)/i', $p->notes ?? '', $m)) {
+                            $cName = 'Loket ' . trim($m[1]);
+                        }
+                    }
+                    return [
+                        'id' => $p->id,
+                        'amount' => (float) $p->amount,
+                        'payment_date' => $p->payment_date ? \Carbon\Carbon::parse($p->payment_date)->format('d M Y') : null,
+                        'payment_method' => $p->payment_method,
+                        'collector' => $cName,
+                        'notes' => $p->notes,
+                        'proof_image' => $p->proof_image ? asset('storage/' . $p->proof_image) : null,
+                    ];
+                })->values()->all();
+
                 return [
                     'id' => $invoice->id,
                     'invoice_number' => $invoice->invoice_number,
@@ -293,15 +348,22 @@ class InvoiceController extends Controller
                         'area' => $invoice->customer->areaModel?->name,
                         'package_id' => $invoice->customer->package_id,
                         'package' => $invoice->customer->package?->name,
+                        'package_name' => $invoice->customer->package?->name,
+                        'package_speed' => (int) ($invoice->customer->package?->speed_mbps ?? 0),
                         'package_price' => (float) ($invoice->customer->package?->price ?? 0),
+                        'tax_ppn' => (float) ($invoice->customer->tax_ppn ?? $defaultTaxPpn),
                         'register_date' => $invoice->customer->registration_date ? $invoice->customer->registration_date->format('d M Y') : null,
                         'activation_date' => $invoice->customer->activation_date ? $invoice->customer->activation_date->format('d M Y') : null,
+                        'latitude' => $invoice->customer->latitude,
+                        'longitude' => $invoice->customer->longitude,
+                        'identity_photo_url' => $invoice->customer->identity_photo ? (str_starts_with($invoice->customer->identity_photo, 'http') ? $invoice->customer->identity_photo : asset('storage/' . $invoice->customer->identity_photo)) : null,
+                        'house_photo_url' => $invoice->customer->house_photo ? (str_starts_with($invoice->customer->house_photo, 'http') ? $invoice->customer->house_photo : asset('storage/' . $invoice->customer->house_photo)) : ($invoice->customer->ont?->photo_customer ? asset('storage/' . $invoice->customer->ont->photo_customer) : null),
                         'status' => $invoice->customer->status,
                         'has_open_cbp' => (bool) ($invoice->customer->has_open_cbp ?? false),
                         'unpaid_count' => $invoice->customer->unpaid_invoices_count ?? 0,
-                        'total_unpaid' => $invoice->customer->total_unpaid_amount ?? 0,
+                        'total_unpaid' => max(0, (float) ($invoice->customer->total_unpaid_amount ?? 0) - (float) ($invoice->customer->partial_paid_amount ?? 0)),
                         'overdue_count' => $invoice->customer->overdue_invoices_count ?? 0,
-                        'total_overdue' => $invoice->customer->total_overdue_amount ?? 0,
+                        'total_overdue' => max(0, (float) ($invoice->customer->total_overdue_amount ?? 0) - (float) ($invoice->customer->overdue_partial_paid_amount ?? 0)),
                         'ont' => $invoice->customer->ont ? [
                             'serial_number' => $invoice->customer->ont->serial_number,
                             'brand' => $invoice->customer->ont->brand,
@@ -320,9 +382,10 @@ class InvoiceController extends Controller
                     'last_payment_date' => $lastPayment ? \Carbon\Carbon::parse($lastPayment->payment_date)->format('d M Y') : null,
                     'last_payment_method' => $lastPayment ? $lastPayment->payment_method : null,
                     'last_payment_channel' => $lastPayment ? $lastPayment->payment_channel : null,
-                    'last_payment_collector' => $lastPayment?->collector?->name ?? null,
+                    'last_payment_collector' => $collectorName,
                     'last_payment_notes' => $lastPayment ? $lastPayment->notes : null,
                     'last_payment_proof' => $lastPayment && $lastPayment->proof_image ? asset('storage/' . $lastPayment->proof_image) : null,
+                    'payments' => $paymentsList,
                     'due_date' => $invoice->due_date ? $invoice->due_date->format('Y-m-d') : null,
                     'issued_date' => $invoice->issued_date ? $invoice->issued_date->format('Y-m-d') : null,
                     'period_month' => $invoice->period_month,
@@ -347,7 +410,7 @@ class InvoiceController extends Controller
                 ? \App\Models\Area::whereIn('id', $userAreaIds)->orderBy('name')->get(['id', 'name'])
                 : \App\Models\Area::orderBy('name')->get(['id', 'name']),
             'lead_technicians' => $leadTechnicians,
-            'filters' => $request->only(['search', 'status', 'start_date', 'end_date', 'area_id', 'tab']),
+            'filters' => $request->only(['search', 'status', 'start_date', 'end_date', 'area_id', 'package_id', 'billing_type', 'tab']),
             'payment_banks' => fn () => json_decode(\App\Models\Setting::get('payment_banks', '[]'), true),
         ]);
     }
@@ -372,7 +435,8 @@ class InvoiceController extends Controller
         
         // Cari semua tagihan unpaid/partial milik pelanggan ini, urutkan dari yang tertua
         $unpaidInvoices = Invoice::where('customer_id', $customerId)
-            ->whereIn('status', ['unpaid', 'partial'])
+            ->whereIn('status', ['unpaid', 'partial', 'overdue'])
+            ->where('invoice_number', 'not like', 'INV-MIG-%')
             ->orderBy('due_date', 'asc')
             ->get();
             
@@ -396,17 +460,24 @@ class InvoiceController extends Controller
                 'payment_date' => now(),
                 'amount' => $payForThis,
                 'payment_method' => $request->method,
+                'status' => 'verified',
                 'notes' => $request->notes,
                 'proof_image' => $proofPath,
                 'collected_by' => auth()->id(),
             ]);
 
             $totalPaid = (int) round($inv->payments()->where('status', 'verified')->sum('amount'));
-            if ($totalPaid >= (int) round($inv->amount)) {
-                $inv->update(['status' => 'paid']);
-            } else {
-                $inv->update(['status' => 'partial']);
-            }
+            $newInvStatus = $totalPaid >= (int) round($inv->amount) ? 'paid' : 'partial';
+            $oldInvStatus = $inv->status;
+            $inv->update(['status' => $newInvStatus]);
+
+            \App\Models\AuditLog::createLog(
+                'Pembayaran Tagihan (' . ($newInvStatus === 'paid' ? 'Lunas' : 'Sebagian') . ')',
+                $inv,
+                $oldInvStatus,
+                $newInvStatus,
+                "Pembayaran sebesar Rp " . number_format($payForThis, 0, ',', '.') . " melalui {$request->method} diproses oleh " . (auth()->user()?->name ?? 'Petugas') . ($request->notes ? " ({$request->notes})" : "")
+            );
 
             $remainingPayment -= $payForThis;
         }
@@ -419,6 +490,7 @@ class InvoiceController extends Controller
                 'payment_date' => now(),
                 'amount' => $remainingPayment,
                 'payment_method' => $request->method,
+                'status' => 'verified',
                 'notes' => ($request->notes ? $request->notes . ' | ' : '') . 'Kelebihan Pembayaran (Overpaid)',
                 'proof_image' => $proofPath,
                 'collected_by' => auth()->id(),
@@ -533,7 +605,24 @@ class InvoiceController extends Controller
                 'status' => 'unpaid',
             ]);
 
+            \App\Models\AuditLog::createLog(
+                'Rollback Pembayaran Tagihan',
+                $invoice,
+                'paid',
+                'unpaid',
+                "Pembayaran tagihan #{$invoice->invoice_number} dibatalkan / di-rollback oleh " . (auth()->user()?->name ?? 'Petugas')
+            );
+
             \Illuminate\Support\Facades\DB::commit();
+
+            if ($invoice->customer) {
+                try {
+                    app(\App\Services\BillingIsolationService::class)->reconcile($invoice->customer);
+                } catch (\Throwable $e) {
+                    \Log::warning('[BILLING] Reconcile on rollback error: ' . $e->getMessage());
+                }
+            }
+
             return back()->with('success', 'Pembayaran berhasil dibatalkan (rollback). Status tagihan kembali belum lunas.');
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\DB::rollBack();
@@ -557,6 +646,15 @@ class InvoiceController extends Controller
         }
 
         $invoice->update($updateData);
+
+        $operatorName = auth()->user()?->name ?? 'Petugas';
+        \App\Models\AuditLog::createLog(
+            'Atur Janji Bayar',
+            $invoice,
+            $invoice->promise_date ? $invoice->promise_date->format('Y-m-d') : null,
+            $request->promise_date,
+            "Janji bayar diatur ke " . ($request->promise_date ?: 'Dibatalkan') . " oleh {$operatorName}" . ($request->notes ? " ({$request->notes})" : "")
+        );
 
         $customer = $invoice->customer;
         $internetAction = $request->input('internet_action');
@@ -655,7 +753,21 @@ class InvoiceController extends Controller
             'issued_date' => 'required|date',
         ]);
 
-        $invoice->update($request->only('amount', 'due_date', 'issued_date'));
+        $oldDueDate = $invoice->due_date?->format('Y-m-d');
+        $oldIssuedDate = $invoice->issued_date?->format('Y-m-d');
+
+        $invoice->fill($request->only('amount', 'due_date', 'issued_date'));
+
+        if ($oldDueDate !== $request->due_date && $oldIssuedDate === $request->issued_date && !$invoice->is_reseller_balance) {
+            $schedule = app(\App\Services\BillingIsolationSchedule::class);
+            $settings = $schedule->settings();
+            $time = preg_match('/^([01]\d|2[0-3]):([0-5]\d)$/', $settings['isolate_time'] ?? '', $parts) ? [$parts[1], $parts[2]] : [0, 0];
+            $invoice->isolation_at = \Carbon\CarbonImmutable::parse($request->due_date, $schedule->timezone())
+                ->setTime((int) $time[0], (int) $time[1], 0)
+                ->setTimezone(config('app.timezone', 'UTC'));
+        }
+
+        $invoice->save();
         return back()->with('success', 'Tagihan berhasil diperbarui.');
     }
 
@@ -673,7 +785,8 @@ class InvoiceController extends Controller
         ]);
 
         $customer = $invoice->customer;
-        if ($customer && $customer->status !== 'suspended') {
+        if ($customer && $customer->status !== 'terminated') {
+            $oldStatus = $customer->status;
             $customer->update([
                 'status' => 'suspended',
                 'suspend_start' => $request->start_date,
@@ -684,6 +797,14 @@ class InvoiceController extends Controller
             foreach (array_keys($accounts) as $username) {
                 $radius->guard(fn($r) => $r->disconnect($username));
             }
+
+            \App\Models\AuditLog::createLog(
+                'Stop Sementara Layanan Pelanggan',
+                $customer,
+                $oldStatus,
+                'suspended',
+                "Layanan pelanggan di-Stop Sementara ({$request->start_date} s/d {$request->end_date}) dari invoice #{$invoice->invoice_number} oleh " . (auth()->user()?->name ?? 'Petugas')
+            );
         }
         return redirect()->back()->with('success', 'Pelanggan berhasil di-Stop Sementara mulai ' . $request->start_date . ' sampai ' . $request->end_date . '.');
     }
@@ -724,6 +845,14 @@ class InvoiceController extends Controller
                     $r->disconnect($username);
                 }
             });
+
+            \App\Models\AuditLog::createLog(
+                'Stop Permanen Pelanggan (CBP)',
+                $customer,
+                'active',
+                'terminated',
+                "Pelanggan diputus permanen dari invoice #{$invoice->invoice_number} oleh " . (auth()->user()?->name ?? 'Petugas') . " - Alasan: {$reason}"
+            );
         }
 
         // 2. Otomatis buat data CBP / Cabut Perangkat
@@ -855,7 +984,9 @@ class InvoiceController extends Controller
             'logo' => \App\Models\Setting::get('company_logo', null),
         ];
 
-        return view('print.janji-bayar', compact('invoice', 'company'));
+        $customer = $invoice->customer;
+
+        return view('print.janji-bayar', compact('invoice', 'customer', 'company'));
     }
 
     /**
@@ -941,7 +1072,7 @@ class InvoiceController extends Controller
             $futureEndDateStr = $cycleEndDate->copy()->subDay()->translatedFormat('d M Y');
             $rincianStr = "Prorata {$actionLabel} ke {$newPackage->name} [Lama: {$startDate->translatedFormat('d M')} - {$pastEndDateStr} ({$pastDays} hari, {$oldPackageName}) @ Rp " . number_format($pastAmount, 0, ',', '.') . " + Baru: {$effectiveDate->translatedFormat('d M')} - {$futureEndDateStr} ({$futureDays} hari, {$newPackage->name}) @ Rp " . number_format($futureAmount, 0, ',', '.') . " = Total Rp " . number_format($totalProrataAmount, 0, ',', '.') . "]";
 
-            if (in_array($invoice->status, ['unpaid', 'partial'])) {
+            if (in_array($invoice->status, ['unpaid', 'partial', 'overdue'])) {
                 $invoice->amount = $totalProrataAmount;
                 $invoice->billing_type = $actionType;
                 $invoice->is_prorata = true;
@@ -963,6 +1094,7 @@ class InvoiceController extends Controller
                         'payment_date' => now(),
                         'amount' => $remainingProrata,
                         'payment_method' => $payMethod,
+                        'status' => 'verified',
                         'notes' => 'Pembayaran lunas seketika saat ' . $actionLabel . ' paket',
                         'collected_by' => auth()->id(),
                     ]);
@@ -997,6 +1129,7 @@ class InvoiceController extends Controller
                             'payment_date' => now(),
                             'amount' => $diff,
                             'payment_method' => $payMethod,
+                            'status' => 'verified',
                             'notes' => 'Pembayaran lunas selisih saat ' . $actionLabel . ' paket',
                             'collected_by' => auth()->id(),
                         ]);
@@ -1013,7 +1146,7 @@ class InvoiceController extends Controller
         } elseif ($request->billing_action === 'replace_invoice') {
             $taxPpn = (float) ($customer->tax_ppn ?? \App\Models\Setting::get('tax_ppn', '0'));
             $effectiveNewPrice = (int) round($taxPpn > 0 ? $newPrice + ($newPrice * ($taxPpn / 100)) : $newPrice);
-            if (in_array($invoice->status, ['unpaid', 'partial'])) {
+            if (in_array($invoice->status, ['unpaid', 'partial', 'overdue'])) {
                 $invoice->amount = $effectiveNewPrice;
                 $invoice->billing_type = $actionType;
                 $noteAppend = "{$actionLabel} ke {$newPackage->name} (Nominal tagihan diubah ke tarif penuh paket baru)";
@@ -1021,15 +1154,19 @@ class InvoiceController extends Controller
                 if ($request->filled('notes')) {
                     $invoice->notes .= ' (' . $request->notes . ')';
                 }
+                $totalPaid = (int) round($invoice->payments()->where('status', 'verified')->sum('amount'));
+                $invoice->status = $totalPaid >= $effectiveNewPrice ? 'paid' : ($totalPaid > 0 ? 'partial' : 'unpaid');
                 $invoice->save();
 
-                if ($request->boolean('pay_now')) {
+                $remainingReplace = max(0, $effectiveNewPrice - $totalPaid);
+                if ($request->boolean('pay_now') && $remainingReplace > 0) {
                     $payMethod = $request->payment_method ?: 'cash';
                     $invoice->payments()->create([
                         'customer_id' => $customer->id,
                         'payment_date' => now(),
-                        'amount' => $effectiveNewPrice,
+                        'amount' => $remainingReplace,
                         'payment_method' => $payMethod,
+                        'status' => 'verified',
                         'notes' => 'Pembayaran lunas seketika saat ' . $actionLabel . ' paket',
                         'collected_by' => auth()->id(),
                     ]);
@@ -1064,6 +1201,354 @@ class InvoiceController extends Controller
             });
         }
 
+        \App\Models\AuditLog::createLog(
+            'Ubah Paket Internet (' . $actionLabel . ')',
+            $customer,
+            $oldPackage?->name ?? 'Paket Lama',
+            $newPackage->name,
+            "Perubahan paket dari " . ($oldPackage?->name ?? 'Paket Lama') . " ke {$newPackage->name} diproses dari invoice #{$invoice->invoice_number} oleh " . (auth()->user()?->name ?? 'Petugas')
+        );
+
         return redirect()->back()->with('success', "Pelanggan {$customer->name} berhasil di-{$actionLabel} ke paket {$newPackage->name}." . ($request->boolean('sync_radius', true) ? ' Profile kecepatan RADIUS telah disinkronkan.' : ''));
+    }
+
+    public function export(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $today = now()->startOfDay();
+        $query = Invoice::with(['customer.areaModel', 'customer.package', 'payments.collector'])
+            ->where('is_reseller_balance', false)
+            ->where('invoice_number', 'not like', 'INV-MIG-%')
+            ->where('status', '!=', 'cancelled')
+            ->where(function($q) {
+                $q->where('period_year', '>', 2026)
+                  ->orWhere(function($sub) {
+                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
+                  })
+                  ->orWhere(function($sub) {
+                      $sub->where('is_prorata', true)
+                          ->orWhere('billing_type', 'prorata');
+                  });
+            })
+            ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
+
+        $isAreaRestricted = auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('invoices_view_all');
+        $userAreaIds = auth()->check() ? auth()->user()->getAccessibleAreaIds() : [];
+
+        if ($isAreaRestricted) {
+            if (auth()->user()->can('invoices_view_area')) {
+                $query->whereHas('customer', fn($cq) => $cq->whereIn('area_id', $userAreaIds));
+            } else {
+                $query->whereHas('customer', fn($cq) => $cq->where('sales_id', auth()->id()));
+            }
+        }
+
+        $tab = $request->query('tab', 'semua');
+        $this->applyTabFilter($query, $tab, $today);
+
+        if ($request->filled('search')) {
+            $search = strtolower($request->search);
+            $query->where(function($q) use ($search) {
+                $q->where('invoice_number', 'like', "%{$search}%")
+                  ->orWhereHas('customer', function($q2) use ($search) {
+                      $q2->where('name', 'like', "%{$search}%")
+                         ->orWhere('phone', 'like', "%{$search}%")
+                         ->orWhere('customer_code', 'like', "%{$search}%")
+                         ->orWhere('area', 'like', "%{$search}%")
+                         ->orWhere('address', 'like', "%{$search}%")
+                         ->orWhereHas('areaModel', fn($q3) => $q3->where('name', 'like', "%{$search}%"));
+                  });
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('area_id')) {
+            $query->whereHas('customer', fn($q) => $q->where('area_id', $request->area_id));
+        }
+
+        if ($request->filled('package_id')) {
+            $query->whereHas('customer', fn($q) => $q->where('package_id', $request->package_id));
+        }
+
+        $this->applyBillingTypeFilter($query, $request);
+
+        $this->applyFlexibleDateFilter($query, $request);
+
+        $invoices = $query->latest('id')->get();
+        $filename = "Laporan_Tagihan_Invoice_" . date('Ymd_His') . ".csv";
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        return response()->stream(function () use ($invoices) {
+            $handle = fopen('php://output', 'w');
+            fputs($handle, "\xEF\xBB\xBF");
+
+            fputcsv($handle, [
+                'No',
+                'No. Invoice',
+                'Nama Pelanggan',
+                'ID Pelanggan',
+                'Telepon / WA',
+                'Area Cabang',
+                'Alamat',
+                'Paket Internet',
+                'Tipe Tagihan',
+                'Tanggal Terbit',
+                'Jatuh Tempo',
+                'Total Tagihan (Rp)',
+                'Total Terbayar (Rp)',
+                'Sisa Tagihan (Rp)',
+                'Status Invoice',
+                'Status Pelanggan',
+                'Tgl Bayar Terakhir',
+                'Metode Bayar',
+                'Kolektor'
+            ]);
+
+            foreach ($invoices as $idx => $inv) {
+                $lastPayment = $inv->payments->first();
+                $cName = $lastPayment?->collector?->name;
+                if (!$cName && $lastPayment) {
+                    if ($lastPayment->payment_method === 'payment_gateway') {
+                        $cName = 'Sistem Otomatis (Payment Gateway)';
+                    } elseif ($lastPayment->payment_method === 'reseller_balance' && preg_match('/(?:Reseller|Loket|Agen)\s*:\s*([^|,\n]+)/i', $lastPayment->notes ?? '', $m)) {
+                        $cName = 'Loket ' . trim($m[1]);
+                    }
+                }
+                fputcsv($handle, [
+                    $idx + 1,
+                    $inv->invoice_number,
+                    $inv->customer?->name ?? '-',
+                    $inv->customer?->customer_code ?? '-',
+                    $inv->customer?->phone ?? '-',
+                    $inv->customer?->areaModel?->name ?? '-',
+                    $inv->customer?->address ?? '-',
+                    $inv->customer?->package?->name ?? '-',
+                    $inv->is_prorata || $inv->billing_type === 'prorata' ? 'Prorata' : 'Reguler',
+                    $inv->issued_date ? $inv->issued_date->format('d/m/Y') : '-',
+                    $inv->due_date ? $inv->due_date->format('d/m/Y') : '-',
+                    (float) $inv->amount,
+                    (float) $inv->total_paid,
+                    (float) $inv->remaining,
+                    strtoupper($inv->status),
+                    strtoupper($inv->customer?->status ?? 'ACTIVE'),
+                    $lastPayment ? \Carbon\Carbon::parse($lastPayment->payment_date)->format('d/m/Y H:i') : '-',
+                    $lastPayment?->payment_method ?? '-',
+                    $cName ?? '-'
+                ]);
+            }
+
+            fclose($handle);
+        }, 200, $headers);
+    }
+
+    public function printList(Request $request)
+    {
+        $today = now()->startOfDay();
+        $query = Invoice::with(['customer.areaModel', 'customer.package', 'payments.collector'])
+            ->where('is_reseller_balance', false)
+            ->where('invoice_number', 'not like', 'INV-MIG-%')
+            ->where('status', '!=', 'cancelled')
+            ->where(function($q) {
+                $q->where('period_year', '>', 2026)
+                  ->orWhere(function($sub) {
+                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
+                  })
+                  ->orWhere(function($sub) {
+                      $sub->where('is_prorata', true)
+                          ->orWhere('billing_type', 'prorata');
+                  });
+            })
+            ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
+
+        $isAreaRestricted = auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('invoices_view_all');
+        $userAreaIds = auth()->check() ? auth()->user()->getAccessibleAreaIds() : [];
+
+        if ($isAreaRestricted) {
+            if (auth()->user()->can('invoices_view_area')) {
+                $query->whereHas('customer', fn($cq) => $cq->whereIn('area_id', $userAreaIds));
+            } else {
+                $query->whereHas('customer', fn($cq) => $cq->where('sales_id', auth()->id()));
+            }
+        }
+
+        $tab = $request->query('tab', 'semua');
+        $this->applyTabFilter($query, $tab, $today);
+
+        if ($request->filled('search')) {
+            $search = strtolower($request->search);
+            $query->where(function($q) use ($search) {
+                $q->where('invoice_number', 'like', "%{$search}%")
+                  ->orWhereHas('customer', function($q2) use ($search) {
+                      $q2->where('name', 'like', "%{$search}%")
+                         ->orWhere('phone', 'like', "%{$search}%")
+                         ->orWhere('customer_code', 'like', "%{$search}%")
+                         ->orWhere('area', 'like', "%{$search}%")
+                         ->orWhere('address', 'like', "%{$search}%")
+                         ->orWhereHas('areaModel', fn($q3) => $q3->where('name', 'like', "%{$search}%"));
+                  });
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('area_id')) {
+            $query->whereHas('customer', fn($q) => $q->where('area_id', $request->area_id));
+        }
+
+        if ($request->filled('package_id')) {
+            $query->whereHas('customer', fn($q) => $q->where('package_id', $request->package_id));
+        }
+
+        $this->applyBillingTypeFilter($query, $request);
+
+        $this->applyFlexibleDateFilter($query, $request);
+
+        $invoices = $query->latest('id')->get();
+
+        return view('print.invoices-list', [
+            'invoices' => $invoices,
+            'filters' => $request->all(),
+            'printDate' => now()->format('d F Y H:i'),
+        ]);
+    }
+
+    /**
+     * Filter tab invoice yang 100% sinkron dengan penghitungan badge $stats.
+     */
+    private function applyTabFilter($targetQuery, string $tab, $today): void
+    {
+        if ($tab === 'jatuh_tempo') {
+            $this->applyOverdueCondition($targetQuery, $today);
+            $targetQuery->whereIn('status', ['unpaid', 'partial', 'overdue'])
+                ->whereHas('customer', fn($q) => $q->where('status', '!=', 'terminated'));
+        } elseif ($tab === 'piutang') {
+            $targetQuery->where('status', 'partial')
+                ->whereHas('customer', fn($q) => $q->where('status', '!=', 'terminated'));
+        } elseif ($tab === 'lunas') {
+            $targetQuery->where('status', 'paid');
+        } elseif ($tab === 'prorata') {
+            $targetQuery->where(function($q) {
+                $q->where('is_prorata', true)
+                  ->orWhere('billing_type', 'prorata');
+            });
+        } elseif ($tab === 'upgrade') {
+            $targetQuery->where(function($q) {
+                $q->whereIn('billing_type', ['upgrade', 'downgrade'])
+                  ->orWhere('notes', 'like', '%Upgrade%')
+                  ->orWhere('notes', 'like', '%Downgrade%');
+            });
+        } elseif ($tab === 'janji_bayar') {
+            $targetQuery->whereNotNull('promise_date')
+                ->whereIn('status', ['unpaid', 'partial', 'overdue'])
+                ->whereHas('customer', fn($q) => $q->where('status', '!=', 'terminated'));
+        } elseif ($tab === 'stop_sementara') {
+            $targetQuery->whereHas('customer', fn($q) => $q->where('status', 'suspended'));
+        } elseif ($tab === 'stop_permanen') {
+            $targetQuery->whereHas('customer', fn($q) => $q->where('status', 'terminated'));
+        }
+    }
+
+    /**
+     * Kondisi jatuh tempo selaras dengan waktu batas isolir (isolation_at) & due_date.
+     */
+    private function applyOverdueCondition($targetQuery, $today): void
+    {
+        $now = now();
+        $targetQuery->where(function($q) use ($now, $today) {
+            $q->where(function($sub) use ($now) {
+                $sub->whereNotNull('isolation_at')
+                    ->where('isolation_at', '<=', $now);
+            })->orWhere(function($sub) use ($today) {
+                $sub->whereNull('isolation_at')
+                    ->where('due_date', '<', $today);
+            });
+        });
+    }
+
+    /**
+     * Filter tipe tagihan: mendukung 'regular' (Reguler Bulanan), 'prorata', dan 'pascabayar'/'prabayar'.
+     */
+    private function applyBillingTypeFilter($targetQuery, Request $request): void
+    {
+        if (!$request->filled('billing_type')) {
+            return;
+        }
+
+        if ($request->billing_type === 'prorata') {
+            $targetQuery->where(function($q) {
+                $q->where('is_prorata', true)
+                  ->orWhere('billing_type', 'prorata');
+            });
+        } elseif ($request->billing_type === 'regular') {
+            $targetQuery->where(function($q) {
+                $q->where('is_prorata', false)->orWhereNull('is_prorata');
+            })->where(function($q) {
+                $q->whereNull('billing_type')->orWhere('billing_type', '!=', 'prorata');
+            });
+        } else {
+            $targetQuery->where(function($q) use ($request) {
+                $q->where('billing_type', $request->billing_type)
+                  ->orWhereHas('customer', fn($cq) => $cq->where('billing_type', $request->billing_type));
+            });
+        }
+    }
+
+    /**
+     * Filter tanggal fleksibel yang cerdas: mencocokkan issued_date, created_at, dan periode invoice.
+     */
+    private function applyFlexibleDateFilter($targetQuery, Request $request): void
+    {
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $startDate = $request->start_date;
+            $endDate = $request->end_date;
+            $startCarbon = \Carbon\Carbon::parse($startDate)->startOfDay();
+            $endCarbon = \Carbon\Carbon::parse($endDate)->endOfDay();
+
+            $targetQuery->where(function($sub) use ($startDate, $endDate, $startCarbon, $endCarbon) {
+                $sub->whereBetween('issued_date', [$startDate, $endDate])
+                    ->orWhereBetween('created_at', [$startCarbon, $endCarbon])
+                    ->orWhere(function($pq) use ($startCarbon, $endCarbon) {
+                        $pq->whereBetween(
+                            \Illuminate\Support\Facades\DB::raw("STR_TO_DATE(CONCAT(period_year, '-', LPAD(period_month, 2, '00'), '-01'), '%Y-%m-%d')"),
+                            [$startCarbon->copy()->startOfMonth()->toDateString(), $endCarbon->copy()->endOfMonth()->toDateString()]
+                        );
+                    });
+            });
+        } elseif ($request->filled('start_date')) {
+            $startDate = $request->start_date;
+            $startCarbon = \Carbon\Carbon::parse($startDate)->startOfDay();
+            $targetQuery->where(function($sub) use ($startDate, $startCarbon) {
+                $sub->where('issued_date', '>=', $startDate)
+                    ->orWhere('created_at', '>=', $startCarbon)
+                    ->orWhere(
+                        \Illuminate\Support\Facades\DB::raw("STR_TO_DATE(CONCAT(period_year, '-', LPAD(period_month, 2, '00'), '-01'), '%Y-%m-%d')"),
+                        '>=',
+                        $startCarbon->copy()->startOfMonth()->toDateString()
+                    );
+            });
+        } elseif ($request->filled('end_date')) {
+            $endDate = $request->end_date;
+            $endCarbon = \Carbon\Carbon::parse($endDate)->endOfDay();
+            $targetQuery->where(function($sub) use ($endDate, $endCarbon) {
+                $sub->where('issued_date', '<=', $endDate)
+                    ->orWhere('created_at', '<=', $endCarbon)
+                    ->orWhere(
+                        \Illuminate\Support\Facades\DB::raw("STR_TO_DATE(CONCAT(period_year, '-', LPAD(period_month, 2, '00'), '-01'), '%Y-%m-%d')"),
+                        '<=',
+                        $endCarbon->copy()->endOfMonth()->toDateString()
+                    );
+            });
+        }
     }
 }

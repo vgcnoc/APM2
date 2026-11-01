@@ -431,11 +431,11 @@ class DashboardController extends Controller
         $stats = [
             'survey_assigned' => Customer::where('status', 'survey')
                 ->whereHas('technicianSchedules', function($q) use ($userId) {
-                    $q->where('type', 'survey')->where('technician_id', $userId)->where('status', 'scheduled');
+                    $q->where('type', 'survey')->where('technician_id', $userId)->whereIn('status', ['scheduled', 'on_the_way', 'working']);
                 })->count(),
             'installation_assigned' => Customer::where('status', 'installing')
                 ->whereHas('technicianSchedules', function($q) use ($userId) {
-                    $q->where('type', 'installation')->where('technician_id', $userId)->where('status', 'scheduled');
+                    $q->where('type', 'installation')->where('technician_id', $userId)->whereIn('status', ['scheduled', 'on_the_way', 'working']);
                 })->count(),
             'tickets_assigned' => Ticket::where('assigned_to', $userId)
                 ->where('status', '!=', 'closed')->count(),
@@ -476,10 +476,10 @@ class DashboardController extends Controller
         // ── Daftar Tugas Survey ──────────────────────────────
         $surveyTasks = Customer::where('status', 'survey')
             ->whereHas('technicianSchedules', function($q) use ($userId) {
-                $q->where('type', 'survey')->where('technician_id', $userId)->where('status', 'scheduled');
+                $q->where('type', 'survey')->where('technician_id', $userId)->whereIn('status', ['scheduled', 'on_the_way', 'working']);
             })
             ->with(['technicianSchedules' => function($q) use ($userId) {
-                $q->where('type', 'survey')->where('technician_id', $userId)->where('status', 'scheduled');
+                $q->where('type', 'survey')->where('technician_id', $userId)->whereIn('status', ['scheduled', 'on_the_way', 'working']);
             }])
             ->orderBy('id', 'desc')
             ->get()
@@ -495,10 +495,10 @@ class DashboardController extends Controller
         // ── Daftar Tugas Instalasi ───────────────────────────
         $installationTasks = Customer::where('status', 'installing')
             ->whereHas('technicianSchedules', function($q) use ($userId) {
-                $q->where('type', 'installation')->where('technician_id', $userId)->where('status', 'scheduled');
+                $q->where('type', 'installation')->where('technician_id', $userId)->whereIn('status', ['scheduled', 'on_the_way', 'working']);
             })
             ->with(['technicianSchedules' => function($q) use ($userId) {
-                $q->where('type', 'installation')->where('technician_id', $userId)->where('status', 'scheduled');
+                $q->where('type', 'installation')->where('technician_id', $userId)->whereIn('status', ['scheduled', 'on_the_way', 'working']);
             }])
             ->orderBy('id', 'desc')
             ->get()
@@ -936,6 +936,14 @@ class DashboardController extends Controller
             $housePhotoUrl = null;
             $housePhotoSource = null;
             $allPhotos = [];
+
+            // 0. Ekstraksi langsung dari profil pelanggan (house_photo)
+            if (!empty($cust->house_photo)) {
+                $clean = ltrim($cust->house_photo, '/');
+                $housePhotoUrl = \Illuminate\Support\Str::startsWith($clean, ['http://', 'https://']) ? $clean : asset('storage/' . $clean);
+                $housePhotoSource = 'Foto Rumah Pelanggan';
+                $allPhotos[] = ['type' => 'house', 'label' => 'Foto Rumah Pelanggan', 'url' => $housePhotoUrl];
+            }
 
             // 1. Ekstraksi dari dokumentasi survey (label 'Foto Rumah' atau foto survey)
             if ($cust->surveys) {

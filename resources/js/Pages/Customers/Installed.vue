@@ -525,7 +525,12 @@
                                     </div>
                                     <div class="flex justify-between items-center py-2 border-b border-indigo-100/50 last:border-0">
                                         <span class="text-sm text-gray-500 font-medium">Tanggal Pasang</span>
-                                        <span class="text-sm font-semibold text-gray-900 text-right">{{ detailCustomer.technician_schedules?.find(s => s.type === 'installation')?.scheduled_date || '-' }}</span>
+                                        <span class="text-sm font-semibold text-gray-900 text-right">
+                                            {{ formatDate(detailCustomer.technician_schedules?.find(s => s.type === 'installation')?.scheduled_date) }}
+                                            <span v-if="detailCustomer.technician_schedules?.find(s => s.type === 'installation')?.scheduled_time" class="text-xs text-indigo-600 ml-1">
+                                                ({{ String(detailCustomer.technician_schedules.find(s => s.type === 'installation').scheduled_time).substring(0, 5) }} WIB)
+                                            </span>
+                                        </span>
                                     </div>
                                 </div>
                                 
@@ -660,7 +665,7 @@
                                     <div>
                                         <h5 class="text-sm font-semibold text-gray-900 mb-1">Telah Dijadwalkan (Belum Ada Laporan)</h5>
                                         <p class="text-sm text-gray-600">Teknisi: <strong class="text-gray-900">{{ getAssignedTechnicians(detailCustomer, 'installation') }}</strong></p>
-                                        <p class="text-sm text-gray-600">Waktu: <strong class="text-gray-900">{{ detailCustomer.technician_schedules.find(s => s.type === 'installation')?.scheduled_date }} {{ detailCustomer.technician_schedules.find(s => s.type === 'installation')?.scheduled_time }}</strong></p>
+                                        <p class="text-sm text-gray-600">Waktu: <strong class="text-gray-900">{{ formatDate(detailCustomer.technician_schedules.find(s => s.type === 'installation')?.scheduled_date) }} ({{ String(detailCustomer.technician_schedules.find(s => s.type === 'installation')?.scheduled_time || '10:00').substring(0, 5) }} WIB)</strong></p>
                                     </div>
                                 </div>
                             </div>
@@ -686,7 +691,7 @@
                 <div class="p-5 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-slate-50 to-white shrink-0">
                     <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
                         <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        Jadwal Pasang Baru
+                        {{ isEditingSchedule ? 'Ubah Jadwal & Teknisi' : 'Jadwal Pasang Baru' }}
                     </h3>
                     <button @click="showAssignModal = false" class="text-gray-400 hover:text-gray-700 bg-white hover:bg-gray-100 p-1.5 rounded-lg border border-transparent hover:border-gray-200 transition-all">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -786,7 +791,7 @@
                                                 <option value="" v-if="filteredOnts.length > 0">-- Pilih ONT --</option>
                                                 <option value="" v-else>-- Stok ONT Kosong --</option>
                                                 <option v-for="ontOption in filteredOnts" :key="ontOption.id" :value="ontOption.id">
-                                                    {{ ontOption.brand }} {{ ontOption.model || '' }} - SN: {{ ontOption.serial_number }}
+                                                    {{ ontOption.brand }} {{ ontOption.model || '' }} - SN: {{ ontOption.serial_number }}{{ activeCustomer?.ont?.id == ontOption.id ? ' (Terpasang Saat Ini)' : '' }}
                                                 </option>
                                             </select>
                                             <button v-if="assignForm.ont_models.length > 1" type="button" @click="assignForm.ont_models.splice(index, 1)" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-all focus:outline-none shrink-0" title="Hapus">
@@ -838,6 +843,9 @@
                                     <div v-for="(mItem, index) in assignForm.material_items" :key="'mat-'+index" class="flex gap-2 items-center group">
                                         <select v-model="assignForm.material_items[index].id" @change="updateMaterialItemDetails(index)" class="flex-1 bg-slate-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 focus:ring-2 focus:ring-blue-500 shadow-sm transition-all hover:bg-white min-w-0">
                                             <option value="">-- Pilih Material dari Inventory Gudang --</option>
+                                            <option v-if="mItem.id && !availableMaterialItems.some(i => String(i.unique_key) === String(mItem.id))" :value="mItem.id">
+                                                {{ mItem.name }} — Alokasi Saat Ini ({{ mItem.qty }} {{ mItem.unit || 'pcs' }})
+                                            </option>
                                             <option v-for="item in availableMaterialItems" :key="item.unique_key" :value="item.unique_key">
                                                 {{ item.name }} — Stok Gudang: {{ item.area_stock }} {{ item.unit }} {{ item.trx_number ? '(PO: ' + item.trx_number + ')' : '' }}
                                             </option>
@@ -879,7 +887,7 @@
                         <button type="button" @click="showAssignModal = false" class="px-5 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:text-slate-900 transition-all shadow-sm">Batal</button>
                         <button type="submit" :disabled="assignForm.processing" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-all shadow-md focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center gap-2">
                             <svg v-if="assignForm.processing" class="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                            {{ assignForm.processing ? 'Menyimpan...' : 'Tugaskan' }}
+                            {{ assignForm.processing ? 'Menyimpan...' : (isEditingSchedule ? 'Simpan Perubahan' : 'Tugaskan') }}
                         </button>
                     </div>
                 </form>
@@ -1522,7 +1530,7 @@ const showTechDropdown = ref(false);
 const getCustomerProgressStatus = (customer) => {
     if (customer.status === 'active') return 'active';
     if (customer.is_audited) return 'menunggu_aktivasi';
-    if (customer.technician_schedules && customer.technician_schedules.some(s => s.type === 'installation' && s.status === 'scheduled')) return 'laporan_pasang';
+    if (customer.technician_schedules && customer.technician_schedules.some(s => s.type === 'installation' && ['scheduled', 'on_the_way', 'working'].includes(s.status))) return 'laporan_pasang';
     if (customer.ont && customer.ont.rx_power) return 'audit';
     return 'jadwal_pasang';
 };
@@ -1590,9 +1598,16 @@ const customerAreaId = computed(() => {
 const filteredOnts = computed(() => {
     let onts = (props.availableOnts || []).filter(ont => ont.status === 'Sudah Set');
     const areaId = customerAreaId.value;
-    if (!areaId) return onts;
-    const matched = onts.filter(ont => ont.area_id == areaId);
-    return matched.length > 0 ? matched : onts;
+    let result = onts;
+    if (areaId) {
+        const matched = onts.filter(ont => ont.area_id == areaId);
+        result = matched.length > 0 ? matched : onts;
+    }
+    const currentOnt = activeCustomer.value?.ont;
+    if (currentOnt && !result.some(o => String(o.id) === String(currentOnt.id))) {
+        return [currentOnt, ...result];
+    }
+    return result;
 });
 
 const filteredMaterialTransactions = computed(() => {
@@ -1731,7 +1746,12 @@ function addManualMaterial() {
 
 function getSelectedOntDetails(val) {
     if (!val) return null;
-    return props.availableOnts.find(ont => ont.id === val);
+    const found = (props.availableOnts || []).find(ont => String(ont.id) === String(val));
+    if (found) return found;
+    if (activeCustomer.value?.ont && String(activeCustomer.value.ont.id) === String(val)) {
+        return activeCustomer.value.ont;
+    }
+    return null;
 }
 
 function getTransactionLabel(trx) {
@@ -1837,12 +1857,34 @@ function signalClass(rx) {
 }
 
 const showAssignModal = ref(false);
+const isEditingSchedule = computed(() => {
+    return (activeCustomer.value?.technician_schedules || []).some(
+        s => s.type === 'installation' && s.status !== 'cancelled'
+    );
+});
+
+function toLocalDateInputValue(dateObj = new Date()) {
+    const y = dateObj.getFullYear();
+    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const d = String(dateObj.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function normalizeScheduleDateInput(dateVal) {
+    if (!dateVal) return toLocalDateInputValue();
+    const str = String(dateVal).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) return toLocalDateInputValue(d);
+    return str.substring(0, 10);
+}
+
 const assignForm = useForm({
     technician_ids: [],
     scheduled_date: '',
     scheduled_time: '',
     ont_models: [''],
-    material_transaction_ids: [''],
+    material_transaction_ids: [],
     material_items: [],
     notes: '',
     send_wa: true,
@@ -1850,20 +1892,79 @@ const assignForm = useForm({
 
 function openAssignModal(customer) {
     activeCustomer.value = customer;
+    showTechDropdown.value = false;
     assignForm.reset();
+    assignForm.clearErrors();
     assignForm.send_wa = true;
+    assignForm.ont_models = customer.ont?.id ? [customer.ont.id] : [''];
+    assignForm.material_items = [];
+    assignForm.material_transaction_ids = [];
     
     // Pre-populate with existing installation schedule if any
-    const existingSchedules = (customer.technician_schedules || []).filter(s => s.type === 'installation');
+    const existingSchedules = (customer.technician_schedules || []).filter(
+        s => s.type === 'installation' && s.status !== 'cancelled'
+    );
     if (existingSchedules.length > 0) {
-        assignForm.technician_ids = existingSchedules.map(s => s.technician_id).filter(Boolean);
+        assignForm.technician_ids = [...new Set(existingSchedules.map(s => Number(s.technician_id)).filter(Boolean))];
         const first = existingSchedules[0];
-        if (first.scheduled_date) assignForm.scheduled_date = first.scheduled_date;
-        if (first.scheduled_time) assignForm.scheduled_time = (first.scheduled_time || '10:00').substring(0, 5);
-        if (first.notes) assignForm.notes = first.notes;
+        assignForm.scheduled_date = normalizeScheduleDateInput(first.scheduled_date);
+        assignForm.scheduled_time = String(first.scheduled_time || '10:00').substring(0, 5);
+
+        const cleanNotes = [];
+        const parsedMaterials = [];
+        let lastTrxNumber = '';
+
+        if (first.notes) {
+            first.notes.split(/\r?\n/).forEach(rawLine => {
+                const trimmed = rawLine.trim();
+                if (!trimmed) return;
+
+                if (trimmed.startsWith('Material diambil dari Surat Jalan')) {
+                    const mTrx = trimmed.match(/:\s*(.+)$/);
+                    if (mTrx) {
+                        lastTrxNumber = mTrx[1].split(',')[0].trim();
+                    }
+                    return;
+                }
+                if (trimmed.startsWith('ONT:')) {
+                    return;
+                }
+                if (trimmed.startsWith('Material:')) {
+                    const matMatch = trimmed.match(/^Material:\s*(.+?)\s*\(([\d.]+)\s*(.+?)\)$/i);
+                    const matName = matMatch ? matMatch[1].trim() : trimmed.replace(/^Material:\s*/i, '').trim();
+                    const matQty = matMatch ? (parseFloat(matMatch[2]) || 1) : 1;
+                    const matUnit = matMatch ? matMatch[3].trim() : 'pcs';
+
+                    const matchedOpt = availableMaterialItems.value.find(
+                        i => i.name.toLowerCase() === matName.toLowerCase() && (!lastTrxNumber || i.trx_number === lastTrxNumber)
+                    ) || availableMaterialItems.value.find(
+                        i => i.name.toLowerCase() === matName.toLowerCase()
+                    );
+
+                    parsedMaterials.push({
+                        id: matchedOpt ? matchedOpt.unique_key : ('custom-' + parsedMaterials.length + '-' + matName),
+                        material_id: matchedOpt?.material_id || '',
+                        name: matName,
+                        qty: matQty,
+                        unit: matchedOpt?.unit || matUnit,
+                        trx_number: matchedOpt?.trx_number || lastTrxNumber || '',
+                        area_stock: matchedOpt ? Math.max(matchedOpt.area_stock, matQty) : Math.max(matQty, 9999),
+                    });
+                    return;
+                }
+
+                const cleanedNote = trimmed.replace(/^Catatan(\s+(Tambahan|Khusus))?:\s*/i, '').trim();
+                if (cleanedNote && cleanedNote !== 'Jadwal pasang') {
+                    cleanNotes.push(cleanedNote);
+                }
+            });
+        }
+
+        assignForm.material_items = parsedMaterials;
+        assignForm.notes = cleanNotes.join('\n');
     } else {
         assignForm.technician_ids = [];
-        assignForm.scheduled_date = new Date().toISOString().split('T')[0];
+        assignForm.scheduled_date = toLocalDateInputValue();
         assignForm.scheduled_time = '10:00';
         assignForm.notes = '';
     }
@@ -1886,36 +1987,25 @@ function closeDetailModal() {
 
 function submitAssign() {
     if (!activeCustomer.value || !activeCustomer.value.id) {
-        alert('ERROR: Customer tidak ditemukan! activeCustomer.value = ' + JSON.stringify(activeCustomer.value));
         return;
     }
     
     // Auto-populate material_transaction_ids based on material_items
     const trxSet = new Set();
     assignForm.material_items.forEach(item => {
-        if (item.trx_number) {
+        if (item.trx_number && item.trx_number !== 'STOK-UTAMA') {
             trxSet.add(item.trx_number);
         }
     });
     assignForm.material_transaction_ids = Array.from(trxSet);
     
     const url = `/customers/${activeCustomer.value.id}/assign-install`;
-    console.log('submitAssign URL:', url);
-    console.log('submitAssign Data:', JSON.stringify(assignForm.data()));
     
     assignForm.post(url, {
         preserveScroll: true,
         onSuccess: () => {
             showAssignModal.value = false;
-            alert('Jadwal pasang berhasil disimpan!');
         },
-        onError: (errors) => {
-            console.error('assignInstall errors:', errors);
-            alert('Error validasi: ' + JSON.stringify(errors));
-        },
-        onFinish: () => {
-            console.log('assignInstall finished, processing:', assignForm.processing);
-        }
     });
 }
 
@@ -2025,7 +2115,15 @@ function getSelectedCustomerData() {
 
 function formatDate(dateStr) {
     if (!dateStr) return '-';
-    const d = new Date(dateStr);
+    const str = String(dateStr).trim();
+    let d;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+        const [y, m, dayNum] = str.split('-').map(Number);
+        d = new Date(y, m - 1, dayNum);
+    } else {
+        d = new Date(str);
+    }
+    if (isNaN(d.getTime())) return str;
     const day = String(d.getDate()).padStart(2, '0');
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
     return `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
@@ -2171,7 +2269,14 @@ function cleanPhoneNumber(phone) {
 function formatDateIndo(dateStr) {
     if (!dateStr) return '-';
     try {
-        const d = new Date(dateStr);
+        const str = String(dateStr).trim();
+        let d;
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+            const [y, m, dayNum] = str.split('-').map(Number);
+            d = new Date(y, m - 1, dayNum);
+        } else {
+            d = new Date(str);
+        }
         if (isNaN(d.getTime())) return dateStr;
         return d.toLocaleDateString('id-ID', {
             weekday: 'long',
@@ -2189,10 +2294,11 @@ function updateWaMessagePreview() {
     const c = waCustomer.value;
     const latestSchedule = c.technician_schedules?.find(s => s.type === 'installation') || c.technician_schedules?.[0];
     const dateFormatted = latestSchedule?.scheduled_date ? formatDateIndo(latestSchedule.scheduled_date) : '-';
-    const timeFormatted = latestSchedule?.scheduled_time || '10:00';
+    const timeFormatted = String(latestSchedule?.scheduled_time || '10:00').substring(0, 5);
     const odpName = c.surveys?.[0]?.odp?.name || c.ont?.odp?.name || '-';
     const portOdp = c.ont?.port_number ? `Port ${c.ont.port_number}` : (c.surveys?.[0]?.port_number ? `Port ${c.surveys[0].port_number}` : '-');
-    const cableDist = c.surveys?.[0]?.cable_distance ? `${c.surveys[0].cable_distance} meter` : '-';
+    const distMeters = c.surveys?.[0]?.distance_meters || c.surveys?.[0]?.cable_distance;
+    const cableDist = distMeters ? `${distMeters} meter` : '-';
     const notes = latestSchedule?.notes || '';
     const mapsLink = (c.latitude && c.longitude) ? `https://www.google.com/maps?q=${c.latitude},${c.longitude}` : (c.address_url || '');
 

@@ -76,7 +76,7 @@ class EmployeeController extends Controller
             $query->latest();
         }
 
-        $employees = $query->with('area')->paginate(10)->withQueryString();
+        $employees = $query->with(['area', 'specialTeams'])->paginate(10)->withQueryString();
 
         // Isi data bank dari tabel users jika belum terisi di employees
         $employees->getCollection()->transform(function ($emp) {
@@ -88,6 +88,9 @@ class EmployeeController extends Controller
                     if (!$emp->bank_account_holder) $emp->bank_account_holder = $user->bank_account_holder;
                 }
             }
+            $activeTeam = $emp->specialTeams->first();
+            $emp->special_team_id = $activeTeam ? $activeTeam->id : null;
+            $emp->special_team_name = $activeTeam ? $activeTeam->name : null;
             return $emp;
         });
         
@@ -97,6 +100,7 @@ class EmployeeController extends Controller
         }
         $areas = $areaQuery->get();
         $positions = \App\Models\Position::orderBy('name')->get();
+        $specialTeams = \App\Models\SpecialTeam::where('is_active', true)->select('id', 'name', 'code', 'without_radius')->orderBy('name')->get();
 
         // Hitung rata-rata masa kerja seluruh karyawan yang memiliki tanggal gabung
         $now = \Carbon\Carbon::now()->startOfDay();
@@ -131,6 +135,7 @@ class EmployeeController extends Controller
             'employees' => $employees,
             'areas' => $areas,
             'positions' => $positions,
+            'special_teams' => $specialTeams,
             'avg_tenure' => trim($avgTenureText),
             'counts' => [
                 'active' => $totalActive,
@@ -163,7 +168,7 @@ class EmployeeController extends Controller
             }
         }
 
-        return response()->json($employee->load('area'));
+        return response()->json($employee->load(['area', 'specialTeams']));
     }
 
     public function store(Request $request)
@@ -179,6 +184,7 @@ class EmployeeController extends Controller
             'email' => 'required|email|max:255|unique:employees,email|unique:users,email',
             'phone' => 'nullable|string|max:20',
             'area_id' => 'nullable|exists:areas,id',
+            'special_team_id' => 'nullable|exists:special_teams,id',
             'allowed_attendance_areas' => 'nullable|array',
             'allowed_attendance_areas.*' => 'nullable|integer|exists:areas,id',
             'join_date' => 'nullable|date',
@@ -203,7 +209,19 @@ class EmployeeController extends Controller
             $validated['photo'] = $path;
         }
 
+        $specialTeamId = $validated['special_team_id'] ?? null;
+        unset($validated['special_team_id']);
+
         $employee = \App\Models\Employee::create($validated);
+
+        if (!empty($specialTeamId)) {
+            \App\Models\SpecialTeamMember::create([
+                'special_team_id' => $specialTeamId,
+                'employee_id' => $employee->id,
+                'role' => 'Anggota',
+                'is_leader' => false,
+            ]);
+        }
 
         // Auto-create user
         $roleName = !empty($validated['position']) ? self::mapPositionToRole($validated['position']) : 'cs';
@@ -242,6 +260,7 @@ class EmployeeController extends Controller
             'email' => 'required|email|max:255|unique:employees,email,' . $employee->id,
             'phone' => 'nullable|string|max:20',
             'area_id' => 'nullable|exists:areas,id',
+            'special_team_id' => 'nullable|exists:special_teams,id',
             'allowed_attendance_areas' => 'nullable|array',
             'allowed_attendance_areas.*' => 'nullable|integer|exists:areas,id',
             'join_date' => 'nullable|date',
@@ -279,8 +298,33 @@ class EmployeeController extends Controller
             $validated['photo'] = $path;
         }
 
+        $specialTeamProvided = $request->has('special_team_id');
+        $targetTeamId = $request->input('special_team_id');
+        unset($validated['special_team_id']);
+
         $oldEmail = $employee->email;
         $employee->update($validated);
+
+        if ($specialTeamProvided) {
+            if (empty($targetTeamId)) {
+                \App\Models\SpecialTeamMember::where('employee_id', $employee->id)->delete();
+            } else {
+                \App\Models\SpecialTeamMember::where('employee_id', $employee->id)
+                    ->where('special_team_id', '!=', $targetTeamId)
+                    ->delete();
+
+                \App\Models\SpecialTeamMember::firstOrCreate(
+                    [
+                        'special_team_id' => $targetTeamId,
+                        'employee_id' => $employee->id,
+                    ],
+                    [
+                        'role' => 'Anggota',
+                        'is_leader' => false,
+                    ]
+                );
+            }
+        }
 
         // Auto-update user
         if ($oldEmail) {

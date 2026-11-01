@@ -45,6 +45,7 @@ class InfrastructureWorkOrder extends Model
         'photo_opm',
         'photo_odp',
         'notes',
+        'split_units',
         'rejection_reason',
         'approved_by',
         'approved_at',
@@ -66,6 +67,7 @@ class InfrastructureWorkOrder extends Model
         'cable_meter_start' => 'integer',
         'cable_meter_end' => 'integer',
         'cable_length_used' => 'integer',
+        'split_units' => 'array',
     ];
 
     public function area(): BelongsTo

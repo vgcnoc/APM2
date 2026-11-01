@@ -203,9 +203,14 @@ class CustomerBillingController extends Controller
                         : asset('storage/' . $customer->identity_photo);
                 }
 
-                // Ekstraksi Foto Rumah (dari survey atau ONT)
+                // Ekstraksi Foto Rumah (dari customer langsung, atau survey, atau ONT)
                 $housePhotoUrl = null;
-                if ($customer?->surveys) {
+                if ($customer?->house_photo) {
+                    $housePhotoUrl = str_starts_with($customer->house_photo, 'http')
+                        ? $customer->house_photo
+                        : asset('storage/' . $customer->house_photo);
+                }
+                if (!$housePhotoUrl && $customer?->surveys) {
                     foreach ($customer->surveys as $survey) {
                         if (is_array($survey->photos)) {
                             foreach ($survey->photos as $p) {

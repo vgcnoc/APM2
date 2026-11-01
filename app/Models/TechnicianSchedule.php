@@ -11,16 +11,21 @@ class TechnicianSchedule extends Model
     use HasFactory;
 
     protected $fillable = [
-        'ticket_id', 'technician_id', 'customer_id',
+        'ticket_id', 'technician_id', 'customer_id', 'area_id',
         'scheduled_date', 'scheduled_time', 'type', 'status', 'notes',
     ];
 
     protected function casts(): array
     {
         return [
-            'scheduled_date' => 'date',
+            'scheduled_date' => 'date:Y-m-d',
             'scheduled_time' => 'datetime:H:i',
         ];
+    }
+
+    public function area(): BelongsTo
+    {
+        return $this->belongsTo(Area::class);
     }
 
     public function ticket(): BelongsTo

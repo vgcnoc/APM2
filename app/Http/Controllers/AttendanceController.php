@@ -15,6 +15,7 @@ use App\Models\SpecialTeam;
 use App\Models\SpecialTeamMember;
 use App\Models\User;
 use App\Models\WorkSchedule;
+use App\Services\AttendanceCalculatorService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -109,9 +110,14 @@ class AttendanceController extends Controller
         $areas = Area::orderBy('name')->get();
         $positions = Position::orderBy('name')->get(['id', 'name']);
 
-        // 3. Ambil Jadwal Shift Hari Ini untuk Karyawan Aktif
+        // 3. Ambil Jadwal Shift Hari Ini & Data Absensi Aktif (termasuk sesi Shift Malam / Lintas Hari dari kemarin)
         $todaySchedule = null;
         $shiftToday = null;
+        $todayAttendance = null;
+        $activeBaseDate = $today;
+        $isCrossMidnightSession = false;
+        $yesterday = $now->copy()->subDay()->format('Y-m-d');
+
         if ($currentEmployee) {
             $todaySchedule = WorkSchedule::with('shift')
                 ->where('employee_id', $currentEmployee->id)
@@ -128,16 +134,87 @@ class AttendanceController extends Controller
                 // Fallback otomatis ke master shift karyawan atau shift standar divisi
                 $shiftToday = $currentEmployee->shift ?: $this->resolveDefaultShiftForEmployee($currentEmployee);
             }
-        }
 
-        // 4. Ambil Data Absensi Hari Ini untuk Karyawan Aktif
-        $todayAttendance = null;
-        if ($currentEmployee) {
             $todayAttendance = Attendance::with('shift')
                 ->where('employee_id', $currentEmployee->id)
                 ->where('date', $today)
                 ->first();
+
+            // Jika hari ini belum absen masuk, cek apakah ada sesi kemarin yang batas pulangnya masih aktif (Shift Malam / Shift Sore Lintas Hari)
+            if (!$todayAttendance || !$todayAttendance->clock_in) {
+                $yesterdayOpen = Attendance::with('shift')
+                    ->where('employee_id', $currentEmployee->id)
+                    ->where('date', $yesterday)
+                    ->whereNotNull('clock_in')
+                    ->whereNull('clock_out')
+                    ->first();
+
+                if ($yesterdayOpen) {
+                    $yesterdayDeadline = AttendanceCalculatorService::resolveCheckoutDeadline($yesterdayOpen);
+                    if ($now->lessThanOrEqualTo($yesterdayDeadline)) {
+                        $todayAttendance = $yesterdayOpen;
+                        $shiftToday = $yesterdayOpen->shift ?: $shiftToday;
+                        $activeBaseDate = $yesterday;
+                        $isCrossMidnightSession = true;
+                    }
+                } else {
+                    // Cek jika ada Shift Malam kemarin yang baru mulai <= 4 jam lalu dan karyawan terlambat masuk lewat 00:00
+                    $yesterdayAttAny = Attendance::where('employee_id', $currentEmployee->id)
+                        ->where('date', $yesterday)
+                        ->first();
+
+                    if (!$yesterdayAttAny) {
+                        $yesterdaySchedule = WorkSchedule::with('shift')
+                            ->where('employee_id', $currentEmployee->id)
+                            ->where('date', $yesterday)
+                            ->first();
+
+                        $yesterdayShift = null;
+                        if ($yesterdaySchedule) {
+                            if ($yesterdaySchedule->status !== 'off' && !empty($yesterdaySchedule->shift_id)) {
+                                $yesterdayShift = $yesterdaySchedule->shift;
+                            }
+                        } else {
+                            $yesterdayShift = $currentEmployee->shift ?: $this->resolveDefaultShiftForEmployee($currentEmployee);
+                        }
+
+                        if ($yesterdayShift && $yesterdayShift->isCrossMidnight()) {
+                            $yWin = AttendanceCalculatorService::resolveShiftWindow($yesterday, $yesterdayShift);
+                            if ($yWin && $now->greaterThanOrEqualTo($yWin['start']) && $now->lessThanOrEqualTo($yWin['start']->copy()->addHours(4))) {
+                                $closerToYesterday = true;
+                                if ($shiftToday) {
+                                    $tWin = AttendanceCalculatorService::resolveShiftWindow($today, $shiftToday);
+                                    if ($tWin && abs($now->diffInMinutes($tWin['start'])) < abs($now->diffInMinutes($yWin['start']))) {
+                                        $closerToYesterday = false;
+                                    }
+                                }
+                                if ($closerToYesterday) {
+                                    $todaySchedule = $yesterdaySchedule ?: $todaySchedule;
+                                    $shiftToday = $yesterdayShift;
+                                    $activeBaseDate = $yesterday;
+                                    $isCrossMidnightSession = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
+
+        $effectiveShiftForDeadline = $todayAttendance?->shift ?: $shiftToday;
+        $activeCheckoutDeadline = AttendanceCalculatorService::resolveCheckoutDeadlineForShift($activeBaseDate, $effectiveShiftForDeadline);
+        $checkoutDeadlineInfo = [
+            'mode' => Setting::get('attendance_checkout_deadline_mode', 'shift_relative'),
+            'deadline_hours' => max(1, (int) Setting::get('attendance_checkout_deadline_hours', 4)),
+            'deadline_formatted' => $activeCheckoutDeadline->format('H:i'),
+            'deadline_full_label' => $activeCheckoutDeadline->format('Y-m-d') !== $now->format('Y-m-d')
+                ? $activeCheckoutDeadline->translatedFormat('d M Y, H:i') . ' WIB (Lintas Hari)'
+                : $activeCheckoutDeadline->format('H:i') . ' WIB',
+            'is_cross_midnight_session' => $isCrossMidnightSession,
+            'session_date_label' => $isCrossMidnightSession
+                ? Carbon::parse($activeBaseDate)->translatedFormat('d M Y')
+                : null,
+        ];
 
         // 5. Jadwal Shift Minggu Ini (Senin s/d Minggu)
         $startOfWeek = $now->copy()->startOfWeek(Carbon::MONDAY);
@@ -336,6 +413,7 @@ class AttendanceController extends Controller
             'areas' => $areas,
             'positions' => $positions,
             'canBypassAreaLock' => $user && ($user->hasRole('admin') || $user->hasRole('super admin') || $user->can('attendance_bypass_area_restriction')),
+            'checkoutDeadlineInfo' => $checkoutDeadlineInfo,
             'settings' => [
                 'require_photo' => Setting::get('attendance_regular_require_photo', '1') === '1',
                 'require_gps' => Setting::get('attendance_regular_require_gps', '1') === '1',
@@ -346,6 +424,8 @@ class AttendanceController extends Controller
                 'allow_wfh' => Setting::get('attendance_regular_allow_wfh', '0') === '1',
                 'allow_field' => Setting::get('attendance_regular_allow_field', '1') === '1',
                 'allow_overtime' => Setting::get('attendance_regular_allow_overtime', '1') === '1',
+                'deadline_mode' => Setting::get('attendance_checkout_deadline_mode', 'shift_relative'),
+                'deadline_hours' => max(1, (int) Setting::get('attendance_checkout_deadline_hours', 4)),
                 'deadline_time' => Setting::get('attendance_checkout_deadline_time', '23:30'),
                 'min_work_hours' => (int) Setting::get('attendance_checkout_min_work_hours', 4),
             ],
@@ -387,14 +467,29 @@ class AttendanceController extends Controller
             return back()->with('error', "Karyawan {$employee->name} terdaftar dalam Absen Tim Khusus ({$specialCheck->team->name}). Silakan gunakan halaman Absen Tim Khusus.");
         }
         $today = Carbon::today()->format('Y-m-d');
+        $yesterday = Carbon::yesterday()->format('Y-m-d');
         $now = Carbon::now();
         $timeStr = $now->format('H:i:s');
 
-        // Cek apakah sudah absen masuk
+        // Cek apakah masih ada sesi absen masuk kemarin (Shift Malam / Lintas Hari) yang belum di-absen pulang dan batas pulangnya masih aktif
+        $yesterdayOpen = Attendance::with('shift')
+            ->where('employee_id', $employee->id)
+            ->where('date', $yesterday)
+            ->whereNotNull('clock_in')
+            ->whereNull('clock_out')
+            ->first();
+
+        if ($yesterdayOpen && $now->lessThanOrEqualTo(AttendanceCalculatorService::resolveCheckoutDeadline($yesterdayOpen))) {
+            return back()->with('error', 'Anda masih memiliki sesi presensi shift sebelumnya yang belum di-absen pulang. Silakan lakukan absen pulang terlebih dahulu.');
+        }
+
+        // Cek apakah sudah absen masuk hari ini
         $attendance = Attendance::where('employee_id', $employee->id)->where('date', $today)->first();
         if ($attendance && $attendance->clock_in) {
             return back()->with('error', 'Anda sudah melakukan absen masuk hari ini.');
         }
+
+        $targetDate = $today;
 
         // Ambil jadwal shift hari ini atau gunakan shift yang dipilih
         $schedule = WorkSchedule::with('shift')
@@ -411,15 +506,53 @@ class AttendanceController extends Controller
             $shift = $this->resolveDefaultShiftForEmployee($employee);
         }
 
-        // Cek apakah hari ini dijadwalkan Libur (OFF)
+        // Deteksi cerdas: jika karyawan Shift Malam (contoh 23:00 - 08:00) baru datang terlambat sedikit lewat pukul 00:00 dini hari
+        if (!$requestedShiftId) {
+            $yesterdayAnyAtt = Attendance::where('employee_id', $employee->id)->where('date', $yesterday)->first();
+            if (!$yesterdayAnyAtt) {
+                $yesterdaySchedule = WorkSchedule::with('shift')
+                    ->where('employee_id', $employee->id)
+                    ->where('date', $yesterday)
+                    ->first();
+
+                $yesterdayShift = null;
+                if ($yesterdaySchedule) {
+                    if ($yesterdaySchedule->status !== 'off' && !empty($yesterdaySchedule->shift_id)) {
+                        $yesterdayShift = $yesterdaySchedule->shift;
+                    }
+                } else {
+                    $yesterdayShift = $employee->shift ?: $this->resolveDefaultShiftForEmployee($employee);
+                }
+
+                if ($yesterdayShift && $yesterdayShift->isCrossMidnight()) {
+                    $yWin = AttendanceCalculatorService::resolveShiftWindow($yesterday, $yesterdayShift);
+                    if ($yWin && $now->greaterThanOrEqualTo($yWin['start']) && $now->lessThanOrEqualTo($yWin['start']->copy()->addHours(4))) {
+                        $closerToYesterday = true;
+                        if ($shift && ($schedule?->status !== 'off')) {
+                            $tWin = AttendanceCalculatorService::resolveShiftWindow($today, $shift);
+                            if ($tWin && abs($now->diffInMinutes($tWin['start'])) < abs($now->diffInMinutes($yWin['start']))) {
+                                $closerToYesterday = false;
+                            }
+                        }
+                        if ($closerToYesterday) {
+                            $targetDate = $yesterday;
+                            $schedule = $yesterdaySchedule;
+                            $shift = $yesterdayShift;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Cek apakah dijadwalkan Libur (OFF)
         $isHolidayOff = ($schedule && $schedule->status === 'off');
 
-        // Auto-sinkronisasi ke Jadwal Kerja / Roster jika belum ada jadwal hari ini
+        // Auto-sinkronisasi ke Jadwal Kerja / Roster jika belum ada jadwal pada tanggal sesi ini
         if (!$schedule && $shift) {
             $schedule = WorkSchedule::updateOrCreate(
                 [
                     'employee_id' => $employee->id,
-                    'date' => $today,
+                    'date' => $targetDate,
                 ],
                 [
                     'shift_id' => $shift->id,
@@ -543,18 +676,19 @@ class AttendanceController extends Controller
         $status = 'present';
         $lateMinutes = 0;
         if ($shift && $shift->start_time && $attendanceType !== 'dinas_luar' && !$isHolidayOff) {
-            $shiftStartTime = Carbon::createFromFormat('Y-m-d H:i', $today . ' ' . substr($shift->start_time, 0, 5));
+            $shiftWindow = AttendanceCalculatorService::resolveShiftWindow($targetDate, $shift);
+            $shiftStartTime = $shiftWindow ? $shiftWindow['start'] : Carbon::createFromFormat('Y-m-d H:i', $targetDate . ' ' . substr($shift->start_time, 0, 5));
             $toleranceMinutes = (int) ($shift->tolerance_minutes ?? Setting::get('attendance_late_tolerance', 10));
             $lateThreshold = $shiftStartTime->copy()->addMinutes($toleranceMinutes);
 
             if ($now->greaterThan($lateThreshold)) {
                 $status = 'late';
-                $lateMinutes = $now->diffInMinutes($shiftStartTime);
+                $lateMinutes = (int) round($shiftStartTime->diffInMinutes($now));
             }
         }
 
         // Simpan Foto Selfie Base64 jika ada
-        $photoPath = $request->photo ? $this->saveBase64Photo($request->photo, 'attendances/in', "in_{$employee->id}_{$today}") : null;
+        $photoPath = $request->photo ? $this->saveBase64Photo($request->photo, 'attendances/in', "in_{$employee->id}_{$targetDate}") : null;
 
         $notesFinal = $request->notes;
         if ($isHolidayOff) {
@@ -564,7 +698,7 @@ class AttendanceController extends Controller
         Attendance::updateOrCreate(
             [
                 'employee_id' => $employee->id,
-                'date' => $today,
+                'date' => $targetDate,
             ],
             [
                 'work_schedule_id' => $schedule?->id,
@@ -631,10 +765,31 @@ class AttendanceController extends Controller
         }
 
         $today = Carbon::today()->format('Y-m-d');
+        $yesterday = Carbon::yesterday()->format('Y-m-d');
         $now = Carbon::now();
         $timeStr = $now->format('H:i:s');
 
-        $attendance = Attendance::where('employee_id', $employee->id)->where('date', $today)->first();
+        $attendance = Attendance::with('shift')
+            ->where('employee_id', $employee->id)
+            ->where('date', $today)
+            ->first();
+
+        // Jika belum ada absensi hari ini, cek sesi absen kemarin yang belum clock-out (Shift Malam / Shift Sore Lintas Hari)
+        if (!$attendance || !$attendance->clock_in) {
+            $yesterdayOpen = Attendance::with('shift')
+                ->where('employee_id', $employee->id)
+                ->where('date', $yesterday)
+                ->whereNotNull('clock_in')
+                ->whereNull('clock_out')
+                ->first();
+
+            if ($yesterdayOpen) {
+                $yesterdayDeadline = AttendanceCalculatorService::resolveCheckoutDeadline($yesterdayOpen);
+                if ($now->lessThanOrEqualTo($yesterdayDeadline) || $yesterdayDeadline->format('Y-m-d') === $today) {
+                    $attendance = $yesterdayOpen;
+                }
+            }
+        }
 
         if (!$attendance || !$attendance->clock_in) {
             return back()->with('error', 'Anda belum melakukan absen masuk hari ini.');
@@ -644,27 +799,35 @@ class AttendanceController extends Controller
             return back()->with('error', 'Anda sudah melakukan absen pulang hari ini.');
         }
 
-        // Pengecekan Batas Waktu Terakhir Absen Pulang (Clock-Out Cut-Off Deadline)
+        $attDateStr = is_string($attendance->date) ? substr($attendance->date, 0, 10) : $attendance->date->format('Y-m-d');
+        $shift = $attendance->shift ?: ($attendance->shift_id ? Shift::find($attendance->shift_id) : null);
+
+        // Pengecekan Batas Waktu Terakhir Absen Pulang (Clock-Out Cut-Off Berbasis Shift & Lintas Hari)
         $autoLock = Setting::get('attendance_checkout_auto_lock', '1') === '1';
-        $deadlineTime = Setting::get('attendance_checkout_deadline_time', '23:30');
         if ($autoLock) {
-            $deadlineCarbon = Carbon::parse($today . ' ' . $deadlineTime);
+            $deadlineCarbon = AttendanceCalculatorService::resolveCheckoutDeadline($attendance);
             if ($now->greaterThan($deadlineCarbon)) {
-                return back()->with('error', "Batas waktu terakhir absen pulang hari ini adalah pukul {$deadlineTime} WIB. Waktu telah berakhir sehingga absensi pulang dikunci otomatis (Lupa Absen Pulang). Silakan hubungi Admin / HRD untuk koreksi manual.");
+                $deadlineLabel = $deadlineCarbon->format('Y-m-d') !== $attDateStr
+                    ? $deadlineCarbon->translatedFormat('d M Y \p\u\k\u\l H:i')
+                    : 'pukul ' . $deadlineCarbon->format('H:i');
+                $shiftLabel = $shift ? " ({$shift->name}: {$shift->formatted_time})" : '';
+                return back()->with('error', "Batas waktu terakhir absen pulang{$shiftLabel} adalah {$deadlineLabel} WIB. Waktu telah berakhir sehingga absensi pulang dikunci otomatis (Lupa Absen Pulang). Silakan hubungi Admin / HRD untuk koreksi manual.");
             }
         }
 
-        // Pengecekan Durasi Kerja Minimal Sebelum Diizinkan Absen Pulang
+        // Pengecekan Durasi Kerja Minimal Sebelum Diizinkan Absen Pulang (Mendukung Lintas Tengah Malam)
         $minWorkHours = (int) Setting::get('attendance_checkout_min_work_hours', 4);
         if ($minWorkHours > 0 && !empty($attendance->clock_in)) {
-            $clockInTime = Carbon::parse($today . ' ' . $attendance->clock_in);
-            $workedMinutes = $clockInTime->diffInMinutes($now, false);
-            if ($workedMinutes < ($minWorkHours * 60)) {
-                $remainingMinutes = ($minWorkHours * 60) - $workedMinutes;
-                $remHours = floor($remainingMinutes / 60);
-                $remMins = $remainingMinutes % 60;
-                $remStr = $remHours > 0 ? "{$remHours} jam {$remMins} menit" : "{$remMins} menit";
-                return back()->with('error', "Anda baru masuk pada pukul {$attendance->clock_in}. Durasi kerja minimal sebelum diizinkan absen pulang adalah {$minWorkHours} jam (kurang {$remStr} lagi).");
+            $clockInTime = AttendanceCalculatorService::resolveClockInDateTime($attendance, $shift);
+            if ($clockInTime) {
+                $workedMinutes = (int) floor($clockInTime->diffInMinutes($now, false));
+                if ($workedMinutes < ($minWorkHours * 60)) {
+                    $remainingMinutes = ($minWorkHours * 60) - max(0, $workedMinutes);
+                    $remHours = (int) floor($remainingMinutes / 60);
+                    $remMins = $remainingMinutes % 60;
+                    $remStr = $remHours > 0 ? "{$remHours} jam {$remMins} menit" : "{$remMins} menit";
+                    return back()->with('error', "Anda baru masuk pada pukul {$attendance->clock_in}. Durasi kerja minimal sebelum diizinkan absen pulang adalah {$minWorkHours} jam (kurang {$remStr} lagi).");
+                }
             }
         }
 
@@ -732,22 +895,24 @@ class AttendanceController extends Controller
             }
         }
 
-        // Evaluasi Pulang Lebih Awal terhadap Jam Selesai Shift
+        // Evaluasi Pulang Lebih Awal terhadap Jam Selesai Shift (Mendukung Shift Malam / Lintas Hari)
         $notesFinal = $request->notes ?: $attendance->notes;
-        $shift = $attendance->shift ?: ($attendance->shift_id ? Shift::find($attendance->shift_id) : null);
         if ($shift && $shift->end_time && $attendance->attendance_type !== 'dinas_luar') {
-            $shiftEndTime = Carbon::createFromFormat('Y-m-d H:i', $today . ' ' . substr($shift->end_time, 0, 5));
-            $earlyTolerance = (int) Setting::get('attendance_early_leave_tolerance', Setting::get('attendance_checkout_early_tolerance', 15));
-            $earlyThreshold = $shiftEndTime->copy()->subMinutes($earlyTolerance);
+            $shiftWindow = AttendanceCalculatorService::resolveShiftWindow($attDateStr, $shift);
+            if ($shiftWindow) {
+                $shiftEndTime = $shiftWindow['end'];
+                $earlyTolerance = AttendanceCalculatorService::resolveEarlyLeaveTolerance();
+                $earlyThreshold = $shiftEndTime->copy()->subMinutes($earlyTolerance);
 
-            if ($now->lessThan($earlyThreshold)) {
-                $earlyMins = $now->diffInMinutes($shiftEndTime);
-                $earlyNote = "Pulang lebih awal {$earlyMins} menit (Jadwal shift berakhir: {$shift->end_time})";
-                $notesFinal = $notesFinal ? "{$notesFinal} | {$earlyNote}" : $earlyNote;
+                if ($now->lessThan($earlyThreshold)) {
+                    $earlyMins = (int) round($now->diffInMinutes($shiftEndTime));
+                    $earlyNote = "Pulang lebih awal {$earlyMins} menit (Jadwal shift berakhir: " . substr($shift->end_time, 0, 5) . ")";
+                    $notesFinal = $notesFinal ? "{$notesFinal} | {$earlyNote}" : $earlyNote;
+                }
             }
         }
 
-        $photoPath = $request->photo ? $this->saveBase64Photo($request->photo, 'attendances/out', "out_{$employee->id}_{$today}") : null;
+        $photoPath = $request->photo ? $this->saveBase64Photo($request->photo, 'attendances/out', "out_{$employee->id}_{$attDateStr}") : null;
 
         $attendance->update([
             'clock_out' => $timeStr,
@@ -860,7 +1025,7 @@ class AttendanceController extends Controller
         $cutoffTime = Setting::get('attendance_checkout_deadline_time', '23:30');
 
         // Ambil seluruh data absensi reguler, absensi khusus, jadwal kerja, dan karyawan dalam periode
-        $allMonthAtts = Attendance::with('employee.area')
+        $allMonthAtts = Attendance::with(['employee.area', 'shift'])
             ->whereBetween('date', [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
             ->get();
 
@@ -932,12 +1097,9 @@ class AttendanceController extends Controller
                 // --- 2. POTONGAN LUPA ABSEN PULANG (MISSING CLOCK-OUT) ---
                 $missingOutCount = 0;
                 if ($missingOutPenaltyEnabled) {
-                    $missingOutAtts = $empAtts->filter(function ($att) use ($todayDate, $cutoffTime) {
-                        $attDateStr = is_string($att->date) ? substr($att->date, 0, 10) : $att->date->format('Y-m-d');
-                        if (empty($att->clock_in) || !empty($att->clock_out)) return false;
-                        if ($attDateStr < $todayDate) return true;
-                        if ($attDateStr === $todayDate && Carbon::now()->greaterThan(Carbon::parse($attDateStr . ' ' . $cutoffTime))) return true;
-                        return false;
+                    $nowEval = Carbon::now();
+                    $missingOutAtts = $empAtts->filter(function ($att) use ($nowEval) {
+                        return AttendanceCalculatorService::isMissingClockOut($att, $nowEval);
                     });
                     $missingOutCount = $missingOutAtts->count();
                     $missingOutDeduction = $missingOutCount * $missingOutAmount;
@@ -1035,11 +1197,12 @@ class AttendanceController extends Controller
 
                 // --- 5. POTONGAN TIM KHUSUS (JIKA ANGGOTA TIM KHUSUS) ---
                 if ($empSpecialAtts->isNotEmpty()) {
+                    $nowEvalSpecial = Carbon::now();
                     $byTeam = $empSpecialAtts->groupBy('special_team_id');
                     foreach ($byTeam as $teamId => $teamAtts) {
                         $team = $teamAtts->first()->team;
                         $sLates = $teamAtts->where('status', 'late')->count();
-                        $sNoOuts = $teamAtts->whereNotNull('clock_in')->whereNull('clock_out')->count();
+                        $sNoOuts = $teamAtts->filter(fn($sAtt) => AttendanceCalculatorService::isSpecialMissingClockOut($sAtt, $team, $nowEvalSpecial))->count();
                         $sLateFine = $sLates * (float) ($team?->late_deduction_amount ?? 10000);
                         $sNoOutFine = $sNoOuts * (float) ($team?->no_out_deduction_amount ?? 10000);
                         $totalSpecialFine = $sLateFine + $sNoOutFine;

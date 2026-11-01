@@ -112,7 +112,7 @@ class GenerateAttendanceRewards extends Command
         DB::transaction(function () use (
             $employees, $allMonthAtts, $allSpecialAtts, $allWorkSchedules,
             $month, $monthStart, $monthEnd, $todayDate, $cutoffTime,
-            $latePenaltyMode, $penaltyPerMinute, $fixedPenalty, $missingOutAmount, $earlyLeaveAmount, $alphaAmount,
+            $latePenaltyMode, $latePenaltyModeSlug, $penaltyPerMinute, $fixedPenalty, $missingOutAmount, $earlyLeaveAmount, $alphaAmount,
             $latePenaltyEnabled, $missingOutPenaltyEnabled, $earlyLeavePenaltyEnabled, $alphaPenaltyEnabled,
             $isRewardEnabled, &$totalDeductionsCount, &$totalRewardsCount
         ) {

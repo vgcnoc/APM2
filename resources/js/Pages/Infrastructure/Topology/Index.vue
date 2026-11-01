@@ -246,26 +246,55 @@ const isNodeInPath = (type, id) => {
                                         <div v-if="!isMobile && pon.odcs?.length" class="absolute top-[-32px] left-1/2 w-[calc(100%-14rem)] h-[2px] bg-slate-300 -translate-x-1/2"></div>
                                         <div v-if="!isMobile && pon.odcs?.length" class="absolute top-[-32px] left-1/2 w-[2px] h-[32px] bg-slate-300 -translate-x-1/2"></div>
                                         
-                                        <div v-for="odc in pon.odcs" :key="odc.id" class="flex flex-col items-center" :class="[isMobile ? 'mb-4' : 'mx-2']">
+                                        <div v-for="(odc, odcIdx) in pon.odcs" :key="odc.id" class="flex flex-col items-center relative" :class="[isMobile ? 'mb-4' : 'mx-2']">
                                             <div v-if="!isMobile" class="w-[2px] h-[32px] bg-slate-300"></div>
+
+                                            <!-- Horizontal Split Connector Badge between Induk & Lanjutan ODC -->
+                                            <div
+                                                v-if="!isMobile && odc.parent_odc_id && odcIdx > 0 && pon.odcs[odcIdx - 1]?.id === odc.parent_odc_id"
+                                                class="absolute -left-4 top-12 z-20 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-emerald-600 to-purple-600 text-white text-[9px] font-black shadow border border-white pointer-events-none"
+                                                title="Terhubung ODC Split (Induk <-> Lanjutan)"
+                                            >
+                                                ⇄
+                                            </div>
                                             
                                             <!-- ODC Node -->
                                             <div 
                                                 class="node-card bg-white border-2 rounded-xl shadow-sm p-3 w-52 cursor-pointer hover:shadow-md transition-all relative"
-                                                :class="[isNodeInPath('odc', odc.id) ? 'border-orange-500 ring-4 ring-orange-100' : 'border-slate-200']"
+                                                :class="[
+                                                    isNodeInPath('odc', odc.id)
+                                                        ? 'border-orange-500 ring-4 ring-orange-100'
+                                                        : odc.parent_odc_id
+                                                            ? 'border-purple-400 ring-2 ring-purple-100'
+                                                            : (odc.children && odc.children.length > 0)
+                                                                ? 'border-emerald-400 ring-2 ring-emerald-100'
+                                                                : 'border-slate-200'
+                                                ]"
                                                 @click="selectNode('odc', odc, [{type: 'olt', id: olt.id}, {type: 'pon', id: pon.id}, {type: 'odc', id: odc.id}])"
                                             >
                                                 <div v-if="isMobile" class="absolute left-[-26px] top-1/2 w-[24px] h-[2px] bg-slate-300"></div>
-                                                <div class="flex items-center gap-2 mb-2">
-                                                    <div class="p-1.5 bg-orange-100 text-orange-700 rounded-lg">
+                                                <div class="flex items-center gap-2 mb-1.5">
+                                                    <div class="p-1.5 bg-orange-100 text-orange-700 rounded-lg shrink-0">
                                                         <ShareIcon class="w-5 h-5" />
                                                     </div>
-                                                    <div>
+                                                    <div class="min-w-0">
                                                         <div class="text-[10px] font-bold text-slate-500">ODC ({{ odc.splitter_ratio || 'N/A' }})</div>
-                                                        <div class="font-bold text-slate-800 text-sm">{{ odc.name }}</div>
+                                                        <div class="font-bold text-slate-800 text-sm truncate" :title="odc.name">{{ odc.name }}</div>
                                                     </div>
                                                 </div>
-                                                <button @click.stop="toggleExpand(`odc-${odc.id}`)" class="mt-2 w-full py-1 bg-slate-50 hover:bg-slate-100 text-xs font-medium text-slate-600 rounded border border-slate-200">
+
+                                                <!-- Split Indicator on ODC Node -->
+                                                <div v-if="odc.children && odc.children.length > 0" class="mb-1.5 px-2 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-[9px] font-black text-emerald-800 truncate" :title="'Lanjutan: ' + odc.children.map(c => c.name).join(', ')">
+                                                    🟢 SPLIT INDUK ↱ {{ odc.children.map(c => c.name).join(', ') }}
+                                                </div>
+                                                <div v-else-if="odc.parent || odc.parent_odc_id" class="mb-1.5 px-2 py-0.5 rounded bg-purple-50 border border-purple-200 text-[9px] font-black text-purple-800 truncate" :title="'Induk: ' + (odc.parent?.name || odc.parent_odc_id)">
+                                                    🟣 SPLIT LANJUTAN ↳ {{ odc.parent?.name || ('#' + odc.parent_odc_id) }}
+                                                </div>
+                                                <div v-else-if="odc.is_split || odc.type === 'Split'" class="mb-1.5 px-2 py-0.5 rounded bg-amber-50 border border-amber-200 text-[9px] font-black text-amber-800">
+                                                    ⚡ ODC TIPE SPLIT
+                                                </div>
+
+                                                <button @click.stop="toggleExpand(`odc-${odc.id}`)" class="mt-1 w-full py-1 bg-slate-50 hover:bg-slate-100 text-xs font-medium text-slate-600 rounded border border-slate-200">
                                                     {{ expandedNodes.has(`odc-${odc.id}`) ? 'Collapse' : 'Expand' }}
                                                 </button>
                                             </div>
@@ -275,24 +304,52 @@ const isNodeInPath = (type, id) => {
                                                 <div v-if="!isMobile && odc.odps?.length" class="absolute top-[-32px] left-1/2 w-[calc(100%-12rem)] h-[2px] bg-slate-300 -translate-x-1/2"></div>
                                                 <div v-if="!isMobile && odc.odps?.length" class="absolute top-[-32px] left-1/2 w-[2px] h-[32px] bg-slate-300 -translate-x-1/2"></div>
                                                 
-                                                <div v-for="odp in odc.odps" :key="odp.id" class="flex flex-col items-center" :class="[isMobile ? 'mb-4' : 'mx-2']">
+                                                <div v-for="(odp, odpIdx) in odc.odps" :key="odp.id" class="flex flex-col items-center relative" :class="[isMobile ? 'mb-4' : 'mx-2']">
                                                     <div v-if="!isMobile" class="w-[2px] h-[32px] bg-slate-300"></div>
+
+                                                    <!-- Horizontal Split 2 Connector Badge between Induk & Lanjutan ODP -->
+                                                    <div
+                                                        v-if="!isMobile && odp.parent_odp_id && odpIdx > 0 && odc.odps[odpIdx - 1]?.id === odp.parent_odp_id"
+                                                        class="absolute -left-4 top-12 z-20 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-emerald-600 to-purple-600 text-white text-[9px] font-black shadow border border-white pointer-events-none"
+                                                        title="Terhubung ODP Split 2 (Induk <-> Lanjutan)"
+                                                    >
+                                                        ⇄
+                                                    </div>
                                                     
                                                     <!-- ODP Node -->
                                                     <div 
                                                         class="node-card bg-white border-2 rounded-xl shadow-sm p-3 w-48 cursor-pointer hover:shadow-md transition-all relative"
-                                                        :class="[isNodeInPath('odp', odp.id) ? 'border-sky-500 ring-4 ring-sky-100' : 'border-slate-200']"
+                                                        :class="[
+                                                            isNodeInPath('odp', odp.id)
+                                                                ? 'border-sky-500 ring-4 ring-sky-100'
+                                                                : odp.parent_odp_id
+                                                                    ? 'border-purple-400 ring-2 ring-purple-100'
+                                                                    : (odp.children && odp.children.length > 0)
+                                                                        ? 'border-emerald-400 ring-2 ring-emerald-100'
+                                                                        : 'border-slate-200'
+                                                        ]"
                                                         @click="selectNode('odp', odp, [{type: 'olt', id: olt.id}, {type: 'pon', id: pon.id}, {type: 'odc', id: odc.id}, {type: 'odp', id: odp.id}])"
                                                     >
                                                         <div v-if="isMobile" class="absolute left-[-26px] top-1/2 w-[24px] h-[2px] bg-slate-300"></div>
-                                                        <div class="flex items-center gap-2 mb-2">
-                                                            <div class="p-1.5 bg-sky-100 text-sky-700 rounded-lg">
+                                                        <div class="flex items-center gap-2 mb-1.5">
+                                                            <div class="p-1.5 bg-sky-100 text-sky-700 rounded-lg shrink-0">
                                                                 <ShareIcon class="w-4 h-4 rotate-90" />
                                                             </div>
-                                                            <div>
+                                                            <div class="min-w-0">
                                                                 <div class="text-[10px] font-bold text-slate-500">ODP</div>
-                                                                <div class="font-bold text-slate-800 text-sm truncate w-24" :title="odp.name">{{ odp.name }}</div>
+                                                                <div class="font-bold text-slate-800 text-sm truncate w-28" :title="odp.name">{{ odp.name }}</div>
                                                             </div>
+                                                        </div>
+
+                                                        <!-- Split 2 Indicator on ODP Node -->
+                                                        <div v-if="odp.children && odp.children.length > 0" class="mb-1.5 px-1.5 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-[9px] font-black text-emerald-800 truncate" :title="'Lanjutan: ' + odp.children.map(c => c.name).join(', ')">
+                                                            🟢 INDUK ↱ {{ odp.children.map(c => c.name).join(', ') }}
+                                                        </div>
+                                                        <div v-else-if="odp.parent || odp.parent_odp_id" class="mb-1.5 px-1.5 py-0.5 rounded bg-purple-50 border border-purple-200 text-[9px] font-black text-purple-800 truncate" :title="'Induk: ' + (odp.parent?.name || odp.parent_odp_id)">
+                                                            🟣 LANJUTAN ↳ {{ odp.parent?.name || ('#' + odp.parent_odp_id) }}
+                                                        </div>
+                                                        <div v-else-if="odp.is_split || odp.type === 'Split 2'" class="mb-1.5 px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200 text-[9px] font-black text-amber-800">
+                                                            ⚡ SPLIT 2
                                                         </div>
                                                         <div class="flex justify-between items-center text-[10px]">
                                                             <span class="flex items-center gap-1">
@@ -392,6 +449,20 @@ const isNodeInPath = (type, id) => {
                             <span class="text-sm font-bold text-slate-800">{{ selectedNode.data.used_ports }}</span>
                         </div>
                         
+                        <div v-if="selectedNode.data.children && selectedNode.data.children.length > 0" class="py-2 border-b border-slate-100">
+                            <span class="text-xs text-slate-500 font-medium block mb-1">Relasi Split</span>
+                            <span class="inline-block px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-xs font-bold">
+                                🟢 Unit Induk &rarr; Lanjutan: {{ selectedNode.data.children.map(c => c.name).join(', ') }}
+                            </span>
+                        </div>
+
+                        <div v-else-if="selectedNode.data.parent" class="py-2 border-b border-slate-100">
+                            <span class="text-xs text-slate-500 font-medium block mb-1">Relasi Split</span>
+                            <span class="inline-block px-2 py-0.5 rounded bg-purple-100 text-purple-800 text-xs font-bold">
+                                🟣 Unit Lanjutan &larr; Induk: {{ selectedNode.data.parent.name }}
+                            </span>
+                        </div>
+
                         <div v-if="selectedNode.data.location || selectedNode.data.address" class="py-2 border-b border-slate-100">
                             <span class="text-xs text-slate-500 font-medium block mb-1">Location</span>
                             <span class="text-sm text-slate-800 flex items-start gap-1">

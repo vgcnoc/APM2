@@ -234,11 +234,11 @@ class SettingController extends Controller
                 // PERATURAN SEMUA JENIS ABSEN & BATAS TERAKHIR PULANG
                 // =======================================================
                 // Batas Terakhir Absen Pulang
-                'attendance_checkout_deadline_mode' => Setting::get('attendance_checkout_deadline_mode', 'before_cron'),
+                'attendance_checkout_deadline_mode' => Setting::get('attendance_checkout_deadline_mode', 'shift_relative'),
                 'attendance_checkout_deadline_time' => Setting::get('attendance_checkout_deadline_time', '23:30'),
                 'attendance_checkout_deadline_hours' => (int) Setting::get('attendance_checkout_deadline_hours', 4),
                 'attendance_checkout_min_work_hours' => (int) Setting::get('attendance_checkout_min_work_hours', 4),
-                'attendance_checkout_early_tolerance' => (int) Setting::get('attendance_checkout_early_tolerance', 15),
+                'attendance_checkout_early_tolerance' => (int) Setting::get('attendance_checkout_early_tolerance', Setting::get('attendance_early_leave_tolerance', 15)),
                 'attendance_checkout_auto_lock' => Setting::get('attendance_checkout_auto_lock', '1') === '1',
 
                 // Aturan Presensi Reguler (Staf & Karyawan Shift / WFO)
@@ -432,7 +432,9 @@ class SettingController extends Controller
             Setting::set('attendance_checkout_min_work_hours', (int) $request->attendance_checkout_min_work_hours);
         }
         if ($request->has('attendance_checkout_early_tolerance')) {
-            Setting::set('attendance_checkout_early_tolerance', (int) $request->attendance_checkout_early_tolerance);
+            $syncedEarlyTol = (int) $request->attendance_checkout_early_tolerance;
+            Setting::set('attendance_checkout_early_tolerance', $syncedEarlyTol);
+            Setting::set('attendance_early_leave_tolerance', $syncedEarlyTol);
         }
         Setting::set('attendance_checkout_auto_lock', $request->boolean('attendance_checkout_auto_lock') ? '1' : '0');
 

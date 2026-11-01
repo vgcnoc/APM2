@@ -233,7 +233,7 @@ class AttendanceReportController extends Controller
                 $q->select('id', 'name', 'iak_number', 'position', 'area_id', 'shift_id', 'email', 'status');
             },
             'employee.area:id,name',
-            'shift:id,name,start_time,end_time',
+            'shift:id,name,start_time,end_time,is_night_shift',
             'area:id,name',
         ])
         ->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]);
@@ -324,6 +324,8 @@ class AttendanceReportController extends Controller
         ];
 
         // 5. Query Log Rinci Harian (Detail Tab)
+        $nowJakarta = Carbon::now('Asia/Jakarta');
+        $attSettings = AttendanceCalculatorService::getAttendanceSettings();
         $detailQuery = clone $attQuery;
         if ($request->filled('status') && $request->status !== 'all') {
             if ($request->status === 'on_time') {
@@ -337,9 +339,11 @@ class AttendanceReportController extends Controller
             } elseif ($request->status === 'field_duty') {
                 $detailQuery->where('attendance_type', 'dinas_luar');
             } elseif ($request->status === 'missing_out') {
-                $detailQuery->whereNotNull('clock_in')
-                            ->whereNull('clock_out')
-                            ->whereDate('date', '<', $today);
+                $missingOutIds = $allAttendancesInPeriod
+                    ->filter(fn($a) => AttendanceCalculatorService::isMissingClockOut($a, $nowJakarta, $attSettings, null, 'Asia/Jakarta'))
+                    ->pluck('id')
+                    ->all();
+                $detailQuery->whereIn('id', !empty($missingOutIds) ? $missingOutIds : [0]);
             }
         }
 
@@ -347,13 +351,13 @@ class AttendanceReportController extends Controller
 
         if ($paginateDetail) {
             $paginatedDetails = $detailQuery->paginate($request->get('per_page', 25))->withQueryString();
-            $detailLogs = $paginatedDetails->through(function ($item) use ($today) {
-                return $this->formatDetailItem($item, $today);
+            $detailLogs = $paginatedDetails->through(function ($item) use ($today, $nowJakarta, $attSettings) {
+                return $this->formatDetailItem($item, $today, $nowJakarta, $attSettings);
             });
         } else {
             $rawItems = $detailQuery->get();
-            $detailLogs = $rawItems->map(function ($item) use ($today) {
-                return $this->formatDetailItem($item, $today);
+            $detailLogs = $rawItems->map(function ($item) use ($today, $nowJakarta, $attSettings) {
+                return $this->formatDetailItem($item, $today, $nowJakarta, $attSettings);
             });
             $paginatedDetails = null;
         }
@@ -385,13 +389,19 @@ class AttendanceReportController extends Controller
     /**
      * Format item record absensi untuk tabel detail dan export
      */
-    protected function formatDetailItem(Attendance $item, Carbon $today): array
+    protected function formatDetailItem(Attendance $item, Carbon $today, ?Carbon $nowJakarta = null, ?array $attSettings = null): array
     {
         $dateCarbon = Carbon::parse($item->date);
         $isLate = $item->status === 'late' || (int)$item->late_minutes > 0;
         $isField = $item->attendance_type === 'dinas_luar';
         $isSpecial = $item->attendance_type === 'special_team';
-        $isMissingOut = !empty($item->clock_in) && empty($item->clock_out) && $dateCarbon->isBefore($today);
+        $isMissingOut = AttendanceCalculatorService::isMissingClockOut(
+            $item,
+            $nowJakarta ?? Carbon::now('Asia/Jakarta'),
+            $attSettings,
+            null,
+            'Asia/Jakarta'
+        );
 
         $statusLabel = 'Tepat Waktu';
         $statusBadge = 'green';

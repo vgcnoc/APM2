@@ -2,20 +2,38 @@
     <AppLayout :title="`Detail ODP: ${odp.name}`">
         <div class="p-6">
             <!-- Header -->
-            <div class="flex items-center justify-between mb-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <div class="flex items-center gap-4">
                     <Link :href="'/odps'" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
                     </Link>
                     <div>
-                        <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                            {{ odp.name }}
+                        <h2 class="text-2xl font-bold text-gray-900 flex items-center flex-wrap gap-2">
+                            <span>{{ odp.name }}</span>
                             <span class="px-2.5 py-1 text-xs font-medium rounded-full" :class="odp.status === 'active' ? 'bg-green-100 text-green-800' : (odp.status === 'full' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800')">
                                 {{ odp.status === 'active' ? 'Aktif' : (odp.status === 'full' ? 'Penuh' : odp.status) }}
                             </span>
+                            <span
+                                v-if="odpSplitRole === 'induk'"
+                                class="px-2.5 py-1 text-xs font-black rounded-full bg-emerald-600 text-white shadow-2xs"
+                            >
+                                🟢 SPLIT 2 • UNIT INDUK
+                            </span>
+                            <span
+                                v-else-if="odpSplitRole === 'lanjutan'"
+                                class="px-2.5 py-1 text-xs font-black rounded-full bg-purple-600 text-white shadow-2xs"
+                            >
+                                🟣 SPLIT 2 • UNIT LANJUTAN
+                            </span>
+                            <span
+                                v-else-if="odpSplitRole === 'split'"
+                                class="px-2.5 py-1 text-xs font-black rounded-full bg-amber-500 text-white shadow-2xs"
+                            >
+                                ⚡ ODP TIPE SPLIT 2
+                            </span>
                         </h2>
                         <p class="text-sm text-gray-500 mt-1">
-                            Total Kapasitas: {{ odp.total_ports }} Port <span v-if="odp.core_capacity">| {{ odp.core_capacity }} Core FO</span> | Terpakai: {{ odp.onts ? odp.onts.length : 0 }} Port
+                            Tipe: {{ odp.type || 'Normal' }} | Total Kapasitas: {{ odp.total_ports }} Port <span v-if="odp.core_capacity">| {{ odp.core_capacity }} Core FO</span> | Terpakai: {{ odp.onts ? odp.onts.length : 0 }} Port
                         </p>
                     </div>
                 </div>
@@ -30,6 +48,72 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Info Card -->
                 <div class="lg:col-span-1 space-y-6">
+                    <!-- Relasi Pasangan ODP Split 2 -->
+                    <div
+                        v-if="odpSplitRole"
+                        class="rounded-xl shadow-sm border p-5"
+                        :class="odpSplitRole === 'induk' ? 'bg-emerald-50/70 border-emerald-200' : odpSplitRole === 'lanjutan' ? 'bg-purple-50/70 border-purple-200' : 'bg-amber-50/70 border-amber-200'"
+                    >
+                        <h3
+                            class="text-sm font-bold uppercase tracking-wider mb-3 border-b pb-2.5 flex items-center gap-2"
+                            :class="odpSplitRole === 'induk' ? 'text-emerald-900 border-emerald-200/80' : odpSplitRole === 'lanjutan' ? 'text-purple-900 border-purple-200/80' : 'text-amber-900 border-amber-200/80'"
+                        >
+                            <span>🔗 Relasi Pasangan ODP Split 2</span>
+                        </h3>
+
+                        <div class="space-y-3 text-sm">
+                            <div>
+                                <p class="text-xs text-gray-500 mb-0.5">Peran Unit Saat Ini</p>
+                                <p class="font-black" :class="odpSplitRole === 'induk' ? 'text-emerald-800' : odpSplitRole === 'lanjutan' ? 'text-purple-800' : 'text-amber-800'">
+                                    {{ odpSplitRole === 'induk' ? '🟢 Unit Induk (Sumber Split 2)' : odpSplitRole === 'lanjutan' ? '🟣 Unit Lanjutan (Hasil Split 2)' : '⚡ Tipe Split 2 (Belum Ditautkan)' }}
+                                </p>
+                            </div>
+
+                            <div v-if="odp.parent">
+                                <p class="text-xs text-gray-500 mb-1">Terhubung dari ODP Induk</p>
+                                <Link
+                                    :href="`/odps/${odp.parent.id}`"
+                                    class="flex items-center justify-between p-2.5 rounded-lg bg-white border border-purple-200 hover:border-purple-400 transition-colors shadow-2xs"
+                                >
+                                    <div>
+                                        <div class="font-bold text-purple-900 text-sm">🟢 {{ odp.parent.name }}</div>
+                                        <div class="text-[11px] text-gray-500">Kapasitas: {{ odp.parent.total_ports }} Port</div>
+                                    </div>
+                                    <span class="text-xs font-bold text-purple-600">Buka Induk &rarr;</span>
+                                </Link>
+                            </div>
+
+                            <div v-if="odp.children && odp.children.length > 0">
+                                <p class="text-xs text-gray-500 mb-1">Terhubung ke ODP Lanjutan ({{ odp.children.length }})</p>
+                                <div class="space-y-2">
+                                    <Link
+                                        v-for="child in odp.children"
+                                        :key="child.id"
+                                        :href="`/odps/${child.id}`"
+                                        class="flex items-center justify-between p-2.5 rounded-lg bg-white border border-emerald-200 hover:border-emerald-400 transition-colors shadow-2xs"
+                                    >
+                                        <div>
+                                            <div class="font-bold text-emerald-900 text-sm">🟣 {{ child.name }}</div>
+                                            <div class="text-[11px] text-gray-500">Kapasitas: {{ child.total_ports }} Port • Terpakai: {{ child.used_ports }} Port</div>
+                                        </div>
+                                        <span class="text-xs font-bold text-emerald-600">Buka Lanjutan &rarr;</span>
+                                    </Link>
+                                </div>
+                            </div>
+
+                            <div v-if="odp.start_point || odp.end_point || odp.cable_pull" class="pt-2 border-t border-black/5 text-xs text-gray-700 space-y-1">
+                                <div v-if="odp.start_point || odp.end_point">
+                                    <span class="text-gray-500">Jalur Tarikan:</span>
+                                    <strong class="ml-1">{{ odp.start_point || '-' }} &rarr; {{ odp.end_point || odp.name }}</strong>
+                                </div>
+                                <div v-if="odp.cable_pull">
+                                    <span class="text-gray-500">Metode Penarikan:</span>
+                                    <strong class="ml-1">{{ odp.cable_pull }}</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Induk OLT & ODC -->
                     <div class="bg-purple-50 rounded-xl shadow-sm border border-purple-100 p-5">
                         <h3 class="text-sm font-bold text-purple-900 uppercase tracking-wider mb-4 border-b border-purple-100 pb-3 flex items-center gap-2">
@@ -39,10 +123,18 @@
                         <div class="space-y-4">
                             <div>
                                 <p class="text-xs text-purple-500 mb-1">Induk ODC</p>
-                                <Link v-if="odp.odc" :href="'/odcs/' + odp.odc.id" class="text-sm font-bold text-purple-700 hover:underline">
-                                    {{ odp.odc.name }}
-                                </Link>
-                                <span v-else class="text-sm font-medium text-gray-500">-</span>
+                                <div class="flex items-center flex-wrap gap-2">
+                                    <Link v-if="odp.odc" :href="'/odcs/' + odp.odc.id" class="text-sm font-bold text-purple-700 hover:underline">
+                                        {{ odp.odc.name }}
+                                    </Link>
+                                    <span v-else class="text-sm font-medium text-gray-500">-</span>
+                                    <span v-if="odp.odc?.children?.length" class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                        🟢 ODC Split Induk
+                                    </span>
+                                    <span v-else-if="odp.odc?.parent" class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                                        🟣 ODC Split Lanjutan ({{ odp.odc.parent.name }})
+                                    </span>
+                                </div>
                             </div>
                             <div v-if="odp.odc && odp.odc.olt">
                                 <p class="text-xs text-purple-500 mb-1">Induk OLT Utama</p>
@@ -183,11 +275,21 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
     odp: Object,
+});
+
+const odpSplitRole = computed(() => {
+    const o = props.odp;
+    if (!o) return null;
+    if (o.parent_odp_id || o.parent) return 'lanjutan';
+    if (o.children && o.children.length > 0) return 'induk';
+    if (o.is_split || o.type === 'Split 2' || o.type === 'Split') return 'split';
+    return null;
 });
 
 const getVlanAccessMode = (vlan) => {

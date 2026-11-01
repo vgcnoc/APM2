@@ -93,6 +93,9 @@ class CustomerAreaController extends Controller
         // Ambil invoice tertunggak paling mutakhir
         $latestInvoice = Invoice::where('customer_id', $customer->id)
             ->whereIn('status', ['unpaid', 'overdue', 'partial'])
+            ->where('is_reseller_balance', false)
+            ->where('invoice_number', 'not like', 'INV-MIG-%')
+            ->where('status', '!=', 'cancelled')
             ->latest('due_date')
             ->first();
 
@@ -141,6 +144,8 @@ class CustomerAreaController extends Controller
 
         $invoices = Invoice::where('customer_id', $customer->id)
             ->where('is_reseller_balance', false)
+            ->where('invoice_number', 'not like', 'INV-MIG-%')
+            ->where('status', '!=', 'cancelled')
             ->latest('id')
             ->paginate(10);
 

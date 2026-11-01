@@ -25,13 +25,15 @@ class OdpController extends Controller
         // 1. Base query for stats and records
         $filteredQuery = (clone $baseQuery);
 
-        // Search Filter (Debounced)
+        // Search Filter (Debounced) - sertakan pasangan Split 2 (Induk / Lanjutan) agar tetap berdampingan
         if ($request->filled('search')) {
             $s = trim($request->search);
             $filteredQuery->where(function ($sub) use ($s) {
                 $sub->where('name', 'like', "%{$s}%")
                     ->orWhere('address', 'like', "%{$s}%")
                     ->orWhere('description', 'like', "%{$s}%")
+                    ->orWhereHas('parent', fn ($pq) => $pq->where('name', 'like', "%{$s}%"))
+                    ->orWhereHas('children', fn ($cq) => $cq->where('name', 'like', "%{$s}%"))
                     ->orWhereHas('odc', fn ($oq) => $oq->where('name', 'like', "%{$s}%"))
                     ->orWhereHas('area', fn ($aq) => $aq->where('name', 'like', "%{$s}%"));
             });
@@ -103,7 +105,14 @@ class OdpController extends Controller
         ];
 
         // Table Query (starts from filteredQuery, then applies sub-filters like status and port availability)
-        $query = (clone $filteredQuery)->with(['odc.olt', 'area', 'parent:id,name', 'children:id,name'])->withCount('onts');
+        $query = (clone $filteredQuery)->with([
+            'odc.olt',
+            'odc.parent:id,name,parent_odc_id',
+            'odc.children:id,name,parent_odc_id',
+            'area',
+            'parent:id,name,total_ports,used_ports,odc_id,parent_odp_id',
+            'children:id,name,total_ports,used_ports,odc_id,parent_odp_id',
+        ])->withCount('onts');
 
         // Status Filter
         if ($request->filled('status')) {
@@ -136,20 +145,27 @@ class OdpController extends Controller
 
         $perPage = in_array((int) $request->input('per_page'), [10, 15, 25, 50, 100, 250]) ? (int) $request->input('per_page') : 15;
 
+        // Urutkan agar pasangan ODP Split 2 (Unit Induk diikuti langsung oleh Unit Lanjutan) selalu berdampingan!
         $odps = $query
-            ->orderByDesc('id')
+            ->orderByRaw('COALESCE(parent_odp_id, id) DESC, CASE WHEN parent_odp_id IS NULL THEN 0 ELSE 1 END ASC, id ASC')
             ->paginate($perPage)
             ->withQueryString();
 
         $odcQuery = Odc::with('olt')->where('status', 'active');
         DataScopeService::applyOdcScope($odcQuery, $user);
 
+        $parentOdpOptions = (clone $baseQuery)
+            ->whereNull('parent_odp_id')
+            ->orderBy('name')
+            ->get(['id', 'name', 'odc_id', 'area_id', 'total_ports', 'type', 'is_split']);
+
         return Inertia::render('Infrastructure/Odp/Index', [
             'odps' => $odps,
-            'odcs' => $odcQuery->get(['id', 'name', 'area_id', 'capacity', 'olt_id', 'pon_port', 'splitter_ratio']),
+            'odcs' => $odcQuery->get(['id', 'name', 'area_id', 'capacity', 'olt_id', 'pon_port', 'splitter_ratio', 'type', 'is_split', 'parent_odc_id']),
+            'parentOdpOptions' => $parentOdpOptions,
             'areas' => DataScopeService::getScopedAreas($user, 'network_odp'),
             'types' => $types,
-            'portOptions' => [4, 8, 16, 32],
+            'portOptions' => [2, 4, 8, 12, 16, 24, 32, 64],
             'stats' => $stats,
             'filters' => $request->only([
                 'search', 'odc_id', 'area_id', 'status', 'total_ports', 'type',
@@ -164,16 +180,16 @@ class OdpController extends Controller
             'odc_id' => 'required|exists:odcs,id',
             'area_id' => 'required|exists:areas,id',
             'name' => 'nullable|string|max:255',
-            'type' => 'required|string|in:Normal,Split 2,Closure,Pedestal',
+            'type' => 'required|string|in:Normal,Split 2,Closure,Pedestal,Pole Mount,Wall Mount,FAT Mini,Inline Closure',
             'address' => 'nullable|string',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
-            'total_ports' => 'required|integer|in:4,8,16,32',
+            'total_ports' => 'required|integer|min:1|max:128',
             'core_capacity' => 'nullable|integer|min:1',
             'description' => 'nullable|string',
             'status' => 'in:active,inactive,full,maintenance',
             'split_units' => 'nullable|array',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
         ]);
         $validated['used_ports'] = 0;
 
@@ -187,40 +203,46 @@ class OdpController extends Controller
         }
 
         if ($validated['type'] === 'Split 2' && !empty($validated['split_units'])) {
-            // Save as 2 separate ODPs
-            $parentOdpId = null;
+            // Simpan sebagai 2 unit ODP terpisah namun saling bertautan (Induk -> Lanjutan)
+            $parentOdp = null;
             foreach ($validated['split_units'] as $index => $unit) {
-                $photoPath = null;
-                // Handle file array from split_units
+                $photoPath = $validated['photo'] ?? null;
                 if ($request->hasFile("split_units.{$index}.photo")) {
                     $photoPath = $request->file("split_units.{$index}.photo")->store('odp_photos', 'public');
+                }
+
+                $unitName = trim((string) ($unit['name'] ?? '')) ?: ($parentOdp ? 'ODP Lanjutan' : 'ODP Induk');
+                if ($parentOdp && strcasecmp($unitName, $parentOdp->name) === 0) {
+                    $unitName = "{$unitName} (Lanjutan)";
                 }
 
                 $createdOdp = Odp::create([
                     'odc_id' => $validated['odc_id'],
                     'area_id' => $validated['area_id'],
                     'type' => 'Split 2',
-                    'name' => $unit['name'] ?? 'ODP Split',
+                    'name' => $unitName,
                     'address' => $unit['address'] ?? null,
-                    'latitude' => $unit['latitude'] ?? null,
-                    'longitude' => $unit['longitude'] ?? null,
-                    'start_point' => $unit['start_point'] ?? null,
-                    'end_point' => $unit['end_point'] ?? null,
-                    'cable_pull' => $unit['cable_pull'] ?? null,
-                    'total_ports' => $unit['ratio'] ?? ($validated['total_ports'] / 2),
+                    'latitude' => ($unit['latitude'] ?? '') !== '' ? $unit['latitude'] : null,
+                    'longitude' => ($unit['longitude'] ?? '') !== '' ? $unit['longitude'] : null,
+                    'start_point' => $unit['start_point'] ?? ($parentOdp ? $parentOdp->name : $odc->name),
+                    'end_point' => $unit['end_point'] ?? $unitName,
+                    'cable_pull' => $unit['cable_pull'] ?? 'Individu',
+                    'total_ports' => max(1, (int) ($unit['ratio'] ?? intdiv((int) $validated['total_ports'], 2))),
+                    'core_capacity' => $validated['core_capacity'] ?? null,
                     'used_ports' => 0,
                     'status' => $validated['status'] ?? 'active',
                     'description' => $validated['description'] ?? null,
                     'is_split' => true,
-                    'parent_odp_id' => $index > 0 ? $parentOdpId : null,
+                    'parent_odp_id' => $parentOdp ? $parentOdp->id : null,
                     'photo' => $photoPath,
                 ]);
 
-                if ($index === 0) {
-                    $parentOdpId = $createdOdp->id;
+                if (!$parentOdp) {
+                    $parentOdp = $createdOdp;
                 }
             }
         } else {
+            $validated['is_split'] = ($validated['type'] === 'Split 2');
             Odp::create($validated);
         }
 
@@ -230,7 +252,15 @@ class OdpController extends Controller
 
     public function show(Odp $odp): Response
     {
-        $odp->load(['odc.olt', 'onts.customer']);
+        $odp->load([
+            'odc.olt',
+            'odc.parent:id,name,parent_odc_id',
+            'odc.children:id,name,parent_odc_id',
+            'area',
+            'parent',
+            'children',
+            'onts.customer',
+        ]);
 
         return Inertia::render('Infrastructure/Odp/Show', [
             'odp' => $odp,
@@ -239,23 +269,30 @@ class OdpController extends Controller
 
     public function update(Request $request, Odp $odp): RedirectResponse
     {
+        if ($request->has('parent_odp_id') && ($request->input('parent_odp_id') === '' || $request->input('parent_odp_id') === 'null')) {
+            $request->merge(['parent_odp_id' => null]);
+        }
+
         $validated = $request->validate([
             'odc_id' => 'required|exists:odcs,id',
             'area_id' => 'required|exists:areas,id',
             'name' => 'required|string|max:255',
-            'type' => 'required|string|in:Normal,Split 2,Closure,Pedestal',
+            'type' => 'required|string|in:Normal,Split 2,Closure,Pedestal,Pole Mount,Wall Mount,FAT Mini,Inline Closure',
+            'parent_odp_id' => 'nullable|exists:odps,id',
             'address' => 'nullable|string',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
-            'total_ports' => 'required|integer|in:4,8,16,32',
+            'total_ports' => 'required|integer|min:1|max:128',
             'core_capacity' => 'nullable|integer|min:1',
+            'start_point' => 'nullable|string|max:255',
+            'end_point' => 'nullable|string|max:255',
+            'cable_pull' => 'nullable|string|max:50',
             'description' => 'nullable|string',
             'status' => 'in:active,inactive,full,maintenance',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
         ]);
 
         if ($request->hasFile('photo')) {
-            // Delete old photo if exists
             if ($odp->photo && \Illuminate\Support\Facades\Storage::disk('public')->exists($odp->photo)) {
                 \Illuminate\Support\Facades\Storage::disk('public')->delete($odp->photo);
             }
@@ -265,6 +302,24 @@ class OdpController extends Controller
         $odc = Odc::findOrFail($validated['odc_id']);
         if ($odc->area_id != $validated['area_id']) {
             return back()->withErrors(['area_id' => 'Area ODP harus sama dengan Area ODC yang dipilih.']);
+        }
+
+        if ($validated['type'] !== 'Split 2') {
+            $validated['parent_odp_id'] = null;
+            $validated['is_split'] = $odp->children()->exists();
+        } else {
+            $validated['is_split'] = true;
+            if (!empty($validated['parent_odp_id'])) {
+                $parentId = (int) $validated['parent_odp_id'];
+                if ($parentId === (int) $odp->id) {
+                    $validated['parent_odp_id'] = null;
+                } else {
+                    $childIds = $odp->children()->pluck('id')->map(fn ($id) => (int) $id)->all();
+                    if (in_array($parentId, $childIds, true)) {
+                        return back()->withErrors(['parent_odp_id' => 'ODP Lanjutan tidak dapat dipilih sebagai ODP Induk (referensi melingkar).']);
+                    }
+                }
+            }
         }
 
         $odp->update($validated);

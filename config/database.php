@@ -56,6 +56,7 @@ return [
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                PDO::MYSQL_ATTR_INIT_COMMAND => 'SET SESSION sql_mode = @@SESSION.sql_mode /*M!110402 , SESSION innodb_snapshot_isolation = 0 */',
             ]) : [],
         ],
 
@@ -75,6 +76,10 @@ return [
             'prefix_indexes' => true,
             'strict' => false,
             'engine' => null,
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                PDO::MYSQL_ATTR_INIT_COMMAND => 'SET SESSION sql_mode = @@SESSION.sql_mode /*M!110402 , SESSION innodb_snapshot_isolation = 0 */',
+            ]) : [],
         ],
 
         'mariadb' => [
@@ -94,6 +99,7 @@ return [
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                PDO::MYSQL_ATTR_INIT_COMMAND => 'SET SESSION sql_mode = @@SESSION.sql_mode /*M!110402 , SESSION innodb_snapshot_isolation = 0 */',
             ]) : [],
         ],
 

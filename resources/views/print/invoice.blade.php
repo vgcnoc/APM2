@@ -1659,7 +1659,7 @@
                     <p>{{ date('d F Y') }}</p>
                     <p style="margin-top: 4px;">Hormat kami,</p>
                     <div style="height: 65px;"></div>
-                    <p style="text-decoration: underline; font-weight: bold; margin: 0;">( Bagian Keuangan )</p>
+                    <p style="text-decoration: underline; font-weight: bold; margin: 0;">( {{ $invoice->payments->first()?->collector?->name ?? auth()->user()?->name ?? 'Bagian Keuangan' }} )</p>
                     <p style="margin: 2px 0 0;">{{ $company['name'] }}</p>
                 </div>
             </div>
@@ -1734,6 +1734,22 @@
                 <div class="thermal-status">
                     STATUS: {{ $invoice->status == 'paid' ? 'LUNAS' : ($invoice->status == 'unpaid' ? 'BELUM LUNAS' : 'SEBAGIAN') }}
                 </div>
+            </div>
+
+            @php
+                $thermalPayment = $invoice->payments->first();
+                $cashierName = $thermalPayment?->collector?->name ?? auth()->user()?->name ?? 'Kasir / Admin';
+                if (!$thermalPayment?->collector?->name && $thermalPayment) {
+                    if ($thermalPayment->payment_method === 'payment_gateway') {
+                        $cashierName = 'Sistem Otomatis';
+                    } elseif ($thermalPayment->payment_method === 'reseller_balance' && preg_match('/(?:Reseller|Loket|Agen)\s*:\s*([^|,\n]+)/i', $thermalPayment->notes ?? '', $m)) {
+                        $cashierName = 'Loket ' . trim($m[1]);
+                    }
+                }
+            @endphp
+            <div class="thermal-row" style="margin-top: 4px; font-size: 10px;">
+                <span>Petugas:</span>
+                <span>{{ $cashierName }}</span>
             </div>
 
             @if(!empty($banks) && count($banks) > 0)
@@ -2509,7 +2525,7 @@
                 <div style="text-align: center; width: 180px;">
                     <div>{{ date('d F Y') }}</div>
                     <div style="height: 45px;"></div>
-                    <div style="border-bottom: 1px solid #78350f; font-weight: 700;">( Kasir / Admin )</div>
+                    <div style="border-bottom: 1px solid #78350f; font-weight: 700;">( {{ $invoice->payments->first()?->collector?->name ?? auth()->user()?->name ?? 'Kasir / Admin' }} )</div>
                     <div style="font-size: 10px; margin-top: 2px;">{{ $company['name'] }}</div>
                 </div>
             </div>

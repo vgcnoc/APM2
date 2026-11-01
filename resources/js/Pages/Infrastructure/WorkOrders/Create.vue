@@ -287,19 +287,32 @@ watch(() => form.area_id, () => {
     }
 });
 
-// Watch split mode to initialize ratios and names
-watch([() => form.type, () => form.device_type, () => form.capacity, () => form.target_name], () => {
+// Watch split mode & capacity to synchronize ratios automatically
+watch([() => form.type, () => form.device_type, () => form.capacity], () => {
     if (isSplitMode.value) {
-        const half = Math.floor(form.capacity / 2) || 4;
-        if (!form.split_units[0].ratio) form.split_units[0].ratio = half;
-        if (!form.split_units[1].ratio) form.split_units[1].ratio = half;
-        const defaultName0 = form.target_name ? `${form.target_name}-A` : (form.type === 'odc_deployment' ? 'ODC Induk' : 'ODP Induk');
-        const defaultName1 = form.target_name ? `${form.target_name}-B` : (form.type === 'odc_deployment' ? 'ODC Lanjutan' : 'ODP Lanjutan');
-        if (!form.split_units[0].name || form.split_units[0].name.endsWith('-A') || form.split_units[0].name.includes('Induk')) {
+        const total = Math.max(2, Number(form.capacity) || 2);
+        const half = Math.max(1, Math.floor(total / 2));
+        form.split_units[0].ratio = half;
+        form.split_units[1].ratio = Math.max(1, total - half);
+    }
+}, { immediate: true });
+
+// Watch split mode & target_name to synchronize default Induk/Lanjutan unit names
+watch([() => form.type, () => form.device_type, () => form.target_name], ([, , newTarget], [, , oldTarget]) => {
+    if (isSplitMode.value) {
+        const defaultName0 = newTarget ? `${newTarget}-A` : (form.type === 'odc_deployment' ? 'ODC Induk' : 'ODP Induk');
+        const defaultName1 = newTarget ? `${newTarget}-B` : (form.type === 'odc_deployment' ? 'ODC Lanjutan' : 'ODP Lanjutan');
+        const prevDefault0 = oldTarget ? `${oldTarget}-A` : '';
+        const prevDefault1 = oldTarget ? `${oldTarget}-B` : '';
+
+        if (!form.split_units[0].name || form.split_units[0].name === prevDefault0 || form.split_units[0].name.endsWith('-A') || form.split_units[0].name.includes('Induk')) {
             form.split_units[0].name = defaultName0;
+            form.split_units[0].end_point = defaultName0;
         }
-        if (!form.split_units[1].name || form.split_units[1].name.endsWith('-B') || form.split_units[1].name.includes('Lanjutan')) {
+        if (!form.split_units[1].name || form.split_units[1].name === prevDefault1 || form.split_units[1].name.endsWith('-B') || form.split_units[1].name.includes('Lanjutan')) {
             form.split_units[1].name = defaultName1;
+            form.split_units[1].start_point = form.split_units[0].name || defaultName0;
+            form.split_units[1].end_point = defaultName1;
         }
     }
 }, { immediate: true });

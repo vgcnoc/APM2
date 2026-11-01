@@ -96,74 +96,264 @@
             :filters="filters"
         >
             <template #filters>
-                <div class="flex flex-col gap-2.5 w-full lg:flex-row lg:flex-nowrap lg:items-center lg:gap-3">
-                    <!-- Tanggal (Start Date -> End Date) -->
-                    <div v-can="'invoices_filter_period'" class="flex items-center gap-2 text-xs sm:text-sm text-gray-600 font-medium shrink-0 whitespace-nowrap">
-                        <span class="shrink-0">Tanggal</span>
-                        <input type="date" v-model="filterStartDate" class="form-input text-xs sm:text-sm rounded-lg border-gray-300 w-[132px] min-w-0" />
-                        <span class="shrink-0">s/d</span>
-                        <input type="date" v-model="filterEndDate" class="form-input text-xs sm:text-sm rounded-lg border-gray-300 w-[132px] min-w-0" />
+                <div class="flex flex-col gap-2.5 w-full lg:flex-row lg:flex-nowrap lg:items-center lg:overflow-x-auto lg:pb-1">
+                    <!-- 1. Rentang Tanggal (Pill Capsule Rapi) -->
+                    <div v-can="'invoices_filter_period'" class="flex items-center gap-1.5 bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 shadow-2xs">
+                        <svg class="w-3.5 h-3.5 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        <input 
+                            type="date" 
+                            v-model="filterStartDate" 
+                            class="border-0 p-0 text-xs text-gray-700 font-medium focus:ring-0 bg-transparent w-[115px] cursor-pointer" 
+                            title="Tanggal Mulai (Terbit Tagihan)" 
+                        />
+                        <span class="text-xs text-gray-400 font-medium select-none">s/d</span>
+                        <input 
+                            type="date" 
+                            v-model="filterEndDate" 
+                            class="border-0 p-0 text-xs text-gray-700 font-medium focus:ring-0 bg-transparent w-[115px] cursor-pointer" 
+                            title="Tanggal Selesai (Terbit Tagihan)" 
+                        />
+                        <!-- Quick Presets -->
+                        <div class="hidden sm:flex items-center gap-1 pl-1 border-l border-gray-200">
+                            <button 
+                                type="button" 
+                                @click="setDatePreset('this_month')" 
+                                class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 hover:bg-blue-100 text-slate-600 hover:text-blue-700 transition cursor-pointer"
+                                title="Set filter ke bulan ini"
+                            >
+                                Bulan Ini
+                            </button>
+                            <button 
+                                type="button" 
+                                @click="setDatePreset('today')" 
+                                class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 hover:bg-blue-100 text-slate-600 hover:text-blue-700 transition cursor-pointer"
+                                title="Set filter ke hari ini"
+                            >
+                                Hari Ini
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- Status -->
-                    <select v-can="'invoices_filter_status'" v-model="filterStatusVal" class="form-select text-xs sm:text-sm rounded-lg border-gray-300 text-gray-700 w-full lg:w-[150px] lg:flex-none min-w-0">
-                        <option value="">Semua Status</option>
-                        <option value="unpaid">Unpaid</option>
-                        <option value="paid">Paid</option>
-                        <option value="partial">Partial</option>
-                    </select>
+                    <!-- 2. Status Tagihan -->
+                    <div v-can="'invoices_filter_status'">
+                        <select 
+                            v-model="filterStatusVal" 
+                            @change="applyFilters"
+                            class="form-select text-xs rounded-xl border-gray-200 bg-white text-gray-700 py-1.5 pl-3 pr-8 font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-200 shadow-2xs cursor-pointer w-auto min-w-[135px]"
+                        >
+                            <option value="">Semua Status</option>
+                            <option value="unpaid">Belum Lunas (Unpaid)</option>
+                            <option value="paid">Lunas (Paid)</option>
+                            <option value="partial">Bayar Sebagian (Partial)</option>
+                        </select>
+                    </div>
 
-                    <!-- Area -->
-                    <select v-can="'invoices_filter_area'" v-model="filterAreaVal" class="form-select text-xs sm:text-sm rounded-lg border-gray-300 text-gray-700 w-full lg:w-[150px] lg:flex-none min-w-0">
-                        <option value="">Semua Area</option>
-                        <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
-                    </select>
+                    <!-- 3. Wilayah / Area Cabang -->
+                    <div v-can="'invoices_filter_area'">
+                        <select 
+                            v-model="filterAreaVal" 
+                            @change="applyFilters"
+                            class="form-select text-xs rounded-xl border-gray-200 bg-white text-gray-700 py-1.5 pl-3 pr-8 font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-200 shadow-2xs cursor-pointer w-auto min-w-[135px]"
+                        >
+                            <option value="">Semua Area</option>
+                            <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
+                        </select>
+                    </div>
 
-                    <button @click="applyFilters" class="btn-primary py-2 px-4 whitespace-nowrap w-full lg:w-auto lg:flex-none justify-center flex items-center gap-2 text-xs sm:text-sm">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                        Terapkan
-                    </button>
+                    <!-- 4. Paket Layanan Internet -->
+                    <div>
+                        <select 
+                            v-model="filterPackageVal" 
+                            @change="applyFilters"
+                            class="form-select text-xs rounded-xl border-gray-200 bg-white text-gray-700 py-1.5 pl-3 pr-8 font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-200 shadow-2xs cursor-pointer w-auto min-w-[140px]"
+                        >
+                            <option value="">Semua Paket</option>
+                            <option v-for="pkg in (packages || [])" :key="pkg.id" :value="pkg.id">
+                                {{ pkg.name }} ({{ pkg.speed_mbps }}M)
+                            </option>
+                        </select>
+                    </div>
+
+                    <!-- 5. Tipe Tagihan (Billing Type) -->
+                    <div>
+                        <select 
+                            v-model="filterBillingTypeVal" 
+                            @change="applyFilters"
+                            class="form-select text-xs rounded-xl border-gray-200 bg-white text-gray-700 py-1.5 pl-3 pr-8 font-medium focus:border-blue-500 focus:ring-2 focus:ring-blue-200 shadow-2xs cursor-pointer w-auto min-w-[130px]"
+                        >
+                            <option value="">Semua Tipe</option>
+                            <option value="regular">Reguler Bulanan</option>
+                            <option value="prorata">Prorata</option>
+                        </select>
+                    </div>
+
+                    <!-- 6. Action: Terapkan & Reset (Sejajar ke Samping) -->
+                    <div class="flex items-center gap-1.5 ml-auto">
+                        <span v-if="activeFiltersCount > 0" class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-700 border border-blue-200">
+                            {{ activeFiltersCount }} Filter Aktif
+                        </span>
+
+                        <button 
+                            type="button"
+                            @click="applyFilters" 
+                            class="btn-primary py-1.5 px-3.5 rounded-xl whitespace-nowrap flex items-center gap-1.5 text-xs font-bold shadow-2xs hover:shadow-xs transition cursor-pointer"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                            <span>Terapkan</span>
+                        </button>
+
+                        <button 
+                            v-if="hasActiveFilters"
+                            type="button"
+                            @click="resetFilters" 
+                            class="py-1.5 px-3 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 whitespace-nowrap flex items-center gap-1 text-xs font-bold transition cursor-pointer shadow-2xs"
+                            title="Bersihkan semua filter"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            <span>Reset</span>
+                        </button>
+                    </div>
                 </div>
             </template>
             
             <template #actions>
-                <button v-can="'invoices_btn_export'" class="btn-secondary bg-white border border-gray-200 text-emerald-600 hover:bg-emerald-50 text-xs sm:text-sm py-2 px-3.5 sm:px-4 flex-1 sm:flex-initial justify-center whitespace-nowrap flex items-center gap-2">
+                <button 
+                    v-can="'invoices_btn_export'" 
+                    type="button"
+                    @click="exportExcel"
+                    class="btn-secondary bg-white border border-gray-200 text-emerald-600 hover:bg-emerald-50 text-xs sm:text-sm py-2 px-3.5 sm:px-4 flex-1 sm:flex-initial justify-center whitespace-nowrap flex items-center gap-2 shadow-2xs cursor-pointer"
+                    title="Export tagihan sesuai filter ke spreadsheet Excel / CSV"
+                >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                    Export Excel
+                    <span>Export Excel</span>
                 </button>
-                <button v-can="'invoices_print'" class="btn-secondary bg-white border border-gray-200 text-red-600 hover:bg-red-50 text-xs sm:text-sm py-2 px-3.5 sm:px-4 flex-1 sm:flex-initial justify-center whitespace-nowrap flex items-center gap-2">
+                <button 
+                    v-can="'invoices_print'" 
+                    type="button"
+                    @click="printList"
+                    class="btn-secondary bg-white border border-gray-200 text-red-600 hover:bg-red-50 text-xs sm:text-sm py-2 px-3.5 sm:px-4 flex-1 sm:flex-initial justify-center whitespace-nowrap flex items-center gap-2 shadow-2xs cursor-pointer"
+                    title="Cetak daftar tagihan sesuai filter ke format PDF / Print"
+                >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                    Cetak PDF
+                    <span>Cetak PDF</span>
                 </button>
             </template>
 
             <template #row="{ row, index }">
-                <!-- Checkbox placeholder -->
-                <td class="text-center w-10">
-                    <input type="checkbox" class="form-checkbox h-4 w-4 text-indigo-600 border-gray-300 rounded" />
-                </td>
-                <td class="text-gray-500 text-xs text-center">
+                <td class="text-gray-500 text-xs text-center w-12">
                     {{ (invoices.current_page - 1) * invoices.per_page + index + 1 }}
                 </td>
                 <td>
-                    <div v-if="row.customer" class="flex items-center gap-3">
+                    <div v-if="row.customer" class="flex items-center gap-3 min-w-[200px]">
                         <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-gray-700 bg-gray-100 shrink-0">
                             {{ row.customer.name?.charAt(0).toUpperCase() }}
                         </div>
-                        <div class="flex flex-col gap-1">
-                            <Link :href="`/customers/${row.customer.id}`" class="text-gray-900 font-bold text-xs uppercase hover:underline">
-                                {{ row.customer.name }}
-                            </Link>
-                            <span v-if="row.customer.overdue_count > 0" class="inline-flex items-center gap-1 text-[9px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-md w-max border border-red-100" :title="'Total Tunggakan: ' + formatCurrency(row.customer.total_overdue)">
+                        <div class="flex flex-col gap-0.5 min-w-0">
+                            <div class="flex items-center gap-1.5 min-w-0">
+                                <Link :href="`/customers/${row.customer.id}`" class="text-gray-900 font-bold text-xs uppercase hover:text-indigo-600 hover:underline truncate">
+                                    {{ row.customer.name }}
+                                </Link>
+                                <button
+                                    type="button"
+                                    @click.stop="openCustomerModal(row.customer)"
+                                    class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-indigo-50 hover:bg-indigo-100 text-[10px] text-indigo-600 font-bold border border-indigo-200 transition-colors shadow-2xs shrink-0 cursor-pointer"
+                                    title="Klik untuk melihat & mengedit GPS, foto KTP, foto rumah, dan nomor HP"
+                                >
+                                    ℹ️
+                                </button>
+                            </div>
+                            <div class="flex items-center gap-1.5 text-[10px] text-gray-500 font-mono">
+                                <span>#{{ row.invoice_number }}</span>
+                                <span>&bull;</span>
+                                <span class="font-bold" :class="row.status === 'paid' ? 'text-emerald-600' : (row.status === 'partial' ? 'text-amber-700' : 'text-gray-700')">
+                                    {{ row.status === 'partial' ? 'Sisa ' + formatCurrency(row.remaining) : formatCurrency(row.amount) }}
+                                </span>
+                            </div>
+                            <span v-if="row.customer.overdue_count > 0" class="inline-flex items-center gap-1 text-[9px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-md w-max border border-red-100 mt-0.5" :title="'Total Tunggakan: ' + formatCurrency(row.customer.total_overdue)">
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                                 Nunggak {{ row.customer.overdue_count }} Bulan
                             </span>
-                            <span v-else-if="row.customer.unpaid_count > 1" class="inline-flex items-center gap-1 text-[9px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md w-max border border-amber-200" :title="'Total Tagihan: ' + formatCurrency(row.customer.total_unpaid)">
+                            <span v-else-if="row.customer.unpaid_count > 1" class="inline-flex items-center gap-1 text-[9px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md w-max border border-amber-200 mt-0.5" :title="'Total Tagihan: ' + formatCurrency(row.customer.total_unpaid)">
                                 {{ row.customer.unpaid_count }} Tagihan Berjalan
                             </span>
                         </div>
                     </div>
                     <span v-else class="text-gray-400 italic text-xs">Pelanggan Dihapus</span>
+                </td>
+                <!-- Kolom Aksi Tepat di Belakang Nama Pelanggan -->
+                <td class="whitespace-nowrap">
+                    <div class="flex flex-col items-start gap-1">
+                        <div class="flex items-center justify-start gap-1.5 whitespace-nowrap">
+                            <!-- Tombol Bayar Lunas (Unpaid / Overdue) -->
+                            <button 
+                                v-can="'invoices_pay'"
+                                v-if="row.status === 'unpaid' || row.status === 'overdue'" 
+                                type="button"
+                                @click="openPaymentModal(row, 'full')" 
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer"
+                                title="Proses Pembayaran Lunas"
+                            >
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zM7 15h2m1 0h6"/></svg>
+                                <span>Bayar Lunas</span>
+                            </button>
+
+                            <!-- Tombol Lunasi Sisa (Untuk Partial) -->
+                            <button 
+                                v-can="'invoices_pay'"
+                                v-else-if="row.status === 'partial'" 
+                                type="button"
+                                @click="openPaymentModal(row, 'full')" 
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer" 
+                                title="Bayar / Lunasi Sisa Tagihan"
+                            >
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <span>Lunasi Sisa</span>
+                            </button>
+
+                            <!-- Badge Lunas (Untuk Paid) -->
+                            <div 
+                                v-else-if="row.status === 'paid'"
+                                class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold shadow-2xs"
+                            >
+                                <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <span>Lunas</span>
+                            </div>
+
+                            <!-- Tombol Menu Aksi Lainnya (...) -->
+                            <button 
+                                type="button" 
+                                @click="toggleDropdown($event, row)" 
+                                class="inline-flex items-center justify-center p-1.5 bg-white hover:bg-gray-100 text-gray-500 hover:text-gray-800 border border-gray-200 hover:border-gray-300 rounded-lg transition-colors shadow-2xs cursor-pointer"
+                                :class="{ 'ring-2 ring-indigo-500 bg-gray-50 text-indigo-600': activeDropdownRow?.id === row.id }"
+                                title="Menu Aksi Lainnya (Bayar Sebagian, Cetak, Janji Bayar, dll)"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Info Nama Petugas yang Melunaskan / Memproses -->
+                        <div 
+                            v-if="row.last_payment_collector || extractResellerName(row.last_payment_notes) || row.last_payment_method === 'payment_gateway'" 
+                            class="text-[10px] font-semibold flex items-center gap-1 truncate max-w-[200px]"
+                            :class="row.status === 'paid' ? 'text-emerald-700' : 'text-amber-700'"
+                            :title="'Diproses / Dilunaskan oleh: ' + (row.last_payment_collector || extractResellerName(row.last_payment_notes) || 'Sistem Otomatis')"
+                        >
+                            <svg class="w-3 h-3 shrink-0 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                            <span class="truncate">Petugas: <strong class="font-bold">{{ row.last_payment_collector || extractResellerName(row.last_payment_notes) || 'Sistem Otomatis' }}</strong></span>
+                        </div>
+                        <div 
+                            v-else-if="row.promise_date" 
+                            class="text-[9px] text-amber-700 font-medium flex items-center gap-1 truncate max-w-[200px]"
+                            :title="'Janji Bayar: ' + row.promise_date"
+                        >
+                            <svg class="w-2.5 h-2.5 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            <span>Janji: <strong>{{ row.promise_date }}</strong></span>
+                        </div>
+                    </div>
                 </td>
                 <td>
                     <span v-if="row.customer?.area" class="text-xs text-gray-600 flex items-center gap-1">
@@ -240,8 +430,13 @@
                     </div>
                 </td>
                 <td>
-                    <span v-if="row.customer" :class="['px-2 py-1 text-[10px] font-medium rounded-md text-white whitespace-nowrap', row.customer.status === 'aktif' ? 'bg-blue-500' : 'bg-gray-500']">
-                        {{ row.customer.status }}
+                    <span v-if="row.customer" :class="[
+                        'px-2 py-1 text-[10px] font-bold uppercase rounded-md text-white whitespace-nowrap',
+                        (row.customer.status === 'active' || row.customer.status === 'aktif') ? 'bg-emerald-600' :
+                        row.customer.status === 'suspended' ? 'bg-amber-600' :
+                        row.customer.status === 'terminated' ? 'bg-rose-600' : 'bg-gray-500'
+                    ]">
+                        {{ (row.customer.status === 'active' || row.customer.status === 'aktif') ? 'Aktif' : row.customer.status }}
                     </span>
                 </td>
                 <td>
@@ -293,94 +488,15 @@
                     <span v-else class="text-gray-400 text-xs">-</span>
                 </td>
             </template>
-
-            <template #rowActions="{ row }">
-                <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
-                    <!-- Tombol Bayar Lunas (Unpaid) -->
-                    <button 
-                        v-can="'invoices_pay'"
-                        v-if="row.status === 'unpaid'" 
-                        type="button"
-                        @click="openPaymentModal(row, 'full')" 
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer"
-                        title="Proses Pembayaran Lunas"
-                    >
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zM7 15h2m1 0h6"/></svg>
-                        <span>Bayar Lunas</span>
-                    </button>
-
-                    <!-- Tombol Lunasi Sisa (Untuk Partial) -->
-                    <button 
-                        v-can="'invoices_pay'"
-                        v-else-if="row.status === 'partial'" 
-                        type="button"
-                        @click="openPaymentModal(row, 'full')" 
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer" 
-                        title="Bayar / Lunasi Sisa Tagihan"
-                    >
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <span>Lunasi Sisa</span>
-                    </button>
-
-                    <!-- Tombol Bayar Sebagian (Cicil) untuk Unpaid & Partial -->
-                    <button 
-                        v-can="'invoices_pay'"
-                        v-if="row.status === 'unpaid' || row.status === 'partial'" 
-                        type="button"
-                        @click="openPaymentModal(row, 'partial')" 
-                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 hover:border-amber-400 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer" 
-                        title="Bayar Sebagian / Cicil Tagihan"
-                    >
-                        <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <span>Bayar Sebagian</span>
-                    </button>
-
-                    <!-- Tombol Rollback (Paid atau Partial) -->
-                    <button 
-                        v-can="'invoices_rollback'"
-                        v-if="row.status === 'paid' || row.status === 'partial'" 
-                        type="button"
-                        @click="rollbackInvoice(row)" 
-                        class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 hover:border-rose-300 rounded-lg text-xs font-bold transition-all shadow-2xs cursor-pointer" 
-                        title="Batalkan pembayaran / Rollback status tagihan"
-                    >
-                        <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
-                        <span>Rollback</span>
-                    </button>
-
-                    <!-- Tombol Cetak Cepat -->
-                    <a 
-                        v-can="'invoices_print'"
-                        :href="'/invoices/' + row.id + '/print'" 
-                        target="_blank" 
-                        class="inline-flex items-center justify-center p-1.5 bg-white hover:bg-indigo-50 text-gray-500 hover:text-indigo-600 border border-gray-200 hover:border-indigo-200 rounded-lg transition-colors shadow-2xs" 
-                        title="Cetak Invoice / Struk"
-                    >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                    </a>
-
-                    <!-- Tombol Menu Aksi Lainnya (...) -->
-                    <button 
-                        type="button" 
-                        @click="toggleDropdown($event, row)" 
-                        class="inline-flex items-center justify-center p-1.5 bg-white hover:bg-gray-100 text-gray-500 hover:text-gray-800 border border-gray-200 hover:border-gray-300 rounded-lg transition-colors shadow-2xs cursor-pointer"
-                        :class="{ 'ring-2 ring-indigo-500 bg-gray-50 text-indigo-600': activeDropdownRow?.id === row.id }"
-                        title="Menu Aksi Lainnya"
-                    >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
-                        </svg>
-                    </button>
-                </div>
-            </template>
         </DataTable>
 
         <!-- Action Dropdown Menu Floating -->
         <Teleport to="body">
             <div v-if="activeDropdownRow" class="fixed inset-0 z-[120]" @click="closeDropdown" @contextmenu.prevent="closeDropdown">
                 <div 
-                    :style="{ top: `${dropdownPos.top}px`, left: `${dropdownPos.left}px` }"
-                    class="fixed w-60 max-w-[calc(100vw-20px)] max-h-[calc(100vh-20px)] overflow-y-auto bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-[121] text-xs divide-y divide-gray-100 animate-fade-in-up"
+                    ref="dropdownMenuRef"
+                    :style="dropdownStyle"
+                    class="fixed w-60 max-w-[calc(100vw-24px)] overflow-y-auto bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-[121] text-xs divide-y divide-gray-100 animate-fade-in-up"
                     @click.stop
                 >
                     <!-- Header Info -->
@@ -391,10 +507,23 @@
                             <span>&bull;</span>
                             <span class="font-semibold text-gray-700">{{ formatCurrency(activeDropdownRow.amount) }}</span>
                         </div>
-                        <div v-if="activeDropdownRow.last_payment_collector" class="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
-                            <svg class="w-3 h-3 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                            <span>Diproses: <strong class="text-slate-800 font-bold">{{ activeDropdownRow.last_payment_collector }}</strong></span>
+                        
+                        <!-- Kartu Info Petugas yang Memproses / Melunaskan -->
+                        <div v-if="activeDropdownRow.last_payment_collector || extractResellerName(activeDropdownRow.last_payment_notes) || activeDropdownRow.last_payment_method === 'payment_gateway'" class="mt-2 p-2 bg-emerald-50/90 border border-emerald-100 rounded-xl text-[10px]">
+                            <div class="flex items-center gap-1 text-emerald-800 font-bold">
+                                <svg class="w-3 h-3 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                <span>Petugas Pelunasan / Pemroses:</span>
+                            </div>
+                            <div class="text-emerald-950 font-extrabold text-xs mt-0.5 truncate">
+                                {{ activeDropdownRow.last_payment_collector || extractResellerName(activeDropdownRow.last_payment_notes) || 'Sistem Otomatis (Payment Gateway)' }}
+                            </div>
+                            <div v-if="activeDropdownRow.last_payment_date" class="text-[9px] text-emerald-700 mt-0.5 flex items-center gap-1">
+                                <span>{{ activeDropdownRow.last_payment_date }}</span>
+                                <span>&bull;</span>
+                                <span>{{ formatPaymentMethod(activeDropdownRow.last_payment_method) }}</span>
+                            </div>
                         </div>
+
                         <div v-if="activeDropdownRow.last_payment_proof" class="mt-1.5 pt-1.5 border-t border-gray-200/60">
                             <a :href="activeDropdownRow.last_payment_proof" target="_blank" class="inline-flex items-center gap-1.5 text-[11px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50/80 hover:bg-indigo-100 px-2 py-1 rounded-lg transition-colors w-full justify-center">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
@@ -408,7 +537,7 @@
                         <!-- Bayar Lunas / Lunasi Sisa -->
                         <button 
                             v-can="'invoices_pay'"
-                            v-if="activeDropdownRow.status === 'unpaid' || activeDropdownRow.status === 'partial'"
+                            v-if="activeDropdownRow.status === 'unpaid' || activeDropdownRow.status === 'partial' || activeDropdownRow.status === 'overdue'"
                             type="button" 
                             @click="openPaymentModal(activeDropdownRow, 'full'); closeDropdown()"
                             class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-emerald-800 hover:bg-emerald-50 transition-colors font-medium cursor-pointer"
@@ -425,7 +554,7 @@
                         <!-- Bayar Sebagian (Cicil) -->
                         <button 
                             v-can="'invoices_pay'"
-                            v-if="activeDropdownRow.status === 'unpaid' || activeDropdownRow.status === 'partial'"
+                            v-if="activeDropdownRow.status === 'unpaid' || activeDropdownRow.status === 'partial' || activeDropdownRow.status === 'overdue'"
                             type="button" 
                             @click="openPaymentModal(activeDropdownRow, 'partial'); closeDropdown()"
                             class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-amber-800 hover:bg-amber-50 transition-colors font-medium cursor-pointer"
@@ -439,10 +568,27 @@
                             </div>
                         </button>
 
+                        <!-- Rollback Pembayaran (Jika Paid atau Partial) -->
+                        <button 
+                            v-can="'invoices_rollback'"
+                            v-if="activeDropdownRow.status === 'paid' || activeDropdownRow.status === 'partial'"
+                            type="button" 
+                            @click="rollbackInvoice(activeDropdownRow); closeDropdown()"
+                            class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-rose-700 hover:bg-rose-50 transition-colors font-medium cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-md bg-rose-50 flex items-center justify-center shrink-0">
+                                <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+                            </div>
+                            <div>
+                                <span class="font-semibold text-rose-900">Rollback Pembayaran</span>
+                                <p class="text-[10px] text-rose-500 font-normal">Batalkan status pembayaran</p>
+                            </div>
+                        </button>
+
                         <!-- Janji Bayar -->
                         <button 
                             v-can="'invoices_promise'"
-                            v-if="activeDropdownRow.status === 'unpaid' || activeDropdownRow.status === 'partial'"
+                            v-if="activeDropdownRow.status === 'unpaid' || activeDropdownRow.status === 'partial' || activeDropdownRow.status === 'overdue'"
                             type="button" 
                             @click="openPromiseModal(activeDropdownRow); closeDropdown()"
                             class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-gray-700 hover:bg-amber-50 hover:text-amber-800 transition-colors font-medium cursor-pointer"
@@ -605,6 +751,18 @@
 
                     <form @submit.prevent="submitPayment">
                         <div class="p-4 sm:p-6 space-y-4 max-h-[72vh] overflow-y-auto">
+                            <!-- Info Petugas yang Memproses -->
+                            <div class="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+                                <span class="text-slate-500 font-medium">Petugas yang Memproses:</span>
+                                <span class="font-bold text-slate-800 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                    {{ $page.props.auth?.user?.name }} (Anda)
+                                </span>
+                            </div>
+
+                            <div v-if="Object.keys(paymentForm.errors).length > 0" class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold">
+                                <p v-for="(err, key) in paymentForm.errors" :key="key">{{ err }}</p>
+                            </div>
                             
                             <!-- Info Tunggakan Smart Allocation -->
                             <div v-if="selectedInvoice?.customer?.overdue_count > 0" class="bg-rose-50 border border-rose-200 rounded-xl p-4 flex gap-3">
@@ -624,6 +782,27 @@
                                 <div>
                                     <h4 class="text-xs font-bold text-amber-800">Pelanggan memiliki {{ selectedInvoice?.customer?.unpaid_count }} tagihan aktif berjalan.</h4>
                                     <p class="text-[11px] text-amber-700 mt-1">Total seluruh tagihan: <strong>{{ formatCurrency(selectedInvoice?.customer?.total_unpaid) }}</strong>.</p>
+                                </div>
+                            </div>
+
+                            <!-- Riwayat Pembayaran Sebelumnya (Cicilan / Sebagian) & Nama Petugas -->
+                            <div v-if="selectedInvoice?.payments && selectedInvoice.payments.length > 0" class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                                <div class="text-[11px] font-bold text-slate-700 flex items-center justify-between">
+                                    <span>Riwayat Pembayaran Sebelumnya:</span>
+                                    <span class="text-emerald-700 font-mono">{{ formatCurrency(selectedInvoice.total_paid) }} ({{ selectedInvoice.payments.length }}x)</span>
+                                </div>
+                                <div class="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                                    <div v-for="pay in selectedInvoice.payments" :key="pay.id" class="flex items-center justify-between text-[11px] bg-white p-2 rounded-lg border border-slate-100">
+                                        <div>
+                                            <span class="font-bold text-slate-800">{{ formatCurrency(pay.amount) }}</span>
+                                            <span class="text-slate-400 mx-1">&bull;</span>
+                                            <span class="text-slate-600">{{ pay.payment_date }}</span>
+                                            <div class="text-[10px] text-slate-500">
+                                                Petugas: <strong class="text-slate-700">{{ pay.collector || 'Sistem Otomatis' }}</strong> ({{ formatPaymentMethod(pay.payment_method) }})
+                                            </div>
+                                        </div>
+                                        <a v-if="pay.proof_image" :href="pay.proof_image" target="_blank" class="text-indigo-600 hover:text-indigo-800 text-[10px] font-bold">Bukti</a>
+                                    </div>
                                 </div>
                             </div>
 
@@ -927,6 +1106,18 @@
 
                     <form @submit.prevent="submitPromise">
                         <div class="p-4 sm:p-6 space-y-4 max-h-[72vh] overflow-y-auto">
+                            <!-- Info Petugas yang Memproses -->
+                            <div class="flex items-center justify-between p-2.5 bg-amber-50/60 border border-amber-200 rounded-xl text-xs">
+                                <span class="text-amber-800 font-medium">Petugas yang Memproses:</span>
+                                <span class="font-bold text-amber-950 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                    {{ $page.props.auth?.user?.name }} (Anda)
+                                </span>
+                            </div>
+
+                            <div v-if="Object.keys(promiseForm.errors).length > 0" class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold">
+                                <p v-for="(err, key) in promiseForm.errors" :key="key">{{ err }}</p>
+                            </div>
                             <!-- Info Sisa Tagihan -->
                             <div class="p-3 bg-amber-50/70 border border-amber-200/70 rounded-xl flex items-center justify-between">
                                 <span class="text-xs font-bold text-gray-600">Total Sisa Tagihan:</span>
@@ -942,7 +1133,7 @@
                                     type="date" 
                                     v-model="promiseForm.promise_date" 
                                     required 
-                                    :min="new Date().toISOString().split('T')[0]" 
+                                    :min="todayLocalStr" 
                                     class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
                                 >
                                 
@@ -1097,6 +1288,18 @@
 
                     <form @submit.prevent="submitEdit">
                         <div class="p-6 space-y-4">
+                            <!-- Info Petugas yang Memproses -->
+                            <div class="flex items-center justify-between p-2.5 bg-blue-50/60 border border-blue-200 rounded-xl text-xs">
+                                <span class="text-blue-800 font-medium">Petugas yang Memproses:</span>
+                                <span class="font-bold text-blue-950 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                    {{ $page.props.auth?.user?.name }} (Anda)
+                                </span>
+                            </div>
+
+                            <div v-if="Object.keys(editForm.errors).length > 0" class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold">
+                                <p v-for="(err, key) in editForm.errors" :key="key">{{ err }}</p>
+                            </div>
                             <div>
                                 <label class="block text-xs font-bold text-gray-700 mb-1">Nominal Tagihan</label>
                                 <div class="relative">
@@ -1151,6 +1354,18 @@
 
                     <form @submit.prevent="submitStopSementara">
                         <div class="p-6 space-y-4">
+                            <!-- Info Petugas yang Memproses -->
+                            <div class="flex items-center justify-between p-2.5 bg-orange-50/60 border border-orange-200 rounded-xl text-xs">
+                                <span class="text-orange-800 font-medium">Petugas yang Memproses:</span>
+                                <span class="font-bold text-orange-950 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                    {{ $page.props.auth?.user?.name }} (Anda)
+                                </span>
+                            </div>
+
+                            <div v-if="Object.keys(stopSementaraForm.errors).length > 0" class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold">
+                                <p v-for="(err, key) in stopSementaraForm.errors" :key="key">{{ err }}</p>
+                            </div>
                             <p class="text-sm text-gray-600 mb-4">
                                 Harap tentukan tanggal mulai dan tanggal selesai untuk menghentikan layanan (isolir) sementara. Tagihan baru tidak akan tercetak selama masa ini.
                             </p>
@@ -1200,12 +1415,24 @@
 
                     <form @submit.prevent="submitUpgrade">
                         <div class="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+                            <!-- Info Petugas yang Memproses -->
+                            <div class="flex items-center justify-between p-2.5 bg-purple-50/70 border border-purple-200 rounded-xl text-xs">
+                                <span class="text-purple-800 font-medium">Petugas yang Memproses:</span>
+                                <span class="font-bold text-purple-950 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                    {{ $page.props.auth?.user?.name }} (Anda)
+                                </span>
+                            </div>
+
+                            <div v-if="Object.keys(upgradeForm.errors).length > 0" class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold">
+                                <p v-for="(err, key) in upgradeForm.errors" :key="key">{{ err }}</p>
+                            </div>
                             <!-- Paket Saat Ini vs Paket Baru -->
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <!-- Paket Saat Ini -->
                                 <div class="p-4 rounded-xl border border-gray-200 bg-gray-50/70">
                                     <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Paket Saat Ini</div>
-                                    <div class="text-sm font-bold text-gray-900 truncate">{{ selectedUpgradeInvoice?.customer?.package_name || 'Tidak ada paket' }}</div>
+                                    <div class="text-sm font-bold text-gray-900 truncate">{{ selectedUpgradeInvoice?.customer?.package_name || selectedUpgradeInvoice?.customer?.package || 'Tidak ada paket' }}</div>
                                     <div class="text-xs text-gray-500 mt-1">Kecepatan: <span class="font-semibold text-gray-700">{{ selectedUpgradeInvoice?.customer?.package_speed || 0 }} Mbps</span></div>
                                     <div class="text-xs text-indigo-600 font-bold mt-1">{{ formatCurrency(selectedUpgradeInvoice?.customer?.package_price || 0) }} / bln</div>
                                 </div>
@@ -1220,8 +1447,8 @@
                                     </div>
                                     <select v-model="upgradeForm.new_package_id" required class="w-full text-xs font-semibold px-2.5 py-2 bg-white border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none">
                                         <option value="" disabled>-- Pilih Paket --</option>
-                                        <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id">
-                                            {{ pkg.name }} ({{ pkg.speed_mbps }} Mbps) - {{ formatCurrency(pkg.price) }}
+                                        <option v-for="pkg in packages" :key="pkg.id" :value="pkg.id" :disabled="pkg.id == selectedUpgradeInvoice?.customer?.package_id">
+                                            {{ pkg.name }} ({{ pkg.speed_mbps }} Mbps) - {{ formatCurrency(pkg.price) }}{{ pkg.id == selectedUpgradeInvoice?.customer?.package_id ? ' (Saat Ini)' : '' }}
                                         </option>
                                     </select>
                                     <div v-if="selectedNewPackage" class="text-[11px] text-gray-600 mt-1.5 flex items-center justify-between">
@@ -1277,7 +1504,7 @@
                                             {{ formatShortDate(calculatedStartDate) }} s/d {{ formatShortDate(calculatedPastEndDate) }}
                                         </div>
                                         <div class="text-xs font-bold text-gray-800 truncate mt-0.5">
-                                            {{ selectedUpgradeInvoice?.customer?.package_name || 'Paket Lama' }}
+                                            {{ selectedUpgradeInvoice?.customer?.package_name || selectedUpgradeInvoice?.customer?.package || 'Paket Lama' }}
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
                                             ({{ calculatedPastDays }}/{{ calculatedTotalCycleDays }}) &times; {{ formatCurrency(currentPackagePrice) }}
@@ -1361,7 +1588,7 @@
                                             <div class="flex items-center justify-between">
                                                 <span class="text-xs font-bold text-gray-800">Ubah Nominal Penuh ke Tarif Paket Baru</span>
                                                 <span v-if="selectedNewPackage" class="text-xs font-black px-2 py-0.5 rounded bg-white border border-purple-200 text-purple-700">
-                                                    {{ formatCurrency(selectedNewPackage?.price) }}
+                                                    {{ formatCurrency(calculatedReplacePrice) }}
                                                 </span>
                                             </div>
                                             <p class="text-[11px] text-gray-500 mt-0.5">
@@ -1458,6 +1685,18 @@
 
                     <form @submit.prevent="submitStopPermanen">
                         <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                            <!-- Info Petugas yang Memproses -->
+                            <div class="flex items-center justify-between p-2.5 bg-rose-50/70 border border-rose-200 rounded-xl text-xs">
+                                <span class="text-rose-800 font-medium">Petugas yang Memproses:</span>
+                                <span class="font-bold text-rose-950 flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                    {{ $page.props.auth?.user?.name }} (Anda)
+                                </span>
+                            </div>
+
+                            <div v-if="Object.keys(stopPermanenForm.errors).length > 0" class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-semibold">
+                                <p v-for="(err, key) in stopPermanenForm.errors" :key="key">{{ err }}</p>
+                            </div>
                             <!-- Ringkasan Pelanggan -->
                             <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2.5">
                                 <div class="flex items-start justify-between">
@@ -1598,10 +1837,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { Link, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import DataTable from '@/Components/DataTable.vue';
+import CustomerQuickDetailModal from '@/Components/CustomerQuickDetailModal.vue';
 
 const props = defineProps({
     invoices: Object,
@@ -1614,10 +1854,19 @@ const props = defineProps({
     invoice_issue_date: Number,
 });
 
+function toLocalDateString(date = new Date()) {
+    const d = date instanceof Date ? date : new Date(date);
+    if (isNaN(d.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+const todayLocalStr = computed(() => toLocalDateString(new Date()));
+
 const columns = [
-    { key: 'checkbox', label: '' },
-    { key: 'index', label: 'NO' },
+    { key: 'index', label: 'NO', class: 'w-12 text-center' },
     { key: 'customer', label: 'NAMA PELANGGAN' },
+    { key: 'actions', label: 'AKSI', class: 'whitespace-nowrap' },
     { key: 'area', label: 'AREA' },
     { key: 'address', label: 'ALAMAT' },
     { key: 'package', label: 'NAMA PAKET' },
@@ -1630,10 +1879,60 @@ const columns = [
 ];
 
 const filterTabVal = ref(props.filters?.tab || 'semua');
+
+// Customer Quick Detail & Edit Modal State
+const showCustomerModal = ref(false);
+const selectedCustomer = ref(null);
+
+const openCustomerModal = (customer) => {
+    if (!customer) return;
+    selectedCustomer.value = customer;
+    showCustomerModal.value = true;
+};
+
+const onCustomerUpdated = (updatedCust) => {
+    if (!updatedCust) return;
+    selectedCustomer.value = updatedCust;
+    if (props.invoices?.data) {
+        props.invoices.data.forEach(inv => {
+            if (inv.customer && inv.customer.id === updatedCust.id) {
+                inv.customer.phone = updatedCust.phone;
+                inv.customer.address = updatedCust.address;
+                inv.customer.latitude = updatedCust.latitude;
+                inv.customer.longitude = updatedCust.longitude;
+                inv.customer.identity_photo_url = updatedCust.identity_photo_url;
+                inv.customer.house_photo_url = updatedCust.house_photo_url;
+            }
+        });
+    }
+};
 const filterStatusVal = ref(props.filters?.status || '');
 const filterAreaVal = ref(props.filters?.area_id || '');
+const filterPackageVal = ref(props.filters?.package_id || '');
+const filterBillingTypeVal = ref(props.filters?.billing_type || '');
 const filterStartDate = ref(props.filters?.start_date || '');
 const filterEndDate = ref(props.filters?.end_date || '');
+
+const hasActiveFilters = computed(() => {
+    return !!(
+        filterStatusVal.value ||
+        filterAreaVal.value ||
+        filterPackageVal.value ||
+        filterBillingTypeVal.value ||
+        filterStartDate.value ||
+        filterEndDate.value
+    );
+});
+
+const activeFiltersCount = computed(() => {
+    let count = 0;
+    if (filterStatusVal.value) count++;
+    if (filterAreaVal.value) count++;
+    if (filterPackageVal.value) count++;
+    if (filterBillingTypeVal.value) count++;
+    if (filterStartDate.value || filterEndDate.value) count++;
+    return count;
+});
 
 function applyFilters() {
     router.get('/invoices', {
@@ -1641,10 +1940,85 @@ function applyFilters() {
         tab: filterTabVal.value || undefined,
         status: filterStatusVal.value || undefined,
         area_id: filterAreaVal.value || undefined,
+        package_id: filterPackageVal.value || undefined,
+        billing_type: filterBillingTypeVal.value || undefined,
         start_date: filterStartDate.value || undefined,
         end_date: filterEndDate.value || undefined,
-    }, { preserveState: true, preserveScroll: true });
+    }, { preserveState: true, preserveScroll: true, replace: true });
 }
+
+function resetFilters() {
+    filterStatusVal.value = '';
+    filterAreaVal.value = '';
+    filterPackageVal.value = '';
+    filterBillingTypeVal.value = '';
+    filterStartDate.value = '';
+    filterEndDate.value = '';
+    applyFilters();
+}
+
+function setDatePreset(preset) {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    
+    if (preset === 'today') {
+        const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+        filterStartDate.value = todayStr;
+        filterEndDate.value = todayStr;
+    } else if (preset === 'this_month') {
+        const firstDay = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`;
+        const lastDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const lastDay = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(lastDate)}`;
+        filterStartDate.value = firstDay;
+        filterEndDate.value = lastDay;
+    } else if (preset === 'last_month') {
+        const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const firstDay = `${prevMonthDate.getFullYear()}-${pad(prevMonthDate.getMonth() + 1)}-01`;
+        const lastDate = new Date(prevMonthDate.getFullYear(), prevMonthDate.getMonth() + 1, 0).getDate();
+        const lastDay = `${prevMonthDate.getFullYear()}-${pad(prevMonthDate.getMonth() + 1)}-${pad(lastDate)}`;
+        filterStartDate.value = firstDay;
+        filterEndDate.value = lastDay;
+    }
+    applyFilters();
+}
+
+function exportExcel() {
+    const params = new URLSearchParams();
+    if (props.filters?.search) params.set('search', props.filters.search);
+    if (filterTabVal.value && filterTabVal.value !== 'semua') params.set('tab', filterTabVal.value);
+    if (filterStatusVal.value) params.set('status', filterStatusVal.value);
+    if (filterAreaVal.value) params.set('area_id', filterAreaVal.value);
+    if (filterPackageVal.value) params.set('package_id', filterPackageVal.value);
+    if (filterBillingTypeVal.value) params.set('billing_type', filterBillingTypeVal.value);
+    if (filterStartDate.value) params.set('start_date', filterStartDate.value);
+    if (filterEndDate.value) params.set('end_date', filterEndDate.value);
+    
+    window.location.href = `/invoices/export?${params.toString()}`;
+}
+
+function printList() {
+    const params = new URLSearchParams();
+    if (props.filters?.search) params.set('search', props.filters.search);
+    if (filterTabVal.value && filterTabVal.value !== 'semua') params.set('tab', filterTabVal.value);
+    if (filterStatusVal.value) params.set('status', filterStatusVal.value);
+    if (filterAreaVal.value) params.set('area_id', filterAreaVal.value);
+    if (filterPackageVal.value) params.set('package_id', filterPackageVal.value);
+    if (filterBillingTypeVal.value) params.set('billing_type', filterBillingTypeVal.value);
+    if (filterStartDate.value) params.set('start_date', filterStartDate.value);
+    if (filterEndDate.value) params.set('end_date', filterEndDate.value);
+    
+    window.open(`/invoices/print-list?${params.toString()}`, '_blank');
+}
+
+watch(() => props.filters, (newFilters) => {
+    filterTabVal.value = newFilters?.tab || 'semua';
+    filterStatusVal.value = newFilters?.status || '';
+    filterAreaVal.value = newFilters?.area_id || '';
+    filterPackageVal.value = newFilters?.package_id || '';
+    filterBillingTypeVal.value = newFilters?.billing_type || '';
+    filterStartDate.value = newFilters?.start_date || '';
+    filterEndDate.value = newFilters?.end_date || '';
+}, { deep: true });
 
 function filterTab(tab) {
     filterTabVal.value = tab;
@@ -1659,6 +2033,7 @@ function formatCurrency(value) {
 function formatStatus(status) {
     if (status === 'paid') return 'Lunas';
     if (status === 'unpaid') return 'Belum Lunas';
+    if (status === 'overdue') return 'Jatuh Tempo';
     if (status === 'partial') return 'Bayar Sebagian';
     return status;
 }
@@ -1694,7 +2069,8 @@ function extractBankName(notes) {
 function statusClass(status) {
     switch (status) {
         case 'paid': return 'bg-emerald-100 text-emerald-700';
-        case 'unpaid': return 'bg-rose-100 text-rose-700';
+        case 'unpaid':
+        case 'overdue': return 'bg-rose-100 text-rose-700';
         case 'partial': return 'bg-amber-100 text-amber-700';
         default: return 'bg-gray-100 text-gray-700';
     }
@@ -1703,7 +2079,8 @@ function statusClass(status) {
 function statusDotClass(status) {
     switch (status) {
         case 'paid': return 'bg-emerald-500';
-        case 'unpaid': return 'bg-rose-500';
+        case 'unpaid':
+        case 'overdue': return 'bg-rose-500';
         case 'partial': return 'bg-amber-500';
         default: return 'bg-gray-500';
     }
@@ -1711,7 +2088,21 @@ function statusDotClass(status) {
 
 // Action Dropdown Floating Logic
 const activeDropdownRow = ref(null);
-const dropdownPos = ref({ top: 0, left: 0 });
+const dropdownMenuRef = ref(null);
+const dropdownPos = ref({ top: 0, bottom: null, left: 0, maxHeight: 420 });
+
+const dropdownStyle = computed(() => {
+    const style = {
+        left: `${dropdownPos.value.left}px`,
+        maxHeight: `${dropdownPos.value.maxHeight}px`,
+    };
+    if (dropdownPos.value.bottom !== null) {
+        style.bottom = `${dropdownPos.value.bottom}px`;
+    } else {
+        style.top = `${dropdownPos.value.top}px`;
+    }
+    return style;
+});
 
 function toggleDropdown(event, row) {
     if (activeDropdownRow.value && activeDropdownRow.value.id === row.id) {
@@ -1719,20 +2110,35 @@ function toggleDropdown(event, row) {
         return;
     }
     const rect = event.currentTarget.getBoundingClientRect();
-    const dropdownHeight = 310;
     const dropdownWidth = 240;
+    const viewportW = window.innerWidth;
+    const viewportH = window.innerHeight;
+    const spaceBelow = viewportH - rect.bottom - 12;
+    const spaceAbove = rect.top - 12;
 
-    let top = rect.bottom + 6;
-    if (top + dropdownHeight > window.innerHeight && rect.top > dropdownHeight) {
-        top = Math.max(10, rect.top - dropdownHeight - 6);
+    let left = rect.right - dropdownWidth;
+    if (left < 12) {
+        left = Math.max(12, Math.min(rect.left, viewportW - dropdownWidth - 12));
+    } else if (left + dropdownWidth > viewportW - 12) {
+        left = Math.max(12, viewportW - dropdownWidth - 12);
     }
 
-    let left = Math.min(rect.right - dropdownWidth, window.innerWidth - dropdownWidth - 10);
-    if (left < 10) {
-        left = 10;
+    if (spaceBelow >= 340 || spaceBelow >= spaceAbove) {
+        dropdownPos.value = {
+            top: rect.bottom + 6,
+            bottom: null,
+            left,
+            maxHeight: Math.max(180, spaceBelow - 6),
+        };
+    } else {
+        dropdownPos.value = {
+            top: null,
+            bottom: viewportH - rect.top + 6,
+            left,
+            maxHeight: Math.max(180, spaceAbove - 6),
+        };
     }
 
-    dropdownPos.value = { top, left };
     activeDropdownRow.value = row;
 }
 
@@ -1740,20 +2146,36 @@ function closeDropdown() {
     activeDropdownRow.value = null;
 }
 
-function handleWindowChange() {
+function handleScrollChange(event) {
+    if (!activeDropdownRow.value) return;
+    if (dropdownMenuRef.value && event?.target && dropdownMenuRef.value.contains(event.target)) {
+        return;
+    }
+    activeDropdownRow.value = null;
+}
+
+function handleWindowResize() {
     if (activeDropdownRow.value) {
         activeDropdownRow.value = null;
     }
 }
 
+function handleKeydown(event) {
+    if (event.key === 'Escape' && activeDropdownRow.value) {
+        activeDropdownRow.value = null;
+    }
+}
+
 onMounted(() => {
-    window.addEventListener('scroll', handleWindowChange, { passive: true });
-    window.addEventListener('resize', handleWindowChange);
+    window.addEventListener('scroll', handleScrollChange, { passive: true, capture: true });
+    window.addEventListener('resize', handleWindowResize);
+    window.addEventListener('keydown', handleKeydown);
 });
 
 onUnmounted(() => {
-    window.removeEventListener('scroll', handleWindowChange);
-    window.removeEventListener('resize', handleWindowChange);
+    window.removeEventListener('scroll', handleScrollChange, { capture: true });
+    window.removeEventListener('resize', handleWindowResize);
+    window.removeEventListener('keydown', handleKeydown);
 });
 
 // Payment Modal Logic
@@ -1790,8 +2212,8 @@ function setPaymentMode(mode) {
         paymentForm.internet_action = 'on';
     } else {
         // Mode Bayar Sebagian (Cicil)
-        if (paymentForm.amount >= totalRemaining) {
-            paymentForm.amount = Math.round(totalRemaining / 2);
+        if (!paymentForm.amount || paymentForm.amount <= 0 || paymentForm.amount >= totalRemaining) {
+            paymentForm.amount = Math.max(1, Math.round(totalRemaining / 2));
         }
         // Jika pelanggan saat ini suspended, defaultkan 'off' (tetap isolir sampai lunas),
         // namun admin tetap dapat memilih 'on' secara bebas
@@ -1834,7 +2256,9 @@ function removeProofFile() {
 
 function openPaymentModal(invoice, mode = 'full') {
     selectedInvoice.value = invoice;
+    paymentForm.clearErrors();
     paymentForm.method = 'cash';
+    paymentForm.amount = 0;
     paymentForm.notes = '';
     paymentForm.selected_bank = null;
     removeProofFile();
@@ -1872,7 +2296,8 @@ function submitPayment() {
 }
 
 function rollbackInvoice(row) {
-    if (confirm(`Apakah Anda yakin ingin membatalkan pembayaran untuk pelanggan ${row.customer.name}? Status tagihan akan kembali menjadi Belum Lunas.`)) {
+    const targetLabel = row.customer?.name || `#${row.invoice_number}`;
+    if (confirm(`Apakah Anda yakin ingin membatalkan pembayaran untuk pelanggan ${targetLabel}? Status tagihan akan kembali menjadi Belum Lunas.`)) {
         router.post(`/invoices/${row.id}/rollback`, {}, {
             preserveScroll: true,
         });
@@ -1890,13 +2315,13 @@ const promiseForm = useForm({
 function setPromisePreset(days) {
     const d = new Date();
     d.setDate(d.getDate() + days);
-    promiseForm.promise_date = d.toISOString().split('T')[0];
+    promiseForm.promise_date = toLocalDateString(d);
 }
 
 function setPromiseEndOfMonth() {
     const now = new Date();
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    promiseForm.promise_date = lastDay.toISOString().split('T')[0];
+    promiseForm.promise_date = toLocalDateString(lastDay);
 }
 
 // Stop Sementara Modal Logic
@@ -1908,7 +2333,8 @@ const stopSementaraForm = useForm({
 
 function stopSementara(row) {
     selectedInvoice.value = row;
-    stopSementaraForm.start_date = '';
+    stopSementaraForm.clearErrors();
+    stopSementaraForm.start_date = toLocalDateString(new Date());
     stopSementaraForm.end_date = '';
     showStopSementaraModal.value = true;
 }
@@ -1941,6 +2367,7 @@ const activeDispatchData = ref(null);
 
 function openStopPermanenModal(row) {
     selectedStopPermanenInvoice.value = row;
+    stopPermanenForm.clearErrors();
     stopPermanenForm.reason_preset = 'Menunggak Pembayaran';
     stopPermanenForm.custom_reason = '';
     stopPermanenForm.notes = '';
@@ -1995,6 +2422,7 @@ function sendWhatsAppToLead() {
 
 function openPromiseModal(invoice) {
     selectedInvoice.value = invoice;
+    promiseForm.clearErrors();
     promiseForm.promise_date = invoice.promise_date || '';
     // Defaultkan 'on' untuk memberikan akses internet / kompensasi selama masa janji bayar
     promiseForm.internet_action = 'on';
@@ -2047,6 +2475,7 @@ const editForm = useForm({
 
 function openEditModal(invoice) {
     selectedInvoice.value = invoice;
+    editForm.clearErrors();
     editForm.amount = invoice.amount;
     
     // Convert DD/MM/YYYY or YYYY-MM-DD to YYYY-MM-DD for input type="date"
@@ -2094,7 +2523,7 @@ const upgradeForm = useForm({
     new_package_id: '',
     billing_action: 'prorata_diff',
     start_date: '',
-    effective_date: new Date().toISOString().split('T')[0],
+    effective_date: toLocalDateString(new Date()),
     sync_radius: true,
     notes: '',
     pay_now: false,
@@ -2188,15 +2617,35 @@ const calculatedFutureEndDate = computed(() => {
     return d;
 });
 
+const customerTaxPpn = computed(() => {
+    return Number(selectedUpgradeInvoice.value?.customer?.tax_ppn || 0);
+});
+
 const calculatedPastAmount = computed(() => {
     if (!currentPackagePrice.value || calculatedPastDays.value <= 0) return 0;
-    return Math.round((currentPackagePrice.value / calculatedTotalCycleDays.value) * calculatedPastDays.value);
+    let base = Math.round((currentPackagePrice.value / calculatedTotalCycleDays.value) * calculatedPastDays.value);
+    if (customerTaxPpn.value > 0) {
+        base = Math.round(base + (base * (customerTaxPpn.value / 100)));
+    }
+    return base;
 });
 
 const calculatedFutureAmount = computed(() => {
     if (!selectedNewPackage.value) return 0;
     const newPrice = Number(selectedNewPackage.value.price || 0);
-    return Math.round((newPrice / calculatedTotalCycleDays.value) * calculatedFutureDays.value);
+    let base = Math.round((newPrice / calculatedTotalCycleDays.value) * calculatedFutureDays.value);
+    if (customerTaxPpn.value > 0) {
+        base = Math.round(base + (base * (customerTaxPpn.value / 100)));
+    }
+    return base;
+});
+
+const calculatedReplacePrice = computed(() => {
+    if (!selectedNewPackage.value) return 0;
+    const newPrice = Number(selectedNewPackage.value.price || 0);
+    return customerTaxPpn.value > 0
+        ? Math.round(newPrice + (newPrice * (customerTaxPpn.value / 100)))
+        : Math.round(newPrice);
 });
 
 const calculatedTotalProrata = computed(() => {
@@ -2205,6 +2654,7 @@ const calculatedTotalProrata = computed(() => {
 
 function openUpgradeModal(invoice) {
     selectedUpgradeInvoice.value = invoice;
+    upgradeForm.clearErrors();
     upgradeForm.new_package_id = '';
     upgradeForm.billing_action = 'prorata_diff';
 
@@ -2222,7 +2672,7 @@ function openUpgradeModal(invoice) {
         sDate = `${yr}-${mo}-${day}`;
     }
     upgradeForm.start_date = sDate;
-    upgradeForm.effective_date = new Date().toISOString().split('T')[0];
+    upgradeForm.effective_date = toLocalDateString(new Date());
     upgradeForm.sync_radius = true;
     upgradeForm.notes = '';
     upgradeForm.pay_now = false;

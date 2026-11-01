@@ -39,11 +39,48 @@ class Odc extends Model
             'latitude' => 'decimal:8',
             'longitude' => 'decimal:8',
             'capacity' => 'integer',
+            'pon_port' => 'integer',
+            'is_split' => 'boolean',
         ];
     }
 
     protected static function booted(): void
     {
+        static::saving(function (Odc $odc) {
+            // 1. Cegah referensi induk ke diri sendiri
+            if ($odc->id && $odc->parent_odc_id && (int) $odc->parent_odc_id === (int) $odc->id) {
+                $odc->parent_odc_id = null;
+            }
+
+            // 2. Pastikan flag is_split konsisten untuk tipe Split atau ODC yang memiliki relasi induk
+            if ($odc->type === 'Split' || !empty($odc->parent_odc_id)) {
+                $odc->is_split = true;
+            }
+
+            // 3. Sinkronkan pon_id otomatis berdasarkan olt_id + pon_port agar Topologi selalu akurat
+            if ($odc->olt_id && $odc->pon_port) {
+                if ($odc->isDirty(['olt_id', 'pon_port']) || empty($odc->pon_id)) {
+                    if (\Illuminate\Support\Facades\Schema::hasTable('olt_pons')) {
+                        $pon = \App\Models\OltPon::firstOrCreate(
+                            ['olt_id' => $odc->olt_id, 'port_number' => (int) $odc->pon_port],
+                            ['name' => 'PON ' . (int) $odc->pon_port, 'capacity' => 128, 'status' => 'active']
+                        );
+                        $odc->pon_id = $pon->id;
+                    }
+                }
+            } elseif (empty($odc->pon_port)) {
+                $odc->pon_id = null;
+            }
+        });
+
+        static::saved(function (Odc $odc) {
+            if ($odc->parent_odc_id) {
+                static::where('id', $odc->parent_odc_id)
+                    ->where('is_split', false)
+                    ->update(['is_split' => true]);
+            }
+        });
+
         static::updated(function (Odc $odc) {
             // Jika Area ODC berubah, update area ODP downstream dan ONT di bawahnya
             if ($odc->wasChanged('area_id') && $odc->area_id) {
@@ -95,6 +132,22 @@ class Odc extends Model
     public function area(): BelongsTo
     {
         return $this->belongsTo(Area::class);
+    }
+
+    /**
+     * ODC Induk (jika unit ini adalah ODC Split Lanjutan)
+     */
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(Odc::class, 'parent_odc_id');
+    }
+
+    /**
+     * ODC Lanjutan / Cabang (jika unit ini adalah ODC Split Induk)
+     */
+    public function children(): HasMany
+    {
+        return $this->hasMany(Odc::class, 'parent_odc_id');
     }
 
     // ── Computed ───────────────────────────────────────────────
