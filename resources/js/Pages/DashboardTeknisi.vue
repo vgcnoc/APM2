@@ -15,6 +15,7 @@ defineProps({
     maintenanceTasks: { type: Array, default: () => [] },
     attendanceData: { type: Object, default: () => ({}) },
     worstAttendanceData: { type: Object, default: () => ({}) },
+    worstMonth: { type: String, default: '' },
 });
 
 const formatDate = (dateStr) => {
@@ -35,7 +36,7 @@ const formatDate = (dateStr) => {
         <DashboardAttendanceWidget :attendance-data="attendanceData" class="mb-6" />
 
         <!-- ═══ Evaluasi Pelanggaran Presensi, Absen Terburuk & Potongan Denda ═══ -->
-        <DashboardWorstAttendanceWidget :data="worstAttendanceData" class="mb-6" />
+        <DashboardWorstAttendanceWidget :data="worstAttendanceData" :worst-month="worstMonth" class="mb-6" />
 
         <!-- ═══ Pencarian Cepat Pelanggan & Foto Rumah (Tampil untuk Semua User) ═══ -->
         <CustomerSearchWidget class="mb-6" />

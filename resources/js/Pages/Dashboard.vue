@@ -165,6 +165,7 @@
         <DashboardWorstAttendanceWidget 
             v-if="!['customer', 'reseller'].includes($page.props.auth?.user?.role)"
             :data="worstAttendanceData" 
+            :worst-month="worstMonth"
             class="mb-6" 
         />
 
@@ -611,6 +612,7 @@ const props = defineProps({
     totalCustomersInAreas: Number,
     attendanceData: { type: Object, default: () => ({}) },
     worstAttendanceData: { type: Object, default: () => ({ summary: {}, worst_employees: [] }) },
+    worstMonth: { type: String, default: '' },
     selectedAreaId: { type: [String, Number], default: 'all' },
     availableAreas: { type: Array, default: () => [] },
     selectedAreaDetail: { type: Object, default: null },

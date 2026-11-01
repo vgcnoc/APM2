@@ -389,8 +389,9 @@ class DashboardController extends Controller
         }
 
         // ── 10. Data Presensi Widget & Absen Terburuk / Potongan ──────
+        $worstMonth = $request->input('worst_month', Carbon::now('Asia/Jakarta')->format('Y-m'));
         $attendanceData = $this->getAttendanceDashboardData($request->input('employee_id'));
-        $worstAttendanceData = $this->getWorstAttendanceData($selectedAreaId);
+        $worstAttendanceData = $this->getWorstAttendanceData($selectedAreaId, $worstMonth);
 
         return Inertia::render('Dashboard', [
             'customerStats'        => $customerStats,
@@ -413,6 +414,7 @@ class DashboardController extends Controller
             'totalCustomersInAreas' => $totalCustomersInAreas,
             'attendanceData'       => $attendanceData,
             'worstAttendanceData'  => $worstAttendanceData,
+            'worstMonth'           => $worstMonth,
             'selectedAreaId'       => $selectedAreaId,
             'availableAreas'       => $availableAreas,
             'selectedAreaDetail'   => $selectedAreaDetail,
@@ -425,8 +427,9 @@ class DashboardController extends Controller
     private function teknisiDashboard(Request $request): Response
     {
         $userId = auth()->id();
+        $worstMonth = $request->input('worst_month', Carbon::now('Asia/Jakarta')->format('Y-m'));
         $attendanceData = $this->getAttendanceDashboardData($request->input('employee_id'));
-        $worstAttendanceData = $this->getWorstAttendanceData('all');
+        $worstAttendanceData = $this->getWorstAttendanceData('all', $worstMonth);
 
         // ── Statistik Tugas ─────────────────────────────────
         $stats = [
@@ -535,6 +538,7 @@ class DashboardController extends Controller
             'maintenanceTasks' => $maintenanceTasks,
             'attendanceData' => $attendanceData,
             'worstAttendanceData' => $worstAttendanceData,
+            'worstMonth' => $worstMonth,
         ]);
     }
 
@@ -1757,16 +1761,24 @@ class DashboardController extends Controller
     }
 
     /**
-     * Hitung Papan Peringkat Absen Terburuk & Proyeksi Potongan Denda Absensi Karyawan Bulan Ini
+     * Hitung Papan Peringkat Absen Terburuk & Proyeksi Potongan Denda Absensi Karyawan Bulan Ini / Periode Terpilih
      */
-    protected function getWorstAttendanceData($selectedAreaId = 'all'): array
+    protected function getWorstAttendanceData($selectedAreaId = 'all', ?string $selectedMonth = null): array
     {
-        $cacheKey = "worst_att_rankings_{$selectedAreaId}";
-        $data = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function () use ($selectedAreaId) {
-            $now = Carbon::now('Asia/Jakarta');
-            $startOfMonth = $now->copy()->startOfMonth()->format('Y-m-d');
-            $endOfMonth = $now->copy()->endOfMonth()->format('Y-m-d');
+        $now = Carbon::now('Asia/Jakarta');
+        if ($selectedMonth && preg_match('/^\d{4}-\d{2}$/', $selectedMonth)) {
+            $monthCarbon = Carbon::parse($selectedMonth . '-01', 'Asia/Jakarta');
+        } else {
+            $monthCarbon = $now->copy();
+            $selectedMonth = $now->format('Y-m');
+        }
+
+        $cacheKey = "worst_att_rankings_{$selectedAreaId}_{$selectedMonth}";
+        $data = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function () use ($selectedAreaId, $selectedMonth, $monthCarbon, $now) {
+            $startOfMonth = $monthCarbon->copy()->startOfMonth()->format('Y-m-d');
+            $endOfMonth = $monthCarbon->copy()->endOfMonth()->format('Y-m-d');
             $todayDate = $now->format('Y-m-d');
+            $isCurrentMonth = ($selectedMonth === $now->format('Y-m'));
 
             $attSettings = AttendanceCalculatorService::getAttendanceSettings();
             $shiftsById = Shift::all()->keyBy('id');
@@ -1785,219 +1797,278 @@ class DashboardController extends Controller
             $earlyLeavePenaltyEnabled = Setting::get('attendance_early_leave_enabled', Setting::get('attendance_early_leave_penalty_enabled', '1')) === '1';
             $alphaPenaltyEnabled = Setting::get('attendance_alpha_enabled', Setting::get('attendance_alpha_penalty_enabled', '1')) === '1';
 
-        // Ambil Data Karyawan
-        $empQuery = Employee::with(['area', 'shift'])
-            ->where(function ($q) {
-                $q->where('status', '!=', 'resigned')->orWhereNull('status');
-            });
+            // Ambil Data Karyawan
+            $empQuery = Employee::with(['area', 'shift'])
+                ->where(function ($q) {
+                    $q->where('status', '!=', 'resigned')->orWhereNull('status');
+                });
 
-        if ($selectedAreaId && $selectedAreaId !== 'all') {
-            $hasAreaEmployees = (clone $empQuery)->where('area_id', $selectedAreaId)->exists();
-            if ($hasAreaEmployees) {
-                $empQuery->where('area_id', $selectedAreaId);
-            }
-        }
-
-        $employees = $empQuery->get();
-
-        // Ambil Presensi Bulan Ini
-        $attendances = Attendance::with('shift')
-            ->whereBetween('date', [$startOfMonth, $endOfMonth])
-            ->get()
-            ->groupBy('employee_id');
-
-        $workSchedules = WorkSchedule::whereBetween('date', [$startOfMonth, $endOfMonth])
-            ->get()
-            ->groupBy('employee_id');
-
-        $summary = [
-            'month_name' => $now->translatedFormat('F Y'),
-            'total_deductions_amount' => 0,
-            'total_late_deductions' => 0,
-            'total_missing_out_deductions' => 0,
-            'total_early_leave_deductions' => 0,
-            'total_alpha_deductions' => 0,
-            'total_lates_count' => 0,
-            'total_late_minutes' => 0,
-            'total_missing_outs_count' => 0,
-            'total_early_leaves_count' => 0,
-            'total_alphas_count' => 0,
-            'total_infractions_count' => 0,
-            'total_employees_with_penalties' => 0,
-            'total_monitored_employees' => $employees->count(),
-        ];
-
-        // Hari kerja standar berjalan (Senin-Sabtu s/d hari ini)
-        $defaultTargetDays = 0;
-        $tempDate = Carbon::parse($startOfMonth);
-        while ($tempDate->lte($now)) {
-            if ($tempDate->dayOfWeek !== 0) { // Bukan Minggu
-                $defaultTargetDays++;
-            }
-            $tempDate->addDay();
-        }
-        $defaultTargetDays = max(1, $defaultTargetDays);
-
-        $employeeStats = [];
-
-        foreach ($employees as $emp) {
-            $empAtts = $attendances->get($emp->id, collect());
-            $empSchedules = $workSchedules->get($emp->id, collect());
-
-            // Target hari kerja
-            if ($empSchedules->count() > 0) {
-                $hasScheduledWork = $empSchedules->where('status', 'work')->whereNotNull('shift_id')->count() > 0;
-                if ($hasScheduledWork) {
-                    $workDays = $empSchedules->filter(function ($s) use ($now) {
-                        $d = Carbon::parse($s->date);
-                        return $d->lte($now) && $s->status === 'work' && !empty($s->shift_id);
-                    })->count();
-                    $targetDays = max(1, $workDays);
-                } else {
-                    $offDaysCount = $empSchedules->filter(function ($s) use ($now) {
-                        $d = Carbon::parse($s->date);
-                        return $d->lte($now) && ($s->status !== 'work' || empty($s->shift_id));
-                    })->count();
-                    $targetDays = max(1, $defaultTargetDays - $offDaysCount);
+            if ($selectedAreaId && $selectedAreaId !== 'all') {
+                $hasAreaEmployees = (clone $empQuery)->where('area_id', $selectedAreaId)->exists();
+                if ($hasAreaEmployees) {
+                    $empQuery->where('area_id', $selectedAreaId);
                 }
-            } else {
-                $targetDays = $defaultTargetDays;
             }
 
-            // 1. Keterlambatan
-            $lateAtts = $empAtts->filter(function ($a) {
-                return $a->status === 'late' || (int) $a->late_minutes > 0;
-            });
-            $lateCount = $lateAtts->count();
-            $lateMinutes = (int) $lateAtts->sum('late_minutes');
+            $employees = $empQuery->get();
 
-            $lateDeduction = 0;
-            if ($latePenaltyEnabled && $lateCount > 0) {
-                $lateDeduction = ($latePenaltyModeSlug === 'per_menit')
-                    ? ($lateMinutes * $penaltyPerMinute)
-                    : ($lateCount * $fixedPenalty);
+            // Ambil Presensi Bulan Ini (Reguler & Tim Khusus)
+            $attendances = Attendance::with('shift')
+                ->whereBetween('date', [$startOfMonth, $endOfMonth])
+                ->get()
+                ->groupBy('employee_id');
+
+            $specialAttendances = SpecialAttendance::with('team')
+                ->whereBetween('date', [$startOfMonth, $endOfMonth])
+                ->get()
+                ->groupBy('employee_id');
+
+            $workSchedules = WorkSchedule::with('shift')
+                ->whereBetween('date', [$startOfMonth, $endOfMonth])
+                ->get()
+                ->groupBy('employee_id');
+
+            $summary = [
+                'month' => $selectedMonth,
+                'month_name' => $monthCarbon->translatedFormat('F Y'),
+                'total_deductions_amount' => 0,
+                'total_late_deductions' => 0,
+                'total_missing_out_deductions' => 0,
+                'total_early_leave_deductions' => 0,
+                'total_alpha_deductions' => 0,
+                'total_lates_count' => 0,
+                'total_late_minutes' => 0,
+                'total_missing_outs_count' => 0,
+                'total_early_leaves_count' => 0,
+                'total_alphas_count' => 0,
+                'total_infractions_count' => 0,
+                'total_employees_with_penalties' => 0,
+                'total_monitored_employees' => $employees->count(),
+            ];
+
+            // Hari kerja standar berjalan (Senin-Sabtu)
+            $evalEndDate = $isCurrentMonth ? $now : $monthCarbon->copy()->endOfMonth();
+            $defaultTargetDays = 0;
+            $tempDate = Carbon::parse($startOfMonth);
+            while ($tempDate->lte($evalEndDate)) {
+                if ($tempDate->dayOfWeek !== 0) { // Bukan Minggu
+                    $defaultTargetDays++;
+                }
+                $tempDate->addDay();
             }
+            $defaultTargetDays = max(1, $defaultTargetDays);
 
-            // 2. Lupa Absen Pulang (Missing Out) - menggunakan service resmi dengan batas jam pulang dinamis per shift
-            $missingOutAtts = $empAtts->filter(function ($att) use ($now, $attSettings, $shiftsById) {
-                return AttendanceCalculatorService::isMissingClockOut($att, $now, $attSettings, $shiftsById, 'Asia/Jakarta');
-            });
-            $missingOutCount = $missingOutAtts->count();
-            $missingOutDeduction = ($missingOutPenaltyEnabled && $missingOutCount > 0) ? ($missingOutCount * $missingOutAmount) : 0;
+            $employeeStats = [];
 
-            // 3. Pulang Cepat
-            $earlyLeaveCount = 0;
-            foreach ($empAtts as $att) {
-                if ($att->clock_out && $att->shift && $att->shift->end_time) {
-                    $clockOutTime = Carbon::parse($att->clock_out);
-                    $shiftEndTime = Carbon::parse($att->shift->end_time);
-                    if ($clockOutTime->lt($shiftEndTime)) {
-                        $earlyLeaveCount++;
+            foreach ($employees as $emp) {
+                $empAtts = $attendances->get($emp->id, collect());
+                $empSpecials = $specialAttendances->get($emp->id, collect());
+                $empSchedules = $workSchedules->get($emp->id, collect());
+
+                // Target hari kerja
+                if ($empSchedules->count() > 0) {
+                    $hasScheduledWork = $empSchedules->where('status', 'work')->whereNotNull('shift_id')->count() > 0;
+                    if ($hasScheduledWork) {
+                        $workDays = $empSchedules->filter(function ($s) use ($evalEndDate) {
+                            $d = Carbon::parse($s->date);
+                            return $d->lte($evalEndDate) && $s->status === 'work' && !empty($s->shift_id);
+                        })->count();
+                        $targetDays = max(1, $workDays);
+                    } else {
+                        $offDaysCount = $empSchedules->filter(function ($s) use ($evalEndDate) {
+                            $d = Carbon::parse($s->date);
+                            return $d->lte($evalEndDate) && ($s->status !== 'work' || empty($s->shift_id));
+                        })->count();
+                        $targetDays = max(1, $defaultTargetDays - $offDaysCount);
+                    }
+                } else {
+                    $targetDays = $defaultTargetDays;
+                }
+
+                // Total Kehadiran (Reguler + Khusus)
+                $regularPresentCount = $empAtts->filter(fn($a) => !empty($a->clock_in))->count();
+                $specialPresentCount = $empSpecials->filter(fn($a) => !empty($a->clock_in))->count();
+                $presentCount = $regularPresentCount + $specialPresentCount;
+
+                // 1. Keterlambatan
+                $lateAtts = $empAtts->filter(function ($a) {
+                    return $a->status === 'late' || (int) $a->late_minutes > 0;
+                });
+                $lateCount = $lateAtts->count();
+                $lateMinutes = (int) $lateAtts->sum('late_minutes');
+
+                $lateDeduction = 0;
+                if ($latePenaltyEnabled && $lateCount > 0) {
+                    $lateDeduction = ($latePenaltyModeSlug === 'per_menit')
+                        ? ($lateMinutes * $penaltyPerMinute)
+                        : ($lateCount * $fixedPenalty);
+                }
+
+                // 2. Lupa Absen Pulang (Missing Out)
+                $missingOutAtts = $empAtts->filter(function ($att) use ($now, $attSettings, $shiftsById) {
+                    return AttendanceCalculatorService::isMissingClockOut($att, $now, $attSettings, $shiftsById, 'Asia/Jakarta');
+                });
+                $missingOutCount = $missingOutAtts->count();
+                $missingOutDeduction = ($missingOutPenaltyEnabled && $missingOutCount > 0) ? ($missingOutCount * $missingOutAmount) : 0;
+
+                // 3. Pulang Cepat
+                $earlyLeaveCount = 0;
+                foreach ($empAtts as $att) {
+                    if ($att->clock_out && $att->shift && $att->shift->end_time) {
+                        $clockOutTime = Carbon::parse($att->clock_out);
+                        $shiftEndTime = Carbon::parse($att->shift->end_time);
+                        if ($clockOutTime->lt($shiftEndTime)) {
+                            $earlyLeaveCount++;
+                        }
                     }
                 }
-            }
-            $earlyLeaveDeduction = ($earlyLeavePenaltyEnabled && $earlyLeaveCount > 0) ? ($earlyLeaveCount * $earlyLeaveAmount) : 0;
+                $earlyLeaveDeduction = ($earlyLeavePenaltyEnabled && $earlyLeaveCount > 0) ? ($earlyLeaveCount * $earlyLeaveAmount) : 0;
 
-            // 4. Alpha / Mangkir
-            $presentCount = $empAtts->filter(fn($a) => !empty($a->clock_in))->count();
-            $alphas = $empAtts->where('status', 'absent')->count();
-            if ($empSchedules->count() > 0 && $presentCount < $targetDays) {
-                $scheduleAlphas = $empSchedules->where('status', 'alpha')->count();
-                if ($scheduleAlphas > $alphas) {
-                    $alphas = $scheduleAlphas;
+                // 4. Alpha / Mangkir Kerja Cerdas
+                $alphas = 0;
+                if ($empSchedules->isNotEmpty()) {
+                    foreach ($empSchedules as $s) {
+                        $sDate = is_string($s->date) ? substr($s->date, 0, 10) : $s->date->format('Y-m-d');
+                        $st = strtolower($s->status ?? '');
+                        $nt = strtolower($s->notes ?? '');
+
+                        // Cek jika izin / sakit / cuti / libur
+                        $isExcused = in_array($st, ['off', 'sick', 'leave', 'permit', 'sick_no_cert'])
+                            || str_contains($nt, 'sakit') || str_contains($nt, 'izin') || str_contains($nt, 'cuti') || str_contains($nt, 'libur');
+
+                        if ($isExcused) {
+                            continue;
+                        }
+
+                        // Jika status eksplisit alpha/mangkir
+                        if ($st === 'alpha' || str_contains($nt, 'alpha') || str_contains($nt, 'mangkir')) {
+                            $alphas++;
+                            continue;
+                        }
+
+                        // Jika status jadwal kerja aktif dan shift ditentukan
+                        if ($st === 'work' && !empty($s->shift_id)) {
+                            $isPassed = false;
+                            if ($sDate < $todayDate) {
+                                $isPassed = true;
+                            } elseif ($sDate === $todayDate) {
+                                $schedShift = $s->shift ?? ($shiftsById->get($s->shift_id) ?? null);
+                                if ($schedShift && $schedShift->end_time) {
+                                    $endTime = Carbon::createFromFormat('Y-m-d H:i', "$todayDate " . substr($schedShift->end_time, 0, 5), 'Asia/Jakarta');
+                                    if ($now->greaterThan($endTime)) {
+                                        $isPassed = true;
+                                    }
+                                }
+                            }
+
+                            if ($isPassed) {
+                                // Cek apakah ada record clock_in pada tanggal tsb di Attendance maupun SpecialAttendance
+                                $hasRegular = $empAtts->first(fn($a) => substr($a->date, 0, 10) === $sDate && !empty($a->clock_in));
+                                $hasSpecial = $empSpecials->first(fn($a) => substr($a->date, 0, 10) === $sDate && !empty($a->clock_in));
+
+                                if (!$hasRegular && !$hasSpecial) {
+                                    $alphas++;
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    $absentRecords = $empAtts->where('status', 'absent')->count();
+                    $alphas = max(0, $absentRecords);
                 }
+
+                $alphaDeduction = ($alphaPenaltyEnabled && $alphas > 0) ? ($alphas * $alphaAmount) : 0;
+
+                $totalEmpDeduction = $lateDeduction + $missingOutDeduction + $earlyLeaveDeduction + $alphaDeduction;
+                $totalInfractions = $lateCount + $missingOutCount + $earlyLeaveCount + $alphas;
+
+                // Perhitungan skor kehadiran (100 - penalti)
+                $baseAttendanceRate = ($targetDays > 0) ? min(100, ($presentCount / $targetDays) * 100) : 0;
+                $penaltyLate = ($lateCount * 0.25) + ($lateMinutes * 0.01);
+                $penaltyAlpha = ($alphas * 2.0);
+                $penaltyEarly = ($earlyLeaveCount * 0.5);
+                $score = max(0, round($baseAttendanceRate - $penaltyLate - $penaltyAlpha - $penaltyEarly, 1));
+
+                // Tambahkan ke summary agregat
+                $summary['total_deductions_amount'] += $totalEmpDeduction;
+                $summary['total_late_deductions'] += $lateDeduction;
+                $summary['total_missing_out_deductions'] += $missingOutDeduction;
+                $summary['total_early_leave_deductions'] += $earlyLeaveDeduction;
+                $summary['total_alpha_deductions'] += $alphaDeduction;
+                $summary['total_lates_count'] += $lateCount;
+                $summary['total_late_minutes'] += $lateMinutes;
+                $summary['total_missing_outs_count'] += $missingOutCount;
+                $summary['total_early_leaves_count'] += $earlyLeaveCount;
+                $summary['total_alphas_count'] += $alphas;
+                $summary['total_infractions_count'] += $totalInfractions;
+
+                if ($totalEmpDeduction > 0 || $totalInfractions > 0) {
+                    $summary['total_employees_with_penalties']++;
+                }
+
+                $photoUrl = $emp->photo
+                    ? (str_starts_with($emp->photo, 'http') ? $emp->photo : asset('storage/' . $emp->photo))
+                    : null;
+
+                $employeeStats[] = [
+                    'id' => $emp->id,
+                    'name' => $emp->name,
+                    'email' => $emp->email,
+                    'phone' => $emp->phone ?: '-',
+                    'photo_url' => $photoUrl,
+                    'position' => $emp->position ?: 'Karyawan',
+                    'branch' => $emp->area ? $emp->area->name : ($emp->branch ?: 'Pusat'),
+                    'area_id' => $emp->area_id,
+                    'target_days' => $targetDays,
+                    'presents' => $presentCount,
+                    'lates' => $lateCount,
+                    'late_minutes' => $lateMinutes,
+                    'late_deduction' => $lateDeduction,
+                    'missing_outs' => $missingOutCount,
+                    'missing_out_deduction' => $missingOutDeduction,
+                    'early_leaves' => $earlyLeaveCount,
+                    'early_leave_deduction' => $earlyLeaveDeduction,
+                    'alphas' => $alphas,
+                    'alpha_deduction' => $alphaDeduction,
+                    'total_deduction' => $totalEmpDeduction,
+                    'infractions_count' => $totalInfractions,
+                    'score' => $score,
+                ];
             }
-            $alphaDeduction = ($alphaPenaltyEnabled && $alphas > 0) ? ($alphas * $alphaAmount) : 0;
 
-            $totalEmpDeduction = $lateDeduction + $missingOutDeduction + $earlyLeaveDeduction + $alphaDeduction;
-            $totalInfractions = $lateCount + $missingOutCount + $earlyLeaveCount + $alphas;
+            // Urutkan Peringkat Absen Terburuk:
+            // 1. Total potongan tertinggi
+            // 2. Jumlah pelanggaran terbanyak
+            // 3. Menit telat terbanyak
+            // 4. Skor terendah
+            $sortedWorst = collect($employeeStats)->sort(function ($a, $b) {
+                if ($b['total_deduction'] != $a['total_deduction']) {
+                    return $b['total_deduction'] <=> $a['total_deduction'];
+                }
+                if ($b['infractions_count'] != $a['infractions_count']) {
+                    return $b['infractions_count'] <=> $a['infractions_count'];
+                }
+                if ($b['late_minutes'] != $a['late_minutes']) {
+                    return $b['late_minutes'] <=> $a['late_minutes'];
+                }
+                return $a['score'] <=> $b['score'];
+            })->values();
 
-            // Perhitungan skor kehadiran (100 - penalti)
-            $baseAttendanceRate = ($targetDays > 0) ? min(100, ($presentCount / $targetDays) * 100) : 0;
-            $penaltyLate = ($lateCount * 0.25) + ($lateMinutes * 0.01);
-            $penaltyAlpha = ($alphas * 2.0);
-            $penaltyEarly = ($earlyLeaveCount * 0.5);
-            $score = max(0, round($baseAttendanceRate - $penaltyLate - $penaltyAlpha - $penaltyEarly, 1));
+            // Tambahkan nomor rank
+            $rankedWorst = $sortedWorst->map(function ($item, $index) {
+                $item['worst_rank'] = $index + 1;
+                return $item;
+            });
 
-            // Tambahkan ke summary agregat
-            $summary['total_deductions_amount'] += $totalEmpDeduction;
-            $summary['total_late_deductions'] += $lateDeduction;
-            $summary['total_missing_out_deductions'] += $missingOutDeduction;
-            $summary['total_early_leave_deductions'] += $earlyLeaveDeduction;
-            $summary['total_alpha_deductions'] += $alphaDeduction;
-            $summary['total_lates_count'] += $lateCount;
-            $summary['total_late_minutes'] += $lateMinutes;
-            $summary['total_missing_outs_count'] += $missingOutCount;
-            $summary['total_early_leaves_count'] += $earlyLeaveCount;
-            $summary['total_alphas_count'] += $alphas;
-            $summary['total_infractions_count'] += $totalInfractions;
+            // Ambil Top karyawan (hingga 10 karyawan atau yang memiliki pelanggaran)
+            $topWorstEmployees = $rankedWorst->take(10)->all();
 
-            if ($totalEmpDeduction > 0 || $totalInfractions > 0) {
-                $summary['total_employees_with_penalties']++;
-            }
-
-            $photoUrl = $emp->photo
-                ? (str_starts_with($emp->photo, 'http') ? $emp->photo : asset('storage/' . $emp->photo))
-                : null;
-
-            $employeeStats[] = [
-                'id' => $emp->id,
-                'name' => $emp->name,
-                'email' => $emp->email,
-                'phone' => $emp->phone ?: '-',
-                'photo_url' => $photoUrl,
-                'position' => $emp->position ?: 'Karyawan',
-                'branch' => $emp->area ? $emp->area->name : ($emp->branch ?: 'Pusat'),
-                'area_id' => $emp->area_id,
-                'target_days' => $targetDays,
-                'presents' => $presentCount,
-                'lates' => $lateCount,
-                'late_minutes' => $lateMinutes,
-                'late_deduction' => $lateDeduction,
-                'missing_outs' => $missingOutCount,
-                'missing_out_deduction' => $missingOutDeduction,
-                'early_leaves' => $earlyLeaveCount,
-                'early_leave_deduction' => $earlyLeaveDeduction,
-                'alphas' => $alphas,
-                'alpha_deduction' => $alphaDeduction,
-                'total_deduction' => $totalEmpDeduction,
-                'infractions_count' => $totalInfractions,
-                'score' => $score,
+            return [
+                'summary' => $summary,
+                'rankedWorst' => $rankedWorst,
+                'topWorstEmployees' => $topWorstEmployees,
+                'selectedMonth' => $selectedMonth,
             ];
-        }
-
-        // Urutkan Peringkat Absen Terburuk:
-        // 1. Total potongan tertinggi
-        // 2. Jumlah pelanggaran terbanyak
-        // 3. Menit telat terbanyak
-        // 4. Skor terendah
-        $sortedWorst = collect($employeeStats)->sort(function ($a, $b) {
-            if ($b['total_deduction'] != $a['total_deduction']) {
-                return $b['total_deduction'] <=> $a['total_deduction'];
-            }
-            if ($b['infractions_count'] != $a['infractions_count']) {
-                return $b['infractions_count'] <=> $a['infractions_count'];
-            }
-            if ($b['late_minutes'] != $a['late_minutes']) {
-                return $b['late_minutes'] <=> $a['late_minutes'];
-            }
-            return $a['score'] <=> $b['score'];
-        })->values();
-
-        // Tambahkan nomor rank
-        $rankedWorst = $sortedWorst->map(function ($item, $index) {
-            $item['worst_rank'] = $index + 1;
-            return $item;
-        });
-
-        // Ambil Top 5 karyawan dengan pelanggaran terbanyak
-        $topWorstEmployees = $rankedWorst->take(5)->all();
-
-        return [
-            'summary' => $summary,
-            'rankedWorst' => $rankedWorst,
-            'topWorstEmployees' => $topWorstEmployees,
-        ];
         });
 
         // Cari data presensi / disiplin user yang sedang login
@@ -2015,6 +2086,7 @@ class DashboardController extends Controller
             'worst_employees' => $data['topWorstEmployees'] ?? [],
             'my_infraction_stat' => $currentEmpStat,
             'all_infractions_count' => isset($data['rankedWorst']) ? $data['rankedWorst']->where('infractions_count', '>', 0)->count() : 0,
+            'selectedMonth' => $selectedMonth,
         ];
     }
 }

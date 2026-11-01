@@ -20,6 +20,18 @@
                     Disiplin Normal
                 </span>
             </div>
+
+            <!-- Month Selector -->
+            <div class="flex items-center gap-2 self-start md:self-auto">
+                <label class="text-[11px] text-slate-400 font-semibold uppercase tracking-wider hidden sm:inline">Pilih Bulan:</label>
+                <input 
+                    type="month" 
+                    :value="currentMonthValue"
+                    @change="onMonthChange($event.target.value)"
+                    class="bg-slate-800 text-slate-100 text-xs font-semibold rounded-xl px-3 py-1.5 border border-slate-700 hover:border-slate-600 focus:outline-hidden focus:ring-2 focus:ring-rose-500/50 focus:border-rose-500 transition shadow-inner cursor-pointer"
+                    title="Pilih Bulan Evaluasi Presensi"
+                />
+            </div>
         </div>
 
         <!-- MAIN BODY -->
@@ -247,7 +259,7 @@
 
 <script setup>
 import { computed } from 'vue';
-import { usePage } from '@inertiajs/vue3';
+import { usePage, router } from '@inertiajs/vue3';
 
 const props = defineProps({
     data: {
@@ -258,11 +270,30 @@ const props = defineProps({
             my_infraction_stat: null,
             all_infractions_count: 0
         })
+    },
+    worstMonth: {
+        type: String,
+        default: ''
     }
 });
 
 const page = usePage();
 const currentUser = computed(() => page.props.auth?.user || {});
+
+const currentMonthValue = computed(() => {
+    return props.worstMonth || props.data?.summary?.month || props.data?.selectedMonth || (new Date()).toISOString().slice(0, 7);
+});
+
+const onMonthChange = (val) => {
+    if (!val) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('worst_month', val);
+    router.get(url.pathname + url.search, {}, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    });
+};
 
 const myStat = computed(() => props.data?.my_infraction_stat || null);
 
