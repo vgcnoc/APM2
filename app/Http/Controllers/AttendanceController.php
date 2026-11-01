@@ -241,6 +241,33 @@ class AttendanceController extends Controller
             'shift_name' => $shiftToday?->name,
         ];
 
+        // Jendela Waktu Buka Absen Pulang (Batas Jam Pulang Lebih Awal / Early Clock-out Restriction)
+        $clockOutEarlyRestrictionEnabled = Setting::get('attendance_clock_out_early_restriction_enabled', '1') === '1';
+        $clockOutEarlyToleranceMinutes = (int) Setting::get('attendance_clock_out_early_tolerance_minutes', 0);
+        $activeShiftForOut = $todayAttendance?->shift ?: ($shiftToday ?: $currentEmployee?->shift);
+        $activeDateForOut = $todayAttendance ? (is_string($todayAttendance->date) ? substr($todayAttendance->date, 0, 10) : $todayAttendance->date->format('Y-m-d')) : $today;
+
+        $clockOutWindow = AttendanceCalculatorService::isClockOutWindowOpen(
+            $activeDateForOut,
+            $activeShiftForOut,
+            $now,
+            $clockOutEarlyToleranceMinutes,
+            $clockOutEarlyRestrictionEnabled
+        );
+
+        $clockOutWindowInfo = [
+            'enabled' => $clockOutEarlyRestrictionEnabled,
+            'early_tolerance_minutes' => $clockOutEarlyToleranceMinutes,
+            'is_restricted' => $clockOutWindow['is_restricted'] && !$canBypassEarlyLimit,
+            'is_open' => $clockOutWindow['is_open'] || $canBypassEarlyLimit,
+            'earliest_time' => $clockOutWindow['earliest_time'] ? $clockOutWindow['earliest_time']->format('H:i') : null,
+            'earliest_full_label' => $clockOutWindow['earliest_time'] ? $clockOutWindow['earliest_time']->format('H:i') . ' WIB' : null,
+            'minutes_until_open' => $clockOutWindow['minutes_until_open'],
+            'shift_start' => $clockOutWindow['shift_start'] ? $clockOutWindow['shift_start']->format('H:i') : null,
+            'shift_end' => $clockOutWindow['shift_end'] ? $clockOutWindow['shift_end']->format('H:i') : null,
+            'shift_name' => $activeShiftForOut?->name,
+        ];
+
         // 5. Jadwal Shift Minggu Ini (Senin s/d Minggu)
         $startOfWeek = $now->copy()->startOfWeek(Carbon::MONDAY);
         $weeklySchedules = [];
@@ -440,6 +467,7 @@ class AttendanceController extends Controller
             'canBypassAreaLock' => $user && ($user->hasRole('admin') || $user->hasRole('super admin') || $user->can('attendance_bypass_area_restriction')),
             'checkoutDeadlineInfo' => $checkoutDeadlineInfo,
             'clockInWindowInfo' => $clockInWindowInfo,
+            'clockOutWindowInfo' => $clockOutWindowInfo,
             'settings' => [
                 'early_limit_enabled' => $clockInEarlyLimitEnabled,
                 'early_limit_minutes' => $clockInEarlyLimitMinutes,
@@ -897,6 +925,47 @@ class AttendanceController extends Controller
                     $remStr = $remHours > 0 ? "{$remHours} jam {$remMins} menit" : "{$remMins} menit";
                     return back()->with('error', "Anda baru masuk pada pukul {$attendance->clock_in}. Durasi kerja minimal sebelum diizinkan absen pulang adalah {$minWorkHours} jam (kurang {$remStr} lagi).");
                 }
+            }
+        }
+
+        // ==============================================================
+        // VALIDASI PEMBATASAN JAM ABSEN PULANG LEBIH AWAL (EARLY CLOCK-OUT)
+        // ==============================================================
+        $clockOutEarlyRestrictionEnabled = Setting::get('attendance_clock_out_early_restriction_enabled', '1') === '1';
+        $clockOutEarlyToleranceMinutes = (int) Setting::get('attendance_clock_out_early_tolerance_minutes', 0);
+        $user = auth()->user();
+        $canBypassEarlyLimit = $user && ($user->hasRole('admin') || $user->hasRole('super admin') || $user->can('attendance_bypass_early_restriction') || $user->can('attendances_manage'));
+
+        if ($clockOutEarlyRestrictionEnabled && $shift && !empty($shift->end_time) && $attendance->attendance_type !== 'dinas_luar' && !$canBypassEarlyLimit) {
+            $clockOutWindow = AttendanceCalculatorService::isClockOutWindowOpen(
+                $attDateStr,
+                $shift,
+                $now,
+                $clockOutEarlyToleranceMinutes,
+                $clockOutEarlyRestrictionEnabled
+            );
+
+            if (!$clockOutWindow['is_open']) {
+                $openTimeStr = $clockOutWindow['earliest_time'] ? $clockOutWindow['earliest_time']->format('H:i') : '--:--';
+                $shiftEndStr = $clockOutWindow['shift_end'] ? $clockOutWindow['shift_end']->format('H:i') : substr($shift->end_time, 0, 5);
+                $shiftStartStr = $clockOutWindow['shift_start'] ? $clockOutWindow['shift_start']->format('H:i') : substr($shift->start_time, 0, 5);
+                $minutesLeft = $clockOutWindow['minutes_until_open'];
+
+                if ($minutesLeft >= 60) {
+                    $hours = intdiv($minutesLeft, 60);
+                    $remMinutes = $minutesLeft % 60;
+                    $diffText = $remMinutes > 0 ? "{$hours} jam {$remMinutes} menit" : "{$hours} jam";
+                } else {
+                    $diffText = "{$minutesLeft} menit";
+                }
+
+                $currentTimeStr = $now->format('H:i:s');
+                $msg = "Presensi Pulang Ditolak: Jam shift Anda ({$shift->name}: {$shiftStartStr} - {$shiftEndStr} WIB) belum selesai. Presensi pulang baru dapat diabsen mulai pukul {$openTimeStr} WIB. Jam saat ini {$currentTimeStr} WIB. Kamera ditolak sampai {$openTimeStr} WIB (tersisa {$diffText}).";
+
+                if ($request->wantsJson()) {
+                    return response()->json(['message' => $msg, 'error' => $msg], 422);
+                }
+                return back()->with('error', $msg);
             }
         }
 

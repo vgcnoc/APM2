@@ -210,6 +210,33 @@ class SpecialAttendanceController extends Controller
             ];
         }
 
+        // Jendela Waktu Buka Absen Pulang (Batas Jam Pulang Lebih Awal / Early Clock-Out Restriction)
+        $clockOutEarlyRestrictionEnabled = Setting::get('attendance_clock_out_early_restriction_enabled', '1') === '1';
+        $clockOutEarlyToleranceMinutes = (int) Setting::get('attendance_clock_out_early_tolerance_minutes', 0);
+        $clockOutWindowInfo = null;
+        if ($currentTeam && !empty($currentTeam->end_time)) {
+            $scheduledEnd = Carbon::parse($activeSpecialDate . ' ' . $currentTeam->end_time);
+            if ($currentTeam->start_time && $currentTeam->end_time && substr($currentTeam->end_time, 0, 5) < substr($currentTeam->start_time, 0, 5)) {
+                $scheduledEnd->addDay();
+            }
+            $earliestAllowedOut = $scheduledEnd->copy()->subMinutes(max(0, $clockOutEarlyToleranceMinutes));
+            $isOutOpen = !$clockOutEarlyRestrictionEnabled || $canBypassEarlyLimit || $now->greaterThanOrEqualTo($earliestAllowedOut);
+            $minutesUntilOutOpen = $now->lessThan($earliestAllowedOut) ? (int) ceil($now->diffInRealMinutes($earliestAllowedOut, false)) : 0;
+
+            $clockOutWindowInfo = [
+                'enabled' => $clockOutEarlyRestrictionEnabled,
+                'early_tolerance_minutes' => $clockOutEarlyToleranceMinutes,
+                'is_restricted' => $clockOutEarlyRestrictionEnabled && !$isOutOpen && !$canBypassEarlyLimit,
+                'is_open' => $isOutOpen,
+                'earliest_time' => $earliestAllowedOut->format('H:i'),
+                'earliest_full_label' => $earliestAllowedOut->format('H:i') . ' WIB',
+                'minutes_until_open' => max(0, $minutesUntilOutOpen),
+                'shift_start' => substr($currentTeam->start_time, 0, 5),
+                'shift_end' => substr($currentTeam->end_time, 0, 5),
+                'team_name' => $currentTeam->name,
+            ];
+        }
+
         // 4. Semua Absensi Hari Ini untuk Tim Aktif (Kolom Kanan)
         $todayAttendancesQuery = SpecialAttendance::with('employee')
             ->where('special_team_id', $currentTeam->id)
@@ -517,6 +544,7 @@ class SpecialAttendanceController extends Controller
             'isCurrentEmployeeMember' => $isCurrentEmployeeMember,
             'checkoutDeadlineLabel' => $checkoutDeadlineLabel,
             'clockInWindowInfo' => $clockInWindowInfo,
+            'clockOutWindowInfo' => $clockOutWindowInfo,
             'filters' => $request->only(['team_id', 'start_date', 'end_date', 'filter_employee_id', 'filter_status', 'month', 'history_team_id']),
         ]);
     }
@@ -683,6 +711,36 @@ class SpecialAttendanceController extends Controller
         $earlyMinutes = 0;
         if ($now->lessThan($scheduledEndTime)) {
             $earlyMinutes = (int) round($now->diffInMinutes($scheduledEndTime));
+        }
+
+        // Validasi Pembatasan Jam Absen Pulang Lebih Awal (Kamera & Server Menolak Jika Jam Belum Selesai)
+        $clockOutEarlyRestrictionEnabled = Setting::get('attendance_clock_out_early_restriction_enabled', '1') === '1';
+        $clockOutEarlyToleranceMinutes = (int) Setting::get('attendance_clock_out_early_tolerance_minutes', 0);
+        $user = $request->user();
+        $canBypassEarlyLimit = $user && ($user->hasRole('admin') || $user->hasRole('super admin') || $user->can('attendance_bypass_early_restriction') || $user->can('attendances_manage'));
+
+        if ($clockOutEarlyRestrictionEnabled && !$canBypassEarlyLimit && !empty($team->end_time)) {
+            $earliestAllowedOut = $scheduledEndTime->copy()->subMinutes(max(0, $clockOutEarlyToleranceMinutes));
+            if ($now->lessThan($earliestAllowedOut)) {
+                $openTimeStr = $earliestAllowedOut->format('H:i');
+                $minutesLeft = (int) ceil($now->diffInRealMinutes($earliestAllowedOut, false));
+                if ($minutesLeft >= 60) {
+                    $hours = intdiv($minutesLeft, 60);
+                    $remMinutes = $minutesLeft % 60;
+                    $diffText = $remMinutes > 0 ? "{$hours} jam {$remMinutes} menit" : "{$hours} jam";
+                } else {
+                    $diffText = "{$minutesLeft} menit";
+                }
+                $currentTimeStr = $now->format('H:i:s');
+                $shiftEndStr = substr($team->end_time, 0, 5);
+                $shiftStartStr = substr($team->start_time, 0, 5);
+                $msg = "Presensi Pulang Ditolak: Jam operasional Tim ({$team->name}: {$shiftStartStr} - {$shiftEndStr} WIB) belum selesai. Presensi pulang baru dapat diabsen mulai pukul {$openTimeStr} WIB. Jam saat ini {$currentTimeStr} WIB. Kamera ditolak sampai {$openTimeStr} WIB (tersisa {$diffText}).";
+
+                if ($request->wantsJson()) {
+                    return response()->json(['message' => $msg, 'error' => $msg], 422);
+                }
+                return back()->with('error', $msg);
+            }
         }
 
         // Simpan Foto Selfie Pulang

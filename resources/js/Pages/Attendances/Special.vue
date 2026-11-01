@@ -310,14 +310,38 @@
                                     <span>{{ isEarlyClockInRestricted ? `Kamera Ditolak (Buka ${clockInWindowInfo?.earliest_full_label})` : 'Absen Masuk' }}</span>
                                 </button>
 
+                                <div
+                                    v-if="todayAttendance?.clock_in && !todayAttendance?.clock_out && isEarlyClockOutRestricted"
+                                    class="p-3.5 rounded-xl bg-amber-50/90 border border-amber-300 text-amber-950 flex items-start gap-2.5 shadow-2xs mb-2 text-left"
+                                >
+                                    <span class="text-base">⏳</span>
+                                    <div class="min-w-0 flex-1 leading-snug">
+                                        <div class="font-bold flex items-center gap-1.5">
+                                            <span>Presensi Pulang Belum Dibuka</span>
+                                            <span class="px-2 py-0.5 rounded-md bg-amber-200/90 text-[10px] text-amber-900 font-extrabold font-mono">
+                                                Buka {{ clockOutWindowInfo?.earliest_full_label }}
+                                            </span>
+                                        </div>
+                                        <p class="text-[11px] text-amber-800 leading-relaxed mt-0.5">
+                                            Kamera menolak absensi sebelum jam shift selesai ({{ clockOutWindowInfo?.shift_end }} WIB).
+                                            Tersisa <strong>{{ formatEarlyLimitCountdown(clockOutWindowInfo?.minutes_until_open) }}</strong>.
+                                        </p>
+                                    </div>
+                                </div>
+
                                 <button
                                     v-else-if="todayAttendance?.clock_in && !todayAttendance?.clock_out"
                                     type="button"
                                     @click="triggerAttendanceAction('out')"
-                                    class="w-full py-3 bg-[#0f766e] hover:bg-[#115e59] text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center justify-center gap-2 active:scale-98"
+                                    :disabled="isEarlyClockOutRestricted"
+                                    :class="[
+                                        isEarlyClockOutRestricted ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none' : 'bg-[#0f766e] hover:bg-[#115e59] text-white shadow-sm active:scale-98',
+                                        'w-full py-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2'
+                                    ]"
                                 >
-                                    <span>[←</span>
-                                    <span>Absen Pulang</span>
+                                    <span v-if="isEarlyClockOutRestricted">🔒</span>
+                                    <span v-else>[←</span>
+                                    <span>{{ isEarlyClockOutRestricted ? `Kamera Ditolak (Buka ${clockOutWindowInfo?.earliest_full_label})` : 'Absen Pulang' }}</span>
                                 </button>
 
                                 <div
@@ -1022,7 +1046,7 @@
 
                     <!-- Video / Snapshot Preview Area -->
                     <div class="relative rounded-2xl overflow-hidden bg-slate-900 aspect-4/3 flex items-center justify-center border border-slate-800">
-                        <!-- Overlay Kamera Ditolak Jika Belum Jam Yang Ditentukan -->
+                        <!-- Overlay Kamera Masuk Ditolak Jika Belum Jam Yang Ditentukan -->
                         <div
                             v-if="actionType === 'in' && isEarlyClockInRestricted"
                             class="absolute inset-0 z-30 bg-slate-950/95 flex flex-col items-center justify-center p-6 text-center space-y-3"
@@ -1036,6 +1060,23 @@
                             </p>
                             <div class="px-3.5 py-1.5 rounded-xl bg-amber-900/60 border border-amber-600/40 text-xs text-amber-200 font-mono font-bold">
                                 ⏳ Sisa Waktu Buka: {{ formatEarlyLimitCountdown(clockInWindowInfo?.minutes_until_open) }}
+                            </div>
+                        </div>
+
+                        <!-- Overlay Kamera Pulang Ditolak Jika Belum Waktunya -->
+                        <div
+                            v-else-if="actionType === 'out' && isEarlyClockOutRestricted"
+                            class="absolute inset-0 z-30 bg-slate-950/95 flex flex-col items-center justify-center p-6 text-center space-y-3"
+                        >
+                            <div class="w-16 h-16 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center text-3xl border border-rose-500/30">
+                                ⛔
+                            </div>
+                            <div class="text-base font-bold text-rose-400">Kamera Pulang Ditolak</div>
+                            <p class="text-xs text-slate-300 max-w-xs leading-relaxed">
+                                Absen pulang belum dibuka. Jam operasional <strong>{{ currentTeam?.name }}</strong> belum selesai (selesai pukul {{ clockOutWindowInfo?.shift_end }} WIB). Presensi pulang baru dapat dilakukan mulai pukul <strong class="text-rose-300 font-mono">{{ clockOutWindowInfo?.earliest_full_label }}</strong>.
+                            </p>
+                            <div class="px-3.5 py-1.5 rounded-xl bg-rose-950/80 border border-rose-600/40 text-xs text-rose-200 font-mono font-bold">
+                                ⏳ Sisa Waktu Buka: {{ formatEarlyLimitCountdown(clockOutWindowInfo?.minutes_until_open) }}
                             </div>
                         </div>
 
@@ -1133,13 +1174,13 @@
                                 v-if="!capturedPhoto && !cameraError"
                                 type="button"
                                 @click="takeSnapshot"
-                                :disabled="actionType === 'in' && isEarlyClockInRestricted"
+                                :disabled="(actionType === 'in' && isEarlyClockInRestricted) || (actionType === 'out' && isEarlyClockOutRestricted)"
                                 :class="[
-                                    actionType === 'in' && isEarlyClockInRestricted ? 'bg-slate-400 hover:bg-slate-400 opacity-60 cursor-not-allowed shadow-none' : 'bg-blue-600 hover:bg-blue-700 shadow-sm',
+                                    (actionType === 'in' && isEarlyClockInRestricted) || (actionType === 'out' && isEarlyClockOutRestricted) ? 'bg-slate-400 hover:bg-slate-400 opacity-60 cursor-not-allowed shadow-none' : 'bg-blue-600 hover:bg-blue-700 shadow-sm',
                                     'px-5 py-2.5 text-white rounded-xl text-xs font-bold transition flex items-center gap-2'
                                 ]"
                             >
-                                <span v-if="actionType === 'in' && isEarlyClockInRestricted">🔒 Kamera Ditolak</span>
+                                <span v-if="(actionType === 'in' && isEarlyClockInRestricted) || (actionType === 'out' && isEarlyClockOutRestricted)">🔒 Kamera Ditolak</span>
                                 <span v-else>📸 Ambil Foto Selfie</span>
                             </button>
 
@@ -1611,6 +1652,7 @@ const props = defineProps({
     isCurrentEmployeeMember: Boolean,
     checkoutDeadlineLabel: String,
     clockInWindowInfo: Object,
+    clockOutWindowInfo: Object,
     filters: Object,
 });
 
@@ -1620,6 +1662,16 @@ const isEarlyClockInRestricted = computed(() => {
         props.clockInWindowInfo?.enabled &&
         props.clockInWindowInfo?.is_restricted &&
         !props.todayAttendance?.clock_in
+    );
+});
+
+// Early clock-out restriction
+const isEarlyClockOutRestricted = computed(() => {
+    return Boolean(
+        props.clockOutWindowInfo?.enabled &&
+        props.clockOutWindowInfo?.is_restricted &&
+        props.todayAttendance?.clock_in &&
+        !props.todayAttendance?.clock_out
     );
 });
 
@@ -1842,6 +1894,33 @@ const triggerAttendanceAction = (type) => {
         });
         return;
     }
+    if (type === 'out' && isEarlyClockOutRestricted.value) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Kamera Pulang Ditolak',
+            html: `
+                <div class="text-left text-xs space-y-2.5">
+                    <p class="text-slate-700">Presensi Pulang belum dibuka untuk <strong>${props.currentTeam?.name || 'Tim'}</strong>.</p>
+                    <div class="p-3 bg-rose-50 rounded-xl border border-rose-200 text-rose-900 space-y-1">
+                        <div class="flex justify-between font-bold">
+                            <span>Jam Buka Presensi Pulang:</span>
+                            <span class="font-mono text-blue-700">${props.clockOutWindowInfo?.earliest_full_label || '--:--'}</span>
+                        </div>
+                        <div class="flex justify-between text-slate-500 text-[11px]">
+                            <span>Jam Shift Selesai:</span>
+                            <span class="font-mono">${props.clockOutWindowInfo?.shift_end || '--:--'} WIB</span>
+                        </div>
+                    </div>
+                    <p class="text-[11px] text-rose-800 text-center pt-1 font-semibold">
+                        ⏳ Kamera ditolak. Silakan kembali dalam <strong>${formatEarlyLimitCountdown(props.clockOutWindowInfo?.minutes_until_open)}</strong>.
+                    </p>
+                </div>
+            `,
+            confirmButtonText: 'Mengerti',
+            confirmButtonColor: '#1e3a8a',
+        });
+        return;
+    }
     actionType.value = type;
     attendanceForm.special_team_id = props.currentTeam?.id;
     attendanceForm.employee_id = props.currentEmployee?.id;
@@ -1894,6 +1973,15 @@ const takeSnapshot = () => {
         });
         return;
     }
+    if (actionType.value === 'out' && isEarlyClockOutRestricted.value) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Kamera Pulang Ditolak',
+            text: `Absen pulang belum dibuka. Jam operasional ${props.currentTeam?.name || 'Tim'} (${props.clockOutWindowInfo?.shift_end || '--:--'} WIB) belum selesai. Presensi pulang baru dibuka pukul ${props.clockOutWindowInfo?.earliest_full_label || '--:--'}.`,
+            confirmButtonColor: '#1e3a8a',
+        });
+        return;
+    }
     if (!videoRef.value || !canvasRef.value) return;
 
     const video = videoRef.value;
@@ -1928,6 +2016,16 @@ const handleFileUpload = (event) => {
             icon: 'warning',
             title: 'Kamera Masuk Ditolak',
             text: `Absen masuk belum dibuka. Jam kerja ${props.currentTeam?.name || 'Tim'} (${props.clockInWindowInfo?.shift_start || '--:--'} WIB) baru dapat diabsen mulai pukul ${props.clockInWindowInfo?.earliest_full_label || '--:--'}.`,
+            confirmButtonColor: '#1e3a8a',
+        });
+        if (event.target) event.target.value = '';
+        return;
+    }
+    if (actionType.value === 'out' && isEarlyClockOutRestricted.value) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Kamera Pulang Ditolak',
+            text: `Absen pulang belum dibuka. Jam kerja ${props.currentTeam?.name || 'Tim'} (${props.clockOutWindowInfo?.shift_end || '--:--'} WIB) belum selesai. Presensi pulang baru dibuka pukul ${props.clockOutWindowInfo?.earliest_full_label || '--:--'}.`,
             confirmButtonColor: '#1e3a8a',
         });
         if (event.target) event.target.value = '';
@@ -2021,6 +2119,15 @@ const submitAttendance = () => {
             icon: 'warning',
             title: 'Kamera Masuk Ditolak',
             text: `Absen masuk belum dibuka. Jam kerja ${props.currentTeam?.name || 'Tim'} (${props.clockInWindowInfo?.shift_start || '--:--'} WIB) baru dapat diabsen mulai pukul ${props.clockInWindowInfo?.earliest_full_label || '--:--'}.`,
+            confirmButtonColor: '#1e3a8a',
+        });
+        return;
+    }
+    if (actionType.value === 'out' && isEarlyClockOutRestricted.value) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Kamera Pulang Ditolak',
+            text: `Absen pulang belum dibuka. Jam kerja ${props.currentTeam?.name || 'Tim'} (${props.clockOutWindowInfo?.shift_end || '--:--'} WIB) belum selesai. Presensi pulang baru dibuka pukul ${props.clockOutWindowInfo?.earliest_full_label || '--:--'}.`,
             confirmButtonColor: '#1e3a8a',
         });
         return;

@@ -244,6 +244,8 @@ class SettingController extends Controller
                 // Aturan Presensi Reguler (Staf & Karyawan Shift / WFO)
                 'attendance_clock_in_early_limit_enabled' => Setting::get('attendance_clock_in_early_limit_enabled', '1') === '1',
                 'attendance_clock_in_early_limit_minutes' => (int) Setting::get('attendance_clock_in_early_limit_minutes', 60),
+                'attendance_clock_out_early_restriction_enabled' => Setting::get('attendance_clock_out_early_restriction_enabled', '1') === '1',
+                'attendance_clock_out_early_tolerance_minutes' => (int) Setting::get('attendance_clock_out_early_tolerance_minutes', 0),
                 'attendance_regular_require_photo' => Setting::get('attendance_regular_require_photo', '1') === '1',
                 'attendance_regular_require_gps' => Setting::get('attendance_regular_require_gps', '1') === '1',
                 'attendance_regular_strict_radius' => Setting::get('attendance_regular_strict_radius', '1') === '1',
@@ -343,6 +345,8 @@ class SettingController extends Controller
             'attendance_regular_require_photo' => 'nullable|boolean',
             'attendance_clock_in_early_limit_enabled' => 'nullable|boolean',
             'attendance_clock_in_early_limit_minutes' => 'nullable|integer|min:1|max:300',
+            'attendance_clock_out_early_restriction_enabled' => 'nullable|boolean',
+            'attendance_clock_out_early_tolerance_minutes' => 'nullable|integer|min:0|max:180',
             'attendance_regular_require_gps' => 'nullable|boolean',
             'attendance_regular_strict_radius' => 'nullable|boolean',
             'attendance_regular_default_radius' => 'nullable|integer|min:10|max:5000',
@@ -446,6 +450,10 @@ class SettingController extends Controller
         Setting::set('attendance_clock_in_early_limit_enabled', $request->boolean('attendance_clock_in_early_limit_enabled') ? '1' : '0');
         if ($request->has('attendance_clock_in_early_limit_minutes')) {
             Setting::set('attendance_clock_in_early_limit_minutes', max(1, (int) $request->attendance_clock_in_early_limit_minutes));
+        }
+        Setting::set('attendance_clock_out_early_restriction_enabled', $request->boolean('attendance_clock_out_early_restriction_enabled') ? '1' : '0');
+        if ($request->has('attendance_clock_out_early_tolerance_minutes')) {
+            Setting::set('attendance_clock_out_early_tolerance_minutes', max(0, (int) $request->attendance_clock_out_early_tolerance_minutes));
         }
         Setting::set('attendance_regular_require_gps', $request->boolean('attendance_regular_require_gps') ? '1' : '0');
         Setting::set('attendance_regular_strict_radius', $request->boolean('attendance_regular_strict_radius') ? '1' : '0');

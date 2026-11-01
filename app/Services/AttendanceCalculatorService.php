@@ -281,6 +281,85 @@ class AttendanceCalculatorService
     }
 
     /**
+     * Evaluasi apakah jendela waktu absen pulang (clock-out) sudah dibuka.
+     * Karyawan tidak boleh melakukan absen pulang mendahului jam selesai shift jika proteksi diaktifkan.
+     */
+    public static function isClockOutWindowOpen(
+        string $dateStr,
+        ?Shift $shift,
+        ?Carbon $now = null,
+        ?int $earlyToleranceMinutes = null,
+        ?bool $limitEnabled = null,
+        string $tz = 'Asia/Jakarta'
+    ): array {
+        $now = $now ? $now->copy()->setTimezone($tz) : Carbon::now($tz);
+
+        if ($limitEnabled === null) {
+            $limitEnabled = Setting::get('attendance_clock_out_early_restriction_enabled', '1') === '1';
+        }
+
+        if ($earlyToleranceMinutes === null) {
+            $earlyToleranceMinutes = (int) Setting::get('attendance_clock_out_early_tolerance_minutes', 0);
+        }
+
+        if (!$limitEnabled || !$shift || empty($shift->end_time)) {
+            return [
+                'is_restricted' => false,
+                'is_open' => true,
+                'shift_start' => null,
+                'shift_end' => null,
+                'earliest_time' => null,
+                'minutes_until_open' => 0,
+                'early_tolerance_minutes' => $earlyToleranceMinutes,
+                'limit_enabled' => $limitEnabled,
+            ];
+        }
+
+        $window = self::resolveShiftWindow($dateStr, $shift, $tz);
+        if (!$window || empty($window['end'])) {
+            return [
+                'is_restricted' => false,
+                'is_open' => true,
+                'shift_start' => null,
+                'shift_end' => null,
+                'earliest_time' => null,
+                'minutes_until_open' => 0,
+                'early_tolerance_minutes' => $earlyToleranceMinutes,
+                'limit_enabled' => $limitEnabled,
+            ];
+        }
+
+        $shiftEnd = $window['end'];
+        $earliestTime = $shiftEnd->copy()->subMinutes(max(0, $earlyToleranceMinutes));
+
+        // Jika waktu sekarang masih sebelum waktu paling awal absen pulang dibuka
+        if ($now->lessThan($earliestTime)) {
+            $diffMinutes = (int) ceil($now->diffInRealMinutes($earliestTime, false));
+            return [
+                'is_restricted' => true,
+                'is_open' => false,
+                'shift_start' => $window['start'],
+                'shift_end' => $shiftEnd,
+                'earliest_time' => $earliestTime,
+                'minutes_until_open' => max(1, $diffMinutes),
+                'early_tolerance_minutes' => $earlyToleranceMinutes,
+                'limit_enabled' => true,
+            ];
+        }
+
+        return [
+            'is_restricted' => true,
+            'is_open' => true,
+            'shift_start' => $window['start'],
+            'shift_end' => $shiftEnd,
+            'earliest_time' => $earliestTime,
+            'minutes_until_open' => 0,
+            'early_tolerance_minutes' => $earlyToleranceMinutes,
+            'limit_enabled' => true,
+        ];
+    }
+
+    /**
      * Resolusi timestamp lengkap jam masuk (clock_in), termasuk bila karyawan shift malam absen masuk lewat pukul 00:00
      */
     public static function resolveClockInDateTime(Attendance $att, ?Shift $shift = null, string $tz = 'Asia/Jakarta'): ?Carbon
