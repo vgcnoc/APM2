@@ -150,7 +150,21 @@ class VoucherController extends Controller
             }
         }
         
-        $customers = $customerQuery->latest()->paginate(15, ['*'], 'customers_page')->withQueryString();
+        // Urutkan berdasarkan input/perubahan fasilitas hotspot pada ONT, bukan
+        // tanggal pelanggan dibuat. Dengan begitu aktivasi yang baru diinput selalu
+        // tampil paling atas pada tab Hotspot Gratis Pelanggan ONT.
+        $latestHotspotInput = \App\Models\Ont::query()
+            ->selectRaw('COALESCE(onts.updated_at, onts.created_at)')
+            ->whereColumn('onts.customer_id', 'customers.id')
+            ->where('onts.free_hotspot', true)
+            ->orderByDesc('onts.updated_at')
+            ->limit(1);
+
+        $customers = $customerQuery
+            ->orderByDesc($latestHotspotInput)
+            ->orderByDesc('customers.id')
+            ->paginate(15, ['*'], 'customers_page')
+            ->withQueryString();
 
         // 3. Statistik Voucher Gratis (Hasil Generate)
         $statsBase = Voucher::query()
