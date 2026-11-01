@@ -758,10 +758,18 @@ class CustomerController extends Controller
         // Ambil ID semua pelanggan berbayar untuk kalkulasi agregat invoice
         $customerIds = (clone $baseQuery)->pluck('id')->toArray();
 
-        // Ambil invoice untuk periode terpilih
+        // Ambil invoice untuk periode terpilih (termasuk prorata pascabayar yang terbit pada siklus bulan ini)
         $periodInvoices = \App\Models\Invoice::whereIn('customer_id', $customerIds)
-            ->where('period_month', $selectedMonth)
-            ->where('period_year', $selectedYear)
+            ->where(function($q) use ($selectedMonth, $selectedYear) {
+                $q->where(function($sub) use ($selectedMonth, $selectedYear) {
+                    $sub->where('period_month', $selectedMonth)
+                        ->where('period_year', $selectedYear);
+                })->orWhere(function($sub) use ($selectedMonth, $selectedYear) {
+                    $sub->where('is_prorata', true)
+                        ->whereYear('issued_date', $selectedYear)
+                        ->whereMonth('issued_date', $selectedMonth);
+                });
+            })
             ->where('is_reseller_balance', false)
             ->where('invoice_number', 'not like', 'INV-MIG-%')
             ->where('status', '!=', 'cancelled')
@@ -780,6 +788,11 @@ class CustomerController extends Controller
                       $subQ->where('period_year', $selectedYear)
                            ->where('period_month', '<', $selectedMonth);
                   });
+            })
+            ->where(function($q) use ($selectedMonth, $selectedYear) {
+                // Kecualikan jika invoice prorata tersebut baru terbit pada siklus periode terpilih ini
+                $q->whereNull('issued_date')
+                  ->orWhereDate('issued_date', '<', \Carbon\Carbon::createFromDate($selectedYear, $selectedMonth, 1)->toDateString());
             })
             ->get()
             ->groupBy('customer_id');
@@ -873,19 +886,30 @@ class CustomerController extends Controller
         // Filter Status Pembayaran
         if ($request->filled('payment_status')) {
             $pStatus = $request->payment_status;
+            $periodInvoiceScope = function($iq) use ($selectedMonth, $selectedYear) {
+                $iq->where(function($sub) use ($selectedMonth, $selectedYear) {
+                    $sub->where(function($mQ) use ($selectedMonth, $selectedYear) {
+                        $mQ->where('period_month', $selectedMonth)
+                           ->where('period_year', $selectedYear);
+                    })->orWhere(function($prQ) use ($selectedMonth, $selectedYear) {
+                        $prQ->where('is_prorata', true)
+                            ->whereYear('issued_date', $selectedYear)
+                            ->whereMonth('issued_date', $selectedMonth);
+                    });
+                });
+            };
+
             if ($pStatus === 'paid') {
-                $query->whereHas('invoices', function($iq) use ($selectedMonth, $selectedYear) {
-                    $iq->where('period_month', $selectedMonth)
-                       ->where('period_year', $selectedYear)
-                       ->where('status', 'paid')
+                $query->whereHas('invoices', function($iq) use ($periodInvoiceScope) {
+                    $periodInvoiceScope($iq);
+                    $iq->where('status', 'paid')
                        ->where('invoice_number', 'not like', 'INV-MIG-%')
                        ->where('is_reseller_balance', false);
                 });
             } elseif ($pStatus === 'unpaid') {
-                $query->whereHas('invoices', function($iq) use ($selectedMonth, $selectedYear, $today) {
-                    $iq->where('period_month', $selectedMonth)
-                       ->where('period_year', $selectedYear)
-                       ->where('status', 'unpaid')
+                $query->whereHas('invoices', function($iq) use ($periodInvoiceScope, $today) {
+                    $periodInvoiceScope($iq);
+                    $iq->where('status', 'unpaid')
                        ->where('invoice_number', 'not like', 'INV-MIG-%')
                        ->where(function($sq) use ($today) {
                            $sq->whereNull('due_date')->orWhere('due_date', '>=', $today);
@@ -893,11 +917,10 @@ class CustomerController extends Controller
                        ->where('is_reseller_balance', false);
                 });
             } elseif ($pStatus === 'overdue') {
-                $query->where(function($qOverdue) use ($selectedMonth, $selectedYear, $today) {
-                    $qOverdue->whereHas('invoices', function($iq) use ($selectedMonth, $selectedYear, $today) {
-                        $iq->where('period_month', $selectedMonth)
-                           ->where('period_year', $selectedYear)
-                           ->whereIn('status', ['unpaid', 'partial'])
+                $query->where(function($qOverdue) use ($periodInvoiceScope, $selectedMonth, $selectedYear, $today) {
+                    $qOverdue->whereHas('invoices', function($iq) use ($periodInvoiceScope, $today) {
+                        $periodInvoiceScope($iq);
+                        $iq->whereIn('status', ['unpaid', 'partial'])
                            ->where('invoice_number', 'not like', 'INV-MIG-%')
                            ->whereNotNull('due_date')
                            ->where('due_date', '<', $today)
@@ -912,24 +935,26 @@ class CustomerController extends Controller
                                             $mQ->where('period_year', $selectedYear)
                                                ->where('period_month', '<', $selectedMonth);
                                         });
+                               })
+                               ->where(function($q) use ($selectedMonth, $selectedYear) {
+                                   $q->whereNull('issued_date')
+                                     ->orWhereDate('issued_date', '<', \Carbon\Carbon::createFromDate($selectedYear, $selectedMonth, 1)->toDateString());
                                });
                     });
                 });
             } elseif ($pStatus === 'isolir') {
                 $query->where('status', 'suspended');
             } elseif ($pStatus === 'partial') {
-                $query->whereHas('invoices', function($iq) use ($selectedMonth, $selectedYear) {
-                    $iq->where('period_month', $selectedMonth)
-                       ->where('period_year', $selectedYear)
-                       ->where('status', 'partial')
+                $query->whereHas('invoices', function($iq) use ($periodInvoiceScope) {
+                    $periodInvoiceScope($iq);
+                    $iq->where('status', 'partial')
                        ->where('invoice_number', 'not like', 'INV-MIG-%')
                        ->where('is_reseller_balance', false);
                 });
             } elseif ($pStatus === 'no_invoice') {
-                $query->whereDoesntHave('invoices', function($iq) use ($selectedMonth, $selectedYear) {
-                    $iq->where('period_month', $selectedMonth)
-                       ->where('period_year', $selectedYear)
-                       ->where('invoice_number', 'not like', 'INV-MIG-%')
+                $query->whereDoesntHave('invoices', function($iq) use ($periodInvoiceScope) {
+                    $periodInvoiceScope($iq);
+                    $iq->where('invoice_number', 'not like', 'INV-MIG-%')
                        ->where('status', '!=', 'cancelled')
                        ->where('is_reseller_balance', false);
                 });
