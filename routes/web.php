@@ -506,6 +506,10 @@ Route::middleware(['auth'])->group(function () {
     // ── Reseller Reports (Laporan Keuangan Reseller) ─────────────
     Route::middleware(['permission:menu_reseller_reports'])->group(function () {
         Route::get('/reseller-reports', [\App\Http\Controllers\ResellerReportController::class, 'index'])->name('reseller-reports.index');
+    });
+
+    // ── Catat & Hapus Pengeluaran (Buku Kas & Laporan Keuangan) ──
+    Route::middleware(['permission:menu_financial_reports|menu_reseller_reports'])->group(function () {
         Route::post('/expenses', [\App\Http\Controllers\ExpenseController::class, 'store'])->name('expenses.store');
         Route::delete('/expenses/{expense}', [\App\Http\Controllers\ExpenseController::class, 'destroy'])->name('expenses.destroy');
     });
@@ -714,13 +718,15 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/settings', [\App\Http\Controllers\WhatsAppBlastController::class, 'updateSettings'])->name('settings.update');
     });
 
-    // ── Master Area & Pengeluaran ──────────────────────────────
+    // ── Master Area ──────────────────────────────
     Route::middleware(['permission:menu_settings_areas'])->group(function () {
         Route::resource('settings/areas', \App\Http\Controllers\AreaController::class);
         Route::post('settings/areas/{area}/update', [\App\Http\Controllers\AreaController::class, 'update'])->name('areas.update.post');
         Route::post('settings/areas/{area}/delete', [\App\Http\Controllers\AreaController::class, 'destroy'])->name('areas.destroy.post');
+    });
 
-        // Master Kategori Pengeluaran
+    // ── Master Kategori Pengeluaran ──────────────────────────────
+    Route::middleware(['permission:menu_settings_areas|menu_financial_reports|menu_reseller_reports'])->group(function () {
         Route::resource('settings/expense-categories', \App\Http\Controllers\ExpenseCategoryController::class);
         Route::post('settings/expense-categories/{expenseCategory}/update', [\App\Http\Controllers\ExpenseCategoryController::class, 'update'])->name('expense-categories.update.post');
         Route::post('settings/expense-categories/{expenseCategory}/delete', [\App\Http\Controllers\ExpenseCategoryController::class, 'destroy'])->name('expense-categories.destroy.post');

@@ -195,8 +195,9 @@
                         <div class="px-5 sm:px-6 py-4 sm:py-5 overflow-y-auto flex-1">
                             <form @submit.prevent="submitExpense" class="space-y-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700">Tanggal Pengeluaran</label>
+                                    <label class="block text-sm font-medium text-gray-700">Tanggal Pengeluaran <span class="text-rose-500">*</span></label>
                                     <input type="date" v-model="expenseForm.expense_date" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-rose-500 focus:border-rose-500 text-sm" required>
+                                    <p v-if="expenseForm.errors.expense_date" class="text-xs text-rose-500 mt-1 font-medium">{{ expenseForm.errors.expense_date }}</p>
                                 </div>
                                 <div>
                                     <div class="flex items-center justify-between flex-wrap gap-1">
@@ -211,22 +212,32 @@
                                             {{ cat.code ? '[' + cat.code + '] ' : '' }}{{ cat.name }}
                                         </option>
                                     </select>
+                                    <p v-if="expenseForm.errors.expense_category_id" class="text-xs text-rose-500 mt-1 font-medium">{{ expenseForm.errors.expense_category_id }}</p>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700">Nominal (Rp)</label>
-                                    <input type="number" v-model="expenseForm.amount" min="1" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-rose-500 focus:border-rose-500 font-bold text-lg" placeholder="Contoh: 150000" required>
+                                    <label class="block text-sm font-medium text-gray-700">Nominal (Rp) <span class="text-rose-500">*</span></label>
+                                    <div class="relative mt-1">
+                                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-sm font-bold text-gray-400">Rp</span>
+                                        <input type="number" v-model="expenseForm.amount" min="1" step="1" class="pl-10 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-rose-500 focus:border-rose-500 font-bold text-lg" placeholder="Contoh: 150000" required>
+                                    </div>
+                                    <p v-if="expenseForm.errors.amount" class="text-xs text-rose-500 mt-1 font-medium">{{ expenseForm.errors.amount }}</p>
+                                    <p v-if="expenseForm.amount && !isNaN(expenseForm.amount) && Number(expenseForm.amount) > 0" class="text-xs text-emerald-600 font-semibold mt-1">
+                                        Terbaca: Rp {{ formatRupiah(expenseForm.amount) }}
+                                    </p>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700">Keterangan / Tujuan Pengeluaran</label>
-                                    <textarea v-model="expenseForm.description" rows="2" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-rose-500 focus:border-rose-500" placeholder="Contoh: Beli kabel LAN, bensin teknisi, dll" required></textarea>
+                                    <label class="block text-sm font-medium text-gray-700">Keterangan / Tujuan Pengeluaran <span class="text-rose-500">*</span></label>
+                                    <textarea v-model="expenseForm.description" rows="2" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-rose-500 focus:border-rose-500 text-sm" placeholder="Contoh: Beli kabel LAN, bensin teknisi, dll" required></textarea>
+                                    <p v-if="expenseForm.errors.description" class="text-xs text-rose-500 mt-1 font-medium">{{ expenseForm.errors.description }}</p>
                                 </div>
                                 
                                 <div class="pt-4 flex flex-wrap justify-end gap-2.5 sm:gap-3">
                                     <button type="button" @click="showExpenseModal = false" class="flex-1 sm:flex-initial bg-white py-2.5 px-5 border border-gray-300 rounded-xl shadow-sm text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all cursor-pointer">
                                         Batal
                                     </button>
-                                    <button type="submit" :disabled="expenseForm.processing" class="flex-1 sm:flex-initial inline-flex justify-center py-2.5 px-5 border border-transparent shadow-sm text-sm font-bold rounded-xl text-white bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 transition-all disabled:opacity-50 cursor-pointer">
-                                        {{ expenseForm.processing ? 'Menyimpan...' : 'Simpan Pengeluaran' }}
+                                    <button type="submit" :disabled="expenseForm.processing" class="flex-1 sm:flex-initial inline-flex justify-center items-center gap-1.5 py-2.5 px-5 border border-transparent shadow-sm text-sm font-bold rounded-xl text-white bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 transition-all disabled:opacity-50 cursor-pointer">
+                                        <svg v-if="expenseForm.processing" class="animate-spin -ml-1 mr-1 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                        <span>{{ expenseForm.processing ? 'Menyimpan...' : 'Simpan Pengeluaran' }}</span>
                                     </button>
                                 </div>
                             </form>
@@ -242,6 +253,7 @@
 import { ref } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     stats: Object,
@@ -255,13 +267,21 @@ const formatRupiah = (number) => {
     return new Intl.NumberFormat('id-ID').format(number);
 };
 
+const getTodayDate = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 const showExpenseModal = ref(false);
 
 const expenseForm = useForm({
     amount: '',
     expense_category_id: '',
     description: '',
-    expense_date: new Date().toISOString().split('T')[0],
+    expense_date: getTodayDate(),
 });
 
 const submitExpense = () => {
@@ -270,15 +290,60 @@ const submitExpense = () => {
         onSuccess: () => {
             showExpenseModal.value = false;
             expenseForm.reset();
+            expenseForm.expense_category_id = '';
+            expenseForm.expense_date = getTodayDate();
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil Dicatat!',
+                text: 'Catatan pengeluaran berhasil disimpan ke buku kas.',
+                timer: 1800,
+                showConfirmButton: false
+            });
+        },
+        onError: (errors) => {
+            const firstError = Object.values(errors)[0] || 'Terjadi kesalahan saat menyimpan pengeluaran.';
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Menyimpan',
+                text: firstError
+            });
         }
     });
 };
 
 const deleteExpense = (id) => {
-    if (confirm('Apakah Anda yakin ingin menghapus catatan pengeluaran ini? Laba bersih akan dikalkulasi ulang.')) {
-        router.delete(route('expenses.destroy', id), {
-            preserveScroll: true
-        });
-    }
+    Swal.fire({
+        title: 'Hapus Pengeluaran?',
+        text: 'Apakah Anda yakin ingin menghapus catatan pengeluaran ini? Laba bersih akan dikalkulasi ulang.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Ya, Hapus!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.delete(route('expenses.destroy', id), {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Terhapus!',
+                        text: 'Catatan pengeluaran berhasil dihapus.',
+                        timer: 1600,
+                        showConfirmButton: false
+                    });
+                },
+                onError: (err) => {
+                    const errorMsg = Object.values(err)[0] || 'Gagal menghapus pengeluaran.';
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: errorMsg
+                    });
+                }
+            });
+        }
+    });
 };
 </script>

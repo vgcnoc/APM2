@@ -171,6 +171,7 @@ class FinancialReportController extends Controller
 
             $ledger->push([
                 'id' => 'e_'.$e->id,
+                'expense_id' => $e->id,
                 'date' => Carbon::parse($e->expense_date)->format('Y-m-d H:i:s'),
                 'type' => 'expense',
                 'category' => 'operational',
