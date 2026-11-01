@@ -107,13 +107,31 @@ class EmployeeLocationController extends Controller
     }
 
     /**
+     * Pastikan hanya Admin, HRD, Manager, atau user berhak akses yang dapat memantau lokasi karyawan
+     */
+    protected function authorizeAccess(Request $request): void
+    {
+        $user = $request->user();
+        if (!$user || $user->role === 'customer') {
+            abort(403, 'Akses terbatas untuk staf dan manajemen.');
+        }
+
+        $userRole = strtolower($user->role ?? '');
+        $isAdminOrMgmt = in_array($userRole, ['admin', 'superadmin', 'super admin', 'super-admin', 'manager', 'hrd', 'management'])
+            || ($user && method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'super admin', 'manager', 'hrd']))
+            || ($user && method_exists($user, 'can') && ($user->can('menu_employee_locations') || $user->can('menu_hr_employees')));
+
+        if (!$isAdminOrMgmt) {
+            abort(403, 'Akses Pantauan Lokasi Karyawan dibatasi khusus untuk Manajemen dan HRD.');
+        }
+    }
+
+    /**
      * Halaman Pantauan Lokasi Karyawan (Maps & Deteksi Real-Time)
      */
     public function index(Request $request): Response
     {
-        if ($request->user() && $request->user()->role === 'customer') {
-            abort(403, 'Akses terbatas untuk staf dan manajemen.');
-        }
+        $this->authorizeAccess($request);
 
         $data = $this->buildEmployeeTrackingData($request);
 
@@ -125,8 +143,18 @@ class EmployeeLocationController extends Controller
      */
     public function liveData(Request $request): JsonResponse
     {
-        if ($request->user() && $request->user()->role === 'customer') {
+        $user = $request->user();
+        if (!$user || $user->role === 'customer') {
             return response()->json(['error' => 'Akses terbatas untuk staf dan manajemen.'], 403);
+        }
+
+        $userRole = strtolower($user->role ?? '');
+        $isAdminOrMgmt = in_array($userRole, ['admin', 'superadmin', 'super admin', 'super-admin', 'manager', 'hrd', 'management'])
+            || ($user && method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'super admin', 'manager', 'hrd']))
+            || ($user && method_exists($user, 'can') && ($user->can('menu_employee_locations') || $user->can('menu_hr_employees')));
+
+        if (!$isAdminOrMgmt) {
+            return response()->json(['error' => 'Akses Pantauan Lokasi Karyawan dibatasi khusus untuk Manajemen dan HRD.'], 403);
         }
 
         $data = $this->buildEmployeeTrackingData($request);
