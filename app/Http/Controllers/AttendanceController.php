@@ -216,6 +216,31 @@ class AttendanceController extends Controller
                 : null,
         ];
 
+        // 4.1 Jendela Waktu Buka Absen Masuk (Early Clock-in Limit)
+        $clockInEarlyLimitEnabled = Setting::get('attendance_clock_in_early_limit_enabled', '1') === '1';
+        $clockInEarlyLimitMinutes = max(1, (int) Setting::get('attendance_clock_in_early_limit_minutes', 60));
+
+        $clockInWindow = AttendanceCalculatorService::isClockInWindowOpen(
+            $today,
+            $shiftToday,
+            $now,
+            $clockInEarlyLimitMinutes,
+            $clockInEarlyLimitEnabled
+        );
+
+        $clockInWindowInfo = [
+            'enabled' => $clockInEarlyLimitEnabled,
+            'early_limit_minutes' => $clockInEarlyLimitMinutes,
+            'is_restricted' => $clockInWindow['is_restricted'],
+            'is_open' => $clockInWindow['is_open'],
+            'earliest_time' => $clockInWindow['earliest_time'] ? $clockInWindow['earliest_time']->format('H:i') : null,
+            'earliest_full_label' => $clockInWindow['earliest_time'] ? $clockInWindow['earliest_time']->format('H:i') . ' WIB' : null,
+            'minutes_until_open' => $clockInWindow['minutes_until_open'],
+            'shift_start' => $clockInWindow['shift_start'] ? $clockInWindow['shift_start']->format('H:i') : null,
+            'shift_end' => $clockInWindow['shift_end'] ? $clockInWindow['shift_end']->format('H:i') : null,
+            'shift_name' => $shiftToday?->name,
+        ];
+
         // 5. Jadwal Shift Minggu Ini (Senin s/d Minggu)
         $startOfWeek = $now->copy()->startOfWeek(Carbon::MONDAY);
         $weeklySchedules = [];
@@ -414,7 +439,10 @@ class AttendanceController extends Controller
             'positions' => $positions,
             'canBypassAreaLock' => $user && ($user->hasRole('admin') || $user->hasRole('super admin') || $user->can('attendance_bypass_area_restriction')),
             'checkoutDeadlineInfo' => $checkoutDeadlineInfo,
+            'clockInWindowInfo' => $clockInWindowInfo,
             'settings' => [
+                'early_limit_enabled' => $clockInEarlyLimitEnabled,
+                'early_limit_minutes' => $clockInEarlyLimitMinutes,
                 'require_photo' => Setting::get('attendance_regular_require_photo', '1') === '1',
                 'require_gps' => Setting::get('attendance_regular_require_gps', '1') === '1',
                 'strict_radius' => Setting::get('attendance_regular_strict_radius', '1') === '1',
@@ -572,6 +600,40 @@ class AttendanceController extends Controller
         $user = $request->user();
         if ($user && method_exists($user, 'can') && !$user->can('attendance_select_type') && !$isHolidayOff) {
             $attendanceType = 'wfo';
+        }
+
+        // ==============================================================
+        // VALIDASI PEMBATASAN JAM ABSEN MASUK LEBIH AWAL (EARLY CLOCK-IN)
+        // ==============================================================
+        $earlyLimitEnabled = Setting::get('attendance_clock_in_early_limit_enabled', '1') === '1';
+        $earlyLimitMinutes = max(1, (int) Setting::get('attendance_clock_in_early_limit_minutes', 60));
+        $canBypassEarlyLimit = $user && ($user->hasRole('admin') || $user->hasRole('super admin') || $user->can('attendance_bypass_early_restriction') || $user->can('attendances_manage'));
+
+        if ($earlyLimitEnabled && $shift && !empty($shift->start_time) && !$isHolidayOff && $attendanceType !== 'lembur' && !$canBypassEarlyLimit) {
+            $clockInWindow = AttendanceCalculatorService::isClockInWindowOpen(
+                $targetDate,
+                $shift,
+                $now,
+                $earlyLimitMinutes,
+                $earlyLimitEnabled
+            );
+
+            if (!$clockInWindow['is_open']) {
+                $openTimeStr = $clockInWindow['earliest_time'] ? $clockInWindow['earliest_time']->format('H:i') : '--:--';
+                $shiftStartStr = $clockInWindow['shift_start'] ? $clockInWindow['shift_start']->format('H:i') : substr($shift->start_time, 0, 5);
+                $shiftEndStr = $clockInWindow['shift_end'] ? $clockInWindow['shift_end']->format('H:i') : substr($shift->end_time, 0, 5);
+                $minutesLeft = $clockInWindow['minutes_until_open'];
+
+                if ($minutesLeft >= 60) {
+                    $hours = intdiv($minutesLeft, 60);
+                    $remMinutes = $minutesLeft % 60;
+                    $diffText = $remMinutes > 0 ? "{$hours} jam {$remMinutes} menit" : "{$hours} jam";
+                } else {
+                    $diffText = "{$minutesLeft} menit";
+                }
+
+                return back()->with('error', "Presensi Masuk Belum Dibuka: Jam shift Anda ({$shift->name}: {$shiftStartStr} - {$shiftEndStr} WIB) baru dapat diabsen mulai pukul {$openTimeStr} WIB (maksimal {$earlyLimitMinutes} menit sebelum shift dimulai). Silakan coba kembali dalam {$diffText}.");
+            }
         }
 
         // ==============================================================

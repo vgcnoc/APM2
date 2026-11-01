@@ -213,6 +213,10 @@
                                 v-else
                                 class="text-slate-600 dark:text-slate-300 truncate"
                             >
+                                <template v-if="clockInWindowInfo?.earliest_time">
+                                    Buka: <strong class="text-blue-600 dark:text-blue-400 font-mono">{{ clockInWindowInfo.earliest_time }}</strong>
+                                    <span class="text-slate-300 dark:text-slate-600 mx-1">•</span>
+                                </template>
                                 Toleransi: <strong class="text-slate-800 dark:text-white font-mono">{{ shiftToday?.tolerance_minutes || 15 }}m</strong>
                                 <span class="text-slate-300 dark:text-slate-600 mx-1">•</span>
                                 Batas Masuk: <strong class="text-slate-800 dark:text-white font-mono">{{ maxClockInTime }} WIB</strong>
@@ -351,28 +355,33 @@
                     <button
                         type="button"
                         @click="openModal('in')"
-                        :disabled="!currentEmployee"
+                        :disabled="!currentEmployee || isEarlyClockInRestricted"
                         :class="[
-                            isSpecialTeam
-                                ? 'bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-700 hover:to-indigo-700 shadow-purple-500/25'
-                                : (isDayOff
-                                    ? 'bg-gradient-to-r from-slate-700 to-slate-900 hover:from-slate-800 hover:to-black shadow-slate-500/25'
-                                    : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-blue-500/25'),
-                            'w-full py-3.5 px-4 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2.5 shadow-lg active:scale-95 transition-all cursor-pointer'
+                            isEarlyClockInRestricted
+                                ? 'bg-slate-300 dark:bg-slate-700 text-slate-500 cursor-not-allowed shadow-none'
+                                : (isSpecialTeam
+                                    ? 'bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-700 hover:to-indigo-700 shadow-purple-500/25 cursor-pointer active:scale-95'
+                                    : (isDayOff
+                                        ? 'bg-gradient-to-r from-slate-700 to-slate-900 hover:from-slate-800 hover:to-black shadow-slate-500/25 cursor-pointer active:scale-95'
+                                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-blue-500/25 cursor-pointer active:scale-95')),
+                            'w-full py-3.5 px-4 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2.5 shadow-lg transition-all'
                         ]"
                     >
-                        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg v-if="!isEarlyClockInRestricted" class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
-                        <span>{{ isSpecialTeam ? 'Absen Masuk Tim Khusus' : (isDayOff ? 'Absen Masuk (Piket Libur)' : 'Absen Masuk Sekarang') }}</span>
+                        <span v-if="isEarlyClockInRestricted">🔒 Dibuka Pukul {{ clockInWindowInfo?.earliest_full_label }}</span>
+                        <span v-else>{{ isSpecialTeam ? 'Absen Masuk Tim Khusus' : (isDayOff ? 'Absen Masuk (Piket Libur)' : 'Absen Masuk Sekarang') }}</span>
                     </button>
-                    <p class="text-[11px] text-center text-slate-400 font-medium">
-                        {{ isSpecialTeam
-                            ? 'Verifikasi Wajah (Bebas Radius Kantor)'
-                            : (isDayOff
-                                ? 'Hari ini libur terjadwal. Absen jika bertugas lembur/piket.'
-                                : 'Verifikasi Kamera Selfie & GPS') }}
+                    <p class="text-[11px] text-center font-medium" :class="isEarlyClockInRestricted ? 'text-amber-600 font-bold' : 'text-slate-400'">
+                        {{ isEarlyClockInRestricted
+                            ? `Shift ${clockInWindowInfo?.shift_name || shiftToday?.name} (${clockInWindowInfo?.shift_start || shiftToday?.start_time} WIB) baru dibuka ${clockInWindowInfo?.early_limit_minutes || 60}m sebelum shift.`
+                            : (isSpecialTeam
+                                ? 'Verifikasi Wajah (Bebas Radius Kantor)'
+                                : (isDayOff
+                                    ? 'Hari ini libur terjadwal. Absen jika bertugas lembur/piket.'
+                                    : 'Verifikasi Kamera Selfie & GPS')) }}
                     </p>
                 </template>
 
@@ -915,6 +924,17 @@ const officeLocation = computed(() => props.attendanceData?.officeLocation || nu
 const allEmployees = computed(() => props.attendanceData?.allEmployees || []);
 const allShifts = computed(() => props.attendanceData?.allShifts || []);
 const attendanceSummary = computed(() => props.attendanceData?.attendanceSummary || null);
+const clockInWindowInfo = computed(() => props.attendanceData?.clockInWindowInfo || null);
+
+const isEarlyClockInRestricted = computed(() => {
+    if (todayAttendance.value?.clock_in) return false;
+    if (isSpecialTeam.value || isDayOff.value) return false;
+    if (can('attendance_bypass_early_restriction')) return false;
+    if (clockInWindowInfo.value && clockInWindowInfo.value.enabled && !clockInWindowInfo.value.is_open) {
+        return true;
+    }
+    return false;
+});
 
 // State Modal Ubah Shift & Keterangan Libur
 const showShiftModal = ref(false);
@@ -1249,6 +1269,9 @@ const stopCamera = () => {
 
 // Modal Control
 const openModal = async (type) => {
+    if (type === 'in' && isEarlyClockInRestricted.value) {
+        return;
+    }
     modalType.value = type;
     capturedPhoto.value = null;
     attendanceNotes.value = '';
@@ -1270,7 +1293,10 @@ const closeModal = () => {
 const canSubmit = computed(() => {
     if (!capturedPhoto.value) return false;
     if (!currentEmployee.value) return false;
-    if (modalType.value === 'in' && todayAttendance.value?.clock_in) return false;
+    if (modalType.value === 'in') {
+        if (todayAttendance.value?.clock_in) return false;
+        if (isEarlyClockInRestricted.value) return false;
+    }
     if (modalType.value === 'out' && (!todayAttendance.value?.clock_in || todayAttendance.value?.clock_out)) return false;
     return true;
 });

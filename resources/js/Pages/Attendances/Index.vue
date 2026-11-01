@@ -516,7 +516,28 @@
                                 </div>
 
                                 <!-- State: Belum Masuk -->
-                                <div v-else-if="!todayAttendance?.clock_in" class="space-y-2">
+                                <div v-else-if="!todayAttendance?.clock_in" class="space-y-2.5">
+                                    <!-- Banner Notifikasi Jika Absen Masuk Belum Dibuka (Terlalu Awal) -->
+                                    <div
+                                        v-if="isEarlyClockInRestricted"
+                                        class="p-4 rounded-2xl bg-amber-50/90 border border-amber-300 text-amber-950 flex items-start gap-3 shadow-2xs"
+                                    >
+                                        <div class="w-9 h-9 rounded-xl bg-amber-200/80 border border-amber-300 text-amber-800 flex items-center justify-center text-lg shrink-0">
+                                            ⏳
+                                        </div>
+                                        <div class="min-w-0 flex-1 leading-relaxed">
+                                            <div class="text-xs font-black uppercase tracking-wide text-amber-900 flex items-center gap-1.5">
+                                                <span>Absen Masuk Belum Dibuka</span>
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-200 text-amber-800">
+                                                    Maks {{ clockInWindowInfo?.early_limit_minutes || 60 }} Menit Awal
+                                                </span>
+                                            </div>
+                                            <p class="text-[11px] text-amber-800 mt-1">
+                                                Shift kerja Anda (<strong>{{ clockInWindowInfo?.shift_name || shiftToday?.name }}</strong>: {{ clockInWindowInfo?.shift_start || shiftToday?.start_time?.slice(0, 5) }} WIB) baru dapat diabsen mulai pukul <strong>{{ clockInWindowInfo?.earliest_full_label }}</strong>.
+                                            </p>
+                                        </div>
+                                    </div>
+
                                     <button
                                         type="button"
                                         @click="submitClockIn"
@@ -533,6 +554,7 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
                                         </svg>
                                         <span v-if="isSubmitting">Memproses Presensi...</span>
+                                        <span v-else-if="isEarlyClockInRestricted">🔒 Dibuka Pukul {{ clockInWindowInfo?.earliest_full_label }}</span>
                                         <span v-else-if="!capturedPhoto && (settings?.require_photo ?? true)">Ambil Foto Selfie Dulu</span>
                                         <span v-else-if="isOutOfRadius">❌ Di Luar Radius Area ({{ formatDistance(distanceToOffice) }})</span>
                                         <span v-else>📷 Absen Masuk Sekarang</span>
@@ -1266,6 +1288,7 @@ const props = defineProps({
     positions: Array,
     canBypassAreaLock: Boolean,
     checkoutDeadlineInfo: Object,
+    clockInWindowInfo: Object,
     settings: Object,
     filters: Object,
 });
@@ -1716,11 +1739,22 @@ const isOutOfRadius = computed(() => {
     return !isWithinRadius.value && !bypassRadiusMode.value;
 });
 
+const isEarlyClockInRestricted = computed(() => {
+    if (props.todayAttendance?.clock_in) return false;
+    if (props.todaySchedule?.status === 'off' || attendanceType.value === 'lembur') return false;
+    if (can('attendance_bypass_early_restriction') || hasRole('admin') || hasRole('super admin')) return false;
+    if (props.clockInWindowInfo && props.clockInWindowInfo.enabled && !props.clockInWindowInfo.is_open) {
+        return true;
+    }
+    return false;
+});
+
 const canSubmitClockIn = computed(() => {
     const needPhoto = props.settings?.require_photo ?? true;
     if (needPhoto && !capturedPhoto.value) return false;
     if (props.todayAttendance?.clock_in) return false;
     if (isOutOfRadius.value) return false;
+    if (isEarlyClockInRestricted.value) return false;
     return true;
 });
 

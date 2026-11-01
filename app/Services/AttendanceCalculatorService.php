@@ -172,6 +172,115 @@ class AttendanceCalculatorService
     }
 
     /**
+     * Resolusi jam paling awal seorang karyawan diizinkan melakukan absen masuk.
+     * Menggunakan jam mulai shift dikurangi batas waktu absen lebih awal (default: 60 menit / 1 jam).
+     */
+    public static function resolveEarliestClockInTime(
+        string $dateStr,
+        ?Shift $shift,
+        ?int $earlyLimitMinutes = null,
+        string $tz = 'Asia/Jakarta'
+    ): ?Carbon {
+        if (!$shift || empty($shift->start_time)) {
+            return null;
+        }
+
+        $window = self::resolveShiftWindow($dateStr, $shift, $tz);
+        if (!$window || empty($window['start'])) {
+            return null;
+        }
+
+        if ($earlyLimitMinutes === null) {
+            $earlyLimitMinutes = max(1, (int) Setting::get('attendance_clock_in_early_limit_minutes', 60));
+        }
+
+        return $window['start']->copy()->subMinutes($earlyLimitMinutes);
+    }
+
+    /**
+     * Cek apakah jendela absensi masuk (Clock-In Window) sudah dibuka atau masih terkunci karena terlalu awal.
+     *
+     * Mendukung:
+     * - Shift reguler (pagi, siang, sore)
+     * - Shift malam / lintas hari (cross midnight)
+     * - Konfigurasi fleksibel menit sebelum shift (default 60 menit / 1 jam)
+     */
+    public static function isClockInWindowOpen(
+        string $dateStr,
+        ?Shift $shift,
+        ?Carbon $now = null,
+        ?int $earlyLimitMinutes = null,
+        ?bool $limitEnabled = null,
+        string $tz = 'Asia/Jakarta'
+    ): array {
+        $now = $now ? $now->copy()->setTimezone($tz) : Carbon::now($tz);
+
+        if ($limitEnabled === null) {
+            $limitEnabled = Setting::get('attendance_clock_in_early_limit_enabled', '1') === '1';
+        }
+
+        if ($earlyLimitMinutes === null) {
+            $earlyLimitMinutes = max(1, (int) Setting::get('attendance_clock_in_early_limit_minutes', 60));
+        }
+
+        if (!$limitEnabled || !$shift || empty($shift->start_time)) {
+            return [
+                'is_restricted' => false,
+                'is_open' => true,
+                'shift_start' => null,
+                'shift_end' => null,
+                'earliest_time' => null,
+                'minutes_until_open' => 0,
+                'early_limit_minutes' => $earlyLimitMinutes,
+                'limit_enabled' => $limitEnabled,
+            ];
+        }
+
+        $window = self::resolveShiftWindow($dateStr, $shift, $tz);
+        if (!$window || empty($window['start'])) {
+            return [
+                'is_restricted' => false,
+                'is_open' => true,
+                'shift_start' => null,
+                'shift_end' => null,
+                'earliest_time' => null,
+                'minutes_until_open' => 0,
+                'early_limit_minutes' => $earlyLimitMinutes,
+                'limit_enabled' => $limitEnabled,
+            ];
+        }
+
+        $shiftStart = $window['start'];
+        $earliestTime = $shiftStart->copy()->subMinutes($earlyLimitMinutes);
+
+        // Jika waktu sekarang masih sebelum waktu paling awal absen dibuka
+        if ($now->lessThan($earliestTime)) {
+            $diffMinutes = (int) ceil($now->diffInRealMinutes($earliestTime, false));
+            return [
+                'is_restricted' => true,
+                'is_open' => false,
+                'shift_start' => $shiftStart,
+                'shift_end' => $window['end'],
+                'earliest_time' => $earliestTime,
+                'minutes_until_open' => max(1, $diffMinutes),
+                'early_limit_minutes' => $earlyLimitMinutes,
+                'limit_enabled' => true,
+            ];
+        }
+
+        return [
+            'is_restricted' => true,
+            'is_open' => true,
+            'shift_start' => $shiftStart,
+            'shift_end' => $window['end'],
+            'earliest_time' => $earliestTime,
+            'minutes_until_open' => 0,
+            'early_limit_minutes' => $earlyLimitMinutes,
+            'limit_enabled' => true,
+        ];
+    }
+
+    /**
      * Resolusi timestamp lengkap jam masuk (clock_in), termasuk bila karyawan shift malam absen masuk lewat pukul 00:00
      */
     public static function resolveClockInDateTime(Attendance $att, ?Shift $shift = null, string $tz = 'Asia/Jakarta'): ?Carbon

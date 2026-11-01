@@ -414,6 +414,72 @@
                             </div>
                         </div>
 
+                        <!-- OPSI PEMBATASAN JAM ABSEN MASUK LEBIH AWAL (HIGHLIGHT CARD) -->
+                        <div class="p-4 rounded-2xl border-2 border-blue-200 bg-gradient-to-r from-blue-50/80 via-sky-50/40 to-white space-y-3.5 shadow-2xs">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div class="space-y-0.5">
+                                    <div class="text-xs font-black text-blue-950 flex items-center gap-1.5">
+                                        <span class="text-sm">⏰</span>
+                                        <span>Batasi Jam Absen Masuk Lebih Awal Sebelum Shift (Early Clock-in Limit)</span>
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-600 text-white shadow-2xs">Shift Cerdas</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-600 leading-relaxed">
+                                        Mencegah karyawan shift melakukan absen masuk berjam-jam terlalu awal sebelum jam kerjanya dimulai. Karyawan hanya diizinkan absen masuk dalam rentang waktu yang ditentukan sebelum jam mulai shift.
+                                    </p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                                    <input type="checkbox" v-model="form.attendance_clock_in_early_limit_enabled" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+
+                            <div v-if="form.attendance_clock_in_early_limit_enabled" class="grid grid-cols-1 md:grid-cols-12 gap-3 pt-2 border-t border-blue-100">
+                                <div class="md:col-span-5">
+                                    <label class="block text-xs font-semibold text-slate-700 mb-1">
+                                        Batas Maksimal Absen Masuk Lebih Awal (Menit)
+                                    </label>
+                                    <div class="relative">
+                                        <input
+                                            type="number"
+                                            min="5"
+                                            max="300"
+                                            step="5"
+                                            v-model="form.attendance_clock_in_early_limit_minutes"
+                                            class="w-full text-xs rounded-xl border-blue-200 focus:border-blue-500 focus:ring-blue-500/20 font-mono font-bold pl-3 pr-16"
+                                            placeholder="60"
+                                        />
+                                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 font-semibold pointer-events-none">
+                                            Menit
+                                        </span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-500 mt-1">
+                                        Contoh: <strong class="text-blue-700">60 menit (1 jam)</strong> sebelum jam shift dimulai. Lembur atau jadwal libur (OFF) otomatis dikecualikan.
+                                    </p>
+                                </div>
+
+                                <div class="md:col-span-7 bg-white p-2.5 rounded-xl border border-blue-100 shadow-2xs">
+                                    <div class="text-[10px] font-bold uppercase tracking-wider text-blue-900 mb-1 flex items-center gap-1">
+                                        <span>👁️</span>
+                                        <span>Simulasi Jam Buka Absen Masuk:</span>
+                                    </div>
+                                    <div class="grid grid-cols-3 gap-2 text-[11px]">
+                                        <div class="p-1.5 rounded-lg bg-blue-50/50 border border-blue-100/80">
+                                            <div class="font-bold text-slate-800 text-[10px]">Shift 08:35</div>
+                                            <div class="text-blue-700 font-mono font-bold mt-0.5 text-xs">{{ previewEarlyClockIn('08:35') }}</div>
+                                        </div>
+                                        <div class="p-1.5 rounded-lg bg-blue-50/50 border border-blue-100/80">
+                                            <div class="font-bold text-slate-800 text-[10px]">Shift 13:00</div>
+                                            <div class="text-blue-700 font-mono font-bold mt-0.5 text-xs">{{ previewEarlyClockIn('13:00') }}</div>
+                                        </div>
+                                        <div class="p-1.5 rounded-lg bg-blue-50/50 border border-blue-100/80">
+                                            <div class="font-bold text-slate-800 text-[10px]">Shift 23:00</div>
+                                            <div class="text-indigo-700 font-mono font-bold mt-0.5 text-xs">{{ previewEarlyClockIn('23:00') }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Opsi Pembatasan Absen Berdasarkan Area Penempatan Karyawan (Highlight Card) -->
                         <div class="p-4 rounded-2xl border-2 border-indigo-200 bg-gradient-to-r from-indigo-50/80 via-blue-50/50 to-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
                             <div class="space-y-0.5">
@@ -1635,6 +1701,8 @@ const form = useForm({
     attendance_checkout_auto_lock: props.settings?.attendance_checkout_auto_lock ?? true,
 
     // Reguler (Staf & Shift Kantor / WFO)
+    attendance_clock_in_early_limit_enabled: props.settings?.attendance_clock_in_early_limit_enabled ?? true,
+    attendance_clock_in_early_limit_minutes: props.settings?.attendance_clock_in_early_limit_minutes ?? 60,
     attendance_regular_require_photo: props.settings?.attendance_regular_require_photo ?? true,
     attendance_regular_require_gps: props.settings?.attendance_regular_require_gps ?? true,
     attendance_regular_strict_radius: props.settings?.attendance_regular_strict_radius ?? true,
@@ -1753,6 +1821,25 @@ const previewShiftDeadline = (startStr, endStr) => {
     const hh = String(Math.floor(modMins / 60)).padStart(2, '0');
     const mm = String(modMins % 60).padStart(2, '0');
     return isNextDay ? `${hh}:${mm} WIB (H+1)` : `${hh}:${mm} WIB`;
+};
+
+const previewEarlyClockIn = (startStr) => {
+    if (!form.attendance_clock_in_early_limit_enabled) {
+        return 'Bebas Kapan Saja';
+    }
+    const parseMins = (t) => {
+        if (!t) return 0;
+        const [h, m] = String(t).split(':').map(Number);
+        return (h || 0) * 60 + (m || 0);
+    };
+    const startMins = parseMins(startStr);
+    const limitMins = Math.max(1, Number(form.attendance_clock_in_early_limit_minutes || 60));
+    let openMins = startMins - limitMins;
+    const isPrevDay = openMins < 0;
+    openMins = ((openMins % 1440) + 1440) % 1440;
+    const hh = String(Math.floor(openMins / 60)).padStart(2, '0');
+    const mm = String(openMins % 60).padStart(2, '0');
+    return isPrevDay ? `${hh}:${mm} WIB (H-1)` : `${hh}:${mm} WIB`;
 };
 
 const submit = () => {

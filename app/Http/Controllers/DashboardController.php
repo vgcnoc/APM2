@@ -707,9 +707,41 @@ class DashboardController extends Controller
             $completedToday = Attendance::where('date', $today)->whereNotNull('clock_out')->count();
         }
 
+        // Jendela Waktu Buka Absen Masuk (Early Clock-in Limit)
+        $clockInEarlyLimitEnabled = Setting::get('attendance_clock_in_early_limit_enabled', '1') === '1';
+        $clockInEarlyLimitMinutes = max(1, (int) Setting::get('attendance_clock_in_early_limit_minutes', 60));
+        $clockInWindowInfo = null;
+
+        if (!$isSpecialTeam && !$isDayOff && $shiftToday && !empty($shiftToday->start_time)) {
+            $rawShift = ($shiftToday instanceof Shift) ? $shiftToday : Shift::find($shiftToday->id ?? null);
+            if ($rawShift) {
+                $clockInWindow = AttendanceCalculatorService::isClockInWindowOpen(
+                    $today,
+                    $rawShift,
+                    $now,
+                    $clockInEarlyLimitMinutes,
+                    $clockInEarlyLimitEnabled
+                );
+
+                $clockInWindowInfo = [
+                    'enabled' => $clockInEarlyLimitEnabled,
+                    'early_limit_minutes' => $clockInEarlyLimitMinutes,
+                    'is_restricted' => $clockInWindow['is_restricted'],
+                    'is_open' => $clockInWindow['is_open'],
+                    'earliest_time' => $clockInWindow['earliest_time'] ? $clockInWindow['earliest_time']->format('H:i') : null,
+                    'earliest_full_label' => $clockInWindow['earliest_time'] ? $clockInWindow['earliest_time']->format('H:i') . ' WIB' : null,
+                    'minutes_until_open' => $clockInWindow['minutes_until_open'],
+                    'shift_start' => $clockInWindow['shift_start'] ? $clockInWindow['shift_start']->format('H:i') : null,
+                    'shift_end' => $clockInWindow['shift_end'] ? $clockInWindow['shift_end']->format('H:i') : null,
+                    'shift_name' => $rawShift->name,
+                ];
+            }
+        }
+
         return [
             'todayDateStr' => $now->translatedFormat('l, d F Y'),
             'todayIso' => $today,
+            'clockInWindowInfo' => $clockInWindowInfo,
             'isSpecialTeam' => $isSpecialTeam,
             'specialTeam' => $specialTeam ? [
                 'id' => $specialTeam->id,
