@@ -10,175 +10,297 @@
                 ❌ {{ $page.props.flash.error }}
             </div>
 
-            <!-- ── 6 SYNCHRONIZED STATS CARDS ── -->
-            <div class="grid grid-cols-2 md:grid-cols-3 2xl:grid-cols-6 gap-2.5 sm:gap-4">
-                
-                <!-- Card 1: Belum Lunas (Klik untuk aktifkan tab Belum Lunas) -->
-                <div 
-                    @click="switchTab('unpaid')"
-                    class="cursor-pointer rounded-2xl p-3.5 sm:p-4 2xl:p-5 min-w-0 border transition-all duration-200 transform hover:-translate-y-0.5 select-none"
-                    :class="[
-                        activeTab === 'unpaid'
-                            ? 'bg-amber-50/90 border-amber-300 ring-2 ring-amber-500 shadow-md'
-                            : 'bg-white border-gray-200/80 hover:border-amber-200 hover:bg-amber-50/20 shadow-xs'
-                    ]"
-                >
-                    <div class="flex items-center justify-between gap-1 mb-2">
-                        <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-amber-800 flex items-center gap-1.5 min-w-0 truncate">
-                            <span class="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>
-                            <span class="truncate">Belum Lunas</span>
-                        </span>
-                        <span v-if="activeTab === 'unpaid'" class="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-amber-200/80 text-amber-900 border border-amber-300 shrink-0">
-                            Aktif
+            <!-- ── CARDS SECTION ── -->
+            <div class="space-y-3">
+                <!-- Header Toggle untuk Akun Admin / Finance (Bisa beralih antara Global & Setoran Saya) -->
+                <div v-if="is_admin" class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 px-1">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-black text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                            <span>📊</span>
+                            <span>{{ adminViewMode === 'global' ? 'Ringkasan Tagihan Global Perusahaan' : 'Nominal Terima Setoran Saya (Petugas)' }}</span>
                         </span>
                     </div>
-                    <div class="text-sm sm:text-lg xl:text-xl font-black text-gray-900 break-words leading-tight">
-                        Rp {{ formatRupiah(stats?.unpaid?.total || 0) }}
-                    </div>
-                    <div class="mt-2 flex flex-wrap items-center justify-between gap-1 text-[11px] sm:text-xs text-amber-700 font-medium">
-                        <span>{{ stats?.unpaid?.count || 0 }} Tagihan</span>
-                        <span class="text-[10px] font-bold underline">&rarr;</span>
+
+                    <div class="inline-flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl gap-1 text-xs font-bold shadow-2xs">
+                        <button 
+                            type="button"
+                            @click="adminViewMode = 'global'"
+                            class="px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
+                            :class="adminViewMode === 'global' ? 'bg-white text-indigo-700 shadow-xs' : 'text-gray-500 hover:text-gray-800'"
+                        >
+                            <span>🏢 Global Perusahaan</span>
+                        </button>
+                        <button 
+                            type="button"
+                            @click="adminViewMode = 'collector'"
+                            class="px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
+                            :class="adminViewMode === 'collector' ? 'bg-white text-emerald-700 shadow-xs' : 'text-gray-500 hover:text-gray-800'"
+                        >
+                            <span>👤 Setoran Saya</span>
+                        </button>
                     </div>
                 </div>
 
-                <!-- Card 2: Bayar Sebagian (Klik untuk aktifkan tab Bayar Sebagian) -->
-                <div 
-                    @click="switchTab('partial')"
-                    class="cursor-pointer rounded-2xl p-3.5 sm:p-4 2xl:p-5 min-w-0 border transition-all duration-200 transform hover:-translate-y-0.5 select-none"
-                    :class="[
-                        activeTab === 'partial'
-                            ? 'bg-sky-50/90 border-sky-300 ring-2 ring-sky-500 shadow-md'
-                            : 'bg-white border-gray-200/80 hover:border-sky-200 hover:bg-sky-50/20 shadow-xs'
-                    ]"
-                >
-                    <div class="flex items-center justify-between gap-1 mb-2">
-                        <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-sky-800 flex items-center gap-1.5 min-w-0 truncate">
-                            <span class="w-2.5 h-2.5 rounded-full bg-sky-500 shrink-0"></span>
-                            <span class="truncate">Bayar Sebagian</span>
-                        </span>
-                        <span v-if="activeTab === 'partial'" class="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-sky-200/80 text-sky-900 border border-sky-300 shrink-0">
-                            Aktif
-                        </span>
-                    </div>
-                    <div class="text-sm sm:text-lg xl:text-xl font-black text-sky-700 break-words leading-tight">
-                        Rp {{ formatRupiah(stats?.partial?.total || 0) }}
-                    </div>
-                    <div class="mt-2 flex flex-wrap items-center justify-between gap-1 text-[11px] sm:text-xs text-sky-700 font-medium">
-                        <span>{{ stats?.partial?.count || 0 }} Tagihan</span>
-                        <span class="text-[10px] font-bold underline">&rarr;</span>
+                <!-- ── 1. KARTU KHUSUS TERIMA SETORAN (Tampil untuk Karyawan/Petugas, atau Admin mode 'collector') ── -->
+                <div v-if="!is_admin || adminViewMode === 'collector'" class="space-y-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+                        
+                        <!-- Card 1: Setoran Hari Ini (Tunai di Tangan / Menunggu Setor) -->
+                        <div class="rounded-2xl p-4 sm:p-5 border bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-white border-amber-300/80 shadow-xs relative overflow-hidden group hover:shadow-sm transition">
+                            <div class="flex items-center justify-between gap-2 mb-2">
+                                <span class="text-[11px] font-black uppercase tracking-wider text-amber-800 flex items-center gap-1.5 truncate">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
+                                    <span class="truncate">Setoran Hari Ini (Di Tangan)</span>
+                                </span>
+                                <span class="text-[9px] font-bold px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900 border border-amber-300 shrink-0">
+                                    Menunggu Setor
+                                </span>
+                            </div>
+                            <div class="text-xl sm:text-2xl 2xl:text-3xl font-black text-amber-950 font-mono tracking-tight">
+                                Rp {{ formatRupiah(collector_stats?.today_pending_amount || 0) }}
+                            </div>
+                            <div class="mt-2.5 flex items-center justify-between text-xs text-amber-800 font-semibold">
+                                <span>{{ collector_stats?.today_pending_count || 0 }} Tagihan Diterima</span>
+                                <span class="text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded font-bold">Fisik Tunai</span>
+                            </div>
+                        </div>
+
+                        <!-- Card 2: Setoran Terverifikasi Hari Ini (Sudah Disetor ke Kasir) -->
+                        <div class="rounded-2xl p-4 sm:p-5 border bg-gradient-to-br from-sky-500/10 via-sky-500/5 to-white border-sky-300/80 shadow-xs relative overflow-hidden group hover:shadow-sm transition">
+                            <div class="flex items-center justify-between gap-2 mb-2">
+                                <span class="text-[11px] font-black uppercase tracking-wider text-sky-800 flex items-center gap-1.5 truncate">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span>
+                                    <span class="truncate">Setoran Tervalidasi Hari Ini</span>
+                                </span>
+                                <span class="text-[9px] font-bold px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 border border-sky-200 shrink-0">
+                                    Lunas Kasir
+                                </span>
+                            </div>
+                            <div class="text-xl sm:text-2xl 2xl:text-3xl font-black text-sky-950 font-mono tracking-tight">
+                                Rp {{ formatRupiah(collector_stats?.today_verified_amount || 0) }}
+                            </div>
+                            <div class="mt-2.5 flex items-center justify-between text-xs text-sky-800 font-semibold">
+                                <span>{{ collector_stats?.today_verified_count || 0 }} Setoran Masuk</span>
+                                <span class="text-sky-600 font-bold">✓ Sudah Disetor</span>
+                            </div>
+                        </div>
+
+                        <!-- Card 3: Total Terima Setoran Bulan Ini -->
+                        <div class="rounded-2xl p-4 sm:p-5 border bg-gradient-to-br from-indigo-500/10 via-indigo-500/5 to-white border-indigo-300/80 shadow-xs relative overflow-hidden group hover:shadow-sm transition">
+                            <div class="flex items-center justify-between gap-2 mb-2">
+                                <span class="text-[11px] font-black uppercase tracking-wider text-indigo-800 flex items-center gap-1.5 truncate">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+                                    <span class="truncate">Terima Setoran Bulan Ini</span>
+                                </span>
+                                <span class="text-[9px] font-bold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 border border-indigo-200 shrink-0">
+                                    {{ currentMonthName }}
+                                </span>
+                            </div>
+                            <div class="text-xl sm:text-2xl 2xl:text-3xl font-black text-indigo-950 font-mono tracking-tight">
+                                Rp {{ formatRupiah(collector_stats?.month_amount || 0) }}
+                            </div>
+                            <div class="mt-2.5 flex items-center justify-between text-xs text-indigo-800 font-semibold">
+                                <span>{{ collector_stats?.month_count || 0 }} Tagihan Tertagih</span>
+                                <span class="text-indigo-600 font-bold">Akumulasi Bulan</span>
+                            </div>
+                        </div>
+
+                        <!-- Card 4: Total Riwayat Penagihan Seluruh Waktu -->
+                        <div class="rounded-2xl p-4 sm:p-5 border bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-white border-emerald-300/80 shadow-xs relative overflow-hidden group hover:shadow-sm transition">
+                            <div class="flex items-center justify-between gap-2 mb-2">
+                                <span class="text-[11px] font-black uppercase tracking-wider text-emerald-800 flex items-center gap-1.5 truncate">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                                    <span class="truncate">Total Riwayat Penagihan</span>
+                                </span>
+                                <span class="text-[9px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
+                                    Semua Waktu
+                                </span>
+                            </div>
+                            <div class="text-xl sm:text-2xl 2xl:text-3xl font-black text-emerald-950 font-mono tracking-tight">
+                                Rp {{ formatRupiah(collector_stats?.all_amount || 0) }}
+                            </div>
+                            <div class="mt-2.5 flex items-center justify-between text-xs text-emerald-800 font-semibold">
+                                <span>{{ collector_stats?.all_count || 0 }} Transaksi Sukses</span>
+                                <Link href="/customer-settlements" class="text-emerald-700 hover:text-emerald-900 font-bold underline flex items-center gap-0.5">
+                                    <span>Rincian</span>
+                                    <span>&rarr;</span>
+                                </Link>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
-                <!-- Card 3: Janji Bayar (Klik untuk aktifkan tab Janji Bayar) -->
-                <div 
-                    @click="switchTab('promise')"
-                    class="cursor-pointer rounded-2xl p-3.5 sm:p-4 2xl:p-5 min-w-0 border transition-all duration-200 transform hover:-translate-y-0.5 select-none"
-                    :class="[
-                        activeTab === 'promise'
-                            ? 'bg-purple-50/90 border-purple-300 ring-2 ring-purple-500 shadow-md'
-                            : 'bg-white border-gray-200/80 hover:border-purple-200 hover:bg-purple-50/20 shadow-xs'
-                    ]"
-                >
-                    <div class="flex items-center justify-between gap-1 mb-2">
-                        <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-purple-800 flex items-center gap-1.5 min-w-0 truncate">
-                            <span class="w-2.5 h-2.5 rounded-full bg-purple-500 shrink-0"></span>
-                            <span class="truncate">Janji Bayar</span>
-                        </span>
-                        <span v-if="activeTab === 'promise'" class="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-purple-200/80 text-purple-900 border border-purple-300 shrink-0">
-                            Aktif
-                        </span>
-                    </div>
-                    <div class="text-sm sm:text-lg xl:text-xl font-black text-purple-700 break-words leading-tight">
-                        Rp {{ formatRupiah(stats?.promise?.total || 0) }}
-                    </div>
-                    <div class="mt-2 flex flex-wrap items-center justify-between gap-1 text-[11px] sm:text-xs text-purple-700 font-medium">
-                        <span>{{ stats?.promise?.count || 0 }} Pelanggan</span>
-                        <span class="text-[10px] font-bold underline">&rarr;</span>
-                    </div>
-                </div>
-
-                <!-- Card 4: Jatuh Tempo (Klik untuk aktifkan tab Jatuh Tempo) -->
-                <div 
-                    @click="switchTab('overdue')"
-                    class="cursor-pointer rounded-2xl p-3.5 sm:p-4 2xl:p-5 min-w-0 border transition-all duration-200 transform hover:-translate-y-0.5 select-none"
-                    :class="[
-                        activeTab === 'overdue'
-                            ? 'bg-rose-50/90 border-rose-300 ring-2 ring-rose-500 shadow-md'
-                            : 'bg-white border-gray-200/80 hover:border-rose-200 hover:bg-rose-50/20 shadow-xs'
-                    ]"
-                >
-                    <div class="flex items-center justify-between gap-1 mb-2">
-                        <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-rose-800 flex items-center gap-1.5 min-w-0 truncate">
-                            <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse shrink-0"></span>
-                            <span class="truncate">Jatuh Tempo</span>
-                        </span>
-                        <span v-if="activeTab === 'overdue'" class="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-rose-200/80 text-rose-900 border border-rose-300 shrink-0">
-                            Aktif
-                        </span>
-                    </div>
-                    <div class="text-sm sm:text-lg xl:text-xl font-black text-rose-700 break-words leading-tight">
-                        Rp {{ formatRupiah(stats?.overdue?.total || 0) }}
-                    </div>
-                    <div class="mt-2 flex flex-wrap items-center justify-between gap-1 text-[11px] sm:text-xs text-rose-700 font-medium">
-                        <span>{{ stats?.overdue?.count || 0 }} Lewat Tempo</span>
-                        <span class="text-[10px] font-bold underline">&rarr;</span>
-                    </div>
-                </div>
-
-                <!-- Card 5: Sudah Lunas (Klik untuk aktifkan tab Sudah Lunas) -->
-                <div 
-                    @click="switchTab('paid')"
-                    class="cursor-pointer rounded-2xl p-3.5 sm:p-4 2xl:p-5 min-w-0 border transition-all duration-200 transform hover:-translate-y-0.5 select-none"
-                    :class="[
-                        activeTab === 'paid'
-                            ? 'bg-emerald-50/90 border-emerald-300 ring-2 ring-emerald-500 shadow-md'
-                            : 'bg-white border-gray-200/80 hover:border-emerald-200 hover:bg-emerald-50/20 shadow-xs'
-                    ]"
-                >
-                    <div class="flex items-center justify-between gap-1 mb-2">
-                        <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5 min-w-0 truncate">
-                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
-                            <span class="truncate">Sudah Lunas</span>
-                        </span>
-                        <span v-if="activeTab === 'paid'" class="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-200/80 text-emerald-900 border border-emerald-300 shrink-0">
-                            Aktif
-                        </span>
-                    </div>
-                    <div class="text-sm sm:text-lg xl:text-xl font-black text-emerald-700 break-words leading-tight">
-                        Rp {{ formatRupiah(stats?.paid?.total || 0) }}
-                    </div>
-                    <div class="mt-2 flex flex-wrap items-center justify-between gap-1 text-[11px] sm:text-xs text-emerald-700 font-medium">
-                        <span>{{ stats?.paid?.count || 0 }} Lunas</span>
-                        <span class="text-[10px] font-bold underline">&rarr;</span>
-                    </div>
-                </div>
-
-                <!-- Card 6: Uang Diterima Hari Ini (Permanen / Real-time Today Metric) -->
-                <div class="rounded-2xl p-3.5 sm:p-4 2xl:p-5 min-w-0 border bg-gradient-to-br from-indigo-50/90 via-blue-50/80 to-white border-indigo-200/80 shadow-xs">
-                    <div class="flex items-center justify-between gap-1 mb-2">
-                        <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-indigo-900 flex items-center gap-1.5 min-w-0 truncate">
-                            <svg class="w-3.5 h-3.5 text-indigo-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span class="truncate">Hari Ini</span>
-                        </span>
-                        <span class="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200 shrink-0">
-                            {{ new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) }}
-                        </span>
-                    </div>
-                    <div class="text-sm sm:text-lg xl:text-xl font-black text-indigo-900 break-words leading-tight">
-                        Rp {{ formatRupiah(stats?.today?.verified_amount || 0) }}
-                    </div>
-                    <div class="mt-2 flex flex-col gap-0.5 text-[11px] sm:text-xs text-indigo-700 font-medium">
-                        <div class="flex flex-wrap items-center justify-between gap-1">
-                            <span>{{ stats?.today?.verified_count || 0 }} Lunas</span>
-                            <span v-if="stats?.today?.pending_amount > 0" class="text-[9px] text-amber-800 font-bold bg-amber-100 px-1 py-0.2 rounded border border-amber-200">
-                                +{{ formatRupiah(stats.today.pending_amount) }}
+                <!-- ── 2. KARTU GLOBAL MANAJEMEN (Hanya tampil untuk Akun Admin & mode 'global') ── -->
+                <div v-if="is_admin && adminViewMode === 'global'" class="grid grid-cols-2 md:grid-cols-3 2xl:grid-cols-6 gap-2.5 sm:gap-4">
+                    
+                    <!-- Card 1: Belum Lunas (Klik untuk aktifkan tab Belum Lunas) -->
+                    <div 
+                        @click="switchTab('unpaid')"
+                        class="cursor-pointer rounded-2xl p-3.5 sm:p-4 2xl:p-5 min-w-0 border transition-all duration-200 transform hover:-translate-y-0.5 select-none"
+                        :class="[
+                            activeTab === 'unpaid'
+                                ? 'bg-amber-50/90 border-amber-300 ring-2 ring-amber-500 shadow-md'
+                                : 'bg-white border-gray-200/80 hover:border-amber-200 hover:bg-amber-50/20 shadow-xs'
+                        ]"
+                    >
+                        <div class="flex items-center justify-between gap-1 mb-2">
+                            <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-amber-800 flex items-center gap-1.5 min-w-0 truncate">
+                                <span class="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>
+                                <span class="truncate">Belum Lunas</span>
+                            </span>
+                            <span v-if="activeTab === 'unpaid'" class="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-amber-200/80 text-amber-900 border border-amber-300 shrink-0">
+                                Aktif
                             </span>
                         </div>
+                        <div class="text-sm sm:text-lg xl:text-xl font-black text-gray-900 break-words leading-tight">
+                            Rp {{ formatRupiah(stats?.unpaid?.total || 0) }}
+                        </div>
+                        <div class="mt-2 flex flex-wrap items-center justify-between gap-1 text-[11px] sm:text-xs text-amber-700 font-medium">
+                            <span>{{ stats?.unpaid?.count || 0 }} Tagihan</span>
+                            <span class="text-[10px] font-bold underline">&rarr;</span>
+                        </div>
                     </div>
-                </div>
 
+                    <!-- Card 2: Bayar Sebagian (Klik untuk aktifkan tab Bayar Sebagian) -->
+                    <div 
+                        @click="switchTab('partial')"
+                        class="cursor-pointer rounded-2xl p-3.5 sm:p-4 2xl:p-5 min-w-0 border transition-all duration-200 transform hover:-translate-y-0.5 select-none"
+                        :class="[
+                            activeTab === 'partial'
+                                ? 'bg-sky-50/90 border-sky-300 ring-2 ring-sky-500 shadow-md'
+                                : 'bg-white border-gray-200/80 hover:border-sky-200 hover:bg-sky-50/20 shadow-xs'
+                        ]"
+                    >
+                        <div class="flex items-center justify-between gap-1 mb-2">
+                            <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-sky-800 flex items-center gap-1.5 min-w-0 truncate">
+                                <span class="w-2.5 h-2.5 rounded-full bg-sky-500 shrink-0"></span>
+                                <span class="truncate">Bayar Sebagian</span>
+                            </span>
+                            <span v-if="activeTab === 'partial'" class="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-sky-200/80 text-sky-900 border border-sky-300 shrink-0">
+                                Aktif
+                            </span>
+                        </div>
+                        <div class="text-sm sm:text-lg xl:text-xl font-black text-sky-700 break-words leading-tight">
+                            Rp {{ formatRupiah(stats?.partial?.total || 0) }}
+                        </div>
+                        <div class="mt-2 flex flex-wrap items-center justify-between gap-1 text-[11px] sm:text-xs text-sky-700 font-medium">
+                            <span>{{ stats?.partial?.count || 0 }} Tagihan</span>
+                            <span class="text-[10px] font-bold underline">&rarr;</span>
+                        </div>
+                    </div>
+
+                    <!-- Card 3: Janji Bayar (Klik untuk aktifkan tab Janji Bayar) -->
+                    <div 
+                        @click="switchTab('promise')"
+                        class="cursor-pointer rounded-2xl p-3.5 sm:p-4 2xl:p-5 min-w-0 border transition-all duration-200 transform hover:-translate-y-0.5 select-none"
+                        :class="[
+                            activeTab === 'promise'
+                                ? 'bg-purple-50/90 border-purple-300 ring-2 ring-purple-500 shadow-md'
+                                : 'bg-white border-gray-200/80 hover:border-purple-200 hover:bg-purple-50/20 shadow-xs'
+                        ]"
+                    >
+                        <div class="flex items-center justify-between gap-1 mb-2">
+                            <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-purple-800 flex items-center gap-1.5 min-w-0 truncate">
+                                <span class="w-2.5 h-2.5 rounded-full bg-purple-500 shrink-0"></span>
+                                <span class="truncate">Janji Bayar</span>
+                            </span>
+                            <span v-if="activeTab === 'promise'" class="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-purple-200/80 text-purple-900 border border-purple-300 shrink-0">
+                                Aktif
+                            </span>
+                        </div>
+                        <div class="text-sm sm:text-lg xl:text-xl font-black text-purple-700 break-words leading-tight">
+                            Rp {{ formatRupiah(stats?.promise?.total || 0) }}
+                        </div>
+                        <div class="mt-2 flex flex-wrap items-center justify-between gap-1 text-[11px] sm:text-xs text-purple-700 font-medium">
+                            <span>{{ stats?.promise?.count || 0 }} Pelanggan</span>
+                            <span class="text-[10px] font-bold underline">&rarr;</span>
+                        </div>
+                    </div>
+
+                    <!-- Card 4: Jatuh Tempo (Klik untuk aktifkan tab Jatuh Tempo) -->
+                    <div 
+                        @click="switchTab('overdue')"
+                        class="cursor-pointer rounded-2xl p-3.5 sm:p-4 2xl:p-5 min-w-0 border transition-all duration-200 transform hover:-translate-y-0.5 select-none"
+                        :class="[
+                            activeTab === 'overdue'
+                                ? 'bg-rose-50/90 border-rose-300 ring-2 ring-rose-500 shadow-md'
+                                : 'bg-white border-gray-200/80 hover:border-rose-200 hover:bg-rose-50/20 shadow-xs'
+                        ]"
+                    >
+                        <div class="flex items-center justify-between gap-1 mb-2">
+                            <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-rose-800 flex items-center gap-1.5 min-w-0 truncate">
+                                <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse shrink-0"></span>
+                                <span class="truncate">Jatuh Tempo</span>
+                            </span>
+                            <span v-if="activeTab === 'overdue'" class="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-rose-200/80 text-rose-900 border border-rose-300 shrink-0">
+                                Aktif
+                            </span>
+                        </div>
+                        <div class="text-sm sm:text-lg xl:text-xl font-black text-rose-700 break-words leading-tight">
+                            Rp {{ formatRupiah(stats?.overdue?.total || 0) }}
+                        </div>
+                        <div class="mt-2 flex flex-wrap items-center justify-between gap-1 text-[11px] sm:text-xs text-rose-700 font-medium">
+                            <span>{{ stats?.overdue?.count || 0 }} Lewat Tempo</span>
+                            <span class="text-[10px] font-bold underline">&rarr;</span>
+                        </div>
+                    </div>
+
+                    <!-- Card 5: Sudah Lunas (Klik untuk aktifkan tab Sudah Lunas) -->
+                    <div 
+                        @click="switchTab('paid')"
+                        class="cursor-pointer rounded-2xl p-3.5 sm:p-4 2xl:p-5 min-w-0 border transition-all duration-200 transform hover:-translate-y-0.5 select-none"
+                        :class="[
+                            activeTab === 'paid'
+                                ? 'bg-emerald-50/90 border-emerald-300 ring-2 ring-emerald-500 shadow-md'
+                                : 'bg-white border-gray-200/80 hover:border-emerald-200 hover:bg-emerald-50/20 shadow-xs'
+                        ]"
+                    >
+                        <div class="flex items-center justify-between gap-1 mb-2">
+                            <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5 min-w-0 truncate">
+                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+                                <span class="truncate">Sudah Lunas</span>
+                            </span>
+                            <span v-if="activeTab === 'paid'" class="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-200/80 text-emerald-900 border border-emerald-300 shrink-0">
+                                Aktif
+                            </span>
+                        </div>
+                        <div class="text-sm sm:text-lg xl:text-xl font-black text-emerald-700 break-words leading-tight">
+                            Rp {{ formatRupiah(stats?.paid?.total || 0) }}
+                        </div>
+                        <div class="mt-2 flex flex-wrap items-center justify-between gap-1 text-[11px] sm:text-xs text-emerald-700 font-medium">
+                            <span>{{ stats?.paid?.count || 0 }} Lunas</span>
+                            <span class="text-[10px] font-bold underline">&rarr;</span>
+                        </div>
+                    </div>
+
+                    <!-- Card 6: Uang Diterima Hari Ini (Permanen / Real-time Today Metric) -->
+                    <div class="rounded-2xl p-3.5 sm:p-4 2xl:p-5 min-w-0 border bg-gradient-to-br from-indigo-50/90 via-blue-50/80 to-white border-indigo-200/80 shadow-xs">
+                        <div class="flex items-center justify-between gap-1 mb-2">
+                            <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-indigo-900 flex items-center gap-1.5 min-w-0 truncate">
+                                <svg class="w-3.5 h-3.5 text-indigo-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span class="truncate">Hari Ini (Global)</span>
+                            </span>
+                            <span class="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200 shrink-0">
+                                {{ new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) }}
+                            </span>
+                        </div>
+                        <div class="text-sm sm:text-lg xl:text-xl font-black text-indigo-900 break-words leading-tight">
+                            Rp {{ formatRupiah(stats?.today?.verified_amount || 0) }}
+                        </div>
+                        <div class="mt-2 flex flex-col gap-0.5 text-[11px] sm:text-xs text-indigo-700 font-medium">
+                            <div class="flex flex-wrap items-center justify-between gap-1">
+                                <span>{{ stats?.today?.verified_count || 0 }} Lunas</span>
+                                <span v-if="stats?.today?.pending_amount > 0" class="text-[9px] text-amber-800 font-bold bg-amber-100 px-1 py-0.2 rounded border border-amber-200">
+                                    +{{ formatRupiah(stats.today.pending_amount) }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
             </div>
 
             <!-- ── FILTER BAR (Wilayah/Area, Tanggal, & Pencarian) ── -->
@@ -911,6 +1033,30 @@ const props = defineProps({
             today: { verified_amount: 0, verified_count: 0, pending_amount: 0, total_amount: 0 },
         }),
     },
+    collector_stats: {
+        type: Object,
+        default: () => ({
+            today_pending_amount: 0,
+            today_pending_count: 0,
+            today_verified_amount: 0,
+            today_verified_count: 0,
+            today_total_amount: 0,
+            today_total_count: 0,
+            month_amount: 0,
+            month_count: 0,
+            all_amount: 0,
+            all_count: 0,
+        }),
+    },
+    is_admin: {
+        type: Boolean,
+        default: false,
+    },
+});
+
+const adminViewMode = ref('global');
+const currentMonthName = computed(() => {
+    return new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
 });
 
 const formatRupiah = (number) => {

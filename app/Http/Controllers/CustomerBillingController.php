@@ -184,6 +184,72 @@ class CustomerBillingController extends Controller
         $todayPendingAmount = (float) (clone $todayPaymentsQuery)->where('status', 'pending')->sum('amount');
         $todayPendingCount = (clone $todayPaymentsQuery)->where('status', 'pending')->count();
 
+        // ── Evaluasi Hak Akses Admin vs Karyawan & Nominal Terima Setoran Petugas ──
+        $user = auth()->user();
+        $userId = $user ? $user->id : 0;
+        $userRole = strtolower($user->role ?? '');
+        $isAdmin = in_array($userRole, ['admin', 'superadmin', 'super admin', 'super-admin', 'finance', 'manager', 'management'])
+            || ($user && method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'super admin', 'finance', 'manager', 'management']));
+
+        // Hitung nominal uang yang ditagih / diterima oleh akun petugas ini (collected_by)
+        $myPaymentsQuery = Payment::where('collected_by', $userId)
+            ->whereHas('invoice', fn($q) => $q->where('is_reseller_balance', false));
+
+        $todayDate = Carbon::today()->toDateString();
+        $currentMonth = Carbon::today()->month;
+        $currentYear = Carbon::today()->year;
+
+        // 1. Terima Setoran Hari Ini - Menunggu Validasi (Fisik uang tunai di tangan penagih)
+        $myTodayPendingAmount = (float) (clone $myPaymentsQuery)
+            ->whereDate('payment_date', $todayDate)
+            ->where('status', 'pending')
+            ->sum('amount');
+        $myTodayPendingCount = (clone $myPaymentsQuery)
+            ->whereDate('payment_date', $todayDate)
+            ->where('status', 'pending')
+            ->count();
+
+        // 2. Terima Setoran Hari Ini - Terverifikasi (Sudah disetorkan & divalidasi kantor hari ini)
+        $myTodayVerifiedAmount = (float) (clone $myPaymentsQuery)
+            ->whereDate('payment_date', $todayDate)
+            ->where('status', 'verified')
+            ->sum('amount');
+        $myTodayVerifiedCount = (clone $myPaymentsQuery)
+            ->whereDate('payment_date', $todayDate)
+            ->where('status', 'verified')
+            ->count();
+
+        // 3. Total Terima Setoran Hari Ini (Pending + Verified)
+        $myTodayTotalAmount = $myTodayPendingAmount + $myTodayVerifiedAmount;
+        $myTodayTotalCount = $myTodayPendingCount + $myTodayVerifiedCount;
+
+        // 4. Terima Setoran Bulan Ini
+        $myMonthAmount = (float) (clone $myPaymentsQuery)
+            ->whereYear('payment_date', $currentYear)
+            ->whereMonth('payment_date', $currentMonth)
+            ->sum('amount');
+        $myMonthCount = (clone $myPaymentsQuery)
+            ->whereYear('payment_date', $currentYear)
+            ->whereMonth('payment_date', $currentMonth)
+            ->count();
+
+        // 5. Total Seluruh Riwayat Setoran Petugas
+        $myAllAmount = (float) (clone $myPaymentsQuery)->sum('amount');
+        $myAllCount = (clone $myPaymentsQuery)->count();
+
+        $collectorStats = [
+            'today_pending_amount' => $myTodayPendingAmount,
+            'today_pending_count' => $myTodayPendingCount,
+            'today_verified_amount' => $myTodayVerifiedAmount,
+            'today_verified_count' => $myTodayVerifiedCount,
+            'today_total_amount' => $myTodayTotalAmount,
+            'today_total_count' => $myTodayTotalCount,
+            'month_amount' => $myMonthAmount,
+            'month_count' => $myMonthCount,
+            'all_amount' => $myAllAmount,
+            'all_count' => $myAllCount,
+        ];
+
         // Data Invoice dengan pagination dan eager loading customer detail
         $invoices = $buildFilteredQuery($activeTab)
             ->with(['customer.areaModel', 'customer.package', 'customer.surveys', 'customer.ont', 'payments'])
@@ -320,6 +386,8 @@ class CustomerBillingController extends Controller
             'areas' => $areas,
             'desas' => $activeDesas,
             'area_desas' => $areaDesasMap,
+            'is_admin' => $isAdmin,
+            'collector_stats' => $collectorStats,
             'filters' => [
                 'tab' => $activeTab,
                 'area_id' => $request->area_id ?? '',
@@ -329,24 +397,25 @@ class CustomerBillingController extends Controller
                 'search' => $request->search ?? '',
             ],
             'stats' => [
+                // Jika bukan admin (akun karyawan/petugas), sembunyikan nominal total belum lunas perusahaan
                 'unpaid' => [
-                    'total' => $unpaidTotal,
+                    'total' => $isAdmin ? $unpaidTotal : 0,
                     'count' => $unpaidCount,
                 ],
                 'partial' => [
-                    'total' => $partialTotal,
+                    'total' => $isAdmin ? $partialTotal : 0,
                     'count' => $partialCount,
                 ],
                 'promise' => [
-                    'total' => $promiseTotal,
+                    'total' => $isAdmin ? $promiseTotal : 0,
                     'count' => $promiseCount,
                 ],
                 'overdue' => [
-                    'total' => $overdueTotal,
+                    'total' => $isAdmin ? $overdueTotal : 0,
                     'count' => $overdueCount,
                 ],
                 'paid' => [
-                    'total' => $paidTotal,
+                    'total' => $isAdmin ? $paidTotal : 0,
                     'count' => $paidCount,
                 ],
                 'today' => [
@@ -419,11 +488,20 @@ class CustomerBillingController extends Controller
      */
     public function settlements(Request $request)
     {
+        $user = auth()->user();
+        $userRole = strtolower($user->role ?? '');
+        $isAdmin = in_array($userRole, ['admin', 'superadmin', 'super admin', 'super-admin', 'finance', 'manager', 'management'])
+            || ($user && method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'super admin', 'finance', 'manager', 'management']));
+
         $activeTab = $request->get('tab', 'pending');
         
         $baseQuery = Payment::whereHas('invoice', function($q) {
             $q->where('is_reseller_balance', false);
         });
+
+        if (!$isAdmin && $user) {
+            $baseQuery->where('collected_by', $user->id);
+        }
 
         // Hitung statistik untuk cards ringkasan
         $todayStr = now()->toDateString();
@@ -442,6 +520,10 @@ class CustomerBillingController extends Controller
             ->whereHas('invoice', function($q) {
                 $q->where('is_reseller_balance', false);
             });
+
+        if (!$isAdmin && $user) {
+            $query->where('collected_by', $user->id);
+        }
 
         if ($activeTab === 'verified') {
             $query->where('status', 'verified');
@@ -511,6 +593,7 @@ class CustomerBillingController extends Controller
             'payments' => $payments,
             'activeTab' => $activeTab,
             'stats' => $stats,
+            'is_admin' => $isAdmin,
             'filters' => $request->only(['search', 'collector_id', 'payment_method', 'start_date', 'end_date', 'tab']),
             'collectors' => $collectors,
         ]);
