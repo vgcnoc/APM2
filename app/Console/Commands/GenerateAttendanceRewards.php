@@ -8,8 +8,10 @@ use App\Models\Employee;
 use App\Models\Incentive;
 use App\Models\Setting;
 use App\Models\SpecialAttendance;
+use App\Models\Shift;
 use App\Models\User;
 use App\Models\WorkSchedule;
+use App\Services\AttendanceCalculatorService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -88,7 +90,11 @@ class GenerateAttendanceRewards extends Command
         $alphaPenaltyEnabled = Setting::get('attendance_alpha_enabled', Setting::get('attendance_alpha_penalty_enabled', '1')) === '1';
 
         // Ambil data absensi reguler, khusus, dan jadwal kerja
-        $allMonthAtts = Attendance::with('employee.area')
+        $attSettings = AttendanceCalculatorService::getAttendanceSettings();
+        $shiftsById = Shift::all()->keyBy('id');
+        $nowEval = Carbon::now('Asia/Jakarta');
+
+        $allMonthAtts = Attendance::with(['employee.area', 'shift'])
             ->whereBetween('date', [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
             ->get();
 
@@ -114,7 +120,8 @@ class GenerateAttendanceRewards extends Command
             $month, $monthStart, $monthEnd, $todayDate, $cutoffTime,
             $latePenaltyMode, $latePenaltyModeSlug, $penaltyPerMinute, $fixedPenalty, $missingOutAmount, $earlyLeaveAmount, $alphaAmount,
             $latePenaltyEnabled, $missingOutPenaltyEnabled, $earlyLeavePenaltyEnabled, $alphaPenaltyEnabled,
-            $isRewardEnabled, &$totalDeductionsCount, &$totalRewardsCount
+            $isRewardEnabled, &$totalDeductionsCount, &$totalRewardsCount,
+            $attSettings, $shiftsById, $nowEval
         ) {
             $performance = [];
 
@@ -160,12 +167,8 @@ class GenerateAttendanceRewards extends Command
                 // --- 2. POTONGAN LUPA ABSEN PULANG (MISSING CLOCK-OUT) ---
                 $missingOutCount = 0;
                 if ($missingOutPenaltyEnabled) {
-                    $missingOutAtts = $empAtts->filter(function ($att) use ($todayDate, $cutoffTime) {
-                        $attDateStr = is_string($att->date) ? substr($att->date, 0, 10) : $att->date->format('Y-m-d');
-                        if (empty($att->clock_in) || !empty($att->clock_out)) return false;
-                        if ($attDateStr < $todayDate) return true;
-                        if ($attDateStr === $todayDate && Carbon::now()->greaterThan(Carbon::parse($attDateStr . ' ' . $cutoffTime))) return true;
-                        return false;
+                    $missingOutAtts = $empAtts->filter(function ($att) use ($nowEval, $attSettings, $shiftsById) {
+                        return AttendanceCalculatorService::isMissingClockOut($att, $nowEval, $attSettings, $shiftsById, 'Asia/Jakarta');
                     });
                     $missingOutCount = $missingOutAtts->count();
                     $missingOutDeduction = $missingOutCount * $missingOutAmount;
@@ -267,7 +270,7 @@ class GenerateAttendanceRewards extends Command
                     foreach ($byTeam as $teamId => $teamAtts) {
                         $team = $teamAtts->first()->team;
                         $sLates = $teamAtts->where('status', 'late')->count();
-                        $sNoOuts = $teamAtts->whereNotNull('clock_in')->whereNull('clock_out')->count();
+                        $sNoOuts = $teamAtts->filter(fn($sAtt) => AttendanceCalculatorService::isSpecialMissingClockOut($sAtt, $team, $nowEval))->count();
                         $sLateFine = $sLates * (float) ($team?->late_deduction_amount ?? 10000);
                         $sNoOutFine = $sNoOuts * (float) ($team?->no_out_deduction_amount ?? 10000);
                         $totalSpecialFine = $sLateFine + $sNoOutFine;

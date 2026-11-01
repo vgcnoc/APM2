@@ -1763,25 +1763,27 @@ class DashboardController extends Controller
     {
         $cacheKey = "worst_att_rankings_{$selectedAreaId}";
         $data = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function () use ($selectedAreaId) {
-            $now = Carbon::now();
+            $now = Carbon::now('Asia/Jakarta');
             $startOfMonth = $now->copy()->startOfMonth()->format('Y-m-d');
-        $endOfMonth = $now->copy()->endOfMonth()->format('Y-m-d');
-        $todayDate = $now->format('Y-m-d');
+            $endOfMonth = $now->copy()->endOfMonth()->format('Y-m-d');
+            $todayDate = $now->format('Y-m-d');
 
-        // Aturan Konfigurasi Denda dari Setting
-        $latePenaltyMode = Setting::get('attendance_late_mode', Setting::get('attendance_late_penalty_mode', 'Per Kejadian'));
-        $latePenaltyModeSlug = str_contains(strtolower($latePenaltyMode), 'menit') ? 'per_menit' : 'per_kejadian';
-        $penaltyPerMinute = (float) Setting::get('attendance_late_per_minute_amount', 1000);
-        $fixedPenalty = (float) Setting::get('attendance_late_amount', 10000);
-        $missingOutAmount = (float) Setting::get('attendance_missing_out_amount', 10000);
-        $earlyLeaveAmount = (float) Setting::get('attendance_early_leave_amount', 10000);
-        $alphaAmount = (float) Setting::get('attendance_alpha_amount', 35000);
-        $cutoffTime = Setting::get('attendance_checkout_deadline_time', '23:30');
+            $attSettings = AttendanceCalculatorService::getAttendanceSettings();
+            $shiftsById = Shift::all()->keyBy('id');
 
-        $latePenaltyEnabled = Setting::get('attendance_late_enabled', Setting::get('attendance_late_penalty_enabled', '1')) === '1';
-        $missingOutPenaltyEnabled = Setting::get('attendance_missing_out_enabled', Setting::get('attendance_missing_out_penalty_enabled', '1')) === '1';
-        $earlyLeavePenaltyEnabled = Setting::get('attendance_early_leave_enabled', Setting::get('attendance_early_leave_penalty_enabled', '1')) === '1';
-        $alphaPenaltyEnabled = Setting::get('attendance_alpha_enabled', Setting::get('attendance_alpha_penalty_enabled', '1')) === '1';
+            // Aturan Konfigurasi Denda dari Setting
+            $latePenaltyMode = Setting::get('attendance_late_mode', Setting::get('attendance_late_penalty_mode', 'Per Kejadian'));
+            $latePenaltyModeSlug = str_contains(strtolower($latePenaltyMode), 'menit') ? 'per_menit' : 'per_kejadian';
+            $penaltyPerMinute = (float) Setting::get('attendance_late_per_minute_amount', 1000);
+            $fixedPenalty = (float) Setting::get('attendance_late_amount', 10000);
+            $missingOutAmount = (float) Setting::get('attendance_missing_out_amount', 10000);
+            $earlyLeaveAmount = (float) Setting::get('attendance_early_leave_amount', 10000);
+            $alphaAmount = (float) Setting::get('attendance_alpha_amount', 35000);
+
+            $latePenaltyEnabled = Setting::get('attendance_late_enabled', Setting::get('attendance_late_penalty_enabled', '1')) === '1';
+            $missingOutPenaltyEnabled = Setting::get('attendance_missing_out_enabled', Setting::get('attendance_missing_out_penalty_enabled', '1')) === '1';
+            $earlyLeavePenaltyEnabled = Setting::get('attendance_early_leave_enabled', Setting::get('attendance_early_leave_penalty_enabled', '1')) === '1';
+            $alphaPenaltyEnabled = Setting::get('attendance_alpha_enabled', Setting::get('attendance_alpha_penalty_enabled', '1')) === '1';
 
         // Ambil Data Karyawan
         $empQuery = Employee::with(['area', 'shift'])
@@ -1867,13 +1869,9 @@ class DashboardController extends Controller
                     : ($lateCount * $fixedPenalty);
             }
 
-            // 2. Lupa Absen Pulang (Missing Out)
-            $missingOutAtts = $empAtts->filter(function ($att) use ($todayDate, $cutoffTime) {
-                $attDateStr = is_string($att->date) ? substr($att->date, 0, 10) : $att->date->format('Y-m-d');
-                if (empty($att->clock_in) || !empty($att->clock_out)) return false;
-                if ($attDateStr < $todayDate) return true;
-                if ($attDateStr === $todayDate && Carbon::now()->greaterThan(Carbon::parse($attDateStr . ' ' . $cutoffTime))) return true;
-                return false;
+            // 2. Lupa Absen Pulang (Missing Out) - menggunakan service resmi dengan batas jam pulang dinamis per shift
+            $missingOutAtts = $empAtts->filter(function ($att) use ($now, $attSettings, $shiftsById) {
+                return AttendanceCalculatorService::isMissingClockOut($att, $now, $attSettings, $shiftsById, 'Asia/Jakarta');
             });
             $missingOutCount = $missingOutAtts->count();
             $missingOutDeduction = ($missingOutPenaltyEnabled && $missingOutCount > 0) ? ($missingOutCount * $missingOutAmount) : 0;
