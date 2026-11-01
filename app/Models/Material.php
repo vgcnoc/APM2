@@ -80,10 +80,18 @@ class Material extends Model
               ->orWhere('id', '<=', 260)
               ->orWhereHas('transactionItems.transaction', function ($tq) {
                   $tq->where('transaction_number', 'like', '%MIG%')
+                     ->orWhere('transaction_number', 'like', '%IN-AREA%')
+                     ->orWhere('transaction_number', 'like', '%IN-INIT%')
                      ->orWhere('purpose', 'like', '%migrasi%')
                      ->orWhere('notes', 'like', '%migrasi%')
                      ->orWhere('source_type', 'migrasi')
-                     ->orWhere('purpose', 'Pembelian Toko / Supplier');
+                     ->orWhere('purpose', 'Pembelian Toko / Supplier')
+                     ->orWhere('purpose', 'like', '%Material Fisik Area%')
+                     ->orWhere('purpose', 'like', '%Material Area%')
+                     ->orWhere('purpose', 'like', '%Stok Awal%');
+              })
+              ->orWhereHas('stocks', function ($sq) {
+                  $sq->whereNotNull('area_id');
               });
         });
     }

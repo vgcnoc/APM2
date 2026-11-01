@@ -107,20 +107,44 @@ class MaterialController extends Controller
         // Summary Stats: hanya menghitung material yang masih ada dan aktif dengan konversi unit yang tepat
         $summary = $this->calculateMaterialSummary($scopedAreaIds);
         
-        $categories = Material::where(function ($q) {
+        $dbCategories = Material::where(function ($q) {
                 $q->where('is_active', true)->orWhereNull('is_active');
             })
-            ->visibleInMaterialsTable()
             ->select('category')
             ->whereNotNull('category')
             ->where('category', '!=', '')
             ->distinct()
-            ->pluck('category');
+            ->pluck('category')
+            ->toArray();
+        $defaultCategories = ['Umum', 'Kabel', 'Patchcord', 'Klem', 'Isolasi', 'ONT', 'Splitter', 'Aksesoris', 'Peralatan'];
+        $categories = array_values(array_unique(array_merge($defaultCategories, $dbCategories)));
+        sort($categories);
+
+        $catalogMaterials = Material::where(function ($q) {
+                $q->where('is_active', true)->orWhereNull('is_active');
+            })
+            ->select([
+                'id',
+                'name',
+                'category',
+                'unit',
+                'supplier',
+                'meter_per_roll',
+                'pcs_per_pack',
+                'cm_per_pcs',
+                'requires_sn',
+                'requires_mac'
+            ])
+            ->orderBy('name')
+            ->get()
+            ->unique('name')
+            ->values();
 
         return Inertia::render('Materials/Index', [
             'materials' => $materials,
             'areas' => $areas,
             'categories' => $categories,
+            'catalogMaterials' => $catalogMaterials,
             'summary' => $summary,
             'filters' => $request->only(['search', 'category', 'stock_status', 'area_id'])
         ]);
@@ -131,7 +155,7 @@ class MaterialController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'supplier' => 'nullable|string|max:255',
-            'category' => 'nullable|string|max:255',
+            'category' => 'required|string|max:255',
             'unit' => 'required|string|max:50',
             'meter_per_roll' => 'nullable|numeric|min:0',
             'total_rolls' => 'nullable|numeric|min:0',
@@ -140,26 +164,33 @@ class MaterialController extends Controller
             'cm_per_pcs' => 'nullable|numeric|min:0',
             'total_pieces' => 'nullable|numeric|min:0',
             'stock' => 'nullable|numeric|min:0',
+            'initial_stock' => 'nullable|numeric|min:0',
             'price_per_unit' => 'nullable|numeric|min:0',
             'selling_price' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
             'area_id' => 'nullable|exists:areas,id',
+            'requires_sn' => 'nullable|boolean',
+            'requires_mac' => 'nullable|boolean',
         ]);
 
         $areaId = $validated['area_id'] ?? null;
         unset($validated['area_id']);
 
+        $validated['price_per_unit'] = $validated['price_per_unit'] ?? 0;
+        $validated['selling_price'] = $validated['selling_price'] ?? 0;
         $validated['stock'] = $validated['stock'] ?? 0;
-        $validated['initial_stock'] = $validated['stock'];
+        $validated['initial_stock'] = $validated['initial_stock'] ?? $validated['stock'];
+        $validated['is_migration'] = true; // Tandai sebagai material fisik area (bukan master katalog toko)
+        $validated['is_active'] = true;
 
         $material = Material::create($validated);
 
-        if ($areaId && (float)$material->stock > 0) {
+        if ($areaId) {
             \App\Models\MaterialStock::create([
                 'material_id' => $material->id,
                 'area_id' => $areaId,
                 'stock' => $material->stock,
-                'initial_stock' => $material->stock,
+                'initial_stock' => $material->initial_stock,
                 'total_rolls' => $material->total_rolls ?? 0,
                 'total_packs' => $material->total_packs ?? 0,
                 'total_pieces' => $material->total_pieces ?? 0,
@@ -168,40 +199,24 @@ class MaterialController extends Controller
             if ((float)$material->stock > 0) {
                 // Catat transaksi mutasi awal ke log
                 $transaction = \App\Models\MaterialTransaction::create([
-                    'transaction_number' => 'IN-INIT-' . date('YmdHis') . '-' . $material->id,
+                    'transaction_number' => 'IN-AREA-' . date('YmdHis') . '-' . $material->id,
                     'type' => 'in',
                     'status' => 'approved',
                     'date' => now(),
                     'technician_name' => auth()->user() ? auth()->user()->name : 'Admin',
-                    'purpose' => 'Stok Awal Produk Baru',
+                    'purpose' => 'Pencatatan Material Fisik Area',
                     'user_id' => auth()->id(),
                     'area_id' => $areaId,
-                    'notes' => 'Pencatatan stok awal saat produk baru didaftarkan'
+                    'notes' => 'Pencatatan stok material fisik di area (non-toko)'
                 ]);
-
-                $unitPrice = (float) ($material->price_per_unit ?? 0);
-                $baseRate = $unitPrice;
-                $cat = strtolower((string) $material->category);
-                $name = strtolower((string) $material->name);
-                if ((str_contains($cat, 'kabel') || str_contains($name, 'kabel')) && (float) $material->meter_per_roll > 0) {
-                    $baseRate = $unitPrice / (float) $material->meter_per_roll;
-                } elseif (str_contains($cat, 'isolasi') || str_contains($name, 'isolasi')) {
-                    $cmPerPcs = (float) ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
-                    $pcsPerPack = (float) ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
-                    $factor = $cmPerPcs * $pcsPerPack;
-                    $baseRate = $factor > 0 ? ($unitPrice / $factor) : $unitPrice;
-                } elseif ((str_contains($cat, 'klem') || str_contains($name, 'klem')) && (float) $material->pcs_per_pack > 0) {
-                    $baseRate = $unitPrice / (float) $material->pcs_per_pack;
-                }
-                $itemTotal = $baseRate * (float) $material->stock;
 
                 \App\Models\MaterialTransactionItem::create([
                     'material_transaction_id' => $transaction->id,
                     'material_id' => $material->id,
                     'quantity' => $material->stock,
                     'unit' => $material->unit,
-                    'price_per_unit' => $baseRate,
-                    'total_price' => $itemTotal,
+                    'price_per_unit' => 0,
+                    'total_price' => 0,
                     'stock_before' => 0,
                     'stock_after' => $material->stock,
                     'condition' => 'Layak Pakai'
@@ -209,7 +224,7 @@ class MaterialController extends Controller
             }
         }
 
-        return redirect()->route('materials.index')->with('success', 'Data material berhasil ditambahkan.');
+        return redirect()->route('materials.index')->with('success', 'Data material area berhasil ditambahkan.');
     }
 
     public function update(Request $request, Material $material)
@@ -217,7 +232,7 @@ class MaterialController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'supplier' => 'nullable|string|max:255',
-            'category' => 'nullable|string|max:255',
+            'category' => 'required|string|max:255',
             'unit' => 'required|string|max:50',
             'meter_per_roll' => 'nullable|numeric|min:0',
             'total_rolls' => 'nullable|numeric|min:0',
@@ -225,15 +240,22 @@ class MaterialController extends Controller
             'total_packs' => 'nullable|numeric|min:0',
             'cm_per_pcs' => 'nullable|numeric|min:0',
             'total_pieces' => 'nullable|numeric|min:0',
-            'stock' => 'required|numeric|min:0',
+            'stock' => 'nullable|numeric|min:0',
+            'initial_stock' => 'nullable|numeric|min:0',
             'price_per_unit' => 'nullable|numeric|min:0',
             'selling_price' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
             'area_id' => 'nullable|exists:areas,id',
+            'requires_sn' => 'nullable|boolean',
+            'requires_mac' => 'nullable|boolean',
         ]);
 
         $areaId = $validated['area_id'] ?? null;
         unset($validated['area_id']);
+
+        if (array_key_exists('stock', $validated) && is_null($validated['stock'])) {
+            unset($validated['stock']);
+        }
 
         $material->update($validated);
 
@@ -245,7 +267,7 @@ class MaterialController extends Controller
                     [
                         'area_id' => $areaId,
                         'stock' => $material->stock,
-                        'initial_stock' => $material->stock,
+                        'initial_stock' => $material->initial_stock ?? $material->stock,
                         'total_rolls' => $material->total_rolls ?? 0,
                         'total_packs' => $material->total_packs ?? 0,
                         'total_pieces' => $material->total_pieces ?? 0,
@@ -256,16 +278,12 @@ class MaterialController extends Controller
                     ['material_id' => $material->id, 'area_id' => $areaId],
                     [
                         'stock' => $material->stock,
-                        'initial_stock' => $material->stock,
+                        'initial_stock' => $material->initial_stock ?? $material->stock,
                         'total_rolls' => $material->total_rolls ?? 0,
                         'total_packs' => $material->total_packs ?? 0,
                         'total_pieces' => $material->total_pieces ?? 0,
                     ]
                 );
-            }
-        } else {
-            if (\App\Models\MaterialStock::where('material_id', $material->id)->count() === 1) {
-                \App\Models\MaterialStock::where('material_id', $material->id)->delete();
             }
         }
 
