@@ -1,7 +1,7 @@
 <template>
     <AppLayout title="Invoice Pelanggan" subtitle="Kelola tagihan pelanggan dan status pembayarannya">
         <!-- Summary Cards -->
-        <div v-can="'invoices_card_summary'" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5 sm:gap-4 mb-6">
+        <div v-if="$can('invoices_card_summary')" v-can="'invoices_card_summary'" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5 sm:gap-4 mb-6">
             <!-- Card 1: Total Belum Lunas -->
             <div class="bg-white rounded-2xl p-4 sm:p-5 min-w-0 gap-3 border border-gray-100 shadow-sm flex items-center justify-between">
                 <div>
@@ -96,7 +96,7 @@
             :filters="filters"
         >
             <template #filters>
-                <div class="flex flex-col gap-2.5 w-full lg:flex-row lg:flex-nowrap lg:items-center lg:overflow-x-auto lg:pb-1">
+                <div class="flex flex-wrap items-center gap-2.5 w-full">
                     <!-- 1. Rentang Tanggal (Pill Capsule Rapi) -->
                     <div v-can="'invoices_filter_period'" class="flex items-center gap-1.5 bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 shadow-2xs">
                         <svg class="w-3.5 h-3.5 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

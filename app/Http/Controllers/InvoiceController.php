@@ -300,6 +300,20 @@ class InvoiceController extends Controller
             'total_stop_permanen_amount' => (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', 'terminated'))->whereIn('status', ['unpaid', 'partial', 'overdue'])->sum('amount'),
         ];
 
+        $authUser = $request->user();
+        $canViewSummary = $authUser && (
+            $authUser->hasRole(['admin', 'super admin', 'superadmin']) || 
+            $authUser->can('invoices_card_summary')
+        );
+
+        if (!$canViewSummary) {
+            $stats['total_unpaid_amount'] = 0;
+            $stats['total_paid_amount'] = 0;
+            $stats['total_piutang_amount'] = 0;
+            $stats['total_jatuh_tempo_amount'] = 0;
+            $stats['total_stop_permanen_amount'] = 0;
+        }
+
         $defaultTaxPpn = (float) \App\Models\Setting::get('tax_ppn', '0');
 
         $invoices = $query->latest('id')
