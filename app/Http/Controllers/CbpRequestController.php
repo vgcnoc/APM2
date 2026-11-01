@@ -183,7 +183,16 @@ class CbpRequestController extends Controller
             ->paginate($request->per_page ?? 15)
             ->withQueryString();
 
-        $technicians = \App\Models\User::role('teknisi')->get();
+        $technicians = \App\Models\User::where(function ($query) {
+            $query->whereHas('roles', function ($q) {
+                $q->whereIn('name', ['teknisi', 'kepala teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance', 'teknisi-2', 'maintenance-1'])
+                  ->orWhere('name', 'like', '%teknisi%')
+                  ->orWhere('name', 'like', '%serbu%');
+            })
+            ->orWhereIn('role', ['teknisi', 'kepala teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance', 'teknisi-2', 'maintenance-1'])
+            ->orWhere('role', 'like', '%teknisi%')
+            ->orWhere('role', 'like', '%serbu%');
+        })->orderBy('name')->get();
         $areas = DataScopeService::getScopedAreas($user, 'cbp');
 
         return Inertia::render('Tickets/CbpJadwal', [
@@ -344,8 +353,10 @@ class CbpRequestController extends Controller
         $canReport = $user && (
             $user->can('cbp_btn_report') ||
             $user->can('cbp_manage') ||
-            $user->hasRole(['admin', 'kepala teknisi', 'teknisi']) ||
-            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'teknisi'])
+            $user->hasAnyRole(['admin', 'kepala teknisi', 'teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance']) ||
+            str_contains(strtolower($user->role ?? ''), 'teknisi') ||
+            str_contains(strtolower($user->role ?? ''), 'serbu')
         );
         if (!$canReport) {
             abort(403, 'Anda tidak memiliki hak akses untuk melaporkan hasil CBP.');

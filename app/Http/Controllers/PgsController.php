@@ -112,7 +112,7 @@ class PgsController extends Controller
         }
 
         // Scoping for technician
-        if (auth()->check() && auth()->user()->hasRole('teknisi') && !auth()->user()->hasRole('admin') && !auth()->user()->hasRole('kepala teknisi')) {
+        if (auth()->check() && (auth()->user()->hasAnyRole(['teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance']) || str_contains(strtolower(auth()->user()->role ?? ''), 'teknisi') || str_contains(strtolower(auth()->user()->role ?? ''), 'serbu')) && !auth()->user()->hasRole('admin') && !auth()->user()->hasRole('kepala teknisi')) {
             $query->where(function($q) {
                 $q->whereHas('technicians', function($tq) {
                     $tq->where('users.id', auth()->id());
@@ -141,7 +141,16 @@ class PgsController extends Controller
         DataScopeService::applyCustomerScope($customerQuery, $user);
         $customers = function () use ($user) { $q = Customer::whereIn('status', ['active', 'suspended', 'isolir', 'installing'])->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'area', 'package_id')->with(['package:id,name', 'areaModel:id,name', 'ont:id,customer_id,serial_number,status,rx_power,odp_id', 'ont.odp:id,name']); DataScopeService::applyCustomerScope($q, $user); return $q->get(); };
 
-        $technicians = User::role(['teknisi', 'kepala teknisi'])->select('id', 'name', 'phone')->get();
+        $technicians = User::where(function ($query) {
+            $query->whereHas('roles', function ($q) {
+                $q->whereIn('name', ['teknisi', 'kepala teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance', 'teknisi-2', 'maintenance-1'])
+                  ->orWhere('name', 'like', '%teknisi%')
+                  ->orWhere('name', 'like', '%serbu%');
+            })
+            ->orWhereIn('role', ['teknisi', 'kepala teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance', 'teknisi-2', 'maintenance-1'])
+            ->orWhere('role', 'like', '%teknisi%')
+            ->orWhere('role', 'like', '%serbu%');
+        })->select('id', 'name', 'phone')->orderBy('name')->get();
         if ($technicians->isEmpty()) {
             $technicians = User::select('id', 'name', 'phone')->get();
         }
@@ -356,7 +365,16 @@ class PgsController extends Controller
 
         $tickets = $query->latest('id')->paginate($request->per_page ?? 15)->withQueryString();
 
-        $technicians = User::role(['teknisi', 'kepala teknisi'])->select('id', 'name', 'phone')->get();
+        $technicians = User::where(function ($query) {
+            $query->whereHas('roles', function ($q) {
+                $q->whereIn('name', ['teknisi', 'kepala teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance', 'teknisi-2', 'maintenance-1'])
+                  ->orWhere('name', 'like', '%teknisi%')
+                  ->orWhere('name', 'like', '%serbu%');
+            })
+            ->orWhereIn('role', ['teknisi', 'kepala teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance', 'teknisi-2', 'maintenance-1'])
+            ->orWhere('role', 'like', '%teknisi%')
+            ->orWhere('role', 'like', '%serbu%');
+        })->select('id', 'name', 'phone')->orderBy('name')->get();
         if ($technicians->isEmpty()) {
             $technicians = User::select('id', 'name', 'phone')->get();
         }
@@ -917,7 +935,10 @@ class PgsController extends Controller
         $canReport = $user && (
             $user->can('pgs_btn_report') ||
             $user->can('pgs_manage') ||
-            $user->hasRole(['admin', 'kepala teknisi', 'teknisi']) ||
+            $user->hasAnyRole(['admin', 'kepala teknisi', 'teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance']) ||
+            str_contains(strtolower($user->role ?? ''), 'teknisi') ||
+            str_contains(strtolower($user->role ?? ''), 'serbu') ||
             in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'teknisi'])
         );
         if (!$canReport) {

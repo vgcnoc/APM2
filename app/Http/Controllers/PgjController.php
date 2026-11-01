@@ -179,9 +179,16 @@ class PgjController extends Controller
         DataScopeService::applyCustomerScope($totalActiveCustQuery, $user);
         $totalActiveCustomers = $totalActiveCustQuery->count();
 
-        $technicians = User::whereHas('roles', function($q) {
-            $q->whereIn('name', ['teknisi', 'kepala teknisi']);
-        })->orWhere('role', 'teknisi')->orderBy('name')->get();
+        $technicians = User::where(function ($query) {
+            $query->whereHas('roles', function ($q) {
+                $q->whereIn('name', ['teknisi', 'kepala teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance', 'teknisi-2', 'maintenance-1'])
+                  ->orWhere('name', 'like', '%teknisi%')
+                  ->orWhere('name', 'like', '%serbu%');
+            })
+            ->orWhereIn('role', ['teknisi', 'kepala teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance', 'teknisi-2', 'maintenance-1'])
+            ->orWhere('role', 'like', '%teknisi%')
+            ->orWhere('role', 'like', '%serbu%');
+        })->orderBy('name')->get();
 
         $leadTechnicians = User::role(['kepala teknisi', 'admin', 'noc', 'manager'])->select('id', 'name')->get();
         if ($leadTechnicians->isEmpty()) {
@@ -345,9 +352,16 @@ class PgjController extends Controller
 
         $areas = DataScopeService::getScopedAreas($user, 'pgj');
 
-        $technicians = User::whereHas('roles', function($q) {
-            $q->whereIn('name', ['teknisi', 'kepala teknisi']);
-        })->orWhere('role', 'teknisi')->orderBy('name')->get();
+        $technicians = User::where(function ($query) {
+            $query->whereHas('roles', function ($q) {
+                $q->whereIn('name', ['teknisi', 'kepala teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance', 'teknisi-2', 'maintenance-1'])
+                  ->orWhere('name', 'like', '%teknisi%')
+                  ->orWhere('name', 'like', '%serbu%');
+            })
+            ->orWhereIn('role', ['teknisi', 'kepala teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance', 'teknisi-2', 'maintenance-1'])
+            ->orWhere('role', 'like', '%teknisi%')
+            ->orWhere('role', 'like', '%serbu%');
+        })->orderBy('name')->get();
 
         $materials = Material::with('stocks')
             ->where(function ($q) {
@@ -937,8 +951,10 @@ class PgjController extends Controller
         $canReport = $user && (
             $user->can('pgj_btn_report') ||
             $user->can('pgj_manage') ||
-            $user->hasRole(['admin', 'kepala teknisi', 'teknisi']) ||
-            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'teknisi'])
+            $user->hasAnyRole(['admin', 'kepala teknisi', 'teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance']) ||
+            str_contains(strtolower($user->role ?? ''), 'teknisi') ||
+            str_contains(strtolower($user->role ?? ''), 'serbu')
         );
         if (!$canReport) {
             abort(403, 'Anda tidak memiliki hak akses untuk melaporkan hasil restorasi PGJ.');

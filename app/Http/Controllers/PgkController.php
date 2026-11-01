@@ -119,7 +119,7 @@ class PgkController extends Controller
         }
 
         // Filter hak akses teknisi (teknisi biasa hanya melihat tugasnya)
-        if (auth()->check() && auth()->user()->hasRole('teknisi') && !auth()->user()->hasRole('admin') && !auth()->user()->hasRole('kepala teknisi')) {
+        if (auth()->check() && (auth()->user()->hasAnyRole(['teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance']) || str_contains(strtolower(auth()->user()->role ?? ''), 'teknisi') || str_contains(strtolower(auth()->user()->role ?? ''), 'serbu')) && !auth()->user()->hasRole('admin') && !auth()->user()->hasRole('kepala teknisi')) {
             $query->where(function($q) {
                 $q->whereHas('technicians', function($tq) {
                     $tq->where('users.id', auth()->id());
@@ -154,7 +154,16 @@ class PgkController extends Controller
             },
             'areas' => fn () => DataScopeService::getScopedAreas($user, 'pgk'),
             'technicians' => function () {
-                $techs = User::role(['teknisi', 'kepala teknisi'])->select('id', 'name', 'phone')->get();
+                $techs = User::where(function ($query) {
+                    $query->whereHas('roles', function ($q) {
+                        $q->whereIn('name', ['teknisi', 'kepala teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance', 'teknisi-2', 'maintenance-1'])
+                          ->orWhere('name', 'like', '%teknisi%')
+                          ->orWhere('name', 'like', '%serbu%');
+                    })
+                    ->orWhereIn('role', ['teknisi', 'kepala teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance', 'teknisi-2', 'maintenance-1'])
+                    ->orWhere('role', 'like', '%teknisi%')
+                    ->orWhere('role', 'like', '%serbu%');
+                })->select('id', 'name', 'phone')->orderBy('name')->get();
                 return $techs->isEmpty() ? User::select('id', 'name', 'phone')->get() : $techs;
             },
             'leadTechnicians' => function () {
@@ -363,7 +372,16 @@ class PgkController extends Controller
 
         $tickets = $query->latest('id')->paginate($request->per_page ?? 15)->withQueryString();
 
-        $technicians = User::role(['teknisi', 'kepala teknisi'])->select('id', 'name', 'phone')->get();
+        $technicians = User::where(function ($query) {
+            $query->whereHas('roles', function ($q) {
+                $q->whereIn('name', ['teknisi', 'kepala teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance', 'teknisi-2', 'maintenance-1'])
+                  ->orWhere('name', 'like', '%teknisi%')
+                  ->orWhere('name', 'like', '%serbu%');
+            })
+            ->orWhereIn('role', ['teknisi', 'kepala teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance', 'teknisi-2', 'maintenance-1'])
+            ->orWhere('role', 'like', '%teknisi%')
+            ->orWhere('role', 'like', '%serbu%');
+        })->select('id', 'name', 'phone')->orderBy('name')->get();
         if ($technicians->isEmpty()) {
             $technicians = User::select('id', 'name', 'phone')->get();
         }
@@ -935,7 +953,10 @@ class PgkController extends Controller
         $canReport = $user && (
             $user->can('pgk_btn_report') ||
             $user->can('pgk_manage') ||
-            $user->hasRole(['admin', 'kepala teknisi', 'teknisi']) ||
+            $user->hasAnyRole(['admin', 'kepala teknisi', 'teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance']) ||
+            str_contains(strtolower($user->role ?? ''), 'teknisi') ||
+            str_contains(strtolower($user->role ?? ''), 'serbu') ||
             in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'teknisi'])
         );
         if (!$canReport) {
