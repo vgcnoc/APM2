@@ -358,6 +358,14 @@ Route::middleware(['auth'])->group(function () {
     Route::post('attendances/sync-payroll', [\App\Http\Controllers\AttendanceController::class, 'syncToPayroll'])->name('attendances.sync-payroll');
     Route::delete('attendances/{attendance}', [\App\Http\Controllers\AttendanceController::class, 'destroy'])->name('attendances.destroy');
 
+    // ── Input Manual Izin, Sakit & Alpha (Khusus HRD & Finance - Bukan Manager) ──
+    Route::middleware(['permission:menu_attendance_leaves'])->group(function () {
+        Route::get('attendance-leaves', [\App\Http\Controllers\AttendanceLeaveController::class, 'index'])->name('attendance-leaves.index');
+        Route::post('attendance-leaves', [\App\Http\Controllers\AttendanceLeaveController::class, 'store'])->name('attendance-leaves.store');
+        Route::post('attendance-leaves/sync-payroll', [\App\Http\Controllers\AttendanceLeaveController::class, 'syncPayroll'])->name('attendance-leaves.sync-payroll');
+        Route::delete('attendance-leaves/{attendanceLeave}', [\App\Http\Controllers\AttendanceLeaveController::class, 'destroy'])->name('attendance-leaves.destroy');
+    });
+
     // Laporan Absensi Karyawan
     Route::get('attendance-reports', [\App\Http\Controllers\AttendanceReportController::class, 'index'])->name('attendance-reports.index');
     Route::get('attendance-reports/export', [\App\Http\Controllers\AttendanceReportController::class, 'export'])->name('attendance-reports.export');

@@ -214,6 +214,11 @@ class Employee extends Model
             ->withPivot('role', 'is_leader')
             ->withTimestamps();
     }
+
+    public function leaves()
+    {
+        return $this->hasMany(AttendanceLeave::class);
+    }
 }
 
 

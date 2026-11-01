@@ -847,6 +847,9 @@ class PermissionRegistry
                     ['name' => 'attendance_bypass_area_restriction', 'type' => 'feature', 'label' => 'Bypass Kunci Area (Bebas Absen Reguler di Semua Area Cabang)'],
                     ['name' => 'attendance_bypass_early_restriction', 'type' => 'feature', 'label' => 'Bypass Batas Jam Absen Masuk Lebih Awal (Bebas Absen Kapan Saja)'],
                     ['name' => 'attendance_manage_employee_area', 'type' => 'feature', 'label' => 'Hak Akses Atur Pilihan Area Absensi Karyawan'],
+                    ['name' => 'menu_attendance_leaves', 'type' => 'menu', 'label' => 'Akses Menu Izin, Sakit & Alpha (HRD & Finance)'],
+                    ['name' => 'attendance_leaves_manage', 'type' => 'feature', 'label' => 'Kelola & Input Izin, Sakit & Alpha'],
+                    ['name' => 'attendance_leaves_delete', 'type' => 'button', 'label' => 'Hapus Catatan Izin, Sakit & Alpha'],
                 ],
             ],
 
@@ -1413,7 +1416,7 @@ class PermissionRegistry
                 'menu_customers_gratis', 'menu_customers_free_home', 'menu_customers_terminated',
                 'menu_monitoring_pelanggan', 'monitoring_pelanggan_card_stats', 'monitoring_pelanggan_tab_menunggak', 'monitoring_pelanggan_tab_janji_bayar', 'monitoring_pelanggan_tab_stop_sementara', 'monitoring_pelanggan_filter', 'monitoring_pelanggan_btn_whatsapp', 'monitoring_pelanggan_btn_action',
                 'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
-                'menu_attendances', 'attendance_tab_reguler', 'attendances_view_own', 'menu_attendance_reports', 'attendance_report_btn_print', 'attendance_report_btn_export', 'attendance_report_btn_delete',
+                'menu_attendances', 'attendance_tab_reguler', 'attendances_view_own', 'menu_attendance_reports', 'attendance_report_btn_print', 'attendance_report_btn_export', 'attendance_report_btn_delete', 'menu_attendance_leaves', 'attendance_leaves_manage', 'attendance_leaves_delete',
             ],
             'reseller' => [
                 'menu_dashboard',
@@ -1458,7 +1461,7 @@ class PermissionRegistry
                 'hr_employees_view_all',
                 'menu_hr_positions', 'hr_positions_create', 'hr_positions_edit', 'hr_positions_delete',
                 'menu_shifts', 'menu_work_schedules', 'shifts_manage', 'work_schedules_manage', 'work_schedules_view_all',
-                'menu_attendances', 'attendance_card_stats', 'attendance_tab_reguler', 'attendance_select_type', 'attendance_recap_link', 'attendance_btn_set_shift_holiday', 'attendances_tab_monitoring', 'attendances_tab_recap', 'attendances_tab_geofence', 'attendances_btn_rules_link', 'attendances_geofence_edit', 'attendances_sync_payroll', 'attendance_tab_special', 'attendances_special_manage', 'attendances_special_create_group', 'attendances_special_tab_admin', 'attendance_tab_field', 'attendances_field_settings', 'attendances_field_create', 'attendances_field_delete', 'attendances_field_export', 'attendances_field_import', 'attendance_tab_best', 'attendance_best_btn_sync', 'attendance_best_btn_print', 'attendance_filter_date', 'attendance_filter_area', 'attendances_manage', 'attendance_btn_export', 'attendances_view_all', 'attendance_bypass_area_restriction', 'attendance_bypass_early_restriction', 'attendance_manage_employee_area', 'menu_attendance_reports', 'attendance_report_btn_print', 'attendance_report_btn_export', 'attendance_report_btn_delete',
+                'menu_attendances', 'attendance_card_stats', 'attendance_tab_reguler', 'attendance_select_type', 'attendance_recap_link', 'attendance_btn_set_shift_holiday', 'attendances_tab_monitoring', 'attendances_tab_recap', 'attendances_tab_geofence', 'attendances_btn_rules_link', 'attendances_geofence_edit', 'attendances_sync_payroll', 'attendance_tab_special', 'attendances_special_manage', 'attendances_special_create_group', 'attendances_special_tab_admin', 'attendance_tab_field', 'attendances_field_settings', 'attendances_field_create', 'attendances_field_delete', 'attendances_field_export', 'attendances_field_import', 'attendance_tab_best', 'attendance_best_btn_sync', 'attendance_best_btn_print', 'attendance_filter_date', 'attendance_filter_area', 'attendances_manage', 'attendance_btn_export', 'attendances_view_all', 'attendance_bypass_area_restriction', 'attendance_bypass_early_restriction', 'attendance_manage_employee_area', 'menu_attendance_reports', 'attendance_report_btn_print', 'attendance_report_btn_export', 'attendance_report_btn_delete', 'menu_attendance_leaves', 'attendance_leaves_manage', 'attendance_leaves_delete',
                 'menu_payroll', 'menu_incentives_deductions', 'menu_target_market', 'menu_settings_payroll', 'menu_payroll_categories', 'menu_master_fees',
                 'payroll_card_summary', 'payroll_card_bpjs', 'incentives_card_stats', 'target_market_card_stats',
                 'payroll_tab_slip', 'payroll_tab_bpjs', 'payroll_tab_incentives', 'payroll_tab_target', 'target_market_tab_programs', 'target_market_tab_closings', 'payroll_tab_categories', 'payroll_tab_master_fees',

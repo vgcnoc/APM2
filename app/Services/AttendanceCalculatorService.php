@@ -610,6 +610,7 @@ class AttendanceCalculatorService
             $totalSickWithCert = 0;
             $totalSickNoCert = 0;
             $totalPermit = 0;
+            $totalManualAlpha = 0;
 
             if ($workSchedules && $workSchedules->isNotEmpty()) {
                 $empSchedules = $workSchedules->where('employee_id', $emp->id);
@@ -672,14 +673,16 @@ class AttendanceCalculatorService
                             if (str_contains($nt, 'izin') || $st === 'permit') {
                                 $totalPermit++;
                             }
+                        } elseif ($st === 'alpha' || str_contains($nt, 'alpha') || str_contains($nt, 'mangkir')) {
+                            $totalManualAlpha++;
                         }
                     }
                 }
             }
 
-            // Alpha = hari kerja yang telah berjalan dikurangi kehadiran & dinas luar
+            // Alpha = hari kerja yang telah berjalan dikurangi kehadiran & dinas luar (ditambah alpha manual)
             $effectiveAttendedDays = min($empElapsedWorkDays, $totalPresent + $totalFieldDuty);
-            $totalAlpha = max(0, $empElapsedWorkDays - $effectiveAttendedDays);
+            $totalAlpha = max(0, $empElapsedWorkDays - $effectiveAttendedDays) + $totalManualAlpha;
 
             // 8. Rasio Kehadiran & Skor Kedisiplinan
             $attendanceRate = $empElapsedWorkDays > 0 
