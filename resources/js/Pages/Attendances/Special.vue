@@ -682,11 +682,11 @@
                         <div>
                             <div class="text-xs font-bold text-amber-300 tracking-wider uppercase flex items-center gap-1.5">
                                 <span>🏆</span>
-                                <span>Perlombaan Absen Terbaik (3 Tim Khusus)</span>
+                                <span>Perlombaan Absen Terbaik Global (Seluruh Tim Khusus)</span>
                             </div>
-                            <h2 class="text-2xl font-black mt-1">Perlombaan Antar Tim: Tim Khusus, Tim Serbu, Tim BC-4</h2>
+                            <h2 class="text-2xl font-black mt-1">Klasemen Global: Seluruh Tim Khusus</h2>
                             <p class="text-xs text-blue-100 max-w-xl">
-                                Ke-3 tim khusus berlomba kedisiplinan dan absensi tepat waktu. Peringkat 1 s/d 3 teratas berhak mendapatkan reward tunai bulanan.
+                                Seluruh anggota tim khusus berlomba dalam satu klasemen global. Juara 1 s/d 3 teratas secara global berhak mendapatkan reward tunai bulanan.
                             </p>
                         </div>
                         <button
@@ -701,126 +701,96 @@
                     </div>
                 </div>
 
-                <!-- Filter Pill Kategori Perlombaan -->
-                <div class="flex flex-wrap items-center gap-2">
-                    <button
-                        type="button"
-                        @click="selectedLeaderboardTeamFilter = 'all'"
-                        :class="[
-                            selectedLeaderboardTeamFilter === 'all'
-                                ? 'bg-blue-900 text-white shadow-xs font-bold'
-                                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50',
-                            'px-4 py-2 rounded-xl text-xs font-semibold transition'
-                        ]"
-                    >
-                        🏆 Semua 3 Tim (Perlombaan Gabungan)
-                    </button>
-                    <button
-                        v-for="t in teams"
-                        :key="t.id"
-                        type="button"
-                        @click="selectedLeaderboardTeamFilter = t.id"
-                        :class="[
-                            selectedLeaderboardTeamFilter === t.id
-                                ? 'bg-blue-900 text-white shadow-xs font-bold'
-                                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50',
-                            'px-4 py-2 rounded-xl text-xs font-semibold transition'
-                        ]"
-                    >
-                        {{ t.name }}
-                    </button>
-                </div>
-
-                <!-- Podium Top 3 Cards -->
+                <!-- Podium Top 3 Global Cards (Seluruh Tim Khusus) -->
                 <div
-                    v-if="filteredLeaderboard && filteredLeaderboard.length > 0 && filteredLeaderboard[0].presents > 0"
+                    v-if="globalTop3 && globalTop3.length > 0 && globalTop3[0].presents > 0"
                     class="grid gap-5"
-                    :class="filteredLeaderboard.length === 1 ? 'grid-cols-1 max-w-sm mx-auto' : filteredLeaderboard.length === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-2xl mx-auto' : 'grid-cols-1 md:grid-cols-3'"
+                    :class="globalTop3.length === 1 ? 'grid-cols-1 max-w-sm mx-auto' : globalTop3.length === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-2xl mx-auto' : 'grid-cols-1 md:grid-cols-3'"
                 >
-                    <!-- Juara 1 -->
-                    <div v-if="filteredLeaderboard[0]" class="bg-white rounded-2xl border-2 border-amber-300 p-5 shadow-sm relative overflow-hidden space-y-3">
+                    <!-- Juara 1 Global -->
+                    <div v-if="globalTop3[0]" class="bg-white rounded-2xl border-2 border-amber-300 p-5 shadow-sm relative overflow-hidden space-y-3">
                         <div class="absolute -right-4 -top-4 w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center text-2xl font-bold">
                             🥇
                         </div>
                         <div class="flex items-center gap-2">
-                            <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800">Juara 1</span>
+                            <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800">Juara 1 Global</span>
                             <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200">
-                                {{ filteredLeaderboard[0]?.team_name }}
+                                {{ globalTop3[0]?.team_name }}
                             </span>
                         </div>
                         <div class="pt-1">
-                            <h3 class="text-base font-black text-slate-900">{{ filteredLeaderboard[0]?.name || '-' }}</h3>
-                            <p class="text-xs text-slate-500">{{ filteredLeaderboard[0]?.position || 'Karyawan' }}</p>
+                            <h3 class="text-base font-black text-slate-900">{{ globalTop3[0]?.name || '-' }}</h3>
+                            <p class="text-xs text-slate-500">{{ globalTop3[0]?.position || 'Karyawan' }}</p>
                         </div>
                         <div class="p-3 bg-amber-50/70 rounded-xl border border-amber-200/60">
-                            <div class="text-xs text-amber-900 font-semibold">Reward Tunai:</div>
+                            <div class="text-xs text-amber-900 font-semibold">Reward Tunai (Global):</div>
                             <div class="text-lg font-black text-amber-700">Rp {{ rewardsConfig.juara_1.toLocaleString('id-ID') }}</div>
                         </div>
                         <div class="text-xs text-slate-600 flex justify-between pt-1">
-                            <span>Hadir: <strong>{{ filteredLeaderboard[0]?.presents || 0 }} hari</strong></span>
-                            <span>Skor: <strong>{{ filteredLeaderboard[0]?.score || 0 }} pts</strong></span>
+                            <span>Hadir: <strong>{{ globalTop3[0]?.presents || 0 }} hari</strong></span>
+                            <span>Skor: <strong>{{ globalTop3[0]?.score || 0 }} pts</strong></span>
                         </div>
                         <div class="text-[11px] text-slate-500 flex justify-between pt-1 border-t border-slate-100">
                             <span>Rata-rata Masuk:</span>
-                            <strong class="text-slate-700 font-mono">{{ filteredLeaderboard[0]?.avg_clock_in_formatted || '-' }}</strong>
+                            <strong class="text-slate-700 font-mono">{{ globalTop3[0]?.avg_clock_in_formatted || '-' }}</strong>
                         </div>
                     </div>
 
-                    <!-- Juara 2 -->
-                    <div v-if="filteredLeaderboard[1]" class="bg-white rounded-2xl border-2 border-slate-300 p-5 shadow-sm relative overflow-hidden space-y-3">
+                    <!-- Juara 2 Global -->
+                    <div v-if="globalTop3[1]" class="bg-white rounded-2xl border-2 border-slate-300 p-5 shadow-sm relative overflow-hidden space-y-3">
                         <div class="absolute -right-4 -top-4 w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-2xl font-bold">
                             🥈
                         </div>
                         <div class="flex items-center gap-2">
-                            <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">Juara 2</span>
+                            <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">Juara 2 Global</span>
                             <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200">
-                                {{ filteredLeaderboard[1]?.team_name }}
+                                {{ globalTop3[1]?.team_name }}
                             </span>
                         </div>
                         <div class="pt-1">
-                            <h3 class="text-base font-black text-slate-900">{{ filteredLeaderboard[1]?.name || '-' }}</h3>
-                            <p class="text-xs text-slate-500">{{ filteredLeaderboard[1]?.position || 'Karyawan' }}</p>
+                            <h3 class="text-base font-black text-slate-900">{{ globalTop3[1]?.name || '-' }}</h3>
+                            <p class="text-xs text-slate-500">{{ globalTop3[1]?.position || 'Karyawan' }}</p>
                         </div>
                         <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                            <div class="text-xs text-slate-700 font-semibold">Reward Tunai:</div>
+                            <div class="text-xs text-slate-700 font-semibold">Reward Tunai (Global):</div>
                             <div class="text-lg font-black text-slate-800">Rp {{ rewardsConfig.juara_2.toLocaleString('id-ID') }}</div>
                         </div>
                         <div class="text-xs text-slate-600 flex justify-between pt-1">
-                            <span>Hadir: <strong>{{ filteredLeaderboard[1]?.presents || 0 }} hari</strong></span>
-                            <span>Skor: <strong>{{ filteredLeaderboard[1]?.score || 0 }} pts</strong></span>
+                            <span>Hadir: <strong>{{ globalTop3[1]?.presents || 0 }} hari</strong></span>
+                            <span>Skor: <strong>{{ globalTop3[1]?.score || 0 }} pts</strong></span>
                         </div>
                         <div class="text-[11px] text-slate-500 flex justify-between pt-1 border-t border-slate-100">
                             <span>Rata-rata Masuk:</span>
-                            <strong class="text-slate-700 font-mono">{{ filteredLeaderboard[1]?.avg_clock_in_formatted || '-' }}</strong>
+                            <strong class="text-slate-700 font-mono">{{ globalTop3[1]?.avg_clock_in_formatted || '-' }}</strong>
                         </div>
                     </div>
 
-                    <!-- Juara 3 -->
-                    <div v-if="filteredLeaderboard[2]" class="bg-white rounded-2xl border-2 border-orange-300 p-5 shadow-sm relative overflow-hidden space-y-3">
+                    <!-- Juara 3 Global -->
+                    <div v-if="globalTop3[2]" class="bg-white rounded-2xl border-2 border-orange-300 p-5 shadow-sm relative overflow-hidden space-y-3">
                         <div class="absolute -right-4 -top-4 w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center text-2xl font-bold">
                             🥉
                         </div>
                         <div class="flex items-center gap-2">
-                            <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-800">Juara 3</span>
+                            <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-800">Juara 3 Global</span>
                             <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200">
-                                {{ filteredLeaderboard[2]?.team_name }}
+                                {{ globalTop3[2]?.team_name }}
                             </span>
                         </div>
                         <div class="pt-1">
-                            <h3 class="text-base font-black text-slate-900">{{ filteredLeaderboard[2]?.name || '-' }}</h3>
-                            <p class="text-xs text-slate-500">{{ filteredLeaderboard[2]?.position || 'Karyawan' }}</p>
+                            <h3 class="text-base font-black text-slate-900">{{ globalTop3[2]?.name || '-' }}</h3>
+                            <p class="text-xs text-slate-500">{{ globalTop3[2]?.position || 'Karyawan' }}</p>
                         </div>
                         <div class="p-3 bg-orange-50/70 rounded-xl border border-orange-200/60">
-                            <div class="text-xs text-orange-900 font-semibold">Reward Tunai:</div>
+                            <div class="text-xs text-orange-900 font-semibold">Reward Tunai (Global):</div>
                             <div class="text-lg font-black text-orange-700">Rp {{ rewardsConfig.juara_3.toLocaleString('id-ID') }}</div>
                         </div>
                         <div class="text-xs text-slate-600 flex justify-between pt-1">
-                            <span>Hadir: <strong>{{ filteredLeaderboard[2]?.presents || 0 }} hari</strong></span>
-                            <span>Skor: <strong>{{ filteredLeaderboard[2]?.score || 0 }} pts</strong></span>
+                            <span>Hadir: <strong>{{ globalTop3[2]?.presents || 0 }} hari</strong></span>
+                            <span>Skor: <strong>{{ globalTop3[2]?.score || 0 }} pts</strong></span>
                         </div>
                         <div class="text-[11px] text-slate-500 flex justify-between pt-1 border-t border-slate-100">
                             <span>Rata-rata Masuk:</span>
-                            <strong class="text-slate-700 font-mono">{{ filteredLeaderboard[2]?.avg_clock_in_formatted || '-' }}</strong>
+                            <strong class="text-slate-700 font-mono">{{ globalTop3[2]?.avg_clock_in_formatted || '-' }}</strong>
                         </div>
                     </div>
                 </div>
@@ -832,16 +802,52 @@
                     </div>
                     <h3 class="text-base font-bold text-slate-800">Belum Ada Peringkat Absen Terbaik Bulan Ini</h3>
                     <p class="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-                        Peringkat dan reward perlombaan absen terbaik 3 tim (Tim Khusus, Tim Serbu, Tim BC-4) akan otomatis dihitung dan ditampilkan setelah anggota tim memiliki catatan kehadiran terverifikasi pada periode bulan ini.
+                        Peringkat dan reward perlombaan absen terbaik seluruh tim khusus akan otomatis dihitung dan ditampilkan setelah anggota tim memiliki catatan kehadiran terverifikasi pada periode bulan ini.
                     </p>
                 </div>
 
-                <!-- Tabel Peringkat Perlombaan 3 Tim Lengkap -->
+                <!-- Filter Pill Kategori Perlombaan -->
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-xs font-bold text-slate-500 mr-1">Filter Anggota Tim:</span>
+                        <button
+                            type="button"
+                            @click="selectedLeaderboardTeamFilter = 'all'"
+                            :class="[
+                                selectedLeaderboardTeamFilter === 'all'
+                                    ? 'bg-blue-900 text-white shadow-xs font-bold'
+                                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50',
+                                'px-4 py-2 rounded-xl text-xs font-semibold transition'
+                            ]"
+                        >
+                            🏆 Semua Tim Khusus (Global)
+                        </button>
+                        <button
+                            v-for="t in teams"
+                            :key="t.id"
+                            type="button"
+                            @click="selectedLeaderboardTeamFilter = t.id"
+                            :class="[
+                                selectedLeaderboardTeamFilter === t.id
+                                    ? 'bg-blue-900 text-white shadow-xs font-bold'
+                                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50',
+                                'px-4 py-2 rounded-xl text-xs font-semibold transition'
+                            ]"
+                        >
+                            {{ t.name }}
+                        </button>
+                    </div>
+                    <span class="text-xs text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+                        * Peringkat & reward dihitung secara <strong>Global Seluruh Tim Khusus</strong>
+                    </span>
+                </div>
+
+                <!-- Tabel Peringkat Perlombaan Tim Khusus Lengkap -->
                 <div v-if="filteredLeaderboard && filteredLeaderboard.length > 0" class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-4">
                     <div class="flex items-center justify-between">
                         <div>
-                            <h3 class="text-sm font-bold text-slate-800">Papan Peringkat Lengkap Perlombaan</h3>
-                            <p class="text-xs text-slate-500">Hasil akumulasi poin kedisiplinan dan absensi tepat waktu</p>
+                            <h3 class="text-sm font-bold text-slate-800">Papan Peringkat Global Tim Khusus</h3>
+                            <p class="text-xs text-slate-500">Hasil akumulasi poin kedisiplinan dan absensi tepat waktu secara global</p>
                         </div>
                         <span class="text-xs font-bold text-slate-500">{{ filteredLeaderboard.length }} Peserta</span>
                     </div>
@@ -850,7 +856,7 @@
                         <table class="w-full text-xs text-left">
                             <thead class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
                                 <tr>
-                                    <th class="p-3 text-center">Peringkat</th>
+                                    <th class="p-3 text-center">Peringkat Global</th>
                                     <th class="p-3">Nama Karyawan</th>
                                     <th class="p-3">Grup Tim Khusus</th>
                                     <th class="p-3 text-center">Hadir</th>
@@ -859,21 +865,21 @@
                                     <th class="p-3 text-center">Menit Telat</th>
                                     <th class="p-3 text-center">Tanpa Pulang</th>
                                     <th class="p-3 text-center">Skor Poin</th>
-                                    <th class="p-3 text-center">Status Hadiah</th>
+                                    <th class="p-3 text-center">Status Hadiah (Global)</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100 text-slate-700">
                                 <tr
-                                    v-for="(row, idx) in filteredLeaderboard"
+                                    v-for="row in filteredLeaderboard"
                                     :key="row.employee_id"
                                     class="hover:bg-slate-50/50"
-                                    :class="idx < 3 ? 'bg-amber-50/20' : ''"
+                                    :class="(row.global_rank || 99) <= 3 ? 'bg-amber-50/20' : ''"
                                 >
                                     <td class="p-3 text-center font-bold">
-                                        <span v-if="idx === 0" class="text-base">🥇</span>
-                                        <span v-else-if="idx === 1" class="text-base">🥈</span>
-                                        <span v-else-if="idx === 2" class="text-base">🥉</span>
-                                        <span v-else class="text-slate-500">#{{ idx + 1 }}</span>
+                                        <span v-if="row.global_rank === 1" class="text-base text-amber-600">🥇 #1</span>
+                                        <span v-else-if="row.global_rank === 2" class="text-base text-slate-600">🥈 #2</span>
+                                        <span v-else-if="row.global_rank === 3" class="text-base text-orange-600">🥉 #3</span>
+                                        <span v-else class="text-slate-500">#{{ row.global_rank }}</span>
                                     </td>
                                     <td class="p-3">
                                         <div class="font-bold text-slate-900">{{ row.name }}</div>
@@ -895,9 +901,9 @@
                                         </span>
                                     </td>
                                     <td class="p-3 text-center">
-                                        <span v-if="idx === 0" class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-[10px]">Juara 1 (Rp {{ rewardsConfig.juara_1.toLocaleString('id-ID') }})</span>
-                                        <span v-else-if="idx === 1" class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold text-[10px]">Juara 2 (Rp {{ rewardsConfig.juara_2.toLocaleString('id-ID') }})</span>
-                                        <span v-else-if="idx === 2" class="px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 font-bold text-[10px]">Juara 3 (Rp {{ rewardsConfig.juara_3.toLocaleString('id-ID') }})</span>
+                                        <span v-if="row.global_rank === 1" class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-[10px]">Juara 1 Global (Rp {{ rewardsConfig.juara_1.toLocaleString('id-ID') }})</span>
+                                        <span v-else-if="row.global_rank === 2" class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold text-[10px]">Juara 2 Global (Rp {{ rewardsConfig.juara_2.toLocaleString('id-ID') }})</span>
+                                        <span v-else-if="row.global_rank === 3" class="px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 font-bold text-[10px]">Juara 3 Global (Rp {{ rewardsConfig.juara_3.toLocaleString('id-ID') }})</span>
                                         <span v-else class="text-slate-400 text-[11px]">-</span>
                                     </td>
                                 </tr>
@@ -1690,6 +1696,10 @@ const activeTab = ref('absen'); // 'absen', 'riwayat', 'admin', 'best', 'potonga
 
 // Leaderboard Perlombaan 3 Tim Filter State
 const selectedLeaderboardTeamFilter = ref('all');
+
+const globalTop3 = computed(() => {
+    return (props.leaderboard || []).slice(0, 3);
+});
 
 const filteredLeaderboard = computed(() => {
     const list = props.leaderboard || [];

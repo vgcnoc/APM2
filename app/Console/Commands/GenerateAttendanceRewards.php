@@ -428,7 +428,7 @@ class GenerateAttendanceRewards extends Command
                     }
                 }
 
-                // D. Reward Tim Khusus (Top 3 per Grup)
+                // D. Reward Tim Khusus (Top 3 Global Gabungan Seluruh Tim Khusus)
                 if (Setting::get('attendance_reward_special_team_enabled', '1') === '1') {
                     $specialNominals = [
                         1 => (float) Setting::get('attendance_reward_special_1', 200000),
@@ -436,35 +436,42 @@ class GenerateAttendanceRewards extends Command
                         3 => (float) Setting::get('attendance_reward_special_3', 100000),
                     ];
 
-                    $specialGrouped = collect($performance)->filter(function ($item) {
-                        $pos = strtolower($item['employee']->position ?? '');
-                        $type = strtolower($item['employee']->employee_type ?? '');
-                        return str_contains($pos, 'khusus') || str_contains($pos, 'special') || str_contains($type, 'khusus');
-                    })->groupBy(function ($item) {
-                        return $item['employee']->position ?: 'Tim Khusus';
-                    });
+                    // Bersihkan insentif format per-tim terdahulu agar tidak dobel
+                    Incentive::where('reference_id', 'like', "REWARD_SPECIAL_%_{$month}")
+                        ->where('reference_id', 'not like', "REWARD_SPECIAL_GLOBAL_%")
+                        ->delete();
 
-                    foreach ($specialGrouped as $groupName => $groupMembers) {
-                        $specialSorted = $groupMembers->sortByDesc('score')->values();
-                        for ($rank = 1; $rank <= min(3, $specialSorted->count()); $rank++) {
-                            $item = $specialSorted[$rank - 1];
-                            $nominal = $specialNominals[$rank] ?? 0;
-                            if ($nominal > 0) {
-                                Incentive::updateOrCreate(
-                                    [
-                                        'user_id' => $item['user']->id,
-                                        'reference_id' => "REWARD_SPECIAL_{$groupName}_{$rank}_{$month}",
-                                    ],
-                                    [
-                                        'type' => 'auto',
-                                        'description' => "Reward Tim Khusus (Juara {$rank} - {$groupName}) Periode {$month}",
-                                        'amount' => $nominal,
-                                        'incentive_date' => $monthEnd->format('Y-m-d'),
-                                        'status' => 'pending',
-                                    ]
-                                );
-                                $totalRewardsCount++;
-                            }
+                    // Urutkan seluruh anggota tim khusus (global gabungan seluruh tim: Tim Khusus, Tim Serbu, Tim BC-4)
+                    $specialSorted = collect($performance)->filter(function ($item) {
+                        $emp = $item['employee'];
+                        $pos = strtolower($emp->position ?? '');
+                        $type = strtolower($emp->employee_type ?? '');
+                        $isSpecial = preg_match('/(khusus|special|serbu|bc-?4)/i', $pos . ' ' . $type);
+                        if (!$isSpecial && method_exists($emp, 'specialTeamMembers')) {
+                            $isSpecial = $emp->specialTeamMembers()->exists();
+                        }
+                        return (bool) $isSpecial;
+                    })->sortByDesc('score')->values();
+
+                    for ($rank = 1; $rank <= min(3, $specialSorted->count()); $rank++) {
+                        $item = $specialSorted[$rank - 1];
+                        $nominal = $specialNominals[$rank] ?? 0;
+                        if ($nominal > 0) {
+                            $teamLabel = $item['employee']->position ?: 'Tim Khusus';
+                            Incentive::updateOrCreate(
+                                [
+                                    'user_id' => $item['user']->id,
+                                    'reference_id' => "REWARD_SPECIAL_GLOBAL_{$rank}_{$month}",
+                                ],
+                                [
+                                    'type' => 'auto',
+                                    'description' => "Reward Absen Terbaik Tim Khusus (Juara {$rank} Global - {$item['employee']->name}) Periode {$month}",
+                                    'amount' => $nominal,
+                                    'incentive_date' => $monthEnd->format('Y-m-d'),
+                                    'status' => 'pending',
+                                ]
+                            );
+                            $totalRewardsCount++;
                         }
                     }
                 }

@@ -444,7 +444,11 @@ class SpecialAttendanceController extends Controller
                 }
                 return ($a['avg_clock_in'] ?? 86400) <=> ($b['avg_clock_in'] ?? 86400);
             })
-            ->values();
+            ->values()
+            ->map(function ($item, $index) {
+                $item['global_rank'] = $index + 1;
+                return $item;
+            });
 
         $rewardsConfig = [
             'juara_1' => (int) Setting::get('attendance_reward_special_1', 200000),
@@ -1024,15 +1028,15 @@ class SpecialAttendanceController extends Controller
                 }
             }
 
-            // 2. Reward Absen Terbaik (Top 3)
-            $nominals = [
-                1 => (float) Setting::get('attendance_reward_special_1', 200000),
-                2 => (float) Setting::get('attendance_reward_special_2', 150000),
-                3 => (float) Setting::get('attendance_reward_special_3', 100000),
-            ];
+            // 2. Reward Absen Terbaik Tim Khusus (Top 3 Global Seluruh Tim Khusus)
+            // Selalu dievaluasi secara GLOBAL (Top 3 se-tim khusus), BUKAN per tim / grup!
+            if ($isSyncAll && Setting::get('attendance_reward_special_team_enabled', '1') === '1') {
+                $nominals = [
+                    1 => (float) Setting::get('attendance_reward_special_1', 200000),
+                    2 => (float) Setting::get('attendance_reward_special_2', 150000),
+                    3 => (float) Setting::get('attendance_reward_special_3', 100000),
+                ];
 
-            if ($isSyncAll) {
-                // Perlombaan Ke-3 Tim (Tim Khusus, Tim Serbu, Tim BC-4)
                 $allMembers = SpecialTeamMember::with(['employee', 'team'])
                     ->whereHas('team', fn($q) => $q->where('is_active', true))
                     ->get();
@@ -1057,6 +1061,7 @@ class SpecialAttendanceController extends Controller
                     $mAtts = $allMonthAtts->get($emp->id, collect());
                     $presents = $mAtts->whereNotNull('clock_in')->count();
                     $lateMinutes = (int) $mAtts->sum('late_minutes');
+                    $lates = $mAtts->where('status', 'late')->count();
                     $noOut = $mAtts->filter(fn($att) => AttendanceCalculatorService::isSpecialMissingClockOut($att, $mTeam, $nowSync))->count();
 
                     $score = ($presents > 0) ? max(0, ($presents * 100) - ($lateMinutes * 2) - ($noOut * 50)) : 0;
@@ -1090,6 +1095,7 @@ class SpecialAttendanceController extends Controller
                             'team_name' => $mTeam?->name ?? 'Tim Khusus',
                             'score' => $score,
                             'presents' => $presents,
+                            'lates' => $lates,
                             'late_minutes' => $lateMinutes,
                             'avg_clock_in' => $avgClockIn,
                         ];
@@ -1103,11 +1109,19 @@ class SpecialAttendanceController extends Controller
                     if ($b['presents'] !== $a['presents']) {
                         return $b['presents'] <=> $a['presents'];
                     }
+                    if ($a['lates'] !== $b['lates']) {
+                        return $a['lates'] <=> $b['lates'];
+                    }
                     if ($a['late_minutes'] !== $b['late_minutes']) {
                         return $a['late_minutes'] <=> $b['late_minutes'];
                     }
                     return ($a['avg_clock_in'] ?? 86400) <=> ($b['avg_clock_in'] ?? 86400);
                 })->values();
+
+                // Bersihkan reward format per tim lama agar tidak dobel
+                Incentive::where('reference_id', 'like', "REWARD_SPECIAL_%_{$month}")
+                    ->where('reference_id', 'not like', "REWARD_SPECIAL_GLOBAL_%")
+                    ->delete();
 
                 for ($rank = 1; $rank <= min(3, $sorted->count()); $rank++) {
                     $winner = $sorted[$rank - 1];
@@ -1116,105 +1130,17 @@ class SpecialAttendanceController extends Controller
                         Incentive::updateOrCreate(
                             [
                                 'user_id' => $winner['user']->id,
-                                'type' => 'auto',
-                                'description' => "Reward Absen Terbaik (Juara {$rank} - {$winner['team_name']}) Periode {$month}",
+                                'reference_id' => "REWARD_SPECIAL_GLOBAL_{$rank}_{$month}",
                             ],
                             [
+                                'type' => 'auto',
+                                'description' => "Reward Absen Terbaik Tim Khusus (Juara {$rank} Global - {$winner['employee']->name}) Periode {$month}",
                                 'amount' => $amt,
-                                'incentive_date' => $monthEnd,
+                                'incentive_date' => $monthEnd->format('Y-m-d'),
                                 'status' => 'pending',
                             ]
                         );
                         $totalSyncedRewards++;
-                    }
-                }
-            } else {
-                // Untuk satu tim spesifik
-                $singleTeam = $targetTeams->first();
-                if ($singleTeam) {
-                    $teamAtts = SpecialAttendance::with('employee')
-                        ->where('special_team_id', $singleTeam->id)
-                        ->whereBetween('date', [$monthStart, $monthEnd])
-                        ->get()
-                        ->groupBy('employee_id');
-
-                    $performance = [];
-                    foreach ($teamAtts as $empId => $atts) {
-                        $emp = $atts->first()->employee;
-                        if (!$emp || !$emp->email) continue;
-                        $u = User::where('email', $emp->email)->first();
-                        if (!$u) continue;
-
-                        $presents = $atts->whereNotNull('clock_in')->count();
-                        $lateMinutes = (int) $atts->sum('late_minutes');
-                        $noOut = $atts->filter(fn($att) => AttendanceCalculatorService::isSpecialMissingClockOut($att, $singleTeam, $nowSync))->count();
-                        $score = ($presents > 0) ? max(0, ($presents * 100) - ($lateMinutes * 2) - ($noOut * 50)) : 0;
-
-                    $clockInSecs = [];
-                    foreach ($atts as $a) {
-                        if ($a->clock_in) {
-                            $t = Carbon::parse($a->clock_in);
-                            $actualSec = ($t->hour * 3600) + ($t->minute * 60) + $t->second;
-
-                            $officialOpenSec = 0;
-                            if ($clockInEarlyLimitEnabled && !empty($singleTeam->start_time)) {
-                                $teamStart = Carbon::parse($singleTeam->start_time);
-                                $teamEarliest = $teamStart->copy()->subMinutes($clockInEarlyLimitMinutes);
-                                $officialOpenSec = ($teamEarliest->hour * 3600) + ($teamEarliest->minute * 60) + $teamEarliest->second;
-                            }
-
-                            if ($officialOpenSec > 0 && $actualSec < $officialOpenSec) {
-                                $clockInSecs[] = 8 * 3600; // 08:00:00 WIB
-                            } else {
-                                $clockInSecs[] = $actualSec;
-                            }
-                        }
-                    }
-                    $avgClockIn = !empty($clockInSecs) ? (array_sum($clockInSecs) / count($clockInSecs)) : 86400;
-
-                        if ($presents > 0 && $score > 0) {
-                            $performance[] = [
-                                'user' => $u,
-                                'employee' => $emp,
-                                'team_name' => $singleTeam->name,
-                                'score' => $score,
-                            'presents' => $presents,
-                            'late_minutes' => $lateMinutes,
-                            'avg_clock_in' => $avgClockIn,
-                            ];
-                        }
-                    }
-
-                    $sorted = collect($performance)->sort(function ($a, $b) {
-                    if ($b['score'] !== $a['score']) {
-                        return $b['score'] <=> $a['score'];
-                    }
-                    if ($b['presents'] !== $a['presents']) {
-                        return $b['presents'] <=> $a['presents'];
-                    }
-                    if ($a['late_minutes'] !== $b['late_minutes']) {
-                        return $a['late_minutes'] <=> $b['late_minutes'];
-                    }
-                    return ($a['avg_clock_in'] ?? 86400) <=> ($b['avg_clock_in'] ?? 86400);
-                })->values();
-                    for ($rank = 1; $rank <= min(3, $sorted->count()); $rank++) {
-                        $winner = $sorted[$rank - 1];
-                        $amt = $nominals[$rank] ?? 0;
-                        if ($amt > 0) {
-                            Incentive::updateOrCreate(
-                                [
-                                    'user_id' => $winner['user']->id,
-                                    'type' => 'auto',
-                                    'description' => "Reward Absen Terbaik (Juara {$rank} - {$singleTeam->name}) Periode {$month}",
-                                ],
-                                [
-                                    'amount' => $amt,
-                                    'incentive_date' => $monthEnd,
-                                    'status' => 'pending',
-                                ]
-                            );
-                            $totalSyncedRewards++;
-                        }
                     }
                 }
             }
