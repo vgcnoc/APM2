@@ -185,6 +185,31 @@ class SpecialAttendanceController extends Controller
             ? $activeSpecialDeadline->translatedFormat('d M Y, H:i') . ' WIB (Lintas Hari)'
             : $activeSpecialDeadline->format('H:i') . ' WIB';
 
+        // Jendela Waktu Buka Absen Masuk (Batas Jam Masuk Lebih Awal / Early Clock-in Limit)
+        $clockInEarlyLimitEnabled = Setting::get('attendance_clock_in_early_limit_enabled', '1') === '1';
+        $clockInEarlyLimitMinutes = max(1, (int) Setting::get('attendance_clock_in_early_limit_minutes', 60));
+        $canBypassEarlyLimit = $user && ($user->hasRole('admin') || $user->hasRole('super admin') || $user->can('attendance_bypass_early_restriction') || $user->can('attendances_manage'));
+
+        $clockInWindowInfo = null;
+        if ($currentTeam && !empty($currentTeam->start_time)) {
+            $scheduledStart = Carbon::parse($today . ' ' . $currentTeam->start_time);
+            $earliestAllowed = $scheduledStart->copy()->subMinutes($clockInEarlyLimitMinutes);
+            $isOpen = !$clockInEarlyLimitEnabled || $canBypassEarlyLimit || $now->greaterThanOrEqualTo($earliestAllowed);
+            $minutesUntilOpen = $now->lessThan($earliestAllowed) ? (int) ceil($now->diffInRealMinutes($earliestAllowed, false)) : 0;
+
+            $clockInWindowInfo = [
+                'enabled' => $clockInEarlyLimitEnabled,
+                'early_limit_minutes' => $clockInEarlyLimitMinutes,
+                'is_restricted' => $clockInEarlyLimitEnabled && !$isOpen,
+                'is_open' => $isOpen,
+                'earliest_time' => $earliestAllowed->format('H:i'),
+                'earliest_full_label' => $earliestAllowed->format('H:i') . ' WIB',
+                'minutes_until_open' => max(0, $minutesUntilOpen),
+                'shift_start' => substr($currentTeam->start_time, 0, 5),
+                'shift_end' => substr($currentTeam->end_time, 0, 5),
+            ];
+        }
+
         // 4. Semua Absensi Hari Ini untuk Tim Aktif (Kolom Kanan)
         $todayAttendancesQuery = SpecialAttendance::with('employee')
             ->where('special_team_id', $currentTeam->id)
@@ -322,11 +347,21 @@ class SpecialAttendanceController extends Controller
             $noClockOut = $memberAtts->filter(fn($att) => AttendanceCalculatorService::isSpecialMissingClockOut($att, $memberTeam, $now))->count();
 
             // Rata-rata jam absen masuk untuk tie-breaker kedisiplinan
+            // Presensi sebelum batas jam buka resmi diselaraskan ke jam buka resmi agar tidak ada keuntungan curi start
             $clockInSecs = [];
             foreach ($memberAtts as $a) {
                 if ($a->clock_in) {
                     $t = Carbon::parse($a->clock_in);
-                    $clockInSecs[] = ($t->hour * 3600) + ($t->minute * 60) + $t->second;
+                    $actualSec = ($t->hour * 3600) + ($t->minute * 60) + $t->second;
+
+                    $officialOpenSec = 0;
+                    if ($clockInEarlyLimitEnabled && !empty($memberTeam?->start_time)) {
+                        $teamStart = Carbon::parse($memberTeam->start_time);
+                        $teamEarliest = $teamStart->copy()->subMinutes($clockInEarlyLimitMinutes);
+                        $officialOpenSec = ($teamEarliest->hour * 3600) + ($teamEarliest->minute * 60) + $teamEarliest->second;
+                    }
+
+                    $clockInSecs[] = max($officialOpenSec, $actualSec);
                 }
             }
             $avgClockIn = !empty($clockInSecs) ? (array_sum($clockInSecs) / count($clockInSecs)) : 86400;
@@ -476,6 +511,7 @@ class SpecialAttendanceController extends Controller
             'allSpecialEmployees' => $allSpecialEmployees,
             'isCurrentEmployeeMember' => $isCurrentEmployeeMember,
             'checkoutDeadlineLabel' => $checkoutDeadlineLabel,
+            'clockInWindowInfo' => $clockInWindowInfo,
             'filters' => $request->only(['team_id', 'start_date', 'end_date', 'filter_employee_id', 'filter_status', 'month', 'history_team_id']),
         ]);
     }
@@ -499,6 +535,38 @@ class SpecialAttendanceController extends Controller
         $today = Carbon::today()->format('Y-m-d');
         $now = Carbon::now();
         $currentTimeStr = $now->format('H:i:s');
+
+        // Validasi Pembatasan Jam Masuk Lebih Awal (Kamera Menolak Jika Belum Jam Yang Ditentukan)
+        $earlyLimitEnabled = Setting::get('attendance_clock_in_early_limit_enabled', '1') === '1';
+        $earlyLimitMinutes = max(1, (int) Setting::get('attendance_clock_in_early_limit_minutes', 60));
+        $user = $request->user();
+        $canBypassEarlyLimit = $user && ($user->hasRole('admin') || $user->hasRole('super admin') || $user->can('attendance_bypass_early_restriction') || $user->can('attendances_manage'));
+
+        if ($earlyLimitEnabled && !$canBypassEarlyLimit && !empty($team->start_time)) {
+            $scheduledStartTime = Carbon::parse($today . ' ' . $team->start_time);
+            $earliestAllowed = $scheduledStartTime->copy()->subMinutes($earlyLimitMinutes);
+
+            if ($now->lessThan($earliestAllowed)) {
+                $openTimeStr = $earliestAllowed->format('H:i');
+                $minutesLeft = (int) ceil($now->diffInRealMinutes($earliestAllowed, false));
+
+                if ($minutesLeft >= 60) {
+                    $hours = intdiv($minutesLeft, 60);
+                    $remMinutes = $minutesLeft % 60;
+                    $diffText = $remMinutes > 0 ? "{$hours} jam {$remMinutes} menit" : "{$hours} jam";
+                } else {
+                    $diffText = "{$minutesLeft} menit";
+                }
+
+                $msg = "Presensi Masuk Ditolak: Jam kerja {$team->name} baru dapat diabsen mulai pukul {$openTimeStr} WIB (maksimal {$earlyLimitMinutes} menit sebelum shift). Jam saat ini {$currentTimeStr} WIB. Kamera ditolak sampai {$openTimeStr} WIB (tersisa {$diffText}).";
+
+                if ($request->wantsJson()) {
+                    return response()->json(['message' => $msg, 'error' => $msg], 422);
+                }
+
+                return back()->with('error', $msg);
+            }
+        }
 
         // Evaluasi Keterlambatan
         $scheduledStartTime = Carbon::parse($today . ' ' . $team->start_time);
