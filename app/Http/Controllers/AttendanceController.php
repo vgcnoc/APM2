@@ -632,7 +632,14 @@ class AttendanceController extends Controller
                     $diffText = "{$minutesLeft} menit";
                 }
 
-                return back()->with('error', "Presensi Masuk Belum Dibuka: Jam shift Anda ({$shift->name}: {$shiftStartStr} - {$shiftEndStr} WIB) baru dapat diabsen mulai pukul {$openTimeStr} WIB (maksimal {$earlyLimitMinutes} menit sebelum shift dimulai). Silakan coba kembali dalam {$diffText}.");
+                $currentTimeStr = $now->format('H:i:s');
+                $msg = "Presensi Masuk Ditolak: Jam shift Anda ({$shift->name}: {$shiftStartStr} - {$shiftEndStr} WIB) baru dapat diabsen mulai pukul {$openTimeStr} WIB (maksimal {$earlyLimitMinutes} menit sebelum shift dimulai). Jam saat ini {$currentTimeStr} WIB. Kamera ditolak sampai {$openTimeStr} WIB (tersisa {$diffText}).";
+
+                if ($request->wantsJson()) {
+                    return response()->json(['message' => $msg, 'error' => $msg], 422);
+                }
+
+                return back()->with('error', $msg);
             }
         }
 

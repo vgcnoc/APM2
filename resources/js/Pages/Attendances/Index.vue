@@ -533,7 +533,8 @@
                                                 </span>
                                             </div>
                                             <p class="text-[11px] text-amber-800 mt-1">
-                                                Shift kerja Anda (<strong>{{ clockInWindowInfo?.shift_name || shiftToday?.name }}</strong>: {{ clockInWindowInfo?.shift_start || shiftToday?.start_time?.slice(0, 5) }} WIB) baru dapat diabsen mulai pukul <strong>{{ clockInWindowInfo?.earliest_full_label }}</strong>.
+                                                Kamera menolak absensi sebelum jam yang ditentukan. Shift kerja Anda (<strong>{{ clockInWindowInfo?.shift_name || shiftToday?.name }}</strong>: {{ clockInWindowInfo?.shift_start || shiftToday?.start_time?.slice(0, 5) }} WIB) baru dapat diabsen mulai pukul <strong>{{ clockInWindowInfo?.earliest_full_label }}</strong>.
+                                                Tersisa <strong>{{ formatEarlyLimitCountdown(clockInWindowInfo?.minutes_until_open) }}</strong>.
                                             </p>
                                         </div>
                                     </div>
@@ -627,6 +628,23 @@
                             <!-- VIEW 1: KAMERA FEED DENGAN FACE SCANNER OVERLAY -->
                             <div v-show="mediaView === 'camera'" class="space-y-3">
                                 <div class="relative w-full aspect-4/3 bg-slate-950 rounded-3xl overflow-hidden border border-slate-300 shadow-inner flex items-center justify-center">
+                                    <!-- Overlay Kamera Masuk Ditolak Jika Belum Waktunya -->
+                                    <div
+                                        v-if="isEarlyClockInRestricted"
+                                        class="absolute inset-0 z-30 bg-slate-950/95 flex flex-col items-center justify-center p-6 text-center space-y-3"
+                                    >
+                                        <div class="w-16 h-16 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-3xl border border-amber-500/30">
+                                            ⛔
+                                        </div>
+                                        <div class="text-base font-bold text-amber-400">Kamera Masuk Ditolak</div>
+                                        <p class="text-xs text-slate-300 max-w-xs leading-relaxed">
+                                            Presensi Masuk belum dibuka. Shift kerja <strong>{{ clockInWindowInfo?.shift_name || shiftToday?.name }}</strong> ({{ clockInWindowInfo?.shift_start || shiftToday?.start_time?.slice(0, 5) }} WIB) baru dapat diabsen mulai pukul <strong class="text-amber-300 font-mono">{{ clockInWindowInfo?.earliest_full_label }}</strong>.
+                                        </p>
+                                        <div class="px-3.5 py-1.5 rounded-xl bg-amber-900/60 border border-amber-600/40 text-xs text-amber-200 font-mono font-bold">
+                                            ⏳ Sisa Waktu Buka: {{ formatEarlyLimitCountdown(clockInWindowInfo?.minutes_until_open) }}
+                                        </div>
+                                    </div>
+
                                     <!-- Video Live Feed -->
                                     <video
                                         v-show="isCameraOpen && !capturedPhoto"
@@ -675,9 +693,11 @@
                                         <button
                                             type="button"
                                             @click="startCamera"
-                                            class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-md shadow-blue-500/20"
+                                            :disabled="isEarlyClockInRestricted"
+                                            class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold transition shadow-md shadow-blue-500/20 flex items-center gap-1.5"
                                         >
-                                            Aktifkan Kamera Sekarang
+                                            <span v-if="isEarlyClockInRestricted">🔒 Kamera Ditolak</span>
+                                            <span v-else>Aktifkan Kamera Sekarang</span>
                                         </button>
                                     </div>
                                 </div>
@@ -688,9 +708,11 @@
                                         v-if="!isCameraOpen && !capturedPhoto"
                                         type="button"
                                         @click="startCamera"
-                                        class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition"
+                                        :disabled="isEarlyClockInRestricted"
+                                        class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5"
                                     >
-                                        Nyalakan Kamera
+                                        <span v-if="isEarlyClockInRestricted">🔒 Kamera Ditolak</span>
+                                        <span v-else>Nyalakan Kamera</span>
                                     </button>
 
                                     <button
@@ -1566,6 +1588,37 @@ const cameraFacing = ref('user'); // 'user' or 'environment'
 let mediaStream = null;
 
 const startCamera = async () => {
+    if (isEarlyClockInRestricted.value) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Kamera Masuk Ditolak',
+            html: `
+                <div class="text-left text-xs space-y-2.5">
+                    <p class="text-slate-700">Presensi Masuk belum dibuka untuk shift <strong>${props.clockInWindowInfo?.shift_name || props.shiftToday?.name || 'Reguler'}</strong>.</p>
+                    <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 space-y-1">
+                        <div class="flex justify-between font-bold">
+                            <span>Jam Buka Presensi:</span>
+                            <span class="font-mono text-blue-700">${props.clockInWindowInfo?.earliest_full_label || '--:--'}</span>
+                        </div>
+                        <div class="flex justify-between text-slate-500 text-[11px]">
+                            <span>Jam Shift Dimulai:</span>
+                            <span class="font-mono">${props.clockInWindowInfo?.shift_start || props.shiftToday?.start_time?.slice(0, 5) || '--:--'} WIB</span>
+                        </div>
+                        <div class="flex justify-between text-slate-500 text-[11px]">
+                            <span>Batas Awal:</span>
+                            <span>Maksimal ${props.clockInWindowInfo?.early_limit_minutes || 60} menit</span>
+                        </div>
+                    </div>
+                    <p class="text-[11px] text-amber-800 text-center pt-1 font-semibold">
+                        ⏳ Kamera ditolak. Silakan kembali dalam <strong>${formatEarlyLimitCountdown(props.clockInWindowInfo?.minutes_until_open)}</strong>.
+                    </p>
+                </div>
+            `,
+            confirmButtonText: 'Mengerti',
+            confirmButtonColor: '#1e3a8a',
+        });
+        return;
+    }
     try {
         isCameraOpen.value = true;
         capturedPhoto.value = null;
@@ -1591,6 +1644,15 @@ const switchCameraFacing = () => {
 };
 
 const captureSnapshot = () => {
+    if (isEarlyClockInRestricted.value) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Kamera Masuk Ditolak',
+            text: `Presensi Masuk baru dibuka pukul ${props.clockInWindowInfo?.earliest_full_label}.`,
+            confirmButtonColor: '#1e3a8a',
+        });
+        return;
+    }
     if (!videoRef.value || !canvasRef.value) return;
 
     const video = videoRef.value;
@@ -1738,6 +1800,16 @@ const isOutOfRadius = computed(() => {
     if (!isStrict) return false;
     return !isWithinRadius.value && !bypassRadiusMode.value;
 });
+
+const formatEarlyLimitCountdown = (mins) => {
+    const m = Math.max(1, Number(mins || 0));
+    if (m >= 60) {
+        const h = Math.floor(m / 60);
+        const r = m % 60;
+        return r > 0 ? `${h} jam ${r} menit` : `${h} jam`;
+    }
+    return `${m} menit`;
+};
 
 const isEarlyClockInRestricted = computed(() => {
     if (props.todayAttendance?.clock_in) return false;
