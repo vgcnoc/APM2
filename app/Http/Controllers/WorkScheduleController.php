@@ -10,11 +10,74 @@ use App\Models\Shift;
 use App\Models\WorkSchedule;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class WorkScheduleController extends Controller
 {
+    /**
+     * Status roster teknisi pada satu tanggal untuk penjadwalan PGK, PGS, dan PGJ.
+     * Status tetap informatif: kepala teknisi masih dapat memilihnya saat kondisi darurat.
+     */
+    public function technicianAvailability(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $canSchedule = $user && (
+            $user->isAdmin()
+            || $user->can('menu_pgk_jadwal')
+            || $user->can('menu_pgs_jadwal')
+            || $user->can('menu_pgj_jadwal')
+            || $user->can('pgk_manage')
+            || $user->can('pgs_manage')
+            || $user->can('pgj_manage')
+        );
+        abort_unless($canSchedule, 403);
+
+        $validated = $request->validate([
+            'date' => ['required', 'date_format:Y-m-d'],
+            'technician_ids' => ['required', 'array', 'max:250'],
+            'technician_ids.*' => ['integer', 'distinct', 'exists:users,id'],
+        ]);
+
+        $technicians = \App\Models\User::query()
+            ->with('employee:id,email')
+            ->whereIn('id', $validated['technician_ids'])
+            ->get(['id', 'email']);
+
+        $employeeIds = $technicians->pluck('employee.id')->filter()->values();
+        $schedulesByEmployee = WorkSchedule::query()
+            ->whereDate('date', $validated['date'])
+            ->whereIn('employee_id', $employeeIds)
+            ->get(['employee_id', 'status'])
+            ->keyBy('employee_id');
+
+        $labels = [
+            'off' => 'Libur',
+            'leave' => 'Cuti',
+            'sick' => 'Sakit',
+        ];
+
+        $availability = $technicians->mapWithKeys(function ($technician) use ($schedulesByEmployee, $labels) {
+            $schedule = $technician->employee
+                ? $schedulesByEmployee->get($technician->employee->id)
+                : null;
+            $status = strtolower((string) ($schedule?->status ?? ''));
+            $isUnavailable = array_key_exists($status, $labels);
+
+            return [(string) $technician->id => [
+                'is_unavailable' => $isUnavailable,
+                'status' => $status ?: null,
+                'status_label' => $isUnavailable ? $labels[$status] : null,
+            ]];
+        });
+
+        return response()->json([
+            'date' => $validated['date'],
+            'technicians' => $availability,
+        ]);
+    }
+
     /**
      * Halaman Utama Jadwal Kerja & Roster Shift
      */

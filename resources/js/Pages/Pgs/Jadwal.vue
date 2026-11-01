@@ -665,17 +665,11 @@
                     <!-- Pilih Teknisi -->
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Pilih Teknisi Pelaksana <span class="text-red-500">*</span></label>
-                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 rounded-2xl border border-gray-200 bg-gray-50/50 max-h-40 overflow-y-auto">
-                            <label v-for="tech in technicians" :key="tech.id" class="flex items-center gap-2 p-2 rounded-xl bg-white border border-gray-100 hover:border-amber-300 cursor-pointer text-xs">
-                                <input 
-                                    type="checkbox" 
-                                    :value="tech.id" 
-                                    v-model="scheduleForm.technician_ids" 
-                                    class="rounded text-amber-500 focus:ring-amber-400"
-                                />
-                                <span class="font-medium text-gray-800">{{ tech.name }}</span>
-                            </label>
-                        </div>
+                        <TechnicianAvailabilitySelector
+                            v-model="scheduleForm.technician_ids"
+                            :technicians="technicians"
+                            :scheduled-date="scheduleForm.scheduled_date"
+                        />
                         <p v-if="scheduleForm.technician_ids.length === 0" class="text-[11px] text-red-500 mt-1 font-semibold">* Pilih minimal 1 teknisi</p>
                     </div>
 
@@ -1152,6 +1146,7 @@
 import { ref, computed } from 'vue';
 import { Link, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import TechnicianAvailabilitySelector from '@/Components/TechnicianAvailabilitySelector.vue';
 import { usePermission } from '@/Composables/usePermission';
 
 const { can } = usePermission();
