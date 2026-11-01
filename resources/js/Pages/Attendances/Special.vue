@@ -154,6 +154,21 @@
                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
                     <span>Potongan Tim Serbu</span>
                 </button>
+
+                <!-- TAB POTONGAN TIM BC-4 -->
+                <button
+                    type="button"
+                    @click="activeTab = 'potongan_bc4'"
+                    :class="[
+                        activeTab === 'potongan_bc4'
+                            ? 'bg-blue-900 text-white shadow-sm'
+                            : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50',
+                        'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap'
+                    ]"
+                >
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                    <span>Potongan Tim BC-4</span>
+                </button>
             </div>
 
             <!-- 3. ACCORDION PANDUAN ABSENSI (MASUK & PULANG) -->
@@ -412,10 +427,43 @@
             <!-- ========================================================= -->
             <div v-else-if="activeTab === 'riwayat'" class="space-y-4">
                 <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-4">
-                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                        <h2 class="text-sm font-bold text-slate-800">Riwayat Kehadiran {{ currentTeam?.name }}</h2>
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                        <div>
+                            <h2 class="text-sm font-bold text-slate-800">Riwayat Kehadiran Seluruh Karyawan Tim Khusus</h2>
+                            <p class="text-xs text-slate-500">Mencakup seluruh catatan kehadiran dari Tim Khusus, Tim Serbu, dan Tim BC-4</p>
+                        </div>
                         <!-- Filter Form -->
                         <div class="flex flex-wrap items-center gap-2">
+                            <!-- Filter Tim Khusus -->
+                            <select
+                                v-model="filterHistoryTeamId"
+                                class="text-xs rounded-xl border-slate-200 py-1.5 px-2.5 font-semibold text-slate-700 bg-white"
+                            >
+                                <option value="all">Semua Tim Khusus (Seluruh Karyawan)</option>
+                                <option v-for="t in teams" :key="t.id" :value="t.id">{{ t.name }}</option>
+                            </select>
+
+                            <!-- Filter Karyawan -->
+                            <select
+                                v-model="filterHistoryEmployeeId"
+                                class="text-xs rounded-xl border-slate-200 py-1.5 px-2.5 font-semibold text-slate-700 bg-white"
+                            >
+                                <option value="all">Semua Karyawan</option>
+                                <option v-for="emp in (allSpecialEmployees || allEmployees)" :key="emp.id" :value="emp.id">
+                                    {{ emp.name }}
+                                </option>
+                            </select>
+
+                            <!-- Filter Status -->
+                            <select
+                                v-model="filterHistoryStatus"
+                                class="text-xs rounded-xl border-slate-200 py-1.5 px-2.5 font-semibold text-slate-700 bg-white"
+                            >
+                                <option value="all">Semua Status</option>
+                                <option value="present">Tepat Waktu (OK)</option>
+                                <option value="late">Terlambat</option>
+                            </select>
+
                             <input
                                 type="date"
                                 v-model="filterStartDate"
@@ -434,6 +482,14 @@
                             >
                                 Filter
                             </button>
+                            <button
+                                type="button"
+                                @click="resetHistoryFilter"
+                                class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition"
+                                title="Reset filter"
+                            >
+                                Reset
+                            </button>
                         </div>
                     </div>
 
@@ -443,6 +499,7 @@
                             <thead class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
                                 <tr>
                                     <th class="p-3">Tanggal</th>
+                                    <th class="p-3">Tim Khusus</th>
                                     <th class="p-3">Karyawan</th>
                                     <th class="p-3">Masuk</th>
                                     <th class="p-3">Pulang</th>
@@ -454,6 +511,11 @@
                             <tbody class="divide-y divide-slate-100 text-slate-700">
                                 <tr v-for="item in history.data" :key="item.id" class="hover:bg-slate-50/50">
                                     <td class="p-3 font-semibold">{{ item.date }}</td>
+                                    <td class="p-3">
+                                        <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                                            {{ item.team?.name || '-' }}
+                                        </span>
+                                    </td>
                                     <td class="p-3 font-bold text-slate-900">{{ item.employee?.name }}</td>
                                     <td class="p-3 font-mono font-semibold">{{ item.clock_in || '-' }}</td>
                                     <td class="p-3 font-mono font-semibold">{{ item.clock_out || '-' }}</td>
@@ -493,7 +555,7 @@
                                     </td>
                                 </tr>
                                 <tr v-if="!history.data || history.data.length === 0">
-                                    <td colspan="7" class="p-6 text-center text-slate-400">
+                                    <td colspan="8" class="p-6 text-center text-slate-400">
                                         Tidak ada catatan riwayat absensi pada rentang tanggal ini.
                                     </td>
                                 </tr>
@@ -565,7 +627,7 @@
             </div>
 
             <!-- ========================================================= -->
-            <!-- TAB 4: ABSEN TERBAIK (LEADERBOARD)                        -->
+            <!-- TAB 4: ABSEN TERBAIK (LEADERBOARD PERLOMBAAN 3 TIM)       -->
             <!-- ========================================================= -->
             <div v-else-if="activeTab === 'best'" class="space-y-6">
                 <!-- Header Card Absen Terbaik -->
@@ -574,11 +636,11 @@
                         <div>
                             <div class="text-xs font-bold text-amber-300 tracking-wider uppercase flex items-center gap-1.5">
                                 <span>🏆</span>
-                                <span>Leaderboard Absensi Tim Khusus</span>
+                                <span>Perlombaan Absen Terbaik (3 Tim Khusus)</span>
                             </div>
-                            <h2 class="text-2xl font-black mt-1">Reward Absen Terbaik (Top 3)</h2>
+                            <h2 class="text-2xl font-black mt-1">Perlombaan Antar Tim: Tim Khusus, Tim Serbu, Tim BC-4</h2>
                             <p class="text-xs text-blue-100 max-w-xl">
-                                Peringkat kedisiplinan dan poin tertinggi berdasarkan kehadiran tepat waktu dan minim keterlambatan.
+                                Ke-3 tim khusus berlomba kedisiplinan dan absensi tepat waktu. Peringkat 1 s/d 3 teratas berhak mendapatkan reward tunai bulanan.
                             </p>
                         </div>
                         <button
@@ -593,25 +655,60 @@
                     </div>
                 </div>
 
+                <!-- Filter Pill Kategori Perlombaan -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <button
+                        type="button"
+                        @click="selectedLeaderboardTeamFilter = 'all'"
+                        :class="[
+                            selectedLeaderboardTeamFilter === 'all'
+                                ? 'bg-blue-900 text-white shadow-xs font-bold'
+                                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50',
+                            'px-4 py-2 rounded-xl text-xs font-semibold transition'
+                        ]"
+                    >
+                        🏆 Semua 3 Tim (Perlombaan Gabungan)
+                    </button>
+                    <button
+                        v-for="t in teams"
+                        :key="t.id"
+                        type="button"
+                        @click="selectedLeaderboardTeamFilter = t.id"
+                        :class="[
+                            selectedLeaderboardTeamFilter === t.id
+                                ? 'bg-blue-900 text-white shadow-xs font-bold'
+                                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50',
+                            'px-4 py-2 rounded-xl text-xs font-semibold transition'
+                        ]"
+                    >
+                        {{ t.name }}
+                    </button>
+                </div>
+
                 <!-- Podium Top 3 Cards -->
-                <div v-if="leaderboard && leaderboard.length > 0 && leaderboard[0].presents > 0" class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div v-if="filteredLeaderboard && filteredLeaderboard.length > 0 && filteredLeaderboard[0].presents > 0" class="grid grid-cols-1 md:grid-cols-3 gap-5">
                     <!-- Juara 1 -->
                     <div class="bg-white rounded-2xl border-2 border-amber-300 p-5 shadow-sm relative overflow-hidden space-y-3">
                         <div class="absolute -right-4 -top-4 w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center text-2xl font-bold">
                             🥇
                         </div>
-                        <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800">Juara 1</span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800">Juara 1</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200">
+                                {{ filteredLeaderboard[0]?.team_name }}
+                            </span>
+                        </div>
                         <div class="pt-1">
-                            <h3 class="text-base font-black text-slate-900">{{ leaderboard[0]?.name || '-' }}</h3>
-                            <p class="text-xs text-slate-500">{{ leaderboard[0]?.position || 'Karyawan' }}</p>
+                            <h3 class="text-base font-black text-slate-900">{{ filteredLeaderboard[0]?.name || '-' }}</h3>
+                            <p class="text-xs text-slate-500">{{ filteredLeaderboard[0]?.position || 'Karyawan' }}</p>
                         </div>
                         <div class="p-3 bg-amber-50/70 rounded-xl border border-amber-200/60">
                             <div class="text-xs text-amber-900 font-semibold">Reward Tunai:</div>
                             <div class="text-lg font-black text-amber-700">Rp {{ rewardsConfig.juara_1.toLocaleString('id-ID') }}</div>
                         </div>
                         <div class="text-xs text-slate-600 flex justify-between pt-1">
-                            <span>Hadir: <strong>{{ leaderboard[0]?.presents || 0 }} hari</strong></span>
-                            <span>Skor: <strong>{{ leaderboard[0]?.score || 0 }} pts</strong></span>
+                            <span>Hadir: <strong>{{ filteredLeaderboard[0]?.presents || 0 }} hari</strong></span>
+                            <span>Skor: <strong>{{ filteredLeaderboard[0]?.score || 0 }} pts</strong></span>
                         </div>
                     </div>
 
@@ -620,18 +717,23 @@
                         <div class="absolute -right-4 -top-4 w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-2xl font-bold">
                             🥈
                         </div>
-                        <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">Juara 2</span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700">Juara 2</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200">
+                                {{ filteredLeaderboard[1]?.team_name }}
+                            </span>
+                        </div>
                         <div class="pt-1">
-                            <h3 class="text-base font-black text-slate-900">{{ leaderboard[1]?.name || '-' }}</h3>
-                            <p class="text-xs text-slate-500">{{ leaderboard[1]?.position || 'Karyawan' }}</p>
+                            <h3 class="text-base font-black text-slate-900">{{ filteredLeaderboard[1]?.name || '-' }}</h3>
+                            <p class="text-xs text-slate-500">{{ filteredLeaderboard[1]?.position || 'Karyawan' }}</p>
                         </div>
                         <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
                             <div class="text-xs text-slate-700 font-semibold">Reward Tunai:</div>
                             <div class="text-lg font-black text-slate-800">Rp {{ rewardsConfig.juara_2.toLocaleString('id-ID') }}</div>
                         </div>
                         <div class="text-xs text-slate-600 flex justify-between pt-1">
-                            <span>Hadir: <strong>{{ leaderboard[1]?.presents || 0 }} hari</strong></span>
-                            <span>Skor: <strong>{{ leaderboard[1]?.score || 0 }} pts</strong></span>
+                            <span>Hadir: <strong>{{ filteredLeaderboard[1]?.presents || 0 }} hari</strong></span>
+                            <span>Skor: <strong>{{ filteredLeaderboard[1]?.score || 0 }} pts</strong></span>
                         </div>
                     </div>
 
@@ -640,18 +742,23 @@
                         <div class="absolute -right-4 -top-4 w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center text-2xl font-bold">
                             🥉
                         </div>
-                        <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-800">Juara 3</span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-800">Juara 3</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200">
+                                {{ filteredLeaderboard[2]?.team_name }}
+                            </span>
+                        </div>
                         <div class="pt-1">
-                            <h3 class="text-base font-black text-slate-900">{{ leaderboard[2]?.name || '-' }}</h3>
-                            <p class="text-xs text-slate-500">{{ leaderboard[2]?.position || 'Karyawan' }}</p>
+                            <h3 class="text-base font-black text-slate-900">{{ filteredLeaderboard[2]?.name || '-' }}</h3>
+                            <p class="text-xs text-slate-500">{{ filteredLeaderboard[2]?.position || 'Karyawan' }}</p>
                         </div>
                         <div class="p-3 bg-orange-50/70 rounded-xl border border-orange-200/60">
                             <div class="text-xs text-orange-900 font-semibold">Reward Tunai:</div>
                             <div class="text-lg font-black text-orange-700">Rp {{ rewardsConfig.juara_3.toLocaleString('id-ID') }}</div>
                         </div>
                         <div class="text-xs text-slate-600 flex justify-between pt-1">
-                            <span>Hadir: <strong>{{ leaderboard[2]?.presents || 0 }} hari</strong></span>
-                            <span>Skor: <strong>{{ leaderboard[2]?.score || 0 }} pts</strong></span>
+                            <span>Hadir: <strong>{{ filteredLeaderboard[2]?.presents || 0 }} hari</strong></span>
+                            <span>Skor: <strong>{{ filteredLeaderboard[2]?.score || 0 }} pts</strong></span>
                         </div>
                     </div>
                 </div>
@@ -663,15 +770,83 @@
                     </div>
                     <h3 class="text-base font-bold text-slate-800">Belum Ada Peringkat Absen Terbaik Bulan Ini</h3>
                     <p class="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-                        Peringkat dan reward absen terbaik grup {{ currentTeam?.name }} akan otomatis dihitung dan ditampilkan setelah anggota tim memiliki catatan kehadiran terverifikasi pada periode bulan ini.
+                        Peringkat dan reward perlombaan absen terbaik 3 tim (Tim Khusus, Tim Serbu, Tim BC-4) akan otomatis dihitung dan ditampilkan setelah anggota tim memiliki catatan kehadiran terverifikasi pada periode bulan ini.
                     </p>
+                </div>
+
+                <!-- Tabel Peringkat Perlombaan 3 Tim Lengkap -->
+                <div v-if="filteredLeaderboard && filteredLeaderboard.length > 0" class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-800">Papan Peringkat Lengkap Perlombaan</h3>
+                            <p class="text-xs text-slate-500">Hasil akumulasi poin kedisiplinan dan absensi tepat waktu</p>
+                        </div>
+                        <span class="text-xs font-bold text-slate-500">{{ filteredLeaderboard.length }} Peserta</span>
+                    </div>
+
+                    <div class="overflow-x-auto rounded-xl border border-slate-200">
+                        <table class="w-full text-xs text-left">
+                            <thead class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                                <tr>
+                                    <th class="p-3 text-center">Peringkat</th>
+                                    <th class="p-3">Nama Karyawan</th>
+                                    <th class="p-3">Grup Tim Khusus</th>
+                                    <th class="p-3 text-center">Hadir</th>
+                                    <th class="p-3 text-center">Telat</th>
+                                    <th class="p-3 text-center">Menit Telat</th>
+                                    <th class="p-3 text-center">Tanpa Pulang</th>
+                                    <th class="p-3 text-center">Skor Poin</th>
+                                    <th class="p-3 text-center">Status Hadiah</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-slate-700">
+                                <tr
+                                    v-for="(row, idx) in filteredLeaderboard"
+                                    :key="row.employee_id"
+                                    class="hover:bg-slate-50/50"
+                                    :class="idx < 3 ? 'bg-amber-50/20' : ''"
+                                >
+                                    <td class="p-3 text-center font-bold">
+                                        <span v-if="idx === 0" class="text-base">🥇</span>
+                                        <span v-else-if="idx === 1" class="text-base">🥈</span>
+                                        <span v-else-if="idx === 2" class="text-base">🥉</span>
+                                        <span v-else class="text-slate-500">#{{ idx + 1 }}</span>
+                                    </td>
+                                    <td class="p-3">
+                                        <div class="font-bold text-slate-900">{{ row.name }}</div>
+                                        <div class="text-[11px] text-slate-500">{{ row.position }}</div>
+                                    </td>
+                                    <td class="p-3">
+                                        <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                                            {{ row.team_name }}
+                                        </span>
+                                    </td>
+                                    <td class="p-3 text-center font-bold text-emerald-600">{{ row.presents }} hari</td>
+                                    <td class="p-3 text-center font-bold" :class="row.lates > 0 ? 'text-amber-600' : 'text-slate-400'">{{ row.lates }}x</td>
+                                    <td class="p-3 text-center font-bold" :class="row.late_minutes > 0 ? 'text-amber-600' : 'text-slate-400'">{{ row.late_minutes }}m</td>
+                                    <td class="p-3 text-center font-bold" :class="row.no_clock_out > 0 ? 'text-rose-600' : 'text-slate-400'">{{ row.no_clock_out }}x</td>
+                                    <td class="p-3 text-center">
+                                        <span class="px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 font-bold border border-blue-200">
+                                            {{ row.score }} pts
+                                        </span>
+                                    </td>
+                                    <td class="p-3 text-center">
+                                        <span v-if="idx === 0" class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-[10px]">Juara 1 (Rp {{ rewardsConfig.juara_1.toLocaleString('id-ID') }})</span>
+                                        <span v-else-if="idx === 1" class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold text-[10px]">Juara 2 (Rp {{ rewardsConfig.juara_2.toLocaleString('id-ID') }})</span>
+                                        <span v-else-if="idx === 2" class="px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 font-bold text-[10px]">Juara 3 (Rp {{ rewardsConfig.juara_3.toLocaleString('id-ID') }}</span>
+                                        <span v-else class="text-slate-400 text-[11px]">-</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
             <!-- ========================================================= -->
-            <!-- TAB 5 & 6: POTONGAN TIM KHUSUS / POTONGAN TIM SERBU       -->
+            <!-- TAB 5, 6, 7: POTONGAN TIM KHUSUS / SERBU / BC-4           -->
             <!-- ========================================================= -->
-            <div v-else-if="activeTab === 'potongan_khusus' || activeTab === 'potongan_serbu'" class="space-y-5">
+            <div v-else-if="activeTab === 'potongan_khusus' || activeTab === 'potongan_serbu' || activeTab === 'potongan_bc4'" class="space-y-5">
                 <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-5">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div>
@@ -1370,13 +1545,25 @@ const props = defineProps({
     rewardsConfig: Object,
     allTeamsDeductions: Object,
     allEmployees: Array,
+    allSpecialEmployees: Array,
     isCurrentEmployeeMember: Boolean,
     checkoutDeadlineLabel: String,
     filters: Object,
 });
 
 // Tab Active State
-const activeTab = ref('absen'); // 'absen', 'riwayat', 'admin', 'best', 'potongan_khusus', 'potongan_serbu'
+const activeTab = ref('absen'); // 'absen', 'riwayat', 'admin', 'best', 'potongan_khusus', 'potongan_serbu', 'potongan_bc4'
+
+// Leaderboard Perlombaan 3 Tim Filter State
+const selectedLeaderboardTeamFilter = ref('all');
+
+const filteredLeaderboard = computed(() => {
+    const list = props.leaderboard || [];
+    if (selectedLeaderboardTeamFilter.value === 'all') {
+        return list;
+    }
+    return list.filter((item) => String(item.team_id) === String(selectedLeaderboardTeamFilter.value));
+});
 
 // Collapsible Guide State
 const showGuideIn = ref(false);
@@ -1454,7 +1641,10 @@ const switchEmployee = (empId) => {
     router.get(route('special-attendances.index'), { team_id: props.currentTeam?.id, employee_id: empId }, { preserveState: true });
 };
 
-// Filters Riwayat
+// Filters Riwayat Seluruh Karyawan Tim Khusus
+const filterHistoryTeamId = ref(props.filters?.history_team_id || 'all');
+const filterHistoryEmployeeId = ref(props.filters?.filter_employee_id || 'all');
+const filterHistoryStatus = ref(props.filters?.filter_status || 'all');
 const filterStartDate = ref(props.filters?.start_date || '');
 const filterEndDate = ref(props.filters?.end_date || '');
 
@@ -1463,11 +1653,23 @@ const applyHistoryFilter = () => {
         route('special-attendances.index'),
         {
             team_id: props.currentTeam?.id,
+            history_team_id: filterHistoryTeamId.value,
+            filter_employee_id: filterHistoryEmployeeId.value,
+            filter_status: filterHistoryStatus.value,
             start_date: filterStartDate.value,
             end_date: filterEndDate.value,
         },
         { preserveState: true }
     );
+};
+
+const resetHistoryFilter = () => {
+    filterHistoryTeamId.value = 'all';
+    filterHistoryEmployeeId.value = 'all';
+    filterHistoryStatus.value = 'all';
+    filterStartDate.value = '';
+    filterEndDate.value = '';
+    applyHistoryFilter();
 };
 
 // Admin Month Filter
@@ -1477,7 +1679,7 @@ const switchAdminMonth = (monthVal) => {
     router.get(route('special-attendances.index'), { team_id: props.currentTeam?.id, month: monthVal }, { preserveState: true });
 };
 
-// Deductions Team Computation for Tabs 5 & 6
+// Deductions Team Computation for Tabs 5, 6 & 7
 const activeDeductionTeam = computed(() => {
     if (activeTab.value === 'potongan_khusus') {
         const found = (props.teams || []).find((t) => t.name.toLowerCase().includes('khusus'));
@@ -1485,6 +1687,14 @@ const activeDeductionTeam = computed(() => {
     }
     if (activeTab.value === 'potongan_serbu') {
         const found = (props.teams || []).find((t) => t.name.toLowerCase().includes('serbu'));
+        return found || props.currentTeam;
+    }
+    if (activeTab.value === 'potongan_bc4') {
+        const found = (props.teams || []).find((t) => {
+            const name = (t.name || '').toLowerCase();
+            const code = (t.code || '').toLowerCase();
+            return name.includes('bc-4') || name.includes('bc 4') || name.includes('bc4') || code.includes('bc-04') || code.includes('bc-4');
+        });
         return found || props.currentTeam;
     }
     return props.currentTeam;
@@ -1889,9 +2099,23 @@ const submitAdminManual = () => {
 // SINKRONISASI KE PAYROLL
 // ========================================================
 const triggerSyncPayroll = async () => {
+    const isBestTab = activeTab.value === 'best';
+    const isDeductionTab = ['potongan_khusus', 'potongan_serbu', 'potongan_bc4'].includes(activeTab.value);
+    
+    let targetTeamId = props.currentTeam?.id;
+    let targetLabel = `grup '${props.currentTeam?.name}'`;
+
+    if (isBestTab) {
+        targetTeamId = 'all';
+        targetLabel = 'Seluruh Tim Khusus (3 Tim Perlombaan: Khusus, Serbu, BC-4)';
+    } else if (isDeductionTab && activeDeductionTeam.value) {
+        targetTeamId = activeDeductionTeam.value.id;
+        targetLabel = `grup '${activeDeductionTeam.value.name}'`;
+    }
+
     const confirmResult = await Swal.fire({
         title: 'Sinkron ke Payroll?',
-        text: `Sinkronkan seluruh data potongan dan reward absen terbaik grup '${props.currentTeam?.name}' ke modul Penggajian (Payroll) periode ${selectedAdminMonth.value}?`,
+        text: `Sinkronkan seluruh data potongan dan reward absen terbaik ${targetLabel} ke modul Penggajian (Payroll) periode ${selectedAdminMonth.value}?`,
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#2563eb',
@@ -1905,7 +2129,7 @@ const triggerSyncPayroll = async () => {
     router.post(
         route('special-attendances.sync-payroll'),
         {
-            special_team_id: props.currentTeam?.id,
+            special_team_id: targetTeamId,
             month: selectedAdminMonth.value,
         },
         {
@@ -1914,7 +2138,7 @@ const triggerSyncPayroll = async () => {
                 Swal.fire({
                     icon: 'success',
                     title: 'Berhasil!',
-                    text: 'Data potongan dan reward absen terbaik berhasil disinkronkan ke payroll.',
+                    text: `Data potongan dan reward absen terbaik ${targetLabel} berhasil disinkronkan ke payroll.`,
                     timer: 2000,
                     showConfirmButton: false,
                 });
