@@ -387,80 +387,61 @@
                             <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Informasi Dasar</h4>
                             
                             <div class="space-y-4">
-                                <!-- Nama Barang / Material dengan Autocomplete / Combobox -->
-                                <div class="relative">
-                                    <div class="flex items-center justify-between mb-1">
-                                        <label class="block text-sm font-bold text-gray-700">
-                                            Nama Barang / Material <span class="text-red-500">*</span>
-                                        </label>
-                                        <button 
-                                            type="button" 
-                                            @click="isNameDropdownOpen = !isNameDropdownOpen" 
-                                            class="text-xs font-semibold text-emerald-600 hover:text-emerald-700 hover:underline inline-flex items-center gap-1 cursor-pointer"
-                                        >
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/></svg>
-                                            <span>{{ isNameDropdownOpen ? 'Tutup Pilihan' : 'Pilih dari Katalog Standar' }}</span>
-                                        </button>
-                                    </div>
+                                <!-- Nama Barang / Material (Ketik Manual & Panduan Material Bekas) -->
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-1">
+                                        Nama Barang / Material <span class="text-red-500">*</span>
+                                    </label>
                                     
-                                    <div class="relative">
-                                        <input 
-                                            v-model="form.name" 
-                                            type="text" 
-                                            list="catalog-material-datalist"
-                                            @focus="isNameDropdownOpen = true"
-                                            class="w-full pl-4 pr-10 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-sm font-semibold transition-all" 
-                                            required 
-                                            placeholder="Ketik manual atau pilih nama material standar..."
-                                        >
-                                        <button 
-                                            type="button" 
-                                            @click="isNameDropdownOpen = !isNameDropdownOpen" 
-                                            class="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
-                                            title="Tampilkan daftar nama katalog"
-                                        >
-                                            <svg class="w-4 h-4 transition-transform duration-200" :class="isNameDropdownOpen ? 'rotate-180 text-emerald-600' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                                        </button>
-                                    </div>
-
-                                    <!-- Native Datalist Fallback -->
-                                    <datalist id="catalog-material-datalist">
-                                        <option v-for="mat in catalogMaterials" :key="mat.id" :value="mat.name">{{ mat.category ? `[${mat.category}] ` : '' }}{{ mat.unit ? `(${mat.unit})` : '' }}</option>
-                                    </datalist>
-
-                                    <!-- Dropdown Pilihan Nama Katalog (Custom Combobox) -->
-                                    <div 
-                                        v-if="isNameDropdownOpen && filteredCatalogMaterials.length > 0" 
-                                        class="absolute z-30 left-0 right-0 mt-1.5 bg-white border border-emerald-200 rounded-2xl shadow-xl max-h-60 overflow-y-auto divide-y divide-gray-100"
+                                    <input 
+                                        v-model="form.name" 
+                                        type="text" 
+                                        class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-sm font-semibold transition-all placeholder:text-gray-400 placeholder:font-normal" 
+                                        required 
+                                        placeholder="Ketik manual nama material bekas layak pakai..."
                                     >
-                                        <div class="p-2 bg-emerald-50/70 border-b border-emerald-100 flex items-center justify-between text-[11px] font-bold text-emerald-800">
-                                            <span>PILIH NAMA STANDAR (OTOMATIS ISI KATEGORI & SATUAN)</span>
-                                            <button type="button" @click="isNameDropdownOpen = false" class="text-gray-400 hover:text-gray-600">✕</button>
-                                        </div>
-                                        <button 
-                                            v-for="mat in filteredCatalogMaterials" 
-                                            :key="mat.id" 
-                                            type="button"
-                                            @click="selectCatalogMaterial(mat)"
-                                            class="w-full px-4 py-2.5 text-left hover:bg-emerald-50/60 transition-colors flex items-center justify-between group cursor-pointer"
-                                        >
-                                            <div>
-                                                <span class="text-sm font-bold text-gray-800 group-hover:text-emerald-700">{{ mat.name }}</span>
-                                                <div class="flex items-center gap-2 mt-0.5 text-xs text-gray-500">
-                                                    <span class="inline-block px-1.5 py-0.2 rounded text-[10px] font-bold bg-gray-100 text-gray-600 uppercase">{{ mat.category || 'Umum' }}</span>
-                                                    <span>Satuan: <strong>{{ mat.unit }}</strong></span>
-                                                    <span v-if="mat.meter_per_roll">({{ mat.meter_per_roll }}m/roll)</span>
-                                                    <span v-else-if="mat.cm_per_pcs">({{ mat.cm_per_pcs }}cm/pcs)</span>
-                                                    <span v-else-if="mat.pcs_per_pack">({{ mat.pcs_per_pack }}pcs/pack)</span>
-                                                </div>
-                                            </div>
-                                            <span class="text-xs font-bold text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity">Pilih →</span>
-                                        </button>
-                                    </div>
 
-                                    <p class="text-[11px] text-gray-400 mt-1">
-                                        💡 Pilih nama dari katalog standar agar penamaan seragam antar area, atau ketik nama baru secara manual.
-                                    </p>
+                                    <!-- Panduan Penulisan Material Bekas Layak Pakai (Di Luar Kolom) -->
+                                    <div class="mt-2.5 p-3.5 bg-amber-50/80 border border-amber-200 rounded-xl space-y-2">
+                                        <div class="flex items-center gap-1.5 text-amber-900 font-bold text-xs">
+                                            <span>💡</span>
+                                            <span>Panduan Standar Penamaan Material Bekas (Layak Pakai):</span>
+                                        </div>
+                                        <p class="text-[11px] text-amber-800 leading-relaxed">
+                                            Karena ini material fisik yang ada di area (barang bekas bongkaran/dismantle, tarikan lapangan, atau cabutan pelanggan) yang masih layak pakai, tulis nama secara manual dengan menyertakan status kondisinya agar seragam dengan area lain.
+                                        </p>
+                                        
+                                        <div class="pt-1">
+                                            <div class="text-[10px] uppercase font-bold tracking-wider text-amber-700 mb-1.5">Contoh Penulisan Standar (Bisa Diklik Untuk Menyalin):</div>
+                                            <div class="flex flex-wrap gap-1.5">
+                                                <button
+                                                    type="button"
+                                                    v-for="example in usedMaterialExamples"
+                                                    :key="example"
+                                                    @click="applyExampleName(example)"
+                                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-amber-300 text-amber-900 text-xs font-medium hover:bg-amber-100 hover:border-amber-400 transition-colors cursor-pointer shadow-2xs group"
+                                                    title="Gunakan contoh ini"
+                                                >
+                                                    <span>{{ example }}</span>
+                                                    <span class="text-[10px] text-amber-500 group-hover:text-amber-700 font-bold">↵</span>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div class="pt-1.5 border-t border-amber-200/60 flex items-center gap-1.5 flex-wrap">
+                                            <span class="text-[10px] font-bold text-amber-700">Tambahkan Label Status:</span>
+                                            <button
+                                                type="button"
+                                                v-for="suffix in statusSuffixes"
+                                                :key="suffix"
+                                                @click="appendStatusSuffix(suffix)"
+                                                class="px-2 py-0.5 rounded-md bg-amber-200/70 hover:bg-amber-300 text-amber-900 text-[10px] font-bold transition-colors cursor-pointer"
+                                                :title="`Tambahkan '${suffix}' ke nama barang`"
+                                            >
+                                                + {{ suffix }}
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <!-- Kategori & Supplier -->
@@ -958,9 +939,6 @@ const initialRolls = ref(0);
 const initialPacks = ref(0);
 const initialBungkus = ref(0);
 
-// Combobox autocomplete untuk nama material
-const isNameDropdownOpen = ref(false);
-
 const selectedItems = ref([]);
 
 const isAllSelected = computed(() => {
@@ -1067,29 +1045,34 @@ const cancelNewCategory = () => {
     form.category = '';
 };
 
-// Filtered catalog materials untuk autocomplete
-const filteredCatalogMaterials = computed(() => {
-    if (!props.catalogMaterials || props.catalogMaterials.length === 0) return [];
-    const q = (form.name || '').toLowerCase().trim();
-    if (!q) return props.catalogMaterials.slice(0, 30);
-    return props.catalogMaterials.filter(m => 
-        (m.name && m.name.toLowerCase().includes(q)) ||
-        (m.category && m.category.toLowerCase().includes(q))
-    ).slice(0, 30);
-});
+// Panduan & Contoh Standar Penulisan Material Bekas Layak Pakai
+const usedMaterialExamples = [
+    'ONT ZTE F609 (Bekas Layak Pakai)',
+    'ONT Huawei HG8245H5 (Bekas + Adaptor)',
+    'Kabel Dropcore FO 1 Core (Bekas Tarikan)',
+    'Patchcord SC-UPC 3m (Bekas Dismantle)',
+    'Adaptor 12V 1.5A (Bekas Operasional)',
+    'Joint Closure 24C (Bekas Layak Pakai)',
+];
 
-const selectCatalogMaterial = (mat) => {
-    form.name = mat.name;
-    if (mat.category) form.category = mat.category;
-    if (mat.supplier) form.supplier = mat.supplier;
-    if (mat.unit) form.unit = mat.unit;
-    if (mat.meter_per_roll) form.meter_per_roll = Number(mat.meter_per_roll);
-    if (mat.pcs_per_pack) form.pcs_per_pack = Number(mat.pcs_per_pack);
-    if (mat.cm_per_pcs) form.cm_per_pcs = Number(mat.cm_per_pcs);
-    form.requires_sn = !!mat.requires_sn;
-    form.requires_mac = !!mat.requires_mac;
-    isNameDropdownOpen.value = false;
-    handleCategoryChange();
+const statusSuffixes = [
+    '(Bekas Layak Pakai)',
+    '(Bekas Tarikan)',
+    '(Dismantle)',
+    '(Tanpa Adaptor)',
+    '(Lengkap Adaptor)',
+];
+
+const applyExampleName = (example) => {
+    form.name = example;
+};
+
+const appendStatusSuffix = (suffix) => {
+    if (!form.name || form.name.trim() === '') {
+        form.name = suffix;
+    } else if (!form.name.includes(suffix)) {
+        form.name = `${form.name.trim()} ${suffix}`;
+    }
 };
 
 const handleCategoryChange = () => {
@@ -1244,13 +1227,11 @@ const openModal = (item = null) => {
         initialPacks.value = 0;
         initialBungkus.value = 0;
     }
-    isNameDropdownOpen.value = false;
     showModal.value = true;
 };
 
 const closeModal = () => {
     showModal.value = false;
-    isNameDropdownOpen.value = false;
     form.reset();
 };
 
