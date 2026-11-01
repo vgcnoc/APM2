@@ -1133,9 +1133,14 @@
                                 v-if="!capturedPhoto && !cameraError"
                                 type="button"
                                 @click="takeSnapshot"
-                                class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-2"
+                                :disabled="actionType === 'in' && isEarlyClockInRestricted"
+                                :class="[
+                                    actionType === 'in' && isEarlyClockInRestricted ? 'bg-slate-400 hover:bg-slate-400 opacity-60 cursor-not-allowed shadow-none' : 'bg-blue-600 hover:bg-blue-700 shadow-sm',
+                                    'px-5 py-2.5 text-white rounded-xl text-xs font-bold transition flex items-center gap-2'
+                                ]"
                             >
-                                <span>📸 Ambil Foto Selfie</span>
+                                <span v-if="actionType === 'in' && isEarlyClockInRestricted">🔒 Kamera Ditolak</span>
+                                <span v-else>📸 Ambil Foto Selfie</span>
                             </button>
 
                             <button
@@ -1880,6 +1885,15 @@ const switchCameraFacing = () => {
 };
 
 const takeSnapshot = () => {
+    if (actionType.value === 'in' && isEarlyClockInRestricted.value) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Kamera Masuk Ditolak',
+            text: `Absen masuk belum dibuka. Jam kerja ${props.currentTeam?.name || 'Tim'} (${props.clockInWindowInfo?.shift_start || '--:--'} WIB) baru dapat diabsen mulai pukul ${props.clockInWindowInfo?.earliest_full_label || '--:--'}.`,
+            confirmButtonColor: '#1e3a8a',
+        });
+        return;
+    }
     if (!videoRef.value || !canvasRef.value) return;
 
     const video = videoRef.value;
@@ -1909,6 +1923,16 @@ const takeSnapshot = () => {
 };
 
 const handleFileUpload = (event) => {
+    if (actionType.value === 'in' && isEarlyClockInRestricted.value) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Kamera Masuk Ditolak',
+            text: `Absen masuk belum dibuka. Jam kerja ${props.currentTeam?.name || 'Tim'} (${props.clockInWindowInfo?.shift_start || '--:--'} WIB) baru dapat diabsen mulai pukul ${props.clockInWindowInfo?.earliest_full_label || '--:--'}.`,
+            confirmButtonColor: '#1e3a8a',
+        });
+        if (event.target) event.target.value = '';
+        return;
+    }
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -1992,6 +2016,15 @@ const closeCameraModal = () => {
 };
 
 const submitAttendance = () => {
+    if (actionType.value === 'in' && isEarlyClockInRestricted.value) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Kamera Masuk Ditolak',
+            text: `Absen masuk belum dibuka. Jam kerja ${props.currentTeam?.name || 'Tim'} (${props.clockInWindowInfo?.shift_start || '--:--'} WIB) baru dapat diabsen mulai pukul ${props.clockInWindowInfo?.earliest_full_label || '--:--'}.`,
+            confirmButtonColor: '#1e3a8a',
+        });
+        return;
+    }
     const routeName = actionType.value === 'in' ? 'special-attendances.clock-in' : 'special-attendances.clock-out';
     attendanceForm.post(route(routeName), {
         onSuccess: () => {

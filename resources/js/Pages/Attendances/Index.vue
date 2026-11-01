@@ -719,10 +719,16 @@
                                         v-if="isCameraOpen && !capturedPhoto"
                                         type="button"
                                         @click="captureSnapshot"
-                                        class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-black transition flex items-center gap-2 shadow-lg shadow-emerald-500/25 active:scale-95"
+                                        :disabled="isEarlyClockInRestricted"
+                                        :class="[
+                                            isEarlyClockInRestricted ? 'bg-slate-400 hover:bg-slate-400 cursor-not-allowed opacity-60 shadow-none' : 'bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-500/25 active:scale-95',
+                                            'px-6 py-3 text-white rounded-2xl text-xs font-black transition flex items-center gap-2'
+                                        ]"
                                     >
-                                        <span>📸</span>
-                                        <span>Ambil Foto Selfie</span>
+                                        <span v-if="isEarlyClockInRestricted">🔒</span>
+                                        <span v-else>📸</span>
+                                        <span v-if="isEarlyClockInRestricted">Kamera Ditolak (Belum Waktunya)</span>
+                                        <span v-else>Ambil Foto Selfie</span>
                                     </button>
 
                                     <button
