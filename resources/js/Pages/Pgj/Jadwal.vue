@@ -510,21 +510,11 @@
                     <!-- Pilih Tim Teknisi Lapangan -->
                     <div>
                         <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Pilih Tim Teknisi Lapangan (Splicer / Helper) <span class="text-red-500">*</span></label>
-                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 rounded-2xl bg-gray-50 border border-gray-200 max-h-36 overflow-y-auto">
-                            <label 
-                                v-for="t in technicians" 
-                                :key="t.id" 
-                                class="flex items-center gap-2 p-2 rounded-xl bg-white border border-gray-200 text-xs font-semibold cursor-pointer hover:border-amber-400 transition-colors"
-                            >
-                                <input 
-                                    type="checkbox" 
-                                    :value="t.id" 
-                                    v-model="scheduleForm.technician_ids" 
-                                    class="rounded text-amber-500 focus:ring-amber-400"
-                                />
-                                <span class="truncate">{{ t.name }}</span>
-                            </label>
-                        </div>
+                        <TechnicianAvailabilitySelector
+                            v-model="scheduleForm.technician_ids"
+                            :technicians="technicians"
+                            :scheduled-date="scheduleForm.scheduled_date"
+                        />
                         <p v-if="scheduleForm.technician_ids.length === 0" class="text-[11px] text-red-500 mt-1">Pilih minimal 1 orang teknisi pelaksana.</p>
                     </div>
 
@@ -640,6 +630,7 @@
 import { ref, computed } from 'vue';
 import { Link, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import TechnicianAvailabilitySelector from '@/Components/TechnicianAvailabilitySelector.vue';
 import { usePermission } from '@/Composables/usePermission';
 
 const { can } = usePermission();

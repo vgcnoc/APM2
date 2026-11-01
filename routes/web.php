@@ -338,6 +338,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/employee-locations/live-data', [\App\Http\Controllers\EmployeeLocationController::class, 'liveData'])->name('employee-locations.live-data');
 
     // Jadwal Kerja & Roster Shift
+    Route::get('work-schedules/technician-availability', [\App\Http\Controllers\WorkScheduleController::class, 'technicianAvailability'])->name('work-schedules.technician-availability');
     Route::get('work-schedules', [\App\Http\Controllers\WorkScheduleController::class, 'index'])->name('work-schedules.index');
     Route::post('work-schedules/save-batch', [\App\Http\Controllers\WorkScheduleController::class, 'saveBatch'])->name('work-schedules.save-batch');
     Route::post('work-schedules/generate', [\App\Http\Controllers\WorkScheduleController::class, 'generate'])->name('work-schedules.generate');
