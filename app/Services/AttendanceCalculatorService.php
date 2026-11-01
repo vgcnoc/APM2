@@ -809,6 +809,7 @@ class AttendanceCalculatorService
             $recap,
             $attendances,
             $specialAtts,
+            $periodDetails,
             $month,
             $monthEnd,
             &$syncedDeductionsCount,
