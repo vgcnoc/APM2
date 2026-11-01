@@ -30,6 +30,7 @@ use App\Models\Deduction;
 use App\Models\NetworkMaintenance;
 use App\Services\RouterTrafficService;
 use App\Services\RouterCapacityService;
+use App\Services\AttendanceCalculatorService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;

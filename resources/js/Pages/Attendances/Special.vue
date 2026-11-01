@@ -686,9 +686,13 @@
                 </div>
 
                 <!-- Podium Top 3 Cards -->
-                <div v-if="filteredLeaderboard && filteredLeaderboard.length > 0 && filteredLeaderboard[0].presents > 0" class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div
+                    v-if="filteredLeaderboard && filteredLeaderboard.length > 0 && filteredLeaderboard[0].presents > 0"
+                    class="grid gap-5"
+                    :class="filteredLeaderboard.length === 1 ? 'grid-cols-1 max-w-sm mx-auto' : filteredLeaderboard.length === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-2xl mx-auto' : 'grid-cols-1 md:grid-cols-3'"
+                >
                     <!-- Juara 1 -->
-                    <div class="bg-white rounded-2xl border-2 border-amber-300 p-5 shadow-sm relative overflow-hidden space-y-3">
+                    <div v-if="filteredLeaderboard[0]" class="bg-white rounded-2xl border-2 border-amber-300 p-5 shadow-sm relative overflow-hidden space-y-3">
                         <div class="absolute -right-4 -top-4 w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center text-2xl font-bold">
                             🥇
                         </div>
@@ -710,10 +714,14 @@
                             <span>Hadir: <strong>{{ filteredLeaderboard[0]?.presents || 0 }} hari</strong></span>
                             <span>Skor: <strong>{{ filteredLeaderboard[0]?.score || 0 }} pts</strong></span>
                         </div>
+                        <div class="text-[11px] text-slate-500 flex justify-between pt-1 border-t border-slate-100">
+                            <span>Rata-rata Masuk:</span>
+                            <strong class="text-slate-700 font-mono">{{ filteredLeaderboard[0]?.avg_clock_in_formatted || '-' }}</strong>
+                        </div>
                     </div>
 
                     <!-- Juara 2 -->
-                    <div class="bg-white rounded-2xl border-2 border-slate-300 p-5 shadow-sm relative overflow-hidden space-y-3">
+                    <div v-if="filteredLeaderboard[1]" class="bg-white rounded-2xl border-2 border-slate-300 p-5 shadow-sm relative overflow-hidden space-y-3">
                         <div class="absolute -right-4 -top-4 w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-2xl font-bold">
                             🥈
                         </div>
@@ -735,10 +743,14 @@
                             <span>Hadir: <strong>{{ filteredLeaderboard[1]?.presents || 0 }} hari</strong></span>
                             <span>Skor: <strong>{{ filteredLeaderboard[1]?.score || 0 }} pts</strong></span>
                         </div>
+                        <div class="text-[11px] text-slate-500 flex justify-between pt-1 border-t border-slate-100">
+                            <span>Rata-rata Masuk:</span>
+                            <strong class="text-slate-700 font-mono">{{ filteredLeaderboard[1]?.avg_clock_in_formatted || '-' }}</strong>
+                        </div>
                     </div>
 
                     <!-- Juara 3 -->
-                    <div class="bg-white rounded-2xl border-2 border-orange-300 p-5 shadow-sm relative overflow-hidden space-y-3">
+                    <div v-if="filteredLeaderboard[2]" class="bg-white rounded-2xl border-2 border-orange-300 p-5 shadow-sm relative overflow-hidden space-y-3">
                         <div class="absolute -right-4 -top-4 w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center text-2xl font-bold">
                             🥉
                         </div>
@@ -759,6 +771,10 @@
                         <div class="text-xs text-slate-600 flex justify-between pt-1">
                             <span>Hadir: <strong>{{ filteredLeaderboard[2]?.presents || 0 }} hari</strong></span>
                             <span>Skor: <strong>{{ filteredLeaderboard[2]?.score || 0 }} pts</strong></span>
+                        </div>
+                        <div class="text-[11px] text-slate-500 flex justify-between pt-1 border-t border-slate-100">
+                            <span>Rata-rata Masuk:</span>
+                            <strong class="text-slate-700 font-mono">{{ filteredLeaderboard[2]?.avg_clock_in_formatted || '-' }}</strong>
                         </div>
                     </div>
                 </div>
@@ -792,6 +808,7 @@
                                     <th class="p-3">Nama Karyawan</th>
                                     <th class="p-3">Grup Tim Khusus</th>
                                     <th class="p-3 text-center">Hadir</th>
+                                    <th class="p-3 text-center">Avg Jam Masuk</th>
                                     <th class="p-3 text-center">Telat</th>
                                     <th class="p-3 text-center">Menit Telat</th>
                                     <th class="p-3 text-center">Tanpa Pulang</th>
@@ -822,6 +839,7 @@
                                         </span>
                                     </td>
                                     <td class="p-3 text-center font-bold text-emerald-600">{{ row.presents }} hari</td>
+                                    <td class="p-3 text-center font-mono font-semibold text-slate-700">{{ row.avg_clock_in_formatted || '-' }}</td>
                                     <td class="p-3 text-center font-bold" :class="row.lates > 0 ? 'text-amber-600' : 'text-slate-400'">{{ row.lates }}x</td>
                                     <td class="p-3 text-center font-bold" :class="row.late_minutes > 0 ? 'text-amber-600' : 'text-slate-400'">{{ row.late_minutes }}m</td>
                                     <td class="p-3 text-center font-bold" :class="row.no_clock_out > 0 ? 'text-rose-600' : 'text-slate-400'">{{ row.no_clock_out }}x</td>
@@ -833,7 +851,7 @@
                                     <td class="p-3 text-center">
                                         <span v-if="idx === 0" class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-[10px]">Juara 1 (Rp {{ rewardsConfig.juara_1.toLocaleString('id-ID') }})</span>
                                         <span v-else-if="idx === 1" class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold text-[10px]">Juara 2 (Rp {{ rewardsConfig.juara_2.toLocaleString('id-ID') }})</span>
-                                        <span v-else-if="idx === 2" class="px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 font-bold text-[10px]">Juara 3 (Rp {{ rewardsConfig.juara_3.toLocaleString('id-ID') }}</span>
+                                        <span v-else-if="idx === 2" class="px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 font-bold text-[10px]">Juara 3 (Rp {{ rewardsConfig.juara_3.toLocaleString('id-ID') }})</span>
                                         <span v-else class="text-slate-400 text-[11px]">-</span>
                                     </td>
                                 </tr>

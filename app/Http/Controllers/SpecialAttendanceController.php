@@ -265,6 +265,18 @@ class SpecialAttendanceController extends Controller
             $lateMinutes = (int) $memberAtts->sum('late_minutes');
             $noClockOut = $memberAtts->filter(fn($att) => AttendanceCalculatorService::isSpecialMissingClockOut($att, $currentTeam, $now))->count();
 
+            $clockInSecs = [];
+            foreach ($memberAtts as $a) {
+                if ($a->clock_in) {
+                    $t = Carbon::parse($a->clock_in);
+                    $clockInSecs[] = ($t->hour * 3600) + ($t->minute * 60) + $t->second;
+                }
+            }
+            $avgClockIn = !empty($clockInSecs) ? (array_sum($clockInSecs) / count($clockInSecs)) : 86400;
+            $avgClockInFormatted = !empty($clockInSecs)
+                ? sprintf("%02d:%02d WIB", floor($avgClockIn / 3600), floor(($avgClockIn % 3600) / 60))
+                : '-';
+
             $score = ($presents > 0) ? max(0, ($presents * 100) - ($lateMinutes * 2)) : 0;
 
             $adminMatrix[] = [
@@ -278,6 +290,8 @@ class SpecialAttendanceController extends Controller
                 'lates' => $lates,
                 'late_minutes' => $lateMinutes,
                 'no_clock_out' => $noClockOut,
+                'avg_clock_in' => $avgClockIn,
+                'avg_clock_in_formatted' => $avgClockInFormatted,
                 'score' => $score,
             ];
         }
@@ -307,6 +321,19 @@ class SpecialAttendanceController extends Controller
             $lateMinutes = (int) $memberAtts->sum('late_minutes');
             $noClockOut = $memberAtts->filter(fn($att) => AttendanceCalculatorService::isSpecialMissingClockOut($att, $memberTeam, $now))->count();
 
+            // Rata-rata jam absen masuk untuk tie-breaker kedisiplinan
+            $clockInSecs = [];
+            foreach ($memberAtts as $a) {
+                if ($a->clock_in) {
+                    $t = Carbon::parse($a->clock_in);
+                    $clockInSecs[] = ($t->hour * 3600) + ($t->minute * 60) + $t->second;
+                }
+            }
+            $avgClockIn = !empty($clockInSecs) ? (array_sum($clockInSecs) / count($clockInSecs)) : 86400;
+            $avgClockInFormatted = !empty($clockInSecs)
+                ? sprintf("%02d:%02d WIB", floor($avgClockIn / 3600), floor(($avgClockIn % 3600) / 60))
+                : '-';
+
             // Poin dasar per kehadiran = 100, penalti menit telat = 2 pts, penalti tanpa pulang = 50 pts
             $score = ($presents > 0) ? max(0, ($presents * 100) - ($lateMinutes * 2) - ($noClockOut * 50)) : 0;
 
@@ -322,6 +349,8 @@ class SpecialAttendanceController extends Controller
                 'lates' => $lates,
                 'late_minutes' => $lateMinutes,
                 'no_clock_out' => $noClockOut,
+                'avg_clock_in' => $avgClockIn,
+                'avg_clock_in_formatted' => $avgClockInFormatted,
                 'score' => $score,
             ];
         }
@@ -330,7 +359,24 @@ class SpecialAttendanceController extends Controller
             ->filter(function ($item) {
                 return $item['presents'] > 0 && $item['score'] > 0;
             })
-            ->sortByDesc('score')
+            ->sort(function ($a, $b) {
+                if ($b['score'] !== $a['score']) {
+                    return $b['score'] <=> $a['score'];
+                }
+                if ($b['presents'] !== $a['presents']) {
+                    return $b['presents'] <=> $a['presents'];
+                }
+                if ($a['lates'] !== $b['lates']) {
+                    return $a['lates'] <=> $b['lates'];
+                }
+                if ($a['late_minutes'] !== $b['late_minutes']) {
+                    return $a['late_minutes'] <=> $b['late_minutes'];
+                }
+                if ($a['no_clock_out'] !== $b['no_clock_out']) {
+                    return $a['no_clock_out'] <=> $b['no_clock_out'];
+                }
+                return ($a['avg_clock_in'] ?? 86400) <=> ($b['avg_clock_in'] ?? 86400);
+            })
             ->values();
 
         $rewardsConfig = [
@@ -881,17 +927,40 @@ class SpecialAttendanceController extends Controller
 
                     $score = ($presents > 0) ? max(0, ($presents * 100) - ($lateMinutes * 2) - ($noOut * 50)) : 0;
 
+                    $clockInSecs = [];
+                    foreach ($mAtts as $a) {
+                        if ($a->clock_in) {
+                            $t = Carbon::parse($a->clock_in);
+                            $clockInSecs[] = ($t->hour * 3600) + ($t->minute * 60) + $t->second;
+                        }
+                    }
+                    $avgClockIn = !empty($clockInSecs) ? (array_sum($clockInSecs) / count($clockInSecs)) : 86400;
+
                     if ($presents > 0 && $score > 0) {
                         $performance[] = [
                             'user' => $u,
                             'employee' => $emp,
                             'team_name' => $mTeam?->name ?? 'Tim Khusus',
                             'score' => $score,
+                            'presents' => $presents,
+                            'late_minutes' => $lateMinutes,
+                            'avg_clock_in' => $avgClockIn,
                         ];
                     }
                 }
 
-                $sorted = collect($performance)->sortByDesc('score')->values();
+                $sorted = collect($performance)->sort(function ($a, $b) {
+                    if ($b['score'] !== $a['score']) {
+                        return $b['score'] <=> $a['score'];
+                    }
+                    if ($b['presents'] !== $a['presents']) {
+                        return $b['presents'] <=> $a['presents'];
+                    }
+                    if ($a['late_minutes'] !== $b['late_minutes']) {
+                        return $a['late_minutes'] <=> $b['late_minutes'];
+                    }
+                    return ($a['avg_clock_in'] ?? 86400) <=> ($b['avg_clock_in'] ?? 86400);
+                })->values();
 
                 for ($rank = 1; $rank <= min(3, $sorted->count()); $rank++) {
                     $winner = $sorted[$rank - 1];
@@ -934,17 +1003,40 @@ class SpecialAttendanceController extends Controller
                         $noOut = $atts->filter(fn($att) => AttendanceCalculatorService::isSpecialMissingClockOut($att, $singleTeam, $nowSync))->count();
                         $score = ($presents > 0) ? max(0, ($presents * 100) - ($lateMinutes * 2) - ($noOut * 50)) : 0;
 
+                    $clockInSecs = [];
+                    foreach ($atts as $a) {
+                        if ($a->clock_in) {
+                            $t = Carbon::parse($a->clock_in);
+                            $clockInSecs[] = ($t->hour * 3600) + ($t->minute * 60) + $t->second;
+                        }
+                    }
+                    $avgClockIn = !empty($clockInSecs) ? (array_sum($clockInSecs) / count($clockInSecs)) : 86400;
+
                         if ($presents > 0 && $score > 0) {
                             $performance[] = [
                                 'user' => $u,
                                 'employee' => $emp,
                                 'team_name' => $singleTeam->name,
                                 'score' => $score,
+                            'presents' => $presents,
+                            'late_minutes' => $lateMinutes,
+                            'avg_clock_in' => $avgClockIn,
                             ];
                         }
                     }
 
-                    $sorted = collect($performance)->sortByDesc('score')->values();
+                    $sorted = collect($performance)->sort(function ($a, $b) {
+                    if ($b['score'] !== $a['score']) {
+                        return $b['score'] <=> $a['score'];
+                    }
+                    if ($b['presents'] !== $a['presents']) {
+                        return $b['presents'] <=> $a['presents'];
+                    }
+                    if ($a['late_minutes'] !== $b['late_minutes']) {
+                        return $a['late_minutes'] <=> $b['late_minutes'];
+                    }
+                    return ($a['avg_clock_in'] ?? 86400) <=> ($b['avg_clock_in'] ?? 86400);
+                })->values();
                     for ($rank = 1; $rank <= min(3, $sorted->count()); $rank++) {
                         $winner = $sorted[$rank - 1];
                         $amt = $nominals[$rank] ?? 0;
