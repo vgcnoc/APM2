@@ -198,6 +198,12 @@ class AttendanceShiftCheckoutTest extends TestCase
     protected function tearDown(): void
     {
         Carbon::setTestNow();
+        Setting::set('attendance_special_deadline_time', '23:30');
+        Setting::set('attendance_checkout_deadline_time', '23:30');
+        Setting::set('attendance_checkout_deadline_hours', '4');
+        Setting::set('attendance_regular_require_photo', '1');
+        Setting::set('attendance_regular_require_gps', '1');
+        Setting::set('attendance_regular_strict_radius', '1');
         parent::tearDown();
     }
 

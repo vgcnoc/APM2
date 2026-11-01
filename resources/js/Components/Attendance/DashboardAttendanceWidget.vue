@@ -900,6 +900,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { router, Link } from '@inertiajs/vue3';
 import { usePermission } from '@/Composables/usePermission';
+import Swal from 'sweetalert2';
 
 const { can } = usePermission();
 
@@ -1321,9 +1322,18 @@ const submitAttendance = () => {
                 },
                 {
                     preserveScroll: true,
-                    onSuccess: () => {
+                    onSuccess: (page) => {
                         isSubmitting.value = false;
-                        closeModal();
+                        if (page.props.flash?.error) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Gagal Absen Masuk',
+                                text: page.props.flash.error,
+                                confirmButtonColor: '#e11d48',
+                            });
+                        } else {
+                            closeModal();
+                        }
                     },
                     onError: () => {
                         isSubmitting.value = false;
@@ -1344,9 +1354,18 @@ const submitAttendance = () => {
                 },
                 {
                     preserveScroll: true,
-                    onSuccess: () => {
+                    onSuccess: (page) => {
                         isSubmitting.value = false;
-                        closeModal();
+                        if (page.props.flash?.error) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Gagal Absen Pulang',
+                                text: page.props.flash.error,
+                                confirmButtonColor: '#e11d48',
+                            });
+                        } else {
+                            closeModal();
+                        }
                     },
                     onError: () => {
                         isSubmitting.value = false;
@@ -1374,9 +1393,18 @@ const submitAttendance = () => {
             },
             {
                 preserveScroll: true,
-                onSuccess: () => {
+                onSuccess: (page) => {
                     isSubmitting.value = false;
-                    closeModal();
+                    if (page.props.flash?.error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal Absen Masuk',
+                            text: page.props.flash.error,
+                            confirmButtonColor: '#e11d48',
+                        });
+                    } else {
+                        closeModal();
+                    }
                 },
                 onError: () => {
                     isSubmitting.value = false;
@@ -1396,9 +1424,18 @@ const submitAttendance = () => {
             },
             {
                 preserveScroll: true,
-                onSuccess: () => {
+                onSuccess: (page) => {
                     isSubmitting.value = false;
-                    closeModal();
+                    if (page.props.flash?.error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal Absen Pulang',
+                            text: page.props.flash.error,
+                            confirmButtonColor: '#e11d48',
+                        });
+                    } else {
+                        closeModal();
+                    }
                 },
                 onError: () => {
                     isSubmitting.value = false;

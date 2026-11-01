@@ -695,12 +695,15 @@ class SpecialAttendanceController extends Controller
         $attDateStr = is_string($attendance->date) ? substr($attendance->date, 0, 10) : $attendance->date->format('Y-m-d');
 
         // Batas Waktu Terakhir Absen Pulang Tim Khusus
-        $deadlineCarbon = AttendanceCalculatorService::resolveSpecialCheckoutDeadline($attDateStr, $team);
-        if ($now->greaterThan($deadlineCarbon)) {
-            $deadlineLabel = $deadlineCarbon->format('Y-m-d') !== $attDateStr
-                ? $deadlineCarbon->translatedFormat('d M Y \p\u\k\u\l H:i')
-                : 'pukul ' . $deadlineCarbon->format('H:i');
-            return back()->with('error', "Batas waktu terakhir absen pulang Tim Khusus ({$team->name}) telah berakhir pada {$deadlineLabel} WIB. Absensi dikunci otomatis (Lupa Absen Pulang). Silakan hubungi Admin / Koordinator Tim.");
+        $autoLock = Setting::get('attendance_checkout_auto_lock', '1') === '1';
+        if ($autoLock) {
+            $deadlineCarbon = AttendanceCalculatorService::resolveSpecialCheckoutDeadline($attDateStr, $team);
+            if ($now->greaterThan($deadlineCarbon)) {
+                $deadlineLabel = $deadlineCarbon->format('Y-m-d') !== $attDateStr
+                    ? $deadlineCarbon->translatedFormat('d M Y \p\u\k\u\l H:i')
+                    : 'pukul ' . $deadlineCarbon->format('H:i');
+                return back()->with('error', "Batas waktu terakhir absen pulang Tim Khusus ({$team->name}) telah berakhir pada {$deadlineLabel} WIB. Absensi dikunci otomatis (Lupa Absen Pulang). Silakan hubungi Admin / Koordinator Tim.");
+            }
         }
 
         // Evaluasi Pulang Awal

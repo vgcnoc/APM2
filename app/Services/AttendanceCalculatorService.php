@@ -498,9 +498,16 @@ class AttendanceCalculatorService
                 $teamEnd->addDay();
             }
 
+            $mode = Setting::get('attendance_checkout_deadline_mode', 'shift_relative');
+            $graceHours = max(1, (int) Setting::get('attendance_checkout_deadline_hours', 4));
+            $shiftRelative = $teamEnd->copy()->addHours($graceHours)->endOfMinute();
+
+            if ($mode === 'shift_relative') {
+                return $shiftRelative->greaterThan($baseDeadline) ? $shiftRelative : $baseDeadline;
+            }
+
             if ($teamEnd->copy()->addMinutes(30)->greaterThan($baseDeadline)) {
-                $graceHours = max(1, (int) Setting::get('attendance_checkout_deadline_hours', 2));
-                return $teamEnd->copy()->addHours($graceHours)->endOfMinute();
+                return $shiftRelative;
             }
         }
 
