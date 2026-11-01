@@ -219,6 +219,7 @@ class AttendanceController extends Controller
         // 4.1 Jendela Waktu Buka Absen Masuk (Early Clock-in Limit)
         $clockInEarlyLimitEnabled = Setting::get('attendance_clock_in_early_limit_enabled', '1') === '1';
         $clockInEarlyLimitMinutes = max(1, (int) Setting::get('attendance_clock_in_early_limit_minutes', 60));
+        $canBypassEarlyLimit = (bool) ($user && ($user->hasRole('admin') || $user->hasRole('super admin') || $user->can('attendance_bypass_early_restriction') || $user->can('attendances_manage')));
 
         $clockInWindow = AttendanceCalculatorService::isClockInWindowOpen(
             $today,
@@ -231,8 +232,8 @@ class AttendanceController extends Controller
         $clockInWindowInfo = [
             'enabled' => $clockInEarlyLimitEnabled,
             'early_limit_minutes' => $clockInEarlyLimitMinutes,
-            'is_restricted' => $clockInWindow['is_restricted'],
-            'is_open' => $clockInWindow['is_open'],
+            'is_restricted' => $clockInWindow['is_restricted'] && !$canBypassEarlyLimit,
+            'is_open' => $clockInWindow['is_open'] || $canBypassEarlyLimit,
             'earliest_time' => $clockInWindow['earliest_time'] ? $clockInWindow['earliest_time']->format('H:i') : null,
             'earliest_full_label' => $clockInWindow['earliest_time'] ? $clockInWindow['earliest_time']->format('H:i') . ' WIB' : null,
             'minutes_until_open' => $clockInWindow['minutes_until_open'],
