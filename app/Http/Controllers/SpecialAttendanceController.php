@@ -347,7 +347,8 @@ class SpecialAttendanceController extends Controller
             $noClockOut = $memberAtts->filter(fn($att) => AttendanceCalculatorService::isSpecialMissingClockOut($att, $memberTeam, $now))->count();
 
             // Rata-rata jam absen masuk untuk tie-breaker kedisiplinan
-            // Presensi sebelum batas jam buka resmi diselaraskan ke jam buka resmi agar tidak ada keuntungan curi start
+            // Absen yang tidak sesuai aturan (mendahului jam buka resmi) diset ke jam 08:00 (28.800 detik)
+            // agar adil dan tidak mengalahkan karyawan yang disiplin menunggu jam buka resmi (misal 07:30).
             $clockInSecs = [];
             foreach ($memberAtts as $a) {
                 if ($a->clock_in) {
@@ -361,7 +362,11 @@ class SpecialAttendanceController extends Controller
                         $officialOpenSec = ($teamEarliest->hour * 3600) + ($teamEarliest->minute * 60) + $teamEarliest->second;
                     }
 
-                    $clockInSecs[] = max($officialOpenSec, $actualSec);
+                    if ($officialOpenSec > 0 && $actualSec < $officialOpenSec) {
+                        $clockInSecs[] = 8 * 3600; // 08:00:00 WIB
+                    } else {
+                        $clockInSecs[] = $actualSec;
+                    }
                 }
             }
             $avgClockIn = !empty($clockInSecs) ? (array_sum($clockInSecs) / count($clockInSecs)) : 86400;
@@ -999,7 +1004,20 @@ class SpecialAttendanceController extends Controller
                     foreach ($mAtts as $a) {
                         if ($a->clock_in) {
                             $t = Carbon::parse($a->clock_in);
-                            $clockInSecs[] = ($t->hour * 3600) + ($t->minute * 60) + $t->second;
+                            $actualSec = ($t->hour * 3600) + ($t->minute * 60) + $t->second;
+
+                            $officialOpenSec = 0;
+                            if ($clockInEarlyLimitEnabled && !empty($mTeam?->start_time)) {
+                                $teamStart = Carbon::parse($mTeam->start_time);
+                                $teamEarliest = $teamStart->copy()->subMinutes($clockInEarlyLimitMinutes);
+                                $officialOpenSec = ($teamEarliest->hour * 3600) + ($teamEarliest->minute * 60) + $teamEarliest->second;
+                            }
+
+                            if ($officialOpenSec > 0 && $actualSec < $officialOpenSec) {
+                                $clockInSecs[] = 8 * 3600; // 08:00:00 WIB
+                            } else {
+                                $clockInSecs[] = $actualSec;
+                            }
                         }
                     }
                     $avgClockIn = !empty($clockInSecs) ? (array_sum($clockInSecs) / count($clockInSecs)) : 86400;
@@ -1075,7 +1093,20 @@ class SpecialAttendanceController extends Controller
                     foreach ($atts as $a) {
                         if ($a->clock_in) {
                             $t = Carbon::parse($a->clock_in);
-                            $clockInSecs[] = ($t->hour * 3600) + ($t->minute * 60) + $t->second;
+                            $actualSec = ($t->hour * 3600) + ($t->minute * 60) + $t->second;
+
+                            $officialOpenSec = 0;
+                            if ($clockInEarlyLimitEnabled && !empty($singleTeam->start_time)) {
+                                $teamStart = Carbon::parse($singleTeam->start_time);
+                                $teamEarliest = $teamStart->copy()->subMinutes($clockInEarlyLimitMinutes);
+                                $officialOpenSec = ($teamEarliest->hour * 3600) + ($teamEarliest->minute * 60) + $teamEarliest->second;
+                            }
+
+                            if ($officialOpenSec > 0 && $actualSec < $officialOpenSec) {
+                                $clockInSecs[] = 8 * 3600; // 08:00:00 WIB
+                            } else {
+                                $clockInSecs[] = $actualSec;
+                            }
                         }
                     }
                     $avgClockIn = !empty($clockInSecs) ? (array_sum($clockInSecs) / count($clockInSecs)) : 86400;
