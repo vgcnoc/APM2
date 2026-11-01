@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Attendance;
 use App\Models\Deduction;
 use App\Models\Employee;
+use App\Models\Payroll;
 use App\Models\Setting;
 use App\Models\Shift;
 use App\Models\SpecialAttendance;
@@ -813,12 +814,34 @@ class AttendanceCalculatorService
             &$syncedDeductionsCount,
             &$affectedEmployeesCount
         ) {
+            $nowEvalSpecial = Carbon::now('Asia/Jakarta');
+            $parsedDate = Carbon::parse($month . '-01');
+
             foreach ($recap as $row) {
                 $emp = Employee::find($row['employee_id']);
-                if (!$emp || !$emp->email) continue;
+                if (!$emp) continue;
 
-                $user = User::where('email', $emp->email)->first();
+                $user = null;
+                if (!empty($emp->email)) {
+                    $user = User::where('email', $emp->email)->first();
+                }
+                if (!$user && !empty($emp->phone)) {
+                    $user = User::where('phone', $emp->phone)->first();
+                }
+                if (!$user && !empty($emp->name)) {
+                    $user = User::where('name', $emp->name)->first();
+                }
                 if (!$user) continue;
+
+                // Jangan ubah potongan jika gaji karyawan bulan ini sudah dicairkan (status: paid)
+                $isPaidPayroll = Payroll::where('user_id', $user->id)
+                    ->where('month', (int) $parsedDate->month)
+                    ->where('year', (int) $parsedDate->year)
+                    ->where('status', 'paid')
+                    ->exists();
+                if ($isPaidPayroll) {
+                    continue;
+                }
 
                 $hasAnyPenalty = false;
 
@@ -839,6 +862,11 @@ class AttendanceCalculatorService
                     );
                     $syncedDeductionsCount++;
                     $hasAnyPenalty = true;
+                } else {
+                    Deduction::where('user_id', $user->id)
+                        ->where('reference_id', "ATT_LATE_{$emp->id}_{$month}")
+                        ->where('status', 'pending')
+                        ->delete();
                 }
 
                 // 2. Potongan Lupa Pulang (Missing Out)
@@ -858,6 +886,11 @@ class AttendanceCalculatorService
                     );
                     $syncedDeductionsCount++;
                     $hasAnyPenalty = true;
+                } else {
+                    Deduction::where('user_id', $user->id)
+                        ->where('reference_id', "ATT_NO_OUT_{$emp->id}_{$month}")
+                        ->where('status', 'pending')
+                        ->delete();
                 }
 
                 // 3. Potongan Pulang Cepat
@@ -877,6 +910,11 @@ class AttendanceCalculatorService
                     );
                     $syncedDeductionsCount++;
                     $hasAnyPenalty = true;
+                } else {
+                    Deduction::where('user_id', $user->id)
+                        ->where('reference_id', "ATT_EARLY_{$emp->id}_{$month}")
+                        ->where('status', 'pending')
+                        ->delete();
                 }
 
                 // 4. Potongan Alpha / Mangkir
@@ -896,6 +934,11 @@ class AttendanceCalculatorService
                     );
                     $syncedDeductionsCount++;
                     $hasAnyPenalty = true;
+                } else {
+                    Deduction::where('user_id', $user->id)
+                        ->where('reference_id', "ATT_ALPHA_{$emp->id}_{$month}")
+                        ->where('status', 'pending')
+                        ->delete();
                 }
 
                 // 5. Potongan Sakit Tanpa Surat Dokter
@@ -915,6 +958,11 @@ class AttendanceCalculatorService
                     );
                     $syncedDeductionsCount++;
                     $hasAnyPenalty = true;
+                } else {
+                    Deduction::where('user_id', $user->id)
+                        ->where('reference_id', "ATT_SICK_NO_CERT_{$emp->id}_{$month}")
+                        ->where('status', 'pending')
+                        ->delete();
                 }
 
                 // 6. Potongan Izin Tidak Masuk
@@ -934,6 +982,51 @@ class AttendanceCalculatorService
                     );
                     $syncedDeductionsCount++;
                     $hasAnyPenalty = true;
+                } else {
+                    Deduction::where('user_id', $user->id)
+                        ->where('reference_id', "ATT_PERMIT_{$emp->id}_{$month}")
+                        ->where('status', 'pending')
+                        ->delete();
+                }
+
+                // 7. Potongan Absensi Tim Khusus
+                $empSpecialAtts = $specialAtts->where('employee_id', $emp->id);
+                if ($empSpecialAtts->isNotEmpty()) {
+                    $byTeam = $empSpecialAtts->groupBy('special_team_id');
+                    foreach ($byTeam as $teamId => $teamAtts) {
+                        $team = $teamAtts->first()->team;
+                        $sLates = $teamAtts->where('status', 'late')->count();
+                        $sNoOuts = $teamAtts->filter(fn($sAtt) => AttendanceCalculatorService::isSpecialMissingClockOut($sAtt, $team, $nowEvalSpecial))->count();
+                        $sLateFine = $sLates * (float) ($team?->late_deduction_amount ?? 10000);
+                        $sNoOutFine = $sNoOuts * (float) ($team?->no_out_deduction_amount ?? 10000);
+                        $totalSpecialFine = $sLateFine + $sNoOutFine;
+                        $specialRef = "SPECIAL_DEDUCT_{$teamId}_{$emp->id}_{$month}";
+
+                        if ($totalSpecialFine > 0) {
+                            $teamName = $team?->name ?? 'Tim Khusus';
+                            $desc = "Potongan Absen {$teamName} Periode {$month} ({$sLates}x telat, {$sNoOuts}x tanpa absen pulang)";
+                            Deduction::updateOrCreate(
+                                [
+                                    'user_id' => $user->id,
+                                    'reference_id' => $specialRef,
+                                ],
+                                [
+                                    'type' => 'auto',
+                                    'description' => $desc,
+                                    'amount' => $totalSpecialFine,
+                                    'deduction_date' => $monthEnd->format('Y-m-d'),
+                                    'status' => 'pending',
+                                ]
+                            );
+                            $syncedDeductionsCount++;
+                            $hasAnyPenalty = true;
+                        } else {
+                            Deduction::where('user_id', $user->id)
+                                ->where('reference_id', $specialRef)
+                                ->where('status', 'pending')
+                                ->delete();
+                        }
+                    }
                 }
 
                 if ($hasAnyPenalty) {

@@ -93,6 +93,15 @@ class PayrollController extends Controller
     {
         $month = (int) $request->get('month', now()->month);
         $year = (int) $request->get('year', now()->year);
+        $monthStr = sprintf('%04d-%02d', $year, $month);
+
+        // Auto-Sync Cerdas: Sinkronkan otomatis potongan presensi dan insentif target market secara realtime
+        try {
+            \App\Services\TargetMarketService::syncToPayroll($month, $year);
+            \App\Services\AttendanceCalculatorService::syncMonthlyToPayroll($monthStr);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("[Payroll Auto-Sync] " . $e->getMessage());
+        }
         
         // Pengaturan Tanggal Pencairan & Tarif BPJS
         $disbursementDate = Setting::get('payroll_disbursement_date', '25'); // Default tanggal 25
@@ -575,6 +584,15 @@ class PayrollController extends Controller
 
         $month = (int) $request->get('month', now()->month);
         $year = (int) $request->get('year', now()->year);
+        $monthStr = sprintf('%04d-%02d', $year, $month);
+
+        // Auto-Sync sebelum pencairan gaji individu
+        try {
+            \App\Services\TargetMarketService::syncToPayroll($month, $year);
+            \App\Services\AttendanceCalculatorService::syncMonthlyToPayroll($monthStr);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("[Payroll Disburse Auto-Sync] " . $e->getMessage());
+        }
 
         // Pastikan belum dicairkan
         $existing = Payroll::where('user_id', $user->id)->where('month', $month)->where('year', $year)->first();
@@ -754,6 +772,15 @@ class PayrollController extends Controller
 
         $month = (int) $request->get('month', now()->month);
         $year = (int) $request->get('year', now()->year);
+        $monthStr = sprintf('%04d-%02d', $year, $month);
+
+        // Auto-Sync sebelum pencairan seluruh gaji
+        try {
+            \App\Services\TargetMarketService::syncToPayroll($month, $year);
+            \App\Services\AttendanceCalculatorService::syncMonthlyToPayroll($monthStr);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("[Payroll DisburseAll Auto-Sync] " . $e->getMessage());
+        }
 
         $excludedRoles = ['customer', 'pelanggan', 'reseller', 'superadmin', 'super admin'];
 

@@ -52,6 +52,13 @@ class TargetMarketService
 
             self::calculateAndLog($program, $customer, $employee, $month, $year);
         }
+
+        // Auto-sync langsung ke modul Insentif Payroll
+        try {
+            self::syncToPayroll($month, $year);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("[TargetMarket Auto-Sync] " . $e->getMessage());
+        }
     }
 
     /**
@@ -227,54 +234,82 @@ class TargetMarketService
     {
         $logs = TargetMarketLog::where('period_month', $month)
             ->where('period_year', $year)
-            ->where('status', 'approved')
+            ->whereIn('status', ['approved', 'synced_payroll'])
             ->get();
 
-        if ($logs->isEmpty()) {
-            return ['synced_users' => 0, 'total_amount' => 0];
-        }
-
-        $userSums = $logs->groupBy('user_id');
+        $monthName = Carbon::create($year, $month, 1)->translatedFormat('F Y');
+        $date = Carbon::create($year, $month, 1)->endOfMonth()->toDateString();
         $syncedUsers = 0;
         $totalAmount = 0;
 
-        DB::transaction(function () use ($userSums, $month, $year, &$syncedUsers, &$totalAmount) {
-            $monthName = Carbon::create($year, $month, 1)->translatedFormat('F Y');
-            $date = Carbon::create($year, $month, 1)->endOfMonth()->toDateString();
+        $userIdsWithLogs = $logs->pluck('user_id')->unique()->filter()->values();
+        $existingTargetIncentives = Incentive::where('reference_id', 'like', "target_market_%_{$year}_{$month}")
+            ->where('status', 'pending')
+            ->get();
 
-            foreach ($userSums as $userId => $userLogs) {
-                $sum = $userLogs->sum('total_reward');
+        DB::transaction(function () use (
+            $logs, $userIdsWithLogs, $existingTargetIncentives,
+            $month, $year, $monthName, $date,
+            &$syncedUsers, &$totalAmount
+        ) {
+            $userSums = $logs->groupBy('user_id');
+
+            foreach ($userIdsWithLogs as $userId) {
+                $userLogs = $userSums->get($userId, collect());
+                $sum = (float) $userLogs->sum('total_reward');
                 $count = $userLogs->count();
-
-                if ($sum <= 0) continue;
 
                 $user = User::find($userId);
                 if (!$user) continue;
 
-                $description = "[Bonus Target Market] Periode {$monthName} ({$count} Pelanggan Closing)";
+                $refId = "target_market_{$user->id}_{$year}_{$month}";
 
-                // Update or create incentive
-                $incentive = Incentive::updateOrCreate(
-                    [
-                        'user_id' => $user->id,
-                        'description' => $description,
-                    ],
-                    [
-                        'amount' => $sum,
-                        'type' => 'auto',
-                        'incentive_date' => $date,
-                        'status' => 'pending',
-                    ]
-                );
+                // Cek migrasi dari legacy incentive target market tanpa reference_id
+                $legacyInc = Incentive::where('user_id', $user->id)
+                    ->whereNull('reference_id')
+                    ->where('description', 'like', "[Bonus Target Market] Periode {$monthName}%")
+                    ->where('status', 'pending')
+                    ->first();
+                if ($legacyInc) {
+                    $legacyInc->update(['reference_id' => $refId]);
+                }
 
-                // Tandai logs sebagai synced
-                TargetMarketLog::whereIn('id', $userLogs->pluck('id'))->update([
-                    'status' => 'synced_payroll',
-                    'incentive_id' => $incentive->id,
-                ]);
+                if ($sum > 0) {
+                    $description = "[Bonus Target Market] Periode {$monthName} ({$count} Pelanggan Closing)";
 
-                $syncedUsers++;
-                $totalAmount += $sum;
+                    $incentive = Incentive::updateOrCreate(
+                        [
+                            'user_id' => $user->id,
+                            'reference_id' => $refId,
+                        ],
+                        [
+                            'description' => $description,
+                            'amount' => $sum,
+                            'type' => 'auto',
+                            'incentive_date' => $date,
+                            'status' => 'pending',
+                        ]
+                    );
+
+                    TargetMarketLog::whereIn('id', $userLogs->pluck('id'))->update([
+                        'status' => 'synced_payroll',
+                        'incentive_id' => $incentive->id,
+                    ]);
+
+                    $syncedUsers++;
+                    $totalAmount += $sum;
+                } else {
+                    Incentive::where('user_id', $user->id)
+                        ->where('reference_id', $refId)
+                        ->where('status', 'pending')
+                        ->delete();
+                }
+            }
+
+            foreach ($existingTargetIncentives as $oldInc) {
+                if (!$userIdsWithLogs->contains($oldInc->user_id)) {
+                    $oldInc->delete();
+                }
             }
         });
 
