@@ -16,14 +16,32 @@ class WarehouseStockController extends Controller
         $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
 
         $selectedAreaId = $request->filled('area_id') ? $request->area_id : null;
+        $scopedAreaIds = $selectedAreaId ? [$selectedAreaId] : (!$isGlobal && !empty($accessibleAreas) ? $accessibleAreas : null);
 
-        // Tampilkan barang yang aktif dan memenuhi kriteria:
-        // - Barang migrasi (ID <= 260): Tetap tampil karena merupakan data material yang sudah terpasang di pelanggan
-        // - Barang katalog baru (ID > 260): HANYA tampil jika sudah pernah di-order toko (restock) ke area cabang
+        // Filter material gudang yang relevan:
+        // - Barang katalog (ID > 260): Tampil jika ada alokasi di area
+        // - Barang migrasi (ID <= 260): HANYA tampil jika BENAR-BENAR memiliki sisa stok fisik di gudang (> 0)
+        $warehouseFilter = function ($q) use ($scopedAreaIds) {
+            $q->where(function ($sub) use ($scopedAreaIds) {
+                $sub->where('id', '>', 260)
+                    ->orWhere(function ($migQ) use ($scopedAreaIds) {
+                        $migQ->where('id', '<=', 260)
+                             ->whereHas('stocks', function ($sq) use ($scopedAreaIds) {
+                                 if ($scopedAreaIds) {
+                                     $sq->whereIn('area_id', $scopedAreaIds);
+                                 }
+                                 $sq->where('stock', '>', 0);
+                             });
+                    });
+            });
+        };
+
+        // Tampilkan barang yang aktif dan memenuhi kriteria gudang:
         $query = Material::where(function ($q) {
             $q->where('is_active', true)->orWhereNull('is_active');
         })
         ->visibleInMaterialsTable()
+        ->where($warehouseFilter)
         ->with(['stocks' => function ($sq) use ($accessibleAreas, $isGlobal) {
             if (!$isGlobal && !empty($accessibleAreas)) {
                 $sq->whereIn('area_id', $accessibleAreas);
@@ -74,8 +92,6 @@ class WarehouseStockController extends Controller
         if ($request->filled('unit')) {
             $query->where('unit', $request->unit);
         }
-
-        $scopedAreaIds = $selectedAreaId ? [$selectedAreaId] : (!$isGlobal && !empty($accessibleAreas) ? $accessibleAreas : null);
 
         // 5. Filter Status Stok
         if ($request->filled('stock_status')) {
@@ -129,7 +145,8 @@ class WarehouseStockController extends Controller
 
         $baseSummaryQuery = Material::where(function ($q) {
             $q->where('is_active', true)->orWhereNull('is_active');
-        })->visibleInMaterialsTable();
+        })->visibleInMaterialsTable()
+        ->where($warehouseFilter);
 
         $categories = (clone $baseSummaryQuery)->whereHas('stocks')->whereNotNull('category')->where('category', '!=', '')->distinct()->pluck('category')->sort()->values();
         $units = (clone $baseSummaryQuery)->whereHas('stocks')->whereNotNull('unit')->where('unit', '!=', '')->distinct()->pluck('unit')->sort()->values();
