@@ -183,6 +183,13 @@ class MaterialController extends Controller
         $validated['is_migration'] = true; // Tandai sebagai material fisik area (bukan master katalog toko)
         $validated['is_active'] = true;
 
+        // Cek jika sudah ada material dengan nama yang sama, lakukan penambahan stok / penggabungan
+        $existing = \App\Services\MaterialService::findByName($validated['name']);
+        if ($existing) {
+            \App\Services\MaterialService::addStockToExistingMaterial($existing, $validated, $areaId);
+            return redirect()->route('materials.index')->with('success', 'Data material dengan nama tersebut sudah ada. Stok berhasil digabungkan ke material tersebut.');
+        }
+
         $material = Material::create($validated);
 
         if ($areaId) {
@@ -255,6 +262,13 @@ class MaterialController extends Controller
 
         if (array_key_exists('stock', $validated) && is_null($validated['stock'])) {
             unset($validated['stock']);
+        }
+
+        // Cek jika nama diubah menimpa material lain yang sudah ada sebelumnya
+        $existing = \App\Services\MaterialService::findByName($validated['name'], $material->id);
+        if ($existing) {
+            \App\Services\MaterialService::mergeMaterials($existing, $material, $validated, $areaId, $validated['stock'] ?? null);
+            return redirect()->route('materials.index')->with('success', 'Data material berhasil diperbarui dan menimpa data material sebelumnya.');
         }
 
         $material->update($validated);

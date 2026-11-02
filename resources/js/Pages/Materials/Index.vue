@@ -400,6 +400,10 @@
                                         required 
                                         placeholder="Ketik manual nama material bekas layak pakai..."
                                     >
+                                    <p v-if="isEditing" class="text-[11px] text-emerald-700 font-medium mt-1.5 flex items-center gap-1">
+                                        <span>✓</span>
+                                        <span>Jika nama diubah sama persis dengan material yang sudah ada, sistem akan otomatis menimpa dan menyatukan riwayat stoknya.</span>
+                                    </p>
 
                                     <!-- Panduan Penulisan Material Bekas Layak Pakai (Di Luar Kolom) -->
                                     <div class="mt-2.5 p-3.5 bg-amber-50/80 border border-amber-200 rounded-xl space-y-2">

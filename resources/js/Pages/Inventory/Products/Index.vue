@@ -185,6 +185,10 @@
                                         <div>
                                             <label class="block text-sm font-bold text-gray-700 mb-1">Nama Barang / Material <span class="text-red-500">*</span></label>
                                             <input type="text" v-model="form.name" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all" placeholder="Contoh: Kabel Drop Core 1 Core" required>
+                                            <p v-if="form.id" class="text-[11px] text-emerald-700 font-medium mt-1 flex items-center gap-1">
+                                                <span>✓</span>
+                                                <span>Jika nama diubah sama persis dengan material yang sudah ada, sistem akan otomatis menimpa dan menyatukan riwayat stoknya.</span>
+                                            </p>
                                             <div v-if="form.errors.name" class="text-xs text-red-500 mt-1">{{ form.errors.name }}</div>
                                         </div>
                                         <div class="grid grid-cols-2 gap-4">

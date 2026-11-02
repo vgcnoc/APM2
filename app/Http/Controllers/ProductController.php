@@ -75,6 +75,13 @@ class ProductController extends Controller
 
         $validated['is_migration'] = false;
 
+        // Cek jika produk dengan nama yang sama sudah ada di sistem
+        $existing = \App\Services\MaterialService::findByName($validated['name']);
+        if ($existing) {
+            \App\Services\MaterialService::addStockToExistingMaterial($existing, $validated, $areaId);
+            return redirect()->back()->with('success', 'Produk dengan nama tersebut sudah ada. Stok dan data berhasil digabungkan.');
+        }
+
         $material = Material::create($validated);
 
         if ($areaId && (float)$material->stock > 0) {
@@ -120,6 +127,13 @@ class ProductController extends Controller
 
         if (array_key_exists('stock', $validated) && is_null($validated['stock'])) {
             unset($validated['stock']);
+        }
+
+        // Cek jika nama diubah menimpa produk/material lain yang sudah ada sebelumnya
+        $existing = \App\Services\MaterialService::findByName($validated['name'], $product->id);
+        if ($existing) {
+            \App\Services\MaterialService::mergeMaterials($existing, $product, $validated, $areaId, $validated['stock'] ?? null);
+            return redirect()->back()->with('success', 'Produk berhasil diperbarui dan menimpa data material sebelumnya.');
         }
 
         $product->update($validated);
