@@ -1010,6 +1010,11 @@ class SpecialAttendanceController extends Controller
                     $totalDeduction = ($lates * (float) $team->late_deduction_amount) + ($noOutCount * (float) $team->no_out_deduction_amount);
 
                     if ($totalDeduction > 0) {
+                        $latestIncident = $atts->filter(fn($att) => $att->status === 'late' || AttendanceCalculatorService::isSpecialMissingClockOut($att, $team, $nowSync))->sortByDesc('date')->first();
+                        $incidentDate = $latestIncident 
+                            ? Carbon::parse($latestIncident->date)->format('Y-m-d') 
+                            : min(Carbon::today('Asia/Jakarta')->format('Y-m-d'), $monthEnd->format('Y-m-d'));
+
                         $desc = "Potongan Absen {$team->name} Periode {$month} ({$lates}x telat, {$noOutCount}x tanpa absen pulang)";
                         Deduction::updateOrCreate(
                             [
@@ -1019,7 +1024,7 @@ class SpecialAttendanceController extends Controller
                             ],
                             [
                                 'amount' => $totalDeduction,
-                                'deduction_date' => $monthEnd,
+                                'deduction_date' => $incidentDate,
                                 'status' => 'pending',
                             ]
                         );

@@ -151,6 +151,8 @@ class GenerateAttendanceRewards extends Command
                         : ($lateCount * $fixedPenalty);
 
                     if ($lateDeductionAmount > 0) {
+                        $latestLate = $empAtts->filter(fn($a) => $a->status === 'late' || (int) ($a->late_minutes ?? 0) > 0)->sortByDesc('date')->first();
+                        $deductDate = $latestLate ? Carbon::parse($latestLate->date)->format('Y-m-d') : $monthEnd->format('Y-m-d');
                         $desc = "Potongan Terlambat Absensi Periode {$month} ({$lateCount}x telat, total {$totalLateMinutes} menit)";
                         Deduction::updateOrCreate(
                             [
@@ -161,7 +163,7 @@ class GenerateAttendanceRewards extends Command
                                 'type' => 'auto',
                                 'description' => $desc,
                                 'amount' => $lateDeductionAmount,
-                                'deduction_date' => $monthEnd->format('Y-m-d'),
+                                'deduction_date' => $deductDate,
                                 'status' => 'pending',
                             ]
                         );
@@ -179,6 +181,8 @@ class GenerateAttendanceRewards extends Command
                     $missingOutDeduction = $missingOutCount * $missingOutAmount;
 
                     if ($missingOutDeduction > 0) {
+                        $latestMissingOut = $missingOutAtts->sortByDesc('date')->first();
+                        $deductDate = $latestMissingOut ? Carbon::parse($latestMissingOut->date)->format('Y-m-d') : $monthEnd->format('Y-m-d');
                         $desc = "Potongan Lupa Absen Pulang Periode {$month} ({$missingOutCount}x tanpa clock-out)";
                         Deduction::updateOrCreate(
                             [
@@ -189,7 +193,7 @@ class GenerateAttendanceRewards extends Command
                                 'type' => 'auto',
                                 'description' => $desc,
                                 'amount' => $missingOutDeduction,
-                                'deduction_date' => $monthEnd->format('Y-m-d'),
+                                'deduction_date' => $deductDate,
                                 'status' => 'pending',
                             ]
                         );
@@ -209,6 +213,8 @@ class GenerateAttendanceRewards extends Command
                     $earlyDeduction = $earlyCount * $earlyLeaveAmount;
 
                     if ($earlyDeduction > 0) {
+                        $latestEarly = $earlyAtts->sortByDesc('date')->first();
+                        $deductDate = $latestEarly ? Carbon::parse($latestEarly->date)->format('Y-m-d') : $monthEnd->format('Y-m-d');
                         $desc = "Potongan Pulang Cepat Periode {$month} ({$earlyCount}x pulang sebelum waktu)";
                         Deduction::updateOrCreate(
                             [
@@ -219,7 +225,7 @@ class GenerateAttendanceRewards extends Command
                                 'type' => 'auto',
                                 'description' => $desc,
                                 'amount' => $earlyDeduction,
-                                'deduction_date' => $monthEnd->format('Y-m-d'),
+                                'deduction_date' => $deductDate,
                                 'status' => 'pending',
                             ]
                         );
@@ -251,6 +257,8 @@ class GenerateAttendanceRewards extends Command
                     $alphaDeduction = $alphaCount * $alphaAmount;
 
                     if ($alphaDeduction > 0) {
+                        $latestAlpha = $alphaDates->sortDesc()->first();
+                        $deductDate = $latestAlpha ? Carbon::parse($latestAlpha)->format('Y-m-d') : min(Carbon::today('Asia/Jakarta')->format('Y-m-d'), $monthEnd->format('Y-m-d'));
                         $desc = "Potongan Alpha / Mangkir Jadwal Kerja Periode {$month} ({$alphaCount} hari tidak hadir)";
                         Deduction::updateOrCreate(
                             [
@@ -261,7 +269,7 @@ class GenerateAttendanceRewards extends Command
                                 'type' => 'auto',
                                 'description' => $desc,
                                 'amount' => $alphaDeduction,
-                                'deduction_date' => $monthEnd->format('Y-m-d'),
+                                'deduction_date' => $deductDate,
                                 'status' => 'pending',
                             ]
                         );
@@ -281,6 +289,8 @@ class GenerateAttendanceRewards extends Command
                         $totalSpecialFine = $sLateFine + $sNoOutFine;
 
                         if ($totalSpecialFine > 0) {
+                            $latestSpecial = $teamAtts->filter(fn($sAtt) => $sAtt->status === 'late' || AttendanceCalculatorService::isSpecialMissingClockOut($sAtt, $team, $nowEval))->sortByDesc('date')->first();
+                            $deductDate = $latestSpecial ? Carbon::parse($latestSpecial->date)->format('Y-m-d') : min(Carbon::today('Asia/Jakarta')->format('Y-m-d'), $monthEnd->format('Y-m-d'));
                             $teamName = $team?->name ?? 'Tim Khusus';
                             $desc = "Potongan Absen {$teamName} Periode {$month} ({$sLates}x telat, {$sNoOuts}x tanpa absen pulang)";
                             Deduction::updateOrCreate(
@@ -292,7 +302,7 @@ class GenerateAttendanceRewards extends Command
                                     'type' => 'auto',
                                     'description' => $desc,
                                     'amount' => $totalSpecialFine,
-                                    'deduction_date' => $monthEnd->format('Y-m-d'),
+                                    'deduction_date' => $deductDate,
                                     'status' => 'pending',
                                 ]
                             );
