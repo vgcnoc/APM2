@@ -361,7 +361,7 @@ class MaterialController extends Controller
     }
 
     /**
-     * Hitung ringkasan statistik material (hanya yang aktif/tidak dihapus dan dengan konversi unit yang tepat).
+     * Hitung ringkasan statistik material (hanya yang aktif/tidak dihapus dan nilai aset dari Order Toko per Area).
      */
     protected function calculateMaterialSummary($scopedAreaIds = null): array
     {
@@ -381,47 +381,60 @@ class MaterialController extends Controller
             $outOfStock = (clone $activeQuery)->whereDoesntHave('stocks', fn($sq) => $sq->whereIn('area_id', $scopedAreaIds)->where('stock', '>', 0))->count();
             $lowStock = (clone $stockQuery)->where('stock', '>', 0)->where('stock', '<=', 10)->distinct('material_id')->count('material_id');
             
-            // Hitung nilai aset dengan konversi satuan yang presisi
-            $areaStocks = \App\Models\MaterialStock::with('material')
-                ->whereIn('area_id', $scopedAreaIds)
-                ->whereHas('material', function ($mq) {
-                    $mq->where(function ($q) {
-                        $q->where('is_active', true)->orWhereNull('is_active');
-                    })->visibleInMaterialsTable();
+            // Hitung nilai aset dari Order Toko per Area
+            $areaNames = \App\Models\Area::whereIn('id', $scopedAreaIds)->pluck('name')->toArray();
+            
+            $poTrxIds = \App\Models\MaterialTransaction::where('purpose', 'Pembelian Toko / Supplier')
+                ->where(function ($q) use ($scopedAreaIds, $areaNames) {
+                    $q->whereIn('area_id', $scopedAreaIds);
+                    if (!empty($areaNames)) {
+                        $q->orWhereIn('area', $areaNames)
+                          ->orWhereIn('technician_name', $areaNames);
+                    }
                 })
-                ->get();
+                ->pluck('id');
 
-            $totalValue = 0;
-            foreach ($areaStocks as $ms) {
-                if (!$ms->material || $ms->stock <= 0) continue;
-                $totalValue += $this->calculateItemAssetValue($ms->material, (float) $ms->stock);
+            $totalValue = (float) \App\Models\MaterialTransactionItem::whereIn('material_transaction_id', $poTrxIds)
+                ->whereHas('material', function ($mq) {
+                    $mq->where('is_active', true)->orWhereNull('is_active');
+                })
+                ->sum('total_price');
+
+            if ($totalValue <= 0) {
+                $totalValue = (float) \App\Models\MaterialTransaction::whereIn('id', $poTrxIds)->sum('total_cost');
             }
 
             return [
                 'total_items' => $totalItems,
                 'out_of_stock' => $outOfStock,
                 'low_stock' => $lowStock,
-                'total_value' => $totalValue,
+                'total_value' => round($totalValue),
             ];
         }
 
-        // Mode Global / Gudang Utama
+        // Mode Global / Gudang Utama (Semua Gudang / Area)
         $activeMaterials = (clone $activeQuery)->get();
         $totalItems = $activeMaterials->count();
         $outOfStock = $activeMaterials->where('stock', '<=', 0)->count();
         $lowStock = $activeMaterials->where('stock', '>', 0)->where('stock', '<=', 10)->count();
 
-        $totalValue = 0;
-        foreach ($activeMaterials as $m) {
-            if ($m->stock <= 0) continue;
-            $totalValue += $this->calculateItemAssetValue($m, (float) $m->stock);
+        // Hitung total nilai aset dari seluruh Order Toko semua area
+        $allPoTrxIds = \App\Models\MaterialTransaction::where('purpose', 'Pembelian Toko / Supplier')->pluck('id');
+        $totalValue = (float) \App\Models\MaterialTransactionItem::whereIn('material_transaction_id', $allPoTrxIds)
+            ->whereHas('material', function ($mq) {
+                $mq->where('is_active', true)->orWhereNull('is_active');
+            })
+            ->sum('total_price');
+
+        if ($totalValue <= 0) {
+            $totalValue = (float) \App\Models\MaterialTransaction::whereIn('id', $allPoTrxIds)->sum('total_cost');
         }
 
         return [
             'total_items' => $totalItems,
             'out_of_stock' => $outOfStock,
             'low_stock' => $lowStock,
-            'total_value' => $totalValue,
+            'total_value' => round($totalValue),
         ];
     }
 

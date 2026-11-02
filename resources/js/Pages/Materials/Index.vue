@@ -30,6 +30,7 @@
                         <div>
                             <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider">Total Nilai Aset</p>
                             <p class="text-xl font-bold text-gray-900">Rp {{ formatNumber(summary?.total_value || 0) }}</p>
+                            <p class="text-[11px] text-emerald-600 font-medium mt-0.5">{{ filterArea ? 'Order Toko ' + getAreaName(filterArea) : 'Total Order Toko Area' }}</p>
                         </div>
                     </div>
                 </div>
