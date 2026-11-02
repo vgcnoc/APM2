@@ -1954,13 +1954,38 @@ const startCamera = async () => {
             throw new Error('Akses kamera langsung tidak tersedia di browser ini.');
         }
 
-        mediaStream = await navigator.mediaDevices.getUserMedia({
-            video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: cameraFacing.value },
-            audio: false,
-        });
+        const constraintAttempts = [
+            { video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: cameraFacing.value }, audio: false },
+            { video: { facingMode: cameraFacing.value }, audio: false },
+            { video: true, audio: false },
+        ];
+
+        let stream = null;
+        let lastError = null;
+
+        for (const constraints of constraintAttempts) {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                if (stream) break;
+            } catch (err) {
+                lastError = err;
+            }
+        }
+
+        if (!stream) {
+            throw lastError || new Error('Kamera tidak dapat diakses.');
+        }
+
+        mediaStream = stream;
 
         if (videoRef.value) {
             videoRef.value.srcObject = mediaStream;
+            videoRef.value.muted = true;
+            try {
+                await videoRef.value.play();
+            } catch (playErr) {
+                console.warn('Autoplay video error:', playErr);
+            }
         }
     } catch (err) {
         console.warn('Camera error:', err);

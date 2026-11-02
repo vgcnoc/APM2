@@ -685,13 +685,41 @@
                                         </div>
                                     </div>
 
+                                    <!-- Hidden File Input for Native Camera Fallback -->
+                                    <input
+                                        type="file"
+                                        ref="fileInputRef"
+                                        accept="image/*"
+                                        capture="user"
+                                        @change="handleFileInput"
+                                        class="hidden"
+                                    />
+
+                                    <!-- Camera Error Notice if any -->
+                                    <div v-if="cameraError" class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 space-y-1">
+                                        <div class="font-bold flex items-center gap-1">
+                                            <span>⚠️</span>
+                                            <span>Kendala Akses Kamera</span>
+                                        </div>
+                                        <p class="text-[11px] leading-relaxed">{{ cameraError }}</p>
+                                        <button
+                                            type="button"
+                                            @click="triggerNativeCamera"
+                                            class="mt-1 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1"
+                                        >
+                                            <span>📸</span>
+                                            <span>Buka Kamera HP Langsung</span>
+                                        </button>
+                                    </div>
+
                                     <!-- Video Live Feed -->
                                     <video
                                         v-show="isCameraOpen && !capturedPhoto"
                                         ref="videoRef"
                                         autoplay
                                         playsinline
-                                        class="w-full h-full object-cover transform -scale-x-100"
+                                        muted
+                                        :class="['w-full h-full object-cover', cameraFacing === 'user' ? 'transform -scale-x-100' : '']"
                                     ></video>
 
                                     <!-- AI Face Guide Overlay (Oval Scan Frame) -->
@@ -727,18 +755,29 @@
                                         <div>
                                             <div class="text-sm font-bold text-slate-200">Kamera Belum Aktif</div>
                                             <div class="text-xs text-slate-400 mt-1 max-w-xs">
-                                                Klik tombol di bawah untuk menyalakan kamera selfie dan merekam kehadiran Anda.
+                                                Nyalakan kamera live atau gunakan kamera bawaan ponsel untuk merekam kehadiran Anda.
                                             </div>
                                         </div>
-                                        <button
-                                            type="button"
-                                            @click="startCamera"
-                                            :disabled="isEarlyClockInRestricted || isEarlyClockOutRestricted"
-                                            class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold transition shadow-md shadow-blue-500/20 flex items-center gap-1.5"
-                                        >
-                                            <span v-if="isEarlyClockInRestricted || isEarlyClockOutRestricted">🔒 Kamera Ditolak</span>
-                                            <span v-else>Aktifkan Kamera Sekarang</span>
-                                        </button>
+                                        <div class="flex flex-wrap items-center justify-center gap-2 pt-1">
+                                            <button
+                                                type="button"
+                                                @click="startCamera"
+                                                :disabled="isEarlyClockInRestricted || isEarlyClockOutRestricted"
+                                                class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold transition shadow-md shadow-blue-500/20 flex items-center gap-1.5"
+                                            >
+                                                <span v-if="isEarlyClockInRestricted || isEarlyClockOutRestricted">🔒 Kamera Ditolak</span>
+                                                <span v-else>Aktifkan Live Kamera</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                @click="triggerNativeCamera"
+                                                :disabled="isEarlyClockInRestricted || isEarlyClockOutRestricted"
+                                                class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold transition shadow-md shadow-emerald-500/20 flex items-center gap-1.5"
+                                            >
+                                                <span>📸</span>
+                                                <span>Buka Kamera HP</span>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -753,6 +792,25 @@
                                     >
                                         <span v-if="isEarlyClockInRestricted || isEarlyClockOutRestricted">🔒 Kamera Ditolak</span>
                                         <span v-else>Nyalakan Kamera</span>
+                                    </button>
+                                    <button
+                                        v-if="!isCameraOpen && !capturedPhoto"
+                                        type="button"
+                                        @click="triggerNativeCamera"
+                                        :disabled="isEarlyClockInRestricted || isEarlyClockOutRestricted"
+                                        class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+                                    >
+                                        📱 Kamera HP
+                                    </button>
+
+                                    <button
+                                        v-if="isCameraOpen && !capturedPhoto"
+                                        type="button"
+                                        @click="triggerNativeCamera"
+                                        class="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-bold transition flex items-center gap-1.5"
+                                        title="Jika live video macet, ambil foto langsung dari kamera HP"
+                                    >
+                                        📱 Kamera HP
                                     </button>
 
                                     <button
@@ -1626,13 +1684,57 @@ const formatDistance = (meters) => {
     return `${(meters / 1000).toFixed(1)}km`;
 };
 
-// Webcam State
+// Webcam State & Fallback
 const isCameraOpen = ref(false);
 const videoRef = ref(null);
 const canvasRef = ref(null);
 const capturedPhoto = ref(null);
 const cameraFacing = ref('user'); // 'user' or 'environment'
+const cameraError = ref('');
+const fileInputRef = ref(null);
 let mediaStream = null;
+
+const triggerNativeCamera = () => {
+    if (fileInputRef.value) {
+        fileInputRef.value.click();
+    }
+};
+
+const handleFileInput = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const maxDim = 960;
+            let width = img.width;
+            let height = img.height;
+            if (width > maxDim || height > maxDim) {
+                if (width > height) {
+                    height = Math.round((height * maxDim) / width);
+                    width = maxDim;
+                } else {
+                    width = Math.round((width * maxDim) / height);
+                    height = maxDim;
+                }
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            drawWatermark(ctx, width, height);
+            capturedPhoto.value = canvas.toDataURL('image/jpeg', 0.88);
+            stopCamera();
+            cameraError.value = '';
+        };
+        img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+};
 
 const startCamera = async () => {
     if (isEarlyClockInRestricted.value) {
@@ -1694,20 +1796,60 @@ const startCamera = async () => {
         return;
     }
     try {
+        cameraError.value = '';
         isCameraOpen.value = true;
         capturedPhoto.value = null;
+
         if (mediaStream) {
             mediaStream.getTracks().forEach((t) => t.stop());
+            mediaStream = null;
         }
-        mediaStream = await navigator.mediaDevices.getUserMedia({
-            video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: cameraFacing.value },
-            audio: false,
-        });
+
+        if (!navigator?.mediaDevices?.getUserMedia) {
+            cameraError.value = 'Browser tidak mendukung live stream kamera. Silakan gunakan tombol Buka Kamera HP di bawah.';
+            isCameraOpen.value = false;
+            return;
+        }
+
+        // Coba bertahap: (1) facingMode + ideal resolution -> (2) facingMode saja -> (3) video generic
+        const constraintAttempts = [
+            { video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: cameraFacing.value }, audio: false },
+            { video: { facingMode: cameraFacing.value }, audio: false },
+            { video: true, audio: false },
+        ];
+
+        let stream = null;
+        let lastError = null;
+
+        for (const constraints of constraintAttempts) {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                if (stream) break;
+            } catch (err) {
+                lastError = err;
+            }
+        }
+
+        if (!stream) {
+            const errMsg = lastError?.message || 'Izin kamera ditolak atau sedang digunakan aplikasi lain.';
+            cameraError.value = `Gagal membuka live kamera: ${errMsg}`;
+            isCameraOpen.value = false;
+            return;
+        }
+
+        mediaStream = stream;
+        await nextTick();
         if (videoRef.value) {
             videoRef.value.srcObject = mediaStream;
+            videoRef.value.muted = true;
+            try {
+                await videoRef.value.play();
+            } catch (playErr) {
+                console.warn('Autoplay video error:', playErr);
+            }
         }
     } catch (e) {
-        alert('Gagal mengakses kamera: ' + e.message);
+        cameraError.value = 'Gagal mengakses kamera: ' + (e.message || e);
         isCameraOpen.value = false;
     }
 };
