@@ -21,7 +21,8 @@ class SurveyNetworkAssignmentTest extends TestCase
         DB::purge('sqlite');
         Schema::create('customers', function (Blueprint $t) {
             $t->id(); $t->string('name'); $t->string('customer_code'); $t->integer('area_id');
-            $t->string('status'); $t->date('activation_date')->nullable(); $t->timestamps();
+            $t->string('status'); $t->string('area')->default('Test area');
+            $t->date('activation_date')->nullable(); $t->timestamps();
         });
         Schema::create('odps', function (Blueprint $t) {
             $t->id(); $t->string('name'); $t->integer('area_id'); $t->integer('total_ports');
@@ -41,6 +42,7 @@ class SurveyNetworkAssignmentTest extends TestCase
             $t->integer('port_number')->nullable(); $t->string('feasibility');
             $t->string('notes')->nullable(); $t->timestamp('rolled_back_at')->nullable(); $t->integer('surveyor_id')->nullable();
             $t->decimal('distance_meters')->nullable(); $t->string('photos')->nullable(); $t->timestamps();
+            $t->date('survey_date')->nullable(); $t->decimal('signal_loss')->nullable(); $t->boolean('port_available')->nullable();
         });
         DB::table('customers')->insert([
             ['id' => 1, 'name' => 'Test customer', 'customer_code' => 'TEST-1', 'area_id' => 3, 'status' => 'active', 'activation_date' => '2026-11-02'],
@@ -158,9 +160,110 @@ class SurveyNetworkAssignmentTest extends TestCase
 
     public function test_survey_edit_endpoint_preserves_activated_status_and_updates_activation_network(): void
     {
+        $this->authenticateSurveyAdmin();
+        $before = (array) DB::table('customers')->find(1);
+        $this->from('/customers/survey')->post('/customers/1/update-survey', $this->reportPayload())
+            ->assertSessionHasNoErrors()->assertRedirect('/customers/survey');
+        $customer = Customer::with('ont.odp')->findOrFail(1);
+        $this->assertSame('active', $customer->status);
+        $this->assertSame(2, (int) $customer->ont->odp_id);
+        $this->assertSame('New ODP', $customer->ont->odp->name);
+        $this->assertSame(1, $customer->ont->port_number);
+        $this->assertSame($before, (array) DB::table('customers')->find(1));
+    }
+
+    public static function preservedLifecycleStatuses(): array
+    {
+        return array_map(fn ($status) => [$status], ['active', 'suspended', 'installing', 'terminated', 'survey']);
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('preservedLifecycleStatuses')]
+    public function test_edit_never_resets_customer_lifecycle(string $status): void
+    {
+        $this->authenticateSurveyAdmin();
+        DB::table('customers')->where('id', 1)->update(['status' => $status]);
+        $before = (array) DB::table('customers')->find(1);
+        $this->post('/customers/1/update-survey', $this->reportPayload())->assertSessionHasNoErrors();
+        $this->assertSame($before, (array) DB::table('customers')->find(1));
+        $this->assertDatabaseHas('onts', ['id' => 1, 'odp_id' => 2, 'port_number' => 1, 'status' => 'active']);
+        $this->assertDatabaseHas('audit_logs', ['status_before' => $status, 'status_after' => $status]);
+    }
+
+    public function test_inline_report_edit_also_syncs_without_reactivation(): void
+    {
+        $this->authenticateSurveyAdmin();
+        $before = (array) DB::table('customers')->find(1);
+        $this->from('/customers/1')->post('/customers/1/update-survey-report', $this->reportPayload())
+            ->assertSessionHasNoErrors()->assertRedirect('/customers/1');
+        $this->assertSame($before, (array) DB::table('customers')->find(1));
+        $this->assertDatabaseHas('onts', ['id' => 1, 'odp_id' => 2, 'port_number' => 1, 'odp_port_id' => 21]);
+        $this->assertDatabaseHas('odp_ports', ['id' => 11, 'status' => 'available']);
+        $this->assertDatabaseHas('odp_ports', ['id' => 21, 'status' => 'used']);
+    }
+
+    public function test_first_report_for_existing_active_customer_does_not_require_installation_again(): void
+    {
+        $this->authenticateSurveyAdmin();
+        DB::table('surveys')->delete();
+        $before = (array) DB::table('customers')->find(1);
+        $this->post('/customers/1/store-survey', $this->reportPayload())->assertSessionHasNoErrors()
+            ->assertSessionHas('success', fn ($message) => str_contains($message, 'Status layanan tetap'));
+        $this->assertSame($before, (array) DB::table('customers')->find(1));
+        $this->assertDatabaseHas('onts', ['id' => 1, 'odp_id' => 2, 'port_number' => 1]);
+        $this->assertDatabaseCount('surveys', 1);
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('preservedLifecycleStatuses')]
+    public function test_survey_schedule_does_not_roll_back_existing_lifecycle(string $status): void
+    {
+        $this->withoutExceptionHandling();
+        $this->authenticateSurveyAdmin();
+        DB::table('customers')->where('id', 1)->update(['status' => $status]);
+        $before = (array) DB::table('customers')->find(1);
+        $this->post('/customers/1/assign-survey', [
+            'technician_ids' => [1], 'scheduled_date' => '2026-11-03', 'scheduled_time' => '09:00',
+        ])->assertSessionHasNoErrors()->assertRedirect('/customers/survey');
+        $this->assertSame($before, (array) DB::table('customers')->find(1));
+        $this->assertDatabaseHas('technician_schedules', ['customer_id' => 1, 'status' => 'scheduled']);
+        $this->assertDatabaseHas('audit_logs', ['status_before' => $status, 'status_after' => $status]);
+    }
+
+    public function test_booking_can_still_progress_to_survey(): void
+    {
+        $this->authenticateSurveyAdmin();
+        DB::table('customers')->where('id', 1)->update(['status' => 'booking', 'activation_date' => null]);
+        $this->post('/customers/1/assign-survey', [
+            'technician_ids' => [1], 'scheduled_date' => '2026-11-03', 'scheduled_time' => '09:00',
+        ])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('customers', ['id' => 1, 'status' => 'survey', 'activation_date' => null]);
+    }
+
+    public function test_active_customer_cannot_be_terminated_by_survey_feasibility_edit(): void
+    {
+        $this->authenticateSurveyAdmin();
+        $this->post('/customers/1/update-survey', array_replace($this->reportPayload(), ['feasibility' => 'not_feasible']))
+            ->assertSessionHasErrors('feasibility');
+        $this->assertDatabaseHas('customers', ['id' => 1, 'status' => 'active']);
+        $this->assertDatabaseHas('surveys', ['id' => 1, 'feasibility' => 'feasible', 'odp_id' => 1]);
+        $this->assertDatabaseHas('onts', ['id' => 1, 'odp_id' => 1, 'port_number' => 5]);
+    }
+
+    private function reportPayload(): array
+    {
+        return ['surveyor_id' => 1, 'survey_date' => '2026-11-02', 'odp_id' => 2,
+            'port_number' => 1, 'distance_meters' => 100, 'feasibility' => 'feasible'];
+    }
+
+    private function authenticateSurveyAdmin(): void
+    {
         Schema::create('users', function (Blueprint $t) { $t->id(); $t->string('name'); $t->string('role'); });
+        Schema::create('permissions', function (Blueprint $t) {
+            $t->id(); $t->string('name'); $t->string('guard_name'); $t->timestamps();
+        });
         Schema::create('technician_schedules', function (Blueprint $t) {
             $t->id(); $t->integer('customer_id'); $t->integer('technician_id'); $t->string('type');
+            $t->string('status'); $t->date('scheduled_date')->nullable(); $t->string('scheduled_time')->nullable();
+            $t->integer('area_id')->nullable(); $t->string('notes')->nullable(); $t->timestamps();
         });
         Schema::create('audit_logs', function (Blueprint $t) {
             $t->id(); $t->integer('user_id')->nullable();
@@ -173,14 +276,7 @@ class SurveyNetworkAssignmentTest extends TestCase
         $user = \App\Models\User::findOrFail(1);
         $user->setRelation('roles', collect([new \Spatie\Permission\Models\Role(['name' => 'admin', 'guard_name' => 'web'])]));
         $this->withoutMiddleware(\App\Http\Middleware\HandleInertiaRequests::class);
-        $this->actingAs($user)->from('/customers/survey')->post('/customers/1/update-survey', [
-            'surveyor_id' => 1, 'odp_id' => 2, 'port_number' => 1, 'distance_meters' => 100, 'feasibility' => 'feasible',
-        ])->assertSessionHasNoErrors()->assertRedirect('/customers/survey');
-        $customer = Customer::with('ont.odp')->findOrFail(1);
-        $this->assertSame('active', $customer->status);
-        $this->assertSame(2, (int) $customer->ont->odp_id);
-        $this->assertSame('New ODP', $customer->ont->odp->name);
-        $this->assertSame(1, $customer->ont->port_number);
+        $this->actingAs($user);
     }
 
     private function assertMoveRejected(): void

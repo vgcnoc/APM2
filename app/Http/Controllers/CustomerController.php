@@ -1698,7 +1698,8 @@ class CustomerController extends Controller
 
         return Inertia::render('Customers/Survey', [
             'customers' => $customers,
-            'availableOdps' => fn () => Odp::active()->with(['odc.olt', 'odc.area', 'area', 'ports'])->get(),
+            // Full ODPs must remain visible when editing the customer's own occupied port.
+            'availableOdps' => fn () => Odp::whereIn('status', ['active', 'full'])->with(['odc.olt', 'odc.area', 'area', 'ports'])->get(),
             'technicians' => fn () => User::where(function ($q) {
                     $q->where('is_active', true)->orWhereNull('is_active');
                 })
@@ -4941,28 +4942,36 @@ class CustomerController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        // Hapus jadwal survey yang masih scheduled sebelumnya agar tidak ada duplikasi atau teknisi lama tertinggal
-        $customer->technicianSchedules()
-            ->where('type', 'survey')
-            ->where('status', 'scheduled')
-            ->delete();
+        DB::transaction(function () use ($customer, $validated) {
+            $customer = Customer::whereKey($customer->id)->lockForUpdate()->firstOrFail();
+            $previousStatus = $customer->status;
 
-        foreach ($validated['technician_ids'] as $techId) {
-            TechnicianSchedule::create([
-                'customer_id' => $customer->id,
-                'technician_id' => $techId,
-                'type' => 'survey',
-                'status' => 'scheduled',
-                'scheduled_date' => $validated['scheduled_date'],
-                'scheduled_time' => $validated['scheduled_time'],
-                'notes' => $validated['notes'],
-                'area_id' => $customer->area_id,
-            ]);
-        }
-        
-        $customer->update(['status' => 'survey']);
+            // Hapus jadwal pending tanpa menghapus riwayat laporan yang selesai.
+            $customer->technicianSchedules()
+                ->where('type', 'survey')
+                ->where('status', 'scheduled')
+                ->delete();
 
-        \App\Models\AuditLog::createLog('Jadwal Survey', $customer, 'booking', 'survey', 'Menjadwalkan survey');
+            foreach ($validated['technician_ids'] as $techId) {
+                TechnicianSchedule::create([
+                    'customer_id' => $customer->id,
+                    'technician_id' => $techId,
+                    'type' => 'survey',
+                    'status' => 'scheduled',
+                    'scheduled_date' => $validated['scheduled_date'],
+                    'scheduled_time' => $validated['scheduled_time'],
+                    'notes' => $validated['notes'] ?? null,
+                    'area_id' => $customer->area_id,
+                ]);
+            }
+
+            // Scheduling is not a rollback of an existing installation/activation.
+            if ($customer->status === 'booking') {
+                $customer->update(['status' => 'survey']);
+            }
+
+            \App\Models\AuditLog::createLog('Jadwal Survey', $customer, $previousStatus, $customer->status, 'Menjadwalkan survey');
+        });
 
         return redirect()->route('customers.survey')
             ->with('success', 'Jadwal survey berhasil ditugaskan kepada teknisi.');
@@ -5468,10 +5477,15 @@ class CustomerController extends Controller
         // Catatan: Seluruh insentif (Fee Survey, Fee Booking, Fee Pasang) hanya dibentuk saat pelanggan selesai AKTIVASI di CustomerController::activate
 
         if ($validated['feasibility'] === 'feasible') {
-            \App\Models\AuditLog::createLog('Laporan Survey', $customer, 'survey', 'survey', 'Mengisi laporan survey (feasible)');
-            // Biarkan status tetap survey, agar tombol 'Ready Install' muncul
+            $customer->refresh();
+            \App\Models\AuditLog::createLog('Laporan Survey', $customer, $customer->status, $customer->status, 'Mengisi laporan survey (feasible)');
+            $message = in_array($customer->status, ['active', 'suspended'], true)
+                ? 'Hasil survey dan ODP/port ONT berhasil disinkronkan. Status layanan tetap, tanpa Ready Install atau aktivasi ulang.'
+                : ($customer->status === 'survey'
+                    ? 'Hasil survey berhasil disimpan. Pelanggan kini siap untuk instalasi (Ready Install).'
+                    : 'Hasil survey dan ODP/port ONT berhasil disinkronkan. Status pelanggan tetap.');
             return redirect()->route('customers.survey')
-                ->with('success', 'Hasil survey berhasil disimpan. Pelanggan kini siap untuk instalasi (Ready Install).');
+                ->with('success', $message);
         } else {
             $customer->update([
                 'status' => 'terminated',
@@ -5551,17 +5565,17 @@ class CustomerController extends Controller
         }
 
         if ($validated['feasibility'] === 'feasible') {
-            $previousStatus = $customer->status;
-            if (!in_array($customer->status, ['active', 'suspended', 'installing'], true)) {
-                $customer->update(['status' => 'survey']);
-            }
-            \App\Models\AuditLog::createLog('Laporan Survey', $customer, $previousStatus, $customer->status, 'Mengubah laporan survey (feasible) dan menyinkronkan ODP/port ONT');
+            // Editing a report must never reactivate or roll back the customer lifecycle.
+            $customer->refresh();
+            \App\Models\AuditLog::createLog('Laporan Survey', $customer, $customer->status, $customer->status, 'Mengubah laporan survey (feasible) dan menyinkronkan ODP/port ONT');
         } else {
             $customer->update(['status' => 'terminated']);
             \App\Models\AuditLog::createLog('Laporan Survey', $customer, 'survey', 'terminated', 'Mengubah laporan survey (not feasible)');
         }
 
-        return redirect()->route('customers.survey')->with('success', 'Hasil survey berhasil diubah.');
+        return redirect()->route('customers.survey')->with('success', $validated['feasibility'] === 'feasible'
+            ? 'Hasil survey dan ODP/port ONT berhasil disinkronkan. Status pelanggan tetap, tanpa aktivasi ulang.'
+            : 'Hasil survey berhasil diubah.');
     }
 
     /**

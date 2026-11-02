@@ -950,6 +950,7 @@ import DataTable from '@/Components/DataTable.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 import StatCard from '@/Components/StatCard.vue';
 import CustomerQuickDetailModal from '@/Components/CustomerQuickDetailModal.vue';
+import { surveyPortNumbers } from '@/Utils/survey-ports';
 
 // ── Customer Quick Detail & Edit Modal (GPS, KTP, Rumah, HP) ──
 const showQuickDetailModal = ref(false);
@@ -1196,22 +1197,12 @@ const reportForm = useForm({
 });
 
 const selectedOdp = computed(() => {
-    return sortedOdps.value.find(o => o.id === reportForm.odp_id);
+    return sortedOdps.value.find(o => Number(o.id) === Number(reportForm.odp_id));
 });
 
 const availablePortNumbers = computed(() => {
-    if (!selectedOdp.value) return [];
-    let ports = [];
-    let usedPortNumbers = [];
-    if (selectedOdp.value.ports) {
-        usedPortNumbers = selectedOdp.value.ports.filter(p => ['used', 'reserved', 'fault', 'stop'].includes(p.status)).map(p => p.port_number);
-    }
-    for (let i = 1; i <= selectedOdp.value.total_ports; i++) {
-        if (!usedPortNumbers.includes(i)) {
-            ports.push(i);
-        }
-    }
-    return ports;
+    const survey = isEditingSurvey.value ? activeCustomer.value?.surveys?.[0] : null;
+    return surveyPortNumbers(selectedOdp.value, survey);
 });
 
 function calculateDistance(lat1, lon1, lat2, lon2) {

@@ -32,6 +32,11 @@ class SurveyNetworkService
             $targetOdpId = array_key_exists('odp_id', $attributes) ? $attributes['odp_id'] : $survey->odp_id;
             $targetPortNumber = array_key_exists('port_number', $attributes) ? $attributes['port_number'] : $survey->port_number;
             $feasible = ($attributes['feasibility'] ?? $survey->feasibility) === 'feasible';
+            if (!$feasible && in_array($customer->status, ['active', 'suspended'], true)) {
+                throw ValidationException::withMessages([
+                    'feasibility' => 'Pelanggan sudah diaktivasi. Koreksi ODP harus tetap Layak (Feasible); penghentian layanan dilakukan melalui aksi pembatalan/stop pelanggan.',
+                ]);
+            }
             $oldAssignments = [[$survey->odp_id, $survey->port_number]];
             foreach ($onts as $ont) {
                 $oldAssignments[] = [$ont->odp_id, $ont->port_number];
