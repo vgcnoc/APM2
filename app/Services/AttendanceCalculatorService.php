@@ -1182,7 +1182,8 @@ class AttendanceCalculatorService
             $todayDate,
             $shiftsById,
             $elapsedWorkDays,
-            $totalWorkDays
+            $totalWorkDays,
+            $periodDetails
         ) {
             $empAtts = $attendances->where('employee_id', $emp->id);
 
@@ -1224,26 +1225,49 @@ class AttendanceCalculatorService
             $totalSickNoCert = 0;
             $totalPermit = 0;
             $totalManualAlpha = 0;
+            $hasCustomWorkSchedule = false;
+
+            // Cek apakah karyawan sudah hadir/clock-in hari ini
+            $hasClockedInToday = $empAtts->filter(function ($a) use ($todayDate) {
+                $aDate = is_string($a->date) ? substr($a->date, 0, 10) : $a->date->format('Y-m-d');
+                return $aDate === $todayDate && !empty($a->clock_in);
+            })->isNotEmpty();
 
             if ($workSchedules && $workSchedules->isNotEmpty()) {
                 $empSchedules = $workSchedules->where('employee_id', $emp->id);
                 if ($empSchedules->isNotEmpty()) {
                     $workSchedulesCount = $empSchedules->where('status', 'work')->count();
                     if ($workSchedulesCount > 0) {
+                        $hasCustomWorkSchedule = true;
                         $empWorkDays = $workSchedulesCount;
+                        $todayShiftEvaluated = false;
+                        $todayCountedInSchedule = false;
+
                         $empElapsedWorkDays = $empSchedules->where('status', 'work')
-                            ->filter(function ($s) use ($todayDate, $now, $shiftsById, $settings) {
+                            ->filter(function ($s) use ($todayDate, $now, $shiftsById, $settings, &$todayShiftEvaluated, &$todayCountedInSchedule) {
                                 $sDate = is_string($s->date) ? substr($s->date, 0, 10) : $s->date->format('Y-m-d');
                                 if ($sDate < $todayDate) {
                                     return true;
                                 }
                                 if ($sDate === $todayDate) {
+                                    $todayShiftEvaluated = true;
                                     $schedShift = $s->shift_id ? $shiftsById->get($s->shift_id) : null;
                                     $deadline = self::resolveCheckoutDeadlineForShift($sDate, $schedShift, $settings, 'Asia/Jakarta');
-                                    return $now->greaterThan($deadline);
+                                    if ($now->greaterThan($deadline)) {
+                                        $todayCountedInSchedule = true;
+                                        return true;
+                                    }
                                 }
                                 return false;
                             })->count();
+
+                        // Jika hari ini adalah jadwal kerja dan shift belum berakhir (belum lewat checkout deadline),
+                        // tapi karyawan SUDAH clock-in/hadir hari ini:
+                        // hitung hari ini sebagai hari kerja berjalan agar rasio kehadiran imbang (misal 1/1 = 100%)
+                        if ($todayShiftEvaluated && !$todayCountedInSchedule && $hasClockedInToday) {
+                            $empElapsedWorkDays++;
+                            $todayCountedInSchedule = true;
+                        }
                     } else {
                         // Karyawan standar (Senin-Sabtu), kurangi jika ada jadwal OFF / Sakit / Izin
                         $offOrLeaveSchedules = $empSchedules->filter(function ($s) {
@@ -1288,16 +1312,13 @@ class AttendanceCalculatorService
                 }
             }
 
-            // Cek apakah karyawan sudah hadir/clock-in hari ini
-            $hasClockedInToday = $empAtts->filter(function ($a) use ($todayDate) {
-                $aDate = is_string($a->date) ? substr($a->date, 0, 10) : $a->date->format('Y-m-d');
-                return $aDate === $todayDate && !empty($a->clock_in);
-            })->isNotEmpty();
-
-            // Jika hari ini belum berakhir (checkout deadline belum lewat), tapi karyawan sudah hadir clock-in:
-            // maka hari kerja yang dijalani karyawan bertambah +1 agar seimbang dengan total kehadiran
-            if ($hasClockedInToday && !($periodDetails['is_today_closed'] ?? false)) {
-                $empElapsedWorkDays++;
+            // Untuk karyawan non-roster / jadwal standar (Senin-Sabtu):
+            // Jika hari ini belum berakhir (checkout deadline umum belum lewat), tapi karyawan sudah hadir clock-in:
+            // maka hari kerja yang dijalani bertambah +1 agar seimbang dengan total kehadiran
+            if (!$hasCustomWorkSchedule) {
+                if ($hasClockedInToday && !($periodDetails['is_today_closed'] ?? false)) {
+                    $empElapsedWorkDays++;
+                }
             }
 
             // Alpha = hari kerja yang telah berjalan dikurangi kehadiran & dinas luar (ditambah alpha manual)
