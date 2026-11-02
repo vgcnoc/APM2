@@ -415,9 +415,8 @@ class Ont extends Model
         $reservedPgs = class_exists(\App\Models\PgsTicket::class)
             ? \App\Models\PgsTicket::whereNotNull('prepared_ont_id')->whereIn('status', ['scheduled', 'in_progress'])->pluck('prepared_ont_id')
             : collect();
-        $installedCust = \App\Models\Customer::whereNotNull('ont_id')->pluck('ont_id');
 
-        $excludeIds = $reservedPgk->merge($reservedPgs)->merge($installedCust)->filter()->unique()->toArray();
+        $excludeIds = $reservedPgk->merge($reservedPgs)->filter()->unique()->toArray();
 
         $query->where('status', 'Sudah Set')
             ->whereNull('customer_id')
