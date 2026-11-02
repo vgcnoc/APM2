@@ -132,13 +132,10 @@ class MaterialService
             MaterialStock::where('material_id', $source->id)->delete();
             $source->delete();
 
-            // 5. Hitung ulang total stok global & satuan konversi target
-            $hasAreaStocks = MaterialStock::where('material_id', $target->id)->exists();
-            if ($hasAreaStocks) {
-                $target->stock = MaterialStock::where('material_id', $target->id)->sum('stock');
-                $target->initial_stock = MaterialStock::where('material_id', $target->id)->sum('initial_stock');
-            } elseif ($inputStock !== null) {
+            // 5. Hitung ulang total stok Gudang Pusat & satuan konversi target
+            if ($inputStock !== null && (float)$inputStock > 0) {
                 $target->stock = (float)$target->stock + (float)$inputStock;
+                $target->initial_stock = (float)$target->initial_stock + (float)$inputStock;
             }
 
             $target->recalcUnitTotals();
@@ -225,12 +222,6 @@ class MaterialService
             } else {
                 $target->stock = (float)$target->stock + $inputStock;
                 $target->initial_stock = (float)$target->initial_stock + $initialStock;
-            }
-
-            $hasAreaStocks = MaterialStock::where('material_id', $target->id)->exists();
-            if ($hasAreaStocks) {
-                $target->stock = MaterialStock::where('material_id', $target->id)->sum('stock');
-                $target->initial_stock = MaterialStock::where('material_id', $target->id)->sum('initial_stock');
             }
 
             $target->recalcUnitTotals();
