@@ -10,18 +10,28 @@
                     </div>
                     <div class="min-w-0">
                         <h2 class="text-sm font-bold text-gray-900">Periode Laporan</h2>
-                        <p class="text-xs text-gray-500">Pilih bulan dan tahun</p>
+                        <p class="text-xs text-gray-500">Pilih bulan dan tahun acuan pembukuan</p>
                     </div>
                 </div>
-                <div class="flex flex-wrap sm:flex-nowrap gap-2 w-full sm:w-auto">
+                <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
+                    <button 
+                        @click="setThisMonth" 
+                        type="button"
+                        class="px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0"
+                        title="Tampilkan bulan ini"
+                    >
+                        <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>Bulan Ini</span>
+                    </button>
                     <select v-model="form.month" class="block flex-1 sm:flex-none sm:w-32 border-gray-200 bg-gray-50 focus:bg-white rounded-xl text-xs sm:text-sm font-medium focus:ring-blue-500 focus:border-blue-500">
                         <option v-for="(m, i) in months" :key="i" :value="i + 1">{{ m }}</option>
                     </select>
                     <select v-model="form.year" class="block flex-1 sm:flex-none sm:w-28 border-gray-200 bg-gray-50 focus:bg-white rounded-xl text-xs sm:text-sm font-medium focus:ring-blue-500 focus:border-blue-500">
                         <option v-for="y in years" :key="y" :value="y">{{ y }}</option>
                     </select>
-                    <button @click="applyFilter" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-all hover:shadow whitespace-nowrap shrink-0">
-                        Filter
+                    <button @click="applyPeriodFilter" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-all hover:shadow whitespace-nowrap shrink-0 flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                        <span>Filter</span>
                     </button>
                 </div>
             </div>
@@ -32,15 +42,15 @@
                 <div class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl p-5 min-w-0 text-white shadow-lg relative overflow-hidden group">
                     <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700"></div>
                     <p class="text-indigo-100 text-xs sm:text-sm font-semibold mb-1 uppercase tracking-wider">Total Pemasukan (Omzet)</p>
-                    <h3 class="text-xl sm:text-2xl 2xl:text-3xl font-black mb-3 break-words leading-tight">Rp {{ formatRupiah(summary.total_omzet) }}</h3>
+                    <h3 class="text-xl sm:text-2xl 2xl:text-3xl font-black mb-3 break-words leading-tight">Rp {{ formatRupiah(summary?.total_omzet || 0) }}</h3>
                     <div class="flex flex-col gap-1 text-xs text-indigo-50 font-medium">
                         <div class="flex flex-wrap justify-between gap-1 border-t border-indigo-400/30 pt-2">
                             <span>Pelanggan Reguler:</span>
-                            <span>Rp {{ formatRupiah(summary.omzet_customer) }}</span>
+                            <span>Rp {{ formatRupiah(summary?.omzet_customer || 0) }}</span>
                         </div>
                         <div class="flex flex-wrap justify-between gap-1">
                             <span>Reseller Voucher:</span>
-                            <span>Rp {{ formatRupiah(summary.omzet_reseller) }}</span>
+                            <span>Rp {{ formatRupiah(summary?.omzet_reseller || 0) }}</span>
                         </div>
                     </div>
                 </div>
@@ -49,7 +59,7 @@
                 <div class="bg-gradient-to-br from-rose-500 to-red-600 rounded-3xl p-5 min-w-0 text-white shadow-lg relative overflow-hidden group">
                     <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700"></div>
                     <p class="text-rose-100 text-xs sm:text-sm font-semibold mb-1 uppercase tracking-wider">Total Pengeluaran Kas</p>
-                    <h3 class="text-xl sm:text-2xl 2xl:text-3xl font-black mb-3 break-words leading-tight">Rp {{ formatRupiah(summary.total_pengeluaran) }}</h3>
+                    <h3 class="text-xl sm:text-2xl 2xl:text-3xl font-black mb-3 break-words leading-tight">Rp {{ formatRupiah(summary?.total_pengeluaran || 0) }}</h3>
                     <div class="flex justify-between gap-1 border-t border-rose-400/30 pt-2 mt-auto text-xs text-rose-50 font-medium">
                         <span>Lihat detail di Buku Kas Umum</span>
                         <span>↓</span>
@@ -63,7 +73,7 @@
                         <svg class="w-4 h-4 text-emerald-200 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A12.014 12.014 0 0010.378 1l-.156.003a11.967 11.967 0 00-6.19 2.502L3.6 3.902a1 1 0 00-.472.934L3.6 15a1 1 0 00.563.896l5.378 2.534c.185.087.39.087.575 0l5.378-2.534A1 1 0 0016.4 15l.473-10.164a1 1 0 00-.473-.934l-.431-.397a11.96 11.96 0 00-4.669-2.459zm-1.896 4.398a1 1 0 00-1.229.588l-2 5a1 1 0 001.858.742L8.5 10.428l2.036-1.018a1 1 0 00.32-1.637l-1.452-2.324z" clip-rule="evenodd"></path></svg>
                         <span>Laba Bersih Perusahaan</span>
                     </p>
-                    <h3 class="text-xl sm:text-2xl 2xl:text-3xl font-black mb-3 break-words leading-tight">Rp {{ formatRupiah(summary.laba_bersih) }}</h3>
+                    <h3 class="text-xl sm:text-2xl 2xl:text-3xl font-black mb-3 break-words leading-tight">Rp {{ formatRupiah(summary?.laba_bersih || 0) }}</h3>
                     <div class="flex justify-between border-t border-emerald-400/30 pt-2 text-xs text-emerald-50 font-medium">
                         <span>(Omzet - Pengeluaran)</span>
                     </div>
@@ -73,19 +83,19 @@
                 <div class="bg-gradient-to-br from-amber-500 to-orange-500 rounded-3xl p-5 min-w-0 text-white shadow-lg relative overflow-hidden group">
                     <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700"></div>
                     <p class="text-amber-100 text-xs sm:text-sm font-semibold mb-1 uppercase tracking-wider">Total Piutang Berjalan</p>
-                    <h3 class="text-xl sm:text-2xl 2xl:text-3xl font-black mb-3 break-words leading-tight">Rp {{ formatRupiah(summary.total_piutang) }}</h3>
+                    <h3 class="text-xl sm:text-2xl 2xl:text-3xl font-black mb-3 break-words leading-tight">Rp {{ formatRupiah(summary?.total_piutang || 0) }}</h3>
                     <div class="flex flex-col gap-1 text-xs text-amber-50 font-medium">
                         <div class="flex flex-wrap justify-between gap-1 border-t border-amber-400/30 pt-2">
                             <span>Tunggakan Pelanggan Aktif:</span>
-                            <span>Rp {{ formatRupiah(summary.piutang_customer) }}</span>
+                            <span>Rp {{ formatRupiah(summary?.piutang_customer || 0) }}</span>
                         </div>
                         <div class="flex flex-wrap justify-between gap-1">
                             <span>Kasbon Reseller:</span>
-                            <span>Rp {{ formatRupiah(summary.piutang_reseller) }}</span>
+                            <span>Rp {{ formatRupiah(summary?.piutang_reseller || 0) }}</span>
                         </div>
-                        <div v-if="summary.piutang_terminated > 0" class="flex flex-wrap justify-between gap-1 text-rose-200 font-semibold">
+                        <div v-if="summary?.piutang_terminated > 0" class="flex flex-wrap justify-between gap-1 text-rose-200 font-semibold">
                             <span>Piutang Stop Permanen:</span>
-                            <span>Rp {{ formatRupiah(summary.piutang_terminated) }}</span>
+                            <span>Rp {{ formatRupiah(summary?.piutang_terminated || 0) }}</span>
                         </div>
                     </div>
                 </div>
@@ -109,7 +119,7 @@
                         <svg class="w-5 h-5 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>
                         <span>Papan Skor Penagih (Bulan Ini)</span>
                     </h3>
-                    <div v-if="kpi.length === 0" class="flex-1 flex flex-col items-center justify-center text-gray-400 py-8">
+                    <div v-if="!kpi || kpi.length === 0" class="flex-1 flex flex-col items-center justify-center text-gray-400 py-8">
                         <svg class="w-12 h-12 mb-3 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
                         <p class="text-sm font-medium text-center">Belum ada setoran penagih bulan ini.</p>
                     </div>
@@ -134,26 +144,226 @@
 
             <!-- Buku Kas Umum (Unified Ledger) -->
             <div class="bg-white rounded-3xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-gray-100 overflow-hidden min-w-0">
+                <!-- Header Card -->
                 <div class="p-4 sm:p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div class="min-w-0">
                         <h3 class="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
                             <svg class="w-5 h-5 text-gray-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
                             <span>Buku Kas Umum (General Ledger)</span>
                         </h3>
-                        <p class="text-xs sm:text-sm text-gray-500 mt-1">Rekapitulasi riwayat keluar masuk uang bulan ini</p>
+                        <p class="text-xs sm:text-sm text-gray-500 mt-1">Rekapitulasi riwayat mutasi kas keluar masuk secara real-time</p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                         <Link :href="route('expense-categories.index')" class="flex-1 sm:flex-initial justify-center inline-flex items-center gap-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-3.5 py-2 rounded-xl shadow-sm text-xs font-bold transition-all whitespace-nowrap">
                             <svg class="w-4 h-4 text-gray-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
                             Master Kategori
                         </Link>
-                        <button @click="showExpenseModal = true" class="flex-1 sm:flex-initial justify-center inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl shadow-sm transition-all hover:shadow text-xs font-bold whitespace-nowrap">
+                        <button @click="showExpenseModal = true" class="flex-1 sm:flex-initial justify-center inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl shadow-sm transition-all hover:shadow text-xs font-bold whitespace-nowrap cursor-pointer">
                             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                             Catat Pengeluaran
                         </button>
                     </div>
                 </div>
+
+                <!-- FILTER LENGKAP TOOLBAR -->
+                <div class="p-4 sm:p-5 border-b border-gray-100 bg-white space-y-4">
+                    <!-- Filter Controls Grid -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+                        
+                        <!-- Search Box (4 Cols) -->
+                        <div class="sm:col-span-2 lg:col-span-4">
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">
+                                Pencarian Transaksi
+                            </label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                </span>
+                                <input 
+                                    type="text" 
+                                    v-model="ledgerFilter.search" 
+                                    @keyup.enter="applyLedgerFilter(true)"
+                                    placeholder="Keterangan, nama pelanggan, admin, No PO..." 
+                                    class="w-full pl-9 pr-8 py-2 text-xs sm:text-sm border-gray-200 bg-gray-50 focus:bg-white rounded-xl focus:ring-blue-500 focus:border-blue-500 font-medium placeholder-gray-400"
+                                />
+                                <button 
+                                    v-if="ledgerFilter.search" 
+                                    @click="ledgerFilter.search = ''; applyLedgerFilter(true)" 
+                                    type="button" 
+                                    class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-gray-400 hover:text-gray-600"
+                                >
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Tipe Mutasi (2 Cols) -->
+                        <div class="lg:col-span-2">
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">
+                                Tipe Mutasi
+                            </label>
+                            <select 
+                                v-model="ledgerFilter.type" 
+                                @change="applyLedgerFilter(true)"
+                                class="w-full py-2 px-3 text-xs sm:text-sm border-gray-200 bg-gray-50 focus:bg-white rounded-xl focus:ring-blue-500 focus:border-blue-500 font-medium"
+                            >
+                                <option value="all">Semua Tipe Mutasi</option>
+                                <option value="income">🟢 Pemasukan Kas (+)</option>
+                                <option value="expense">🔴 Pengeluaran Kas (-)</option>
+                            </select>
+                        </div>
+
+                        <!-- Kategori (2 Cols) -->
+                        <div class="lg:col-span-2">
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">
+                                Kategori
+                            </label>
+                            <select 
+                                v-model="ledgerFilter.category" 
+                                @change="applyLedgerFilter(true)"
+                                class="w-full py-2 px-3 text-xs sm:text-sm border-gray-200 bg-gray-50 focus:bg-white rounded-xl focus:ring-blue-500 focus:border-blue-500 font-medium"
+                            >
+                                <option value="all">Semua Kategori</option>
+                                <optgroup label="Sumber Pemasukan">
+                                    <option value="customer">👤 Pelanggan Reguler</option>
+                                    <option value="reseller">🏷️ Reseller Voucher</option>
+                                </optgroup>
+                                <optgroup label="Kategori Pengeluaran">
+                                    <option value="material">📦 Belanja Material (Order Toko)</option>
+                                    <option v-for="cat in expense_categories" :key="cat.id" :value="cat.id">
+                                        {{ cat.code ? '[' + cat.code + '] ' : '' }}{{ cat.name }}
+                                    </option>
+                                </optgroup>
+                            </select>
+                        </div>
+
+                        <!-- Rentang Tanggal (2 Cols) -->
+                        <div class="lg:col-span-2">
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">
+                                Tanggal Spesifik
+                            </label>
+                            <div class="grid grid-cols-2 gap-1.5">
+                                <input 
+                                    type="date" 
+                                    v-model="ledgerFilter.date_from" 
+                                    title="Dari Tanggal"
+                                    class="w-full p-1.5 text-[11px] border-gray-200 bg-gray-50 focus:bg-white rounded-xl focus:ring-blue-500 focus:border-blue-500 font-medium"
+                                />
+                                <input 
+                                    type="date" 
+                                    v-model="ledgerFilter.date_to" 
+                                    title="Sampai Tanggal"
+                                    class="w-full p-1.5 text-[11px] border-gray-200 bg-gray-50 focus:bg-white rounded-xl focus:ring-blue-500 focus:border-blue-500 font-medium"
+                                />
+                            </div>
+                        </div>
+
+                        <!-- Baris Per Halaman & Tombol Aksi (2 Cols) -->
+                        <div class="lg:col-span-2 flex items-center gap-1.5">
+                            <div class="w-24 shrink-0">
+                                <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">
+                                    Paginasi
+                                </label>
+                                <select 
+                                    v-model="ledgerFilter.per_page" 
+                                    @change="applyLedgerFilter(true)"
+                                    class="w-full py-2 px-2 text-xs border-gray-200 bg-gray-50 focus:bg-white rounded-xl focus:ring-blue-500 focus:border-blue-500 font-bold"
+                                >
+                                    <option :value="10">10 / hal</option>
+                                    <option :value="25">25 / hal</option>
+                                    <option :value="50">50 / hal</option>
+                                    <option :value="100">100 / hal</option>
+                                </select>
+                            </div>
+                            <div class="flex-1 flex items-center gap-1 pt-4">
+                                <button 
+                                    @click="applyLedgerFilter(true)" 
+                                    type="button"
+                                    class="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-2 px-2.5 rounded-xl text-xs font-bold transition shadow-xs flex items-center justify-center gap-1 cursor-pointer"
+                                    title="Terapkan Filter"
+                                >
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <span>Terapkan</span>
+                                </button>
+                                <button 
+                                    @click="resetLedgerFilter" 
+                                    type="button" 
+                                    class="bg-gray-100 hover:bg-gray-200 text-gray-600 p-2 rounded-xl text-xs transition cursor-pointer"
+                                    title="Reset Semua Filter"
+                                >
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Active Filter Chips & Intelligent Subtotals -->
+                    <div class="pt-2 border-t border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+                        
+                        <!-- Left: Active Filter Chips -->
+                        <div class="flex flex-wrap items-center gap-1.5 min-w-0">
+                            <span class="text-gray-400 font-semibold mr-1">Filter Aktif:</span>
+                            
+                            <span v-if="ledgerFilter.search" class="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg text-xs font-bold border border-blue-200">
+                                <span>Cari: "{{ ledgerFilter.search }}"</span>
+                                <button @click="ledgerFilter.search = ''; applyLedgerFilter(true)" class="text-blue-500 hover:text-blue-800 ml-0.5">&times;</button>
+                            </span>
+
+                            <span v-if="ledgerFilter.type && ledgerFilter.type !== 'all'" class="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg text-xs font-bold border border-indigo-200">
+                                <span>Tipe: {{ ledgerFilter.type === 'income' ? 'Pemasukan' : 'Pengeluaran' }}</span>
+                                <button @click="ledgerFilter.type = 'all'; applyLedgerFilter(true)" class="text-indigo-500 hover:text-indigo-800 ml-0.5">&times;</button>
+                            </span>
+
+                            <span v-if="ledgerFilter.category && ledgerFilter.category !== 'all'" class="inline-flex items-center gap-1 bg-purple-50 text-purple-700 px-2.5 py-1 rounded-lg text-xs font-bold border border-purple-200">
+                                <span>Kategori: {{ getCategoryLabel(ledgerFilter.category) }}</span>
+                                <button @click="ledgerFilter.category = 'all'; applyLedgerFilter(true)" class="text-purple-500 hover:text-purple-800 ml-0.5">&times;</button>
+                            </span>
+
+                            <span v-if="ledgerFilter.date_from || ledgerFilter.date_to" class="inline-flex items-center gap-1 bg-amber-50 text-amber-800 px-2.5 py-1 rounded-lg text-xs font-bold border border-amber-200">
+                                <span>Tgl: {{ ledgerFilter.date_from || '...' }} s/d {{ ledgerFilter.date_to || '...' }}</span>
+                                <button @click="ledgerFilter.date_from = ''; ledgerFilter.date_to = ''; applyLedgerFilter(true)" class="text-amber-600 hover:text-amber-900 ml-0.5">&times;</button>
+                            </span>
+
+                            <span v-if="Number(ledgerFilter.per_page) !== 10" class="inline-flex items-center gap-1 bg-gray-100 text-gray-700 px-2 py-1 rounded-lg text-xs font-medium border border-gray-200">
+                                <span>{{ ledgerFilter.per_page }}/hal</span>
+                                <button @click="ledgerFilter.per_page = 10; applyLedgerFilter(true)" class="text-gray-500 hover:text-gray-800 ml-0.5">&times;</button>
+                            </span>
+
+                            <button 
+                                v-if="hasActiveFilters" 
+                                @click="resetLedgerFilter" 
+                                type="button" 
+                                class="text-rose-600 hover:text-rose-800 font-bold underline text-xs ml-1 cursor-pointer"
+                            >
+                                Hapus Semua
+                            </button>
+
+                            <span v-if="!hasActiveFilters" class="text-gray-400 italic">
+                                Menampilkan semua transaksi bulan {{ months[(form.month || 1) - 1] }} {{ form.year }} (Default 10 per hal)
+                            </span>
+                        </div>
+
+                        <!-- Right: Subtotal Mutasi Terfilter -->
+                        <div class="flex flex-wrap items-center gap-3 shrink-0 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200 font-mono text-[11px] sm:text-xs">
+                            <span class="text-gray-500 font-sans font-medium">
+                                Cocok: <strong class="text-gray-900 font-mono font-bold">{{ ledger_summary?.total_count ?? (ledgerPagination?.total ?? ledgerItems.length) }}</strong> data
+                            </span>
+                            <span class="text-emerald-700 font-bold">
+                                +Rp {{ formatRupiah(ledger_summary?.total_income || 0) }}
+                            </span>
+                            <span class="text-rose-600 font-bold">
+                                -Rp {{ formatRupiah(ledger_summary?.total_expense || 0) }}
+                            </span>
+                            <span class="font-bold border-l border-gray-300 pl-2 text-indigo-700">
+                                Net: Rp {{ formatRupiah(ledger_summary?.net || 0) }}
+                            </span>
+                        </div>
+
+                    </div>
+                </div>
                 
+                <!-- Tabel Ledger -->
                 <div class="overflow-x-auto w-full overscroll-x-contain">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50/80">
@@ -161,13 +371,13 @@
                                 <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tanggal &amp; Waktu</th>
                                 <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Tipe / Kategori</th>
                                 <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Keterangan</th>
-                                <th scope="col" class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Mutasi</th>
+                                <th scope="col" class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Mutasi Nominal</th>
                                 <th scope="col" class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-100">
-                            <tr v-for="item in ledger" :key="item.id" class="hover:bg-gray-50/50 transition-colors">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <tr v-for="item in ledgerItems" :key="item.id" class="hover:bg-gray-50/50 transition-colors">
+                                <td class="px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                                     {{ new Date(item.date).toLocaleDateString('id-ID', {day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit'}) }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
@@ -206,14 +416,53 @@
                                     <span v-else class="text-xs text-gray-300">-</span>
                                 </td>
                             </tr>
-                            <tr v-if="ledger.length === 0">
+                            <tr v-if="ledgerItems.length === 0">
                                 <td colspan="5" class="px-6 py-12 text-center text-gray-500">
-                                    <p class="font-medium">Belum ada transaksi di bulan ini.</p>
+                                    <div class="max-w-sm mx-auto space-y-2">
+                                        <svg class="w-12 h-12 text-gray-300 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                        <p class="font-bold text-gray-800 text-sm">Tidak ada transaksi yang cocok</p>
+                                        <p class="text-xs text-gray-500">Coba ubah kata kunci pencarian, kategori, atau rentang tanggal pada filter di atas.</p>
+                                        <button v-if="hasActiveFilters" @click="resetLedgerFilter" type="button" class="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl text-xs font-bold transition">
+                                            Reset Filter
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
+
+                <!-- PAGINASI 10 FOOTER (Sesuai Permintaan User) -->
+                <div v-if="ledgerPagination" class="p-4 sm:p-5 border-t border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+                    <!-- Left Info -->
+                    <div class="text-gray-500 font-medium text-center sm:text-left">
+                        Menampilkan <strong class="text-gray-900 font-bold">{{ ledgerPagination.from || 0 }}</strong> - <strong class="text-gray-900 font-bold">{{ ledgerPagination.to || 0 }}</strong> dari <strong class="text-gray-900 font-bold">{{ ledgerPagination.total || 0 }}</strong> transaksi
+                        <span class="text-gray-400 ml-1">({{ ledgerFilter.per_page }} per halaman)</span>
+                    </div>
+
+                    <!-- Right Navigation Buttons -->
+                    <div v-if="ledgerPagination.links && ledgerPagination.links.length > 3" class="flex flex-wrap items-center justify-center gap-1">
+                        <template v-for="(link, idx) in ledgerPagination.links" :key="idx">
+                            <button
+                                v-if="link.url"
+                                @click="goToPage(link.url)"
+                                v-html="link.label"
+                                :class="[
+                                    link.active 
+                                        ? 'bg-blue-600 text-white font-black shadow-sm border border-blue-600' 
+                                        : 'bg-white text-gray-700 hover:bg-gray-100 hover:text-gray-900 border border-gray-200',
+                                    'px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer min-w-[32px] text-center'
+                                ]"
+                            ></button>
+                            <span 
+                                v-else 
+                                v-html="link.label"
+                                class="px-3 py-1.5 rounded-xl text-xs font-medium text-gray-300 border border-gray-100 bg-white/50 cursor-not-allowed min-w-[32px] text-center"
+                            ></span>
+                        </template>
+                    </div>
+                </div>
+
             </div>
 
         </div>
@@ -402,12 +651,38 @@ import VueApexCharts from 'vue3-apexcharts';
 import Swal from 'sweetalert2';
 
 const props = defineProps({
-    month: Number,
-    year: Number,
-    summary: Object,
-    chartData: Array,
-    ledger: Array,
-    kpi: Array,
+    month: {
+        type: Number,
+        default: () => new Date().getMonth() + 1
+    },
+    year: {
+        type: Number,
+        default: () => new Date().getFullYear()
+    },
+    summary: {
+        type: Object,
+        default: () => ({})
+    },
+    chartData: {
+        type: Array,
+        default: () => []
+    },
+    ledger: {
+        type: [Object, Array],
+        default: () => []
+    },
+    ledger_summary: {
+        type: Object,
+        default: () => ({})
+    },
+    filters: {
+        type: Object,
+        default: () => ({})
+    },
+    kpi: {
+        type: Array,
+        default: () => []
+    },
     expense_categories: {
         type: Array,
         default: () => []
@@ -422,19 +697,122 @@ const months = [
 const currentYear = new Date().getFullYear();
 const years = Array.from({length: 5}, (_, i) => currentYear - i);
 
+// Top Period form
 const form = useForm({
     month: props.month,
     year: props.year
 });
 
-const applyFilter = () => {
-    form.get(route('financial-reports.index'), {
+// Buku Kas Ledger Filters
+const ledgerFilter = ref({
+    search: props.filters?.search || '',
+    type: props.filters?.type || 'all',
+    category: props.filters?.category || 'all',
+    date_from: props.filters?.date_from || '',
+    date_to: props.filters?.date_to || '',
+    per_page: Number(props.filters?.per_page) || 10,
+});
+
+// Computed ledger items
+const ledgerItems = computed(() => {
+    if (!props.ledger) return [];
+    if (Array.isArray(props.ledger)) return props.ledger;
+    return props.ledger.data || [];
+});
+
+const ledgerPagination = computed(() => {
+    if (!props.ledger || Array.isArray(props.ledger)) return null;
+    return props.ledger;
+});
+
+const hasActiveFilters = computed(() => {
+    return Boolean(
+        ledgerFilter.value.search ||
+        (ledgerFilter.value.type && ledgerFilter.value.type !== 'all') ||
+        (ledgerFilter.value.category && ledgerFilter.value.category !== 'all') ||
+        ledgerFilter.value.date_from ||
+        ledgerFilter.value.date_to ||
+        Number(ledgerFilter.value.per_page) !== 10
+    );
+});
+
+const getCategoryLabel = (val) => {
+    if (val === 'customer') return 'Pelanggan Reguler';
+    if (val === 'reseller') return 'Reseller Voucher';
+    if (val === 'material') return 'Belanja Material';
+    const found = props.expense_categories.find(c => String(c.id) === String(val) || String(c.code) === String(val));
+    return found ? found.name : val;
+};
+
+// Actions to apply filter
+const applyLedgerFilter = (resetPage = true) => {
+    const params = {
+        month: form.month,
+        year: form.year,
+        search: ledgerFilter.value.search || undefined,
+        type: ledgerFilter.value.type !== 'all' ? ledgerFilter.value.type : undefined,
+        category: ledgerFilter.value.category !== 'all' ? ledgerFilter.value.category : undefined,
+        date_from: ledgerFilter.value.date_from || undefined,
+        date_to: ledgerFilter.value.date_to || undefined,
+        per_page: Number(ledgerFilter.value.per_page) !== 10 ? ledgerFilter.value.per_page : 10,
+        page: resetPage ? 1 : (props.ledger?.current_page || 1)
+    };
+
+    // Remove undefined/empty keys
+    Object.keys(params).forEach(key => (params[key] === undefined || params[key] === '') && delete params[key]);
+
+    router.get(route('financial-reports.index'), params, {
+        preserveState: true,
+        preserveScroll: true
+    });
+};
+
+const applyPeriodFilter = () => {
+    // When changing month/year in top bar, clear date_from/date_to and reset to page 1
+    ledgerFilter.value.date_from = '';
+    ledgerFilter.value.date_to = '';
+    applyLedgerFilter(true);
+};
+
+const setThisMonth = () => {
+    const now = new Date();
+    form.month = now.getMonth() + 1;
+    form.year = now.getFullYear();
+    ledgerFilter.value.date_from = '';
+    ledgerFilter.value.date_to = '';
+    applyLedgerFilter(true);
+};
+
+const resetLedgerFilter = () => {
+    ledgerFilter.value = {
+        search: '',
+        type: 'all',
+        category: 'all',
+        date_from: '',
+        date_to: '',
+        per_page: 10,
+    };
+    router.get(route('financial-reports.index'), {
+        month: form.month,
+        year: form.year,
+        per_page: 10,
+        page: 1
+    }, {
+        preserveState: true,
+        preserveScroll: true
+    });
+};
+
+const goToPage = (url) => {
+    if (!url) return;
+    router.get(url, {}, {
         preserveState: true,
         preserveScroll: true
     });
 };
 
 const formatRupiah = (number) => {
+    if (number === null || number === undefined || isNaN(number)) return '0';
     return new Intl.NumberFormat('id-ID').format(number);
 };
 
@@ -553,7 +931,7 @@ const chartOptions = computed(() => ({
         }
     },
     xaxis: {
-        categories: props.chartData.map(d => d.month),
+        categories: props.chartData ? props.chartData.map(d => d.month) : [],
         axisBorder: { show: false },
         axisTicks: { show: false },
         labels: {
@@ -592,15 +970,15 @@ const chartOptions = computed(() => ({
 const chartSeries = computed(() => [
     {
         name: 'Omzet Pelanggan',
-        data: props.chartData.map(d => d.customer)
+        data: props.chartData ? props.chartData.map(d => d.customer) : []
     },
     {
         name: 'Omzet Reseller',
-        data: props.chartData.map(d => d.reseller)
+        data: props.chartData ? props.chartData.map(d => d.reseller) : []
     },
     {
         name: 'Pengeluaran',
-        data: props.chartData.map(d => d.expense)
+        data: props.chartData ? props.chartData.map(d => d.expense) : []
     }
 ]);
 </script>
