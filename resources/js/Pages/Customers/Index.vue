@@ -245,9 +245,37 @@
             </template>
 
             <!-- Table Rows -->
-            <template #row="{ row, index }">
-                <td class="text-gray-500 text-xs text-center">
-                    {{ (customers.current_page - 1) * customers.per_page + index + 1 }}
+            <template #row="{ row }">
+                <!-- Kolom Aksi di Depan Nama Pelanggan -->
+                <td class="whitespace-nowrap">
+                    <div class="flex items-center justify-start gap-1.5 whitespace-nowrap">
+                        <!-- Tombol Cepat KICK jika Online -->
+                        <button 
+                            v-if="row.status === 'active' && row.ont?.pppoe_user && onlineUsernames?.includes(row.ont.pppoe_user)" 
+                            @click="kickSession(row.ont.pppoe_user)" 
+                            class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-600 hover:text-white transition-all shadow-2xs hover:shadow-xs focus:outline-none" 
+                            title="Kick Sesi Online"
+                        >
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            KICK
+                        </button>
+
+                        <!-- Tombol Dropdown Menu Aksi -->
+                        <button 
+                            type="button" 
+                            @click.stop="toggleDropdown($event, row)" 
+                            class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 rounded-lg transition-all shadow-2xs hover:shadow-xs cursor-pointer text-xs font-semibold focus:outline-none"
+                            :class="{ 'ring-2 ring-blue-500 bg-blue-50 text-blue-600 border-blue-300': activeDropdownRow?.id === row.id }"
+                            title="Pilihan Aksi"
+                        >
+                            <span>Aksi</span>
+                            <svg class="w-3.5 h-3.5 text-slate-400 transition-transform duration-200" :class="{ 'rotate-180 text-blue-600': activeDropdownRow?.id === row.id }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                    </div>
                 </td>
                 <td>
                     <div class="flex items-center gap-3">
