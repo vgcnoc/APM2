@@ -2386,12 +2386,13 @@ const filteredOdcs = computed(() => {
 // Daftar Material Persiapan Gudang (Bekal Petugas)
 const availableMaterialItems = computed(() => {
     let items = [];
-    const areaId = createForm.value.area_id;
+    const areaId = customerAreaId.value;
     const handledMaterialIds = new Set();
 
-    // 1. Order Restock Area jika ada
+    // 1. Ambil dari Order Toko / Restock Area jika ada
     const trxs = props.materialTransactions || [];
     trxs.forEach(trx => {
+        if (areaId && trx.area_id && trx.area_id != areaId) return;
         if (trx.items && trx.items.length > 0) {
             trx.items.forEach(item => {
                 if (!item.material) return;
@@ -2426,7 +2427,7 @@ const availableMaterialItems = computed(() => {
                             trx_number: trx.transaction_number,
                             trx_date: trx.date,
                             purpose: trx.purpose,
-                            area_name: trx.area_model?.name || trx.area || 'Restock Area',
+                            area_name: trx.area_model?.name || trx.area || 'Order Toko Area',
                             name: item.material.name,
                             category: item.material.category,
                             area_stock: availableQty,
@@ -2439,7 +2440,7 @@ const availableMaterialItems = computed(() => {
         }
     });
 
-    // 2. Sertakan SEMUA Material dari Inventory Gudang
+    // 2. Material dari Inventory Gudang yang sudah di-order per area dan masih ada stok
     const allMaterials = props.materials || [];
     allMaterials.forEach(m => {
         const name = (m.name || '').toLowerCase();
@@ -2449,23 +2450,29 @@ const availableMaterialItems = computed(() => {
         }
 
         let areaStock = 0;
+        let hasAreaStock = false;
         if (m.stocks && areaId) {
             const stockObj = m.stocks.find(s => s.area_id == areaId);
             if (stockObj) {
+                hasAreaStock = true;
                 areaStock = parseFloat(stockObj.stock) || 0;
             }
         }
-        if (areaStock <= 0 && m.stock) {
+
+        if (areaId) {
+            if (!hasAreaStock || areaStock <= 0) return;
+        } else {
             areaStock = parseFloat(m.stock) || 0;
+            if (areaStock <= 0) return;
         }
 
-        if (!handledMaterialIds.has(m.id)) {
+        if (!handledMaterialIds.has(m.id) && areaStock > 0) {
             items.push({
                 unique_key: 'mat-' + m.id,
                 id: 'mat-' + m.id,
                 material_id: m.id,
                 trx_number: '',
-                area_name: 'Gudang Utama',
+                area_name: 'Stok Area Gudang',
                 name: m.name,
                 category: m.category,
                 area_stock: areaStock,
@@ -2475,7 +2482,7 @@ const availableMaterialItems = computed(() => {
         }
     });
 
-    return items;
+    return items.filter(item => (parseFloat(item.area_stock) || 0) > 0);
 });
 
 const addMaterialRow = () => {

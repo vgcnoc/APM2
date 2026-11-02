@@ -4686,13 +4686,9 @@ const customerAreaId = computed(() => {
 });
 
 const filteredOnts = computed(() => {
-    let onts = (props.availableOnts || []);
+    let onts = (props.availableOnts || []).filter(ont => ont.status === 'Sudah Set');
     const areaId = customerAreaId.value;
-    let result = onts;
-    if (areaId) {
-        const matched = onts.filter(ont => ont.area_id == areaId);
-        result = matched.length > 0 ? matched : onts;
-    }
+    let result = areaId ? onts.filter(ont => ont.area_id == areaId) : onts;
     const currentOnt = props.customer?.ont;
     if (currentOnt && !result.some(o => String(o.id) === String(currentOnt.id))) {
         return [currentOnt, ...result];
@@ -4709,9 +4705,11 @@ const availableMaterialItems = computed(() => {
     let items = [];
     const trxs = props.materialTransactions || [];
     const areaId = customerAreaId.value;
+    const handledMaterialIds = new Set();
 
     if (trxs && trxs.length > 0) {
         trxs.forEach(trx => {
+            if (areaId && trx.area_id && trx.area_id != areaId) return;
             if (trx.items) {
                 trx.items.forEach(item => {
                     const name = item.material?.name?.toLowerCase() || '';
@@ -4719,16 +4717,23 @@ const availableMaterialItems = computed(() => {
                     const isRegistered = item.is_registered_to_ont === 1 || item.is_registered_to_ont === true;
                     
                     if (!name.includes('ont') && !name.includes('modem') && !category.includes('ont') && !category.includes('modem') && !isRegistered) {
-                        let areaStock = 0;
+                        let remainingInOrder = typeof item.remaining_quantity !== 'undefined'
+                            ? parseFloat(item.remaining_quantity)
+                            : parseFloat(item.quantity);
+
+                        let areaStock = null;
                         if (item.material?.stocks && areaId) {
                             const stockObj = item.material.stocks.find(s => s.area_id == areaId);
                             if (stockObj) areaStock = parseFloat(stockObj.stock) || 0;
                         }
-                        if (areaStock <= 0 && item.material && parseFloat(item.material.stock) > 0) {
-                            areaStock = parseFloat(item.material.stock) || 0;
+
+                        let availableQty = remainingInOrder;
+                        if (areaStock !== null && areaStock < availableQty) {
+                            availableQty = areaStock;
                         }
-                        const availableQty = areaStock > 0 ? areaStock : (parseFloat(item.quantity) || 0);
+
                         if (availableQty > 0) {
+                            handledMaterialIds.add(item.material_id);
                             items.push({
                                 id: item.id,
                                 material_id: item.material_id,
@@ -4750,21 +4755,29 @@ const availableMaterialItems = computed(() => {
             const name = (mat.name || '').toLowerCase();
             const category = (mat.category || '').toLowerCase();
             if (!name.includes('ont') && !name.includes('modem') && !category.includes('ont') && !category.includes('modem')) {
-                if (!items.some(i => i.name.toLowerCase() === name)) {
-                    let stock = 0;
-                    if (mat.stocks && areaId) {
-                        const stockObj = mat.stocks.find(s => s.area_id == areaId);
-                        if (stockObj) stock = parseFloat(stockObj.stock) || 0;
+                let areaStock = 0;
+                let hasAreaStock = false;
+                if (mat.stocks && areaId) {
+                    const stockObj = mat.stocks.find(s => s.area_id == areaId);
+                    if (stockObj) {
+                        hasAreaStock = true;
+                        areaStock = parseFloat(stockObj.stock) || 0;
                     }
-                    if (stock <= 0 && mat.stock) {
-                        stock = parseFloat(mat.stock) || 0;
-                    }
+                }
+                if (areaId) {
+                    if (!hasAreaStock || areaStock <= 0) return;
+                } else {
+                    areaStock = parseFloat(mat.stock) || 0;
+                    if (areaStock <= 0) return;
+                }
+
+                if (!handledMaterialIds.has(mat.id) && areaStock > 0) {
                     items.push({
                         id: 'mat-' + mat.id,
                         material_id: mat.id,
                         name: mat.name,
                         trx_number: '',
-                        area_stock: stock,
+                        area_stock: areaStock,
                         unit: mat.unit || 'pcs',
                         material: mat,
                     });
@@ -4773,7 +4786,7 @@ const availableMaterialItems = computed(() => {
         });
     }
 
-    return items;
+    return items.filter(item => (parseFloat(item.area_stock) || 0) > 0);
 });
 
 function addScheduleMaterialItem() {

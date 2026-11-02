@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\RestockStockService;
+
 use App\Models\PgjTicket;
 use App\Models\PgjMaterial;
 use App\Models\Area;
@@ -369,11 +371,7 @@ class PgjController extends Controller
             })
             ->orderBy('name')
             ->get();
-        $materialTransactions = MaterialTransaction::where('type', 'in')
-            ->with(['items.material.stocks', 'areaModel'])
-            ->latest('id')
-            ->limit(200)
-            ->get();
+        $materialTransactions = fn () => RestockStockService::getRestockTransactions();
 
         return Inertia::render('Pgj/Jadwal', [
             'tickets' => $tickets,

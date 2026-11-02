@@ -1598,11 +1598,7 @@ const customerAreaId = computed(() => {
 const filteredOnts = computed(() => {
     let onts = (props.availableOnts || []).filter(ont => ont.status === 'Sudah Set');
     const areaId = customerAreaId.value;
-    let result = onts;
-    if (areaId) {
-        const matched = onts.filter(ont => ont.area_id == areaId);
-        result = matched.length > 0 ? matched : onts;
-    }
+    let result = areaId ? onts.filter(ont => ont.area_id == areaId) : onts;
     const currentOnt = activeCustomer.value?.ont;
     if (currentOnt && !result.some(o => String(o.id) === String(currentOnt.id))) {
         return [currentOnt, ...result];
@@ -1614,8 +1610,7 @@ const filteredMaterialTransactions = computed(() => {
     const allTrx = props.materialTransactions || [];
     const areaId = customerAreaId.value;
     if (!areaId) return allTrx;
-    const matched = allTrx.filter(trx => !trx.area_id || trx.area_id == areaId);
-    return matched.length > 0 ? matched : allTrx;
+    return allTrx.filter(trx => trx.area_id && trx.area_id == areaId);
 });
 
 const availableMaterialItems = computed(() => {
@@ -1635,7 +1630,11 @@ const availableMaterialItems = computed(() => {
                     const isRegistered = item.is_registered_to_ont === 1 || item.is_registered_to_ont === true;
                     
                     if (!name.includes('ont') && !name.includes('modem') && !category.includes('ont') && !category.includes('modem') && !isRegistered) {
-                        let areaStock = 0;
+                        let remainingInOrder = typeof item.remaining_quantity !== 'undefined'
+                            ? parseFloat(item.remaining_quantity)
+                            : parseFloat(item.quantity);
+
+                        let areaStock = null;
                         if (item.material.stocks && areaId) {
                             const stockObj = item.material.stocks.find(s => s.area_id == areaId);
                             if (stockObj) {
@@ -1643,11 +1642,10 @@ const availableMaterialItems = computed(() => {
                             }
                         }
 
-                        if (areaStock <= 0 && item.material.stock) {
-                            areaStock = parseFloat(item.material.stock) || 0;
+                        let availableQty = remainingInOrder;
+                        if (areaStock !== null && areaStock < availableQty) {
+                            availableQty = areaStock;
                         }
-
-                        const availableQty = areaStock > 0 ? areaStock : (parseFloat(item.quantity) || 0);
 
                         if (availableQty > 0) {
                             handledMaterialIds.add(item.material.id);
@@ -1668,7 +1666,7 @@ const availableMaterialItems = computed(() => {
         });
     }
 
-    // 2. Sertakan SEMUA Material dari Inventory Gudang yang ada di master/area
+    // 2. Material dari Inventory Gudang yang sudah di-order per area dan masih ada stok
     const allMaterials = props.materials || [];
     allMaterials.forEach(m => {
         const name = (m.name || '').toLowerCase();
@@ -1677,20 +1675,26 @@ const availableMaterialItems = computed(() => {
             return;
         }
 
-        // Hitung stok di Area
         let areaStock = 0;
+        let hasAreaStock = false;
         if (m.stocks && areaId) {
             const stockObj = m.stocks.find(s => s.area_id == areaId);
             if (stockObj) {
+                hasAreaStock = true;
                 areaStock = parseFloat(stockObj.stock) || 0;
             }
         }
-        if (areaStock <= 0 && m.stock) {
+
+        if (areaId) {
+            if (!hasAreaStock || areaStock <= 0) {
+                return;
+            }
+        } else {
             areaStock = parseFloat(m.stock) || 0;
+            if (areaStock <= 0) return;
         }
 
-        // Jika belum ada di list (atau untuk opsi langsung dari gudang umum)
-        if (!handledMaterialIds.has(m.id)) {
+        if (!handledMaterialIds.has(m.id) && areaStock > 0) {
             items.push({
                 unique_key: 'mat-' + m.id,
                 id: 'mat-' + m.id,
@@ -1704,7 +1708,7 @@ const availableMaterialItems = computed(() => {
         }
     });
 
-    return items;
+    return items.filter(item => (parseFloat(item.area_stock) || 0) > 0);
 });
 
 function updateMaterialItemDetails(index) {

@@ -387,8 +387,7 @@ class PgsController extends Controller
             ->get();
         $materialTransactions = fn () => RestockStockService::getRestockTransactions();
         $areas = fn () => DataScopeService::getScopedAreas($user, 'pgs');
-        $ontQuery = Ont::whereNull('customer_id')
-            ->whereIn('status', ['Sudah Set', 'Belum Set/Baru Input'])
+        $ontQuery = Ont::availableForAssignment()
             ->select('id', 'ont_id', 'serial_number', 'brand', 'model', 'status', 'area_id')
             ->orderBy('serial_number');
         DataScopeService::applyOntScope($ontQuery, $user);
@@ -582,11 +581,10 @@ class PgsController extends Controller
             }
         }
 
-        $materials = Material::select('id', 'name', 'category', 'unit', 'stock')->get();
+        $materials = Material::with('stocks')->where(function ($q) { $q->where('is_active', true)->orWhereNull('is_active'); })->select('id', 'name', 'category', 'unit', 'stock')->orderBy('name')->get();
         $materialTransactions = fn () => RestockStockService::getRestockTransactions();
         $areas = fn () => DataScopeService::getScopedAreas($user, 'pgs');
-        $ontQuery = Ont::whereNull('customer_id')
-            ->whereIn('status', ['Sudah Set', 'Belum Set/Baru Input'])
+        $ontQuery = Ont::availableForAssignment()
             ->select('id', 'ont_id', 'serial_number', 'brand', 'model', 'status', 'area_id')
             ->orderBy('serial_number');
         DataScopeService::applyOntScope($ontQuery, $user);

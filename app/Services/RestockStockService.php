@@ -35,8 +35,7 @@ class RestockStockService
             $areaName = $areaModel?->name;
 
             $query->where(function ($q) use ($areaId, $areaName) {
-                $q->where('area_id', $areaId)
-                  ->orWhereNull('area_id');
+                $q->where('area_id', $areaId);
 
                 if ($areaName) {
                     $q->orWhere('area', $areaName)

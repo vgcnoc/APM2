@@ -922,8 +922,8 @@
                                             class="w-full rounded-xl border-gray-300 text-xs py-1.5 focus:border-emerald-500 bg-white font-medium"
                                         >
                                             <option value="">-- Pilih Material Gudang yang Sesuai --</option>
-                                            <option v-for="mat in materials" :key="mat.id" :value="mat.id">
-                                                {{ mat.name }} (Stok Gudang: {{ parseFloat(mat.stock) }} {{ mat.unit }})
+                                            <option v-for="mat in getAvailableMaterialsForTicket(selectedTicket)" :key="mat.id" :value="mat.id">
+                                                {{ mat.name }} (Stok Area: {{ mat.display_stock }} {{ mat.unit }})
                                             </option>
                                         </select>
                                     </div>
@@ -1076,7 +1076,7 @@
                     <div class="space-y-2 pt-1">
                         <div class="flex items-center justify-between">
                             <label class="block text-xs font-bold text-gray-800 uppercase tracking-wider">
-                                Pilih Unit ONT Baru dari Gudang (Tersedia: {{ availableOnts?.length || 0 }} unit) *
+                                Pilih Unit ONT Baru dari Gudang (Tersedia: {{ filteredAvailableOnts?.length || 0 }} unit) *
                             </label>
                         </div>
 
@@ -1112,7 +1112,7 @@
                             </label>
 
                             <div v-if="filteredAvailableOnts.length === 0" class="p-4 text-center text-xs text-gray-400 italic">
-                                Tidak ada unit ONT yang sesuai dengan pencarian atau stok gudang kosong.
+                                Tidak ada unit ONT berstatus "Sudah Set" di area ini atau stok ONT kosong.
                             </div>
                         </div>
                     </div>
@@ -1205,8 +1205,18 @@ const openOntPrepareModal = (ticket) => {
 const filteredAvailableOnts = computed(() => {
     const q = ontSearchQuery.value.toLowerCase().trim();
     const list = props.availableOnts || [];
-    if (!q) return list;
-    return list.filter(o => 
+    const targetAreaId = ontTicket.value?.area_id || 
+                         ontTicket.value?.area?.id || 
+                         ontTicket.value?.customer?.area_id || 
+                         ontTicket.value?.customer?.areaModel?.id || 
+                         null;
+
+    let onts = list.filter(o => o.status === 'Sudah Set');
+    if (targetAreaId) {
+        onts = onts.filter(o => o.area_id == targetAreaId);
+    }
+    if (!q) return onts;
+    return onts.filter(o => 
         (o.serial_number && o.serial_number.toLowerCase().includes(q)) ||
         (o.brand && o.brand.toLowerCase().includes(q)) ||
         (o.model && o.model.toLowerCase().includes(q)) ||
@@ -1270,15 +1280,13 @@ const filteredMaterialTransactions = computed(() => {
 
     if (!areaId && !areaName) return allTrx;
 
-    const matched = allTrx.filter(trx => {
+    return allTrx.filter(trx => {
         if (areaId && trx.area_id && trx.area_id == areaId) return true;
         if (areaName && trx.area && trx.area.toLowerCase().trim() === areaName) return true;
         if (areaName && trx.technician_name && trx.technician_name.toLowerCase().trim() === areaName) return true;
         if (areaName && trx.area_model?.name && trx.area_model.name.toLowerCase().trim() === areaName) return true;
         return false;
     });
-
-    return matched.length > 0 ? matched : allTrx;
 });
 
 const availableMaterialItems = computed(() => {
@@ -1296,7 +1304,7 @@ const availableMaterialItems = computed(() => {
                 const category = (item.material.category || '').toLowerCase();
                 const isRegistered = item.is_registered_to_ont === 1 || item.is_registered_to_ont === true;
 
-                if (!isRegistered && !name.includes('modem') && !category.includes('modem')) {
+                if (!isRegistered && !name.includes('modem') && !category.includes('modem') && !name.includes('ont') && !category.includes('ont')) {
                     let remainingInOrder = typeof item.remaining_quantity !== 'undefined'
                         ? parseFloat(item.remaining_quantity)
                         : parseFloat(item.quantity);
@@ -1314,6 +1322,7 @@ const availableMaterialItems = computed(() => {
                         availableQty = areaStock;
                     }
 
+                    // HANYA tampilkan jika stok masih ada (> 0). Material terpasang / habis tidak dimunculkan kembali.
                     if (availableQty > 0) {
                         handledMaterialIds.add(item.material_id);
                         items.push({
@@ -1336,7 +1345,7 @@ const availableMaterialItems = computed(() => {
         }
     });
 
-    // 2. Sertakan SEMUA Material dari Inventory Gudang
+    // 2. Material dari Inventory Gudang yang sudah di-order per area dan masih ada stok
     const allMaterials = props.materials || [];
     allMaterials.forEach(m => {
         const name = (m.name || '').toLowerCase();
@@ -1346,23 +1355,32 @@ const availableMaterialItems = computed(() => {
         }
 
         let areaStock = 0;
+        let hasAreaStock = false;
         if (m.stocks && areaId) {
             const stockObj = m.stocks.find(s => s.area_id == areaId);
             if (stockObj) {
+                hasAreaStock = true;
                 areaStock = parseFloat(stockObj.stock) || 0;
             }
         }
-        if (areaStock <= 0 && m.stock) {
+
+        // Jika area_id terdefinisi, material HARUS ada di stok area tersebut dan > 0
+        if (areaId) {
+            if (!hasAreaStock || areaStock <= 0) {
+                return;
+            }
+        } else {
             areaStock = parseFloat(m.stock) || 0;
+            if (areaStock <= 0) return;
         }
 
-        if (!handledMaterialIds.has(m.id)) {
+        if (!handledMaterialIds.has(m.id) && areaStock > 0) {
             items.push({
                 unique_key: 'mat-' + m.id,
                 id: 'mat-' + m.id,
                 material_id: m.id,
                 trx_number: '',
-                area_name: 'Inventory Gudang',
+                area_name: 'Stok Area Gudang',
                 name: m.name,
                 category: m.category,
                 area_stock: areaStock,
@@ -1372,7 +1390,7 @@ const availableMaterialItems = computed(() => {
         }
     });
 
-    return items;
+    return items.filter(item => (parseFloat(item.area_stock) || 0) > 0);
 });
 
 const scheduleForm = useForm({

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\RestockStockService;
+
 use Illuminate\Http\Request;
 use App\Models\NetworkMaintenance;
 use App\Models\NetworkMaintenanceMaterial;
@@ -264,11 +266,7 @@ class NetworkMaintenanceController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'unit', 'stock', 'price_per_unit', 'category']);
 
-        $materialTransactions = MaterialTransaction::where('type', 'in')
-            ->with(['items.material.stocks', 'areaModel'])
-            ->latest('id')
-            ->limit(200)
-            ->get();
+        $materialTransactions = fn () => RestockStockService::getRestockTransactions();
 
         return Inertia::render('Operational/NetworkMaintenance', [
             'maintenanceList' => $maintenanceList,

@@ -400,6 +400,40 @@ class Ont extends Model
         return $query->where('status', 'active');
     }
 
+    /**
+     * Scope untuk unit ONT siap pakai dari stok gudang:
+     * - Khusus status 'Sudah Set'
+     * - Belum terpasang di pelanggan (customer_id is null & tidak terhubung ke relasi customer)
+     * - Tidak sedang terpasang di data pelanggan manapun (customers.ont_id)
+     * - Tidak sedang disiapkan/dibekalkan pada tiket aktif PGK / PGS
+     */
+    public function scopeAvailableForAssignment($query, ?int $areaId = null)
+    {
+        $reservedPgk = class_exists(\App\Models\PgkTicket::class)
+            ? \App\Models\PgkTicket::whereNotNull('prepared_ont_id')->whereIn('status', ['scheduled', 'in_progress'])->pluck('prepared_ont_id')
+            : collect();
+        $reservedPgs = class_exists(\App\Models\PgsTicket::class)
+            ? \App\Models\PgsTicket::whereNotNull('prepared_ont_id')->whereIn('status', ['scheduled', 'in_progress'])->pluck('prepared_ont_id')
+            : collect();
+        $installedCust = \App\Models\Customer::whereNotNull('ont_id')->pluck('ont_id');
+
+        $excludeIds = $reservedPgk->merge($reservedPgs)->merge($installedCust)->filter()->unique()->toArray();
+
+        $query->where('status', 'Sudah Set')
+            ->whereNull('customer_id')
+            ->whereDoesntHave('customer');
+
+        if (!empty($excludeIds)) {
+            $query->whereNotIn('id', $excludeIds);
+        }
+
+        if ($areaId) {
+            $query->where('area_id', $areaId);
+        }
+
+        return $query;
+    }
+
     public function scopeWithFullTopology($query)
     {
         return $query->with(['odp.odc.olt', 'customer.sales', 'area']);

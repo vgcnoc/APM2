@@ -1847,9 +1847,7 @@ class CustomerController extends Controller
                 ->with('employee')
                 ->orderBy('name')
                 ->get(['id', 'name', 'phone', 'email', 'role']),
-            'availableOnts' => fn () => \App\Models\Ont::whereIn('status', ['Sudah Set', 'Belum Set/Baru Input', 'inactive'])
-                ->whereNull('customer_id')
-                ->get(),
+            'availableOnts' => fn () => \App\Models\Ont::availableForAssignment()->get(['id', 'ont_id', 'serial_number', 'brand', 'model', 'status', 'area_id']),
             'materials' => fn () => \App\Models\Material::with('stocks')
                 ->where(function ($q) {
                     $q->where('is_active', true)->orWhereNull('is_active');
@@ -2740,7 +2738,7 @@ class CustomerController extends Controller
             'customer' => $customer,
             'source' => request()->query('source'),
             'availableOdps' => Odp::active()->with(['odc.olt', 'onts.customer', 'ports'])->get(),
-            'availableOnts' => Ont::where('status', 'Sudah Set')->whereNull('customer_id')->get(),
+            'availableOnts' => Ont::availableForAssignment()->get(['id', 'ont_id', 'serial_number', 'brand', 'model', 'status', 'area_id']),
             'technicians' => User::where('is_active', true)->orderBy('name')->get(['id', 'name', 'phone', 'role']),
             'packages' => InternetPackage::active()->get(),
             'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),

@@ -696,8 +696,7 @@ const filteredMaterialTransactions = computed(() => {
     const allTrx = props.materialTransactions || [];
     const areaId = customerAreaId.value;
     if (!areaId) return allTrx;
-    const matched = allTrx.filter(trx => !trx.area_id || trx.area_id == areaId);
-    return matched.length > 0 ? matched : allTrx;
+    return allTrx.filter(trx => trx.area_id && trx.area_id == areaId);
 });
 
 const availableMaterialItems = computed(() => {
@@ -715,8 +714,12 @@ const availableMaterialItems = computed(() => {
                 const category = (item.material.category || '').toLowerCase();
                 const isRegistered = item.is_registered_to_ont === 1 || item.is_registered_to_ont === true;
 
-                if (!isRegistered && !name.includes('modem') && !category.includes('modem')) {
-                    let areaStock = 0;
+                if (!isRegistered && !name.includes('modem') && !category.includes('modem') && !name.includes('ont') && !category.includes('ont')) {
+                    let remainingInOrder = typeof item.remaining_quantity !== 'undefined'
+                        ? parseFloat(item.remaining_quantity)
+                        : parseFloat(item.quantity);
+
+                    let areaStock = null;
                     if (item.material.stocks && areaId) {
                         const stockObj = item.material.stocks.find(s => s.area_id == areaId);
                         if (stockObj) {
@@ -724,11 +727,10 @@ const availableMaterialItems = computed(() => {
                         }
                     }
 
-                    if (areaStock <= 0 && item.material.stock) {
-                        areaStock = parseFloat(item.material.stock) || 0;
+                    let availableQty = remainingInOrder;
+                    if (areaStock !== null && areaStock < availableQty) {
+                        availableQty = areaStock;
                     }
-
-                    const availableQty = areaStock > 0 ? areaStock : (parseFloat(item.quantity) || 0);
 
                     if (availableQty > 0) {
                         handledMaterialIds.add(item.material_id);
@@ -752,7 +754,7 @@ const availableMaterialItems = computed(() => {
         }
     });
 
-    // 2. Sertakan SEMUA Material dari Inventory Gudang
+    // 2. Material dari Inventory Gudang yang sudah di-order per area dan masih ada stok
     const allMaterials = props.materials || [];
     allMaterials.forEach(m => {
         const name = (m.name || '').toLowerCase();
@@ -762,23 +764,31 @@ const availableMaterialItems = computed(() => {
         }
 
         let areaStock = 0;
+        let hasAreaStock = false;
         if (m.stocks && areaId) {
             const stockObj = m.stocks.find(s => s.area_id == areaId);
             if (stockObj) {
+                hasAreaStock = true;
                 areaStock = parseFloat(stockObj.stock) || 0;
             }
         }
-        if (areaStock <= 0 && m.stock) {
+
+        if (areaId) {
+            if (!hasAreaStock || areaStock <= 0) {
+                return;
+            }
+        } else {
             areaStock = parseFloat(m.stock) || 0;
+            if (areaStock <= 0) return;
         }
 
-        if (!handledMaterialIds.has(m.id)) {
+        if (!handledMaterialIds.has(m.id) && areaStock > 0) {
             items.push({
                 unique_key: 'mat-' + m.id,
                 id: 'mat-' + m.id,
                 material_id: m.id,
                 trx_number: '',
-                area_name: 'Inventory Gudang',
+                area_name: 'Stok Area Gudang',
                 name: m.name,
                 category: m.category,
                 area_stock: areaStock,
@@ -788,7 +798,7 @@ const availableMaterialItems = computed(() => {
         }
     });
 
-    return items;
+    return items.filter(item => (parseFloat(item.area_stock) || 0) > 0);
 });
 
 const scheduleForm = useForm({

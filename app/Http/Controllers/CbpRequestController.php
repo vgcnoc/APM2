@@ -260,7 +260,7 @@ class CbpRequestController extends Controller
             ->paginate($request->per_page ?? 15)
             ->withQueryString();
 
-        $materials = \App\Models\Material::all();
+        $materials = \App\Models\Material::with('stocks')->where(function ($q) { $q->where('is_active', true)->orWhereNull('is_active'); })->orderBy('name')->get();
         $areas = DataScopeService::getScopedAreas($user, 'cbp');
 
         return Inertia::render('Tickets/CbpLaporan', [
