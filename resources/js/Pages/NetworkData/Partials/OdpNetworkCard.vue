@@ -1,6 +1,6 @@
 <template>
     <div
-        class="rounded-xl transition-all group bg-white flex flex-col relative overflow-hidden"
+        class="min-w-0 rounded-xl transition-all group bg-white flex flex-col relative overflow-hidden"
         :class="[
             splitInfo?.role === 'induk'
                 ? 'border-2 border-emerald-300/90 hover:border-emerald-400 shadow-xs hover:shadow-md'
@@ -44,13 +44,13 @@
 
                 <span
                     v-if="splitInfo.partnerLabel"
-                    class="inline-flex items-center gap-1 font-bold text-[10px] px-2 py-0.5 rounded-md border bg-white/90 truncate max-w-full"
+                    class="flex w-full min-w-0 flex-wrap items-baseline gap-x-1 gap-y-0.5 font-bold text-[11px] px-2 py-1.5 rounded-md border bg-white/90"
                     :class="splitInfo.role === 'induk' ? 'border-emerald-200 text-emerald-800' : 'border-purple-200 text-purple-800'"
                     :title="splitInfo.partnerLabel"
                 >
                     <span v-if="splitInfo.role === 'induk'">↱ Lanjutan:</span>
                     <span v-else>↳ Dari Induk:</span>
-                    <strong class="truncate max-w-[150px]">{{ splitInfo.partnerLabel }}</strong>
+                    <strong class="min-w-0 break-words">{{ splitInfo.partnerLabel }}</strong>
                 </span>
             </div>
 

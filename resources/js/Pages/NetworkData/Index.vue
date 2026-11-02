@@ -150,73 +150,38 @@
                     <!-- CONNECTED ODC SPLIT PAIR FRAME (Berdampingan Induk <-> Lanjutan) -->
                     <div
                         v-if="unit.isSplitPair"
-                        class="rounded-2xl border-2 border-purple-400/90 bg-gradient-to-br from-emerald-50/50 via-white to-purple-50/60 p-3.5 md:p-4 shadow-md space-y-4"
+                        class="network-split-pair rounded-2xl border border-gray-200 bg-gray-50/50 p-3 md:p-4 shadow-sm space-y-4"
                     >
-                        <!-- Top Relationship Header Banner -->
-                        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-[#111827] via-[#1e1b4b] to-[#2e1065] text-white shadow-sm border border-purple-500/30">
-                            <div class="flex items-center flex-wrap gap-2 text-xs">
-                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-400/20 border border-amber-300/40 text-amber-200 font-black uppercase tracking-wider text-[10px]">
-                                    🔗 PASANGAN ODC SPLIT SALING BERHUBUNGAN
-                                </span>
+                        <SplitConnectionHeader
+                            kind="ODC"
+                            :nodes="unit.items.map(item => ({
+                                id: item.odc.id,
+                                name: item.odc.name,
+                                role: item.splitInfo?.role,
+                                detail: 'PON ' + (item.odc.pon_port || '—'),
+                            }))"
+                        >
+                            <span class="rounded-lg bg-gray-50 border border-gray-200 px-3 py-1.5 text-gray-700">
+                                <strong>{{ getOdcUnitTotalOdps(unit.items) }}</strong> ODP
+                            </span>
+                            <span class="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-emerald-800">
+                                <strong>{{ getOdcUnitFreePorts(unit.items) }}</strong> port tersedia total
+                            </span>
+                        </SplitConnectionHeader>
 
-                                <template v-for="(item, idx) in unit.items" :key="'odc-chip-' + item.odc.id">
-                                    <span v-if="idx > 0" class="text-amber-300 font-black px-1 text-xs" title="Terhubung Splitter / Kabel Lanjutan">
-                                        ━━⚡ SPLIT━━&gt;
-                                    </span>
-                                    <span
-                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold text-[11px] border"
-                                        :class="idx === 0 ? 'bg-emerald-500/25 border-emerald-400/50 text-emerald-100' : 'bg-purple-500/25 border-purple-400/50 text-purple-100'"
-                                    >
-                                        <span>{{ idx === 0 ? '🟢 INDUK:' : '🟣 LANJUTAN:' }}</span>
-                                        <strong class="text-white">{{ item.odc.name }}</strong>
-                                        <span class="text-[10px] opacity-80">(PON {{ item.odc.pon_port || '?' }})</span>
-                                    </span>
-                                </template>
-                            </div>
-
-                            <div class="flex items-center flex-wrap gap-2 shrink-0 text-[11px] font-bold">
-                                <span class="px-2.5 py-1 rounded-lg bg-white/10 border border-white/15 text-purple-100">
-                                    {{ getOdcUnitTotalOdps(unit.items) }} Total ODP
-                                </span>
-                                <span class="px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-200">
-                                    {{ getOdcUnitFreePorts(unit.items) }} Free Port Gabungan
-                                </span>
-                            </div>
-                        </div>
-
-                        <!-- Side-by-Side ODC Cards -->
-                        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 xl:gap-6 relative items-stretch">
-                            <!-- Floating Center Optical Connector Badge (Desktop XL) -->
-                            <div
-                                v-if="unit.items.length === 2"
-                                class="hidden xl:flex absolute left-1/2 top-16 -translate-x-1/2 z-20 pointer-events-none"
-                            >
-                                <div class="px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-600 via-indigo-600 to-purple-600 text-white text-[10px] font-black shadow-lg border-2 border-white flex items-center gap-1.5 tracking-wider">
-                                    <span>INDUK</span>
-                                    <span>⇄</span>
-                                    <span>LANJUTAN</span>
-                                </div>
-                            </div>
-
-                            <template v-for="(item, idx) in unit.items" :key="item.odc.id">
-                                <!-- Mobile/Tablet vertical connector -->
-                                <div v-if="idx > 0" class="flex xl:hidden items-center justify-center -my-2 z-10">
-                                    <span class="px-3 py-1 rounded-full bg-gradient-to-r from-emerald-600 to-purple-600 text-white text-[10px] font-black shadow border border-white">
-                                        ⬇ TERHUBUNG SPLIT DARI ODC INDUK ⬇
-                                    </span>
-                                </div>
-
-                                <OdcGroupCard
-                                    :odc-group="item"
-                                    :split-info="item.splitInfo"
-                                    :is-inside-split-pair="unit.items.length >= 2"
-                                    :pon-vlans="getPonVlans(item.odc)"
-                                    :get-odp-split-info-fn="getOdpSplitInfo"
-                                    :get-odp-pon-vlans-fn="getOdpPonVlans"
-                                    :cbp-requests="cbp_requests"
-                                    @open-photo="openOdpDetail"
-                                />
-                            </template>
+                        <div class="network-split-pair__cards">
+                            <OdcGroupCard
+                                v-for="item in unit.items"
+                                :key="item.odc.id"
+                                :odc-group="item"
+                                :split-info="item.splitInfo"
+                                :is-inside-split-pair="unit.items.length >= 2"
+                                :pon-vlans="getPonVlans(item.odc)"
+                                :get-odp-split-info-fn="getOdpSplitInfo"
+                                :get-odp-pon-vlans-fn="getOdpPonVlans"
+                                :cbp-requests="cbp_requests"
+                                @open-photo="openOdpDetail"
+                            />
                         </div>
                     </div>
 
@@ -684,6 +649,7 @@ import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { usePermission } from '@/Composables/usePermission';
 import OdcGroupCard from './Partials/OdcGroupCard.vue';
+import SplitConnectionHeader from './Partials/SplitConnectionHeader.vue';
 
 const { can } = usePermission();
 
@@ -1486,6 +1452,11 @@ const renderPortTopology = (odp, portNum) => {
 </script>
 
 <style>
+.network-split-pair { container: network-split / inline-size; }
+.network-split-pair__cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: stretch; }
+@container network-split (min-width: 700px) {
+    .network-split-pair__cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 .animate-fade-in-up {
     animation: fadeInUp 0.5s ease-out;
 }
