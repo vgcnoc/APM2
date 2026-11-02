@@ -92,13 +92,20 @@ class MaterialController extends Controller
 
         $materials = $query->latest('id')->paginate(10)->withQueryString();
 
-        if ($scopedAreaIds) {
-            $materials->getCollection()->transform(function ($material) {
+        $materials->getCollection()->transform(function ($material) use ($scopedAreaIds) {
+            if ($scopedAreaIds) {
                 $material->scoped_stock = (float) $material->stocks->sum('stock');
                 $material->scoped_initial_stock = (float) $material->stocks->sum('initial_stock');
-                return $material;
-            });
-        }
+            } else {
+                $material->scoped_stock = $material->stocks->isNotEmpty() 
+                    ? (float) $material->stocks->sum('stock') 
+                    : (float) $material->stock;
+                $material->scoped_initial_stock = $material->stocks->isNotEmpty() 
+                    ? (float) $material->stocks->sum('initial_stock') 
+                    : (float) ($material->initial_stock ?? 0);
+            }
+            return $material;
+        });
 
         $areas = $isGlobal 
             ? \App\Models\Area::orderBy('name')->get(['id', 'name'])

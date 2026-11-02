@@ -3259,17 +3259,28 @@ class CustomerController extends Controller
             $schedules = $customer->technicianSchedules()->where('type', 'installation')->whereIn('status', ['scheduled', 'on_the_way', 'working', 'done'])->get();
             $usageDetails = [];
             
-            // Restore previous usage from old MaterialTransaction records if this is an update to prevent double-deduction
-            $oldTrans = \App\Models\MaterialTransaction::where('customer_id', $customer->id)
+            // Restore previous usage from old MaterialTransaction records if this is an update to prevent double-deduction (both OUT-INSTALASI and OUT-BEKAL / jadwal_instalasi)
+            $oldTrans = \App\Models\MaterialTransaction::where(function($q) use ($customer) {
+                    $q->where('customer_id', $customer->id)
+                      ->orWhere(function($q2) use ($customer) {
+                          $q2->where('source_type', 'jadwal_instalasi')
+                             ->where('source_id', $customer->id);
+                      });
+                })
                 ->where('type', 'out')
-                ->where('transaction_number', 'like', 'OUT-INSTALASI-%')
+                ->where(function($q) {
+                    $q->where('transaction_number', 'like', 'OUT-INSTALASI-%')
+                      ->orWhere('transaction_number', 'like', 'OUT-BEKAL-%')
+                      ->orWhere('source_type', 'jadwal_instalasi');
+                })
                 ->with('items.material')
                 ->get();
 
             foreach ($oldTrans as $ot) {
+                $restoreAreaId = $ot->area_id ?: $customer->area_id;
                 foreach ($ot->items as $oi) {
                     $mStock = \App\Models\MaterialStock::where('material_id', $oi->material_id)
-                        ->where('area_id', $customer->area_id)
+                        ->where('area_id', $restoreAreaId)
                         ->first();
                     if ($mStock) {
                         $mStock->increment('stock', (float) $oi->quantity);
@@ -3278,6 +3289,12 @@ class CustomerController extends Controller
                             $mStock->save();
                         }
                     }
+                    // Sinkronkan stok master material dengan total stok seluruh area
+                    $totalAreaStock = \App\Models\MaterialStock::where('material_id', $oi->material_id)->sum('stock');
+                    $oi->material?->update([
+                        'stock' => max(0, $totalAreaStock),
+                        'total_rolls' => ($oi->material->meter_per_roll > 0) ? max(0, $totalAreaStock / $oi->material->meter_per_roll) : $oi->material->total_rolls,
+                    ]);
                 }
                 $ot->items()->delete();
                 $ot->delete();
@@ -3378,28 +3395,50 @@ class CustomerController extends Controller
                 // Tambahkan ONT ke dalam pemakaian (usedItems) agar terpotong dari Stok Area dan masuk log Riwayat Order
                 $customerOnts = $customer->onts()->where('status', 'active')->get();
                 foreach ($customerOnts as $cOnt) {
+                    $ontMat = null;
                     if ($cOnt->material_transaction_item_id) {
                         $mItem = \App\Models\MaterialTransactionItem::find($cOnt->material_transaction_item_id);
-                        if ($mItem && $mItem->material) {
-                            $usedItems[] = [
-                                'material' => $mItem->material,
-                                'qty' => 1,
-                                'unit' => 'pcs',
-                                'actual_used' => 1,
-                                'assigned_qty' => 1,
-                            ];
-                            $rincianNotesUsed[] = "- {$mItem->material->name}: 1 pcs (SN: {$cOnt->serial_number})";
-                        }
+                        $ontMat = $mItem?->material;
+                    }
+                    if (!$ontMat) {
+                        $ontMat = \App\Models\Material::where('category', 'ONT')
+                            ->where(function ($q) use ($cOnt) {
+                                $brand = trim($cOnt->brand ?? '');
+                                $model = trim($cOnt->model ?? '');
+                                if ($brand && $model) {
+                                    $q->where('name', 'like', "%{$brand}%")->where('name', 'like', "%{$model}%");
+                                } elseif ($brand) {
+                                    $q->where('name', 'like', "%{$brand}%");
+                                }
+                            })->first();
+                    }
+                    if ($ontMat) {
+                        $usedItems[] = [
+                            'material' => $ontMat,
+                            'qty' => 1,
+                            'unit' => 'pcs',
+                            'actual_used' => 1,
+                            'assigned_qty' => 1,
+                        ];
+                        $rincianNotesUsed[] = "- {$ontMat->name}: 1 pcs (SN: {$cOnt->serial_number})";
                     }
                 }
 
                 // Proses Instalasi (Memotong Stok Area sesuai Pemakaian / Bekal)
                 if (count($usedItems) > 0) {
                     // Hapus transaksi lama agar tidak ada riwayat ganda saat edit pemasangan
-                    \App\Models\MaterialTransaction::where('customer_id', $customer->id)
+                    \App\Models\MaterialTransaction::where(function($q) use ($customer) {
+                            $q->where('customer_id', $customer->id)
+                              ->orWhere(function($q2) use ($customer) {
+                                  $q2->where('source_type', 'jadwal_instalasi')
+                                     ->where('source_id', $customer->id);
+                              });
+                        })
                         ->whereIn('type', ['out', 'in'])
                         ->where(function($q) {
                             $q->where('transaction_number', 'like', 'OUT-INSTALASI-%')
+                              ->orWhere('transaction_number', 'like', 'OUT-BEKAL-%')
+                              ->orWhere('source_type', 'jadwal_instalasi')
                               ->orWhere('transaction_number', 'like', 'RTR-EXCESS-%')
                               ->orWhere('transaction_number', 'like', 'RTR-INS-%');
                         })
@@ -3459,7 +3498,7 @@ class CustomerController extends Controller
                                 $materialStock->save();
                             }
                         } else {
-                            \App\Models\MaterialStock::create([
+                            $materialStock = \App\Models\MaterialStock::create([
                                 'material_id' => $ui['material']->id,
                                 'area_id' => $customer->area_id,
                                 'stock' => 0,
@@ -3469,6 +3508,13 @@ class CustomerController extends Controller
                                 'total_pieces' => 0
                             ]);
                         }
+
+                        // Sinkronkan stok master material dengan total stok seluruh area
+                        $totalAreaStock = \App\Models\MaterialStock::where('material_id', $ui['material']->id)->sum('stock');
+                        $ui['material']->update([
+                            'stock' => max(0, $totalAreaStock),
+                            'total_rolls' => $ui['material']->meter_per_roll > 0 ? max(0, $totalAreaStock / $ui['material']->meter_per_roll) : $ui['material']->total_rolls,
+                        ]);
                     }
                     $transactionOut->update(['total_cost' => $totalCostOut]);
                 }
@@ -4598,6 +4644,252 @@ class CustomerController extends Controller
     }
 
     /**
+     * Pulihkan alokasi bekal material instalasi sebelumnya (jika ada) untuk pelanggan ini.
+     */
+    private function restorePreviousInstallationBekal(Customer $customer, ?int $customerAreaId = null): void
+    {
+        $targetAreaId = $customerAreaId ?: ($customer->area_id ?: \App\Models\Area::where('name', $customer->area)->value('id'));
+
+        $prevAllocations = \App\Models\MaterialTransaction::where(function($q) use ($customer) {
+                $q->where(function($q2) use ($customer) {
+                    $q2->where('source_type', 'jadwal_instalasi')
+                       ->where('source_id', $customer->id);
+                })->orWhere(function($q2) use ($customer) {
+                    $q2->where('customer_id', $customer->id)
+                       ->where('transaction_number', 'like', 'OUT-BEKAL-%');
+                });
+            })
+            ->with('items.material')
+            ->get();
+
+        foreach ($prevAllocations as $pa) {
+            $allocAreaId = $pa->area_id ?: $targetAreaId;
+            foreach ($pa->items as $pi) {
+                if ($allocAreaId) {
+                    $mStock = \App\Models\MaterialStock::where('material_id', $pi->material_id)
+                        ->where('area_id', $allocAreaId)
+                        ->first();
+                    if ($mStock) {
+                        $mStock->increment('stock', (float) $pi->quantity);
+                        if ($pi->material && $pi->material->meter_per_roll > 0) {
+                            $mStock->total_rolls = max(0, $mStock->stock / $pi->material->meter_per_roll);
+                            $mStock->save();
+                        }
+                    }
+                }
+                // Sinkronkan stok master material dengan total stok seluruh area
+                $totalAreaStock = \App\Models\MaterialStock::where('material_id', $pi->material_id)->sum('stock');
+                $pi->material?->update([
+                    'stock' => max(0, $totalAreaStock),
+                    'total_rolls' => ($pi->material->meter_per_roll > 0) ? max(0, $totalAreaStock / $pi->material->meter_per_roll) : $pi->material->total_rolls,
+                ]);
+            }
+            $pa->items()->delete();
+            $pa->delete();
+        }
+    }
+
+    /**
+     * Alokasikan dan potong stok bekal material instalasi ke gudang area.
+     */
+    private function allocateInstallationBekal(
+        Customer $customer,
+        array $materialItems,
+        ?array $onts = null,
+        array $techIds = [],
+        ?int $customerAreaId = null
+    ): array {
+        $targetAreaId = $customerAreaId ?: ($customer->area_id ?: \App\Models\Area::where('name', $customer->area)->value('id'));
+        if (!$targetAreaId) {
+            return ['matLines' => [], 'trxNumbers' => []];
+        }
+
+        $deductItems = [];
+        $matLines = [];
+        $trxNumbers = [];
+
+        foreach ($materialItems as $m) {
+            if (empty($m['name'])) continue;
+            $qty = isset($m['qty']) ? (float) $m['qty'] : 0;
+            if ($qty <= 0) continue;
+
+            $matName = trim($m['name']);
+            $unitStr = !empty($m['unit']) ? trim($m['unit']) : 'pcs';
+
+            // Resolusi model Material
+            $material = null;
+            if (!empty($m['material_id'])) {
+                $material = \App\Models\Material::find($m['material_id']);
+            }
+            if (!$material && !empty($m['id'])) {
+                if (str_starts_with((string) $m['id'], 'mat-')) {
+                    $material = \App\Models\Material::find(substr((string) $m['id'], 4));
+                } elseif (is_numeric($m['id'])) {
+                    $trxItem = \App\Models\MaterialTransactionItem::with('material')->find($m['id']);
+                    $material = $trxItem?->material;
+                }
+            }
+            if (!$material) {
+                $nameLower = strtolower($matName);
+                $cleanName = trim(preg_replace('/\s*\(.*?\)\s*/', '', $nameLower));
+                $material = \App\Models\Material::where('name', 'like', "%{$cleanName}%")->first();
+                if (!$material && (str_contains($cleanName, 'kabel') || str_contains($cleanName, 'frecon'))) {
+                    $material = \App\Models\Material::where('category', 'Kabel Drop')
+                        ->orWhere('category', 'Kabel')
+                        ->orWhere('name', 'like', '%kabel%')
+                        ->orWhere('name', 'like', '%frecon%')->first();
+                }
+            }
+
+            if ($material) {
+                if (!$unitStr || $unitStr === 'pcs') {
+                    $unitStr = $material->unit ?: 'pcs';
+                    if (str_contains(strtolower($material->name), 'kabel') || str_contains(strtolower($material->name), 'frecon')) {
+                        $unitStr = 'meter';
+                    }
+                }
+
+                // Konversi kabel/frecon jika diinput roll
+                if ($material->meter_per_roll > 0 && strtolower($unitStr) === 'meter') {
+                    if ($qty > 0 && $qty < ($material->meter_per_roll / 2)) {
+                        $qty = $qty * $material->meter_per_roll;
+                    }
+                }
+
+                $deductItems[] = [
+                    'material' => $material,
+                    'qty' => $qty,
+                    'unit' => $unitStr,
+                    'trx_number' => $m['trx_number'] ?? null,
+                ];
+            }
+
+            $matLines[] = "Material: " . $matName . " (" . $qty . " " . $unitStr . ")";
+            if (!empty($m['trx_number']) && $m['trx_number'] !== 'STOK-UTAMA') {
+                $trxNumbers[] = $m['trx_number'];
+            }
+        }
+
+        // Tambahkan ONT ke alokasi stok bekal jika belum ada di deductItems
+        if (!empty($onts)) {
+            foreach ($onts as $ont) {
+                $ontMaterial = null;
+                if ($ont->material_transaction_item_id) {
+                    $mItem = \App\Models\MaterialTransactionItem::find($ont->material_transaction_item_id);
+                    $ontMaterial = $mItem?->material;
+                }
+                if (!$ontMaterial) {
+                    $ontMaterial = \App\Models\Material::where('category', 'ONT')
+                        ->where(function ($q) use ($ont) {
+                            $brand = trim($ont->brand ?? '');
+                            $model = trim($ont->model ?? '');
+                            if ($brand && $model) {
+                                $q->where('name', 'like', "%{$brand}%")->where('name', 'like', "%{$model}%");
+                            } elseif ($brand) {
+                                $q->where('name', 'like', "%{$brand}%");
+                            }
+                        })->first();
+                }
+
+                if ($ontMaterial) {
+                    $alreadyInDeduct = false;
+                    foreach ($deductItems as $di) {
+                        if ($di['material']->id === $ontMaterial->id) {
+                            $alreadyInDeduct = true;
+                            break;
+                        }
+                    }
+                    if (!$alreadyInDeduct) {
+                        $deductItems[] = [
+                            'material' => $ontMaterial,
+                            'qty' => 1,
+                            'unit' => 'pcs',
+                            'trx_number' => null,
+                        ];
+                    }
+                }
+            }
+        }
+
+        // Catat pengeluaran stok & buat transaksi MaterialTransaction OUT-BEKAL
+        if (!empty($deductItems)) {
+            $techUserNames = !empty($techIds) ? \App\Models\User::whereIn('id', $techIds)->pluck('name')->implode(', ') : auth()->user()->name;
+            $transactionOut = \App\Models\MaterialTransaction::create([
+                'transaction_number' => 'OUT-BEKAL-' . date('YmdHis') . '-' . $customer->id,
+                'type' => 'out',
+                'status' => 'approved',
+                'date' => now(),
+                'technician_name' => $techUserNames,
+                'purpose' => 'Bekal Material Jadwal Pasang Pelanggan ' . $customer->name . ' (' . ($customer->customer_id ?? 'ID:' . $customer->id) . ')',
+                'source_type' => 'jadwal_instalasi',
+                'source_id' => $customer->id,
+                'source_reference' => $customer->customer_id ?? ('CUST-' . $customer->id),
+                'user_id' => auth()->id(),
+                'customer_id' => $customer->id,
+                'area_id' => $targetAreaId,
+                'notes' => "Rincian Bekal Material Instalasi:\n" . implode("\n", array_map(function($di) {
+                    return "- " . $di['material']->name . ": " . $di['qty'] . " " . $di['unit'];
+                }, $deductItems)),
+            ]);
+
+            $totalCost = 0;
+            foreach ($deductItems as $di) {
+                $mat = $di['material'];
+                $qty = (float) $di['qty'];
+                $unit = $di['unit'];
+
+                $matStock = \App\Models\MaterialStock::firstOrCreate(
+                    ['material_id' => $mat->id, 'area_id' => $targetAreaId],
+                    ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
+                );
+
+                $stockBefore = (float) $matStock->stock;
+                $stockAfter = max(0, $stockBefore - $qty);
+
+                $ppu = $mat->selling_price ?: ($mat->price_per_unit ?? 0);
+                if (strtolower($mat->category ?? '') === 'kabel' && strtolower($unit) === 'meter') {
+                    $mpr = $mat->meter_per_roll > 0 ? $mat->meter_per_roll : 1000;
+                    $ppu = $ppu / $mpr;
+                }
+                $itemTotal = $ppu * $qty;
+                $totalCost += $itemTotal;
+
+                \App\Models\MaterialTransactionItem::create([
+                    'material_transaction_id' => $transactionOut->id,
+                    'material_id' => $mat->id,
+                    'quantity' => $qty,
+                    'unit' => $unit,
+                    'price_per_unit' => $ppu,
+                    'total_price' => $itemTotal,
+                    'stock_before' => $stockBefore,
+                    'stock_after' => $stockAfter,
+                    'condition' => 'Bekal Instalasi',
+                ]);
+
+                $matStock->update(['stock' => $stockAfter]);
+                if ($mat->meter_per_roll > 0) {
+                    $matStock->total_rolls = max(0, $matStock->stock / $mat->meter_per_roll);
+                    $matStock->save();
+                }
+
+                // Sinkronkan stok master material dengan total stok seluruh area
+                $totalAreaStock = \App\Models\MaterialStock::where('material_id', $mat->id)->sum('stock');
+                $mat->update([
+                    'stock' => max(0, $totalAreaStock),
+                    'total_rolls' => $mat->meter_per_roll > 0 ? max(0, $totalAreaStock / $mat->meter_per_roll) : $mat->total_rolls,
+                ]);
+            }
+
+            $transactionOut->update(['total_cost' => $totalCost]);
+        }
+
+        return [
+            'matLines' => $matLines,
+            'trxNumbers' => $trxNumbers,
+        ];
+    }
+
+    /**
      * 4. Update Jadwal Pasang Inline
      */
     public function updateInstallationSchedule(Request $request, Customer $customer): RedirectResponse
@@ -4617,6 +4909,8 @@ class CustomerController extends Controller
             'notes' => 'nullable|string',
             'ont_id' => 'nullable',
             'material_items' => 'nullable|array',
+            'material_items.*.id' => 'nullable',
+            'material_items.*.material_id' => 'nullable',
             'material_items.*.name' => 'nullable|string',
             'material_items.*.qty' => 'nullable|numeric',
             'material_items.*.unit' => 'nullable|string',
@@ -4641,43 +4935,49 @@ class CustomerController extends Controller
         DB::transaction(function () use ($customer, $customerAreaId, $techIds, $validated, &$finalNotes) {
             $customNotes = [];
 
-            // 1. Link / Update ONT jika dipilih
-            if (!empty($validated['ont_id'])) {
-                $ont = Ont::find($validated['ont_id']);
-                if ($ont) {
+            // 1. Pulihkan alokasi bekal material instalasi sebelumnya jika ada
+            $this->restorePreviousInstallationBekal($customer, $customerAreaId);
+
+            // 2. Link / Update ONT jika dipilih (atau lepas jika dibatalkan)
+            $selectedOnt = null;
+            if ($validated['status'] === 'cancelled') {
+                Ont::where('customer_id', $customer->id)
+                    ->whereNull('rx_power')
+                    ->update(['customer_id' => null]);
+            } elseif (!empty($validated['ont_id'])) {
+                $selectedOnt = Ont::find($validated['ont_id']);
+                if ($selectedOnt) {
                     if ($customer->status === 'installing') {
                         Ont::where('customer_id', $customer->id)
-                            ->where('id', '!=', $ont->id)
+                            ->where('id', '!=', $selectedOnt->id)
                             ->whereNull('rx_power')
                             ->update(['customer_id' => null]);
                     }
-                    if ((int) $ont->customer_id !== (int) $customer->id) {
-                        $ont->update([
+                    if ((int) $selectedOnt->customer_id !== (int) $customer->id) {
+                        $selectedOnt->update([
                             'customer_id' => $customer->id,
                         ]);
                     }
-                    $name = $ont->brand . ($ont->model ? ' ' . $ont->model : '') . ' (SN: ' . $ont->serial_number . ')';
+                    $name = $selectedOnt->brand . ($selectedOnt->model ? ' ' . $selectedOnt->model : '') . ' (SN: ' . $selectedOnt->serial_number . ')';
                     $customNotes[] = "ONT: " . $name;
                 }
             }
 
-            // 2. Format Material Items
-            if (!empty($validated['material_items'])) {
-                $matLines = [];
-                $trxNumbers = [];
-                foreach ($validated['material_items'] as $m) {
-                    if (!empty($m['name']) && !empty($m['qty']) && (float) $m['qty'] > 0) {
-                        $matLines[] = "Material: " . trim($m['name']) . " (" . $m['qty'] . " " . ($m['unit'] ?: 'pcs') . ")";
-                        if (!empty($m['trx_number']) && $m['trx_number'] !== 'STOK-UTAMA') {
-                            $trxNumbers[] = $m['trx_number'];
-                        }
-                    }
+            // 3. Format Material Items & Alokasikan Bekal jika bukan status cancelled
+            if ($validated['status'] !== 'cancelled') {
+                $alloc = $this->allocateInstallationBekal(
+                    $customer,
+                    $validated['material_items'] ?? [],
+                    $selectedOnt ? [$selectedOnt] : null,
+                    $techIds,
+                    $customerAreaId
+                );
+
+                if (!empty($alloc['trxNumbers'])) {
+                    $customNotes[] = "Material diambil dari Surat Jalan / Order: " . implode(', ', array_unique($alloc['trxNumbers']));
                 }
-                if (!empty($trxNumbers)) {
-                    $customNotes[] = "Material diambil dari Surat Jalan / Order: " . implode(', ', array_unique($trxNumbers));
-                }
-                if (!empty($matLines)) {
-                    $customNotes = array_merge($customNotes, $matLines);
+                if (!empty($alloc['matLines'])) {
+                    $customNotes = array_merge($customNotes, $alloc['matLines']);
                 }
             }
 
@@ -5118,6 +5418,9 @@ class CustomerController extends Controller
         // 3. EXECUTE UPDATES
         $finalNotes = '';
         DB::transaction(function () use ($ontsToUpdate, $ontIds, $validated, $customer, $customerAreaId, &$customNotes, &$finalNotes) {
+            // 1. Pulihkan alokasi bekal instalasi sebelumnya jika ada
+            $this->restorePreviousInstallationBekal($customer, $customerAreaId);
+
             // Lepaskan ONT lama yang belum terpasang bila diganti saat penjadwalan ulang
             if ($customer->status === 'installing') {
                 $unlinkQuery = Ont::where('customer_id', $customer->id)->whereNull('rx_power');
@@ -5155,7 +5458,15 @@ class CustomerController extends Controller
                 }
             }
 
-            // Material Notes (mendukung material dari Surat Jalan/PO maupun langsung dari Inventory Gudang)
+            // Alokasikan bekal material & potong stok gudang area
+            $alloc = $this->allocateInstallationBekal(
+                $customer,
+                $validated['material_items'] ?? [],
+                $ontsToUpdate->all(),
+                $validated['technician_ids'] ?? [],
+                $customerAreaId
+            );
+
             $trxNumbers = [];
             if (!empty($validated['material_transaction_ids'])) {
                 foreach ($validated['material_transaction_ids'] as $trxNo) {
@@ -5164,26 +5475,14 @@ class CustomerController extends Controller
                     }
                 }
             }
-            $matLines = [];
-            if (!empty($validated['material_items'])) {
-                foreach ($validated['material_items'] as $mItem) {
-                    if (!empty($mItem['name']) && !empty($mItem['qty']) && (float) $mItem['qty'] > 0) {
-                        $matLines[] = "Material: " . trim($mItem['name']) . " (" . $mItem['qty'] . " " . ($mItem['unit'] ?: 'pcs') . ")";
-                        if (!empty($mItem['trx_number']) && $mItem['trx_number'] !== 'STOK-UTAMA') {
-                            $trxNumbers[] = $mItem['trx_number'];
-                        }
-                    }
-                }
+            if (!empty($alloc['trxNumbers'])) {
+                $trxNumbers = array_merge($trxNumbers, $alloc['trxNumbers']);
             }
-            $trxBlock = [];
             if (!empty($trxNumbers)) {
-                $trxBlock[] = "Material diambil dari Surat Jalan / Order: " . implode(', ', array_unique($trxNumbers));
+                $customNotes[] = "Material diambil dari Surat Jalan / Order: " . implode(', ', array_unique($trxNumbers));
             }
-            if (!empty($matLines)) {
-                $trxBlock = array_merge($trxBlock, $matLines);
-            }
-            if (!empty($trxBlock)) {
-                $customNotes[] = implode("\n", $trxBlock);
+            if (!empty($alloc['matLines'])) {
+                $customNotes = array_merge($customNotes, $alloc['matLines']);
             }
 
             $cleanNoteLines = [];

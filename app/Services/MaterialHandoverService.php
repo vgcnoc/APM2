@@ -551,10 +551,10 @@ class MaterialHandoverService
                     });
 
                     // Khusus instalasi / customer
-                    if (in_array(strtolower($sourceType), ['instalasi', 'installation', 'customer'])) {
+                    if (in_array(strtolower($sourceType), ['instalasi', 'installation', 'customer', 'jadwal_instalasi'])) {
                         $q->orWhere('customer_id', $sourceId)
                           ->orWhere(function ($cq) use ($sourceId) {
-                              $cq->whereIn('source_type', ['instalasi', 'installation', 'customer'])
+                              $cq->whereIn('source_type', ['instalasi', 'installation', 'customer', 'jadwal_instalasi'])
                                  ->where('source_id', $sourceId);
                           });
                     }
