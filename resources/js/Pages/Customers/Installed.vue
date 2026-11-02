@@ -41,21 +41,75 @@
         </div>
 
         <!-- Tabs Menu -->
-        <div class="flex flex-wrap gap-2 mb-6 bg-slate-50/50 p-1.5 rounded-xl border border-slate-100 overflow-x-auto">
-            <button @click="filterState.tab = ''; applyFilter()" :class="['px-4 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 whitespace-nowrap flex-1 text-center', filterState.tab === '' ? 'bg-white text-gray-900 shadow-sm ring-1 ring-gray-900/5' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50']">
-                Semua Status
+        <div class="flex flex-wrap items-center gap-1.5 mb-6 bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200/70 overflow-x-auto shadow-2xs">
+            <button 
+                type="button"
+                @click="filterState.tab = ''; applyFilter()" 
+                :class="[
+                    'px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 whitespace-nowrap flex-1 flex items-center justify-center gap-2 cursor-pointer', 
+                    filterState.tab === '' 
+                        ? 'bg-white text-slate-900 shadow-xs ring-1 ring-slate-200' 
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                ]"
+            >
+                <span>Semua Status</span>
+                <span v-if="stats?.semua !== undefined" :class="['px-2 py-0.5 rounded-full text-[10px] font-bold', filterState.tab === '' ? 'bg-slate-100 text-slate-800 border border-slate-200' : 'bg-slate-200/70 text-slate-600']">{{ stats.semua }}</span>
             </button>
-            <button @click="filterState.tab = 'jadwal_pasang'; applyFilter()" :class="['px-4 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 whitespace-nowrap flex-1 text-center', filterState.tab === 'jadwal_pasang' ? 'bg-white text-blue-600 shadow-sm ring-1 ring-gray-900/5' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50']">
-                Jadwal Pasang
+            <button 
+                type="button"
+                @click="filterState.tab = 'jadwal_pasang'; applyFilter()" 
+                :class="[
+                    'px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 whitespace-nowrap flex-1 flex items-center justify-center gap-2 cursor-pointer', 
+                    filterState.tab === 'jadwal_pasang' 
+                        ? 'bg-white text-blue-600 shadow-xs ring-1 ring-blue-200' 
+                        : 'text-slate-600 hover:text-blue-600 hover:bg-white/60'
+                ]"
+            >
+                <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                <span>Jadwal Pasang</span>
+                <span v-if="stats?.jadwal_pasang !== undefined" :class="['px-2 py-0.5 rounded-full text-[10px] font-bold', filterState.tab === 'jadwal_pasang' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-slate-200/70 text-slate-600']">{{ stats.jadwal_pasang }}</span>
             </button>
-            <button @click="filterState.tab = 'laporan_pasang'; applyFilter()" :class="['px-4 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 whitespace-nowrap flex-1 text-center', filterState.tab === 'laporan_pasang' ? 'bg-white text-amber-600 shadow-sm ring-1 ring-gray-900/5' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50']">
-                Laporan Pasang
+            <button 
+                type="button"
+                @click="filterState.tab = 'laporan_pasang'; applyFilter()" 
+                :class="[
+                    'px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 whitespace-nowrap flex-1 flex items-center justify-center gap-2 cursor-pointer', 
+                    filterState.tab === 'laporan_pasang' 
+                        ? 'bg-white text-amber-600 shadow-xs ring-1 ring-amber-200' 
+                        : 'text-slate-600 hover:text-amber-600 hover:bg-white/60'
+                ]"
+            >
+                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                <span>Laporan Pasang</span>
+                <span v-if="stats?.laporan_pasang !== undefined" :class="['px-2 py-0.5 rounded-full text-[10px] font-bold', filterState.tab === 'laporan_pasang' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-slate-200/70 text-slate-600']">{{ stats.laporan_pasang }}</span>
             </button>
-            <button @click="filterState.tab = 'audit'; applyFilter()" :class="['px-4 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 whitespace-nowrap flex-1 text-center', filterState.tab === 'audit' ? 'bg-white text-purple-600 shadow-sm ring-1 ring-gray-900/5' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50']">
-                Audit
+            <button 
+                type="button"
+                @click="filterState.tab = 'audit'; applyFilter()" 
+                :class="[
+                    'px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 whitespace-nowrap flex-1 flex items-center justify-center gap-2 cursor-pointer', 
+                    filterState.tab === 'audit' 
+                        ? 'bg-white text-purple-600 shadow-xs ring-1 ring-purple-200' 
+                        : 'text-slate-600 hover:text-purple-600 hover:bg-white/60'
+                ]"
+            >
+                <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+                <span>Audit</span>
+                <span v-if="stats?.audit !== undefined" :class="['px-2 py-0.5 rounded-full text-[10px] font-bold', filterState.tab === 'audit' ? 'bg-purple-50 text-purple-700 border border-purple-200' : 'bg-slate-200/70 text-slate-600']">{{ stats.audit }}</span>
             </button>
-            <button @click="filterState.tab = 'selesai_instalasi'; applyFilter()" :class="['px-4 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 whitespace-nowrap flex-1 text-center', filterState.tab === 'selesai_instalasi' ? 'bg-white text-emerald-600 shadow-sm ring-1 ring-gray-900/5' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50']">
-                Selesai Instalasi
+            <button 
+                type="button"
+                @click="filterState.tab = 'selesai_instalasi'; applyFilter()" 
+                :class="[
+                    'px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 whitespace-nowrap flex-1 flex items-center justify-center gap-2 cursor-pointer', 
+                    filterState.tab === 'selesai_instalasi' 
+                        ? 'bg-white text-emerald-600 shadow-xs ring-1 ring-emerald-200' 
+                        : 'text-slate-600 hover:text-emerald-600 hover:bg-white/60'
+                ]"
+            >
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span>Selesai Instalasi</span>
+                <span v-if="stats?.selesai_instalasi !== undefined" :class="['px-2 py-0.5 rounded-full text-[10px] font-bold', filterState.tab === 'selesai_instalasi' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-200/70 text-slate-600']">{{ stats.selesai_instalasi }}</span>
             </button>
         </div>
 
@@ -71,13 +125,13 @@
             <template #filters>
                 <form v-can="'customers_installed_filter'" @submit.prevent="applyFilter" class="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 w-full">
                     <!-- Filter Teknisi -->
-                    <select v-model="filterState.technician_id" @change="applyFilter" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all pr-8">
+                    <select v-model="filterState.technician_id" @change="applyFilter" class="w-full md:w-auto px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-2xs transition-all pr-8">
                         <option value="">Semua Teknisi</option>
                         <option v-for="tech in technicians" :key="tech.id" :value="tech.id">{{ tech.name }}</option>
                     </select>
 
                     <!-- Filter Area -->
-                    <select v-model="filterState.area" @change="applyFilter" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all pr-8">
+                    <select v-model="filterState.area" @change="applyFilter" class="w-full md:w-auto px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-2xs transition-all pr-8">
                         <option value="">Semua Area</option>
                         <option v-for="area in areas" :key="typeof area === 'object' && area !== null ? (area.name || area.id) : area" :value="typeof area === 'object' && area !== null ? (area.name || area.id) : area">
                             {{ typeof area === 'object' && area !== null ? area.name : area }}
@@ -85,17 +139,17 @@
                     </select>
                     
                     <div class="flex items-center gap-2 w-full md:w-auto">
-                        <input type="date" v-model="filterState.date_from" @change="applyFilter" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all" title="Tanggal Dari">
-                        <span class="text-xs text-gray-500 font-medium px-1">s/d</span>
-                        <input type="date" v-model="filterState.date_to" @change="applyFilter" class="w-full md:w-auto px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all" title="Tanggal Sampai">
+                        <input type="date" v-model="filterState.date_from" @change="applyFilter" class="w-full md:w-auto px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-2xs transition-all" title="Tanggal Dari">
+                        <span class="text-xs text-slate-400 font-medium px-0.5">s/d</span>
+                        <input type="date" v-model="filterState.date_to" @change="applyFilter" class="w-full md:w-auto px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-2xs transition-all" title="Tanggal Sampai">
                     </div>
 
                     <div class="flex items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
-                        <button type="submit" class="w-full md:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-xl transition-colors shadow-sm shadow-blue-200">
-                            Tampilkan
+                        <button type="submit" class="w-full md:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl transition-all shadow-sm shadow-blue-200 cursor-pointer">
+                            Terapkan
                         </button>
                         
-                        <button type="button" @click="resetFilter" class="w-full md:w-auto px-4 py-2 bg-gray-50 text-gray-700 hover:bg-gray-100 font-medium text-sm rounded-xl transition-colors">
+                        <button type="button" @click="resetFilter" class="w-full md:w-auto px-3.5 py-2 bg-slate-100 text-slate-600 hover:bg-slate-200 font-semibold text-xs rounded-xl transition-all cursor-pointer">
                             Reset
                         </button>
                     </div>
@@ -106,15 +160,15 @@
                 <div class="flex items-center gap-2">
                     <button v-if="selectedIds.length > 0" 
                         @click="openPrintModal" 
-                        class="px-4 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-medium text-sm rounded-lg transition-colors border border-indigo-200 flex items-center gap-2">
+                        class="px-3.5 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-semibold text-xs rounded-xl transition-colors border border-indigo-200 flex items-center gap-2 cursor-pointer shadow-2xs">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                        Print Card
+                        <span>Print Card ({{ selectedIds.length }})</span>
                     </button>
                     <button v-if="canDelete && selectedIds.length > 0" 
                         @click="bulkDelete" 
-                        class="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 font-medium text-sm rounded-lg transition-colors border border-red-200 flex items-center gap-2">
+                        class="px-3.5 py-2 bg-red-50 text-red-600 hover:bg-red-100 font-semibold text-xs rounded-xl transition-colors border border-red-200 flex items-center gap-2 cursor-pointer shadow-2xs">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                        Hapus Terpilih ({{ selectedIds.length }})
+                        <span>Hapus Terpilih ({{ selectedIds.length }})</span>
                     </button>
                 </div>
             </template>
@@ -141,19 +195,19 @@
                 <!-- Pelanggan -->
                 <td>
                     <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center text-sm font-bold text-gray-900 shrink-0">
-                            {{ row.name.charAt(0) }}
+                        <div :class="['w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-2xs', getAvatarColor(row.name)]">
+                            {{ (row.name || 'P').charAt(0).toUpperCase() }}
                         </div>
                         <div>
-                            <Link :href="`/customers/${row.id}?source=instalasi`" class="text-gray-900 font-medium hover:text-blue-400 transition-colors">
+                            <Link :href="`/customers/${row.id}?source=instalasi`" class="text-slate-900 font-bold hover:text-blue-600 transition-colors block text-xs md:text-sm">
                                 {{ row.name }}
                             </Link>
-                            <p class="text-xs text-gray-500 font-mono">{{ row.customer_code }}</p>
-                            <div v-if="getAssignedTechnicians(row, 'installation') !== '-'" class="mt-1 flex items-center gap-1 text-[11px] text-blue-600 font-semibold bg-blue-50/70 px-1.5 py-0.5 rounded border border-blue-100/60 w-fit">
+                            <p class="text-[11px] text-slate-500 font-mono">{{ row.customer_code }}</p>
+                            <div v-if="getAssignedTechnicians(row, 'installation') !== '-'" class="mt-1 flex items-center gap-1 text-[11px] text-blue-700 font-semibold bg-blue-50/80 px-2 py-0.5 rounded-md border border-blue-100 w-fit">
                                 <svg class="w-3 h-3 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                                 <span>Teknisi: {{ getAssignedTechnicians(row, 'installation') }}</span>
                             </div>
-                            <div v-else-if="getCustomerProgressStatus(row) === 'jadwal_pasang'" class="mt-1 flex items-center gap-1 text-[11px] text-amber-600 font-medium bg-amber-50/70 px-1.5 py-0.5 rounded border border-amber-100/60 w-fit">
+                            <div v-else-if="getCustomerProgressStatus(row) === 'jadwal_pasang'" class="mt-1 flex items-center gap-1 text-[11px] text-amber-700 font-semibold bg-amber-50/80 px-2 py-0.5 rounded-md border border-amber-200/70 w-fit">
                                 <svg class="w-3 h-3 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 <span>Belum Dijadwalkan</span>
                             </div>
@@ -167,40 +221,40 @@
                     <span v-else-if="row.service_status === 'gratis'" class="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold whitespace-nowrap">
                         <span>🎁</span> Gratis
                     </span>
-                    <span v-else class="text-xs text-cyan-400 font-medium">{{ row.package?.name || '-' }}</span>
+                    <span v-else class="text-xs text-blue-600 font-bold whitespace-nowrap">{{ row.package?.name || '-' }}</span>
                 </td>
                 <td>
                     <StatusBadge :status="getCustomerProgressStatus(row)" />
                 </td>
                 <td>
-                    <span v-if="row.ont" class="text-xs font-mono text-gray-600">{{ row.ont.serial_number }}</span>
-                    <span v-else class="text-xs text-gray-600">-</span>
+                    <span v-if="row.ont?.serial_number" class="text-xs font-mono font-semibold text-slate-800 bg-slate-100/80 px-2 py-0.5 rounded border border-slate-200/60 whitespace-nowrap">{{ row.ont.serial_number }}</span>
+                    <span v-else class="text-xs text-slate-400">-</span>
                 </td>
                 <td>
                     <template v-if="row.ont?.odp">
                         <div class="text-xs space-y-0.5">
-                            <p v-if="row.ont.odp.odc?.olt" class="text-gray-500">{{ row.ont.odp.odc.olt.name }}</p>
-                            <p class="text-gray-500">
-                                <span v-if="row.ont.odp.odc">→ {{ row.ont.odp.odc.name }}</span>
-                                → {{ row.ont.odp.name }}
+                            <p v-if="row.ont.odp.odc?.olt" class="text-[11px] text-slate-500 font-medium">{{ row.ont.odp.odc.olt.name }}</p>
+                            <p class="text-xs text-slate-700 font-medium whitespace-nowrap">
+                                <span v-if="row.ont.odp.odc" class="text-slate-400">→ {{ row.ont.odp.odc.name }} </span>
+                                <span class="text-emerald-700 font-bold bg-emerald-50/80 px-1.5 py-0.5 rounded border border-emerald-200/60">→ {{ row.ont.odp.name }}</span>
                             </p>
                         </div>
                     </template>
-                    <span v-else class="text-xs text-gray-600">-</span>
+                    <span v-else class="text-xs text-slate-400">-</span>
                 </td>
                 <td>
-                    <div v-if="row.ont?.rx_power" class="space-y-0.5">
+                    <div v-if="row.ont?.rx_power" class="space-y-0.5 whitespace-nowrap">
                         <span :class="signalClass(row.ont.rx_power)" class="text-sm font-mono font-bold block">
                             {{ row.ont.rx_power }} dBm
                         </span>
-                        <div v-if="row.ont?.initial_rx_power && row.ont.initial_rx_power != row.ont.rx_power" class="text-[10px] text-gray-500 font-mono" title="Redaman acuan awal saat instalasi PSB">
+                        <div v-if="row.ont?.initial_rx_power && row.ont.initial_rx_power != row.ont.rx_power" class="text-[10px] text-slate-500 font-mono" title="Redaman acuan awal saat instalasi PSB">
                             Awal: {{ row.ont.initial_rx_power }} dBm
                         </div>
                         <div v-if="row.ont?.last_rx_ticket_ref" class="text-[9px] text-emerald-600 font-semibold" :title="'Diperbarui pasca penanganan gangguan tiket ' + row.ont.last_rx_ticket_ref">
                             ✓ {{ row.ont.last_rx_ticket_ref }}
                         </div>
                     </div>
-                    <span v-else class="text-gray-600">-</span>
+                    <span v-else class="text-slate-400 text-xs">-</span>
                 </td>
             </template>
         </DataTable>
@@ -1548,13 +1602,13 @@ function bulkDelete() {
 }
 
 const columns = [
-    { key: 'actions', label: 'Aksi', class: 'whitespace-nowrap min-w-[100px]' },
-    { key: 'name', label: 'Pelanggan' },
-    { key: 'package', label: 'Paket' },
-    { key: 'status', label: 'Status' },
+    { key: 'actions', label: 'AKSI', class: 'whitespace-nowrap min-w-[100px]' },
+    { key: 'name', label: 'PELANGGAN' },
+    { key: 'package', label: 'PAKET' },
+    { key: 'status', label: 'STATUS' },
     { key: 'ont', label: 'ONT S/N' },
-    { key: 'topology', label: 'Topologi' },
-    { key: 'signal', label: 'Redaman' },
+    { key: 'topology', label: 'TOPOLOGI & ODP' },
+    { key: 'signal', label: 'REDAMAN' },
 ];
 
 const activeCustomer = ref(null);
@@ -1833,11 +1887,11 @@ function resetFilter() {
 }
 
 function signalClass(rx) {
-    if (!rx) return 'text-gray-500';
-    if (rx >= -20) return 'text-emerald-400';
-    if (rx >= -25) return 'text-green-400';
-    if (rx >= -28) return 'text-yellow-400';
-    return 'text-red-400';
+    if (!rx) return 'text-slate-400';
+    if (rx >= -20) return 'text-emerald-600';
+    if (rx >= -25) return 'text-teal-600';
+    if (rx >= -28) return 'text-amber-600';
+    return 'text-rose-600';
 }
 
 const showAssignModal = ref(false);
