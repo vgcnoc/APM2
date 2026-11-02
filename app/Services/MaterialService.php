@@ -128,6 +128,10 @@ class MaterialService
                 DB::table('material_request_items')->where('material_id', $source->id)->update(['material_id' => $target->id]);
             }
 
+            // Update brand pada ONT dan nama di material_transaction_items
+            \App\Models\Ont::where('brand', $source->name)->update(['brand' => $target->name]);
+            MaterialTransactionItem::where('material_id', $target->id)->update(['material_name' => $target->name]);
+
             // 4. Bersihkan sisa stok source & hapus source material
             MaterialStock::where('material_id', $source->id)->delete();
             $source->delete();

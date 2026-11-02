@@ -271,7 +271,13 @@ class MaterialController extends Controller
             return redirect()->route('materials.index')->with('success', 'Data material berhasil diperbarui dan menimpa data material sebelumnya.');
         }
 
+        $oldName = $material->name;
         $material->update($validated);
+
+        if ($oldName && $oldName !== $material->name) {
+            \App\Models\Ont::where('brand', $oldName)->update(['brand' => $material->name]);
+            \App\Models\MaterialTransactionItem::where('material_id', $material->id)->update(['material_name' => $material->name]);
+        }
 
         if ($areaId) {
             $existingStocks = \App\Models\MaterialStock::where('material_id', $material->id)->get();
