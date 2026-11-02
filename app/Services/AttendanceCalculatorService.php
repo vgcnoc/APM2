@@ -38,9 +38,14 @@ class AttendanceCalculatorService
         $isPastMonth = $startOfMonth->isBefore($today->copy()->startOfMonth());
         $isFutureMonth = $startOfMonth->isAfter($today->copy()->endOfMonth());
 
-        // Batas hari berjalan (jika bulan berjalan, batasnya adalah hari ini; jika masa lalu, batasnya akhir bulan; jika masa depan, batasnya 0)
+        $nowCalc = Carbon::now('Asia/Jakarta');
+        $cutoffTimeCalc = Setting::get('attendance_checkout_deadline_time', '23:30');
+        $isTodayClosedCalc = $nowCalc->format('H:i') >= $cutoffTimeCalc;
+
+        // Batas hari kerja yang telah selesai dievaluasi:
+        // Jika bulan berjalan: jika jam sekarang belum melewati batas checkout malam (23:30), maka hari ini masih berlangsung sehingga cutoff adalah kemarin.
         $effectiveCutoffDate = $isCurrentMonth 
-            ? $today->copy() 
+            ? ($isTodayClosedCalc ? $today->copy() : $today->copy()->subDay()) 
             : ($isPastMonth ? $endOfMonth->copy() : $startOfMonth->copy()->subDay());
 
         // Hitung hari kerja (Senin - Sabtu, Minggu off)
@@ -76,6 +81,7 @@ class AttendanceCalculatorService
             'is_past_month' => $isPastMonth,
             'is_future_month' => $isFutureMonth,
             'period_label' => "01 {$startOfMonth->translatedFormat('M Y')} s/d {$endOfMonth->translatedFormat('d M Y')}",
+            'is_today_closed' => $isTodayClosedCalc,
         ];
     }
 
@@ -627,13 +633,8 @@ class AttendanceCalculatorService
                                 }
                                 if ($sDate === $todayDate) {
                                     $schedShift = $s->shift_id ? $shiftsById->get($s->shift_id) : null;
-                                    if ($schedShift && $schedShift->start_time) {
-                                        $win = self::resolveShiftWindow($sDate, $schedShift, 'Asia/Jakarta');
-                                        if ($win && $now->lessThan($win['start'])) {
-                                            return false;
-                                        }
-                                    }
-                                    return true;
+                                    $deadline = self::resolveCheckoutDeadline(null, $settings, $schedShift, 'Asia/Jakarta');
+                                    return $now->greaterThan($deadline);
                                 }
                                 return false;
                             })->count();
@@ -679,6 +680,18 @@ class AttendanceCalculatorService
                         }
                     }
                 }
+            }
+
+            // Cek apakah karyawan sudah hadir/clock-in hari ini
+            $hasClockedInToday = $empAtts->filter(function ($a) use ($todayDate) {
+                $aDate = is_string($a->date) ? substr($a->date, 0, 10) : $a->date->format('Y-m-d');
+                return $aDate === $todayDate && !empty($a->clock_in);
+            })->isNotEmpty();
+
+            // Jika hari ini belum berakhir (checkout deadline belum lewat), tapi karyawan sudah hadir clock-in:
+            // maka hari kerja yang dijalani karyawan bertambah +1 agar seimbang dengan total kehadiran
+            if ($hasClockedInToday && !($periodDetails['is_today_closed'] ?? false)) {
+                $empElapsedWorkDays++;
             }
 
             // Alpha = hari kerja yang telah berjalan dikurangi kehadiran & dinas luar (ditambah alpha manual)
