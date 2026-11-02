@@ -1,6 +1,6 @@
 <template>
     <div
-        class="rounded-xl transition-all group bg-white flex flex-col relative overflow-hidden"
+        class="min-w-0 rounded-xl transition-all group bg-white flex flex-col relative overflow-hidden"
         :class="[
             splitInfo?.role === 'induk'
                 ? 'border-2 border-emerald-300/90 hover:border-emerald-400 shadow-xs hover:shadow-md'

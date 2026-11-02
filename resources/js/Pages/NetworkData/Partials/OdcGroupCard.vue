@@ -1,6 +1,6 @@
 <template>
     <div
-        class="flex flex-col h-full rounded-xl overflow-hidden transition-all"
+        class="odc-group min-w-0 flex flex-col h-full rounded-xl overflow-hidden transition-all"
         :class="[
             splitInfo?.role === 'induk'
                 ? 'ring-2 ring-emerald-400/80 shadow-md'
@@ -18,7 +18,7 @@
             <h3 class="odc-header__name">{{ odcGroup.odc.name }}</h3>
             <p class="odc-header__location">{{ odcGroup.odc.location || odcGroup.odc.address || 'Tanpa alamat' }}</p>
 
-            <div v-if="splitInfo?.partnerLabel" class="odc-header__partner">
+            <div v-if="splitInfo?.partnerLabel && !isInsideSplitPair" class="odc-header__partner">
                 <span>{{ splitInfo.role === 'induk' ? 'Terhubung ke lanjutan' : 'Terhubung dari induk' }}</span>
                 <strong>{{ splitInfo.partnerLabel }}</strong>
             </div>
@@ -257,40 +257,47 @@ const getPairTotalPorts = (items) => {
 </script>
 
 <style scoped>
-.odc-odp-grid, .split-odp-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 16px; align-items: stretch; }
+.odc-group { container: network-odc / inline-size; }
+.odc-odp-grid, .split-odp-cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: stretch; }
+@container network-odc (min-width: 360px) {
+    .odc-odp-grid, .split-odp-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container network-odc (min-width: 1050px) {
+    .odc-odp-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 .odc-header {
     --odc-accent: #6366f1;
+    --odc-muted: #d8deee;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: 20px;
+    gap: 8px;
+    padding: 14px 16px;
     border-top: 4px solid var(--odc-accent);
     border-bottom: 1px solid var(--border-dark, #e2e8f0);
-    background: var(--bg-dark-card, #fff);
-    color: var(--odc-text, #1e293b);
+    background: #242044;
+    color: #fff;
 }
-.odc-header--induk { --odc-accent: #059669; }
-.odc-header--lanjutan { --odc-accent: #9333ea; }
+.odc-header--induk { --odc-accent: #34d399; background: linear-gradient(110deg, #113d35, #1e293b); }
+.odc-header--lanjutan { --odc-accent: #c084fc; background: linear-gradient(110deg, #48206b, #292044); }
 .odc-header__role { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .odc-header__dot { height: 8px; width: 8px; flex-shrink: 0; border-radius: 50%; background: var(--odc-accent); }
 .odc-header__server, .odc-header__location { margin: 0; font-size: 12px; color: var(--odc-muted, #64748b); overflow-wrap: anywhere; }
-.odc-header__name { margin: 0; color: inherit; font-size: 20px; font-weight: 800; line-height: 1.4; overflow-wrap: anywhere; }
-.odc-header__partner { display: grid; gap: 4px; padding: 10px 12px; border-left: 3px solid var(--odc-accent); border-radius: 4px; background: var(--bg-dark-well, #f8fafc); overflow-wrap: anywhere; }
+.odc-header .odc-header__name { margin: 0; color: #fff !important; font-size: 19px; font-weight: 800; line-height: 1.35; overflow-wrap: anywhere; }
+.odc-header__partner { display: grid; gap: 4px; padding: 8px 10px; border-left: 3px solid var(--odc-accent); border-radius: 4px; background: rgb(255 255 255 / .07); overflow-wrap: anywhere; }
 .odc-header__partner span, .odc-header__label { font-size: 10px; color: var(--odc-muted, #64748b); font-weight: 650; }
 .odc-header__partner strong { font-size: 12px; line-height: 1.5; }
 .odc-header__specs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; }
 .odc-header__specs dt { font-size: 10px; color: var(--odc-muted, #64748b); }
 .odc-header__specs dd { margin: 4px 0 0; font-size: 13px; font-weight: 750; overflow-wrap: anywhere; }
-.odc-header__cable { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding-top: 10px; border-top: 1px solid var(--border-dark, #e2e8f0); }
+.odc-header__cable { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding-top: 8px; border-top: 1px solid rgb(255 255 255 / .15); }
 .odc-header__cable p { margin: 0; font-size: 11px; overflow-wrap: anywhere; }
 .odc-header__vlans { display: grid; gap: 6px; }
-.odc-header__vlan { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 4px 6px; border: 1px solid var(--border-dark, #e2e8f0); border-radius: 6px; font-size: 11px; }
+.odc-header__vlan { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 3px 6px; border: 1px solid rgb(255 255 255 / .15); border-radius: 6px; font-size: 11px; }
 .odc-header__vlan-name { color: var(--odc-muted, #64748b); font-size: 10px; overflow-wrap: anywhere; }
-.odc-header__stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: auto; padding-top: 14px; border-top: 1px solid var(--border-dark, #e2e8f0); }
+.odc-header__stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: auto; padding-top: 10px; border-top: 1px solid rgb(255 255 255 / .15); }
 .odc-header__stats div { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .odc-header__stats strong { font-size: 24px; line-height: 1; }
 .odc-header__stats span { font-size: 11px; color: var(--odc-muted, #64748b); }
-:global(html.dark) .odc-header { --odc-text: #f1f5f9; --odc-muted: #c4b5d4; }
 @media (max-width: 480px) { .odc-header { padding: 16px; } }
 </style>
 

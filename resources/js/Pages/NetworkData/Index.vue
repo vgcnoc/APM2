@@ -150,7 +150,7 @@
                     <!-- CONNECTED ODC SPLIT PAIR FRAME (Berdampingan Induk <-> Lanjutan) -->
                     <div
                         v-if="unit.isSplitPair"
-                        class="rounded-2xl border border-gray-200 bg-gray-50/50 p-3 md:p-5 shadow-sm space-y-5"
+                        class="network-split-pair rounded-2xl border border-gray-200 bg-gray-50/50 p-3 md:p-4 shadow-sm space-y-4"
                     >
                         <SplitConnectionHeader
                             kind="ODC"
@@ -169,7 +169,7 @@
                             </span>
                         </SplitConnectionHeader>
 
-                        <div class="grid grid-cols-1 xl:grid-cols-2 gap-5 items-stretch">
+                        <div class="network-split-pair__cards">
                             <OdcGroupCard
                                 v-for="item in unit.items"
                                 :key="item.odc.id"
@@ -1452,6 +1452,11 @@ const renderPortTopology = (odp, portNum) => {
 </script>
 
 <style>
+.network-split-pair { container: network-split / inline-size; }
+.network-split-pair__cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: stretch; }
+@container network-split (min-width: 700px) {
+    .network-split-pair__cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 .animate-fade-in-up {
     animation: fadeInUp 0.5s ease-out;
 }
