@@ -591,6 +591,7 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['permission:menu_financial_reports'])->group(function () {
         Route::get('tax-reports/print', [\App\Http\Controllers\TaxReportController::class, 'print'])->name('tax.reports.print');
         Route::get('tax-reports', [\App\Http\Controllers\TaxReportController::class, 'index'])->name('tax.reports.index');
+        Route::get('/financial-reports/print', [\App\Http\Controllers\FinancialReportController::class, 'print'])->name('financial-reports.print');
         Route::get('/financial-reports', [\App\Http\Controllers\FinancialReportController::class, 'index'])->name('financial-reports.index');
         Route::get('/customer-reports', [\App\Http\Controllers\CustomerReportController::class, 'index'])->name('customer-reports.index');
     });

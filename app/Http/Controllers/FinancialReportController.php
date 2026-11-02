@@ -47,24 +47,35 @@ class FinancialReportController extends Controller
             ->whereBetween('payment_date', [$startDate, $endDate])
             ->get();
             
-        $omzetCustomer = $paymentsThisMonth->filter(function($p) {
+        $omzetCustomer = (float) $paymentsThisMonth->filter(function($p) {
             return $p->invoice && !$p->invoice->is_reseller_balance;
         })->sum('amount');
         
-        $omzetReseller = $paymentsThisMonth->filter(function($p) {
+        $omzetReseller = (float) $paymentsThisMonth->filter(function($p) {
             return $p->invoice && $p->invoice->is_reseller_balance;
         })->sum('amount');
         
         $totalOmzet = $omzetCustomer + $omzetReseller;
 
         // Pengeluaran
-        $totalPengeluaran = Expense::whereBetween('expense_date', [$startDate, $endDate])->sum('amount');
+        $totalPengeluaran = (float) Expense::whereBetween('expense_date', [$startDate, $endDate])->sum('amount');
+
+        // Rincian Pengeluaran: Belanja Material (Order Toko) vs Operasional/Umum
+        $pengeluaranMaterial = (float) Expense::whereBetween('expense_date', [$startDate, $endDate])
+            ->where(function($q) {
+                $q->whereHas('materialTransaction')
+                  ->orWhereHas('category', fn($c) => $c->where('code', 'MAT'))
+                  ->orWhere('description', 'like', '%Order Toko%');
+            })
+            ->sum('amount');
+
+        $pengeluaranOperasional = max(0, $totalPengeluaran - $pengeluaranMaterial);
 
         // Laba Bersih
         $labaBersih = $totalOmzet - $totalPengeluaran;
 
         // Piutang Keseluruhan (Tunggakan Aktif + Kasbon yang belum lunas) - Eager load payments to prevent N+1 queries!
-        $piutangCustomer = Invoice::with(['payments' => fn($q) => $q->where('status', 'verified')])
+        $piutangCustomer = (float) Invoice::with(['payments' => fn($q) => $q->where('status', 'verified')])
             ->where('is_reseller_balance', false)
             ->whereIn('status', ['unpaid', 'partial'])
             ->whereHas('customer', function($q) {
@@ -77,7 +88,7 @@ class FinancialReportController extends Controller
                 return max(0, $inv->amount - $paid);
             });
             
-        $piutangReseller = Invoice::with(['payments' => fn($q) => $q->where('status', 'verified')])
+        $piutangReseller = (float) Invoice::with(['payments' => fn($q) => $q->where('status', 'verified')])
             ->where('is_reseller_balance', true)
             ->whereIn('status', ['unpaid', 'partial'])
             ->whereHas('customer', fn($c) => $c->where('is_reseller', true))
@@ -88,7 +99,7 @@ class FinancialReportController extends Controller
             });
 
         // Piutang Pelanggan Stop Permanen (Bad Debt)
-        $piutangTerminated = Invoice::with(['payments' => fn($q) => $q->where('status', 'verified')])
+        $piutangTerminated = (float) Invoice::with(['payments' => fn($q) => $q->where('status', 'verified')])
             ->where('is_reseller_balance', false)
             ->whereIn('status', ['unpaid', 'partial'])
             ->whereHas('customer', function($q) {
@@ -115,9 +126,9 @@ class FinancialReportController extends Controller
                 ->whereBetween('payment_date', [$mStart, $mEnd])
                 ->get();
                 
-            $cCust = $pBln->filter(fn($p) => $p->invoice && !$p->invoice->is_reseller_balance)->sum('amount');
-            $cRes = $pBln->filter(fn($p) => $p->invoice && $p->invoice->is_reseller_balance)->sum('amount');
-            $cExp = Expense::whereBetween('expense_date', [$mStart, $mEnd])->sum('amount');
+            $cCust = (float) $pBln->filter(fn($p) => $p->invoice && !$p->invoice->is_reseller_balance)->sum('amount');
+            $cRes = (float) $pBln->filter(fn($p) => $p->invoice && $p->invoice->is_reseller_balance)->sum('amount');
+            $cExp = (float) Expense::whereBetween('expense_date', [$mStart, $mEnd])->sum('amount');
             
             $chartData[] = [
                 'month' => $mDate->translatedFormat('M Y'),
@@ -308,7 +319,7 @@ class FinancialReportController extends Controller
             ->map(function($group) {
                 return [
                     'name' => $group->first()->collector ? $group->first()->collector->name : 'Unknown',
-                    'total_collected' => $group->sum('amount'),
+                    'total_collected' => (float)$group->sum('amount'),
                     'count' => $group->count()
                 ];
             })->sortByDesc('total_collected')->values()->all();
@@ -321,6 +332,8 @@ class FinancialReportController extends Controller
                 'omzet_reseller' => $omzetReseller,
                 'total_omzet' => $totalOmzet,
                 'total_pengeluaran' => $totalPengeluaran,
+                'pengeluaran_material' => $pengeluaranMaterial,
+                'pengeluaran_operasional' => $pengeluaranOperasional,
                 'laba_bersih' => $labaBersih,
                 'piutang_customer' => $piutangCustomer,
                 'piutang_reseller' => $piutangReseller,
@@ -345,6 +358,221 @@ class FinancialReportController extends Controller
             ],
             'kpi' => $collectorKpi,
             'expense_categories' => ExpenseCategory::active()->orderBy('name')->get(['id', 'code', 'name', 'color']),
+        ]);
+    }
+
+    /**
+     * Halaman Cetak Laporan Keuangan & Buku Kas Umum
+     */
+    public function print(Request $request)
+    {
+        $month = (int) $request->get('month', now()->month);
+        $year = (int) $request->get('year', now()->year);
+        
+        $dateFrom = $request->get('date_from');
+        $dateTo = $request->get('date_to');
+
+        if (!empty($dateFrom) && !empty($dateTo)) {
+            $startDate = Carbon::parse($dateFrom)->startOfDay();
+            $endDate = Carbon::parse($dateTo)->endOfDay();
+        } elseif (!empty($dateFrom)) {
+            $startDate = Carbon::parse($dateFrom)->startOfDay();
+            $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+        } elseif (!empty($dateTo)) {
+            $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+            $endDate = Carbon::parse($dateTo)->endOfDay();
+        } else {
+            $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+            $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+        }
+
+        // Verified Payments
+        $paymentsThisMonth = Payment::with(['invoice.customer', 'customer', 'collector'])
+            ->where('status', 'verified')
+            ->whereBetween('payment_date', [$startDate, $endDate])
+            ->get();
+            
+        $omzetCustomer = (float) $paymentsThisMonth->filter(fn($p) => $p->invoice && !$p->invoice->is_reseller_balance)->sum('amount');
+        $omzetReseller = (float) $paymentsThisMonth->filter(fn($p) => $p->invoice && $p->invoice->is_reseller_balance)->sum('amount');
+        $totalOmzet = $omzetCustomer + $omzetReseller;
+
+        // Expenses
+        $totalPengeluaran = (float) Expense::whereBetween('expense_date', [$startDate, $endDate])->sum('amount');
+        $pengeluaranMaterial = (float) Expense::whereBetween('expense_date', [$startDate, $endDate])
+            ->where(function($q) {
+                $q->whereHas('materialTransaction')
+                  ->orWhereHas('category', fn($c) => $c->where('code', 'MAT'))
+                  ->orWhere('description', 'like', '%Order Toko%');
+            })
+            ->sum('amount');
+        $pengeluaranOperasional = max(0, $totalPengeluaran - $pengeluaranMaterial);
+        $labaBersih = $totalOmzet - $totalPengeluaran;
+
+        // Piutang
+        $piutangCustomer = (float) Invoice::with(['payments' => fn($q) => $q->where('status', 'verified')])
+            ->where('is_reseller_balance', false)
+            ->whereIn('status', ['unpaid', 'partial'])
+            ->whereHas('customer', function($q) {
+                $q->where('status', '!=', 'terminated')
+                  ->whereNotIn('service_status', ['gratis', 'free_home']);
+            })
+            ->get()
+            ->sum(function($inv) {
+                $paid = $inv->payments->sum('amount');
+                return max(0, $inv->amount - $paid);
+            });
+            
+        $piutangReseller = (float) Invoice::with(['payments' => fn($q) => $q->where('status', 'verified')])
+            ->where('is_reseller_balance', true)
+            ->whereIn('status', ['unpaid', 'partial'])
+            ->whereHas('customer', fn($c) => $c->where('is_reseller', true))
+            ->get()
+            ->sum(function($inv) {
+                $paid = $inv->payments->sum('amount');
+                return max(0, $inv->amount - $paid);
+            });
+            
+        $totalPiutang = $piutangCustomer + $piutangReseller;
+
+        // Ledger
+        $ledger = collect([]);
+        foreach ($paymentsThisMonth as $p) {
+            $type = ($p->invoice && $p->invoice->is_reseller_balance) ? 'reseller' : 'customer';
+            $custName = $p->customer?->name ?? ($p->invoice?->customer?->name ?? 'Pelanggan');
+            $collectorName = $p->collector?->name ?? 'System';
+
+            $ledger->push([
+                'id' => 'p_'.$p->id,
+                'date' => Carbon::parse($p->payment_date)->format('Y-m-d H:i:s'),
+                'type' => 'income',
+                'category' => $type,
+                'category_id' => null,
+                'category_name' => $type === 'reseller' ? 'Reseller Voucher' : 'Pelanggan Reguler',
+                'category_code' => $type === 'reseller' ? 'RSL' : 'CUS',
+                'amount' => (float)$p->amount,
+                'description' => "Pembayaran " . ($type === 'reseller' ? 'Reseller' : 'Pelanggan') . " ({$custName})" . ($p->notes ? " - {$p->notes}" : ""),
+                'person' => $custName,
+                'user' => $collectorName,
+                'po_number' => null,
+            ]);
+        }
+
+        $expensesThisMonth = Expense::with(['creator', 'category', 'materialTransaction'])
+            ->whereBetween('expense_date', [$startDate, $endDate])
+            ->get();
+
+        foreach ($expensesThisMonth as $e) {
+            $catName = $e->category ? $e->category->name : 'Operasional';
+            $catCode = $e->category ? $e->category->code : null;
+            $poNum = null;
+            if ($e->materialTransaction) {
+                $poNum = $e->materialTransaction->transaction_number;
+            } elseif (preg_match('/\[(PO-[^\]]+)\]/', $e->description, $matches)) {
+                $poNum = $matches[1];
+            }
+
+            $isMaterial = !empty($poNum) || $catCode === 'MAT';
+
+            $ledger->push([
+                'id' => 'e_'.$e->id,
+                'date' => Carbon::parse($e->expense_date)->format('Y-m-d H:i:s'),
+                'type' => 'expense',
+                'category' => $isMaterial ? 'material' : ($e->expense_category_id ? (string)$e->expense_category_id : 'operational'),
+                'category_id' => $e->expense_category_id,
+                'category_name' => $isMaterial ? 'Belanja Material' : $catName,
+                'category_code' => $isMaterial ? 'MAT' : $catCode,
+                'amount' => (float)$e->amount,
+                'description' => $e->description,
+                'person' => '-',
+                'user' => $e->creator ? $e->creator->name : 'Unknown',
+                'po_number' => $poNum,
+            ]);
+        }
+
+        $ledger = $ledger->sortByDesc('date')->values();
+
+        // Filters applied if any
+        $search = trim($request->get('search', ''));
+        $filterType = $request->get('type', 'all');
+        $filterCategory = $request->get('category', 'all');
+
+        if ($search !== '') {
+            $searchLower = strtolower($search);
+            $ledger = $ledger->filter(function($item) use ($searchLower) {
+                return str_contains(strtolower($item['description'] ?? ''), $searchLower)
+                    || str_contains(strtolower($item['person'] ?? ''), $searchLower)
+                    || str_contains(strtolower($item['user'] ?? ''), $searchLower)
+                    || str_contains(strtolower($item['po_number'] ?? ''), $searchLower)
+                    || str_contains(strtolower($item['category_name'] ?? ''), $searchLower);
+            });
+        }
+
+        if ($filterType !== 'all' && in_array($filterType, ['income', 'expense'])) {
+            $ledger = $ledger->filter(fn($item) => $item['type'] === $filterType);
+        }
+
+        if ($filterCategory !== 'all' && $filterCategory !== '') {
+            $ledger = $ledger->filter(function($item) use ($filterCategory) {
+                if ($filterCategory === 'customer') {
+                    return $item['type'] === 'income' && $item['category'] === 'customer';
+                }
+                if ($filterCategory === 'reseller') {
+                    return $item['type'] === 'income' && $item['category'] === 'reseller';
+                }
+                if ($filterCategory === 'material') {
+                    return !empty($item['po_number']) || ($item['category_code'] ?? '') === 'MAT' || $item['category'] === 'material';
+                }
+                return ($item['category_id'] ?? null) == $filterCategory 
+                    || ($item['category_code'] ?? null) == $filterCategory
+                    || ($item['category'] ?? null) == $filterCategory;
+            });
+        }
+
+        $filteredIncome = (float) $ledger->where('type', 'income')->sum('amount');
+        $filteredExpense = (float) $ledger->where('type', 'expense')->sum('amount');
+        $filteredNet = $filteredIncome - $filteredExpense;
+
+        $monthNames = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April', 5 => 'Mei', 6 => 'Juni',
+            7 => 'Juli', 8 => 'Agustus', 9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+        ];
+        $periodLabel = $monthNames[$month] . ' ' . $year;
+        if (!empty($dateFrom) && !empty($dateTo)) {
+            $periodLabel = Carbon::parse($dateFrom)->translatedFormat('d M Y') . ' s/d ' . Carbon::parse($dateTo)->translatedFormat('d M Y');
+        }
+
+        return view('print.financial-report', [
+            'periodLabel' => $periodLabel,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+            'summary' => [
+                'total_omzet' => $totalOmzet,
+                'omzet_customer' => $omzetCustomer,
+                'omzet_reseller' => $omzetReseller,
+                'total_pengeluaran' => $totalPengeluaran,
+                'pengeluaran_material' => $pengeluaranMaterial,
+                'pengeluaran_operasional' => $pengeluaranOperasional,
+                'laba_bersih' => $labaBersih,
+                'total_piutang' => $totalPiutang,
+                'piutang_customer' => $piutangCustomer,
+                'piutang_reseller' => $piutangReseller,
+            ],
+            'filteredTotals' => [
+                'income' => $filteredIncome,
+                'expense' => $filteredExpense,
+                'net' => $filteredNet,
+                'count' => $ledger->count(),
+            ],
+            'ledger' => $ledger,
+            'filters' => [
+                'search' => $search,
+                'type' => $filterType,
+                'category' => $filterCategory,
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+            ],
+            'printedBy' => auth()->user() ? auth()->user()->name : 'Super Admin',
+            'printDate' => now()->translatedFormat('d F Y, H:i') . ' WIB',
         ]);
     }
 }

@@ -33,6 +33,10 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
                         <span>Filter</span>
                     </button>
+                    <button @click="printReport" type="button" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-2xs transition-all hover:shadow-xs whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer" title="Cetak Laporan Keuangan">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                        <span>Cetak</span>
+                    </button>
                 </div>
             </div>
 
@@ -60,9 +64,15 @@
                     <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl group-hover:scale-150 transition-transform duration-700"></div>
                     <p class="text-rose-100 text-xs sm:text-sm font-semibold mb-1 uppercase tracking-wider">Total Pengeluaran Kas</p>
                     <h3 class="text-xl sm:text-2xl 2xl:text-3xl font-black mb-3 break-words leading-tight">Rp {{ formatRupiah(summary?.total_pengeluaran || 0) }}</h3>
-                    <div class="flex justify-between gap-1 border-t border-rose-400/30 pt-2 mt-auto text-xs text-rose-50 font-medium">
-                        <span>Lihat detail di Buku Kas Umum</span>
-                        <span>↓</span>
+                    <div class="flex flex-col gap-1 text-xs text-rose-50 font-medium">
+                        <div class="flex flex-wrap justify-between gap-1 border-t border-rose-400/30 pt-2">
+                            <span>Belanja Material:</span>
+                            <span>Rp {{ formatRupiah(summary?.pengeluaran_material || 0) }}</span>
+                        </div>
+                        <div class="flex flex-wrap justify-between gap-1">
+                            <span>Operasional &amp; Lainnya:</span>
+                            <span>Rp {{ formatRupiah(summary?.pengeluaran_operasional || 0) }}</span>
+                        </div>
                     </div>
                 </div>
 
@@ -154,6 +164,10 @@
                         <p class="text-xs sm:text-sm text-gray-500 mt-1">Rekapitulasi riwayat mutasi kas keluar masuk secara real-time</p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                        <button @click="printReport" type="button" class="flex-1 sm:flex-initial justify-center inline-flex items-center gap-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-3.5 py-2 rounded-xl shadow-sm text-xs font-bold transition-all whitespace-nowrap cursor-pointer" title="Cetak Buku Kas Umum Sesuai Filter">
+                            <svg class="w-4 h-4 text-gray-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                            Cetak Laporan
+                        </button>
                         <Link :href="route('expense-categories.index')" class="flex-1 sm:flex-initial justify-center inline-flex items-center gap-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-3.5 py-2 rounded-xl shadow-sm text-xs font-bold transition-all whitespace-nowrap">
                             <svg class="w-4 h-4 text-gray-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
                             Master Kategori
@@ -801,6 +815,19 @@ const resetLedgerFilter = () => {
         preserveState: true,
         preserveScroll: true
     });
+};
+
+const printReport = () => {
+    const params = new URLSearchParams();
+    if (form.month) params.append('month', form.month);
+    if (form.year) params.append('year', form.year);
+    if (ledgerFilter.value.search) params.append('search', ledgerFilter.value.search);
+    if (ledgerFilter.value.type && ledgerFilter.value.type !== 'all') params.append('type', ledgerFilter.value.type);
+    if (ledgerFilter.value.category && ledgerFilter.value.category !== 'all') params.append('category', ledgerFilter.value.category);
+    if (ledgerFilter.value.date_from) params.append('date_from', ledgerFilter.value.date_from);
+    if (ledgerFilter.value.date_to) params.append('date_to', ledgerFilter.value.date_to);
+
+    window.open(route('financial-reports.print') + '?' + params.toString(), '_blank');
 };
 
 const goToPage = (url) => {
