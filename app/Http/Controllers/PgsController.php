@@ -1167,7 +1167,7 @@ class PgsController extends Controller
                     'odp_id' => $odpId ?? $preparedOnt->odp_id,
                     'port_number' => $portNum ?? $preparedOnt->port_number,
                     'odp_port_id' => $odpPortId ?? $preparedOnt->odp_port_id,
-                    'status' => 'Sudah Set',
+                    'status' => 'active',
                     'description' => trim(($preparedOnt->description ? $preparedOnt->description . ' | ' : '') . 'Menggantikan SN ' . ($oldOnt?->serial_number ?? '-') . ' pada tiket PGS ' . $pgs->ticket_number),
                 ]);
 

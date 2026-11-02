@@ -76,7 +76,7 @@
                 <div 
                     @click="setQuickFilter('sudah_set')" 
                     class="bg-white rounded-2xl p-4 border transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md hover:-translate-y-0.5 group"
-                    :class="[filterState.status === 'Sudah Set' ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/20' : 'border-gray-200/80 hover:border-emerald-300']"
+                    :class="[filterState.status === 'Sudah Set' && (!filterState.installation_status || filterState.installation_status === 'uninstalled') ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/20' : 'border-gray-200/80 hover:border-emerald-300']"
                 >
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-xs font-bold uppercase tracking-wider text-gray-500 group-hover:text-emerald-600 transition-colors">Siap Pasang</span>
@@ -92,7 +92,7 @@
                 <div 
                     @click="setQuickFilter('belum_set')" 
                     class="bg-white rounded-2xl p-4 border transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md hover:-translate-y-0.5 group"
-                    :class="[filterState.status === 'Belum Set/Baru Input' ? 'border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/20' : 'border-gray-200/80 hover:border-amber-300']"
+                    :class="[filterState.status === 'Belum Set/Baru Input' && (!filterState.installation_status || filterState.installation_status === 'uninstalled') ? 'border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/20' : 'border-gray-200/80 hover:border-amber-300']"
                 >
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-xs font-bold uppercase tracking-wider text-gray-500 group-hover:text-amber-600 transition-colors">Belum Diset</span>
@@ -184,7 +184,7 @@
                     type="button" 
                     @click="setQuickFilter('sudah_set')" 
                     class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5"
-                    :class="[filterState.status === 'Sudah Set' ? 'bg-white text-emerald-700 shadow-xs ring-1 ring-emerald-500/20 font-extrabold' : 'text-gray-600 hover:text-emerald-700 hover:bg-white/50']"
+                    :class="[filterState.status === 'Sudah Set' && (!filterState.installation_status || filterState.installation_status === 'uninstalled') ? 'bg-white text-emerald-700 shadow-xs ring-1 ring-emerald-500/20 font-extrabold' : 'text-gray-600 hover:text-emerald-700 hover:bg-white/50']"
                 >
                     <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
                     <span>Siap Pasang</span>
@@ -194,7 +194,7 @@
                     type="button" 
                     @click="setQuickFilter('belum_set')" 
                     class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5"
-                    :class="[filterState.status === 'Belum Set/Baru Input' ? 'bg-white text-amber-700 shadow-xs ring-1 ring-amber-500/20 font-extrabold' : 'text-gray-600 hover:text-amber-700 hover:bg-white/50']"
+                    :class="[filterState.status === 'Belum Set/Baru Input' && (!filterState.installation_status || filterState.installation_status === 'uninstalled') ? 'bg-white text-amber-700 shadow-xs ring-1 ring-amber-500/20 font-extrabold' : 'text-gray-600 hover:text-amber-700 hover:bg-white/50']"
                 >
                     <span class="w-2 h-2 rounded-full bg-amber-500"></span>
                     <span>Belum Diset</span>
@@ -1340,11 +1340,13 @@ function setQuickFilter(type) {
         filterState.value.status = '';
         filterState.value.installation_status = '';
     } else if (type === 'sudah_set') {
-        filterState.value.status = filterState.value.status === 'Sudah Set' ? '' : 'Sudah Set';
-        filterState.value.installation_status = '';
+        const isActive = filterState.value.status === 'Sudah Set' && filterState.value.installation_status === 'uninstalled';
+        filterState.value.status = isActive ? '' : 'Sudah Set';
+        filterState.value.installation_status = isActive ? '' : 'uninstalled';
     } else if (type === 'belum_set') {
-        filterState.value.status = filterState.value.status === 'Belum Set/Baru Input' ? '' : 'Belum Set/Baru Input';
-        filterState.value.installation_status = '';
+        const isActive = filterState.value.status === 'Belum Set/Baru Input' && filterState.value.installation_status === 'uninstalled';
+        filterState.value.status = isActive ? '' : 'Belum Set/Baru Input';
+        filterState.value.installation_status = isActive ? '' : 'uninstalled';
     } else if (type === 'installed') {
         filterState.value.installation_status = filterState.value.installation_status === 'installed' ? '' : 'installed';
         filterState.value.status = '';

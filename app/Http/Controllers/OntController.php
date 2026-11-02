@@ -20,20 +20,23 @@ class OntController extends Controller
         $baseQuery = Ont::query();
         DataScopeService::applyOntScope($baseQuery, $user);
 
-        // Hitung statistik untuk cards
+        // Stats kontekstual yang cerdas & sinkron dengan filter Cabang (Area)
+        $statsQuery = (clone $baseQuery)->when($request->area_id, fn ($q, $id) => $q->where('area_id', $id));
+
+        // Hitung statistik untuk cards & tabs (cerdas, presisi & sinkron)
         $stats = [
-            'total' => (clone $baseQuery)->count(),
-            'sudah_set' => (clone $baseQuery)->where('status', 'Sudah Set')->count(),
-            'belum_set' => (clone $baseQuery)->where('status', 'Belum Set/Baru Input')->count(),
-            'terpasang' => (clone $baseQuery)->whereNotNull('customer_id')->count(),
-            'belum_terpasang' => (clone $baseQuery)->whereNull('customer_id')->count(),
-            'los' => (clone $baseQuery)->where('status', 'los')->count(),
-            'ont_diganti' => (clone $baseQuery)->diganti()->count(),
-            'ont_pengganti' => (clone $baseQuery)->pengganti()->count(),
+            'total' => (clone $statsQuery)->count(),
+            'sudah_set' => (clone $statsQuery)->where('status', 'Sudah Set')->whereNull('customer_id')->count(),
+            'belum_set' => (clone $statsQuery)->where('status', 'Belum Set/Baru Input')->whereNull('customer_id')->count(),
+            'terpasang' => (clone $statsQuery)->whereNotNull('customer_id')->count(),
+            'belum_terpasang' => (clone $statsQuery)->whereNull('customer_id')->count(),
+            'los' => (clone $statsQuery)->where('status', 'los')->count(),
+            'ont_diganti' => (clone $statsQuery)->diganti()->count(),
+            'ont_pengganti' => (clone $statsQuery)->pengganti()->count(),
         ];
 
-        // Ambil daftar brand perangkat yang tersedia
-        $brands = (clone $baseQuery)
+        // Ambil daftar brand perangkat yang tersedia sesuai area yang dipilih
+        $brands = (clone $statsQuery)
             ->whereNotNull('brand')
             ->where('brand', '!=', '')
             ->distinct()
