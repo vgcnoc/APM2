@@ -366,7 +366,7 @@
                                                 <div class="relative">
                                                     <select id="order-user" v-model="form.order_user_id" required :disabled="isViewing" class="w-full px-3 py-2.5 text-xs sm:text-sm bg-slate-50/80 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all font-semibold text-slate-800 disabled:bg-slate-100 disabled:text-slate-500 cursor-pointer">
                                                         <option :value="null" disabled>Pilih akun pemesan</option>
-                                                        <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }} ({{ u.role || 'User' }})</option>
+                                                        <option v-for="u in orderUsers" :key="u.id" :value="u.id">{{ u.name }} ({{ u.role || 'User' }})</option>
                                                     </select>
                                                 </div>
                                             </div>
@@ -379,8 +379,8 @@
                                                 </label>
                                                 <div class="relative">
                                                     <select id="giver-user" v-model="form.giver_user_id" required :disabled="isViewing" class="w-full px-3 py-2.5 text-xs sm:text-sm bg-slate-50/80 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all font-semibold text-slate-800 disabled:bg-slate-100 disabled:text-slate-500 cursor-pointer">
-                                                        <option :value="null" disabled>Pilih akun pemberi</option>
-                                                        <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }} ({{ u.role || 'User' }})</option>
+                                                        <option :value="null" disabled>Pilih akun pemberi (Toko)</option>
+                                                        <option v-for="u in giverUsers" :key="u.id" :value="u.id">{{ u.name }} ({{ u.role || 'Toko' }})</option>
                                                     </select>
                                                 </div>
                                             </div>
@@ -724,6 +724,28 @@ const form = useForm({
 const materialById = (id) => (props.materials || []).find(m => m.id === id);
 const inCart = (id) => form.items.some(i => i.material_id === id);
 
+// Filter akun pemesan & akun pemberi sesuai permintaan hak akses
+const allowedOrderRoles = ['maintenance', 'maintenance-1', 'manager', 'noc', 'infrastruktur'];
+
+const orderUsers = computed(() => {
+    return (props.users || []).filter(u => {
+        const r = (u.role || '').toLowerCase().trim();
+        const matches = allowedOrderRoles.includes(r);
+        if (form.order_user_id && u.id === form.order_user_id) return true;
+        return matches;
+    });
+});
+
+const giverUsers = computed(() => {
+    return (props.users || []).filter(u => {
+        const r = (u.role || '').toLowerCase().trim();
+        const name = (u.name || '').toLowerCase().trim();
+        const matches = r === 'toko' || name === 'toko';
+        if (form.giver_user_id && u.id === form.giver_user_id) return true;
+        return matches;
+    });
+});
+
 const availableCategories = computed(() => {
     const cats = new Set();
     (props.materials || []).forEach(m => {
@@ -983,8 +1005,20 @@ const formatDate = (dateString) => {
 const openModal = () => {
     form.id = null;
     form.area_name = '';
-    form.order_user_id = props.currentUser?.id || (props.users && props.users[0]?.id) || null;
-    form.giver_user_id = 1;
+
+    // Akun Pemesan: default ke user login jika termasuk role order yang diizinkan, atau user pertama di daftar orderUsers
+    const currentRole = (props.currentUser?.role || '').toLowerCase().trim();
+    if (allowedOrderRoles.includes(currentRole)) {
+        form.order_user_id = props.currentUser?.id;
+    } else {
+        const firstOrder = (props.users || []).find(u => allowedOrderRoles.includes((u.role || '').toLowerCase().trim()));
+        form.order_user_id = firstOrder ? firstOrder.id : null;
+    }
+
+    // Akun Pemberi: khusus Toko
+    const tokoUser = (props.users || []).find(u => (u.role || '').toLowerCase().trim() === 'toko' || (u.name || '').toLowerCase().trim() === 'toko');
+    form.giver_user_id = tokoUser ? tokoUser.id : (giverUsers.value[0]?.id || null);
+
     form.order_account_name = '';
     form.giver_account_name = '';
     form.date = new Date().toISOString().slice(0, 10);
@@ -992,6 +1026,8 @@ const openModal = () => {
     form.items = [];
     form.clearErrors();
     selectedMaterial.value = null;
+    search.value = '';
+    selectedCategory.value = 'Semua';
     isViewing.value = false;
     isModalOpen.value = true;
 };

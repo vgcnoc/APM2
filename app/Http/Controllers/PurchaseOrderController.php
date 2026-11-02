@@ -184,13 +184,15 @@ class PurchaseOrderController extends Controller
             $transactionNumber = 'PO-' . now()->format('Ymd') . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
 
             $orderUserId = !empty($validated['order_user_id']) ? (int) $validated['order_user_id'] : auth()->id();
-            $giverUserId = !empty($validated['giver_user_id']) ? (int) $validated['giver_user_id'] : null;
+            $giverUserId = !empty($validated['giver_user_id']) 
+                ? (int) $validated['giver_user_id'] 
+                : \App\Models\User::where('role', 'toko')->orWhere('name', 'TOKO')->value('id');
 
             $orderUser = $orderUserId ? \App\Models\User::find($orderUserId) : null;
             $giverUser = $giverUserId ? \App\Models\User::find($giverUserId) : null;
 
             $orderAccountName = $orderUser ? $orderUser->name : ($validated['order_account_name'] ?? auth()->user()?->name ?? 'Pemesan Toko');
-            $giverAccountName = $giverUser ? $giverUser->name : ($validated['giver_account_name'] ?? 'Super Admin (Gudang Pusat)');
+            $giverAccountName = $giverUser ? $giverUser->name : ($validated['giver_account_name'] ?? 'TOKO (Gudang Pusat)');
 
             $transaction = MaterialTransaction::create([
                 'transaction_number' => $transactionNumber,
