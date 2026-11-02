@@ -34,6 +34,7 @@ defineProps({
 
 <style scoped>
 .split-connection {
+    container: split-summary / inline-size;
     padding: 12px;
     border: 1px solid var(--border-dark, #e2e8f0);
     border-radius: 12px;
@@ -44,7 +45,10 @@ defineProps({
 .split-connection__eyebrow { margin: 0 0 4px; color: var(--split-muted, #64748b); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
 .split-connection__title { margin: 0; font-size: 14px; font-weight: 750; }
 .split-connection__summary { display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px; }
-.split-connection__nodes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.split-connection__nodes { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+@container split-summary (min-width: 520px) {
+    .split-connection__nodes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 .split-connection__node { display: flex; align-items: flex-start; gap: 10px; min-width: 0; padding: 10px 12px; border: 1px solid var(--border-dark, #e2e8f0); border-left: 3px solid var(--split-accent); border-radius: 8px; background: var(--split-node-bg); }
 .split-connection__node--parent { --split-accent: #34d399; --split-node-bg: #163e36; }
 .split-connection__node--child { --split-accent: #c084fc; --split-node-bg: #3d205a; }

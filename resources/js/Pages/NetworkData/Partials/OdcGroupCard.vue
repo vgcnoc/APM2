@@ -259,8 +259,11 @@ const getPairTotalPorts = (items) => {
 <style scoped>
 .odc-group { container: network-odc / inline-size; }
 .odc-odp-grid, .split-odp-cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: stretch; }
-@container network-odc (min-width: 360px) {
-    .odc-odp-grid, .split-odp-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@container network-odc (min-width: 640px) {
+    .odc-odp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container network-odc (min-width: 700px) {
+    .split-odp-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @container network-odc (min-width: 1050px) {
     .odc-odp-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -298,6 +301,20 @@ const getPairTotalPorts = (items) => {
 .odc-header__stats div { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .odc-header__stats strong { font-size: 24px; line-height: 1; }
 .odc-header__stats span { font-size: 11px; color: var(--odc-muted, #64748b); }
+@container network-odc (min-width: 800px) {
+    .odc-header--standard {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(210px, .65fr) minmax(190px, .55fr);
+        grid-template-rows: auto auto auto;
+        gap: 4px 20px;
+    }
+    .odc-header--standard .odc-header__server { grid-column: 1; grid-row: 1; }
+    .odc-header--standard .odc-header__name { grid-column: 1; grid-row: 2; }
+    .odc-header--standard .odc-header__location { grid-column: 1; grid-row: 3; }
+    .odc-header--standard .odc-header__specs { grid-column: 2; grid-row: 1 / 4; align-self: center; }
+    .odc-header--standard .odc-header__stats { grid-column: 3; grid-row: 1 / 4; align-self: center; margin: 0; padding: 0; border: 0; }
+    .odc-header--standard .odc-header__cable, .odc-header--standard .odc-header__vlans { grid-column: 1 / -1; }
+}
 @media (max-width: 480px) { .odc-header { padding: 16px; } }
 </style>
 
