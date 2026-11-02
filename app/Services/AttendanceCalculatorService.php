@@ -550,6 +550,505 @@ class AttendanceCalculatorService
     }
 
     /**
+     * Resolusi shift kerja untuk karyawan pada tanggal tertentu.
+     * Mengutamakan shift pada catatan absensi, jadwal kerja (WorkSchedule), shift default karyawan, lalu shift fallback.
+     */
+    public static function resolveEmployeeShiftForDate(
+        Employee $employee,
+        string $dateStr,
+        ?Shift $attendanceShift = null,
+        ?Collection $empSchedules = null,
+        ?Collection $shiftsById = null
+    ): ?Shift {
+        if ($attendanceShift) {
+            return $attendanceShift;
+        }
+
+        $cleanDate = substr($dateStr, 0, 10);
+
+        if ($empSchedules && $empSchedules->isNotEmpty()) {
+            $schedule = $empSchedules->first(function ($s) use ($cleanDate) {
+                $d = is_string($s->date) ? substr($s->date, 0, 10) : $s->date->format('Y-m-d');
+                return $d === $cleanDate;
+            });
+            if ($schedule && $schedule->status !== 'off' && !empty($schedule->shift_id)) {
+                if ($schedule->relationLoaded('shift') && $schedule->shift) {
+                    return $schedule->shift;
+                }
+                return $shiftsById ? $shiftsById->get($schedule->shift_id) : Shift::find($schedule->shift_id);
+            }
+        }
+
+        if ($employee->relationLoaded('shift') && $employee->shift) {
+            return $employee->shift;
+        }
+        if (!empty($employee->shift_id)) {
+            return $shiftsById ? $shiftsById->get($employee->shift_id) : Shift::find($employee->shift_id);
+        }
+
+        return null;
+    }
+
+    /**
+     * Hitung target hari kerja individu secara adil dan dinamis.
+     * Memperhitungkan:
+     * - Tanggal bergabung (join_date) & tanggal keluar (resign_date) karyawan
+     * - Roster jadwal kerja khusus (WorkSchedule) per tanggal (status: work vs off)
+     * - Hari libur terjadwal (OFF) TIDAK DIHITUNG sebagai kewajiban kerja / bukan alpha
+     * - Standar operasional default jika tanpa roster (Senin - Sabtu, Minggu off)
+     */
+    public static function calculateEmployeeTargetDays(
+        Employee $employee,
+        Carbon $startDate,
+        Carbon $endDate,
+        Carbon $asOfDate,
+        ?Collection $empSchedules = null
+    ): array {
+        $effectiveStart = $startDate->copy();
+        if ($employee->join_date) {
+            $join = Carbon::parse($employee->join_date, 'Asia/Jakarta')->startOfDay();
+            if ($join->isAfter($effectiveStart)) {
+                $effectiveStart = $join;
+            }
+        }
+
+        $effectiveEnd = $endDate->copy();
+        if ($employee->status === 'resigned' && $employee->resign_date) {
+            $resign = Carbon::parse($employee->resign_date, 'Asia/Jakarta')->endOfDay();
+            if ($resign->isBefore($effectiveEnd)) {
+                $effectiveEnd = $resign;
+            }
+        }
+
+        $effectiveAsOf = $asOfDate->copy();
+        if ($effectiveEnd->isBefore($effectiveAsOf)) {
+            $effectiveAsOf = $effectiveEnd;
+        }
+
+        // Jika karyawan belum bergabung di periode ini
+        if ($effectiveStart->isAfter($effectiveAsOf)) {
+            return [
+                'target_days' => 0,
+                'total_scheduled_work_days' => 0,
+                'scheduled_off_days' => 0,
+                'scheduled_leave_days' => 0,
+                'scheduled_sick_days' => 0,
+                'is_schedule_custom' => false,
+            ];
+        }
+
+        // Cek apakah karyawan memiliki jadwal khusus di tabel work_schedules
+        $hasCustomSchedules = $empSchedules && $empSchedules->isNotEmpty();
+
+        if ($hasCustomSchedules) {
+            $workCount = 0;
+            $offCount = 0;
+            $leaveCount = 0;
+            $sickCount = 0;
+
+            $schedulesMap = $empSchedules->keyBy(function ($s) {
+                return is_string($s->date) ? substr($s->date, 0, 10) : $s->date->format('Y-m-d');
+            });
+
+            $hasExplicitWorkRows = $empSchedules->where('status', 'work')->count() > 0;
+
+            if ($hasExplicitWorkRows) {
+                // Mode Roster Penuh: Target adalah seluruh tanggal berstatus 'work'
+                $cursor = $effectiveStart->copy()->startOfDay();
+                while ($cursor->lte($effectiveAsOf)) {
+                    $dStr = $cursor->format('Y-m-d');
+                    $s = $schedulesMap->get($dStr);
+                    if ($s) {
+                        if ($s->status === 'work' && !empty($s->shift_id)) {
+                            $workCount++;
+                        } elseif ($s->status === 'off' || empty($s->shift_id)) {
+                            $offCount++;
+                        } elseif ($s->status === 'leave' || $s->status === 'permit') {
+                            $leaveCount++;
+                        } elseif ($s->status === 'sick') {
+                            $sickCount++;
+                        }
+                    }
+                    $cursor->addDay();
+                }
+
+                $targetDays = max(1, $workCount);
+
+                return [
+                    'target_days' => $targetDays,
+                    'total_scheduled_work_days' => $workCount,
+                    'scheduled_off_days' => $offCount,
+                    'scheduled_leave_days' => $leaveCount,
+                    'scheduled_sick_days' => $sickCount,
+                    'is_schedule_custom' => true,
+                ];
+            } else {
+                // Mode Off-Days: Jadwal Senin-Sabtu dikurangi tanggal-tanggal OFF/Libur yang dijadwalkan
+                $defaultDays = 0;
+                $offDays = 0;
+
+                $cursor = $effectiveStart->copy()->startOfDay();
+                while ($cursor->lte($effectiveAsOf)) {
+                    $dStr = $cursor->format('Y-m-d');
+                    $s = $schedulesMap->get($dStr);
+
+                    if ($s && ($s->status === 'off' || empty($s->shift_id))) {
+                        $offDays++;
+                    } elseif (!$cursor->isSunday()) {
+                        $defaultDays++;
+                    }
+                    $cursor->addDay();
+                }
+
+                $targetDays = max(1, $defaultDays);
+
+                return [
+                    'target_days' => $targetDays,
+                    'total_scheduled_work_days' => $targetDays,
+                    'scheduled_off_days' => $offDays,
+                    'scheduled_leave_days' => 0,
+                    'scheduled_sick_days' => 0,
+                    'is_schedule_custom' => true,
+                ];
+            }
+        }
+
+        // Standar default tanpa WorkSchedule (Senin - Sabtu, Minggu off)
+        $defaultDays = 0;
+        $cursor = $effectiveStart->copy()->startOfDay();
+        while ($cursor->lte($effectiveAsOf)) {
+            if (!$cursor->isSunday()) {
+                $defaultDays++;
+            }
+            $cursor->addDay();
+        }
+
+        return [
+            'target_days' => max(1, $defaultDays),
+            'total_scheduled_work_days' => max(1, $defaultDays),
+            'scheduled_off_days' => 0,
+            'scheduled_leave_days' => 0,
+            'scheduled_sick_days' => 0,
+            'is_schedule_custom' => false,
+        ];
+    }
+
+    /**
+     * Hitung ketepatan waktu presensi karyawan relatif terhadap jam mulai shift kerja.
+     * Adil untuk seluruh variasi shift (Shift Pagi, Siang, Sore, Malam/Lintas Hari).
+     *
+     * Nilai return:
+     * - relative_early_minutes: Positif jika hadir lebih awal, negatif jika terlambat.
+     *   Contoh: Shift 08:00 datang 07:45 -> +15 menit (lebih awal 15m).
+     *   Contoh: Shift 13:00 datang 12:40 -> +20 menit (lebih awal 20m).
+     */
+    public static function evaluateAttendancePunctuality(
+        Attendance $att,
+        ?Shift $shift = null,
+        ?array $settings = null,
+        string $tz = 'Asia/Jakarta'
+    ): array {
+        if (empty($att->clock_in)) {
+            return [
+                'has_clock_in' => false,
+                'clock_in_formatted' => '-',
+                'clock_out_formatted' => '-',
+                'relative_early_minutes' => 0,
+                'is_late' => false,
+                'late_minutes' => 0,
+                'is_early_leave' => false,
+                'early_leave_minutes' => 0,
+                'shift_name' => $shift?->name ?: 'Standar',
+                'shift_time' => $shift?->formatted_time ?: '-',
+            ];
+        }
+
+        $dateStr = is_string($att->date) ? substr($att->date, 0, 10) : $att->date->format('Y-m-d');
+        $resolvedShift = $shift ?: ($att->relationLoaded('shift') ? $att->shift : ($att->shift_id ? Shift::find($att->shift_id) : null));
+        $window = self::resolveShiftWindow($dateStr, $resolvedShift, $tz);
+
+        $clockInTime = self::resolveClockInDateTime($att, $resolvedShift, $tz);
+        $clockInFormatted = $clockInTime ? $clockInTime->format('H:i') . ' WIB' : '-';
+
+        $clockOutFormatted = '-';
+        $isEarlyLeave = false;
+        $earlyLeaveMinutes = (int) ($att->early_leave_minutes ?? 0);
+
+        if (!empty($att->clock_out)) {
+            $clockOutTime = Carbon::parse("{$dateStr} {$att->clock_out}", $tz);
+            if ($window && $window['is_cross_midnight'] && $clockOutTime->lessThan($window['start'])) {
+                $clockOutTime->addDay();
+            }
+            $clockOutFormatted = $clockOutTime->format('H:i') . ' WIB';
+
+            if ($window && !empty($window['end'])) {
+                $earlyTolerance = self::resolveEarlyLeaveTolerance();
+                $threshold = $window['end']->copy()->subMinutes($earlyTolerance);
+                if ($clockOutTime->lessThan($threshold)) {
+                    $isEarlyLeave = true;
+                    $calcEarlyMins = (int) max(0, $clockOutTime->diffInMinutes($window['end']));
+                    $earlyLeaveMinutes = max($earlyLeaveMinutes, $calcEarlyMins);
+                }
+            }
+        } elseif (str_contains(strtolower($att->notes ?? ''), 'pulang lebih awal')) {
+            $isEarlyLeave = true;
+        }
+
+        $relativeEarlyMinutes = 0;
+        $isLate = ($att->status === 'late') || ((int) ($att->late_minutes ?? 0) > 0);
+        $lateMinutes = (int) ($att->late_minutes ?? 0);
+
+        if ($window && !empty($window['start']) && $clockInTime) {
+            // Selisih menit antara jam masuk dengan jam mulai shift
+            // Jika clock_in SEBELUM shift start -> nilai positif (hadir lebih awal)
+            // Jika clock_in SESUDAH shift start -> nilai negatif (terlambat)
+            $diffMinutes = (int) $clockInTime->diffInMinutes($window['start'], false);
+            $relativeEarlyMinutes = $diffMinutes;
+
+            // Jika telat tapi kolom late_minutes belum terisi
+            if ($diffMinutes < 0) {
+                $lateTol = (int) Setting::get('attendance_late_tolerance', 15);
+                if (abs($diffMinutes) > $lateTol) {
+                    $isLate = true;
+                    $lateMinutes = max($lateMinutes, abs($diffMinutes));
+                }
+            }
+        }
+
+        return [
+            'has_clock_in' => true,
+            'clock_in_time' => $clockInTime,
+            'clock_in_formatted' => $clockInFormatted,
+            'clock_out_formatted' => $clockOutFormatted,
+            'relative_early_minutes' => $relativeEarlyMinutes,
+            'is_late' => $isLate,
+            'late_minutes' => $lateMinutes,
+            'is_early_leave' => $isEarlyLeave,
+            'early_leave_minutes' => $earlyLeaveMinutes,
+            'shift_name' => $resolvedShift?->name ?: 'Standar',
+            'shift_time' => $resolvedShift?->formatted_time ?: '-',
+        ];
+    }
+
+    /**
+     * Hitung performa dan skor Absen Terbaik per karyawan secara adil, transparan, dan cerdas.
+     * Memperhitungkan variasi jam kerja (shift) dan hari kerja (roster) masing-masing karyawan.
+     */
+    public static function calculateEmployeeBestAttendance(
+        Employee $employee,
+        Collection $empAtts,
+        Collection $empSchedules,
+        Carbon $startDate,
+        Carbon $endDate,
+        Carbon $asOfDate,
+        ?Collection $empSpecials = null,
+        ?Collection $empDuties = null,
+        ?Collection $shiftsById = null,
+        ?array $settings = null
+    ): array {
+        $shiftsById = $shiftsById ?: Shift::all()->keyBy('id');
+        $settings = $settings ?: self::getAttendanceSettings();
+
+        // 1. Target hari kerja individu dinamis
+        $targetInfo = self::calculateEmployeeTargetDays($employee, $startDate, $endDate, $asOfDate, $empSchedules);
+        $targetDays = $targetInfo['target_days'];
+
+        // 2. Kumpulkan tanggal kehadiran unik (Reguler + Tim Khusus + Dinas Luar)
+        $presentDates = [];
+        $punctualityOffsets = []; // Menit hadir lebih awal/telat relatif terhadap shift
+        $rawClockInSecs = [];
+        $clockOutSecs = [];
+        $totalLates = 0;
+        $totalLateMinutes = 0;
+        $totalEarlyLeaves = 0;
+        $totalEarlyMinutes = 0;
+        $extraOffDayPresents = 0;
+
+        // Jadwal kerja map
+        $schedulesMap = $empSchedules->keyBy(function ($s) {
+            return is_string($s->date) ? substr($s->date, 0, 10) : $s->date->format('Y-m-d');
+        });
+
+        foreach ($empAtts as $att) {
+            if (empty($att->clock_in)) continue;
+
+            $dStr = is_string($att->date) ? substr($att->date, 0, 10) : $att->date->format('Y-m-d');
+            $presentDates[$dStr] = true;
+
+            // Resolusi shift kerja untuk tanggal ini
+            $resolvedShift = self::resolveEmployeeShiftForDate($employee, $dStr, $att->shift, $empSchedules, $shiftsById);
+            $punc = self::evaluateAttendancePunctuality($att, $resolvedShift, $settings);
+
+            if ($punc['is_late']) {
+                $totalLates++;
+                $totalLateMinutes += $punc['late_minutes'];
+            }
+            if ($punc['is_early_leave']) {
+                $totalEarlyLeaves++;
+                $totalEarlyMinutes += $punc['early_leave_minutes'];
+            }
+
+            // Punctuality offset (clamped to [-60, +60] agar tidak ada pencilan ekstrim)
+            $clampedEarly = max(-60, min(60, $punc['relative_early_minutes']));
+            $punctualityOffsets[] = $clampedEarly;
+
+            // Jam masuk & pulang untuk display
+            $cIn = Carbon::parse("{$dStr} {$att->clock_in}");
+            $rawClockInSecs[] = ($cIn->hour * 3600) + ($cIn->minute * 60) + $cIn->second;
+
+            if (!empty($att->clock_out)) {
+                $cOut = Carbon::parse("{$dStr} {$att->clock_out}");
+                $clockOutSecs[] = ($cOut->hour * 3600) + ($cOut->minute * 60) + $cOut->second;
+            }
+
+            // Cek apakah hadir di hari OFF / Libur yang dijadwalkan
+            $sched = $schedulesMap->get($dStr);
+            $cDate = Carbon::parse($dStr);
+            if ($sched && ($sched->status === 'off' || empty($sched->shift_id))) {
+                $extraOffDayPresents++;
+            } elseif (!$sched && $cDate->isSunday()) {
+                $extraOffDayPresents++;
+            }
+        }
+
+        if ($empSpecials && $empSpecials->isNotEmpty()) {
+            foreach ($empSpecials as $sp) {
+                if (empty($sp->clock_in)) continue;
+                $dStr = is_string($sp->date) ? substr($sp->date, 0, 10) : $sp->date->format('Y-m-d');
+                $presentDates[$dStr] = true;
+                if ($sp->status === 'late') {
+                    $totalLates++;
+                    $totalLateMinutes += (int) ($sp->late_minutes ?? 0);
+                }
+            }
+        }
+
+        if ($empDuties && $empDuties->isNotEmpty()) {
+            foreach ($empDuties as $fd) {
+                if (empty($fd->check_in_time)) continue;
+                $dStr = is_string($fd->duty_date) ? substr($fd->duty_date, 0, 10) : $fd->duty_date->format('Y-m-d');
+                $presentDates[$dStr] = true;
+                $cIn = Carbon::parse($fd->check_in_time);
+                $rawClockInSecs[] = ($cIn->hour * 3600) + ($cIn->minute * 60) + $cIn->second;
+                if (!empty($fd->check_out_time)) {
+                    $cOut = Carbon::parse($fd->check_out_time);
+                    $clockOutSecs[] = ($cOut->hour * 3600) + ($cOut->minute * 60) + $cOut->second;
+                }
+            }
+        }
+
+        $presents = count($presentDates);
+
+        // Alpha / Mangkir Kerja:
+        // Evaluasi hanya pada hari kerja yang sudah lewat di mana karyawan TIDAK hadir dan TIDAK memiliki izin/sakit
+        $alphas = 0;
+        if ($targetDays > $presents) {
+            $missedDays = $targetDays - $presents;
+            // Kurangi dengan jadwal izin / sakit yang sah
+            $excusedDays = ($targetInfo['scheduled_leave_days'] ?? 0) + ($targetInfo['scheduled_sick_days'] ?? 0);
+            $alphas = max(0, $missedDays - $excusedDays);
+        }
+
+        // Rata-rata jam masuk & pulang (untuk display)
+        $avgClockInDisplaySec = !empty($rawClockInSecs) ? (array_sum($rawClockInSecs) / count($rawClockInSecs)) : null;
+        $avgClockInFormatted = $avgClockInDisplaySec !== null
+            ? sprintf("%02d:%02d WIB", floor($avgClockInDisplaySec / 3600), floor(($avgClockInDisplaySec % 3600) / 60))
+            : '-';
+
+        $avgClockOutSec = !empty($clockOutSecs) ? (array_sum($clockOutSecs) / count($clockOutSecs)) : null;
+        $avgClockOutFormatted = $avgClockOutSec !== null
+            ? sprintf("%02d:%02d WIB", floor($avgClockOutSec / 3600), floor(($avgClockOutSec % 3600) / 60))
+            : '-';
+
+        $todayStr = Carbon::today('Asia/Jakarta')->format('Y-m-d');
+        $hasActiveAttendanceToday = $empAtts->contains(function ($a) use ($todayStr) {
+            $d = is_string($a->date) ? substr($a->date, 0, 10) : $a->date->format('Y-m-d');
+            return $d === $todayStr && !empty($a->clock_in) && empty($a->clock_out);
+        });
+        if ($avgClockOutFormatted === '-' && $hasActiveAttendanceToday) {
+            $avgClockOutFormatted = 'Belum Pulang';
+        }
+
+        // Rata-rata kedisiplinan hadir lebih awal relatif terhadap shift (dalam menit)
+        $avgRelativeEarlyMinutes = !empty($punctualityOffsets) ? round(array_sum($punctualityOffsets) / count($punctualityOffsets), 1) : 0;
+
+        // Label deskriptif ketepatan waktu
+        $punctualityLabel = '-';
+        if ($presents > 0) {
+            if ($avgRelativeEarlyMinutes > 0) {
+                $punctualityLabel = "+{$avgRelativeEarlyMinutes}m sebelum shift";
+            } elseif ($avgRelativeEarlyMinutes === 0.0) {
+                $punctualityLabel = "Tepat Waktu";
+            } else {
+                $punctualityLabel = "Telat avg " . abs($avgRelativeEarlyMinutes) . "m";
+            }
+        }
+
+        // ==============================================================
+        // FORMULA SKOR ABSEN TERBAIK YANG ADIL & CERDAS:
+        // ==============================================================
+        // 1. Base Kehadiran: (Presents / TargetDays) * 100 (Maks 100 poin)
+        // 2. Bonus Loyalitas: Kehadiran saat hari OFF/Libur terjadwal (+0.5 poin/hari, maks +5 poin)
+        // 3. Penalti Terlambat: -(Telat * 0.25) - (Menit * 0.01)
+        // 4. Penalti Pulang Cepat: -(Pulang Cepat * 0.5)
+        // 5. Penalti Alpha: -(Alpha * 2.0)
+        if ($presents === 0) {
+            $finalScore = 0;
+            $baseAttendanceRate = 0;
+            $bonusScore = 0;
+        } else {
+            $baseAttendanceRate = ($targetDays > 0) ? min(100.0, ($presents / $targetDays) * 100) : 0;
+            $bonusScore = min(5.0, $extraOffDayPresents * 0.5);
+
+            $penaltyLate = ($totalLates * 0.25) + ($totalLateMinutes * 0.01);
+            $penaltyEarly = ($totalEarlyLeaves * 0.5);
+            $penaltyAlpha = ($alphas * 2.0);
+
+            $finalScore = max(0.0, round($baseAttendanceRate + $bonusScore - $penaltyLate - $penaltyEarly - $penaltyAlpha, 2));
+        }
+
+        // Nama shift representatif karyawan
+        $defaultEmpShift = $employee->relationLoaded('shift') ? $employee->shift : ($employee->shift_id ? $shiftsById->get($employee->shift_id) : null);
+        $shiftDisplayName = $defaultEmpShift ? $defaultEmpShift->name : 'Reguler';
+        if ($defaultEmpShift && $defaultEmpShift->formatted_time) {
+            $shiftDisplayName .= " ({$defaultEmpShift->formatted_time})";
+        }
+
+        return [
+            'id' => $employee->id,
+            'name' => $employee->name,
+            'email' => $employee->email,
+            'phone' => $employee->phone,
+            'photo' => $employee->photo,
+            'position' => $employee->position ?: 'Karyawan',
+            'branch' => $employee->area ? $employee->area->name : ($employee->branch ?: 'Pusat'),
+            'area_id' => $employee->area_id,
+            'shift_name' => $shiftDisplayName,
+            'is_schedule_custom' => $targetInfo['is_schedule_custom'],
+            'target_days' => $targetDays,
+            'presents' => $presents,
+            'extra_off_day_presents' => $extraOffDayPresents,
+            'lates' => $totalLates,
+            'late_minutes' => $totalLateMinutes,
+            'alphas' => $alphas,
+            'early_leaves' => $totalEarlyLeaves,
+            'score' => $finalScore,
+            'base_attendance_rate' => round($baseAttendanceRate, 1),
+            'bonus_score' => $bonusScore,
+            'avg_early_minutes' => $avgRelativeEarlyMinutes,
+            'punctuality_label' => $punctualityLabel,
+            'avg_clock_in_formatted' => $avgClockInFormatted,
+            'avg_clock_out_formatted' => $avgClockOutFormatted,
+            'reward_amount' => 0,
+            'reward_title' => null,
+            'rank' => '-',
+            'is_branch_winner' => false,
+            'is_global_winner' => false,
+            'is_maintenance_winner' => false,
+        ];
+    }
+
+    /**
      * Hitung rekapitulasi presensi bulanan per karyawan secara cerdas dan otomatis
      */
     public static function calculateMonthlyRecap(

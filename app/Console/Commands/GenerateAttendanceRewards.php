@@ -319,22 +319,49 @@ class GenerateAttendanceRewards extends Command
                     SpecialAttendance::whereIn('id', $empSpecialAtts->pluck('id'))->update(['is_synced_to_payroll' => true]);
                 }
 
-                // Hitung performa untuk evaluasi Reward
-                $totalPresents = $empAtts->whereNotNull('clock_in')->count() + $empSpecialAtts->whereNotNull('clock_in')->count();
-                $totalLateMins = $totalLateMinutes + (int) $empSpecialAtts->sum('late_minutes');
+                // Hitung performa untuk evaluasi Reward secara adil & cerdas berbasis jam & hari kerja individu
+                $empSchedules = $allWorkSchedules->where('employee_id', $employee->id);
+                $perf = AttendanceCalculatorService::calculateEmployeeBestAttendance(
+                    $employee,
+                    $empAtts,
+                    $empSchedules,
+                    $monthStart,
+                    $monthEnd,
+                    $monthEnd,
+                    $empSpecialAtts,
+                    null,
+                    $shiftsById,
+                    $attSettings
+                );
 
-                if ($totalPresents > 0) {
-                    $performanceScore = ($totalPresents * 100) - ($totalLateMins * 2) - ($missingOutCount * 15) - ($alphaCount * 50);
-                    $performance[] = [
+                if ($perf['presents'] > 0 && $perf['score'] > 0) {
+                    $performance[] = array_merge($perf, [
                         'user' => $linkedUser,
                         'employee' => $employee,
                         'area_id' => $employee->area_id,
-                        'presents' => $totalPresents,
-                        'late_minutes' => $totalLateMins,
-                        'score' => $performanceScore,
-                    ];
+                    ]);
                 }
             }
+
+            // Fungsi sort tie-breaker adil & cerdas untuk Absen Terbaik
+            $sortFn = function ($a, $b) {
+                if ($b['score'] != $a['score']) {
+                    return $b['score'] <=> $a['score'];
+                }
+                if ($b['presents'] != $a['presents']) {
+                    return $b['presents'] <=> $a['presents'];
+                }
+                if ($a['late_minutes'] != $b['late_minutes']) {
+                    return $a['late_minutes'] <=> $b['late_minutes'];
+                }
+                if ($a['lates'] != $b['lates']) {
+                    return $a['lates'] <=> $b['lates'];
+                }
+                if ($a['early_leaves'] != $b['early_leaves']) {
+                    return $a['early_leaves'] <=> $b['early_leaves'];
+                }
+                return ($b['avg_early_minutes'] ?? 0) <=> ($a['avg_early_minutes'] ?? 0);
+            };
 
             // --- 6. PROSES REWARD ABSEN TERBAIK OTOMATIS ---
             if ($isRewardEnabled && !empty($performance)) {
@@ -349,7 +376,7 @@ class GenerateAttendanceRewards extends Command
 
                     foreach ($byArea as $areaId => $areaPerformers) {
                         if (!$areaId) continue;
-                        $sorted = $areaPerformers->sortByDesc('score')->values();
+                        $sorted = $areaPerformers->sort($sortFn)->values();
                         for ($rank = 1; $rank <= min(3, $sorted->count()); $rank++) {
                             $item = $sorted[$rank - 1];
                             $nominal = $branchNominals[$rank] ?? 0;
@@ -375,7 +402,7 @@ class GenerateAttendanceRewards extends Command
 
                 // B. Reward Global Seluruh Perusahaan (Top 3)
                 if (Setting::get('attendance_reward_global_enabled', '1') === '1') {
-                    $globalSorted = collect($performance)->sortByDesc('score')->values();
+                    $globalSorted = collect($performance)->sort($sortFn)->values();
                     $globalNominals = [
                         1 => (float) Setting::get('attendance_reward_global_1', 200000),
                         2 => (float) Setting::get('attendance_reward_global_2', 150000),
@@ -419,7 +446,7 @@ class GenerateAttendanceRewards extends Command
                         $isSpecial = str_contains($pos, 'khusus') || str_contains($pos, 'special') || str_contains($pos, 'serbu') || str_contains($type, 'khusus');
                         if ($isSpecial) return false;
                         return str_contains($pos, 'maint');
-                    })->sortByDesc('score')->values();
+                    })->sort($sortFn)->values();
 
                     for ($rank = 1; $rank <= min(3, $maintSorted->count()); $rank++) {
                         $item = $maintSorted[$rank - 1];

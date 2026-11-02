@@ -204,32 +204,39 @@
 
                 <div v-show="showFormulaInfo" class="px-5 pb-5 pt-2 text-xs text-blue-950/80 border-t border-blue-100 space-y-3">
                     <p class="leading-relaxed">
-                        Sistem penilaian kedisiplinan dihitung secara otomatis dan real-time dari data absensi harian karyawan dengan rumus transparan:
+                        Sistem penilaian kedisiplinan dihitung secara otomatis, adil, dan transparan dari data presensi harian karyawan dengan memperhitungkan perbedaan jam kerja (shift) dan hari kerja (roster) masing-masing karyawan:
                     </p>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
                         <div class="bg-white/80 p-3 rounded-xl border border-blue-100">
-                            <span class="font-bold text-blue-900 block mb-1">1. Base Kehadiran:</span>
+                            <span class="font-bold text-blue-900 block mb-1">1. Base Kehadiran Dinamis:</span>
                             <code class="text-[11px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-mono">
                                 (Hadir ÷ Target Hari) × 100
                             </code>
-                            <p class="text-[11px] text-slate-500 mt-1">Mengukur rasio kepatuhan kehadiran terhadap jadwal kerja.</p>
+                            <p class="text-[11px] text-slate-500 mt-1">Target hari kerja disesuaikan jadwal shift/roster masing-masing. Hari libur (OFF) terjadwal tidak dihitung sebagai beban alpha.</p>
                         </div>
                         <div class="bg-white/80 p-3 rounded-xl border border-blue-100">
-                            <span class="font-bold text-blue-900 block mb-1">2. Penalti Terlambat:</span>
-                            <code class="text-[11px] bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded font-mono">
-                                -(Telat × 0.25) - (Menit × 0.01)
+                            <span class="font-bold text-blue-900 block mb-1">2. Apresiasi Masuk Hari Libur:</span>
+                            <code class="text-[11px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-mono">
+                                +0.5 Poin / Hari (Maks +5)
                             </code>
-                            <p class="text-[11px] text-slate-500 mt-1">Pengurangan poin setiap kali terlambat & durasi menit keterlambatan.</p>
+                            <p class="text-[11px] text-slate-500 mt-1">Bonus poin apresiasi loyalitas bagi karyawan yang masuk kerja di hari libur jadwalnya.</p>
                         </div>
                         <div class="bg-white/80 p-3 rounded-xl border border-blue-100">
-                            <span class="font-bold text-blue-900 block mb-1">3. Penalti Alpha:</span>
+                            <span class="font-bold text-blue-900 block mb-1">3. Kedisiplinan Jam Shift:</span>
+                            <code class="text-[11px] bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded font-mono">
+                                -(Telat × 0.25) - (Mnt × 0.01)
+                            </code>
+                            <p class="text-[11px] text-slate-500 mt-1">Dievaluasi presisi terhadap jam mulai & selesai shift masing-masing (Shift Pagi, Siang, Sore, Malam setara & adil).</p>
+                        </div>
+                        <div class="bg-white/80 p-3 rounded-xl border border-blue-100">
+                            <span class="font-bold text-blue-900 block mb-1">4. Penalti Alpha:</span>
                             <code class="text-[11px] bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded font-mono">
                                 -(Alpha × 2.0 Poin)
                             </code>
-                            <p class="text-[11px] text-slate-500 mt-1">Pemotongan skor signifikan untuk ketidakhadiran tanpa keterangan.</p>
+                            <p class="text-[11px] text-slate-500 mt-1">Pengurangan skor untuk ketidakhadiran jadwal kerja tanpa keterangan izin / sakit yang sah.</p>
                         </div>
                         <div class="bg-white/80 p-3 rounded-xl border border-blue-100">
-                            <span class="font-bold text-blue-900 block mb-1">4. Reward Pemenang ({{ currentScopeLabel }}):</span>
+                            <span class="font-bold text-blue-900 block mb-1">5. Reward ({{ currentScopeLabel }}):</span>
                             <p class="text-[11px] text-emerald-700 font-bold mt-1">
                                 🥇 Juara 1: Rp {{ formatRupiah(currentRewards[1] || 200000) }}<br>
                                 🥈 Juara 2: Rp {{ formatRupiah(currentRewards[2] || 150000) }}<br>
@@ -365,10 +372,13 @@
                             {{ podium[0].position }}
                         </p>
 
-                        <!-- Cabang Badge -->
-                        <div class="mt-2">
+                        <!-- Cabang & Shift Badge -->
+                        <div class="mt-2 flex flex-col items-center gap-1">
                             <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs font-bold">
                                 🏢 {{ podium[0].branch }}
+                            </span>
+                            <span v-if="podium[0].shift_name" class="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full truncate max-w-[200px]" :title="podium[0].shift_name">
+                                🕒 {{ podium[0].shift_name }}
                             </span>
                         </div>
 
@@ -415,6 +425,16 @@
                             <span class="text-[10px] text-amber-900/80 font-bold uppercase tracking-wider block">Jam Pulang</span>
                             <span class="font-black text-slate-900 text-xs">{{ podium[0].avg_clock_out_formatted || '-' }}</span>
                         </div>
+                    </div>
+
+                    <!-- Punctuality / Early Relative Badge -->
+                    <div v-if="(podium[0].punctuality_label && podium[0].punctuality_label !== '-') || podium[0].extra_off_day_presents > 0" class="mt-2 flex items-center justify-center gap-1.5 flex-wrap">
+                        <span v-if="podium[0].punctuality_label && podium[0].punctuality_label !== '-'" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            ⚡ {{ podium[0].punctuality_label }}
+                        </span>
+                        <span v-if="podium[0].extra_off_day_presents > 0" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                            ⭐ +{{ podium[0].extra_off_day_presents }} Hari Libur
+                        </span>
                     </div>
 
                     <!-- Action Button -->
@@ -473,10 +493,13 @@
                             {{ podium[1].position }}
                         </p>
 
-                        <!-- Cabang Badge -->
-                        <div class="mt-2">
+                        <!-- Cabang & Shift Badge -->
+                        <div class="mt-2 flex flex-col items-center gap-1">
                             <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs font-bold">
                                 🏢 {{ podium[1].branch }}
+                            </span>
+                            <span v-if="podium[1].shift_name" class="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full truncate max-w-[200px]" :title="podium[1].shift_name">
+                                🕒 {{ podium[1].shift_name }}
                             </span>
                         </div>
 
@@ -523,6 +546,16 @@
                             <span class="text-[10px] text-slate-600 font-bold uppercase tracking-wider block">Jam Pulang</span>
                             <span class="font-black text-slate-900 text-xs">{{ podium[1].avg_clock_out_formatted || '-' }}</span>
                         </div>
+                    </div>
+
+                    <!-- Punctuality / Early Relative Badge -->
+                    <div v-if="(podium[1].punctuality_label && podium[1].punctuality_label !== '-') || podium[1].extra_off_day_presents > 0" class="mt-2 flex items-center justify-center gap-1.5 flex-wrap">
+                        <span v-if="podium[1].punctuality_label && podium[1].punctuality_label !== '-'" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            ⚡ {{ podium[1].punctuality_label }}
+                        </span>
+                        <span v-if="podium[1].extra_off_day_presents > 0" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                            ⭐ +{{ podium[1].extra_off_day_presents }} Hari Libur
+                        </span>
                     </div>
 
                     <!-- Action Button -->
@@ -581,10 +614,13 @@
                             {{ podium[2].position }}
                         </p>
 
-                        <!-- Cabang Badge -->
-                        <div class="mt-2">
+                        <!-- Cabang & Shift Badge -->
+                        <div class="mt-2 flex flex-col items-center gap-1">
                             <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs font-bold">
                                 🏢 {{ podium[2].branch }}
+                            </span>
+                            <span v-if="podium[2].shift_name" class="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full truncate max-w-[200px]" :title="podium[2].shift_name">
+                                🕒 {{ podium[2].shift_name }}
                             </span>
                         </div>
 
@@ -631,6 +667,16 @@
                             <span class="text-[10px] text-orange-900/80 font-bold uppercase tracking-wider block">Jam Pulang</span>
                             <span class="font-black text-slate-900 text-xs">{{ podium[2].avg_clock_out_formatted || '-' }}</span>
                         </div>
+                    </div>
+
+                    <!-- Punctuality / Early Relative Badge -->
+                    <div v-if="(podium[2].punctuality_label && podium[2].punctuality_label !== '-') || podium[2].extra_off_day_presents > 0" class="mt-2 flex items-center justify-center gap-1.5 flex-wrap">
+                        <span v-if="podium[2].punctuality_label && podium[2].punctuality_label !== '-'" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            ⚡ {{ podium[2].punctuality_label }}
+                        </span>
+                        <span v-if="podium[2].extra_off_day_presents > 0" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                            ⭐ +{{ podium[2].extra_off_day_presents }} Hari Libur
+                        </span>
                     </div>
 
                     <!-- Action Button -->
@@ -784,6 +830,9 @@
                                             :style="{ width: Math.min(100, Math.round((emp.presents / Math.max(1, emp.target_days)) * 100)) + '%' }"
                                         ></div>
                                     </div>
+                                    <div v-if="emp.extra_off_day_presents > 0" class="text-[10px] text-amber-700 font-bold mt-1">
+                                        ⭐ +{{ emp.extra_off_day_presents }}x Hadir Hari Libur
+                                    </div>
                                 </td>
 
                                 <!-- Jam Kerja (Masuk / Pulang) -->
@@ -792,6 +841,9 @@
                                         -
                                     </div>
                                     <div v-else class="inline-flex flex-col items-center gap-1">
+                                        <div class="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md truncate max-w-[190px]" :title="emp.shift_name">
+                                            🕒 {{ emp.shift_name }}
+                                        </div>
                                         <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-200/60 shadow-2xs whitespace-nowrap">
                                             <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
@@ -803,6 +855,9 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
                                             </svg>
                                             <span>Pulang: {{ emp.avg_clock_out_formatted || '-' }}</span>
+                                        </div>
+                                        <div v-if="emp.punctuality_label && emp.punctuality_label !== '-'" class="text-[10px] font-bold px-2 py-0.5 rounded-full" :class="emp.avg_early_minutes > 0 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : (emp.avg_early_minutes === 0 ? 'bg-slate-100 text-slate-700 border border-slate-200' : 'bg-amber-100 text-amber-800 border border-amber-300')">
+                                            ⚡ {{ emp.punctuality_label }}
                                         </div>
                                     </div>
                                 </td>
@@ -977,8 +1032,13 @@
                                     class="p-3 bg-white border border-slate-100 rounded-xl flex items-center justify-between text-xs hover:border-slate-200 transition"
                                 >
                                     <div>
-                                        <div class="font-bold text-slate-800">{{ hist.formatted_date || hist.date }}</div>
-                                        <div class="text-slate-500 text-[11px] mt-0.5 flex items-center gap-2">
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <span class="font-bold text-slate-800">{{ hist.formatted_date || hist.date }}</span>
+                                            <span v-if="hist.shift" class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                                                🕒 {{ hist.shift.name }} ({{ hist.shift.formatted_time || (hist.shift.start_time + ' - ' + hist.shift.end_time) }})
+                                            </span>
+                                        </div>
+                                        <div class="text-slate-500 text-[11px] mt-1 flex items-center gap-2 flex-wrap">
                                             <span class="inline-flex items-center gap-1 text-emerald-700 font-semibold">
                                                 <span>Masuk:</span>
                                                 <strong class="text-slate-800">{{ hist.formatted_clock_in || formatTime(hist.clock_in) }}</strong>
@@ -987,6 +1047,9 @@
                                             <span class="inline-flex items-center gap-1 text-blue-700 font-semibold">
                                                 <span>Pulang:</span>
                                                 <strong class="text-slate-800">{{ hist.formatted_clock_out || formatTime(hist.clock_out) }}</strong>
+                                            </span>
+                                            <span v-if="hist.punctuality_label" class="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60 ml-1">
+                                                ⚡ {{ hist.punctuality_label }}
                                             </span>
                                         </div>
                                     </div>
