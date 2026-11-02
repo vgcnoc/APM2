@@ -80,6 +80,57 @@
                     </div>
                 </div>
 
+                <!-- Smart Quick Condition Tabs -->
+                <div v-can="'warehouse_stocks_filter'" class="flex items-center gap-1.5 p-1.5 bg-slate-100/80 rounded-2xl overflow-x-auto border border-slate-200/60 scrollbar-none">
+                    <button 
+                        type="button" 
+                        @click="setConditionFilter('')" 
+                        class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
+                        :class="[!filterCondition ? 'bg-white text-gray-900 shadow-xs ring-1 ring-black/5 font-extrabold' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50']"
+                    >
+                        <span>Semua</span>
+                        <span class="px-1.5 py-0.5 rounded-full text-[10px]" :class="[!filterCondition ? 'bg-gray-100 text-gray-800' : 'bg-gray-200/70 text-gray-600']">
+                            {{ formatNum(summary?.condition_stats?.all ?? summary?.total_materials ?? materials.total ?? 0) }}
+                        </span>
+                    </button>
+                    <button 
+                        type="button" 
+                        @click="setConditionFilter('layak')" 
+                        class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
+                        :class="[filterCondition === 'layak' ? 'bg-white text-emerald-700 shadow-xs ring-1 ring-emerald-500/20 font-extrabold' : 'text-gray-600 hover:text-emerald-700 hover:bg-white/50']"
+                    >
+                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span>Layak Pakai</span>
+                        <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-emerald-50 text-emerald-700 font-bold">
+                            {{ formatNum(summary?.condition_stats?.layak ?? 0) }}
+                        </span>
+                    </button>
+                    <button 
+                        type="button" 
+                        @click="setConditionFilter('tidak_layak')" 
+                        class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
+                        :class="[filterCondition === 'tidak_layak' ? 'bg-white text-amber-700 shadow-xs ring-1 ring-amber-500/20 font-extrabold' : 'text-gray-600 hover:text-amber-700 hover:bg-white/50']"
+                    >
+                        <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                        <span>Tidak Layak</span>
+                        <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-50 text-amber-700 font-bold">
+                            {{ formatNum(summary?.condition_stats?.tidak_layak ?? 0) }}
+                        </span>
+                    </button>
+                    <button 
+                        type="button" 
+                        @click="setConditionFilter('rusak')" 
+                        class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
+                        :class="[filterCondition === 'rusak' ? 'bg-white text-rose-700 shadow-xs ring-1 ring-rose-500/20 font-extrabold' : 'text-gray-600 hover:text-rose-700 hover:bg-white/50']"
+                    >
+                        <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                        <span>Rusak / Afkir</span>
+                        <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-rose-50 text-rose-700 font-bold">
+                            {{ formatNum(summary?.condition_stats?.rusak ?? 0) }}
+                        </span>
+                    </button>
+                </div>
+
                 <!-- Comprehensive Filters Toolbar -->
                 <div v-can="'warehouse_stocks_filter'" class="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 space-y-4">
                     <!-- Top row: Search Box and Quick Reset -->
@@ -175,6 +226,10 @@
                                 Satuan: {{ filterUnit }}
                                 <button @click="filterUnit = ''; applyFilters()" class="hover:text-indigo-900">✕</button>
                             </span>
+                            <span v-if="filterCondition" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 font-semibold border border-indigo-100">
+                                Kondisi: {{ filterCondition === 'layak' ? 'Layak Pakai' : (filterCondition === 'tidak_layak' ? 'Tidak Layak' : 'Rusak / Afkir') }}
+                                <button @click="filterCondition = ''; applyFilters()" class="hover:text-indigo-900">✕</button>
+                            </span>
                         </div>
                         <button @click="resetFilters" class="px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition" title="Hapus Semua Filter">
                             Reset Semua Filter
@@ -210,6 +265,19 @@
                                             <div>
                                                 <div class="text-sm font-bold text-gray-900 flex items-center gap-2 flex-wrap">
                                                     <span>{{ material.name }}</span>
+                                                    <span v-if="material.condition_label" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider"
+                                                        :class="{
+                                                            'bg-emerald-50 text-emerald-700 border border-emerald-200': material.condition_label === 'Layak Pakai',
+                                                            'bg-amber-50 text-amber-700 border border-amber-200': material.condition_label === 'Tidak Layak',
+                                                            'bg-rose-50 text-rose-700 border border-rose-200': material.condition_label === 'Rusak'
+                                                        }">
+                                                        <span class="w-1.5 h-1.5 rounded-full" :class="{
+                                                            'bg-emerald-500': material.condition_label === 'Layak Pakai',
+                                                            'bg-amber-500': material.condition_label === 'Tidak Layak',
+                                                            'bg-rose-500': material.condition_label === 'Rusak'
+                                                        }"></span>
+                                                        {{ material.condition_label }}
+                                                    </span>
                                                     <button v-can="'warehouse_stocks_btn_status'" type="button" @click="openStatusModal(material)" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 hover:border-amber-300 transition-all shadow-sm shrink-0" title="Klik untuk Buat/Ubah Status Kondisi (Layak, Tidak Layak, Rusak)">
                                                         <span>⚡</span> Buat Status
                                                     </button>
@@ -609,7 +677,13 @@ const filterCategory = ref(props.filters?.category || '');
 const filterAreaId = ref(props.filters?.area_id || '');
 const filterStockStatus = ref(props.filters?.stock_status || '');
 const filterUnit = ref(props.filters?.unit || '');
+const filterCondition = ref(props.filters?.condition || '');
 const filterSortBy = ref(props.filters?.sort_by || 'name_asc');
+
+const setConditionFilter = (cond) => {
+    filterCondition.value = filterCondition.value === cond ? '' : cond;
+    applyFilters();
+};
 
 const activeFilterCount = computed(() => {
     let count = 0;
@@ -618,6 +692,7 @@ const activeFilterCount = computed(() => {
     if (filterAreaId.value) count++;
     if (filterStockStatus.value) count++;
     if (filterUnit.value) count++;
+    if (filterCondition.value) count++;
     if (filterSortBy.value && filterSortBy.value !== 'name_asc') count++;
     return count;
 });
@@ -676,6 +751,7 @@ const applyFilters = () => {
     if (filterAreaId.value) params.area_id = filterAreaId.value;
     if (filterStockStatus.value) params.stock_status = filterStockStatus.value;
     if (filterUnit.value) params.unit = filterUnit.value;
+    if (filterCondition.value) params.condition = filterCondition.value;
     if (filterSortBy.value && filterSortBy.value !== 'name_asc') params.sort_by = filterSortBy.value;
 
     router.get('/warehouse-stocks', params, {
@@ -695,6 +771,7 @@ const resetFilters = () => {
     filterAreaId.value = '';
     filterStockStatus.value = '';
     filterUnit.value = '';
+    filterCondition.value = '';
     filterSortBy.value = 'name_asc';
     applyFilters();
 };

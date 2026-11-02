@@ -42,7 +42,7 @@ class WarehouseStockController extends Controller
         })
         ->visibleInMaterialsTable()
         ->where($warehouseFilter)
-        ->with(['stocks' => function ($sq) use ($accessibleAreas, $isGlobal) {
+        ->with(['transactionItems:id,material_id,condition', 'stocks' => function ($sq) use ($accessibleAreas, $isGlobal) {
             if (!$isGlobal && !empty($accessibleAreas)) {
                 $sq->whereIn('area_id', $accessibleAreas);
             }
@@ -126,7 +126,53 @@ class WarehouseStockController extends Controller
             }
         }
 
-        // 6. Pengurutan (Sorting)
+        // 6. Filter Kondisi Barang (Layak, Tidak Layak, Rusak)
+        if ($request->filled('condition')) {
+            $cond = $request->condition;
+            if ($cond === 'layak') {
+                $query->where(function ($sq) {
+                    $sq->whereHas('transactionItems', fn($tq) => $tq->where('condition', 'Layak Pakai'))
+                       ->orWhere('name', 'like', '%layak%')
+                       ->orWhere(function ($kq) {
+                           $kq->where('name', 'not like', '%rusak%')
+                              ->where('name', 'not like', '%afkir%')
+                              ->where('name', 'not like', '%tidak layak%')
+                              ->where(function ($dq) {
+                                  $dq->whereNull('description')
+                                     ->orWhere(function ($ddq) {
+                                         $ddq->where('description', 'not like', '%rusak%')
+                                             ->where('description', 'not like', '%tidak layak%');
+                                     });
+                              });
+                       });
+                });
+            } elseif ($cond === 'tidak_layak') {
+                $query->where(function ($sq) {
+                    $sq->whereHas('transactionItems', fn($tq) => $tq->where('condition', 'Tidak Layak'))
+                       ->orWhere('name', 'like', '%tidak layak%')
+                       ->orWhere('description', 'like', '%tidak layak%')
+                       ->orWhereHas('dismantles', function ($dq) {
+                           $dq->whereIn('condition', ['perlu_cek'])
+                              ->orWhere('disposition', 'reconditioned');
+                       });
+                });
+            } elseif ($cond === 'rusak') {
+                $query->where(function ($sq) {
+                    $sq->whereHas('transactionItems', fn($tq) => $tq->where('condition', 'Rusak'))
+                       ->orWhere('name', 'like', '%rusak%')
+                       ->orWhere('name', 'like', '%afkir%')
+                       ->orWhere('name', 'like', '%scrap%')
+                       ->orWhere('description', 'like', '%rusak%')
+                       ->orWhere('description', 'like', '%afkir%')
+                       ->orWhereHas('dismantles', function ($dq) {
+                           $dq->whereIn('condition', ['rusak_scrap'])
+                              ->orWhere('disposition', 'scrap');
+                       });
+                });
+            }
+        }
+
+        // 7. Pengurutan (Sorting)
         $sortBy = $request->get('sort_by', 'name_asc');
         switch ($sortBy) {
             case 'name_desc':
@@ -142,6 +188,18 @@ class WarehouseStockController extends Controller
         }
 
         $materials = $query->paginate(15)->withQueryString();
+
+        $materials->getCollection()->transform(function ($material) {
+            $nameLower = strtolower($material->name . ' ' . ($material->description ?? ''));
+            if (str_contains($nameLower, 'rusak') || str_contains($nameLower, 'afkir') || str_contains($nameLower, 'scrap') || ($material->relationLoaded('transactionItems') && $material->transactionItems->contains(fn($ti) => $ti->condition === 'Rusak'))) {
+                $material->condition_label = 'Rusak';
+            } elseif (str_contains($nameLower, 'tidak layak') || ($material->relationLoaded('transactionItems') && $material->transactionItems->contains(fn($ti) => $ti->condition === 'Tidak Layak'))) {
+                $material->condition_label = 'Tidak Layak';
+            } else {
+                $material->condition_label = 'Layak Pakai';
+            }
+            return $material;
+        });
 
         $baseSummaryQuery = Material::where(function ($q) {
             $q->where('is_active', true)->orWhereNull('is_active');
@@ -172,17 +230,61 @@ class WarehouseStockController extends Controller
             })->count();
         }
 
+        $baseCondQuery = (clone $baseSummaryQuery)->when($scopedAreaIds, fn($q) => $q->whereHas('stocks', fn($sq) => $sq->whereIn('area_id', $scopedAreaIds)), fn($q) => $q->whereHas('stocks'));
+        
+        $conditionStats = [
+            'all' => (clone $baseCondQuery)->count(),
+            'layak' => (clone $baseCondQuery)->where(function ($sq) {
+                $sq->whereHas('transactionItems', fn($tq) => $tq->where('condition', 'Layak Pakai'))
+                   ->orWhere('name', 'like', '%layak%')
+                   ->orWhere(function ($kq) {
+                       $kq->where('name', 'not like', '%rusak%')
+                          ->where('name', 'not like', '%afkir%')
+                          ->where('name', 'not like', '%tidak layak%')
+                          ->where(function ($dq) {
+                              $dq->whereNull('description')
+                                 ->orWhere(function ($ddq) {
+                                     $ddq->where('description', 'not like', '%rusak%')
+                                         ->where('description', 'not like', '%tidak layak%');
+                                 });
+                          });
+                   });
+            })->count(),
+            'tidak_layak' => (clone $baseCondQuery)->where(function ($sq) {
+                $sq->whereHas('transactionItems', fn($tq) => $tq->where('condition', 'Tidak Layak'))
+                   ->orWhere('name', 'like', '%tidak layak%')
+                   ->orWhere('description', 'like', '%tidak layak%')
+                   ->orWhereHas('dismantles', function ($dq) {
+                       $dq->whereIn('condition', ['perlu_cek'])
+                          ->orWhere('disposition', 'reconditioned');
+                   });
+            })->count(),
+            'rusak' => (clone $baseCondQuery)->where(function ($sq) {
+                $sq->whereHas('transactionItems', fn($tq) => $tq->where('condition', 'Rusak'))
+                   ->orWhere('name', 'like', '%rusak%')
+                   ->orWhere('name', 'like', '%afkir%')
+                   ->orWhere('name', 'like', '%scrap%')
+                   ->orWhere('description', 'like', '%rusak%')
+                   ->orWhere('description', 'like', '%afkir%')
+                   ->orWhereHas('dismantles', function ($dq) {
+                       $dq->whereIn('condition', ['rusak_scrap'])
+                          ->orWhere('disposition', 'scrap');
+                   });
+            })->count(),
+        ];
+
         return Inertia::render('Inventory/Warehouse/Index', [
             'materials' => $materials,
             'categories' => $categories,
             'units' => $units,
             'areas' => $areas,
-            'filters' => $request->only(['search', 'category', 'unit', 'area_id', 'stock_status', 'sort_by']),
+            'filters' => $request->only(['search', 'category', 'unit', 'area_id', 'stock_status', 'sort_by', 'condition']),
             'summary' => [
                 'total_materials' => $totalMaterials,
                 'out_of_stock' => $outOfStockCount,
                 'available' => $availableCount,
                 'filtered_count' => $materials->total(),
+                'condition_stats' => $conditionStats,
             ]
         ]);
     }

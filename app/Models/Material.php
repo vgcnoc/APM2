@@ -47,6 +47,11 @@ class Material extends Model
         return $this->hasMany(MaterialTransactionItem::class);
     }
 
+    public function dismantles(): HasMany
+    {
+        return $this->hasMany(CustomerMaterialDismantle::class);
+    }
+
     /**
      * Scope untuk tampilan di menu Katalog Produk & Satuan (Gudang Pusat):
      * Khusus produk/material murni untuk restock / order toko.

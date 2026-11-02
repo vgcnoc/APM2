@@ -72,6 +72,57 @@
                 </div>
             </div>
 
+            <!-- Smart Quick Condition Tabs -->
+            <div v-can="'materials_filter_category'" class="flex items-center gap-1.5 p-1.5 bg-slate-100/80 rounded-2xl mb-4 overflow-x-auto border border-slate-200/60 scrollbar-none">
+                <button 
+                    type="button" 
+                    @click="setConditionFilter('')" 
+                    class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
+                    :class="[!filterCondition ? 'bg-white text-gray-900 shadow-xs ring-1 ring-black/5 font-extrabold' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50']"
+                >
+                    <span>Semua</span>
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px]" :class="[!filterCondition ? 'bg-gray-100 text-gray-800' : 'bg-gray-200/70 text-gray-600']">
+                        {{ formatNumber(summary?.condition_stats?.all ?? summary?.total_items ?? materials.total ?? 0) }}
+                    </span>
+                </button>
+                <button 
+                    type="button" 
+                    @click="setConditionFilter('layak')" 
+                    class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
+                    :class="[filterCondition === 'layak' ? 'bg-white text-emerald-700 shadow-xs ring-1 ring-emerald-500/20 font-extrabold' : 'text-gray-600 hover:text-emerald-700 hover:bg-white/50']"
+                >
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span>Layak Pakai</span>
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-emerald-50 text-emerald-700 font-bold">
+                        {{ formatNumber(summary?.condition_stats?.layak ?? 0) }}
+                    </span>
+                </button>
+                <button 
+                    type="button" 
+                    @click="setConditionFilter('tidak_layak')" 
+                    class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
+                    :class="[filterCondition === 'tidak_layak' ? 'bg-white text-amber-700 shadow-xs ring-1 ring-amber-500/20 font-extrabold' : 'text-gray-600 hover:text-amber-700 hover:bg-white/50']"
+                >
+                    <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                    <span>Tidak Layak</span>
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-50 text-amber-700 font-bold">
+                        {{ formatNumber(summary?.condition_stats?.tidak_layak ?? 0) }}
+                    </span>
+                </button>
+                <button 
+                    type="button" 
+                    @click="setConditionFilter('rusak')" 
+                    class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
+                    :class="[filterCondition === 'rusak' ? 'bg-white text-rose-700 shadow-xs ring-1 ring-rose-500/20 font-extrabold' : 'text-gray-600 hover:text-rose-700 hover:bg-white/50']"
+                >
+                    <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                    <span>Rusak / Afkir</span>
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-rose-50 text-rose-700 font-bold">
+                        {{ formatNumber(summary?.condition_stats?.rusak ?? 0) }}
+                    </span>
+                </button>
+            </div>
+
             <!-- Header Actions & Filters (Rapi, Terstruktur & Responsif Dua Baris) -->
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3.5 mb-3">
                 <!-- Baris 1: Pencarian & Tombol Aksi Utama -->
@@ -186,7 +237,7 @@
 
                     <!-- Reset Filters Button -->
                     <button 
-                        v-if="search || (filterCategory && filterCategory !== 'all') || filterStockStatus || filterArea"
+                        v-if="search || (filterCategory && filterCategory !== 'all') || filterStockStatus || filterArea || filterCondition"
                         @click="resetFilters" 
                         type="button"
                         class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 font-medium text-xs shadow-2xs hover:text-gray-900 transition-all cursor-pointer"
@@ -238,6 +289,19 @@
                                 <td class="py-4 px-6">
                                     <div class="flex items-center gap-2 flex-wrap">
                                         <p class="text-sm font-semibold text-gray-900">{{ item.name }}</p>
+                                        <span v-if="item.condition_label" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider"
+                                            :class="{
+                                                'bg-emerald-50 text-emerald-700 border border-emerald-200': item.condition_label === 'Layak Pakai',
+                                                'bg-amber-50 text-amber-700 border border-amber-200': item.condition_label === 'Tidak Layak',
+                                                'bg-rose-50 text-rose-700 border border-rose-200': item.condition_label === 'Rusak'
+                                            }">
+                                            <span class="w-1.5 h-1.5 rounded-full" :class="{
+                                                'bg-emerald-500': item.condition_label === 'Layak Pakai',
+                                                'bg-amber-500': item.condition_label === 'Tidak Layak',
+                                                'bg-rose-500': item.condition_label === 'Rusak'
+                                            }"></span>
+                                            {{ item.condition_label }}
+                                        </span>
                                         <button 
                                             type="button" 
                                             @click="openStatusModalFor(item)" 
@@ -934,6 +998,7 @@ const search = ref(props.filters.search || '');
 const filterCategory = ref(props.filters.category || 'all');
 const filterStockStatus = ref(props.filters.stock_status || '');
 const filterArea = ref(props.filters.area_id || '');
+const filterCondition = ref(props.filters.condition || '');
 const showModal = ref(false);
 const showAddStockModal = ref(false);
 const selectedMaterial = ref(null);
@@ -1137,8 +1202,18 @@ const performSearch = () => {
         search: search.value ? search.value.trim() : undefined,
         category: (filterCategory.value && filterCategory.value !== 'all') ? filterCategory.value : undefined,
         stock_status: filterStockStatus.value || undefined,
-        area_id: filterArea.value || undefined
+        area_id: filterArea.value || undefined,
+        condition: filterCondition.value || undefined,
     }, { preserveState: true, preserveScroll: true });
+};
+
+const setConditionFilter = (cond) => {
+    if (filterCondition.value === cond) {
+        filterCondition.value = '';
+    } else {
+        filterCondition.value = cond;
+    }
+    performSearch();
 };
 
 const setQuickStockStatus = (status) => {
@@ -1155,6 +1230,7 @@ const resetFilters = () => {
     filterCategory.value = 'all';
     filterStockStatus.value = '';
     filterArea.value = '';
+    filterCondition.value = '';
     router.get('/materials', {}, {
         replace: true,
         preserveState: false,
@@ -1167,6 +1243,7 @@ watch(() => props.filters, (newFilters) => {
     filterCategory.value = newFilters?.category || 'all';
     filterStockStatus.value = newFilters?.stock_status || '';
     filterArea.value = newFilters?.area_id ? String(newFilters.area_id) : '';
+    filterCondition.value = newFilters?.condition || '';
 }, { deep: true });
 
 const openModal = (item = null) => {
