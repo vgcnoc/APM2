@@ -49,3 +49,4 @@ return new class extends Migration
         // Penggabungan data bersifat konsolidasi satu arah (one-way cleanup)
     }
 };
+

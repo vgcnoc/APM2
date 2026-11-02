@@ -314,178 +314,281 @@
 
                 <div class="fixed inset-0 flex items-center justify-center p-4">
                     <TransitionChild as="template" enter="duration-300 ease-out" enter-from="opacity-0 scale-95 translate-y-4" enter-to="opacity-100 scale-100 translate-y-0" leave="duration-150 ease-in" leave-from="opacity-100 scale-100" leave-to="opacity-0 scale-95">
-                        <DialogPanel class="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl shadow-indigo-900/20 ring-1 ring-black/5 flex flex-col max-h-[92vh] overflow-hidden">
+                        <DialogPanel class="relative w-full max-w-5xl bg-slate-50/95 backdrop-blur-xl rounded-3xl shadow-2xl shadow-indigo-950/25 ring-1 ring-slate-900/10 flex flex-col max-h-[92vh] overflow-hidden transition-all">
                             <!-- Decorative glow -->
-                            <div class="pointer-events-none absolute -top-20 -right-20 w-64 h-64 rounded-full bg-gradient-to-br from-indigo-400/20 to-cyan-300/20 blur-3xl"></div>
-                            <div class="pointer-events-none absolute -bottom-24 -left-16 w-56 h-56 rounded-full bg-gradient-to-tr from-blue-400/10 to-violet-300/10 blur-3xl"></div>
+                            <div class="pointer-events-none absolute -top-24 -right-24 w-72 h-72 rounded-full bg-gradient-to-br from-indigo-500/15 to-cyan-400/15 blur-3xl"></div>
+                            <div class="pointer-events-none absolute -bottom-24 -left-16 w-64 h-64 rounded-full bg-gradient-to-tr from-blue-500/10 to-violet-400/10 blur-3xl"></div>
 
                             <!-- Header -->
-                            <div class="relative px-6 pt-6 pb-4 flex items-start justify-between shrink-0">
-                                <div class="flex items-start gap-3">
-                                    <div class="p-2.5 rounded-2xl shadow-lg" :class="isViewing ? 'bg-gradient-to-br from-emerald-500 to-teal-400 text-white shadow-emerald-500/30' : (form.id ? 'bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-blue-500/30' : 'bg-gradient-to-br from-indigo-600 to-blue-500 text-white shadow-indigo-500/30')">
+                            <div class="relative px-6 py-4 border-b border-slate-200/80 flex items-center justify-between shrink-0 bg-white/90 backdrop-blur">
+                                <div class="flex items-center gap-3.5">
+                                    <div class="p-2.5 rounded-2xl shadow-md transition-all shrink-0" :class="isViewing ? 'bg-gradient-to-br from-emerald-500 to-teal-400 text-white shadow-emerald-500/25' : (form.id ? 'bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-blue-500/25' : 'bg-gradient-to-br from-indigo-600 to-blue-500 text-white shadow-indigo-500/25')">
                                         <svg v-if="isViewing" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                         <svg v-else-if="form.id" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                         <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                                     </div>
                                     <div>
-                                        <DialogTitle class="text-lg font-black text-gray-900 tracking-tight">{{ isViewing ? 'Detail Order Toko' : (form.id ? 'Edit Order Toko' : 'Buat Order Baru') }}</DialogTitle>
-                                        <p class="text-sm text-slate-500">{{ isViewing ? 'Informasi detail mengenai order ini' : 'Order material dari area/wilayah ke toko' }}</p>
+                                        <DialogTitle class="text-base sm:text-lg font-black text-gray-900 tracking-tight leading-tight">{{ isViewing ? 'Detail Order Toko' : (form.id ? 'Edit Order Toko' : 'Buat Order Baru') }}</DialogTitle>
+                                        <p class="text-xs text-slate-500 mt-0.5">{{ isViewing ? 'Informasi detail mengenai pengiriman order ini' : 'Order material dari area/wilayah ke toko (Gudang Pusat)' }}</p>
                                     </div>
                                 </div>
-                                <button id="btn-close-order" type="button" @click="closeModal" class="p-2 -mr-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors">
+                                <button id="btn-close-order" type="button" @click="closeModal" class="p-2 -mr-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer" title="Tutup">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                                 </button>
                             </div>
 
                             <form @submit.prevent="submitForm" class="relative flex flex-col flex-1 overflow-hidden">
-                                <div class="px-6 pb-4 overflow-y-auto flex-1 space-y-5">
-                                    <!-- Area & Pihak Serah Terima -->
-                                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                        <!-- Area / Wilayah -->
-                                        <div>
-                                            <label for="order-area" class="block text-xs font-bold text-gray-700 mb-1">Area / Wilayah <span class="text-rose-500">*</span></label>
-                                            <div class="relative">
-                                                <select id="order-area" v-model="form.area_name" required :disabled="isViewing" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all font-medium">
-                                                    <option value="" disabled>Pilih area / wilayah</option>
-                                                    <option v-for="area in areas" :key="area.id" :value="area.name">{{ area.name }}</option>
-                                                </select>
-                                            </div>
-                                            <p v-if="form.errors.area_name" class="mt-1 text-[11px] text-rose-500">{{ form.errors.area_name }}</p>
-                                        </div>
-
-                                        <!-- Akun Yang Order (Pemesan) -->
-                                        <div>
-                                            <label for="order-user" class="block text-xs font-bold text-gray-700 mb-1">Akun Yang Order <span class="text-rose-500">*</span></label>
-                                            <div class="relative">
-                                                <select id="order-user" v-model="form.order_user_id" required :disabled="isViewing" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all font-medium">
-                                                    <option :value="null" disabled>Pilih pemesan</option>
-                                                    <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }} ({{ u.role || 'User' }})</option>
-                                                </select>
-                                            </div>
-                                        </div>
-
-                                        <!-- Akun Yang Memberi (Gudang/Pemberi) -->
-                                        <div>
-                                            <label for="giver-user" class="block text-xs font-bold text-gray-700 mb-1">Akun Yang Memberi <span class="text-rose-500">*</span></label>
-                                            <div class="relative">
-                                                <select id="giver-user" v-model="form.giver_user_id" required :disabled="isViewing" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all font-medium">
-                                                    <option :value="null" disabled>Pilih pemberi</option>
-                                                    <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }} ({{ u.role || 'User' }})</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Keranjang Belanja -->
-                                    <div class="rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-4">
-                                        <div class="flex items-center justify-between mb-3">
-                                            <h4 class="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                                                Keranjang Belanja
-                                                <span v-if="form.items.length" class="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 text-[11px] font-bold rounded-full bg-indigo-600 text-white animate-pop">{{ form.items.length }}</span>
-                                            </h4>
-                                            <button v-if="form.items.length" type="button" @click="form.items = []" class="text-xs font-medium text-slate-400 hover:text-rose-500 transition-colors">Kosongkan</button>
-                                        </div>
-
-                                        <!-- Product picker -->
-                                        <div class="flex gap-2">
-                                            <div class="relative flex-1" ref="pickerRef">
-                                                <button id="order-product-picker" type="button" @click="togglePicker" class="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-sm bg-white border border-slate-200 rounded-xl hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all text-left">
-                                                    <span v-if="selectedMaterial" class="truncate text-gray-900 font-medium">{{ selectedMaterial.name }}</span>
-                                                    <span v-else class="text-slate-400">Pilih produk...</span>
-                                                    <svg class="w-4 h-4 text-slate-400 shrink-0 transition-transform" :class="pickerOpen ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
-                                                </button>
-
-                                                <transition enter-active-class="transition duration-150 ease-out" enter-from-class="opacity-0 -translate-y-1" enter-to-class="opacity-100 translate-y-0" leave-active-class="transition duration-100 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
-                                                    <div v-if="pickerOpen" class="absolute z-30 mt-2 w-full bg-white rounded-xl shadow-xl ring-1 ring-black/5 overflow-hidden">
-                                                        <div class="p-2 border-b border-slate-100">
-                                                            <input id="order-product-search" ref="searchRef" v-model="search" type="text" placeholder="Cari nama / kategori..." class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500" @keydown.enter.prevent="pickFirst">
-                                                        </div>
-                                                        <ul class="max-h-60 overflow-y-auto py-1">
-                                                            <li v-for="mat in filteredMaterials" :key="mat.id">
-                                                                <button type="button" @click="selectMaterial(mat)" class="w-full px-3 py-2 flex items-center justify-between gap-3 text-left transition-colors hover:bg-indigo-50" :class="[inCart(mat.id) ? 'bg-slate-50' : '']">
-                                                                    <div class="min-w-0">
-                                                                        <div class="text-sm font-medium text-gray-900 truncate">{{ mat.name }}</div>
-                                                                        <div class="text-[11px] text-slate-400">
-                                                                            {{ mat.category || 'Umum' }}
-                                                                            <span v-if="inCart(mat.id)" class="text-indigo-500 font-semibold ml-1">✓ Di Keranjang</span>
-                                                                        </div>
-                                                                    </div>
-                                                                    <span class="shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600">
-                                                                        {{ formatNumber(mat.stock) }} {{ mat.unit }}
-                                                                    </span>
-                                                                </button>
-                                                            </li>
-                                                            <li v-if="filteredMaterials.length === 0" class="px-3 py-6 text-center text-sm text-slate-400">Produk tidak ditemukan</li>
-                                                        </ul>
-                                                    </div>
-                                                </transition>
-                                            </div>
-                                            <button id="btn-add-to-cart" type="button" @click="addToCart" :disabled="!selectedMaterial" class="px-4 py-2.5 text-sm font-bold rounded-xl border border-slate-200 bg-white text-gray-800 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 active:scale-95 disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-gray-800 disabled:hover:border-slate-200 disabled:cursor-not-allowed transition-all">
-                                                Tambah
-                                            </button>
-                                        </div>
-
-                                        <!-- Cart items -->
-                                        <TransitionGroup tag="ul" name="cart" class="mt-3 space-y-2">
-                                            <li v-for="(item, index) in form.items" :key="item.material_id" class="group flex flex-col gap-2 p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-200 hover:shadow-sm transition-all" :class="{'!border-rose-300 bg-rose-50/20': isOverstock(item)}">
-                                                <div class="flex items-center gap-3">
-                                                    <div class="w-9 h-9 shrink-0 rounded-lg bg-gradient-to-br from-indigo-50 to-blue-100 text-indigo-600 flex items-center justify-center text-xs font-black uppercase">
-                                                        {{ (materialById(item.material_id)?.name || '?').slice(0, 2) }}
-                                                    </div>
-                                                    <div class="min-w-0 flex-1">
-                                                        <div class="text-sm font-semibold text-gray-900 truncate">{{ materialById(item.material_id)?.name }}</div>
-                                                        <div class="text-[11px] text-slate-400 truncate">
-                                                            <template v-if="conversionText(item)">= <span class="font-semibold text-emerald-600">{{ conversionText(item) }}</span> masuk ke stok area</template>
-                                                            <template v-else>{{ materialById(item.material_id)?.category || 'Umum' }}</template>
-                                                        </div>
-                                                        <div v-if="isOverstock(item)" class="text-[11px] font-semibold text-rose-600 flex items-center gap-1 mt-0.5">
-                                                            <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
-                                                            Stok Gudang Utama kurang (Tersedia: {{ formatNumber(getAvailableStock(item)) }} {{ materialById(item.material_id)?.unit }})
-                                                        </div>
-                                                    </div>
-                                                <div class="flex items-center rounded-lg border border-slate-200 overflow-hidden">
-                                                    <button v-if="!isViewing" type="button" @click="decQty(item)" class="px-2 py-1.5 text-slate-500 hover:bg-slate-100">−</button>
-                                                    <input :id="`order-qty-${index}`" v-model.number="item.quantity" type="number" min="0.01" step="any" required :disabled="isViewing" class="w-14 py-1.5 text-center text-sm border-0 focus:ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none">
-                                                    <button v-if="!isViewing" type="button" @click="item.quantity = (Number(item.quantity) || 0) + 1" class="px-2 py-1.5 text-slate-500 hover:bg-slate-100">+</button>
+                                <div class="p-5 sm:p-6 overflow-y-auto flex-1 space-y-5 custom-scrollbar">
+                                    <!-- Informasi Header Order (Area & Pihak Serah Terima) -->
+                                    <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+                                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                            <!-- Area / Wilayah -->
+                                            <div>
+                                                <label for="order-area" class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                                                    <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                                                    Area / Wilayah Tujuan <span class="text-rose-500">*</span>
+                                                </label>
+                                                <div class="relative">
+                                                    <select id="order-area" v-model="form.area_name" required :disabled="isViewing" class="w-full px-3 py-2.5 text-xs sm:text-sm bg-slate-50/80 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all font-semibold text-slate-800 disabled:bg-slate-100 disabled:text-slate-500 cursor-pointer">
+                                                        <option value="" disabled>Pilih area / wilayah tujuan</option>
+                                                        <option v-for="area in areas" :key="area.id" :value="area.name">{{ area.name }}</option>
+                                                    </select>
                                                 </div>
-                                                <select :id="`order-unit-${index}`" v-model="item.purchase_unit" :disabled="isViewing" class="w-24 py-1.5 pl-2 pr-7 text-xs font-medium bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500" :class="{'opacity-75 cursor-not-allowed': isViewing}">
-                                                    <option v-for="u in unitOptions(materialById(item.material_id))" :key="u.value" :value="u.value">{{ u.label }}</option>
-                                                </select>
-                                                <button v-if="!isViewing" type="button" @click="form.items.splice(index, 1)" class="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors" title="Hapus">
-                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                </button>
+                                                <p v-if="form.errors.area_name" class="mt-1 text-[11px] text-rose-500 font-medium">{{ form.errors.area_name }}</p>
                                             </div>
-                                        </li>
-                                        </TransitionGroup>
-                                        <p v-if="form.errors.items" class="mt-2 text-xs text-rose-500">{{ form.errors.items }}</p>
+
+                                            <!-- Akun Yang Order (Pemesan) -->
+                                            <div>
+                                                <label for="order-user" class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                                                    <span class="w-2 h-2 rounded-full bg-sky-500"></span>
+                                                    Akun Yang Order <span class="text-rose-500">*</span>
+                                                </label>
+                                                <div class="relative">
+                                                    <select id="order-user" v-model="form.order_user_id" required :disabled="isViewing" class="w-full px-3 py-2.5 text-xs sm:text-sm bg-slate-50/80 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all font-semibold text-slate-800 disabled:bg-slate-100 disabled:text-slate-500 cursor-pointer">
+                                                        <option :value="null" disabled>Pilih akun pemesan</option>
+                                                        <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }} ({{ u.role || 'User' }})</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <!-- Akun Yang Memberi (Gudang/Pemberi) -->
+                                            <div>
+                                                <label for="giver-user" class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                                    Akun Yang Memberi (Gudang) <span class="text-rose-500">*</span>
+                                                </label>
+                                                <div class="relative">
+                                                    <select id="giver-user" v-model="form.giver_user_id" required :disabled="isViewing" class="w-full px-3 py-2.5 text-xs sm:text-sm bg-slate-50/80 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all font-semibold text-slate-800 disabled:bg-slate-100 disabled:text-slate-500 cursor-pointer">
+                                                        <option :value="null" disabled>Pilih akun pemberi</option>
+                                                        <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }} ({{ u.role || 'User' }})</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
 
-                                    <!-- Catatan -->
-                                    <div>
-                                        <label for="order-notes" class="block text-sm font-semibold text-gray-800 mb-1.5">Catatan</label>
-                                        <textarea id="order-notes" v-model="form.notes" :disabled="isViewing" rows="3" placeholder="Tambahkan catatan untuk order ini (opsional)" class="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all resize-y"></textarea>
+                                    <!-- MODE BUAT / EDIT ORDER: 2 PANEL MODERN WORKSPACE -->
+                                    <div v-if="!isViewing" class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                                        <!-- PANEL KIRI: KATALOG MATERIAL GUDANG (lg:col-span-6) -->
+                                        <div class="lg:col-span-6 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col h-[460px]">
+                                            <!-- Pencarian Material -->
+                                            <div class="relative mb-3">
+                                                <input id="order-product-search" ref="searchRef" v-model="search" type="text" placeholder="Cari nama atau kategori material..." class="w-full pl-9 pr-8 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all" @keydown.enter.prevent="pickFirst">
+                                                <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5 sm:top-3 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                                <button v-if="search" type="button" @click="search = ''" class="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-200 transition-colors">
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                                </button>
+                                            </div>
+
+                                            <!-- Filter Kategori Pills (Horizontal scrollable) -->
+                                            <div class="flex items-center gap-1.5 pb-2.5 overflow-x-auto no-scrollbar shrink-0 border-b border-slate-100">
+                                                <button v-for="cat in availableCategories" :key="cat" type="button" @click="selectedCategory = cat" class="px-2.5 py-1 text-[11px] font-bold rounded-lg transition-all shrink-0 cursor-pointer" :class="selectedCategory === cat ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'">
+                                                    {{ cat }}
+                                                </button>
+                                            </div>
+
+                                            <!-- Info Bar -->
+                                            <div class="flex items-center justify-between py-2 text-xs text-slate-500">
+                                                <span>Tersedia: <strong class="text-slate-800">{{ filteredMaterials.length }}</strong> material stok</span>
+                                                <span class="text-[11px] text-indigo-600 font-medium">Klik untuk tambah</span>
+                                            </div>
+
+                                            <!-- Scrollable List Material Gudang -->
+                                            <div class="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                                                <div v-for="mat in filteredMaterials" :key="mat.id" @click="addItem(mat)" class="group flex items-center justify-between gap-3 p-2.5 rounded-xl border border-slate-100 hover:border-indigo-300 hover:bg-indigo-50/40 hover:shadow-xs transition-all cursor-pointer" :class="{'bg-indigo-50/20 border-indigo-200': inCart(mat.id)}">
+                                                    <div class="min-w-0 flex-1">
+                                                        <div class="flex items-center gap-1.5">
+                                                            <span class="text-xs sm:text-sm font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors truncate">{{ mat.name }}</span>
+                                                        </div>
+                                                        <div class="flex items-center gap-2 mt-0.5">
+                                                            <span class="text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{{ mat.category || 'Umum' }}</span>
+                                                            <span class="text-[11px] font-bold px-2 py-0.5 rounded-full" :class="Number(mat.stock) > 10 ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'">
+                                                                Stok: {{ formatNumber(mat.stock) }} {{ mat.unit }}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="shrink-0 flex items-center gap-1.5">
+                                                        <span v-if="getItemQtyInCart(mat.id) > 0" class="text-[11px] font-bold px-2 py-1 rounded-lg bg-indigo-100 text-indigo-700">
+                                                            {{ getItemQtyInCart(mat.id) }} di cart
+                                                        </span>
+                                                        <button type="button" class="px-2.5 py-1 text-xs font-bold rounded-lg bg-indigo-600 text-white shadow-xs group-hover:bg-indigo-700 transition-colors flex items-center gap-1">
+                                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                                            <span>Tambah</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Empty state -->
+                                                <div v-if="filteredMaterials.length === 0" class="h-full flex flex-col items-center justify-center py-12 text-center text-slate-400">
+                                                    <svg class="w-10 h-10 mb-2 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
+                                                    <p class="text-xs font-medium">Tidak ada material stok yang sesuai</p>
+                                                    <p class="text-[11px] text-slate-400 mt-0.5">Coba cari kata kunci lain atau pilih tab 'Semua'</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- PANEL KANAN: KERANJANG BELANJA & CATATAN (lg:col-span-6) -->
+                                        <div class="lg:col-span-6 flex flex-col gap-4">
+                                            <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col h-[325px]">
+                                                <div class="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
+                                                        <h4 class="text-xs sm:text-sm font-bold text-slate-900">Keranjang Belanja</h4>
+                                                        <span v-if="form.items.length" class="inline-flex items-center justify-center px-2 py-0.5 text-[11px] font-bold rounded-full bg-indigo-600 text-white animate-pop">{{ form.items.length }}</span>
+                                                    </div>
+                                                    <button v-if="form.items.length" type="button" @click="form.items = []" class="text-xs font-medium text-slate-400 hover:text-rose-500 transition-colors cursor-pointer">
+                                                        Kosongkan Semua
+                                                    </button>
+                                                </div>
+
+                                                <!-- List Cart items -->
+                                                <div class="flex-1 overflow-y-auto space-y-2 py-2 pr-1 custom-scrollbar">
+                                                    <!-- Empty state cart -->
+                                                    <div v-if="form.items.length === 0" class="h-full flex flex-col items-center justify-center py-6 text-center text-slate-400">
+                                                        <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mb-2">
+                                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                                                        </div>
+                                                        <p class="text-xs font-bold text-slate-600">Keranjang Masih Kosong</p>
+                                                        <p class="text-[11px] text-slate-400 mt-0.5 max-w-[220px]">Klik tombol "+ Tambah" pada daftar di sebelah kiri untuk memasukkan material.</p>
+                                                    </div>
+
+                                                    <!-- Items in cart -->
+                                                    <TransitionGroup tag="div" name="cart" class="space-y-2">
+                                                        <div v-for="(item, index) in form.items" :key="item.material_id" class="p-3 bg-slate-50/70 border border-slate-200/90 rounded-xl hover:border-indigo-300 hover:bg-white transition-all space-y-2" :class="{'!border-rose-300 !bg-rose-50/30': isOverstock(item)}">
+                                                            <!-- Item Header: Name & Remove Button -->
+                                                            <div class="flex items-center justify-between gap-2">
+                                                                <div class="min-w-0 flex-1">
+                                                                    <span class="text-xs sm:text-sm font-bold text-slate-900 truncate block">{{ materialById(item.material_id)?.name }}</span>
+                                                                    <span class="text-[10px] text-slate-400 block">{{ materialById(item.material_id)?.category || 'Umum' }}</span>
+                                                                </div>
+                                                                <button type="button" @click="form.items.splice(index, 1)" class="p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer" title="Hapus dari keranjang">
+                                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                                </button>
+                                                            </div>
+
+                                                            <!-- Stepper, Unit & Conversion -->
+                                                            <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-200/60">
+                                                                <!-- Stepper -->
+                                                                <div class="flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden shadow-xs">
+                                                                    <button type="button" @click="decQty(item)" class="px-2.5 py-1 text-slate-600 hover:bg-slate-100 font-bold text-xs select-none">−</button>
+                                                                    <input :id="`order-qty-${index}`" v-model.number="item.quantity" type="number" min="0.01" step="any" required class="w-14 py-1 text-center text-xs font-bold border-0 focus:ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none text-slate-900">
+                                                                    <button type="button" @click="item.quantity = (Number(item.quantity) || 0) + 1" class="px-2.5 py-1 text-slate-600 hover:bg-slate-100 font-bold text-xs select-none">+</button>
+                                                                </div>
+
+                                                                <!-- Unit dropdown -->
+                                                                <select :id="`order-unit-${index}`" v-model="item.purchase_unit" class="py-1 pl-2 pr-6 text-xs font-bold bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500/40 text-slate-700 shadow-xs cursor-pointer">
+                                                                    <option v-for="u in unitOptions(materialById(item.material_id))" :key="u.value" :value="u.value">{{ u.label }}</option>
+                                                                </select>
+
+                                                                <!-- Conversion preview badge -->
+                                                                <div v-if="conversionText(item)" class="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
+                                                                    = {{ conversionText(item) }}
+                                                                </div>
+                                                            </div>
+
+                                                            <!-- Overstock Alert -->
+                                                            <div v-if="isOverstock(item)" class="text-[11px] font-semibold text-rose-600 flex items-center gap-1 pt-1">
+                                                                <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                                                                <span>Stok Gudang kurang! (Tersedia: {{ formatNumber(getAvailableStock(item)) }} {{ materialById(item.material_id)?.unit }})</span>
+                                                            </div>
+                                                        </div>
+                                                    </TransitionGroup>
+                                                </div>
+                                                <p v-if="form.errors.items" class="mt-1 text-xs text-rose-500 font-semibold">{{ form.errors.items }}</p>
+                                            </div>
+
+                                            <!-- Catatan Card -->
+                                            <div class="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+                                                <label for="order-notes" class="block text-xs font-bold text-slate-700 mb-1">Catatan Order (Opsional)</label>
+                                                <textarea id="order-notes" v-model="form.notes" rows="2" placeholder="Tambahkan keterangan / instruksi order toko..." class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all resize-none"></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- MODE DETAIL VIEW: TABEL RINGKASAN ORDER (isViewing) -->
+                                    <div v-else class="space-y-4">
+                                        <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs">
+                                            <h4 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                                <span>Daftar Material Yang Dipesan</span>
+                                                <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{{ form.items.length }} item</span>
+                                            </h4>
+                                            <div class="overflow-x-auto">
+                                                <table class="w-full text-left text-xs">
+                                                    <thead class="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                                                        <tr>
+                                                            <th class="p-3">Material</th>
+                                                            <th class="p-3">Kategori</th>
+                                                            <th class="p-3 text-center">Jumlah Dipesan</th>
+                                                            <th class="p-3 text-right">Masuk ke Stok Area</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody class="divide-y divide-slate-100">
+                                                        <tr v-for="item in form.items" :key="item.material_id" class="hover:bg-slate-50/50">
+                                                            <td class="p-3 font-bold text-slate-800">{{ materialById(item.material_id)?.name }}</td>
+                                                            <td class="p-3 text-slate-500">{{ materialById(item.material_id)?.category || 'Umum' }}</td>
+                                                            <td class="p-3 text-center font-semibold text-slate-700">
+                                                                {{ formatNumber(item.quantity) }} {{ unitOptions(materialById(item.material_id)).find(o => o.value === item.purchase_unit)?.label || item.purchase_unit }}
+                                                            </td>
+                                                            <td class="p-3 text-right font-bold text-emerald-600">
+                                                                {{ conversionText(item) || `${formatNumber(item.quantity)} ${materialById(item.material_id)?.unit || ''}` }}
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        <div v-if="form.notes" class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+                                            <h5 class="text-xs font-bold text-slate-700 mb-1">Catatan:</h5>
+                                            <p class="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100 whitespace-pre-wrap">{{ form.notes }}</p>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <!-- Footer -->
-                                <div class="px-6 py-4 border-t border-slate-100 bg-white/80 backdrop-blur flex items-center justify-between gap-3 shrink-0">
-                                    <div class="text-xs text-slate-400">
-                                        <span v-if="hasOverstockItems" class="text-rose-600 font-bold flex items-center gap-1">
-                                            <svg class="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
-                                            Stok Gudang Utama tidak mencukupi untuk item tertentu
+                                <!-- Sticky Footer Modal -->
+                                <div class="px-6 py-4 border-t border-slate-200/80 bg-white/95 backdrop-blur flex flex-wrap items-center justify-between gap-3 shrink-0">
+                                    <div class="text-xs text-slate-500">
+                                        <span v-if="hasOverstockItems" class="text-rose-600 font-bold flex items-center gap-1.5">
+                                            <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                                            Stok Gudang Utama tidak mencukupi untuk item bertanda merah!
                                         </span>
                                         <div v-else-if="form.items.length" class="flex flex-col">
-                                            <span class="font-medium text-gray-700">{{ form.items.length }} produk di keranjang</span>
-                                            <span class="font-bold text-emerald-600 text-sm">Total Belanja: Rp {{ formatNumber(estimatedTotalCost) }}</span>
+                                            <span class="font-medium text-slate-700">{{ form.items.length }} jenis material dipilih</span>
+                                            <span class="font-bold text-emerald-600 text-sm">Estimasi Nilai: Rp {{ formatNumber(estimatedTotalCost) }}</span>
                                         </div>
+                                        <span v-else class="text-slate-400">Pilih material dari daftar di sebelah kiri</span>
                                     </div>
-                                    <div class="flex items-center gap-2">
-                                        <button v-if="isViewing && form.id" type="button" @click="printOrder(form.id)" class="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold text-white rounded-xl bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-500/20 transition-all">
+
+                                    <div class="flex items-center gap-2.5">
+                                        <button v-if="isViewing && form.id" type="button" @click="printOrder(form.id)" class="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs sm:text-sm font-bold text-white rounded-xl bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-500/20 transition-all cursor-pointer">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                                             Cetak Surat Jalan
                                         </button>
-                                        <button id="btn-cancel-order" type="button" @click="closeModal" class="px-5 py-2.5 text-sm font-bold text-gray-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">{{ isViewing ? 'Tutup' : 'Batal' }}</button>
-                                        <button v-if="!isViewing" id="btn-submit-order" type="submit" :disabled="form.processing || form.items.length === 0 || !form.area_name || hasOverstockItems" class="inline-flex items-center px-5 py-2.5 text-sm font-bold text-white rounded-xl bg-gradient-to-r from-indigo-700 to-blue-600 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all">
+                                        <button id="btn-cancel-order" type="button" @click="closeModal" class="px-5 py-2.5 text-xs sm:text-sm font-bold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer">
+                                            {{ isViewing ? 'Tutup' : 'Batal' }}
+                                        </button>
+                                        <button v-if="!isViewing" id="btn-submit-order" type="submit" :disabled="form.processing || form.items.length === 0 || !form.area_name || hasOverstockItems" class="inline-flex items-center px-5 py-2.5 text-xs sm:text-sm font-bold text-white rounded-xl bg-gradient-to-r from-indigo-700 to-blue-600 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 transition-all cursor-pointer">
                                             <svg v-if="form.processing" class="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                                             {{ form.id ? 'Simpan Perubahan' : 'Kirim Order' }}
                                         </button>
@@ -600,6 +703,7 @@ const resetFilters = () => {
 const isModalOpen = ref(false);
 const pickerOpen = ref(false);
 const search = ref('');
+const selectedCategory = ref('Semua');
 const selectedMaterial = ref(null);
 const pickerRef = ref(null);
 const searchRef = ref(null);
@@ -620,17 +724,47 @@ const form = useForm({
 const materialById = (id) => (props.materials || []).find(m => m.id === id);
 const inCart = (id) => form.items.some(i => i.material_id === id);
 
+const availableCategories = computed(() => {
+    const cats = new Set();
+    (props.materials || []).forEach(m => {
+        if (m.category && m.category.trim()) {
+            cats.add(m.category.trim());
+        }
+    });
+    return ['Semua', ...Array.from(cats).sort()];
+});
+
 const filteredMaterials = computed(() => {
     // Only show materials that have stock > 0
     const availableMaterials = (props.materials || []).filter(m => Number(m.stock) > 0);
-    
     const q = search.value.trim().toLowerCase();
-    if (!q) return availableMaterials;
     
-    return availableMaterials.filter(m =>
-        (m.name || '').toLowerCase().includes(q) || (m.category || '').toLowerCase().includes(q)
-    );
+    return availableMaterials.filter(m => {
+        const matchesSearch = !q || (m.name || '').toLowerCase().includes(q) || (m.category || '').toLowerCase().includes(q);
+        const matchesCategory = selectedCategory.value === 'Semua' || (m.category || '').toLowerCase() === selectedCategory.value.toLowerCase();
+        return matchesSearch && matchesCategory;
+    });
 });
+
+const addItem = (mat) => {
+    if (!mat || isViewing.value) return;
+    const existing = form.items.find(i => i.material_id === mat.id);
+    if (existing) {
+        existing.quantity = (Number(existing.quantity) || 0) + 1;
+    } else {
+        form.items.push({
+            material_id: mat.id,
+            purchase_unit: unitOptions(mat)[0].value,
+            quantity: 1,
+            original_qty: 0,
+        });
+    }
+};
+
+const getItemQtyInCart = (matId) => {
+    const item = form.items.find(i => i.material_id === matId);
+    return item ? Number(item.quantity) || 0 : 0;
+};
 
 
 // Satuan order yang tersedia per material (selaras dengan konversi di PurchaseOrderController)
@@ -803,7 +937,7 @@ const selectMaterial = (mat) => {
 };
 
 const pickFirst = () => {
-    if (filteredMaterials.value.length) selectMaterial(filteredMaterials.value[0]);
+    if (filteredMaterials.value.length) addItem(filteredMaterials.value[0]);
 };
 
 const addToCart = () => {
@@ -821,6 +955,8 @@ const addToCart = () => {
         });
     }
     selectedMaterial.value = null;
+    search.value = '';
+    selectedCategory.value = 'Semua';
 };
 
 const decQty = (item) => {
@@ -952,6 +1088,7 @@ const closeModal = () => {
         form.id = null;
         form.clearErrors();
         search.value = '';
+        selectedCategory.value = 'Semua';
         pickerOpen.value = false;
     }, 200);
 };
@@ -993,6 +1130,13 @@ const printOrder = (id) => {
 </script>
 
 <style scoped>
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
 .cart-enter-active, .cart-leave-active { transition: all 0.25s ease; }
 .cart-enter-from { opacity: 0; transform: translateY(-6px) scale(0.98); }
 .cart-leave-to { opacity: 0; transform: translateX(16px); }
