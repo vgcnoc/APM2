@@ -41,7 +41,7 @@ class MaterialTransaction extends Model
 
     protected $casts = [
         'received_at' => 'datetime',
-        'date' => 'date',
+        'date' => 'date:Y-m-d',
     ];
 
     protected $appends = [

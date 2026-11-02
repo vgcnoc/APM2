@@ -709,6 +709,14 @@ const pickerRef = ref(null);
 const searchRef = ref(null);
 const isViewing = ref(false);
 
+const todayLocal = () => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+};
+
 const form = useForm({
     id: null,
     area_name: '',
@@ -716,7 +724,7 @@ const form = useForm({
     giver_user_id: 1,
     order_account_name: '',
     giver_account_name: '',
-    date: new Date().toISOString().slice(0, 10),
+    date: todayLocal(),
     notes: '',
     items: [],
 });
@@ -998,6 +1006,13 @@ const formatNumber = (num) => new Intl.NumberFormat('id-ID').format(num || 0);
 
 const formatDate = (dateString) => {
     if (!dateString) return '';
+    const str = String(dateString).slice(0, 10);
+    const parts = str.split('-');
+    if (parts.length === 3) {
+        const [y, m, d] = parts.map(Number);
+        const date = new Date(y, m - 1, d);
+        return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }).format(date);
+    }
     const date = new Date(dateString);
     return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }).format(date);
 };
@@ -1021,7 +1036,7 @@ const openModal = () => {
 
     form.order_account_name = '';
     form.giver_account_name = '';
-    form.date = new Date().toISOString().slice(0, 10);
+    form.date = todayLocal();
     form.notes = '';
     form.items = [];
     form.clearErrors();
@@ -1041,7 +1056,7 @@ const viewOrder = (trx) => {
     form.giver_user_id = trx.giver_user_id || 1;
     form.order_account_name = getOrderAccount(trx);
     form.giver_account_name = getGiverAccount(trx);
-    form.date = trx.date;
+    form.date = trx.date ? String(trx.date).slice(0, 10) : todayLocal();
     form.notes = trx.notes;
     form.items = trx.items.map(item => {
         const mat = item.material || materialById(item.material_id);
@@ -1093,7 +1108,7 @@ const editOrder = (trx) => {
     form.giver_user_id = trx.giver_user_id || 1;
     form.order_account_name = getOrderAccount(trx);
     form.giver_account_name = getGiverAccount(trx);
-    form.date = trx.date;
+    form.date = trx.date ? String(trx.date).slice(0, 10) : todayLocal();
     form.notes = trx.notes;
     form.items = trx.items.map(item => {
         const mat = item.material || materialById(item.material_id);
