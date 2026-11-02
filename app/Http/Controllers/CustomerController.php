@@ -4567,12 +4567,7 @@ class CustomerController extends Controller
             'photos' => !empty($photoPaths) ? $photoPaths : null,
         ];
 
-        if ($survey) {
-            $survey->update($payload);
-        } else {
-            $payload['customer_id'] = $customer->id;
-            $survey = \AppModels\Survey::create($payload);
-        }
+        app(\App\Services\SurveyNetworkService::class)->save($customer, $survey ?? new Survey(), $payload);
 
         // Sinkronisasi otomatis ke profil pelanggan jika ada foto berlabel Rumah
         if (!empty($photoPaths)) {
@@ -5430,37 +5425,6 @@ class CustomerController extends Controller
             'distance_meters.required_if' => 'Jarak kabel harus diisi jika status Feasible.',
         ]);
 
-        if (!empty($validated['odp_id'])) {
-            $odp = Odp::findOrFail($validated['odp_id']);
-            if ($odp->area_id !== $customer->area_id) {
-                return back()->withErrors(['odp_id' => 'ODP tidak sesuai dengan Area/Wilayah pelanggan.']);
-            }
-
-            // Cek ketersediaan port ODP termasuk antrean instalasi (pelanggan yang sudah disurvey tapi belum diinstal)
-            $pendingCount = \App\Models\Customer::whereIn('status', ['survey', 'installing'])
-                ->where('id', '!=', $customer->id) // kecualikan pelanggan ini sendiri
-                ->whereHas('surveys', function($q) use ($odp) {
-                    $q->where('odp_id', $odp->id);
-                })
-                ->whereDoesntHave('ont', function($q) use ($odp) {
-                    $q->where('odp_id', $odp->id);
-                })->count();
-
-            $availablePorts = $odp->total_ports - $odp->used_ports - $pendingCount;
-
-            if ($availablePorts <= 0) {
-                return back()->withErrors(['odp_id' => 'ODP ini sudah penuh (termasuk antrean pelanggan yang belum diinstalasi). Silakan pilih ODP lain.']);
-            }
-            
-            if (!empty($validated['port_number'])) {
-                // Check if port is available
-                $port = \App\Models\OdpPort::where('odp_id', $odp->id)->where('port_number', $validated['port_number'])->first();
-                if ($port && in_array($port->status, ['used', 'reserved', 'fault', 'stop'])) {
-                    return back()->withErrors(['port_number' => 'Port ' . $validated['port_number'] . ' sudah digunakan/tidak tersedia.']);
-                }
-            }
-        }
-
         $photoPaths = [];
         if ($request->has('photos') && is_array($request->photos)) {
             foreach ($request->photos as $photoItem) {
@@ -5478,7 +5442,7 @@ class CustomerController extends Controller
         $validated['survey_date'] = now()->toDateString();
         $validated['photos'] = empty($photoPaths) ? null : $photoPaths;
 
-        $survey = Survey::create($validated);
+        $survey = app(\App\Services\SurveyNetworkService::class)->save($customer, new Survey(), $validated);
 
         // Sinkronisasi otomatis foto rumah ke pelanggan jika diisi saat survey
         if (!empty($photoPaths)) {
@@ -5495,13 +5459,6 @@ class CustomerController extends Controller
             }
         }
 
-        if (!empty($validated['odp_id']) && !empty($validated['port_number'])) {
-            \App\Models\OdpPort::updateOrCreate(
-                ['odp_id' => $validated['odp_id'], 'port_number' => $validated['port_number']],
-                ['status' => 'reserved']
-            );
-        }
-        
         // Update status jadwal teknisi survey ke 'done' untuk semua teknisi yang ditugaskan
         $customer->technicianSchedules()
             ->where('type', 'survey')
@@ -5555,46 +5512,6 @@ class CustomerController extends Controller
             'photos.*.file' => 'nullable|image|max:10240',
         ]);
 
-        if (!empty($validated['odp_id'])) {
-            $odp = Odp::findOrFail($validated['odp_id']);
-            if ($odp->area_id !== $customer->area_id) {
-                return back()->withErrors(['odp_id' => 'ODP tidak sesuai dengan Area/Wilayah pelanggan.']);
-            }
-            
-            if ($survey->odp_id != $validated['odp_id'] || $survey->port_number != $validated['port_number']) {
-                $pendingCount = \App\Models\Customer::whereIn('status', ['survey', 'installing'])
-                    ->where('id', '!=', $customer->id)
-                    ->whereHas('surveys', function($q) use ($odp) {
-                        $q->where('odp_id', $odp->id);
-                    })
-                    ->whereDoesntHave('ont', function($q) use ($odp) {
-                        $q->where('odp_id', $odp->id);
-                    })->count();
-
-                $availablePorts = $odp->total_ports - $odp->used_ports - $pendingCount;
-
-                if ($availablePorts <= 0) {
-                    return back()->withErrors(['odp_id' => 'ODP ini sudah penuh.']);
-                }
-                
-                if (!empty($validated['port_number'])) {
-                    $port = \App\Models\OdpPort::where('odp_id', $odp->id)->where('port_number', $validated['port_number'])->first();
-                    if ($port && in_array($port->status, ['used', 'reserved', 'fault', 'stop'])) {
-                        return back()->withErrors(['port_number' => 'Port ' . $validated['port_number'] . ' sudah digunakan/tidak tersedia.']);
-                    }
-                }
-            }
-        }
-
-        // Release old port if changed
-        if ($survey->odp_id && $survey->port_number) {
-            if ($survey->odp_id != $request->odp_id || $survey->port_number != $request->port_number) {
-                \App\Models\OdpPort::where('odp_id', $survey->odp_id)
-                    ->where('port_number', $survey->port_number)
-                    ->update(['status' => 'available']);
-            }
-        }
-
         $photoPaths = $survey->photos ?? [];
         if ($request->has('photos') && is_array($request->photos)) {
             $newPhotos = [];
@@ -5616,7 +5533,7 @@ class CustomerController extends Controller
 
         $validated['photos'] = empty($photoPaths) ? null : $photoPaths;
 
-        $survey->update($validated);
+        $survey = app(\App\Services\SurveyNetworkService::class)->save($customer, $survey, $validated);
 
         // Sinkronisasi otomatis foto rumah ke pelanggan jika diisi saat update survey
         if (!empty($photoPaths)) {
@@ -5633,25 +5550,14 @@ class CustomerController extends Controller
             }
         }
 
-        if (!empty($validated['odp_id']) && !empty($validated['port_number'])) {
-            \App\Models\OdpPort::updateOrCreate(
-                ['odp_id' => $validated['odp_id'], 'port_number' => $validated['port_number']],
-                ['status' => 'reserved']
-            );
-        }
-
         if ($validated['feasibility'] === 'feasible') {
-            $customer->update(['status' => 'survey']);
-            \App\Models\AuditLog::createLog('Laporan Survey', $customer, 'survey', 'survey', 'Mengubah laporan survey (feasible)');
+            $previousStatus = $customer->status;
+            if (!in_array($customer->status, ['active', 'suspended', 'installing'], true)) {
+                $customer->update(['status' => 'survey']);
+            }
+            \App\Models\AuditLog::createLog('Laporan Survey', $customer, $previousStatus, $customer->status, 'Mengubah laporan survey (feasible) dan menyinkronkan ODP/port ONT');
         } else {
             $customer->update(['status' => 'terminated']);
-            // Jika not feasible, lepaskan port yang mungkin tadinya di-reservasi
-            if ($survey->odp_id && $survey->port_number) {
-                \App\Models\OdpPort::where('odp_id', $survey->odp_id)
-                    ->where('port_number', $survey->port_number)
-                    ->where('status', 'reserved')
-                    ->update(['status' => 'available']);
-            }
             \App\Models\AuditLog::createLog('Laporan Survey', $customer, 'survey', 'terminated', 'Mengubah laporan survey (not feasible)');
         }
 
