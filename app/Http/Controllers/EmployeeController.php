@@ -330,7 +330,10 @@ class EmployeeController extends Controller
         if ($oldEmail) {
             $user = \App\Models\User::where('email', $oldEmail)->first();
             if ($user) {
-                $roleName = !empty($validated['position']) ? self::mapPositionToRole($validated['position']) : ($user->role ?: 'cs');
+                // Pertahankan role yang sudah diset manual di Manajemen Pengguna
+                $currentRole = $user->roles->first()?->name ?? $user->role;
+                $roleName = $currentRole ?: (!empty($validated['position']) ? self::mapPositionToRole($validated['position']) : 'cs');
+
                 $userUpdate = [
                     'name' => $validated['name'],
                     'email' => $validated['email'],
@@ -348,7 +351,8 @@ class EmployeeController extends Controller
                 }
                 $user->update($userUpdate);
                 
-                if (!empty($validated['position'])) {
+                // Hanya assign role awal jika user belum memiliki role sama sekali
+                if (empty($currentRole) && !empty($validated['position'])) {
                     $targetRole = self::mapPositionToRole($validated['position']);
                     \Spatie\Permission\Models\Role::firstOrCreate(['name' => $targetRole, 'guard_name' => 'web']);
                     $user->syncRoles([$targetRole]);
@@ -540,7 +544,8 @@ class EmployeeController extends Controller
         if (str_contains($p, 'noc')) return 'noc';
         if (str_contains($p, 'manajer') || str_contains($p, 'manager')) return 'manager';
         if (str_contains($p, 'customer care') || str_contains($p, 'cs')) return 'cs';
-        if (str_contains($p, 'admin') || str_contains($p, 'administrasi')) return 'admin';
+        if (str_contains($p, 'staff administrasi') || str_contains($p, 'administrasi')) return 'staff administrasi';
+        if (str_contains($p, 'super admin') || $p === 'admin') return 'admin';
         return $p ?: 'karyawan';
     }
 }
