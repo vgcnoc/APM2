@@ -626,7 +626,7 @@ class AttendanceCalculatorService
                     if ($workSchedulesCount > 0) {
                         $empWorkDays = $workSchedulesCount;
                         $empElapsedWorkDays = $empSchedules->where('status', 'work')
-                            ->filter(function ($s) use ($todayDate, $now, $shiftsById) {
+                            ->filter(function ($s) use ($todayDate, $now, $shiftsById, $settings) {
                                 $sDate = is_string($s->date) ? substr($s->date, 0, 10) : $s->date->format('Y-m-d');
                                 if ($sDate < $todayDate) {
                                     return true;
