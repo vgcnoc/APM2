@@ -6,6 +6,7 @@ use App\Models\Area;
 use App\Models\Attendance;
 use App\Models\Employee;
 use App\Models\Setting;
+use App\Models\SpecialAttendance;
 use App\Models\User;
 use App\Models\WorkSchedule;
 use App\Services\AttendanceCalculatorService;
@@ -268,13 +269,33 @@ class AttendanceReportController extends Controller
         $workSchedules = WorkSchedule::whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
             ->get();
 
+        // Ambil data absensi tim khusus
+        $specialAttQuery = SpecialAttendance::with(['employee', 'team'])
+            ->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]);
+
+        if ($isAreaRestricted && !empty($userAreaIds)) {
+            $specialAttQuery->whereHas('employee', fn($eq) => $eq->whereIn('area_id', $userAreaIds));
+        }
+
+        if ($request->filled('area_id')) {
+            $filterAreaId = $request->area_id;
+            $specialAttQuery->whereHas('employee', fn($eq) => $eq->where('area_id', $filterAreaId));
+        }
+
+        if ($request->filled('employee_id')) {
+            $specialAttQuery->where('employee_id', $request->employee_id);
+        }
+
+        $allSpecialAttendancesInPeriod = $specialAttQuery->get();
+
         // 3. Rekapitulasi per Karyawan (Cerdas & Otomatis)
         $employeeRecap = AttendanceCalculatorService::calculateMonthlyRecap(
             $allEmployees,
             $allAttendancesInPeriod,
             $periodDetails,
             null,
-            $workSchedules
+            $workSchedules,
+            $allSpecialAttendancesInPeriod
         );
 
         // Filter search jika ada pencarian teks

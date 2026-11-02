@@ -463,20 +463,41 @@ class MaterialHandoverService
             // Jika ada pergantian ONT
             if ($transaction->request_type === 'ont_replacement' && $transaction->replacement_ont_id) {
                 $repOnt = Ont::find($transaction->replacement_ont_id);
+                $oldOnt = $transaction->old_ont_id ? Ont::find($transaction->old_ont_id) : null;
+
                 if ($repOnt) {
-                    $repOnt->update([
-                        'status' => 'in_use',
+                    $repUpdates = [
+                        'status' => 'active',
                         'customer_id' => $transaction->customer_id ?? ($transaction->source_type === 'installation' ? $transaction->source_id : null),
-                    ]);
+                    ];
+                    if ($oldOnt) {
+                        if (empty($repOnt->pppoe_user) && !empty($oldOnt->pppoe_user)) {
+                            $repUpdates['pppoe_user'] = $oldOnt->pppoe_user;
+                            $repUpdates['pppoe_password'] = $oldOnt->pppoe_password;
+                        }
+                        if (empty($repOnt->vlan_id) && !empty($oldOnt->vlan_id)) {
+                            $repUpdates['vlan_id'] = $oldOnt->vlan_id;
+                            $repUpdates['vlan_mode'] = $oldOnt->vlan_mode;
+                        }
+                        if (empty($repOnt->access_mode) && !empty($oldOnt->access_mode)) {
+                            $repUpdates['access_mode'] = $oldOnt->access_mode;
+                        }
+                        if (empty($repOnt->ip_login) && !empty($oldOnt->ip_login)) {
+                            $repUpdates['ip_login'] = $oldOnt->ip_login;
+                        }
+                        if (empty($repOnt->login_user) && !empty($oldOnt->login_user)) {
+                            $repUpdates['login_user'] = $oldOnt->login_user;
+                            $repUpdates['login_password'] = $oldOnt->login_password;
+                        }
+                    }
+                    $repOnt->update($repUpdates);
                 }
 
-                if ($transaction->old_ont_id) {
-                    $oldOnt = Ont::find($transaction->old_ont_id);
-                    if ($oldOnt) {
-                        $oldOnt->update([
-                            'status' => 'pending_return',
-                        ]);
-                    }
+                if ($oldOnt) {
+                    $oldOnt->update([
+                        'status' => 'pending_return',
+                        'customer_id' => null,
+                    ]);
                 }
             }
 

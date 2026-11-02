@@ -1163,7 +1163,8 @@ class AttendanceCalculatorService
         Collection $attendances,
         array $periodDetails,
         ?array $settings = null,
-        ?Collection $workSchedules = null
+        ?Collection $workSchedules = null,
+        ?Collection $specialAttendances = null
     ): Collection {
         $settings = $settings ?? self::getAttendanceSettings();
         $now = Carbon::now('Asia/Jakarta');
@@ -1173,9 +1174,16 @@ class AttendanceCalculatorService
         $totalWorkDays = $periodDetails['total_work_days'];
         $shiftsById = Shift::all()->keyBy('id');
 
+        if ($specialAttendances === null) {
+            $specialAttendances = SpecialAttendance::with(['employee', 'team'])
+                ->whereBetween('date', [$periodDetails['start_date'], $periodDetails['end_date']])
+                ->get();
+        }
+
         return $employees->map(function ($emp) use (
             $attendances,
             $workSchedules,
+            $specialAttendances,
             $settings,
             $now,
             $today,
@@ -1186,25 +1194,45 @@ class AttendanceCalculatorService
             $periodDetails
         ) {
             $empAtts = $attendances->where('employee_id', $emp->id);
+            $empSpecialAtts = $specialAttendances ? $specialAttendances->where('employee_id', $emp->id) : collect();
 
-            // 1. Kehadiran
-            $totalPresent = $empAtts->whereNotNull('clock_in')->count();
+            // 1. Kehadiran (Gabungan Presensi Reguler & Absen Tim Khusus)
+            $presentDatesMap = [];
+            foreach ($empAtts as $a) {
+                if (!empty($a->clock_in)) {
+                    $d = is_string($a->date) ? substr($a->date, 0, 10) : $a->date->format('Y-m-d');
+                    $presentDatesMap[$d] = true;
+                }
+            }
+            foreach ($empSpecialAtts as $sa) {
+                if (!empty($sa->clock_in)) {
+                    $d = is_string($sa->date) ? substr($sa->date, 0, 10) : $sa->date->format('Y-m-d');
+                    $presentDatesMap[$d] = true;
+                }
+            }
+            $totalPresent = count($presentDatesMap);
 
             // 2. Keterlambatan
             $lateAtts = $empAtts->filter(function ($a) {
                 return $a->status === 'late' || (int) ($a->late_minutes ?? 0) > 0;
             });
-            $totalLate = $lateAtts->count();
-            $totalLateMinutes = (int) $empAtts->sum('late_minutes');
+            $lateSpecials = $empSpecialAtts->filter(function ($sa) {
+                return $sa->status === 'late' || (int) ($sa->late_minutes ?? 0) > 0;
+            });
+            $totalLate = $lateAtts->count() + $lateSpecials->count();
+            $totalLateMinutes = (int) $empAtts->sum('late_minutes') + (int) $empSpecialAtts->sum('late_minutes');
 
             // 3. Dinas Luar
             $totalFieldDuty = $empAtts->where('attendance_type', 'dinas_luar')->count();
 
-            // 4. Lupa Clock-Out (Missing Out) - berbasis batas pulang masing-masing shift (mendukung shift sore & lintas hari)
+            // 4. Lupa Clock-Out (Missing Out) - berbasis batas pulang masing-masing shift & tim khusus
             $missingOutAtts = $empAtts->filter(function ($a) use ($now, $settings, $shiftsById) {
                 return self::isMissingClockOut($a, $now, $settings, $shiftsById, 'Asia/Jakarta');
             });
-            $totalMissingOut = $missingOutAtts->count();
+            $missingOutSpecials = $empSpecialAtts->filter(function ($sa) use ($now) {
+                return self::isSpecialMissingClockOut($sa, $sa->team, $now);
+            });
+            $totalMissingOut = $missingOutAtts->count() + $missingOutSpecials->count();
 
             // 5. Pulang Cepat
             $earlyAtts = $empAtts->filter(function ($a) {
@@ -1212,7 +1240,10 @@ class AttendanceCalculatorService
                 if ($earlyMins > 0) return true;
                 return str_contains(strtolower($a->notes ?? ''), 'pulang lebih awal');
             });
-            $totalEarlyLeave = $earlyAtts->count();
+            $earlySpecials = $empSpecialAtts->filter(function ($sa) {
+                return ((int) ($sa->early_leave_minutes ?? 0)) > 0;
+            });
+            $totalEarlyLeave = $earlyAtts->count() + $earlySpecials->count();
 
             // 6. Tepat Waktu
             $totalOnTime = max(0, $totalPresent - $totalLate - $totalFieldDuty);
@@ -1227,11 +1258,8 @@ class AttendanceCalculatorService
             $totalManualAlpha = 0;
             $hasCustomWorkSchedule = false;
 
-            // Cek apakah karyawan sudah hadir/clock-in hari ini
-            $hasClockedInToday = $empAtts->filter(function ($a) use ($todayDate) {
-                $aDate = is_string($a->date) ? substr($a->date, 0, 10) : $a->date->format('Y-m-d');
-                return $aDate === $todayDate && !empty($a->clock_in);
-            })->isNotEmpty();
+            // Cek apakah karyawan sudah hadir/clock-in hari ini (reguler atau tim khusus)
+            $hasClockedInToday = !empty($presentDatesMap[$todayDate]);
 
             if ($workSchedules && $workSchedules->isNotEmpty()) {
                 $empSchedules = $workSchedules->where('employee_id', $emp->id);
@@ -1335,21 +1363,22 @@ class AttendanceCalculatorService
                 : ($totalAlpha > 0 ? 0 : 100);
 
             // 9. Kalkulasi Penalti / Estimasi Potongan Cerdas Sesuai Pengaturan
+            // Denda Absensi Reguler (hanya untuk presensi reguler agar tidak double denda)
             $latePenalty = 0;
-            if ($settings['late_enabled'] && $totalLate > 0) {
+            if ($settings['late_enabled'] && $lateAtts->isNotEmpty()) {
                 $latePenalty = ($settings['late_mode'] === 'per_menit')
-                    ? ($totalLateMinutes * $settings['late_per_minute_amount'])
-                    : ($totalLate * $settings['late_fixed_amount']);
+                    ? ($lateAtts->sum('late_minutes') * $settings['late_per_minute_amount'])
+                    : ($lateAtts->count() * $settings['late_fixed_amount']);
             }
 
             $missingOutPenalty = 0;
-            if ($settings['missing_out_enabled'] && $totalMissingOut > 0) {
-                $missingOutPenalty = $totalMissingOut * $settings['missing_out_amount'];
+            if ($settings['missing_out_enabled'] && $missingOutAtts->isNotEmpty()) {
+                $missingOutPenalty = $missingOutAtts->count() * $settings['missing_out_amount'];
             }
 
             $earlyLeavePenalty = 0;
-            if ($settings['early_leave_enabled'] && $totalEarlyLeave > 0) {
-                $earlyLeavePenalty = $totalEarlyLeave * $settings['early_leave_amount'];
+            if ($settings['early_leave_enabled'] && $earlyAtts->isNotEmpty()) {
+                $earlyLeavePenalty = $earlyAtts->count() * $settings['early_leave_amount'];
             }
 
             $alphaPenalty = 0;
@@ -1369,7 +1398,20 @@ class AttendanceCalculatorService
                 $permitPenalty = $totalPermit * ($settings['permit_amount'] ?? 25000);
             }
 
-            $totalEstimatedPenalty = $latePenalty + $missingOutPenalty + $earlyLeavePenalty + $alphaPenalty + $sickNoCertPenalty + $permitPenalty;
+            // Potongan Khusus Tim (Denda keterlambatan / tanpa clock-out Tim Khusus)
+            $specialTeamPenalty = 0;
+            if ($empSpecialAtts->isNotEmpty()) {
+                foreach ($empSpecialAtts->groupBy('special_team_id') as $teamId => $teamAtts) {
+                    $team = $teamAtts->first()->team;
+                    $sLates = $teamAtts->where('status', 'late')->count();
+                    $sNoOuts = $teamAtts->filter(fn($sa) => self::isSpecialMissingClockOut($sa, $team, $now))->count();
+                    $sLateFine = $sLates * (float) ($team?->late_deduction_amount ?? 10000);
+                    $sNoOutFine = $sNoOuts * (float) ($team?->no_out_deduction_amount ?? 10000);
+                    $specialTeamPenalty += ($sLateFine + $sNoOutFine);
+                }
+            }
+
+            $totalEstimatedPenalty = $latePenalty + $missingOutPenalty + $earlyLeavePenalty + $alphaPenalty + $sickNoCertPenalty + $permitPenalty + $specialTeamPenalty;
 
             // 10. Status Payroll Sync
             $syncedCount = $empAtts->where('is_synced_to_payroll', true)->count();
@@ -1406,6 +1448,7 @@ class AttendanceCalculatorService
                     'alpha' => $alphaPenalty,
                     'sick_no_cert' => $sickNoCertPenalty,
                     'permit' => $permitPenalty,
+                    'special_team' => $specialTeamPenalty,
                     'total' => $totalEstimatedPenalty,
                 ],
                 'estimated_penalty' => $totalEstimatedPenalty,
@@ -1440,7 +1483,7 @@ class AttendanceCalculatorService
             })
             ->get();
 
-        $recap = self::calculateMonthlyRecap($employees, $attendances, $periodDetails, $settings, $workSchedules);
+        $recap = self::calculateMonthlyRecap($employees, $attendances, $periodDetails, $settings, $workSchedules, $specialAtts);
 
         $syncedDeductionsCount = 0;
         $affectedEmployeesCount = 0;

@@ -1160,7 +1160,7 @@ class PgsController extends Controller
                     ]);
                 }
 
-                // Pasangkan ONT baru ke pelanggan
+                // Pasangkan ONT baru ke pelanggan & sinkronkan data konfigurasi aktivasi
                 $preparedOnt->update([
                     'customer_id' => $pgs->customer_id,
                     'area_id' => $customer?->area_id ?? $preparedOnt->area_id,
@@ -1168,8 +1168,29 @@ class PgsController extends Controller
                     'port_number' => $portNum ?? $preparedOnt->port_number,
                     'odp_port_id' => $odpPortId ?? $preparedOnt->odp_port_id,
                     'status' => 'active',
+                    'pppoe_user' => $preparedOnt->pppoe_user ?: $oldOnt?->pppoe_user,
+                    'pppoe_password' => $preparedOnt->pppoe_password ?: $oldOnt?->pppoe_password,
+                    'access_mode' => $preparedOnt->access_mode ?: ($oldOnt?->access_mode ?? 'PPPOE'),
+                    'vlan_id' => $preparedOnt->vlan_id ?: $oldOnt?->vlan_id,
+                    'vlan_mode' => $preparedOnt->vlan_mode ?: $oldOnt?->vlan_mode,
+                    'ip_login' => $preparedOnt->ip_login ?: ($oldOnt?->ip_login ?? '192.168.1.1'),
+                    'login_user' => $preparedOnt->login_user ?: ($oldOnt?->login_user ?? 'admin'),
+                    'login_password' => $preparedOnt->login_password ?: ($oldOnt?->login_password ?? 'admin'),
+                    'free_hotspot' => $preparedOnt->free_hotspot ?? ($oldOnt?->free_hotspot ?? false),
+                    'hotspot_user' => $preparedOnt->hotspot_user ?: $oldOnt?->hotspot_user,
+                    'hotspot_password' => $preparedOnt->hotspot_password ?: $oldOnt?->hotspot_password,
+                    'hotspot_vlan_id' => $preparedOnt->hotspot_vlan_id ?: $oldOnt?->hotspot_vlan_id,
                     'description' => trim(($preparedOnt->description ? $preparedOnt->description . ' | ' : '') . 'Menggantikan SN ' . ($oldOnt?->serial_number ?? '-') . ' pada tiket PGS ' . $pgs->ticket_number),
                 ]);
+
+                // Sinkronkan akun pelanggan ke RADIUS Mikrotik jika aktif
+                try {
+                    if ($customer) {
+                        app(\App\Services\RadiusService::class)->syncCustomer($customer);
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[RADIUS] ONT replacement PGS sync error: ' . $e->getMessage());
+                }
 
                 $pgs->update([
                     'ont_replacement_status' => 'installed',
@@ -1800,10 +1821,42 @@ class PgsController extends Controller
             return redirect()->back()->with('error', 'ONT tersebut sudah terpasang pada pelanggan lain!');
         }
 
-        // Tandai status ONT di inventory
-        $ont->update([
+        // Pre-fill akun PPPoE & VLAN dari ONT lama jika unit pengganti belum memiliki PPPoE
+        $customer = $pgs->customer;
+        $oldOnt = Ont::where('customer_id', $pgs->customer_id)->first() ?: ($pgs->old_ont_id ? Ont::find($pgs->old_ont_id) : null);
+        
+        $prepUpdates = [
             'status' => 'Disiapkan Teknisi',
-        ]);
+            'area_id' => $ont->area_id ?: ($customer?->area_id ?? null),
+        ];
+
+        if (empty($ont->pppoe_user) && !empty($oldOnt?->pppoe_user)) {
+            $prepUpdates['pppoe_user'] = $oldOnt->pppoe_user;
+            $prepUpdates['pppoe_password'] = $oldOnt->pppoe_password;
+        }
+        if (empty($ont->access_mode) && !empty($oldOnt?->access_mode)) {
+            $prepUpdates['access_mode'] = $oldOnt->access_mode;
+        }
+        if (empty($ont->vlan_id) && !empty($oldOnt?->vlan_id)) {
+            $prepUpdates['vlan_id'] = $oldOnt->vlan_id;
+            $prepUpdates['vlan_mode'] = $oldOnt->vlan_mode;
+        }
+        if (empty($ont->ip_login) && !empty($oldOnt?->ip_login)) {
+            $prepUpdates['ip_login'] = $oldOnt->ip_login;
+        }
+        if (empty($ont->login_user) && !empty($oldOnt?->login_user)) {
+            $prepUpdates['login_user'] = $oldOnt->login_user;
+            $prepUpdates['login_password'] = $oldOnt->login_password;
+        }
+        if (!empty($oldOnt?->free_hotspot) && empty($ont->free_hotspot)) {
+            $prepUpdates['free_hotspot'] = $oldOnt->free_hotspot;
+            $prepUpdates['hotspot_user'] = $oldOnt->hotspot_user;
+            $prepUpdates['hotspot_password'] = $oldOnt->hotspot_password;
+            $prepUpdates['hotspot_vlan_id'] = $oldOnt->hotspot_vlan_id;
+        }
+
+        // Tandai status ONT di inventory dan update konfigurasi siap pakai
+        $ont->update($prepUpdates);
 
         $pgs->update([
             'ont_replacement_status' => 'prepared',

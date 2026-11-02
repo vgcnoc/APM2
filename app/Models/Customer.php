@@ -175,7 +175,7 @@ class Customer extends Model
      */
     public function ont(): HasOne
     {
-        return $this->hasOne(Ont::class);
+        return $this->hasOne(Ont::class)->latest('id');
     }
 
     public function onts(): HasMany

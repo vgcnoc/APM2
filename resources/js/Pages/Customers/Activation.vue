@@ -886,7 +886,15 @@
                                     </div>
                                     <div class="col-span-2 sm:col-span-1">
                                         <span class="text-gray-500 block text-[10px] uppercase font-semibold">Serial Number ONT</span>
-                                        <span class="font-bold text-gray-900 font-mono">{{ editCustomer.ont?.serial_number || editCustomer.ont?.sn || '-' }}</span>
+                                        <div class="flex items-center gap-1.5 flex-wrap mt-0.5">
+                                            <span class="font-bold text-gray-900 font-mono">{{ editCustomer.ont?.serial_number || editCustomer.ont?.sn || '-' }}</span>
+                                            <span v-if="editCustomer.ont?.brand" class="text-[10px] bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded font-medium">
+                                                {{ editCustomer.ont.brand }} {{ editCustomer.ont.model || '' }}
+                                            </span>
+                                            <span v-if="editCustomer.ont?.description && editCustomer.ont.description.includes('Menggantikan SN')" class="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded font-bold">
+                                                ONT Pengganti
+                                            </span>
+                                        </div>
                                     </div>
                                     <div v-if="editCustomer.ont?.odp">
                                         <span class="text-gray-500 block text-[10px] uppercase font-semibold">ODP & Port</span>
@@ -1578,7 +1586,7 @@ function openEditActivationModal(customer) {
     editForm.pppoe_user = customer.ont?.pppoe_user || customer.ont?.hotspot_user || '';
     editForm.pppoe_password = customer.ont?.pppoe_password || customer.ont?.hotspot_password || '';
 
-    editForm.vlan_mode = customer.ont?.vlan_mode || '';
+    editForm.vlan_mode = customer.ont?.vlan_mode || (customer.ont?.vlan_id ? 'VLAN' : '');
     editForm.vlan_id = customer.ont?.vlan_id || '';
     editForm.ip_login = customer.ont?.ip_login || '192.168.1.1';
     editForm.login_user = customer.ont?.login_user || 'admin';
@@ -1966,7 +1974,7 @@ function openActivationModal(customer) {
 
     activationForm.pppoe_user = customer.ont?.pppoe_user || customer.ont?.hotspot_user || '';
     activationForm.pppoe_password = customer.ont?.pppoe_password || customer.ont?.hotspot_password || '';
-    activationForm.vlan_mode = customer.ont?.vlan_mode || '';
+    activationForm.vlan_mode = customer.ont?.vlan_mode || (customer.ont?.vlan_id ? 'VLAN' : '');
     activationForm.vlan_id = customer.ont?.vlan_id || '';
     activationForm.ip_login = customer.ont?.ip_login || '192.168.1.1';
     activationForm.login_user = customer.ont?.login_user || 'admin';

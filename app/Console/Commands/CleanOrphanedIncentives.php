@@ -87,8 +87,15 @@ class CleanOrphanedIncentives extends Command
         }
 
         // 2. Pemindaian Potongan Otomatis (Pinalti/Clawback) tanpa Pelanggan
+        // Hanya scan potongan yang berelasi dengan pelanggan, jangan pernah hapus potongan absensi (ATT_ / SPECIAL_DEDUCT_)
         $pendingDeductions = \App\Models\Deduction::where('status', 'pending')
             ->where('type', '!=', 'manual')
+            ->where(function ($q) {
+                $q->where('reference_id', 'like', 'clawback_%')
+                  ->orWhere('reference_id', 'like', '%cust_%')
+                  ->orWhere('description', 'like', '%pinalti stop dini%')
+                  ->orWhere('description', 'like', '%pemotongan fee%');
+            })
             ->get();
 
         $toDeleteDedIds = [];

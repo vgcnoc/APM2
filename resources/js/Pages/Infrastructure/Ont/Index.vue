@@ -536,12 +536,12 @@
                                     <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4" />
                                 </th>
                                 <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">ID ONT</th>
+                                <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
                                 <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Perangkat</th>
                                 <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Cabang</th>
                                 <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Pelanggan (Instalasi)</th>
                                 <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Akses / VLAN</th>
                                 <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                                <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
@@ -553,6 +553,28 @@
                                     <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/60">
                                         {{ ont.ont_id || '-' }}
                                     </span>
+                                </td>
+                                <td class="px-6 py-4 text-sm">
+                                    <div class="flex items-center gap-1.5">
+                                        <Link 
+                                            v-if="ont.replacement_info?.ticket_url" 
+                                            :href="ont.replacement_info.ticket_url" 
+                                            class="px-2 py-1 text-xs font-semibold text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded-lg transition-colors flex items-center gap-1"
+                                            title="Buka Tiket Terkait"
+                                        >
+                                            <span>Tiket</span>
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                        </Link>
+                                        <Link :href="`/onts/${ont.id}`" class="px-2.5 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors">
+                                            Detail
+                                        </Link>
+                                        <button v-can="'network_ont_edit'" @click="openEditModal(ont)" class="px-2.5 py-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors">
+                                            Edit
+                                        </button>
+                                        <button v-can="'network_ont_delete'" @click="deleteOnt(ont.id)" class="px-2.5 py-1 text-xs font-medium text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors">
+                                            Hapus
+                                        </button>
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4">
                                     <div class="flex items-center gap-1.5">
@@ -650,28 +672,6 @@
                                         }"></span>
                                         <span>{{ ont.status || '-' }}</span>
                                     </span>
-                                </td>
-                                <td class="px-6 py-4 text-sm text-right">
-                                    <div class="flex items-center justify-end gap-1.5">
-                                        <Link 
-                                            v-if="ont.replacement_info?.ticket_url" 
-                                            :href="ont.replacement_info.ticket_url" 
-                                            class="px-2 py-1 text-xs font-semibold text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded-lg transition-colors flex items-center gap-1"
-                                            title="Buka Tiket Terkait"
-                                        >
-                                            <span>Tiket</span>
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-                                        </Link>
-                                        <Link :href="`/onts/${ont.id}`" class="px-2.5 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors">
-                                            Detail
-                                        </Link>
-                                        <button v-can="'network_ont_edit'" @click="openEditModal(ont)" class="px-2.5 py-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors">
-                                            Edit
-                                        </button>
-                                        <button v-can="'network_ont_delete'" @click="deleteOnt(ont.id)" class="px-2.5 py-1 text-xs font-medium text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors">
-                                            Hapus
-                                        </button>
-                                    </div>
                                 </td>
                             </tr>
                             <tr v-if="onts.data.length === 0">
