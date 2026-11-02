@@ -602,11 +602,60 @@ class AttendanceCalculatorService
         Carbon $startDate,
         Carbon $endDate,
         Carbon $asOfDate,
-        ?Collection $empSchedules = null
+        ?Collection $empSchedules = null,
+        ?array $presentDates = null,
+        ?Collection $shiftsById = null,
+        ?Carbon $now = null
     ): array {
+        $tz = 'Asia/Jakarta';
+        $now = $now ? $now->copy()->setTimezone($tz) : Carbon::now($tz);
+        $todayStr = Carbon::today($tz)->format('Y-m-d');
+
+        /**
+         * Helper cerdas penentu apakah suatu hari kerja sudah jatuh tempo wajib hadir:
+         * - Hari sebelum hari ini: Sudah pasti jatuh tempo (harinya sudah lewat).
+         * - Hari ini: Jika sudah absen, maka dihitung hadir & sah.
+         *   Jika belum absen: dicek apakah shift hari ini sudah selesai atau belum.
+         *   Jika shift hari ini BELUM selesai (belum mulai atau sedang berlangsung),
+         *   karyawan TIDAK BOLEH dianggap mangkir/alpha secara prematur!
+         * - Hari setelah hari ini (masa depan): Belum jatuh tempo.
+         */
+        $isWorkDayDue = function (string $dStr, ?Shift $shift = null) use ($now, $todayStr, $presentDates, $tz) {
+            if ($dStr < $todayStr) {
+                return true;
+            }
+
+            if ($dStr === $todayStr) {
+                // Jika sudah absen hari ini, maka hari ini sah terhitung hari kerja aktif
+                if (!empty($presentDates[$dStr])) {
+                    return true;
+                }
+
+                // Jika belum absen hari ini, cek jendela shift
+                if ($shift) {
+                    $window = self::resolveShiftWindow($dStr, $shift, $tz);
+                    if ($window && !empty($window['end'])) {
+                        // Jika jam sekarang MASIH sebelum jam selesai shift, shift belum berakhir
+                        if ($now->lessThan($window['end'])) {
+                            return false;
+                        }
+                    }
+                } else {
+                    // Shift standar: sebelum jam 17:00 belum dianggap selesai
+                    if ($now->hour < 17) {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+
+            return false;
+        };
+
         $effectiveStart = $startDate->copy();
         if ($employee->join_date) {
-            $join = Carbon::parse($employee->join_date, 'Asia/Jakarta')->startOfDay();
+            $join = Carbon::parse($employee->join_date, $tz)->startOfDay();
             if ($join->isAfter($effectiveStart)) {
                 $effectiveStart = $join;
             }
@@ -614,7 +663,7 @@ class AttendanceCalculatorService
 
         $effectiveEnd = $endDate->copy();
         if ($employee->status === 'resigned' && $employee->resign_date) {
-            $resign = Carbon::parse($employee->resign_date, 'Asia/Jakarta')->endOfDay();
+            $resign = Carbon::parse($employee->resign_date, $tz)->endOfDay();
             if ($resign->isBefore($effectiveEnd)) {
                 $effectiveEnd = $resign;
             }
@@ -653,14 +702,19 @@ class AttendanceCalculatorService
             $hasExplicitWorkRows = $empSchedules->where('status', 'work')->count() > 0;
 
             if ($hasExplicitWorkRows) {
-                // Mode Roster Penuh: Target adalah seluruh tanggal berstatus 'work'
+                // Mode Roster Penuh: Target adalah seluruh tanggal berstatus 'work' yang sudah jatuh tempo
                 $cursor = $effectiveStart->copy()->startOfDay();
                 while ($cursor->lte($effectiveAsOf)) {
                     $dStr = $cursor->format('Y-m-d');
                     $s = $schedulesMap->get($dStr);
                     if ($s) {
                         if ($s->status === 'work' && !empty($s->shift_id)) {
-                            $workCount++;
+                            $shift = $s->relationLoaded('shift') && $s->shift
+                                ? $s->shift
+                                : ($shiftsById ? $shiftsById->get($s->shift_id) : Shift::find($s->shift_id));
+                            if ($isWorkDayDue($dStr, $shift)) {
+                                $workCount++;
+                            }
                         } elseif ($s->status === 'off' || empty($s->shift_id)) {
                             $offCount++;
                         } elseif ($s->status === 'leave' || $s->status === 'permit') {
@@ -672,7 +726,7 @@ class AttendanceCalculatorService
                     $cursor->addDay();
                 }
 
-                $targetDays = max(1, $workCount);
+                $targetDays = ($workCount === 0 && empty($presentDates)) ? 0 : max(1, $workCount);
 
                 return [
                     'target_days' => $targetDays,
@@ -695,16 +749,19 @@ class AttendanceCalculatorService
                     if ($s && ($s->status === 'off' || empty($s->shift_id))) {
                         $offDays++;
                     } elseif (!$cursor->isSunday()) {
-                        $defaultDays++;
+                        $shift = self::resolveEmployeeShiftForDate($employee, $dStr, null, $empSchedules, $shiftsById);
+                        if ($isWorkDayDue($dStr, $shift)) {
+                            $defaultDays++;
+                        }
                     }
                     $cursor->addDay();
                 }
 
-                $targetDays = max(1, $defaultDays);
+                $targetDays = ($defaultDays === 0 && empty($presentDates)) ? 0 : max(1, $defaultDays);
 
                 return [
                     'target_days' => $targetDays,
-                    'total_scheduled_work_days' => $targetDays,
+                    'total_scheduled_work_days' => $defaultDays,
                     'scheduled_off_days' => $offDays,
                     'scheduled_leave_days' => 0,
                     'scheduled_sick_days' => 0,
@@ -717,15 +774,21 @@ class AttendanceCalculatorService
         $defaultDays = 0;
         $cursor = $effectiveStart->copy()->startOfDay();
         while ($cursor->lte($effectiveAsOf)) {
+            $dStr = $cursor->format('Y-m-d');
             if (!$cursor->isSunday()) {
-                $defaultDays++;
+                $shift = self::resolveEmployeeShiftForDate($employee, $dStr, null, $empSchedules, $shiftsById);
+                if ($isWorkDayDue($dStr, $shift)) {
+                    $defaultDays++;
+                }
             }
             $cursor->addDay();
         }
 
+        $targetDays = ($defaultDays === 0 && empty($presentDates)) ? 0 : max(1, $defaultDays);
+
         return [
-            'target_days' => max(1, $defaultDays),
-            'total_scheduled_work_days' => max(1, $defaultDays),
+            'target_days' => $targetDays,
+            'total_scheduled_work_days' => $defaultDays,
             'scheduled_off_days' => 0,
             'scheduled_leave_days' => 0,
             'scheduled_sick_days' => 0,
@@ -849,11 +912,7 @@ class AttendanceCalculatorService
         $shiftsById = $shiftsById ?: Shift::all()->keyBy('id');
         $settings = $settings ?: self::getAttendanceSettings();
 
-        // 1. Target hari kerja individu dinamis
-        $targetInfo = self::calculateEmployeeTargetDays($employee, $startDate, $endDate, $asOfDate, $empSchedules);
-        $targetDays = $targetInfo['target_days'];
-
-        // 2. Kumpulkan tanggal kehadiran unik (Reguler + Tim Khusus + Dinas Luar)
+        // 1. Kumpulkan tanggal kehadiran unik (Reguler + Tim Khusus + Dinas Luar)
         $presentDates = [];
         $punctualityOffsets = []; // Menit hadir lebih awal/telat relatif terhadap shift
         $rawClockInSecs = [];
@@ -937,6 +996,18 @@ class AttendanceCalculatorService
             }
         }
 
+        // 2. Target hari kerja individu dinamis (cerdas, memperhitungkan jatuh tempo shift hari ini)
+        $targetInfo = self::calculateEmployeeTargetDays(
+            $employee,
+            $startDate,
+            $endDate,
+            $asOfDate,
+            $empSchedules,
+            $presentDates,
+            $shiftsById
+        );
+        $targetDays = $targetInfo['target_days'];
+
         $presents = count($presentDates);
 
         // Alpha / Mangkir Kerja:
@@ -1007,11 +1078,47 @@ class AttendanceCalculatorService
             $finalScore = max(0.0, round($baseAttendanceRate + $bonusScore - $penaltyLate - $penaltyEarly - $penaltyAlpha, 2));
         }
 
-        // Nama shift representatif karyawan
-        $defaultEmpShift = $employee->relationLoaded('shift') ? $employee->shift : ($employee->shift_id ? $shiftsById->get($employee->shift_id) : null);
-        $shiftDisplayName = $defaultEmpShift ? $defaultEmpShift->name : 'Reguler';
-        if ($defaultEmpShift && $defaultEmpShift->formatted_time) {
-            $shiftDisplayName .= " ({$defaultEmpShift->formatted_time})";
+        // Nama shift representatif karyawan:
+        // Cerdas mengutamakan shift aktif hari ini dari roster, absensi terbaru periode ini, atau fallback default
+        $representativeShift = null;
+
+        if ($empSchedules && $empSchedules->isNotEmpty()) {
+            $todaySched = $empSchedules->first(function ($s) use ($todayStr) {
+                $d = is_string($s->date) ? substr($s->date, 0, 10) : $s->date->format('Y-m-d');
+                return $d === $todayStr && $s->status === 'work' && !empty($s->shift_id);
+            });
+            if ($todaySched) {
+                $representativeShift = $todaySched->relationLoaded('shift') && $todaySched->shift
+                    ? $todaySched->shift
+                    : ($shiftsById ? $shiftsById->get($todaySched->shift_id) : Shift::find($todaySched->shift_id));
+            }
+        }
+
+        if (!$representativeShift && $empAtts && $empAtts->isNotEmpty()) {
+            $latestAtt = $empAtts->sortByDesc('date')->first();
+            if ($latestAtt && $latestAtt->shift_id) {
+                $representativeShift = $latestAtt->relationLoaded('shift') && $latestAtt->shift
+                    ? $latestAtt->shift
+                    : ($shiftsById ? $shiftsById->get($latestAtt->shift_id) : Shift::find($latestAtt->shift_id));
+            }
+        }
+
+        if (!$representativeShift && $empSchedules && $empSchedules->isNotEmpty()) {
+            $latestSched = $empSchedules->where('status', 'work')->whereNotNull('shift_id')->sortByDesc('date')->first();
+            if ($latestSched) {
+                $representativeShift = $latestSched->relationLoaded('shift') && $latestSched->shift
+                    ? $latestSched->shift
+                    : ($shiftsById ? $shiftsById->get($latestSched->shift_id) : Shift::find($latestSched->shift_id));
+            }
+        }
+
+        if (!$representativeShift) {
+            $representativeShift = $employee->relationLoaded('shift') ? $employee->shift : ($employee->shift_id ? $shiftsById->get($employee->shift_id) : null);
+        }
+
+        $shiftDisplayName = $representativeShift ? $representativeShift->name : 'Reguler';
+        if ($representativeShift && $representativeShift->formatted_time) {
+            $shiftDisplayName .= " ({$representativeShift->formatted_time})";
         }
 
         return [
