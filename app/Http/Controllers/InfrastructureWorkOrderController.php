@@ -688,11 +688,16 @@ class InfrastructureWorkOrderController extends Controller
 
             $outTrans->update(['total_cost' => $cost]);
 
-            // 2. Potong stok area & master
+            // 2. Potong stok area jika ada, atau master jika non-area
             if ($matStock) {
                 $matStock->decrement('stock', $qty);
+                if ($material->meter_per_roll > 0) {
+                    $matStock->total_rolls = max(0, $matStock->stock / $material->meter_per_roll);
+                    $matStock->save();
+                }
+            } else {
+                $material->decrement('stock', $qty);
             }
-            $material->decrement('stock', $qty);
 
             // 3. Tambahkan ke daftar material Work Order (taken) agar langsung muncul di rekonsiliasi teknisi
             $existingWoMat = InfrastructureWorkOrderMaterial::where('work_order_id', $workOrder->id)

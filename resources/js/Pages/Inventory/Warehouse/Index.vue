@@ -230,7 +230,7 @@
                                                  class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold border transition"
                                                  :class="[filterAreaId && stock.area_id == filterAreaId ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm ring-2 ring-indigo-200' : 'bg-indigo-50 border-indigo-100 text-indigo-700']">
                                                 <svg class="w-3.5 h-3.5" :class="filterAreaId && stock.area_id == filterAreaId ? 'text-indigo-200' : 'text-indigo-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                                <span>{{ stock.area?.name || 'Area ?' }}: <strong :class="filterAreaId && stock.area_id == filterAreaId ? 'text-white' : 'text-indigo-900'">{{ formatNum(stock.stock) }}</strong> {{ material.unit }} <span class="font-bold text-[9px]" :class="filterAreaId && stock.area_id == filterAreaId ? 'text-indigo-100' : 'text-indigo-500'">{{ formatSecondaryUnit(material, stock.stock) }}</span></span>
+                                                <span>{{ stock.area?.name || 'Area ?' }}: <strong :class="filterAreaId && stock.area_id == filterAreaId ? 'text-white' : 'text-indigo-900'">{{ formatNum(Math.max(0, stock.stock)) }}</strong> {{ material.unit }} <span class="font-bold text-[9px]" :class="filterAreaId && stock.area_id == filterAreaId ? 'text-indigo-100' : 'text-indigo-500'">{{ formatSecondaryUnit(material, stock.stock) }}</span></span>
                                             </div>
                                             <span v-if="filterAreaId && (material.stocks || []).some(s => s.area_id != filterAreaId && Number(s.stock) > 0)" 
                                                   class="text-[10px] text-slate-500 font-semibold bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/80 cursor-help"
@@ -637,7 +637,7 @@ const getStatusLabel = (status) => {
 };
 
 const getAllAreasTotalStock = (material) => {
-    return (material.stocks || []).reduce((a, b) => a + Number(b.stock || 0), 0);
+    return (material.stocks || []).reduce((a, b) => a + Math.max(0, Number(b.stock || 0)), 0);
 };
 
 const getAllAreasInitialStock = (material) => {
@@ -649,7 +649,7 @@ const getAllAreasInitialStock = (material) => {
 const getAreaStock = (material, areaId) => {
     if (!areaId) return getAllAreasTotalStock(material);
     const found = (material.stocks || []).find(s => s.area_id == areaId);
-    return found ? (Number(found.stock) || 0) : 0;
+    return found ? Math.max(0, (Number(found.stock) || 0)) : 0;
 };
 
 const getAreaInitialStock = (material, areaId) => {

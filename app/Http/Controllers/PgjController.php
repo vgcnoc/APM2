@@ -888,17 +888,25 @@ class PgjController extends Controller
                     $stockBefore = (float) $material->stock;
                     $stockAfter = max(0, $stockBefore - $qty);
 
-                    // Kurangkan stok area jika ada
+                    // Kurangkan stok area jika ada, atau gudang utama jika non-area
+                    $stockDeducted = false;
                     if ($pgj->area_id) {
                         $matStock = \App\Models\MaterialStock::where('material_id', $material->id)
                             ->where('area_id', $pgj->area_id)
                             ->first();
                         if ($matStock) {
                             $matStock->decrement('stock', $qty);
+                            if ($material->meter_per_roll > 0) {
+                                $matStock->total_rolls = max(0, $matStock->stock / $material->meter_per_roll);
+                                $matStock->save();
+                            }
+                            $stockDeducted = true;
                         }
                     }
 
-                    $material->decrement('stock', $qty);
+                    if (!$stockDeducted) {
+                        $material->decrement('stock', $qty);
+                    }
 
                     $unit = $matItem['unit'] ?? $material->unit;
                     $ppu = $material->price ?? ($material->selling_price ?: ($material->price_per_unit ?? 0));

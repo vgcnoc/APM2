@@ -904,11 +904,16 @@ class PgsController extends Controller
                         'stock_after' => $stockAfter,
                     ]);
 
-                    // Potong stok dari Area dan Gudang Inventory
+                    // Potong stok dari Area atau Gudang Utama (jika non-area)
                     if ($matStock) {
                         $matStock->decrement('stock', $qty);
+                        if ($material->meter_per_roll > 0) {
+                            $matStock->total_rolls = max(0, $matStock->stock / $material->meter_per_roll);
+                            $matStock->save();
+                        }
+                    } else {
+                        $material->decrement('stock', $qty);
                     }
-                    $material->decrement('stock', $qty);
                 }
             }
         }
@@ -1113,17 +1118,22 @@ class PgsController extends Controller
                         'stock_after' => $stockAfter,
                     ]);
 
-                    // Kurangkan stok gudang
-                    $material->decrement('stock', $extraQty);
-
-                    // Kurangkan stok area jika ada
+                    // Kurangkan stok area jika ada, atau gudang utama jika non-area
                     if ($areaId) {
                         $matStock = \App\Models\MaterialStock::where('material_id', $material->id)
                             ->where('area_id', $areaId)
                             ->first();
                         if ($matStock) {
                             $matStock->decrement('stock', $extraQty);
+                            if ($material->meter_per_roll > 0) {
+                                $matStock->total_rolls = max(0, $matStock->stock / $material->meter_per_roll);
+                                $matStock->save();
+                            }
+                        } else {
+                            $material->decrement('stock', $extraQty);
                         }
+                    } else {
+                        $material->decrement('stock', $extraQty);
                     }
                 }
             }
@@ -1473,15 +1483,16 @@ class PgsController extends Controller
             'stock_after' => $stockAfter,
         ]);
 
-        // Potong stok dari Area dan Gudang Inventory (konsisten dengan schedule())
+        // Potong stok dari Area atau Gudang Utama (konsisten dengan schedule())
         if ($matStock) {
             $matStock->decrement('stock', $qty);
             if ($material->meter_per_roll > 0) {
-                $matStock->total_rolls = $matStock->stock / $material->meter_per_roll;
+                $matStock->total_rolls = max(0, $matStock->stock / $material->meter_per_roll);
             }
             $matStock->save();
+        } else {
+            $material->decrement('stock', $qty);
         }
-        $material->decrement('stock', $qty);
 
         // Tambahkan ke pgs_materials (jika sudah ada, tambahkan quantity_prepared, jika belum buat baru)
         $existingPgsMat = PgsMaterial::where('pgs_ticket_id', $pgs->id)

@@ -3259,47 +3259,37 @@ class CustomerController extends Controller
             $schedules = $customer->technicianSchedules()->where('type', 'installation')->whereIn('status', ['scheduled', 'on_the_way', 'working', 'done'])->get();
             $usageDetails = [];
             
-            // Restore previous usage from old notes if this is an edit to prevent double-deduction
-            $oldUsages = [];
-            foreach ($schedules as $schedule) {
-                if ($schedule->status === 'done' && $schedule->notes) {
-                    $lines = explode("\n", $schedule->notes);
-                    foreach ($lines as $line) {
-                        if (str_starts_with(trim($line), 'Material:')) {
-                            $mats = explode(',', str_replace('Material:', '', $line));
-                            foreach ($mats as $mat) {
-                                $mat = trim($mat);
-                                if (preg_match('/^(.*?)\s*\((\d+(\.\d+)?)\s*(.*?)\)$/', $mat, $matches)) {
-                                    $oldUsages[] = [
-                                        'name' => trim($matches[1]),
-                                        'qty' => (float)$matches[2]
-                                    ];
-                                }
-                            }
+            // Restore previous usage from old MaterialTransaction records if this is an update to prevent double-deduction
+            $oldTrans = \App\Models\MaterialTransaction::where('customer_id', $customer->id)
+                ->where('type', 'out')
+                ->where('transaction_number', 'like', 'OUT-INSTALASI-%')
+                ->with('items.material')
+                ->get();
+
+            foreach ($oldTrans as $ot) {
+                foreach ($ot->items as $oi) {
+                    $mStock = \App\Models\MaterialStock::where('material_id', $oi->material_id)
+                        ->where('area_id', $customer->area_id)
+                        ->first();
+                    if ($mStock) {
+                        $mStock->increment('stock', (float) $oi->quantity);
+                        if ($oi->material && $oi->material->meter_per_roll > 0) {
+                            $mStock->total_rolls = max(0, $mStock->stock / $oi->material->meter_per_roll);
+                            $mStock->save();
                         }
                     }
                 }
+                $ot->items()->delete();
+                $ot->delete();
             }
 
-            // Restore old usages back to Area Stock
-            foreach ($oldUsages as $old) {
-                $nameLower = strtolower($old['name']);
-                $cleanName = trim(preg_replace('/\s*\(.*?\)\s*/', '', $nameLower));
-                $material = \App\Models\Material::where('name', 'like', "%{$cleanName}%")->first();
-                if (!$material && str_contains($nameLower, 'kabel')) {
-                    $material = \App\Models\Material::where('category', 'Kabel Drop')
-                        ->orWhere('category', 'Kabel')
-                        ->orWhere('name', 'like', '%kabel%')->first();
-                }
-                if ($material) {
-                    $materialStock = \App\Models\MaterialStock::where('material_id', $material->id)
-                        ->where('area_id', $customer->area_id)
-                        ->first();
-                    if ($materialStock) {
-                        $materialStock->increment('stock', $old['qty']);
-                    }
-                }
-            }
+            // Bersihkan juga transaksi retur sisa lama agar sinkron
+            \App\Models\MaterialTransaction::where('customer_id', $customer->id)
+                ->where(function($q) {
+                    $q->where('transaction_number', 'like', 'RTR-EXCESS-%')
+                      ->orWhere('transaction_number', 'like', 'RTR-INS-%');
+                })
+                ->delete();
 
             $allocatedDetails = [];
             $returnFormattedDetails = [];
@@ -3323,20 +3313,31 @@ class CustomerController extends Controller
                     $cleanName = trim(preg_replace('/\s*\(.*?\)\s*/', '', $nameLower));
                     $material = \App\Models\Material::where('name', 'like', "%{$cleanName}%")->first();
                     
-                    if (!$material && str_contains($cleanName, 'kabel')) {
+                    if (!$material && (str_contains($cleanName, 'kabel') || str_contains($cleanName, 'frecon'))) {
                         $material = \App\Models\Material::where('category', 'Kabel Drop')
                             ->orWhere('category', 'Kabel')
-                            ->orWhere('name', 'like', '%kabel%')->first();
+                            ->orWhere('name', 'like', '%kabel%')
+                            ->orWhere('name', 'like', '%frecon%')->first();
                     }
 
                     if ($material) {
-                        $unitStr = 'pcs';
-                        if (str_contains($nameLower, 'kabel') || str_contains($nameLower, 'meter')) {
-                            $unitStr = 'meter';
-                        } elseif (str_contains($nameLower, 'cm')) {
-                            $unitStr = 'cm';
-                        } elseif (preg_match('/\((\d+(?:\.\d+)?)\s*([a-zA-Z]+)\)/', $item['name'], $uMatches)) {
-                            $unitStr = $uMatches[2];
+                        $unitStr = $material->unit ?: 'pcs';
+                        if (!$unitStr || $unitStr === 'pcs') {
+                            if (str_contains($nameLower, 'kabel') || str_contains($nameLower, 'meter') || str_contains($nameLower, 'frecon')) {
+                                $unitStr = 'meter';
+                            } elseif (preg_match('/\((\d+(?:\.\d+)?)\s*([a-zA-Z]+)\)/', $item['name'], $uMatches)) {
+                                $unitStr = $uMatches[2];
+                            }
+                        }
+
+                        // Konversi jika material kabel/frecon bersatuan meter tetapi diinput roll/pcs (misal: 1 atau 2 roll)
+                        if ($material->meter_per_roll > 0 && strtolower($unitStr) === 'meter') {
+                            if ($assignedQty > 0 && $assignedQty < ($material->meter_per_roll / 2)) {
+                                $assignedQty = $assignedQty * $material->meter_per_roll;
+                            }
+                            if ($usedQty > 0 && $usedQty < ($material->meter_per_roll / 2)) {
+                                $usedQty = $usedQty * $material->meter_per_roll;
+                            }
                         }
                         
                         if ($assignedQty > 0) {
@@ -3450,12 +3451,18 @@ class CustomerController extends Controller
                         ]);
 
                         if ($materialStock) {
-                            $materialStock->decrement('stock', $ui['qty']);
+                            $materialStock->update([
+                                'stock' => max(0, (float)$materialStock->stock - $ui['qty'])
+                            ]);
+                            if ($ui['material']->meter_per_roll > 0) {
+                                $materialStock->total_rolls = max(0, $materialStock->stock / $ui['material']->meter_per_roll);
+                                $materialStock->save();
+                            }
                         } else {
                             \App\Models\MaterialStock::create([
                                 'material_id' => $ui['material']->id,
                                 'area_id' => $customer->area_id,
-                                'stock' => -$ui['qty'],
+                                'stock' => 0,
                                 'initial_stock' => 0,
                                 'total_rolls' => 0,
                                 'total_packs' => 0,

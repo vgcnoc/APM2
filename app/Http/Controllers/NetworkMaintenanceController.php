@@ -452,6 +452,7 @@ class NetworkMaintenanceController extends Controller
                             'unit' => $itemUnit,
                         ]);
 
+                        $stockDeducted = false;
                         if ($maintenance->area_id) {
                             $matStock = MaterialStock::where('material_id', $material->id)
                                 ->where('area_id', $maintenance->area_id)
@@ -459,16 +460,19 @@ class NetworkMaintenanceController extends Controller
                             if ($matStock) {
                                 $matStock->decrement('stock', $qty);
                                 if ($material->meter_per_roll > 0) {
-                                    $matStock->total_rolls = $matStock->stock / $material->meter_per_roll;
+                                    $matStock->total_rolls = max(0, $matStock->stock / $material->meter_per_roll);
                                     $matStock->save();
                                 }
+                                $stockDeducted = true;
                             }
                         }
 
-                        $material->decrement('stock', $qty);
-                        if ($material->meter_per_roll > 0) {
-                            $material->total_rolls = $material->stock / $material->meter_per_roll;
-                            $material->save();
+                        if (!$stockDeducted) {
+                            $material->decrement('stock', $qty);
+                            if ($material->meter_per_roll > 0) {
+                                $material->total_rolls = max(0, $material->stock / $material->meter_per_roll);
+                                $material->save();
+                            }
                         }
                     }
                 }
@@ -629,11 +633,7 @@ class NetworkMaintenanceController extends Controller
                             if ($returnDiff != 0) {
                                 $material = Material::find($matRow->material_id);
                                 if ($material) {
-                                    if ($returnDiff > 0) {
-                                        $material->increment('stock', $returnDiff);
-                                    } else {
-                                        $material->decrement('stock', abs($returnDiff));
-                                    }
+                                    $adjustedArea = false;
                                     if ($maintenance->area_id) {
                                         $matStock = MaterialStock::where('material_id', $material->id)
                                             ->where('area_id', $maintenance->area_id)
@@ -644,6 +644,23 @@ class NetworkMaintenanceController extends Controller
                                             } else {
                                                 $matStock->decrement('stock', abs($returnDiff));
                                             }
+                                            if ($material->meter_per_roll > 0) {
+                                                $matStock->total_rolls = max(0, $matStock->stock / $material->meter_per_roll);
+                                                $matStock->save();
+                                            }
+                                            $adjustedArea = true;
+                                        }
+                                    }
+
+                                    if (!$adjustedArea) {
+                                        if ($returnDiff > 0) {
+                                            $material->increment('stock', $returnDiff);
+                                        } else {
+                                            $material->decrement('stock', abs($returnDiff));
+                                        }
+                                        if ($material->meter_per_roll > 0) {
+                                            $material->total_rolls = max(0, $material->stock / $material->meter_per_roll);
+                                            $material->save();
                                         }
                                     }
 

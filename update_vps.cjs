@@ -49,6 +49,9 @@ pm2 describe apm2-wa-gateway > /dev/null 2>&1 && pm2 restart apm2-wa-gateway --u
 pm2 save
 
 cd /var/www/APM2
+echo "Syncing attendance deductions to payroll for current month..."
+php artisan tinker --execute="print_r(\\App\\Services\\AttendanceCalculatorService::syncMonthlyToPayroll('2026-11'));"
+
 echo "Clearing cache..."
 php artisan optimize:clear
 
@@ -57,8 +60,6 @@ chown -R www-data:www-data /var/www/APM2/public/build
 chmod -R 755 /var/www/APM2/public/build
 chown -R www-data:www-data /var/www/APM2/storage /var/www/APM2/bootstrap/cache
 chmod -R 775 /var/www/APM2/storage /var/www/APM2/bootstrap/cache
-# Restore restrictive permissions for deployment credentials after the
-# recursive storage permission step above.
 PRIVATE_VPN_DIR=/var/www/APM2/storage/app/private
 if [ -d "$PRIVATE_VPN_DIR" ]; then
     chown www-data:www-data "$PRIVATE_VPN_DIR"

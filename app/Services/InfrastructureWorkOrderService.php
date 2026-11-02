@@ -370,18 +370,25 @@ class InfrastructureWorkOrderService
                     'condition' => 'Layak Pakai',
                 ]);
 
-                // Kurangi stok di MaterialStock area jika ada
+                // Kurangi stok di MaterialStock area jika ada, atau stok master jika non-area
+                $stockDeducted = false;
                 if ($workOrder->area_id) {
                     $matStock = MaterialStock::where('material_id', $material->id)
                         ->where('area_id', $workOrder->area_id)
                         ->first();
                     if ($matStock) {
                         $matStock->decrement('stock', $qty);
+                        if ($material->meter_per_roll > 0) {
+                            $matStock->total_rolls = max(0, $matStock->stock / $material->meter_per_roll);
+                            $matStock->save();
+                        }
+                        $stockDeducted = true;
                     }
                 }
 
-                // Kurangi stok master
-                $material->decrement('stock', $qty);
+                if (!$stockDeducted) {
+                    $material->decrement('stock', $qty);
+                }
 
                 $woMat->update([
                     'status' => 'taken',
