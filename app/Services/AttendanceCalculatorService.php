@@ -633,7 +633,7 @@ class AttendanceCalculatorService
                                 }
                                 if ($sDate === $todayDate) {
                                     $schedShift = $s->shift_id ? $shiftsById->get($s->shift_id) : null;
-                                    $deadline = self::resolveCheckoutDeadline(null, $settings, $schedShift, 'Asia/Jakarta');
+                                    $deadline = self::resolveCheckoutDeadlineForShift($sDate, $schedShift, $settings, 'Asia/Jakarta');
                                     return $now->greaterThan($deadline);
                                 }
                                 return false;

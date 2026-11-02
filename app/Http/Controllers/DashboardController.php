@@ -1869,9 +1869,26 @@ class DashboardController extends Controller
                 if ($empSchedules->count() > 0) {
                     $hasScheduledWork = $empSchedules->where('status', 'work')->whereNotNull('shift_id')->count() > 0;
                     if ($hasScheduledWork) {
-                        $workDays = $empSchedules->filter(function ($s) use ($evalEndDate) {
+                        $workDays = $empSchedules->filter(function ($s) use ($todayDate, $now, $shiftsById, $empAtts, $empSpecials) {
                             $d = Carbon::parse($s->date);
-                            return $d->lte($evalEndDate) && $s->status === 'work' && !empty($s->shift_id);
+                            $sDate = $d->format('Y-m-d');
+                            if ($s->status !== 'work' || empty($s->shift_id)) return false;
+                            if ($sDate < $todayDate) return true;
+                            if ($sDate === $todayDate) {
+                                $hasClockedIn = $empAtts->first(fn($a) => substr($a->date, 0, 10) === $sDate && !empty($a->clock_in))
+                                    || $empSpecials->first(fn($a) => substr($a->date, 0, 10) === $sDate && !empty($a->clock_in));
+                                if ($hasClockedIn) return true;
+
+                                $schedShift = $s->shift ?? ($shiftsById->get($s->shift_id) ?? null);
+                                if ($schedShift) {
+                                    $win = AttendanceCalculatorService::resolveShiftWindow($sDate, $schedShift, 'Asia/Jakarta');
+                                    if ($win && $now->greaterThanOrEqualTo($win['start'])) {
+                                        return true;
+                                    }
+                                }
+                                return false;
+                            }
+                            return false;
                         })->count();
                         $targetDays = max(1, $workDays);
                     } else {
@@ -1953,9 +1970,9 @@ class DashboardController extends Controller
                                 $isPassed = true;
                             } elseif ($sDate === $todayDate) {
                                 $schedShift = $s->shift ?? ($shiftsById->get($s->shift_id) ?? null);
-                                if ($schedShift && $schedShift->end_time) {
-                                    $endTime = Carbon::createFromFormat('Y-m-d H:i', "$todayDate " . substr($schedShift->end_time, 0, 5), 'Asia/Jakarta');
-                                    if ($now->greaterThan($endTime)) {
+                                if ($schedShift) {
+                                    $deadline = AttendanceCalculatorService::resolveCheckoutDeadlineForShift($sDate, $schedShift, $attSettings, 'Asia/Jakarta');
+                                    if ($now->greaterThan($deadline)) {
                                         $isPassed = true;
                                     }
                                 }
