@@ -94,6 +94,66 @@
 
                 <!-- Kolom Kanan: Spesifikasi -->
                 <div class="lg:col-span-2 space-y-6">
+                    <!-- Riwayat Pergantian ONT (PGS / PGK) -->
+                    <div v-if="ont.replacement_info" class="rounded-xl shadow-sm border overflow-hidden" :class="ont.replacement_info.role === 'replacement' ? 'bg-cyan-50/30 border-cyan-200' : 'bg-orange-50/30 border-orange-200'">
+                        <div class="px-5 py-4 border-b flex items-center justify-between" :class="ont.replacement_info.role === 'replacement' ? 'bg-cyan-100/60 border-cyan-200' : 'bg-orange-100/60 border-orange-200'">
+                            <h3 class="text-base font-bold flex items-center gap-2" :class="ont.replacement_info.role === 'replacement' ? 'text-cyan-900' : 'text-orange-900'">
+                                <span>{{ ont.replacement_info.role === 'replacement' ? '✨' : '🔄' }}</span>
+                                Riwayat Pergantian ONT ({{ ont.replacement_info.ticket_type }})
+                            </h3>
+                            <Link 
+                                v-if="ont.replacement_info.ticket_url" 
+                                :href="ont.replacement_info.ticket_url" 
+                                class="px-3 py-1 bg-white hover:bg-gray-50 text-xs font-bold rounded-lg border shadow-xs transition-colors flex items-center gap-1.5"
+                                :class="ont.replacement_info.role === 'replacement' ? 'text-cyan-700 border-cyan-300' : 'text-orange-700 border-orange-300'"
+                            >
+                                <span>Buka Tiket {{ ont.replacement_info.ticket_number || ont.replacement_info.ticket_type }}</span>
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                            </Link>
+                        </div>
+                        <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                            <div>
+                                <p class="text-gray-500 font-bold uppercase tracking-wider mb-1">Peran Unit</p>
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md font-bold text-xs" :class="ont.replacement_info.role === 'replacement' ? 'bg-cyan-100 text-cyan-800' : 'bg-orange-100 text-orange-800'">
+                                    {{ ont.replacement_info.label }}
+                                </span>
+                            </div>
+                            <div v-if="ont.replacement_info.ticket_number">
+                                <p class="text-gray-500 font-bold uppercase tracking-wider mb-1">Nomor Tiket</p>
+                                <p class="text-sm font-mono font-bold text-gray-900">{{ ont.replacement_info.ticket_number }}</p>
+                            </div>
+                            <div v-if="ont.replacement_info.origin_customer_name || ont.replacement_info.target_customer_name">
+                                <p class="text-gray-500 font-bold uppercase tracking-wider mb-1">
+                                    {{ ont.replacement_info.role === 'replacement' ? 'Target Pelanggan' : 'Ex Pelanggan Asal' }}
+                                </p>
+                                <p class="text-sm font-bold text-gray-900">
+                                    {{ ont.replacement_info.origin_customer_name || ont.replacement_info.target_customer_name }}
+                                    <span v-if="ont.replacement_info.origin_customer_code || ont.replacement_info.target_customer_code" class="text-gray-500 font-mono text-xs block">
+                                        ({{ ont.replacement_info.origin_customer_code || ont.replacement_info.target_customer_code }})
+                                    </span>
+                                </p>
+                            </div>
+                            <div v-if="ont.replacement_info.partner_ont_sn">
+                                <p class="text-gray-500 font-bold uppercase tracking-wider mb-1">
+                                    {{ ont.replacement_info.role === 'replacement' ? 'Unit ONT Lama yang Diganti' : 'Unit ONT Baru Pengganti' }}
+                                </p>
+                                <p class="text-sm font-mono font-bold text-indigo-700">{{ ont.replacement_info.partner_ont_sn }}</p>
+                                <p v-if="ont.replacement_info.partner_ont_model" class="text-gray-500 text-xs">{{ ont.replacement_info.partner_ont_model }}</p>
+                            </div>
+                            <div v-if="ont.replacement_info.technician_name">
+                                <p class="text-gray-500 font-bold uppercase tracking-wider mb-1">Teknisi</p>
+                                <p class="text-sm font-medium text-gray-900">{{ ont.replacement_info.technician_name }}</p>
+                            </div>
+                            <div v-if="ont.replacement_info.date">
+                                <p class="text-gray-500 font-bold uppercase tracking-wider mb-1">Waktu Pergantian</p>
+                                <p class="text-sm font-medium text-gray-900">{{ ont.replacement_info.date }}</p>
+                            </div>
+                            <div v-if="ont.replacement_info.notes" class="md:col-span-2 bg-white/80 p-3 rounded-lg border border-gray-200">
+                                <p class="text-gray-600 font-bold mb-1">Catatan / Alasan:</p>
+                                <p class="text-xs text-gray-800 leading-relaxed">{{ ont.replacement_info.notes }}</p>
+                            </div>
+                        </div>
+                    </div>
                     <!-- Detail Konfigurasi ONT -->
                     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                         <div class="bg-gray-50 border-b border-gray-100 p-5 flex items-center justify-between">

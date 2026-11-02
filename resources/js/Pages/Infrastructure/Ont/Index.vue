@@ -55,12 +55,12 @@
             </div>
 
             <!-- 1. Statistik Cards Inventaris ONT -->
-            <div v-can="'network_ont_card_stats'" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mb-6">
+            <div v-can="'network_ont_card_stats'" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 mb-6">
                 <!-- Card 1: Total Perangkat -->
                 <div 
                     @click="setQuickFilter('all')" 
                     class="bg-white rounded-2xl p-4 border transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md hover:-translate-y-0.5 group"
-                    :class="[!filterState.status && !filterState.installation_status ? 'border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/20' : 'border-gray-200/80 hover:border-blue-300']"
+                    :class="[!filterState.status && !filterState.installation_status && !filterState.tab ? 'border-blue-500 ring-2 ring-blue-500/20 bg-blue-50/20' : 'border-gray-200/80 hover:border-blue-300']"
                 >
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-xs font-bold uppercase tracking-wider text-gray-500 group-hover:text-blue-600 transition-colors">Total ONT</span>
@@ -135,6 +135,38 @@
                     <div class="text-2xl font-black text-rose-600">{{ Number(stats?.los || 0).toLocaleString('id-ID') }}</div>
                     <p class="text-[11px] text-gray-500 mt-1">Kabel Putus / Redaman</p>
                 </div>
+
+                <!-- Card 6: ONT Diganti -->
+                <div 
+                    @click="setQuickFilter('ont_diganti')" 
+                    class="bg-white rounded-2xl p-4 border transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md hover:-translate-y-0.5 group"
+                    :class="[filterState.tab === 'ont_diganti' ? 'border-orange-500 ring-2 ring-orange-500/20 bg-orange-50/20' : 'border-gray-200/80 hover:border-orange-300']"
+                >
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-500 group-hover:text-orange-600 transition-colors">ONT di ganti</span>
+                        <div class="w-8 h-8 rounded-xl bg-orange-100/70 text-orange-600 flex items-center justify-center">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-black text-orange-600">{{ Number(stats?.ont_diganti || 0).toLocaleString('id-ID') }}</div>
+                    <p class="text-[11px] text-gray-500 mt-1">Ditarik dari PGS/PGK</p>
+                </div>
+
+                <!-- Card 7: ONT Pengganti -->
+                <div 
+                    @click="setQuickFilter('ont_pengganti')" 
+                    class="bg-white rounded-2xl p-4 border transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md hover:-translate-y-0.5 group"
+                    :class="[filterState.tab === 'ont_pengganti' ? 'border-cyan-500 ring-2 ring-cyan-500/20 bg-cyan-50/20' : 'border-gray-200/80 hover:border-cyan-300']"
+                >
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-500 group-hover:text-cyan-600 transition-colors">ONT pengganti</span>
+                        <div class="w-8 h-8 rounded-xl bg-cyan-100/70 text-cyan-600 flex items-center justify-center">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 0 1.042-.133-2.052-.382-3.016z"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-black text-cyan-600">{{ Number(stats?.ont_pengganti || 0).toLocaleString('id-ID') }}</div>
+                    <p class="text-[11px] text-gray-500 mt-1">Disiapkan / Terpasang</p>
+                </div>
             </div>
 
             <!-- 2. Smart Quick Status Tabs -->
@@ -143,10 +175,10 @@
                     type="button" 
                     @click="setQuickFilter('all')" 
                     class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5"
-                    :class="[!filterState.status && !filterState.installation_status ? 'bg-white text-gray-900 shadow-xs ring-1 ring-black/5 font-extrabold' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50']"
+                    :class="[!filterState.status && !filterState.installation_status && !filterState.tab ? 'bg-white text-gray-900 shadow-xs ring-1 ring-black/5 font-extrabold' : 'text-gray-600 hover:text-gray-900 hover:bg-white/50']"
                 >
                     <span>Semua</span>
-                    <span class="px-1.5 py-0.5 rounded-full text-[10px]" :class="[!filterState.status && !filterState.installation_status ? 'bg-gray-100 text-gray-800' : 'bg-gray-200/70 text-gray-600']">{{ stats?.total || 0 }}</span>
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px]" :class="[!filterState.status && !filterState.installation_status && !filterState.tab ? 'bg-gray-100 text-gray-800' : 'bg-gray-200/70 text-gray-600']">{{ stats?.total || 0 }}</span>
                 </button>
                 <button 
                     type="button" 
@@ -197,6 +229,26 @@
                     <span class="w-2 h-2 rounded-full bg-rose-500"></span>
                     <span>Gangguan (LOS)</span>
                     <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-rose-50 text-rose-700 font-bold">{{ stats?.los || 0 }}</span>
+                </button>
+                <button 
+                    type="button" 
+                    @click="setQuickFilter('ont_diganti')" 
+                    class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5"
+                    :class="[filterState.tab === 'ont_diganti' ? 'bg-white text-orange-700 shadow-xs ring-1 ring-orange-500/20 font-extrabold' : 'text-gray-600 hover:text-orange-700 hover:bg-white/50']"
+                >
+                    <span class="w-2 h-2 rounded-full bg-orange-500"></span>
+                    <span>ONT di ganti</span>
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-orange-50 text-orange-700 font-bold">{{ stats?.ont_diganti || 0 }}</span>
+                </button>
+                <button 
+                    type="button" 
+                    @click="setQuickFilter('ont_pengganti')" 
+                    class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5"
+                    :class="[filterState.tab === 'ont_pengganti' ? 'bg-white text-cyan-700 shadow-xs ring-1 ring-cyan-500/20 font-extrabold' : 'text-gray-600 hover:text-cyan-700 hover:bg-white/50']"
+                >
+                    <span class="w-2 h-2 rounded-full bg-cyan-500"></span>
+                    <span>ONT pengganti</span>
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-cyan-50 text-cyan-700 font-bold">{{ stats?.ont_pengganti || 0 }}</span>
                 </button>
             </div>
 
@@ -389,6 +441,11 @@
                         <button @click="removeFilter('search')" class="hover:text-indigo-900 ml-0.5">✕</button>
                     </span>
 
+                    <span v-if="filterState.tab" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-indigo-50 text-indigo-700 border border-indigo-200/80 font-medium">
+                        <span>Tab: {{ filterState.tab === 'ont_diganti' ? 'ONT di ganti' : 'ONT pengganti' }}</span>
+                        <button @click="removeFilter('tab')" class="hover:text-indigo-900 ml-0.5">✕</button>
+                    </span>
+
                     <span v-if="filterState.area_id" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-indigo-50 text-indigo-700 border border-indigo-200/80 font-medium">
                         <span>Cabang: {{ getAreaName(filterState.area_id) }}</span>
                         <button @click="removeFilter('area_id')" class="hover:text-indigo-900 ml-0.5">✕</button>
@@ -510,7 +567,20 @@
                                             <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                                         </button>
                                     </div>
-                                    <div class="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5">
+                                    <div class="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                                        <!-- Badge Penggantian PGS / PGK -->
+                                        <button 
+                                            v-if="ont.replacement_info" 
+                                            type="button"
+                                            @click.stop="openReplacementDetail(ont)"
+                                            class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-all hover:scale-105"
+                                            :class="ont.replacement_info.role === 'replacement' ? 'bg-cyan-100 text-cyan-800 border border-cyan-300' : 'bg-orange-100 text-orange-800 border border-orange-300'"
+                                            :title="'Klik untuk melihat detail riwayat ' + (ont.replacement_info.ticket_number || ont.replacement_info.ticket_type)"
+                                        >
+                                            <span v-if="ont.replacement_info.role === 'replacement'">✨ Pengganti</span>
+                                            <span v-else>🔄 Diganti</span>
+                                            <span v-if="ont.replacement_info.ticket_number" class="underline font-mono">{{ ont.replacement_info.ticket_number }}</span>
+                                        </button>
                                         <span class="font-medium text-gray-700">{{ ont.brand || 'Unknown' }}</span>
                                         <span v-if="ont.model" class="text-gray-400">• {{ ont.model }}</span>
                                     </div>
@@ -533,6 +603,26 @@
                                         </div>
                                         <div class="text-xs text-gray-500 mt-0.5 font-mono">{{ ont.customer.customer_code }}</div>
                                     </div>
+                                    <div v-else-if="ont.replacement_info?.origin_customer_name" class="space-y-0.5">
+                                        <div class="text-xs font-semibold text-gray-900 flex items-center gap-1">
+                                            <span class="text-orange-600 font-bold">👤 Ex:</span>
+                                            <span>{{ ont.replacement_info.origin_customer_name }}</span>
+                                        </div>
+                                        <div class="text-[11px] text-gray-500 font-mono">{{ ont.replacement_info.origin_customer_code || '-' }}</div>
+                                        <div class="text-[10px] text-orange-700 font-medium flex items-center gap-1">
+                                            <span>Tiket {{ ont.replacement_info.ticket_type }}: {{ ont.replacement_info.ticket_number || '-' }}</span>
+                                        </div>
+                                    </div>
+                                    <div v-else-if="ont.replacement_info?.target_customer_name" class="space-y-0.5">
+                                        <div class="text-xs font-semibold text-gray-900 flex items-center gap-1">
+                                            <span class="text-cyan-600 font-bold">🎯 Tujuan:</span>
+                                            <span>{{ ont.replacement_info.target_customer_name }}</span>
+                                        </div>
+                                        <div class="text-[11px] text-gray-500 font-mono">{{ ont.replacement_info.target_customer_code || '-' }}</div>
+                                        <div class="text-[10px] text-cyan-700 font-medium">
+                                            {{ ont.replacement_info.replacement_status === 'installed' ? '✓ Terpasang' : 'Dibawa Teknisi' }}
+                                        </div>
+                                    </div>
                                     <div v-else class="inline-flex items-center gap-1 text-xs text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/60 font-medium">
                                         <span>📦</span> Belum terpasang (Standby)
                                     </div>
@@ -545,6 +635,7 @@
                                     <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold" :class="{
                                         'bg-emerald-100 text-emerald-800': ont.status === 'Sudah Set',
                                         'bg-blue-100 text-blue-800': ont.status === 'active',
+                                        'bg-cyan-100 text-cyan-800': ont.status === 'Disiapkan Teknisi',
                                         'bg-rose-100 text-rose-800': ont.status === 'los',
                                         'bg-amber-100 text-amber-800': ont.status === 'Belum Set/Baru Input',
                                         'bg-gray-100 text-gray-700': !['active', 'Sudah Set', 'los', 'Belum Set/Baru Input'].includes(ont.status),
@@ -552,6 +643,7 @@
                                         <span class="w-1.5 h-1.5 rounded-full" :class="{
                                             'bg-emerald-500 animate-pulse': ont.status === 'Sudah Set',
                                             'bg-blue-500': ont.status === 'active',
+                                            'bg-cyan-500 animate-pulse': ont.status === 'Disiapkan Teknisi',
                                             'bg-rose-500 animate-ping': ont.status === 'los',
                                             'bg-amber-500': ont.status === 'Belum Set/Baru Input',
                                             'bg-gray-400': !['active', 'Sudah Set', 'los', 'Belum Set/Baru Input'].includes(ont.status),
@@ -561,6 +653,15 @@
                                 </td>
                                 <td class="px-6 py-4 text-sm text-right">
                                     <div class="flex items-center justify-end gap-1.5">
+                                        <Link 
+                                            v-if="ont.replacement_info?.ticket_url" 
+                                            :href="ont.replacement_info.ticket_url" 
+                                            class="px-2 py-1 text-xs font-semibold text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded-lg transition-colors flex items-center gap-1"
+                                            title="Buka Tiket Terkait"
+                                        >
+                                            <span>Tiket</span>
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                        </Link>
                                         <Link :href="`/onts/${ont.id}`" class="px-2.5 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors">
                                             Detail
                                         </Link>
@@ -928,6 +1029,107 @@
             </div>
         </Teleport>
 
+        <!-- Modal Riwayat Pergantian ONT (PGS / PGK) -->
+        <Teleport to="body">
+            <div v-if="selectedReplacementOnt" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-fade-in">
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-100">
+                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between" :class="selectedReplacementOnt.replacement_info?.role === 'replacement' ? 'bg-cyan-50/70' : 'bg-orange-50/70'">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-8 h-8 rounded-xl flex items-center justify-center text-base shadow-xs" :class="selectedReplacementOnt.replacement_info?.role === 'replacement' ? 'bg-cyan-100 text-cyan-700' : 'bg-orange-100 text-orange-700'">
+                                {{ selectedReplacementOnt.replacement_info?.role === 'replacement' ? '✨' : '🔄' }}
+                            </span>
+                            <div>
+                                <h3 class="text-sm font-black text-gray-900">
+                                    {{ selectedReplacementOnt.replacement_info?.role === 'replacement' ? 'Informasi ONT Pengganti' : 'Informasi ONT di ganti' }}
+                                </h3>
+                                <p class="text-xs text-gray-500 font-mono">SN: {{ selectedReplacementOnt.serial_number }}</p>
+                            </div>
+                        </div>
+                        <button @click="closeReplacementDetail" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-white/80 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="p-6 space-y-4 text-xs">
+                        <!-- Tiket Terkait -->
+                        <div class="bg-gray-50 rounded-xl p-3.5 border border-gray-200/70 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold text-gray-500 uppercase tracking-wider text-[10px]">Tiket Layanan</span>
+                                <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase" :class="selectedReplacementOnt.replacement_info?.ticket_type === 'PGS' ? 'bg-indigo-100 text-indigo-700' : 'bg-amber-100 text-amber-700'">
+                                    {{ selectedReplacementOnt.replacement_info?.ticket_type || 'Pergantian' }}
+                                </span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-600 font-medium">Nomor Tiket:</span>
+                                <span class="font-mono font-bold text-gray-900 text-xs">{{ selectedReplacementOnt.replacement_info?.ticket_number || '-' }}</span>
+                            </div>
+                            <div v-if="selectedReplacementOnt.replacement_info?.date" class="flex items-center justify-between">
+                                <span class="text-gray-600 font-medium">Tanggal Pergantian:</span>
+                                <span class="font-semibold text-gray-800">{{ selectedReplacementOnt.replacement_info.date }}</span>
+                            </div>
+                            <div v-if="selectedReplacementOnt.replacement_info?.technician_name" class="flex items-center justify-between">
+                                <span class="text-gray-600 font-medium">Teknisi / PIC:</span>
+                                <span class="font-semibold text-gray-800">{{ selectedReplacementOnt.replacement_info.technician_name }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Data Pelanggan -->
+                        <div class="bg-gray-50 rounded-xl p-3.5 border border-gray-200/70 space-y-2">
+                            <div class="font-bold text-gray-500 uppercase tracking-wider text-[10px]">Pelanggan Terkait</div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-600 font-medium">Nama Pelanggan:</span>
+                                <span class="font-bold text-gray-900">{{ selectedReplacementOnt.replacement_info?.origin_customer_name || selectedReplacementOnt.replacement_info?.target_customer_name || selectedReplacementOnt.customer?.name || '-' }}</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-600 font-medium">Kode Pelanggan (CID):</span>
+                                <span class="font-mono text-gray-700">{{ selectedReplacementOnt.replacement_info?.origin_customer_code || selectedReplacementOnt.replacement_info?.target_customer_code || selectedReplacementOnt.customer?.customer_code || '-' }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Unit Berpasangan (Partner ONT) -->
+                        <div v-if="selectedReplacementOnt.replacement_info?.partner_ont_sn" class="bg-gray-50 rounded-xl p-3.5 border border-gray-200/70 space-y-2">
+                            <div class="font-bold text-gray-500 uppercase tracking-wider text-[10px]">
+                                {{ selectedReplacementOnt.replacement_info?.role === 'replacement' ? 'Unit ONT Lama yang Digantikan' : 'Unit ONT Baru Pengganti' }}
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-600 font-medium">Serial Number:</span>
+                                <span class="font-mono font-bold text-indigo-700">{{ selectedReplacementOnt.replacement_info.partner_ont_sn }}</span>
+                            </div>
+                            <div v-if="selectedReplacementOnt.replacement_info?.partner_ont_model" class="flex items-center justify-between">
+                                <span class="text-gray-600 font-medium">Tipe / Model:</span>
+                                <span class="text-gray-700 font-medium">{{ selectedReplacementOnt.replacement_info.partner_ont_model }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Catatan / Keterangan -->
+                        <div v-if="selectedReplacementOnt.replacement_info?.notes" class="bg-amber-50 rounded-xl p-3.5 border border-amber-200 text-amber-900 space-y-1">
+                            <span class="font-bold text-[10px] uppercase tracking-wider text-amber-800">Catatan Teknisi / Alasan:</span>
+                            <p class="text-xs leading-relaxed">{{ selectedReplacementOnt.replacement_info.notes }}</p>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="flex items-center justify-end gap-2 pt-2">
+                            <button 
+                                type="button" 
+                                @click="closeReplacementDetail" 
+                                class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl text-xs transition-colors"
+                            >
+                                Tutup
+                            </button>
+                            <Link 
+                                v-if="selectedReplacementOnt.replacement_info?.ticket_url" 
+                                :href="selectedReplacementOnt.replacement_info.ticket_url" 
+                                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition-colors shadow-sm flex items-center gap-1.5"
+                            >
+                                <span>Buka Tiket {{ selectedReplacementOnt.replacement_info.ticket_type }}</span>
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
+
     </AppLayout>
 </template>
 
@@ -1054,10 +1256,20 @@ const isModalOpen = ref(false);
 const isEditing = ref(false);
 const isPrintModalOpen = ref(false);
 const selectedOnts = ref([]);
+const selectedReplacementOnt = ref(null);
+
+function openReplacementDetail(ont) {
+    selectedReplacementOnt.value = ont;
+}
+
+function closeReplacementDetail() {
+    selectedReplacementOnt.value = null;
+}
 
 // Smart Filter State
 const filterState = ref({
     search: props.filters?.search || '',
+    tab: props.filters?.tab || '',
     status: props.filters?.status || '',
     installation_status: props.filters?.installation_status || '',
     area_id: props.filters?.area_id || '',
@@ -1078,6 +1290,7 @@ let searchTimeout = null;
 function applyFilters() {
     const query = {};
     if (filterState.value.search) query.search = filterState.value.search;
+    if (filterState.value.tab) query.tab = filterState.value.tab;
     if (filterState.value.status) query.status = filterState.value.status;
     if (filterState.value.installation_status) query.installation_status = filterState.value.installation_status;
     if (filterState.value.area_id) query.area_id = filterState.value.area_id;
@@ -1108,6 +1321,21 @@ function clearSearch() {
 }
 
 function setQuickFilter(type) {
+    if (type === 'ont_diganti') {
+        filterState.value.tab = filterState.value.tab === 'ont_diganti' ? '' : 'ont_diganti';
+        filterState.value.status = '';
+        filterState.value.installation_status = '';
+        applyFilters();
+        return;
+    }
+    if (type === 'ont_pengganti') {
+        filterState.value.tab = filterState.value.tab === 'ont_pengganti' ? '' : 'ont_pengganti';
+        filterState.value.status = '';
+        filterState.value.installation_status = '';
+        applyFilters();
+        return;
+    }
+    filterState.value.tab = '';
     if (type === 'all') {
         filterState.value.status = '';
         filterState.value.installation_status = '';
@@ -1133,6 +1361,7 @@ function setQuickFilter(type) {
 function resetAllFilters() {
     filterState.value = {
         search: '',
+        tab: '',
         status: '',
         installation_status: '',
         area_id: '',
@@ -1154,6 +1383,7 @@ function removeFilter(key) {
 const activeFiltersCount = computed(() => {
     let count = 0;
     if (filterState.value.search) count++;
+    if (filterState.value.tab) count++;
     if (filterState.value.area_id) count++;
     if (filterState.value.status) count++;
     if (filterState.value.installation_status) count++;

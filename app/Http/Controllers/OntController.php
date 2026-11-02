@@ -28,6 +28,8 @@ class OntController extends Controller
             'terpasang' => (clone $baseQuery)->whereNotNull('customer_id')->count(),
             'belum_terpasang' => (clone $baseQuery)->whereNull('customer_id')->count(),
             'los' => (clone $baseQuery)->where('status', 'los')->count(),
+            'ont_diganti' => (clone $baseQuery)->diganti()->count(),
+            'ont_pengganti' => (clone $baseQuery)->pengganti()->count(),
         ];
 
         // Ambil daftar brand perangkat yang tersedia
@@ -38,9 +40,25 @@ class OntController extends Controller
             ->orderBy('brand')
             ->pluck('brand');
 
-        $query = (clone $baseQuery)->withFullTopology();
+        $query = (clone $baseQuery)->withFullTopology()->with([
+            'pgsTicketsReplaced.customer',
+            'pgsTicketsReplaced.preparedOnt',
+            'pgkTicketsReplaced.customer',
+            'pgkTicketsReplaced.preparedOnt',
+            'pgsTicketsPrepared.customer',
+            'pgsTicketsPrepared.oldOnt',
+            'pgkTicketsPrepared.customer',
+            'pgkTicketsPrepared.oldOnt',
+        ]);
 
         $onts = $query
+            ->when($request->tab, function ($q, $tab) {
+                if ($tab === 'ont_diganti') {
+                    $q->diganti();
+                } elseif ($tab === 'ont_pengganti') {
+                    $q->pengganti();
+                }
+            })
             ->when($request->search, function ($q, $s) {
                 $q->where(function ($sq) use ($s) {
                     $sq->where('serial_number', 'like', "%{$s}%")
@@ -77,6 +95,11 @@ class OntController extends Controller
             ->paginate($request->input('per_page', 15))
             ->withQueryString();
 
+        $onts->through(function ($ont) {
+            $ont->replacement_info = $ont->getReplacementInfo();
+            return $ont;
+        });
+
         $areas = DataScopeService::getScopedAreas($user, 'network_ont');
 
         return Inertia::render('Infrastructure/Ont/Index', [
@@ -86,6 +109,7 @@ class OntController extends Controller
             'stats' => $stats,
             'filters' => $request->only([
                 'search',
+                'tab',
                 'status',
                 'installation_status',
                 'area_id',
@@ -165,7 +189,19 @@ class OntController extends Controller
 
     public function show(Ont $ont): Response
     {
-        $ont->load(['odp.odc.olt', 'customer.package']);
+        $ont->load([
+            'odp.odc.olt', 
+            'customer.package',
+            'pgsTicketsReplaced.customer',
+            'pgsTicketsReplaced.preparedOnt',
+            'pgkTicketsReplaced.customer',
+            'pgkTicketsReplaced.preparedOnt',
+            'pgsTicketsPrepared.customer',
+            'pgsTicketsPrepared.oldOnt',
+            'pgkTicketsPrepared.customer',
+            'pgkTicketsPrepared.oldOnt',
+        ]);
+        $ont->replacement_info = $ont->getReplacementInfo();
 
         return Inertia::render('Infrastructure/Ont/Show', [
             'ont' => $ont,
@@ -371,7 +407,14 @@ class OntController extends Controller
             }
         }
 
-        $onts = $query->get();
+        $onts = $query
+            ->when($request->tab, function ($q, $tab) {
+                if ($tab === 'ont_diganti') {
+                    $q->diganti();
+                } elseif ($tab === 'ont_pengganti') {
+                    $q->pengganti();
+                }
+            })->get();
         $count = $onts->count();
 
         if ($count === 0) {
@@ -439,7 +482,19 @@ class OntController extends Controller
                 ->first();
 
             if ($ont) {
-                $ont->load(['odp.odc.olt', 'customer.package']);
+                $ont->load([
+            'odp.odc.olt', 
+            'customer.package',
+            'pgsTicketsReplaced.customer',
+            'pgsTicketsReplaced.preparedOnt',
+            'pgkTicketsReplaced.customer',
+            'pgkTicketsReplaced.preparedOnt',
+            'pgsTicketsPrepared.customer',
+            'pgsTicketsPrepared.oldOnt',
+            'pgkTicketsPrepared.customer',
+            'pgkTicketsPrepared.oldOnt',
+        ]);
+        $ont->replacement_info = $ont->getReplacementInfo();
             }
         }
 

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Ont extends Model
 {
@@ -362,6 +363,54 @@ class Ont extends Model
         return $this->belongsTo(Area::class);
     }
 
+    /**
+     * Relasi Tiket PGS dimana ONT ini disiapkan sebagai unit pengganti
+     */
+    public function pgsTicketsPrepared(): HasMany
+    {
+        return $this->hasMany(PgsTicket::class, 'prepared_ont_id');
+    }
+
+    /**
+     * Relasi Tiket PGS dimana ONT ini ditarik/diganti dari pelanggan
+     */
+    public function pgsTicketsReplaced(): HasMany
+    {
+        return $this->hasMany(PgsTicket::class, 'old_ont_id');
+    }
+
+    /**
+     * Relasi Tiket PGK dimana ONT ini disiapkan sebagai unit pengganti
+     */
+    public function pgkTicketsPrepared(): HasMany
+    {
+        return $this->hasMany(PgkTicket::class, 'prepared_ont_id');
+    }
+
+    /**
+     * Relasi Tiket PGK dimana ONT ini ditarik/diganti dari pelanggan
+     */
+    public function pgkTicketsReplaced(): HasMany
+    {
+        return $this->hasMany(PgkTicket::class, 'old_ont_id');
+    }
+
+    /**
+     * Relasi serah terima barang gudang (ONT ditarik/lama)
+     */
+    public function materialTransactionsOld(): HasMany
+    {
+        return $this->hasMany(MaterialTransaction::class, 'old_ont_id');
+    }
+
+    /**
+     * Relasi serah terima barang gudang (ONT pengganti)
+     */
+    public function materialTransactionsReplacement(): HasMany
+    {
+        return $this->hasMany(MaterialTransaction::class, 'replacement_ont_id');
+    }
+
     // ── Computed ───────────────────────────────────────────────
 
     /**
@@ -436,5 +485,158 @@ class Ont extends Model
     public function scopeWithFullTopology($query)
     {
         return $query->with(['odp.odc.olt', 'customer.sales', 'area']);
+    }
+
+    /**
+     * Scope untuk ONT yang diganti dari proses perbaikan/komplain (PGS/PGK/Handover)
+     */
+    public function scopeDiganti($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereHas('pgsTicketsReplaced')
+              ->orWhereHas('pgkTicketsReplaced')
+              ->orWhereHas('materialTransactionsOld')
+              ->orWhere('description', 'like', '%Diganti dengan SN%')
+              ->orWhere('description', 'like', '%Ditarik dari%');
+        });
+    }
+
+    /**
+     * Scope untuk ONT yang bertindak sebagai unit pengganti pada proses PGS/PGK/Handover
+     */
+    public function scopePengganti($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereHas('pgsTicketsPrepared')
+              ->orWhereHas('pgkTicketsPrepared')
+              ->orWhereHas('materialTransactionsReplacement')
+              ->orWhere('status', 'Disiapkan Teknisi')
+              ->orWhere('description', 'like', '%Menggantikan SN%');
+        });
+    }
+
+    /**
+     * Format informasi penggantian cerdas terkait tiket PGS/PGK
+     */
+    public function getReplacementInfo(): ?array
+    {
+        $pgsOld = $this->relationLoaded('pgsTicketsReplaced') 
+            ? $this->pgsTicketsReplaced->sortByDesc('id')->first() 
+            : $this->pgsTicketsReplaced()->latest('id')->first();
+            
+        $pgkOld = $this->relationLoaded('pgkTicketsReplaced') 
+            ? $this->pgkTicketsReplaced->sortByDesc('id')->first() 
+            : $this->pgkTicketsReplaced()->latest('id')->first();
+
+        $pgsPrep = $this->relationLoaded('pgsTicketsPrepared') 
+            ? $this->pgsTicketsPrepared->sortByDesc('id')->first() 
+            : $this->pgsTicketsPrepared()->latest('id')->first();
+            
+        $pgkPrep = $this->relationLoaded('pgkTicketsPrepared') 
+            ? $this->pgkTicketsPrepared->sortByDesc('id')->first() 
+            : $this->pgkTicketsPrepared()->latest('id')->first();
+
+        $latestOld = null;
+        if ($pgsOld && $pgkOld) {
+            $latestOld = ($pgsOld->created_at >= $pgkOld->created_at) 
+                ? ['ticket' => $pgsOld, 'type' => 'PGS'] 
+                : ['ticket' => $pgkOld, 'type' => 'PGK'];
+        } elseif ($pgsOld) {
+            $latestOld = ['ticket' => $pgsOld, 'type' => 'PGS'];
+        } elseif ($pgkOld) {
+            $latestOld = ['ticket' => $pgkOld, 'type' => 'PGK'];
+        }
+
+        $latestPrep = null;
+        if ($pgsPrep && $pgkPrep) {
+            $latestPrep = ($pgsPrep->created_at >= $pgkPrep->created_at) 
+                ? ['ticket' => $pgsPrep, 'type' => 'PGS'] 
+                : ['ticket' => $pgkPrep, 'type' => 'PGK'];
+        } elseif ($pgsPrep) {
+            $latestPrep = ['ticket' => $pgsPrep, 'type' => 'PGS'];
+        } elseif ($pgkPrep) {
+            $latestPrep = ['ticket' => $pgkPrep, 'type' => 'PGK'];
+        }
+
+        if (!$latestOld && !$latestPrep) {
+            if (!empty($this->description) && str_contains($this->description, 'Diganti dengan SN')) {
+                return [
+                    'role' => 'replaced',
+                    'label' => 'ONT Diganti',
+                    'ticket_type' => str_contains($this->description, 'PGK') ? 'PGK' : 'PGS',
+                    'ticket_number' => null,
+                    'notes' => $this->description,
+                    'is_fallback' => true,
+                ];
+            }
+            if (!empty($this->description) && str_contains($this->description, 'Menggantikan SN')) {
+                return [
+                    'role' => 'replacement',
+                    'label' => 'ONT Pengganti',
+                    'ticket_type' => str_contains($this->description, 'PGK') ? 'PGK' : 'PGS',
+                    'ticket_number' => null,
+                    'notes' => $this->description,
+                    'is_fallback' => true,
+                ];
+            }
+            if ($this->status === 'Disiapkan Teknisi') {
+                return [
+                    'role' => 'replacement',
+                    'label' => 'ONT Pengganti',
+                    'ticket_type' => 'PGS/PGK',
+                    'ticket_number' => null,
+                    'status' => 'prepared',
+                    'notes' => 'Unit siap pasang sedang dibekalkan ke teknisi lapangan.',
+                    'is_fallback' => true,
+                ];
+            }
+            return null;
+        }
+
+        $res = [
+            'is_replaced' => !empty($latestOld),
+            'is_replacement' => !empty($latestPrep),
+        ];
+
+        // Jika terlibat di kedua peran atau tentukan mana yang terbaru/relevan
+        if ($latestPrep && (!$latestOld || ($latestPrep['ticket']->created_at >= $latestOld['ticket']->created_at))) {
+            $t = $latestPrep['ticket'];
+            $res['role'] = 'replacement';
+            $res['label'] = 'ONT Pengganti';
+            $res['ticket_type'] = $latestPrep['type'];
+            $res['ticket_id'] = $t->id;
+            $res['ticket_number'] = $t->ticket_number;
+            $res['ticket_url'] = '/' . strtolower($latestPrep['type']) . '?search=' . urlencode($t->ticket_number);
+            $res['ticket_status'] = $t->status;
+            $res['replacement_status'] = $t->ont_replacement_status;
+            $res['replacement_action'] = $t->ont_replacement_action;
+            $res['target_customer_name'] = $t->customer?->name;
+            $res['target_customer_code'] = $t->customer?->customer_code ?: $t->customer?->cid;
+            $res['partner_ont_sn'] = $t->oldOnt?->serial_number;
+            $res['partner_ont_model'] = trim(($t->oldOnt?->brand ?? '') . ' ' . ($t->oldOnt?->model ?? ''));
+            $res['technician_name'] = $t->preparedByUser?->name ?: $t->requestedByUser?->name;
+            $res['notes'] = $t->ont_replacement_notes ?: $t->requested_ont_notes;
+            $res['date'] = $t->prepared_ont_at ? $t->prepared_ont_at->format('d M Y H:i') : ($t->updated_at ? $t->updated_at->format('d M Y H:i') : null);
+        } else {
+            $t = $latestOld['ticket'];
+            $res['role'] = 'replaced';
+            $res['label'] = 'ONT Diganti';
+            $res['ticket_type'] = $latestOld['type'];
+            $res['ticket_id'] = $t->id;
+            $res['ticket_number'] = $t->ticket_number;
+            $res['ticket_url'] = '/' . strtolower($latestOld['type']) . '?search=' . urlencode($t->ticket_number);
+            $res['ticket_status'] = $t->status;
+            $res['replacement_status'] = $t->ont_replacement_status;
+            $res['replacement_action'] = $t->ont_replacement_action;
+            $res['origin_customer_name'] = $t->customer?->name;
+            $res['origin_customer_code'] = $t->customer?->customer_code ?: $t->customer?->cid;
+            $res['partner_ont_sn'] = $t->preparedOnt?->serial_number;
+            $res['partner_ont_model'] = trim(($t->preparedOnt?->brand ?? '') . ' ' . ($t->preparedOnt?->model ?? ''));
+            $res['technician_name'] = $t->requestedByUser?->name ?: $t->preparedByUser?->name;
+            $res['notes'] = $t->ont_replacement_notes ?: $t->requested_ont_notes;
+            $res['date'] = $t->prepared_ont_at ? $t->prepared_ont_at->format('d M Y H:i') : ($t->updated_at ? $t->updated_at->format('d M Y H:i') : null);
+        }
+
+        return $res;
     }
 }
