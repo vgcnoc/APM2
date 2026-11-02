@@ -10,8 +10,8 @@
                     <div>
                         <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
                             ONT {{ ont.serial_number }}
-                            <span class="px-2.5 py-1 text-xs font-medium rounded-full" :class="ont.status === 'active' ? 'bg-green-100 text-green-800' : (ont.status === 'inventory' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800')">
-                                {{ ont.status === 'active' ? 'Aktif (Terpasang)' : (ont.status === 'inventory' ? 'Inventory (Gudang)' : ont.status) }}
+                            <span class="px-2.5 py-1 text-xs font-medium rounded-full" :class="ont.status === 'active' ? 'bg-green-100 text-green-800' : ((ont.status === 'rusak' || ont.status === 'damaged') ? 'bg-red-100 text-red-800' : (ont.status === 'Sudah Set' ? 'bg-emerald-100 text-emerald-800' : (ont.status === 'los' ? 'bg-rose-100 text-rose-800' : 'bg-gray-100 text-gray-800')))">
+                                {{ ont.status === 'active' ? 'Aktif (Terpasang)' : ((ont.status === 'rusak' || ont.status === 'damaged') ? 'Rusak / Afkir' : (ont.status === 'Sudah Set' ? 'Siap Pasang' : (ont.status === 'los' ? 'LOS (Gangguan)' : ont.status))) }}
                             </span>
                         </h2>
                         <p class="text-sm text-gray-500 mt-1">

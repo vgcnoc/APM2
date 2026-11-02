@@ -31,6 +31,7 @@ class OntController extends Controller
             'terpasang' => (clone $statsQuery)->whereNotNull('customer_id')->count(),
             'belum_terpasang' => (clone $statsQuery)->whereNull('customer_id')->count(),
             'los' => (clone $statsQuery)->where('status', 'los')->count(),
+            'rusak' => (clone $statsQuery)->whereIn('status', ['rusak', 'damaged'])->count(),
             'ont_diganti' => (clone $statsQuery)->diganti()->count(),
             'ont_pengganti' => (clone $statsQuery)->pengganti()->count(),
         ];
@@ -79,7 +80,13 @@ class OntController extends Controller
                        });
                 });
             })
-            ->when($request->status, fn ($q, $s) => $q->where('status', $s))
+            ->when($request->status, function ($q, $s) {
+                if ($s === 'rusak') {
+                    $q->whereIn('status', ['rusak', 'damaged']);
+                } else {
+                    $q->where('status', $s);
+                }
+            })
             ->when($request->installation_status, function ($q, $s) {
                 if ($s === 'installed') {
                     $q->whereNotNull('customer_id');

@@ -55,7 +55,7 @@
             </div>
 
             <!-- 1. Statistik Cards Inventaris ONT -->
-            <div v-can="'network_ont_card_stats'" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 mb-6">
+            <div v-can="'network_ont_card_stats'" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-3 mb-6">
                 <!-- Card 1: Total Perangkat -->
                 <div 
                     @click="setQuickFilter('all')" 
@@ -136,7 +136,23 @@
                     <p class="text-[11px] text-gray-500 mt-1">Kabel Putus / Redaman</p>
                 </div>
 
-                <!-- Card 6: ONT Diganti -->
+                <!-- Card 6: Rusak / Afkir -->
+                <div 
+                    @click="setQuickFilter('rusak')" 
+                    class="bg-white rounded-2xl p-4 border transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md hover:-translate-y-0.5 group"
+                    :class="[filterState.status === 'rusak' ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/20' : 'border-gray-200/80 hover:border-red-300']"
+                >
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-500 group-hover:text-red-600 transition-colors">Rusak</span>
+                        <div class="w-8 h-8 rounded-xl bg-red-100/70 text-red-600 flex items-center justify-center">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-black text-red-600">{{ Number(stats?.rusak || 0).toLocaleString('id-ID') }}</div>
+                    <p class="text-[11px] text-gray-500 mt-1">Afkir / Butuh Servis</p>
+                </div>
+
+                <!-- Card 7: ONT Diganti -->
                 <div 
                     @click="setQuickFilter('ont_diganti')" 
                     class="bg-white rounded-2xl p-4 border transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md hover:-translate-y-0.5 group"
@@ -152,7 +168,7 @@
                     <p class="text-[11px] text-gray-500 mt-1">Ditarik dari PGS/PGK</p>
                 </div>
 
-                <!-- Card 7: ONT Pengganti -->
+                <!-- Card 8: ONT Pengganti -->
                 <div 
                     @click="setQuickFilter('ont_pengganti')" 
                     class="bg-white rounded-2xl p-4 border transition-all duration-200 cursor-pointer shadow-xs hover:shadow-md hover:-translate-y-0.5 group"
@@ -232,6 +248,16 @@
                 </button>
                 <button 
                     type="button" 
+                    @click="setQuickFilter('rusak')" 
+                    class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5"
+                    :class="[filterState.status === 'rusak' ? 'bg-white text-red-700 shadow-xs ring-1 ring-red-500/20 font-extrabold' : 'text-gray-600 hover:text-red-700 hover:bg-white/50']"
+                >
+                    <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                    <span>Rusak</span>
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-red-50 text-red-700 font-bold">{{ stats?.rusak || 0 }}</span>
+                </button>
+                <button 
+                    type="button" 
                     @click="setQuickFilter('ont_diganti')" 
                     class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5"
                     :class="[filterState.tab === 'ont_diganti' ? 'bg-white text-orange-700 shadow-xs ring-1 ring-orange-500/20 font-extrabold' : 'text-gray-600 hover:text-orange-700 hover:bg-white/50']"
@@ -305,6 +331,7 @@
                             <option value="Belum Set/Baru Input">Belum Diset (Baru Input)</option>
                             <option value="active">Active (Terpasang)</option>
                             <option value="los">LOS (Gangguan)</option>
+                            <option value="rusak">Rusak / Afkir</option>
                         </select>
                     </div>
 
@@ -452,7 +479,7 @@
                     </span>
 
                     <span v-if="filterState.status" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-indigo-50 text-indigo-700 border border-indigo-200/80 font-medium">
-                        <span>Status: {{ filterState.status }}</span>
+                        <span>Status: {{ (filterState.status === 'rusak' || filterState.status === 'damaged') ? 'Rusak / Afkir' : filterState.status }}</span>
                         <button @click="removeFilter('status')" class="hover:text-indigo-900 ml-0.5">✕</button>
                     </span>
 
@@ -660,7 +687,8 @@
                                         'bg-cyan-100 text-cyan-800': ont.status === 'Disiapkan Teknisi',
                                         'bg-rose-100 text-rose-800': ont.status === 'los',
                                         'bg-amber-100 text-amber-800': ont.status === 'Belum Set/Baru Input',
-                                        'bg-gray-100 text-gray-700': !['active', 'Sudah Set', 'los', 'Belum Set/Baru Input'].includes(ont.status),
+                                        'bg-red-100 text-red-800': ont.status === 'rusak' || ont.status === 'damaged',
+                                        'bg-gray-100 text-gray-700': !['active', 'Sudah Set', 'los', 'Belum Set/Baru Input', 'rusak', 'damaged'].includes(ont.status),
                                     }">
                                         <span class="w-1.5 h-1.5 rounded-full" :class="{
                                             'bg-emerald-500 animate-pulse': ont.status === 'Sudah Set',
@@ -668,9 +696,10 @@
                                             'bg-cyan-500 animate-pulse': ont.status === 'Disiapkan Teknisi',
                                             'bg-rose-500 animate-ping': ont.status === 'los',
                                             'bg-amber-500': ont.status === 'Belum Set/Baru Input',
-                                            'bg-gray-400': !['active', 'Sudah Set', 'los', 'Belum Set/Baru Input'].includes(ont.status),
+                                            'bg-red-500': ont.status === 'rusak' || ont.status === 'damaged',
+                                            'bg-gray-400': !['active', 'Sudah Set', 'los', 'Belum Set/Baru Input', 'rusak', 'damaged'].includes(ont.status),
                                         }"></span>
-                                        <span>{{ ont.status || '-' }}</span>
+                                        <span>{{ (ont.status === 'rusak' || ont.status === 'damaged') ? 'Rusak / Afkir' : (ont.status || '-') }}</span>
                                     </span>
                                 </td>
                             </tr>
@@ -894,6 +923,7 @@
                                 <option value="active">Active (Terpasang)</option>
                                 <option value="inactive">Inactive</option>
                                 <option value="los">LOS</option>
+                                <option value="rusak">Rusak / Afkir</option>
                                 <option value="damaged">Damaged</option>
                             </select>
                         </div>
@@ -1355,6 +1385,9 @@ function setQuickFilter(type) {
         filterState.value.status = '';
     } else if (type === 'los') {
         filterState.value.status = filterState.value.status === 'los' ? '' : 'los';
+        filterState.value.installation_status = '';
+    } else if (type === 'rusak') {
+        filterState.value.status = filterState.value.status === 'rusak' ? '' : 'rusak';
         filterState.value.installation_status = '';
     }
     applyFilters();
