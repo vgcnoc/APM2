@@ -766,32 +766,40 @@ class Customer extends Model
                 }
 
                 // Kembalikan ONT ke status 'Belum Set/Baru Input' dan unassign dari pelanggan & ODP (Requirement 3)
-                $ont->update([
-                    'customer_id' => null,
-                    'status' => 'Belum Set/Baru Input', // Status Belum Set (Gudang)
-                    'odp_id' => null,
-                    'odp_port_id' => null,
-                    'port_number' => null,
-                    'rx_power' => null,
-                    'tx_power' => null,
-                    'pppoe_user' => null,
-                    'pppoe_password' => null,
-                    'hotspot_user' => null,
-                    'hotspot_password' => null,
-                    'vlan_id' => null,
-                    'hotspot_vlan_id' => null,
-                    'access_mode' => 'PPPOE',
-                    'ip_login' => null,
-                    'login_user' => null,
-                    'login_password' => null,
-                    'free_hotspot' => false,
-                    'photo_odp' => null,
-                    'photo_installation' => null,
-                    'photo_ont' => null,
-                    'photo_customer' => null,
-                    'photo_redaman' => null,
-                    'description' => 'Kembali ke data ONT dengan status Belum Set (Gudang) karena pelanggan ' . $this->name . ' (' . $this->customer_code . ') dihapus pada ' . now()->format('d/m/Y H:i'),
-                ]);
+                $sn = trim((string)$ont->serial_number);
+                $isDummyOrNameOnly = !preg_match('/[0-9]/', $sn) || str_starts_with($sn, 'SN-') || strcasecmp($sn, trim((string)$this->name)) === 0;
+
+                // Jika ONT hanya dummy/nama orang tanpa SN fisik nyata, hapus agar tidak menimbulkan ghost records
+                if ($isDummyOrNameOnly) {
+                    $ont->delete();
+                } else {
+                    $ont->update([
+                        'customer_id' => null,
+                        'status' => 'Belum Set/Baru Input', // Status Belum Set (Gudang)
+                        'odp_id' => null,
+                        'odp_port_id' => null,
+                        'port_number' => null,
+                        'rx_power' => null,
+                        'tx_power' => null,
+                        'pppoe_user' => null,
+                        'pppoe_password' => null,
+                        'hotspot_user' => null,
+                        'hotspot_password' => null,
+                        'vlan_id' => null,
+                        'hotspot_vlan_id' => null,
+                        'access_mode' => 'PPPOE',
+                        'ip_login' => null,
+                        'login_user' => null,
+                        'login_password' => null,
+                        'free_hotspot' => false,
+                        'photo_odp' => null,
+                        'photo_installation' => null,
+                        'photo_ont' => null,
+                        'photo_customer' => null,
+                        'photo_redaman' => null,
+                        'description' => 'Kembali ke data ONT dengan status Belum Set (Gudang) karena pelanggan ' . $this->name . ' (' . $this->customer_code . ') dihapus pada ' . now()->format('d/m/Y H:i'),
+                    ]);
+                }
             }
         } catch (\Throwable $e) {
             Log::warning('[Customer::purgeConnectedData] Error handling ONTs: ' . $e->getMessage());
