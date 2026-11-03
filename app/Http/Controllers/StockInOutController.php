@@ -103,11 +103,67 @@ class StockInOutController extends Controller
         ]);
     }
 
+    protected function resolveTransactionAreaId(?int $explicitAreaId, ?string $technicianName, ?int $materialId = null): ?int
+    {
+        if ($explicitAreaId) {
+            return $explicitAreaId;
+        }
+
+        $cleanTech = trim((string) ($technicianName ?? ''));
+        if ($cleanTech !== '') {
+            $areaId = \App\Models\Area::whereRaw('LOWER(TRIM(name)) = ?', [strtolower($cleanTech)])->value('id');
+            if ($areaId) {
+                return (int) $areaId;
+            }
+
+            $matchedUser = \App\Models\User::whereRaw('LOWER(TRIM(name)) = ?', [strtolower($cleanTech)])
+                ->when(strlen($cleanTech) >= 3, function ($q) use ($cleanTech) {
+                    $q->orWhere('name', 'like', $cleanTech . '%');
+                })
+                ->orderByRaw('CASE WHEN LOWER(TRIM(name)) = ? THEN 0 ELSE 1 END', [strtolower($cleanTech)])
+                ->first();
+
+            if ($matchedUser) {
+                if (!empty($matchedUser->area_id)) {
+                    return (int) $matchedUser->area_id;
+                }
+                if (method_exists($matchedUser, 'getAccessibleAreaIds')) {
+                    $accAreas = $matchedUser->getAccessibleAreaIds();
+                    if (count($accAreas) === 1) {
+                        return (int) $accAreas[0];
+                    }
+                }
+            }
+        }
+
+        $authUser = auth()->user();
+        if ($authUser && !empty($authUser->area_id)) {
+            $isGlobal = $authUser->hasRole('admin') || $authUser->hasRole('super admin') || in_array($authUser->role, ['admin', 'super admin'], true);
+            if (!$isGlobal) {
+                return (int) $authUser->area_id;
+            }
+        }
+
+        if ($materialId) {
+            $stockAreaIds = \App\Models\MaterialStock::where('material_id', $materialId)
+                ->pluck('area_id')
+                ->filter()
+                ->unique()
+                ->values();
+            if ($stockAreaIds->count() === 1) {
+                return (int) $stockAreaIds->first();
+            }
+        }
+
+        return null;
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
             'type' => 'required|in:in,out',
             'date' => 'required|date',
+            'area_id' => 'nullable|exists:areas,id',
             'technician_name' => 'required|string|max:255',
             'purpose' => 'required|string|max:255',
             'notes' => 'nullable|string',
@@ -124,7 +180,15 @@ class StockInOutController extends Controller
             $prefix = $validated['type'] === 'out' ? 'OUT-' : 'RET-'; // Retur (In) or Out
             $transactionNumber = $prefix . now()->format('Ymd') . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
 
-            $matchedArea = \App\Models\Area::where('name', trim($validated['technician_name']))->first();
+            $singleMaterialId = count($validated['items']) === 1 ? (int) $validated['items'][0]['material_id'] : null;
+            $resolvedAreaId = $this->resolveTransactionAreaId(
+                !empty($validated['area_id']) ? (int) $validated['area_id'] : null,
+                $validated['technician_name'] ?? null,
+                $singleMaterialId
+            );
+            $resolvedAreaName = $resolvedAreaId
+                ? \App\Models\Area::where('id', $resolvedAreaId)->value('name')
+                : null;
 
             $transaction = MaterialTransaction::create([
                 'transaction_number' => $transactionNumber,
@@ -133,8 +197,9 @@ class StockInOutController extends Controller
                 'date' => $validated['date'],
                 'purpose' => $validated['purpose'],
                 'technician_name' => $validated['technician_name'],
-                'area_id' => $matchedArea?->id,
-                'notes' => $validated['notes'],
+                'area_id' => $resolvedAreaId,
+                'area' => $resolvedAreaName,
+                'notes' => $validated['notes'] ?? null,
                 'user_id' => auth()->id(),
                 'total_cost' => 0 
             ]);
@@ -145,7 +210,16 @@ class StockInOutController extends Controller
                 $material = Material::findOrFail($item['material_id']);
                 $quantity = (float) $item['quantity'];
                 $itemCondition = $item['condition'] ?? 'Layak Pakai';
-                $targetAreaId = $matchedArea?->id;
+                $targetAreaId = $resolvedAreaId ?: $this->resolveTransactionAreaId(
+                    null,
+                    $validated['technician_name'] ?? null,
+                    $material->id
+                );
+
+                if (!$transaction->area_id && $targetAreaId) {
+                    $transaction->area_id = $targetAreaId;
+                    $transaction->area = \App\Models\Area::where('id', $targetAreaId)->value('name');
+                }
 
                 $currentStock = $targetAreaId
                     ? (float) (\App\Models\MaterialStock::where('material_id', $material->id)->where('area_id', $targetAreaId)->value('stock') ?? 0)
@@ -191,7 +265,8 @@ class StockInOutController extends Controller
                 ]);
             }
 
-            $transaction->update(['total_cost' => $totalCost]);
+            $transaction->total_cost = $totalCost;
+            $transaction->save();
 
             DB::commit();
             return redirect()->back()->with('success', 'Transaksi mutasi berhasil dicatat.');
@@ -207,10 +282,12 @@ class StockInOutController extends Controller
 
         DB::beginTransaction();
         try {
-            $targetAreaId = $transaction->area_id;
-            if (!$targetAreaId && $transaction->technician_name) {
-                $targetAreaId = \App\Models\Area::where('name', trim($transaction->technician_name))->value('id');
-            }
+            $singleMatId = $transaction->items->count() === 1 ? (int) $transaction->items->first()?->material_id : null;
+            $targetAreaId = $this->resolveTransactionAreaId(
+                $transaction->area_id ? (int) $transaction->area_id : null,
+                $transaction->technician_name,
+                $singleMatId
+            );
 
             // Revert stock secara simetris per area atau gudang utama
             if ($transaction->status === 'approved' && !$transaction->is_migration) {

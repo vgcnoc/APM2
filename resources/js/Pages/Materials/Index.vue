@@ -939,6 +939,15 @@
                         </div>
                     </div>
 
+                    <!-- Area / Cabang Gudang -->
+                    <div v-if="areas && areas.length > 0">
+                        <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Area / Cabang Gudang</label>
+                        <select v-model="statusForm.area_id" class="w-full text-sm px-3 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 font-medium text-gray-700 bg-white">
+                            <option value="">Otomatis (Sesuai Petugas / Area)</option>
+                            <option v-for="a in areas" :key="a.id" :value="a.id">{{ a.name }}</option>
+                        </select>
+                    </div>
+
                     <!-- Jumlah & Petugas -->
                     <div class="grid grid-cols-2 gap-3">
                         <div>
@@ -1439,6 +1448,7 @@ const selectedMaterialId = ref('');
 const statusForm = useForm({
     type: 'in',
     date: new Date().toISOString().split('T')[0],
+    area_id: '',
     technician_name: '',
     purpose: 'Retur Sisa Pasang (Layak)',
     notes: '',
@@ -1447,10 +1457,24 @@ const statusForm = useForm({
     items: [],
 });
 
+const resolveDefaultStatusAreaId = (material = null) => {
+    if (filterArea.value) {
+        return Number(filterArea.value) || filterArea.value;
+    }
+    if (material?.stocks && material.stocks.length === 1 && material.stocks[0]?.area_id) {
+        return material.stocks[0].area_id;
+    }
+    if (props.areas && props.areas.length === 1 && props.areas[0]?.id) {
+        return props.areas[0].id;
+    }
+    return '';
+};
+
 const openQuickStatusModal = () => {
     statusTargetMaterial.value = null;
     selectedMaterialId.value = '';
     statusForm.date = new Date().toISOString().split('T')[0];
+    statusForm.area_id = resolveDefaultStatusAreaId(null);
     statusForm.technician_name = '';
     statusForm.type = 'in';
     statusForm.condition = 'Layak Pakai';
@@ -1464,6 +1488,7 @@ const openStatusModalFor = (material) => {
     statusTargetMaterial.value = material;
     selectedMaterialId.value = material.id;
     statusForm.date = new Date().toISOString().split('T')[0];
+    statusForm.area_id = resolveDefaultStatusAreaId(material);
     statusForm.technician_name = '';
     statusForm.type = 'in';
     statusForm.condition = 'Layak Pakai';
@@ -1477,6 +1502,9 @@ const onSelectMaterialChange = () => {
     const found = props.materials.data.find(m => m.id === Number(selectedMaterialId.value) || m.id === selectedMaterialId.value);
     if (found) {
         statusTargetMaterial.value = found;
+        if (!statusForm.area_id) {
+            statusForm.area_id = resolveDefaultStatusAreaId(found);
+        }
     }
 };
 
