@@ -357,9 +357,9 @@
                 <div v-else class="col-span-2 px-3 py-2 bg-slate-50/80 rounded-xl border border-slate-200/60 flex items-center justify-between text-[11px] text-slate-600">
                     <div class="flex items-center gap-1.5 truncate">
                         <span>📍</span>
-                        <span class="font-medium truncate">{{ officeLocation?.name || 'Kantor Cabang Terdaftar' }}</span>
+                        <span class="font-medium truncate">{{ activeOfficeLocation?.name || officeLocation?.name || 'Kantor Cabang Terdaftar' }}</span>
                     </div>
-                    <span class="font-bold text-slate-500 shrink-0">Radius: {{ officeLocation?.radius_meters || 200 }}m</span>
+                    <span class="font-bold text-slate-500 shrink-0">Radius: {{ activeOfficeLocation?.radius_meters || officeLocation?.radius_meters || 200 }}m</span>
                 </div>
             </div>
 
@@ -748,7 +748,7 @@
                             <span>Mode Tim Khusus: Tanpa batasan radius kantor (GPS dicatat realtime).</span>
                         </div>
                         <div v-else-if="attendanceType === 'wfo'" class="flex items-center justify-between">
-                            <span>Jarak ke Kantor Cabang:</span>
+                            <span>Jarak ke {{ activeOfficeLocation?.name || officeLocation?.name || 'Kantor Cabang' }}:</span>
                             <span class="font-bold" :class="isWithinRadius ? 'text-emerald-600' : 'text-amber-600'">
                                 {{ formatDistance(distanceToOffice) }}
                                 ({{ isWithinRadius ? 'Dalam Radius' : 'Luar Radius' }})
@@ -987,6 +987,8 @@ const dayOffReason = computed(() => props.attendanceData?.dayOffReason || '');
 const todaySchedule = computed(() => props.attendanceData?.todaySchedule || null);
 const todayAttendance = computed(() => props.attendanceData?.todayAttendance || null);
 const officeLocation = computed(() => props.attendanceData?.officeLocation || null);
+const officeLocations = computed(() => props.attendanceData?.officeLocations || (officeLocation.value ? [officeLocation.value] : []));
+const activeOfficeLocation = ref(null);
 const allEmployees = computed(() => props.attendanceData?.allEmployees || []);
 const allShifts = computed(() => props.attendanceData?.allShifts || []);
 const attendanceSummary = computed(() => props.attendanceData?.attendanceSummary || null);
@@ -1225,31 +1227,67 @@ const calcDistance = () => {
         distanceToOffice.value = 0;
         return;
     }
-    if (!userCoordinates.value || !officeLocation.value?.latitude || !officeLocation.value?.longitude) {
+    if (!userCoordinates.value) {
         isWithinRadius.value = true;
         distanceToOffice.value = 15;
         return;
     }
+
     const lat1 = userCoordinates.value.latitude;
     const lon1 = userCoordinates.value.longitude;
-    const lat2 = officeLocation.value.latitude;
-    const lon2 = officeLocation.value.longitude;
+
+    const locs = (officeLocations.value && officeLocations.value.length > 0)
+        ? officeLocations.value
+        : (officeLocation.value ? [officeLocation.value] : []);
+
+    if (!locs.length) {
+        isWithinRadius.value = true;
+        distanceToOffice.value = 15;
+        return;
+    }
 
     const R = 6371e3; // meters
-    const φ1 = (lat1 * Math.PI) / 180;
-    const φ2 = (lat2 * Math.PI) / 180;
-    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+    let closestOffice = null;
+    let minDistance = null;
 
-    const a =
-        Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-        Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const dist = Math.round(R * c);
+    for (const office of locs) {
+        if (!office.latitude || !office.longitude) continue;
+        const lat2 = office.latitude;
+        const lon2 = office.longitude;
+        const φ1 = (lat1 * Math.PI) / 180;
+        const φ2 = (lat2 * Math.PI) / 180;
+        const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+        const Δλ = ((lon2 - lon1) * Math.PI) / 180;
 
-    distanceToOffice.value = dist;
-    const allowed = officeLocation.value.radius_meters || 200;
-    isWithinRadius.value = dist <= allowed;
+        const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                  Math.cos(φ1) * Math.cos(φ2) *
+                  Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const dist = Math.round(R * c);
+        const allowed = office.radius_meters || 200;
+
+        if (dist <= allowed) {
+            closestOffice = office;
+            minDistance = dist;
+            break;
+        }
+
+        if (minDistance === null || dist < minDistance) {
+            minDistance = dist;
+            closestOffice = office;
+        }
+    }
+
+    if (closestOffice) {
+        activeOfficeLocation.value = closestOffice;
+        distanceToOffice.value = minDistance !== null ? minDistance : 0;
+        const allowed = closestOffice.radius_meters || 200;
+        isWithinRadius.value = minDistance !== null && minDistance <= allowed;
+    } else {
+        activeOfficeLocation.value = officeLocation.value;
+        isWithinRadius.value = true;
+        distanceToOffice.value = 15;
+    }
 };
 
 const formatDistance = (m) => {
@@ -1548,6 +1586,7 @@ const submitAttendance = () => {
             {
                 employee_id: currentEmployee.value.id,
                 photo: capturedPhoto.value,
+                area_id: activeOfficeLocation.value?.id || officeLocation.value?.id || undefined,
                 shift_id: shiftToday.value?.id || undefined,
                 attendance_type: can('attendance_select_type') ? attendanceType.value : 'wfo',
                 duty_location: can('attendance_select_type') && attendanceType.value === 'dinas_luar' ? (dutyLocation.value || undefined) : undefined,
@@ -1581,6 +1620,7 @@ const submitAttendance = () => {
             route('attendances.clock-out'),
             {
                 employee_id: currentEmployee.value.id,
+                area_id: activeOfficeLocation.value?.id || officeLocation.value?.id || undefined,
                 attendance_id: todayAttendance.value?.id || undefined,
                 photo: capturedPhoto.value,
                 latitude: userCoordinates.value?.latitude || null,

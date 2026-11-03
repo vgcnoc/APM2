@@ -686,46 +686,49 @@ class AttendanceController extends Controller
         $allowAnyArea = Setting::get('attendance_regular_allow_any_area', '1') === '1';
         $targetArea = null;
 
-        if ($allowAnyArea) {
-            if ($request->filled('area_id')) {
-                $targetArea = Area::find($request->area_id);
-            } elseif ($request->latitude && $request->longitude) {
-                // Auto-detect area kantor terdekat yang dalam radius
-                $officeQuery = Area::whereNotNull('latitude')->whereNotNull('longitude');
-                if ($isAreaRestricted) {
-                    $officeQuery->whereIn('id', $allowedAreaIds);
-                }
-                $allOfficeAreas = $officeQuery->get();
-                $closestArea = null;
-                $minDistance = null;
-
-                foreach ($allOfficeAreas as $oArea) {
-                    $distMeters = $this->calculateDistanceMeters(
-                        (float) $request->latitude,
-                        (float) $request->longitude,
-                        (float) $oArea->latitude,
-                        (float) $oArea->longitude
-                    );
-                    $maxRad = (int) ($oArea->radius_meters ?: Setting::get('attendance_regular_default_radius', 200));
-
-                    if ($distMeters <= $maxRad) {
-                        $targetArea = $oArea;
-                        break;
-                    }
-
-                    if ($minDistance === null || $distMeters < $minDistance) {
-                        $minDistance = $distMeters;
-                        $closestArea = $oArea;
-                    }
-                }
-
-                if (!$targetArea) {
-                    $targetArea = $employee->area ?: $closestArea;
-                }
-            } else {
-                $targetArea = $employee->area;
+        if ($request->filled('area_id')) {
+            $reqArea = Area::find($request->area_id);
+            if ($reqArea) {
+                $targetArea = $reqArea;
             }
-        } else {
+        }
+
+        if (!$targetArea && $request->latitude && $request->longitude) {
+            // Auto-detect area kantor terdekat yang dalam radius
+            $officeQuery = Area::whereNotNull('latitude')->whereNotNull('longitude');
+            if ($isAreaRestricted) {
+                $officeQuery->whereIn('id', $allowedAreaIds);
+            }
+            $allOfficeAreas = $officeQuery->get();
+            $closestArea = null;
+            $minDistance = null;
+
+            foreach ($allOfficeAreas as $oArea) {
+                $distMeters = $this->calculateDistanceMeters(
+                    (float) $request->latitude,
+                    (float) $request->longitude,
+                    (float) $oArea->latitude,
+                    (float) $oArea->longitude
+                );
+                $maxRad = (int) ($oArea->radius_meters ?: Setting::get('attendance_regular_default_radius', 200));
+
+                if ($distMeters <= $maxRad) {
+                    $targetArea = $oArea;
+                    break;
+                }
+
+                if ($minDistance === null || $distMeters < $minDistance) {
+                    $minDistance = $distMeters;
+                    $closestArea = $oArea;
+                }
+            }
+
+            if (!$targetArea) {
+                $targetArea = $closestArea ?: $employee->area;
+            }
+        }
+
+        if (!$targetArea) {
             $targetArea = $employee->area;
         }
 
@@ -1014,10 +1017,15 @@ class AttendanceController extends Controller
                     $allowedRadius = (int) ($targetArea->radius_meters ?: Setting::get('attendance_regular_default_radius', 200));
 
                     if ($strictRadius && $distanceOutCalculated > $allowedRadius) {
-                        // Jika allowAnyArea aktif, cek apakah user berada di dalam radius kantor cabang lain
+                        // Cek apakah user berada di dalam radius kantor cabang lain yang diizinkan
                         $foundAnother = false;
-                        if ($allowAnyArea) {
-                            $otherAreas = Area::whereNotNull('latitude')->whereNotNull('longitude')->get();
+                        $userAllowedAreaIds = $employee->getAllowedAttendanceAreaIds();
+                        $otherAreasQuery = Area::whereNotNull('latitude')->whereNotNull('longitude');
+                        if (!$allowAnyArea && !empty($userAllowedAreaIds)) {
+                            $otherAreasQuery->whereIn('id', $userAllowedAreaIds);
+                        }
+                        if ($allowAnyArea || !empty($userAllowedAreaIds)) {
+                            $otherAreas = $otherAreasQuery->get();
                             foreach ($otherAreas as $oArea) {
                                 $dOther = $this->calculateDistanceMeters(
                                     (float) $request->latitude,

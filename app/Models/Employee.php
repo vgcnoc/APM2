@@ -36,13 +36,15 @@ class Employee extends Model
      */
     public function getAllowedAttendanceAreaIds(): array
     {
+        $allowed = [];
         if (!empty($this->allowed_attendance_areas) && is_array($this->allowed_attendance_areas)) {
-            return array_values(array_unique(array_filter(array_map('intval', $this->allowed_attendance_areas))));
+            $allowed = array_values(array_unique(array_filter(array_map('intval', $this->allowed_attendance_areas))));
         }
-        if (!empty($this->area_id)) {
-            return [(int) $this->area_id];
+        // Area penempatan utama karyawan selalu sah sebagai area presensi
+        if (!empty($this->area_id) && !in_array((int) $this->area_id, $allowed, true)) {
+            $allowed[] = (int) $this->area_id;
         }
-        return [];
+        return $allowed;
     }
 
     public function getAllowedAttendanceAreaIdsAttribute(): array

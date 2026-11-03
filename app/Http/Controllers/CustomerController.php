@@ -3453,9 +3453,9 @@ class CustomerController extends Controller
                         'purpose' => 'Pemakaian Material Instalasi Pelanggan ' . $customer->name,
                         'source_type' => 'instalasi',
                         'source_id' => $customer->id,
-                        'source_reference' => $customer->customer_id ?? ('CUST-' . $customer->id),
+                        'source_reference' => $customer->customer_code ?? ('CUST-' . $customer->id),
                         'user_id' => auth()->id(),
-                        'customer_id' => $customer->id,
+                        'customer_id' => ($customer && \App\Models\Customer::where('id', $customer->id)->exists()) ? $customer->id : null,
                         'area_id' => $customer->area_id,
                         'notes' => "Rincian Pemakaian Instalasi:\n" . implode("\n", $rincianNotesUsed)
                     ]);
@@ -4820,12 +4820,12 @@ class CustomerController extends Controller
                 'status' => 'approved',
                 'date' => now(),
                 'technician_name' => $techUserNames,
-                'purpose' => 'Bekal Material Jadwal Pasang Pelanggan ' . $customer->name . ' (' . ($customer->customer_id ?? 'ID:' . $customer->id) . ')',
+                'purpose' => 'Bekal Material Jadwal Pasang Pelanggan ' . $customer->name . ' (' . ($customer->customer_code ?? 'ID:' . $customer->id) . ')',
                 'source_type' => 'jadwal_instalasi',
                 'source_id' => $customer->id,
-                'source_reference' => $customer->customer_id ?? ('CUST-' . $customer->id),
+                'source_reference' => $customer->customer_code ?? ('CUST-' . $customer->id),
                 'user_id' => auth()->id(),
-                'customer_id' => $customer->id,
+                'customer_id' => ($customer && \App\Models\Customer::where('id', $customer->id)->exists()) ? $customer->id : null,
                 'area_id' => $targetAreaId,
                 'notes' => "Rincian Bekal Material Instalasi:\n" . implode("\n", array_map(function($di) {
                     return "- " . $di['material']->name . ": " . $di['qty'] . " " . $di['unit'];

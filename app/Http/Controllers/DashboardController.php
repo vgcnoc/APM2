@@ -644,6 +644,7 @@ class DashboardController extends Controller
                     'radius_meters' => 999999,
                     'without_radius' => true,
                 ];
+                $officeLocations = [$officeLocation];
             } else {
                 // Absensi Reguler Standar
                 $todaySchedule = WorkSchedule::with('shift')
@@ -737,8 +738,25 @@ class DashboardController extends Controller
                     }
                 }
 
-                if ($currentEmployee->area) {
-                    $officeLocation = [
+                $allowedAreaIds = $currentEmployee->getAllowedAttendanceAreaIds();
+                $officeLocationsQuery = Area::whereNotNull('latitude')->whereNotNull('longitude');
+                if (!$canBypassAreaLock && !empty($allowedAreaIds)) {
+                    $officeLocationsQuery->whereIn('id', $allowedAreaIds);
+                }
+                $officeLocations = $officeLocationsQuery->get()->map(function ($a) {
+                    return [
+                        'id' => $a->id,
+                        'name' => $a->name,
+                        'address' => $a->address,
+                        'latitude' => $a->latitude ? (float) $a->latitude : null,
+                        'longitude' => $a->longitude ? (float) $a->longitude : null,
+                        'radius_meters' => $a->radius_meters ? (int) $a->radius_meters : 200,
+                        'without_radius' => false,
+                    ];
+                })->values()->all();
+
+                if (empty($officeLocations) && $currentEmployee->area) {
+                    $officeLocations = [[
                         'id' => $currentEmployee->area->id,
                         'name' => $currentEmployee->area->name,
                         'address' => $currentEmployee->area->address,
@@ -746,8 +764,10 @@ class DashboardController extends Controller
                         'longitude' => $currentEmployee->area->longitude ? (float) $currentEmployee->area->longitude : null,
                         'radius_meters' => $currentEmployee->area->radius_meters ? (int) $currentEmployee->area->radius_meters : 200,
                         'without_radius' => false,
-                    ];
+                    ]];
                 }
+
+                $officeLocation = $officeLocations[0] ?? null;
             }
         }
 
@@ -922,6 +942,7 @@ class DashboardController extends Controller
             'dayOffReason' => $dayOffReason ?? null,
             'todayAttendance' => $todayAttendance,
             'officeLocation' => $officeLocation,
+            'officeLocations' => $officeLocations ?? ($officeLocation ? [$officeLocation] : []),
             'attendanceSummary' => [
                 'total_employees' => $totalEmployees,
                 'present_today' => $presentToday,
