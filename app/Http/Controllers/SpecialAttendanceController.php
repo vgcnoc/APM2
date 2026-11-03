@@ -172,9 +172,22 @@ class SpecialAttendanceController extends Controller
 
                 if ($yesterdayOpen) {
                     $yDeadline = AttendanceCalculatorService::resolveSpecialCheckoutDeadline($yesterday, $currentTeam);
-                    if ($now->lessThanOrEqualTo($yDeadline)) {
+                    $autoLockCheckout = Setting::get('attendance_checkout_auto_lock', '1') === '1';
+                    if ($now->lessThanOrEqualTo($yDeadline) || (!$autoLockCheckout && $yDeadline->format('Y-m-d') === $today)) {
                         $todayAttendance = $yesterdayOpen;
                         $activeSpecialDate = $yesterday;
+                    }
+                } elseif ($currentTeam->start_time && $currentTeam->end_time && substr($currentTeam->end_time, 0, 5) < substr($currentTeam->start_time, 0, 5)) {
+                    $yesterdayAnySpecial = SpecialAttendance::where('special_team_id', $currentTeam->id)
+                        ->where('employee_id', $currentEmployee->id)
+                        ->where('date', $yesterday)
+                        ->first();
+                    if (!$yesterdayAnySpecial) {
+                        $yStart = Carbon::parse($yesterday . ' ' . $currentTeam->start_time);
+                        $yEnd = Carbon::parse($yesterday . ' ' . $currentTeam->end_time)->addDay();
+                        if ($now->greaterThanOrEqualTo($yStart) && $now->lessThanOrEqualTo($yEnd)) {
+                            $activeSpecialDate = $yesterday;
+                        }
                     }
                 }
             }
@@ -192,7 +205,7 @@ class SpecialAttendanceController extends Controller
 
         $clockInWindowInfo = null;
         if ($currentTeam && !empty($currentTeam->start_time)) {
-            $scheduledStart = Carbon::parse($today . ' ' . $currentTeam->start_time);
+            $scheduledStart = Carbon::parse($activeSpecialDate . ' ' . $currentTeam->start_time);
             $earliestAllowed = $scheduledStart->copy()->subMinutes($clockInEarlyLimitMinutes);
             $isOpen = !$clockInEarlyLimitEnabled || $canBypassEarlyLimit || $now->greaterThanOrEqualTo($earliestAllowed);
             $minutesUntilOpen = $now->lessThan($earliestAllowed) ? (int) ceil($now->diffInRealMinutes($earliestAllowed, false)) : 0;
@@ -570,8 +583,35 @@ class SpecialAttendanceController extends Controller
 
         $team = SpecialTeam::findOrFail($request->special_team_id);
         $today = Carbon::today()->format('Y-m-d');
+        $yesterday = Carbon::yesterday()->format('Y-m-d');
         $now = Carbon::now();
         $currentTimeStr = $now->format('H:i:s');
+
+        $yesterdayOpen = SpecialAttendance::where('special_team_id', $team->id)
+            ->where('employee_id', $request->employee_id)
+            ->where('date', $yesterday)
+            ->whereNotNull('clock_in')
+            ->whereNull('clock_out')
+            ->first();
+
+        if ($yesterdayOpen && $now->lessThanOrEqualTo(AttendanceCalculatorService::resolveSpecialCheckoutDeadline($yesterday, $team))) {
+            return back()->with('error', 'Anda masih memiliki sesi absensi Tim Khusus kemarin yang belum di-absen pulang. Silakan lakukan absen pulang terlebih dahulu.');
+        }
+
+        $targetDate = $today;
+        if ($team->start_time && $team->end_time && substr($team->end_time, 0, 5) < substr($team->start_time, 0, 5)) {
+            $yesterdayAny = SpecialAttendance::where('special_team_id', $team->id)
+                ->where('employee_id', $request->employee_id)
+                ->where('date', $yesterday)
+                ->first();
+            if (!$yesterdayAny) {
+                $yStart = Carbon::parse($yesterday . ' ' . $team->start_time);
+                $yEnd = Carbon::parse($yesterday . ' ' . $team->end_time)->addDay();
+                if ($now->greaterThanOrEqualTo($yStart) && $now->lessThanOrEqualTo($yEnd)) {
+                    $targetDate = $yesterday;
+                }
+            }
+        }
 
         // Validasi Pembatasan Jam Masuk Lebih Awal (Kamera Menolak Jika Belum Jam Yang Ditentukan)
         $earlyLimitEnabled = Setting::get('attendance_clock_in_early_limit_enabled', '1') === '1';
@@ -580,7 +620,7 @@ class SpecialAttendanceController extends Controller
         $canBypassEarlyLimit = $user && ($user->hasRole('admin') || $user->hasRole('super admin') || $user->can('attendance_bypass_early_restriction') || $user->can('attendances_manage'));
 
         if ($earlyLimitEnabled && !$canBypassEarlyLimit && !empty($team->start_time)) {
-            $scheduledStartTime = Carbon::parse($today . ' ' . $team->start_time);
+            $scheduledStartTime = Carbon::parse($targetDate . ' ' . $team->start_time);
             $earliestAllowed = $scheduledStartTime->copy()->subMinutes($earlyLimitMinutes);
 
             if ($now->lessThan($earliestAllowed)) {
@@ -606,7 +646,7 @@ class SpecialAttendanceController extends Controller
         }
 
         // Evaluasi Keterlambatan
-        $scheduledStartTime = Carbon::parse($today . ' ' . $team->start_time);
+        $scheduledStartTime = Carbon::parse($targetDate . ' ' . $team->start_time);
         $toleranceMinutes = (int) $team->tolerance_minutes;
         $lateThreshold = $scheduledStartTime->copy()->addMinutes($toleranceMinutes);
 
@@ -622,14 +662,14 @@ class SpecialAttendanceController extends Controller
         $photoPath = $this->saveBase64Photo(
             $request->photo,
             'special_attendances',
-            "in_{$request->employee_id}_{$today}"
+            "in_{$request->employee_id}_{$targetDate}"
         );
 
         $attendance = SpecialAttendance::updateOrCreate(
             [
                 'special_team_id' => $team->id,
                 'employee_id' => $request->employee_id,
-                'date' => $today,
+                'date' => $targetDate,
             ],
             [
                 'clock_in' => $currentTimeStr,

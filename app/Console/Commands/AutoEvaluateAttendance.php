@@ -68,7 +68,9 @@ class AutoEvaluateAttendance extends Command
         })->get();
 
         $attendances = Attendance::with('shift')->whereBetween('date', [$periodDetails['start_date'], $periodDetails['end_date']])->get();
-        $recap = AttendanceCalculatorService::calculateMonthlyRecap($employees, $attendances, $periodDetails);
+        $workSchedules = \App\Models\WorkSchedule::whereBetween('date', [$periodDetails['start_date'], $periodDetails['end_date']])->get();
+        $specialAtts = \App\Models\SpecialAttendance::with(['employee', 'team'])->whereBetween('date', [$periodDetails['start_date'], $periodDetails['end_date']])->get();
+        $recap = AttendanceCalculatorService::calculateMonthlyRecap($employees, $attendances, $periodDetails, $attSettings, $workSchedules, $specialAtts);
 
         $totalPresent = $recap->sum('total_present');
         $totalLate = $recap->sum('total_late');

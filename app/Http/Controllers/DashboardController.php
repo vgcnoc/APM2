@@ -619,7 +619,8 @@ class DashboardController extends Controller
                         ->first();
                     if ($yesterdaySpecialOpen) {
                         $ySpecialDeadline = AttendanceCalculatorService::resolveSpecialCheckoutDeadline($yesterday, $specialTeam);
-                        if ($now->lessThanOrEqualTo($ySpecialDeadline) || $ySpecialDeadline->format('Y-m-d') === $today) {
+                        $autoLockCheckout = Setting::get('attendance_checkout_auto_lock', '1') === '1';
+                        if ($now->lessThanOrEqualTo($ySpecialDeadline) || (!$autoLockCheckout && $ySpecialDeadline->format('Y-m-d') === $today)) {
                             $todayAttendance = $yesterdaySpecialOpen;
                             $activeBaseDate = $yesterday;
                             $isCrossMidnightSession = true;
@@ -695,7 +696,8 @@ class DashboardController extends Controller
 
                     if ($yesterdayOpen) {
                         $yesterdayDeadline = AttendanceCalculatorService::resolveCheckoutDeadline($yesterdayOpen, null, null, 'Asia/Jakarta');
-                        if ($now->lessThanOrEqualTo($yesterdayDeadline) || $yesterdayDeadline->format('Y-m-d') === $today) {
+                        $autoLockCheckout = Setting::get('attendance_checkout_auto_lock', '1') === '1';
+                        if ($now->lessThanOrEqualTo($yesterdayDeadline) || (!$autoLockCheckout && $yesterdayDeadline->format('Y-m-d') === $today)) {
                             $todayAttendance = $yesterdayOpen;
                             $shiftToday = $yesterdayOpen->shift ?: ($shiftToday ?: $currentEmployee->shift);
                             $activeBaseDate = $yesterday;

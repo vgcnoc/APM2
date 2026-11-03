@@ -2091,9 +2091,11 @@ const submitClockIn = () => {
         notes: attendanceNotes.value || null,
     }, {
         preserveScroll: true,
-        onSuccess: () => {
+        onSuccess: (page) => {
             isSubmitting.value = false;
-            capturedPhoto.value = null;
+            if (!page?.props?.flash?.error) {
+                capturedPhoto.value = null;
+            }
         },
         onError: () => {
             isSubmitting.value = false;
@@ -2107,6 +2109,7 @@ const submitClockOut = () => {
 
     router.post(route('attendances.clock-out'), {
         employee_id: props.currentEmployee.id,
+        attendance_id: props.todayAttendance?.id || undefined,
         photo: capturedPhoto.value,
         area_id: selectedAreaId.value || undefined,
         latitude: userCoordinates.value?.latitude || null,
@@ -2115,9 +2118,11 @@ const submitClockOut = () => {
         notes: attendanceNotes.value || null,
     }, {
         preserveScroll: true,
-        onSuccess: () => {
+        onSuccess: (page) => {
             isSubmitting.value = false;
-            capturedPhoto.value = null;
+            if (!page?.props?.flash?.error) {
+                capturedPhoto.value = null;
+            }
         },
         onError: () => {
             isSubmitting.value = false;
