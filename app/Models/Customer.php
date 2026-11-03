@@ -986,7 +986,9 @@ class Customer extends Model
                 $this->area_id,
                 $this->customer_code ?? ('CUST-' . $this->id)
             );
-            DB::table('material_requests')->where('customer_id', $this->id)->delete();
+            if (\Illuminate\Support\Facades\Schema::hasTable('material_requests')) {
+                DB::table('material_requests')->where('customer_id', $this->id)->delete();
+            }
         } catch (\Throwable $e) {
             Log::warning('[Customer::purgeConnectedData] Error handling material transactions: ' . $e->getMessage());
         }

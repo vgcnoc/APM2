@@ -384,7 +384,14 @@ class AttendanceCalculatorService
         $dateStr = is_string($att->date) ? substr($att->date, 0, 10) : $att->date->format('Y-m-d');
         $sameDayClockIn = Carbon::parse("{$dateStr} {$att->clock_in}", $tz);
 
-        $resolvedShift = $shift ?? ($att->relationLoaded('shift') ? $att->shift : ($att->shift_id ? Shift::find($att->shift_id) : null));
+        $resolvedShift = $shift ?? ($att->relationLoaded('shift') && $att->shift ? $att->shift : ($att->shift_id ? Shift::find($att->shift_id) : null));
+        if (!$resolvedShift && $att->work_schedule_id) {
+            $resolvedShift = WorkSchedule::find($att->work_schedule_id)?->shift;
+        }
+        if (!$resolvedShift) {
+            $resolvedShift = WorkSchedule::where('employee_id', $att->employee_id)->where('date', $dateStr)->first()?->shift ?: Employee::find($att->employee_id)?->shift;
+        }
+
         if ($resolvedShift && $resolvedShift->isCrossMidnight()) {
             $window = self::resolveShiftWindow($dateStr, $resolvedShift, $tz);
             if ($window) {
@@ -398,6 +405,34 @@ class AttendanceCalculatorService
         }
 
         return $sameDayClockIn;
+    }
+
+    /**
+     * Resolusi timestamp lengkap jam pulang (clock_out), mendukung lintas tengah malam / shift malam
+     */
+    public static function resolveClockOutDateTime(Attendance $att, ?Shift $shift = null, string $tz = 'Asia/Jakarta'): ?Carbon
+    {
+        if (empty($att->clock_out)) {
+            return null;
+        }
+
+        $dateStr = is_string($att->date) ? substr($att->date, 0, 10) : $att->date->format('Y-m-d');
+        $clockOutTime = Carbon::parse("{$dateStr} {$att->clock_out}", $tz);
+
+        $resolvedShift = $shift ?? ($att->relationLoaded('shift') && $att->shift ? $att->shift : ($att->shift_id ? Shift::find($att->shift_id) : null));
+        if (!$resolvedShift && $att->work_schedule_id) {
+            $resolvedShift = WorkSchedule::find($att->work_schedule_id)?->shift;
+        }
+        if (!$resolvedShift) {
+            $resolvedShift = WorkSchedule::where('employee_id', $att->employee_id)->where('date', $dateStr)->first()?->shift ?: Employee::find($att->employee_id)?->shift;
+        }
+
+        $window = self::resolveShiftWindow($dateStr, $resolvedShift, $tz);
+        if ($window && $window['is_cross_midnight'] && $clockOutTime->lessThan($window['start'])) {
+            $clockOutTime->addDay();
+        }
+
+        return $clockOutTime;
     }
 
     /**
@@ -457,10 +492,30 @@ class AttendanceCalculatorService
         $dateStr = is_string($att->date) ? substr($att->date, 0, 10) : $att->date->format('Y-m-d');
 
         $shift = null;
-        if ($att->relationLoaded('shift')) {
+        if ($att->relationLoaded('shift') && $att->shift) {
             $shift = $att->shift;
         } elseif ($att->shift_id) {
             $shift = $shiftsById ? $shiftsById->get($att->shift_id) : Shift::find($att->shift_id);
+        }
+
+        // Resolusi cerdas fallback jika shift belum tersimpan di record attendance
+        if (!$shift) {
+            if ($att->relationLoaded('workSchedule') && $att->workSchedule?->shift) {
+                $shift = $att->workSchedule->shift;
+            } elseif ($att->work_schedule_id) {
+                $ws = WorkSchedule::with('shift')->find($att->work_schedule_id);
+                $shift = $ws?->shift;
+            }
+            if (!$shift) {
+                $shift = WorkSchedule::with('shift')
+                    ->where('employee_id', $att->employee_id)
+                    ->where('date', $dateStr)
+                    ->first()?->shift;
+            }
+            if (!$shift) {
+                $emp = $att->relationLoaded('employee') ? $att->employee : Employee::with('shift')->find($att->employee_id);
+                $shift = $emp?->shift;
+            }
         }
 
         return self::resolveCheckoutDeadlineForShift($dateStr, $shift, $settings, $tz);

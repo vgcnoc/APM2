@@ -448,7 +448,7 @@ class AttendanceReportController extends Controller
 
         $shiftTime = '-';
         if ($item->shift && $item->shift->start_time && $item->shift->end_time) {
-            $shiftTime = substr($item->shift->start_time, 0, 5) . ' - ' . substr($item->shift->end_time, 0, 5) . ' WIB';
+            $shiftTime = substr($item->shift->start_time, 0, 5) . ' - ' . substr($item->shift->end_time, 0, 5) . ' WIB' . ($item->shift->isCrossMidnight() ? ' (Lintas Hari)' : '');
         }
 
         return [

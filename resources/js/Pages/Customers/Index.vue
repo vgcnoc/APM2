@@ -249,19 +249,6 @@
                 <!-- Kolom Aksi di Depan Nama Pelanggan -->
                 <td class="whitespace-nowrap">
                     <div class="flex items-center justify-start gap-1.5 whitespace-nowrap">
-                        <!-- Tombol Cepat KICK jika Online -->
-                        <button 
-                            v-if="row.status === 'active' && row.ont?.pppoe_user && onlineUsernames?.includes(row.ont.pppoe_user)" 
-                            @click="kickSession(row.ont.pppoe_user)" 
-                            class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-600 hover:text-white transition-all shadow-2xs hover:shadow-xs focus:outline-none" 
-                            title="Kick Sesi Online"
-                        >
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                            </svg>
-                            KICK
-                        </button>
-
                         <!-- Tombol Dropdown Menu Aksi -->
                         <button 
                             type="button" 
@@ -370,37 +357,7 @@
                 </td>
             </template>
 
-            <!-- Row Actions -->
-            <template #rowActions="{ row }">
-                <div class="flex items-center justify-end gap-1.5 whitespace-nowrap">
-                    <!-- Tombol Cepat KICK jika Online -->
-                    <button 
-                        v-if="row.status === 'active' && row.ont?.pppoe_user && onlineUsernames?.includes(row.ont.pppoe_user)" 
-                        @click="kickSession(row.ont.pppoe_user)" 
-                        class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-600 hover:text-white transition-all shadow-2xs hover:shadow-xs focus:outline-none" 
-                        title="Kick Sesi Online"
-                    >
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                        KICK
-                    </button>
 
-                    <!-- Tombol Dropdown Menu Aksi -->
-                    <button 
-                        type="button" 
-                        @click.stop="toggleDropdown($event, row)" 
-                        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 rounded-lg transition-all shadow-2xs hover:shadow-xs cursor-pointer text-xs font-semibold focus:outline-none"
-                        :class="{ 'ring-2 ring-blue-500 bg-blue-50 text-blue-600 border-blue-300': activeDropdownRow?.id === row.id }"
-                        title="Pilihan Aksi"
-                    >
-                        <span>Aksi</span>
-                        <svg class="w-3.5 h-3.5 text-slate-400 transition-transform duration-200" :class="{ 'rotate-180 text-blue-600': activeDropdownRow?.id === row.id }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                    </button>
-                </div>
-            </template>
         </DataTable>
 
         <!-- Action Dropdown Menu Floating -->
@@ -868,7 +825,7 @@ function bulkDelete() {
 }
 
 const columns = [
-    { key: 'index', label: '#' },
+    { key: 'actions', label: 'AKSI', class: 'whitespace-nowrap min-w-[90px]' },
     { key: 'name', label: 'PELANGGAN' },
     { key: 'phone', label: 'KONTAK' },
     { key: 'address', label: 'ALAMAT' },

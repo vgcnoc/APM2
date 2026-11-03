@@ -50,18 +50,7 @@ class CustomerInstalledMaterial extends Model
                 $item->dismantles()->delete();
             } catch (\Throwable $e) {}
 
-            // 3. Ketika material dihapus bukan edit, maka data pelanggan serta yang berhubungan ikut terhapus (Requirement 2)
-            if ($item->customer_id && !static::$isCascadingDelete && !\App\Models\Customer::$isPurging) {
-                $customer = \App\Models\Customer::find($item->customer_id);
-                if ($customer) {
-                    static::$isCascadingDelete = true;
-                    try {
-                        $customer->delete();
-                    } finally {
-                        static::$isCascadingDelete = false;
-                    }
-                }
-            }
+
         });
     }
 

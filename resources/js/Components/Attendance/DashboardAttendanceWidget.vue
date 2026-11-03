@@ -29,6 +29,12 @@
                         <span>Jam Kerja: {{ formatSpecialTeamTime(specialTeam) }} (Tanpa Radius)</span>
                     </span>
                 </div>
+                <div v-else-if="isCrossMidnightSession" class="flex items-center gap-1.5 ml-0 sm:ml-2">
+                    <span class="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-indigo-500/25 text-indigo-200 border border-indigo-500/40 flex items-center gap-1.5 shadow-2xs">
+                        <span>🌙</span>
+                        <span>Shift Malam ({{ shiftToday ? formatShiftTime(shiftToday) : '23:00 - 08:00' }} WIB) • Sesi Lintas Hari</span>
+                    </span>
+                </div>
                 <div v-else-if="isDayOff" class="flex items-center gap-1.5 ml-0 sm:ml-2">
                     <span class="px-2.5 py-0.5 rounded-md text-[11px] font-black bg-rose-500/25 text-rose-300 border border-rose-500/40 flex items-center gap-1.5 shadow-2xs">
                         <span>🏖️</span>
@@ -146,13 +152,15 @@
                         <div class="flex items-center gap-2 min-w-0">
                             <div
                                 class="w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 shadow-2xs"
-                                :class="isDayOff
-                                    ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-200'
-                                    : (isSpecialTeam
-                                        ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border border-purple-200'
-                                        : 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-200')"
+                                :class="isCrossMidnightSession
+                                    ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200'
+                                    : (isDayOff
+                                        ? 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-200'
+                                        : (isSpecialTeam
+                                            ? 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border border-purple-200'
+                                            : 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-200'))"
                             >
-                                {{ isDayOff ? '🏖️' : (isSpecialTeam ? '⚡' : '⏱️') }}
+                                {{ isCrossMidnightSession ? '🌙' : (isDayOff ? '🏖️' : (isSpecialTeam ? '⚡' : '⏱️')) }}
                             </div>
                             <div class="min-w-0">
                                 <div class="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500">
@@ -160,10 +168,10 @@
                                 </div>
                                 <div class="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
                                     <span class="truncate">
-                                        {{ isSpecialTeam ? specialTeam?.name : (isDayOff ? 'Hari Libur (OFF)' : (shiftToday?.name || 'Shift 1-Kolektor')) }}
+                                        {{ isSpecialTeam ? specialTeam?.name : (isCrossMidnightSession ? (shiftToday?.name ? shiftToday.name + ' (Lintas Hari)' : 'Shift Malam (Lintas Hari)') : (isDayOff ? 'Hari Libur (OFF)' : (shiftToday?.name || 'Shift 1-Kolektor'))) }}
                                     </span>
                                     <span
-                                        v-if="!isDayOff"
+                                        v-if="!isDayOff || isCrossMidnightSession"
                                         class="px-2 py-0.5 rounded-md text-[11px] font-mono font-bold bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/80 shadow-2xs"
                                     >
                                         {{ isSpecialTeam ? formatSpecialTeamTime(specialTeam) : (shiftToday ? formatShiftTime(shiftToday) : '08:35 - 17:10') }} WIB
@@ -175,7 +183,14 @@
                         <!-- Status Badge (Libur vs Hari Kerja) -->
                         <div class="shrink-0">
                             <span
-                                v-if="isDayOff"
+                                v-if="isCrossMidnightSession"
+                                class="px-2.5 py-1 rounded-full text-[10px] font-black bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 flex items-center gap-1 shadow-2xs"
+                            >
+                                <span>🌙</span>
+                                <span>SHIFT MALAM AKTIF</span>
+                            </span>
+                            <span
+                                v-else-if="isDayOff"
                                 class="px-2.5 py-1 rounded-full text-[10px] font-black bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 flex items-center gap-1 shadow-2xs"
                             >
                                 <span>🏖️</span>
@@ -391,16 +406,18 @@
                         type="button"
                         @click="openModal('out')"
                         :class="[
-                            isSpecialTeam
-                                ? 'bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 shadow-teal-500/25'
-                                : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-emerald-500/25',
+                            isCrossMidnightSession
+                                ? 'bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 shadow-indigo-500/25'
+                                : (isSpecialTeam
+                                    ? 'bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 shadow-teal-500/25'
+                                    : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-emerald-500/25'),
                             'w-full py-3.5 px-4 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2.5 shadow-lg active:scale-95 transition-all cursor-pointer'
                         ]"
                     >
                         <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                         </svg>
-                        <span>{{ isSpecialTeam ? 'Absen Pulang Tim Khusus' : 'Absen Pulang Sekarang' }}</span>
+                        <span>{{ isCrossMidnightSession ? 'Absen Pulang (Selesai Shift Malam)' : (isSpecialTeam ? 'Absen Pulang Tim Khusus' : 'Absen Pulang Sekarang') }}</span>
                     </button>
                     <p class="text-[11px] text-center text-slate-400 font-medium">
                         Selesaikan tugas harian Anda
@@ -974,6 +991,10 @@ const allEmployees = computed(() => props.attendanceData?.allEmployees || []);
 const allShifts = computed(() => props.attendanceData?.allShifts || []);
 const attendanceSummary = computed(() => props.attendanceData?.attendanceSummary || null);
 const clockInWindowInfo = computed(() => props.attendanceData?.clockInWindowInfo || null);
+const isCrossMidnightSession = computed(() => Boolean(props.attendanceData?.isCrossMidnightSession));
+const activeBaseDate = computed(() => props.attendanceData?.activeBaseDate || null);
+const clockOutWindowInfo = computed(() => props.attendanceData?.clockOutWindowInfo || null);
+const checkoutDeadlineInfo = computed(() => props.attendanceData?.checkoutDeadlineInfo || null);
 
 const isEarlyClockInRestricted = computed(() => {
     if (todayAttendance.value?.clock_in) return false;
@@ -1109,6 +1130,17 @@ const statusBannerConfig = computed(() => {
     }
     if (todayAttendance.value?.clock_in) {
         const isLate = todayAttendance.value.status === 'late';
+        if (isCrossMidnightSession.value) {
+            return {
+                bgColor: 'bg-indigo-50/70',
+                borderColor: 'border-indigo-200',
+                iconBg: 'bg-indigo-100 text-indigo-700',
+                icon: '🌙',
+                textColor: 'text-indigo-950',
+                title: `Bertugas Shift Malam Lintas Hari (${shiftToday.value?.name || 'Shift Malam'})`,
+                subtitle: `Tercatat masuk pada ${todayAttendance.value.clock_in} WIB. Silakan lakukan Absen Pulang setelah jam tugas selesai.`,
+            };
+        }
         return {
             bgColor: isLate ? 'bg-amber-50/70' : (isSpecialTeam.value ? 'bg-purple-50/70' : 'bg-emerald-50/70'),
             borderColor: isLate ? 'border-amber-200' : (isSpecialTeam.value ? 'border-purple-200' : 'border-emerald-200'),
@@ -1549,6 +1581,7 @@ const submitAttendance = () => {
             route('attendances.clock-out'),
             {
                 employee_id: currentEmployee.value.id,
+                attendance_id: todayAttendance.value?.id || undefined,
                 photo: capturedPhoto.value,
                 latitude: userCoordinates.value?.latitude || null,
                 longitude: userCoordinates.value?.longitude || null,

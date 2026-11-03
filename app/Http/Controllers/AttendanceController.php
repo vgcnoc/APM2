@@ -151,7 +151,7 @@ class AttendanceController extends Controller
 
                 if ($yesterdayOpen) {
                     $yesterdayDeadline = AttendanceCalculatorService::resolveCheckoutDeadline($yesterdayOpen);
-                    if ($now->lessThanOrEqualTo($yesterdayDeadline)) {
+                    if ($now->lessThanOrEqualTo($yesterdayDeadline) || $yesterdayDeadline->format('Y-m-d') === $today) {
                         $todayAttendance = $yesterdayOpen;
                         $shiftToday = $yesterdayOpen->shift ?: $shiftToday;
                         $activeBaseDate = $yesterday;
@@ -180,7 +180,7 @@ class AttendanceController extends Controller
 
                         if ($yesterdayShift && $yesterdayShift->isCrossMidnight()) {
                             $yWin = AttendanceCalculatorService::resolveShiftWindow($yesterday, $yesterdayShift);
-                            if ($yWin && $now->greaterThanOrEqualTo($yWin['start']) && $now->lessThanOrEqualTo($yWin['start']->copy()->addHours(4))) {
+                            if ($yWin && $now->greaterThanOrEqualTo($yWin['start']) && $now->lessThanOrEqualTo($yWin['end'])) {
                                 $closerToYesterday = true;
                                 if ($shiftToday) {
                                     $tWin = AttendanceCalculatorService::resolveShiftWindow($today, $shiftToday);
@@ -583,7 +583,7 @@ class AttendanceController extends Controller
 
                 if ($yesterdayShift && $yesterdayShift->isCrossMidnight()) {
                     $yWin = AttendanceCalculatorService::resolveShiftWindow($yesterday, $yesterdayShift);
-                    if ($yWin && $now->greaterThanOrEqualTo($yWin['start']) && $now->lessThanOrEqualTo($yWin['start']->copy()->addHours(4))) {
+                    if ($yWin && $now->greaterThanOrEqualTo($yWin['start']) && $now->lessThanOrEqualTo($yWin['end'])) {
                         $closerToYesterday = true;
                         if ($shift && ($schedule?->status !== 'off')) {
                             $tWin = AttendanceCalculatorService::resolveShiftWindow($today, $shift);
@@ -867,10 +867,19 @@ class AttendanceController extends Controller
         $now = Carbon::now();
         $timeStr = $now->format('H:i:s');
 
-        $attendance = Attendance::with('shift')
-            ->where('employee_id', $employee->id)
-            ->where('date', $today)
-            ->first();
+        $attendance = null;
+        if ($request->filled('attendance_id')) {
+            $specificAtt = Attendance::with('shift')->where('employee_id', $employee->id)->find($request->attendance_id);
+            if ($specificAtt && $specificAtt->clock_in && !$specificAtt->clock_out) {
+                $attendance = $specificAtt;
+            }
+        }
+        if (!$attendance) {
+            $attendance = Attendance::with('shift')
+                ->where('employee_id', $employee->id)
+                ->where('date', $today)
+                ->first();
+        }
 
         // Jika belum ada absensi hari ini, cek sesi absen kemarin yang belum clock-out (Shift Malam / Shift Sore Lintas Hari)
         if (!$attendance || !$attendance->clock_in) {
