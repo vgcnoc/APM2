@@ -3286,27 +3286,38 @@ class CustomerController extends Controller
                         $mStock->increment('stock', (float) $oi->quantity);
                         if ($oi->material && $oi->material->meter_per_roll > 0) {
                             $mStock->total_rolls = max(0, $mStock->stock / $oi->material->meter_per_roll);
-                            $mStock->save();
+                        } else {
+                            $mStock->total_pieces = max(0, $mStock->stock);
                         }
+                        $mStock->save();
                     }
-                    // Sinkronkan stok master material dengan total stok seluruh area
-                    $totalAreaStock = \App\Models\MaterialStock::where('material_id', $oi->material_id)->sum('stock');
-                    $oi->material?->update([
-                        'stock' => max(0, $totalAreaStock),
-                        'total_rolls' => ($oi->material->meter_per_roll > 0) ? max(0, $totalAreaStock / $oi->material->meter_per_roll) : $oi->material->total_rolls,
-                    ]);
+                    // Hanya sinkronkan stok master material jika material khusus area (is_migration = true),
+                    // agar tidak menimpa stok Katalog Gudang Pusat (/products)
+                    if ($oi->material && $oi->material->is_migration) {
+                        $totalAreaStock = \App\Models\MaterialStock::where('material_id', $oi->material_id)->sum('stock');
+                        $oi->material->update([
+                            'stock' => max(0, $totalAreaStock),
+                            'total_rolls' => ($oi->material->meter_per_roll > 0) ? max(0, $totalAreaStock / $oi->material->meter_per_roll) : $oi->material->total_rolls,
+                        ]);
+                    }
                 }
+                $ot->skipStockRestoreOnDelete = true;
                 $ot->items()->delete();
                 $ot->delete();
             }
 
             // Bersihkan juga transaksi retur sisa lama agar sinkron
-            \App\Models\MaterialTransaction::where('customer_id', $customer->id)
+            $oldReturTrans = \App\Models\MaterialTransaction::where('customer_id', $customer->id)
                 ->where(function($q) {
                     $q->where('transaction_number', 'like', 'RTR-EXCESS-%')
                       ->orWhere('transaction_number', 'like', 'RTR-INS-%');
                 })
-                ->delete();
+                ->get();
+            foreach ($oldReturTrans as $ort) {
+                $ort->skipStockRestoreOnDelete = true;
+                $ort->items()->delete();
+                $ort->delete();
+            }
 
             $allocatedDetails = [];
             $returnFormattedDetails = [];
@@ -3426,24 +3437,6 @@ class CustomerController extends Controller
 
                 // Proses Instalasi (Memotong Stok Area sesuai Pemakaian / Bekal)
                 if (count($usedItems) > 0) {
-                    // Hapus transaksi lama agar tidak ada riwayat ganda saat edit pemasangan
-                    \App\Models\MaterialTransaction::where(function($q) use ($customer) {
-                            $q->where('customer_id', $customer->id)
-                              ->orWhere(function($q2) use ($customer) {
-                                  $q2->where('source_type', 'jadwal_instalasi')
-                                     ->where('source_id', $customer->id);
-                              });
-                        })
-                        ->whereIn('type', ['out', 'in'])
-                        ->where(function($q) {
-                            $q->where('transaction_number', 'like', 'OUT-INSTALASI-%')
-                              ->orWhere('transaction_number', 'like', 'OUT-BEKAL-%')
-                              ->orWhere('source_type', 'jadwal_instalasi')
-                              ->orWhere('transaction_number', 'like', 'RTR-EXCESS-%')
-                              ->orWhere('transaction_number', 'like', 'RTR-INS-%');
-                        })
-                        ->delete();
-
                     $transactionOut = \App\Models\MaterialTransaction::create([
                         'transaction_number' => 'OUT-INSTALASI-' . date('YmdHis'),
                         'type' => 'out',
@@ -3495,8 +3488,10 @@ class CustomerController extends Controller
                             ]);
                             if ($ui['material']->meter_per_roll > 0) {
                                 $materialStock->total_rolls = max(0, $materialStock->stock / $ui['material']->meter_per_roll);
-                                $materialStock->save();
+                            } else {
+                                $materialStock->total_pieces = max(0, $materialStock->stock);
                             }
+                            $materialStock->save();
                         } else {
                             $materialStock = \App\Models\MaterialStock::create([
                                 'material_id' => $ui['material']->id,
@@ -3509,12 +3504,14 @@ class CustomerController extends Controller
                             ]);
                         }
 
-                        // Sinkronkan stok master material dengan total stok seluruh area
-                        $totalAreaStock = \App\Models\MaterialStock::where('material_id', $ui['material']->id)->sum('stock');
-                        $ui['material']->update([
-                            'stock' => max(0, $totalAreaStock),
-                            'total_rolls' => $ui['material']->meter_per_roll > 0 ? max(0, $totalAreaStock / $ui['material']->meter_per_roll) : $ui['material']->total_rolls,
-                        ]);
+                        // Hanya sinkronkan stok master material jika material khusus area (is_migration = true)
+                        if ($ui['material']->is_migration) {
+                            $totalAreaStock = \App\Models\MaterialStock::where('material_id', $ui['material']->id)->sum('stock');
+                            $ui['material']->update([
+                                'stock' => max(0, $totalAreaStock),
+                                'total_rolls' => $ui['material']->meter_per_roll > 0 ? max(0, $totalAreaStock / $ui['material']->meter_per_roll) : $ui['material']->total_rolls,
+                            ]);
+                        }
                     }
                     $transactionOut->update(['total_cost' => $totalCostOut]);
                 }
@@ -4673,17 +4670,22 @@ class CustomerController extends Controller
                         $mStock->increment('stock', (float) $pi->quantity);
                         if ($pi->material && $pi->material->meter_per_roll > 0) {
                             $mStock->total_rolls = max(0, $mStock->stock / $pi->material->meter_per_roll);
-                            $mStock->save();
+                        } else {
+                            $mStock->total_pieces = max(0, $mStock->stock);
                         }
+                        $mStock->save();
                     }
                 }
-                // Sinkronkan stok master material dengan total stok seluruh area
-                $totalAreaStock = \App\Models\MaterialStock::where('material_id', $pi->material_id)->sum('stock');
-                $pi->material?->update([
-                    'stock' => max(0, $totalAreaStock),
-                    'total_rolls' => ($pi->material->meter_per_roll > 0) ? max(0, $totalAreaStock / $pi->material->meter_per_roll) : $pi->material->total_rolls,
-                ]);
+                // Hanya sinkronkan stok master material jika material khusus area (is_migration = true)
+                if ($pi->material && $pi->material->is_migration) {
+                    $totalAreaStock = \App\Models\MaterialStock::where('material_id', $pi->material_id)->sum('stock');
+                    $pi->material->update([
+                        'stock' => max(0, $totalAreaStock),
+                        'total_rolls' => ($pi->material->meter_per_roll > 0) ? max(0, $totalAreaStock / $pi->material->meter_per_roll) : $pi->material->total_rolls,
+                    ]);
+                }
             }
+            $pa->skipStockRestoreOnDelete = true;
             $pa->items()->delete();
             $pa->delete();
         }
@@ -4869,15 +4871,19 @@ class CustomerController extends Controller
                 $matStock->update(['stock' => $stockAfter]);
                 if ($mat->meter_per_roll > 0) {
                     $matStock->total_rolls = max(0, $matStock->stock / $mat->meter_per_roll);
-                    $matStock->save();
+                } else {
+                    $matStock->total_pieces = max(0, $matStock->stock);
                 }
+                $matStock->save();
 
-                // Sinkronkan stok master material dengan total stok seluruh area
-                $totalAreaStock = \App\Models\MaterialStock::where('material_id', $mat->id)->sum('stock');
-                $mat->update([
-                    'stock' => max(0, $totalAreaStock),
-                    'total_rolls' => $mat->meter_per_roll > 0 ? max(0, $totalAreaStock / $mat->meter_per_roll) : $mat->total_rolls,
-                ]);
+                // Hanya sinkronkan stok master material jika material khusus area (is_migration = true)
+                if ($mat->is_migration) {
+                    $totalAreaStock = \App\Models\MaterialStock::where('material_id', $mat->id)->sum('stock');
+                    $mat->update([
+                        'stock' => max(0, $totalAreaStock),
+                        'total_rolls' => $mat->meter_per_roll > 0 ? max(0, $totalAreaStock / $mat->meter_per_roll) : $mat->total_rolls,
+                    ]);
+                }
             }
 
             $transactionOut->update(['total_cost' => $totalCost]);

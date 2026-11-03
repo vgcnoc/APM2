@@ -712,6 +712,7 @@ class PurchaseOrderController extends Controller
                 Expense::where('id', $transaction->expense_id)->delete();
             }
 
+            $transaction->skipStockRestoreOnDelete = true;
             $transaction->delete();
             DB::commit();
             return redirect()->back()->with('success', 'Order Toko berhasil dihapus, stok dikembalikan ke Gudang Utama, dan pengeluaran kas ditarik kembali.');

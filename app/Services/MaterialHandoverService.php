@@ -248,8 +248,20 @@ class MaterialHandoverService
                     if ($isLayak) {
                         if ($matStock) {
                             $matStock->increment('stock', $newQty);
+                            if ($material->meter_per_roll > 0) {
+                                $matStock->total_rolls = max(0, $matStock->stock / $material->meter_per_roll);
+                            } else {
+                                $matStock->total_pieces = max(0, $matStock->stock);
+                            }
+                            $matStock->save();
+                            if ($material->is_migration) {
+                                $totalAreaStock = (float) MaterialStock::where('material_id', $material->id)->sum('stock');
+                                $material->stock = max(0, $totalAreaStock);
+                                $material->recalcUnitTotals()->save();
+                            }
                         } else {
                             $material->increment('stock', $newQty);
+                            $material->recalcUnitTotals()->save();
                         }
                     }
 
@@ -584,17 +596,21 @@ class MaterialHandoverService
                                 ->first();
                             if ($matStock) {
                                 $matStock->increment('stock', $qty);
-                                if (str_contains(strtolower($material->category ?? ''), 'kabel') && $material->meter_per_roll > 0) {
-                                    $matStock->total_rolls = $matStock->stock / $material->meter_per_roll;
-                                    $matStock->save();
+                                if ($material->meter_per_roll > 0) {
+                                    $matStock->total_rolls = max(0, $matStock->stock / $material->meter_per_roll);
+                                } else {
+                                    $matStock->total_pieces = max(0, $matStock->stock);
                                 }
+                                $matStock->save();
+                            }
+                            if ($material->is_migration) {
+                                $totalAreaStock = (float) MaterialStock::where('material_id', $material->id)->sum('stock');
+                                $material->stock = max(0, $totalAreaStock);
+                                $material->recalcUnitTotals()->save();
                             }
                         } else {
                             $material->increment('stock', $qty);
-                            if (str_contains(strtolower($material->category ?? ''), 'kabel') && $material->meter_per_roll > 0) {
-                                $material->total_rolls = $material->stock / $material->meter_per_roll;
-                                $material->save();
-                            }
+                            $material->recalcUnitTotals()->save();
                         }
                     }
 
@@ -613,6 +629,7 @@ class MaterialHandoverService
                     }
                 }
 
+                $trx->skipStockRestoreOnDelete = true;
                 $trx->items()->delete();
                 $trx->delete();
             }
@@ -637,6 +654,7 @@ class MaterialHandoverService
                 ->get();
 
             foreach ($inTransactions as $inTrx) {
+                $inTrx->skipStockRestoreOnDelete = true;
                 $inTrx->items()->delete();
                 $inTrx->delete();
             }

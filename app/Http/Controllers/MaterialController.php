@@ -80,12 +80,13 @@ class MaterialController extends Controller
                     });
                 }
             } else {
+                $effectiveStockSql = 'COALESCE((SELECT SUM(stock) FROM material_stocks WHERE material_stocks.material_id = materials.id), materials.stock)';
                 if ($request->stock_status === 'empty') {
-                    $query->where('stock', '<=', 0);
+                    $query->whereRaw("{$effectiveStockSql} <= 0");
                 } elseif ($request->stock_status === 'low') {
-                    $query->where('stock', '>', 0)->where('stock', '<=', 10);
+                    $query->whereRaw("{$effectiveStockSql} > 0 AND {$effectiveStockSql} <= 10");
                 } elseif ($request->stock_status === 'available') {
-                    $query->where('stock', '>', 10);
+                    $query->whereRaw("{$effectiveStockSql} > 10");
                 }
             }
         }
@@ -94,44 +95,34 @@ class MaterialController extends Controller
         if ($request->filled('condition')) {
             $cond = $request->condition;
             if ($cond === 'layak') {
-                $query->where(function ($sq) {
-                    $sq->whereHas('transactionItems', fn($tq) => $tq->where('condition', 'Layak Pakai'))
-                       ->orWhere('name', 'like', '%layak%')
-                       ->orWhere(function ($kq) {
-                           $kq->where('name', 'not like', '%rusak%')
-                              ->where('name', 'not like', '%afkir%')
-                              ->where('name', 'not like', '%tidak layak%')
-                              ->where(function ($dq) {
-                                  $dq->whereNull('description')
-                                     ->orWhere(function ($ddq) {
-                                         $ddq->where('description', 'not like', '%rusak%')
-                                             ->where('description', 'not like', '%tidak layak%');
-                                     });
+                $query->where(function ($kq) {
+                    $kq->where('name', 'not like', '%rusak%')
+                       ->where('name', 'not like', '%afkir%')
+                       ->where('name', 'not like', '%scrap%')
+                       ->where('name', 'not like', '%tidak layak%')
+                       ->where(function ($dq) {
+                           $dq->whereNull('description')
+                              ->orWhere(function ($ddq) {
+                                  $ddq->where('description', 'not like', '%rusak%')
+                                      ->where('description', 'not like', '%afkir%')
+                                      ->where('description', 'not like', '%scrap%')
+                                      ->where('description', 'not like', '%tidak layak%');
                               });
                        });
                 });
             } elseif ($cond === 'tidak_layak') {
                 $query->where(function ($sq) {
-                    $sq->whereHas('transactionItems', fn($tq) => $tq->where('condition', 'Tidak Layak'))
-                       ->orWhere('name', 'like', '%tidak layak%')
-                       ->orWhere('description', 'like', '%tidak layak%')
-                       ->orWhereHas('dismantles', function ($dq) {
-                           $dq->whereIn('condition', ['perlu_cek'])
-                              ->orWhere('disposition', 'reconditioned');
-                       });
+                    $sq->where('name', 'like', '%tidak layak%')
+                       ->orWhere('description', 'like', '%tidak layak%');
                 });
             } elseif ($cond === 'rusak') {
                 $query->where(function ($sq) {
-                    $sq->whereHas('transactionItems', fn($tq) => $tq->where('condition', 'Rusak'))
-                       ->orWhere('name', 'like', '%rusak%')
-                       ->orWhere('name', 'like', '%afkir%')
-                       ->orWhere('name', 'like', '%scrap%')
+                    $sq->where('name', 'like', '%rusak%')
+                       ->where('name', 'like', '%afkir%')
+                       ->where('name', 'like', '%scrap%')
                        ->orWhere('description', 'like', '%rusak%')
                        ->orWhere('description', 'like', '%afkir%')
-                       ->orWhereHas('dismantles', function ($dq) {
-                           $dq->whereIn('condition', ['rusak_scrap'])
-                              ->orWhere('disposition', 'scrap');
-                       });
+                       ->orWhere('description', 'like', '%scrap%');
                 });
             }
         }
@@ -152,9 +143,9 @@ class MaterialController extends Controller
             }
 
             $nameLower = strtolower($material->name . ' ' . ($material->description ?? ''));
-            if (str_contains($nameLower, 'rusak') || str_contains($nameLower, 'afkir') || str_contains($nameLower, 'scrap') || ($material->relationLoaded('transactionItems') && $material->transactionItems->contains(fn($ti) => $ti->condition === 'Rusak'))) {
+            if (str_contains($nameLower, 'rusak') || str_contains($nameLower, 'afkir') || str_contains($nameLower, 'scrap')) {
                 $material->condition_label = 'Rusak';
-            } elseif (str_contains($nameLower, 'tidak layak') || ($material->relationLoaded('transactionItems') && $material->transactionItems->contains(fn($ti) => $ti->condition === 'Tidak Layak'))) {
+            } elseif (str_contains($nameLower, 'tidak layak')) {
                 $material->condition_label = 'Tidak Layak';
             } else {
                 $material->condition_label = 'Layak Pakai';
@@ -180,42 +171,32 @@ class MaterialController extends Controller
 
         $summary['condition_stats'] = [
             'all' => (clone $baseCondQuery)->count(),
-            'layak' => (clone $baseCondQuery)->where(function ($sq) {
-                $sq->whereHas('transactionItems', fn($tq) => $tq->where('condition', 'Layak Pakai'))
-                   ->orWhere('name', 'like', '%layak%')
-                   ->orWhere(function ($kq) {
-                       $kq->where('name', 'not like', '%rusak%')
-                          ->where('name', 'not like', '%afkir%')
-                          ->where('name', 'not like', '%tidak layak%')
-                          ->where(function ($dq) {
-                              $dq->whereNull('description')
-                                 ->orWhere(function ($ddq) {
-                                     $ddq->where('description', 'not like', '%rusak%')
-                                         ->where('description', 'not like', '%tidak layak%');
-                                 });
+            'layak' => (clone $baseCondQuery)->where(function ($kq) {
+                $kq->where('name', 'not like', '%rusak%')
+                   ->where('name', 'not like', '%afkir%')
+                   ->where('name', 'not like', '%scrap%')
+                   ->where('name', 'not like', '%tidak layak%')
+                   ->where(function ($dq) {
+                       $dq->whereNull('description')
+                          ->orWhere(function ($ddq) {
+                              $ddq->where('description', 'not like', '%rusak%')
+                                  ->where('description', 'not like', '%afkir%')
+                                  ->where('description', 'not like', '%scrap%')
+                                  ->where('description', 'not like', '%tidak layak%');
                           });
                    });
             })->count(),
             'tidak_layak' => (clone $baseCondQuery)->where(function ($sq) {
-                $sq->whereHas('transactionItems', fn($tq) => $tq->where('condition', 'Tidak Layak'))
-                   ->orWhere('name', 'like', '%tidak layak%')
-                   ->orWhere('description', 'like', '%tidak layak%')
-                   ->orWhereHas('dismantles', function ($dq) {
-                       $dq->whereIn('condition', ['perlu_cek'])
-                          ->orWhere('disposition', 'reconditioned');
-                   });
+                $sq->where('name', 'like', '%tidak layak%')
+                   ->orWhere('description', 'like', '%tidak layak%');
             })->count(),
             'rusak' => (clone $baseCondQuery)->where(function ($sq) {
-                $sq->whereHas('transactionItems', fn($tq) => $tq->where('condition', 'Rusak'))
-                   ->orWhere('name', 'like', '%rusak%')
-                   ->orWhere('name', 'like', '%afkir%')
-                   ->orWhere('name', 'like', '%scrap%')
+                $sq->where('name', 'like', '%rusak%')
+                   ->where('name', 'like', '%afkir%')
+                   ->where('name', 'like', '%scrap%')
                    ->orWhere('description', 'like', '%rusak%')
                    ->orWhere('description', 'like', '%afkir%')
-                   ->orWhereHas('dismantles', function ($dq) {
-                       $dq->whereIn('condition', ['rusak_scrap'])
-                          ->orWhere('disposition', 'scrap');
-                   });
+                   ->orWhere('description', 'like', '%scrap%');
             })->count(),
         ];
         
@@ -531,10 +512,16 @@ class MaterialController extends Controller
         }
 
         // Mode Global / Gudang Utama (Semua Gudang / Area)
-        $activeMaterials = (clone $activeQuery)->get();
+        $activeMaterials = (clone $activeQuery)->with('stocks')->get();
         $totalItems = $activeMaterials->count();
-        $outOfStock = $activeMaterials->where('stock', '<=', 0)->count();
-        $lowStock = $activeMaterials->where('stock', '>', 0)->where('stock', '<=', 10)->count();
+        $outOfStock = $activeMaterials->filter(function ($m) {
+            $effStock = $m->stocks->isNotEmpty() ? (float) $m->stocks->sum('stock') : (float) $m->stock;
+            return $effStock <= 0;
+        })->count();
+        $lowStock = $activeMaterials->filter(function ($m) {
+            $effStock = $m->stocks->isNotEmpty() ? (float) $m->stocks->sum('stock') : (float) $m->stock;
+            return $effStock > 0 && $effStock <= 10;
+        })->count();
 
         // Hitung total nilai aset dari seluruh Order Toko semua area
         $allPoTrxIds = \App\Models\MaterialTransaction::where('purpose', 'Pembelian Toko / Supplier')->pluck('id');

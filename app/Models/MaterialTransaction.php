@@ -57,13 +57,28 @@ class MaterialTransaction extends Model
     }
 
     public static bool $isCascadingCustomerDelete = false;
+    public bool $skipStockRestoreOnDelete = false;
 
     protected static function booted(): void
     {
         static::deleting(function (MaterialTransaction $transaction) {
-            // 1. Kembalikan stok untuk semua item transaksi ke gudang
-            foreach ($transaction->items as $item) {
-                if ($item->material && (float) $item->quantity > 0) {
+            if ($transaction->skipStockRestoreOnDelete) {
+                MaterialTransactionItem::where('material_transaction_id', $transaction->id)->delete();
+                return;
+            }
+
+            // Hanya kembalikan stok jika transaksi bertipe 'out', berstatus 'approved', dan bukan transaksi migrasi
+            $shouldRestoreStock = ($transaction->type === 'out')
+                && ($transaction->status === 'approved')
+                && !$transaction->is_migration;
+
+            // Ambil item langsung dari database agar item yang sudah dihapus manual tidak terproses dua kali karena cache relasi di memori
+            $items = MaterialTransactionItem::with('material')
+                ->where('material_transaction_id', $transaction->id)
+                ->get();
+
+            foreach ($items as $item) {
+                if ($shouldRestoreStock && $item->material && (float) $item->quantity > 0) {
                     \App\Services\CustomerMaterialService::returnMaterialToWarehouse(
                         $item->material,
                         (float) $item->quantity,

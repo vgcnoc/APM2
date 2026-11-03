@@ -323,8 +323,19 @@ class CustomerMaterialService
                             ['stock' => 0, 'initial_stock' => 0]
                         );
                         $matStock->increment('stock', (float) $dismantle->quantity);
+                        if ($material->meter_per_roll > 0) {
+                            $matStock->total_rolls = max(0, $matStock->stock / $material->meter_per_roll);
+                            $matStock->save();
+                        }
+                        if ($material->is_migration) {
+                            $totalAreaStock = (float) MaterialStock::where('material_id', $material->id)->sum('stock');
+                            $material->stock = max(0, $totalAreaStock);
+                            $material->recalcUnitTotals()->save();
+                        }
+                    } else {
+                        $material->increment('stock', (float) $dismantle->quantity);
+                        $material->recalcUnitTotals()->save();
                     }
-                    $material->increment('stock', (float) $dismantle->quantity);
                 }
             }
 
@@ -380,11 +391,7 @@ class CustomerMaterialService
             $addition = $quantity * ($cmPerPcs * $pcsPerPack);
         }
 
-        // 1. Tambah Stok Global Gudang Utama
-        $mat->stock = (float) ($mat->stock ?? 0) + $addition;
-        $mat->save();
-
-        // 2. Tambah Stok Area Gudang jika ada area_id
+        // 1. Tambah Stok Area Gudang jika ada area_id
         if ($areaId) {
             $matStock = MaterialStock::firstOrCreate(
                 ['material_id' => $mat->id, 'area_id' => $areaId],
@@ -399,8 +406,22 @@ class CustomerMaterialService
             }
             if ($mat->cm_per_pcs > 0) {
                 $matStock->total_pieces = $matStock->stock / $mat->cm_per_pcs;
+            } else {
+                $matStock->total_pieces = $matStock->stock;
             }
             $matStock->save();
+
+            // Hanya sinkronkan ke master material jika merupakan material fisik khusus area (is_migration = true),
+            // agar tidak merusak stok Katalog Gudang Pusat (/products)
+            if ($mat->is_migration) {
+                $totalAreaStock = (float) MaterialStock::where('material_id', $mat->id)->sum('stock');
+                $mat->stock = max(0, $totalAreaStock);
+                $mat->recalcUnitTotals()->save();
+            }
+        } else {
+            // 2. Jika tanpa area_id, kembalikan ke Stok Global Gudang Utama
+            $mat->stock = (float) ($mat->stock ?? 0) + $addition;
+            $mat->recalcUnitTotals()->save();
         }
 
         \Illuminate\Support\Facades\Log::info("[CustomerMaterialService] Berhasil mengembalikan {$addition} {$mat->unit} material {$mat->name} (ID: {$mat->id}) ke gudang (Area: {$areaId}).");

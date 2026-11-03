@@ -124,12 +124,16 @@ class StockInOutController extends Controller
             $prefix = $validated['type'] === 'out' ? 'OUT-' : 'RET-'; // Retur (In) or Out
             $transactionNumber = $prefix . now()->format('Ymd') . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
 
+            $matchedArea = \App\Models\Area::where('name', trim($validated['technician_name']))->first();
+
             $transaction = MaterialTransaction::create([
                 'transaction_number' => $transactionNumber,
                 'type' => $validated['type'],
+                'status' => 'approved',
                 'date' => $validated['date'],
                 'purpose' => $validated['purpose'],
                 'technician_name' => $validated['technician_name'],
+                'area_id' => $matchedArea?->id,
                 'notes' => $validated['notes'],
                 'user_id' => auth()->id(),
                 'total_cost' => 0 
@@ -137,26 +141,51 @@ class StockInOutController extends Controller
 
             foreach ($validated['items'] as $item) {
                 $material = Material::findOrFail($item['material_id']);
-                
-                // For internal stock in/out, we assume the quantity provided is in BASE UNIT
-                $quantity = $item['quantity'];
+                $quantity = (float) $item['quantity'];
+                $itemCondition = $item['condition'] ?? 'Layak Pakai';
 
                 MaterialTransactionItem::create([
                     'material_transaction_id' => $transaction->id,
                     'material_id' => $material->id,
                     'quantity' => $quantity,
+                    'unit' => $material->unit,
                     'price_per_unit' => $material->price_per_unit,
                     'total_price' => $quantity * $material->price_per_unit,
-                    'condition' => $item['condition'] ?? 'Layak Pakai',
+                    'condition' => $itemCondition,
                 ]);
 
-                // Update Stock
-                if ($validated['type'] === 'out') {
-                    $material->stock -= $quantity;
-                } else {
-                    $material->stock += $quantity;
+                // Update Stock (Untuk retur 'in', hanya tambah stok aktif jika kondisi Layak Pakai)
+                $shouldAdjustStock = ($validated['type'] === 'out') || ($itemCondition === 'Layak Pakai');
+                if ($shouldAdjustStock) {
+                    if ($matchedArea) {
+                        $matStock = \App\Models\MaterialStock::firstOrCreate(
+                            ['material_id' => $material->id, 'area_id' => $matchedArea->id],
+                            ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
+                        );
+                        $matStock->stock = $validated['type'] === 'out'
+                            ? max(0, (float) $matStock->stock - $quantity)
+                            : ((float) $matStock->stock + $quantity);
+                        if ($material->meter_per_roll > 0) {
+                            $matStock->total_rolls = max(0, $matStock->stock / $material->meter_per_roll);
+                        } else {
+                            $matStock->total_pieces = max(0, $matStock->stock);
+                        }
+                        $matStock->save();
+
+                        if ($material->is_migration) {
+                            $totalAreaStock = (float) \App\Models\MaterialStock::where('material_id', $material->id)->sum('stock');
+                            $material->stock = max(0, $totalAreaStock);
+                            $material->recalcUnitTotals()->save();
+                        }
+                    } else {
+                        if ($validated['type'] === 'out') {
+                            $material->stock = max(0, (float) $material->stock - $quantity);
+                        } else {
+                            $material->stock = (float) $material->stock + $quantity;
+                        }
+                        $material->recalcUnitTotals()->save();
+                    }
                 }
-                $material->save();
             }
 
             DB::commit();
@@ -188,6 +217,7 @@ class StockInOutController extends Controller
                 }
             }
 
+            $transaction->skipStockRestoreOnDelete = true;
             $transaction->delete();
             DB::commit();
             return redirect()->back()->with('success', 'Transaksi mutasi berhasil dibatalkan dan stok dikembalikan.');
