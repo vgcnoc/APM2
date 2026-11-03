@@ -78,23 +78,11 @@ class ProductController extends Controller
         // Cek jika produk dengan nama yang sama sudah ada di sistem
         $existing = \App\Services\MaterialService::findByName($validated['name']);
         if ($existing) {
-            \App\Services\MaterialService::addStockToExistingMaterial($existing, $validated, $areaId);
+            \App\Services\MaterialService::addStockToExistingMaterial($existing, $validated, null);
             return redirect()->back()->with('success', 'Produk dengan nama tersebut sudah ada. Stok dan data berhasil digabungkan.');
         }
 
-        $material = Material::create($validated);
-
-        if ($areaId && (float)$material->stock > 0) {
-            \App\Models\MaterialStock::create([
-                'material_id' => $material->id,
-                'area_id' => $areaId,
-                'stock' => $material->stock,
-                'initial_stock' => $material->stock,
-                'total_rolls' => $material->total_rolls ?? 0,
-                'total_packs' => $material->total_packs ?? 0,
-                'total_pieces' => $material->total_pieces ?? 0,
-            ]);
-        }
+        Material::create($validated);
 
         return redirect()->back()->with('success', 'Produk berhasil ditambahkan.');
     }
@@ -122,7 +110,6 @@ class ProductController extends Controller
             'requires_mac' => 'boolean',
         ]);
 
-        $areaId = $validated['area_id'] ?? null;
         unset($validated['area_id']);
 
         if (array_key_exists('stock', $validated) && is_null($validated['stock'])) {
@@ -132,39 +119,11 @@ class ProductController extends Controller
         // Cek jika nama diubah menimpa produk/material lain yang sudah ada sebelumnya
         $existing = \App\Services\MaterialService::findByName($validated['name'], $product->id);
         if ($existing) {
-            \App\Services\MaterialService::mergeMaterials($existing, $product, $validated, $areaId, $validated['stock'] ?? null);
+            \App\Services\MaterialService::mergeMaterials($existing, $product, $validated, null, $validated['stock'] ?? null);
             return redirect()->back()->with('success', 'Produk berhasil diperbarui dan menimpa data material sebelumnya.');
         }
 
         $product->update($validated);
-
-        if ($areaId && (float)$product->stock > 0) {
-            $existingStocks = \App\Models\MaterialStock::where('material_id', $product->id)->get();
-            if ($existingStocks->count() <= 1) {
-                \App\Models\MaterialStock::updateOrCreate(
-                    ['material_id' => $product->id],
-                    [
-                        'area_id' => $areaId,
-                        'stock' => $product->stock,
-                        'initial_stock' => $product->stock,
-                        'total_rolls' => $product->total_rolls ?? 0,
-                        'total_packs' => $product->total_packs ?? 0,
-                        'total_pieces' => $product->total_pieces ?? 0,
-                    ]
-                );
-            } else {
-                \App\Models\MaterialStock::updateOrCreate(
-                    ['material_id' => $product->id, 'area_id' => $areaId],
-                    [
-                        'stock' => $product->stock,
-                        'initial_stock' => $product->stock,
-                        'total_rolls' => $product->total_rolls ?? 0,
-                        'total_packs' => $product->total_packs ?? 0,
-                        'total_pieces' => $product->total_pieces ?? 0,
-                    ]
-                );
-            }
-        }
 
         return redirect()->back()->with('success', 'Produk berhasil diperbarui.');
     }
@@ -174,22 +133,49 @@ class ProductController extends Controller
         try {
             \Illuminate\Support\Facades\DB::transaction(function () use ($id) {
                 $product = Material::findOrFail($id);
-                
-                // Unlink ONTs from material transaction items if any
+
                 $itemIds = \App\Models\MaterialTransactionItem::where('material_id', $id)->pluck('id');
                 if ($itemIds->isNotEmpty()) {
-                    \App\Models\Ont::whereIn('material_transaction_item_id', $itemIds)->update(['material_transaction_item_id' => null]);
-                    \App\Models\MaterialTransactionItem::whereIn('id', $itemIds)->delete();
+                    $normalizedName = trim(preg_replace('/^test\s+/i', '', trim($product->name)));
+                    $replacement = Material::where('id', '!=', $product->id)
+                        ->where('id', '>', 260)
+                        ->where(function ($q) {
+                            $q->where('is_active', true)->orWhereNull('is_active');
+                        })
+                        ->whereRaw('LOWER(TRIM(name)) = ?', [strtolower($normalizedName)])
+                        ->first();
+
+                    if ($replacement) {
+                        \App\Models\MaterialTransactionItem::whereIn('id', $itemIds)->update([
+                            'material_id' => $replacement->id,
+                        ]);
+                        \App\Models\Ont::where('material_id', $product->id)->update([
+                            'material_id' => $replacement->id,
+                        ]);
+                        $product->stocks()->delete();
+                        $product->delete();
+                    } else {
+                        $product->update([
+                            'is_active' => false,
+                            'stock' => 0,
+                            'total_rolls' => 0,
+                            'total_packs' => 0,
+                            'total_pieces' => 0,
+                        ]);
+                        $product->stocks()->update([
+                            'stock' => 0,
+                            'total_rolls' => 0,
+                            'total_packs' => 0,
+                            'total_pieces' => 0,
+                        ]);
+                    }
+                } else {
+                    $product->stocks()->delete();
+                    $product->delete();
                 }
-                
-                // Hapus stok per area
-                $product->stocks()->delete();
-                
-                // Hapus produk
-                $product->delete();
             });
 
-            return redirect()->back()->with('success', 'Produk berhasil dihapus beserta seluruh riwayatnya.');
+            return redirect()->back()->with('success', 'Produk berhasil dihapus.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Gagal menghapus produk: ' . $e->getMessage());
         }
