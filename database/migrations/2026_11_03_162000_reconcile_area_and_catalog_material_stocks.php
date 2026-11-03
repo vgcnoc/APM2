@@ -129,6 +129,10 @@ return new class extends Migration
                 }
 
                 $reconciledStock = max(0.0, (float) $ms->initial_stock - $outTotal + $retTotal);
+                // Khusus ONT ZVOLIN P613s (ID 282) di BC 2 (area_id 1): dikurangi 1 unit Rusak (TX #1626 RET-20261101-015) sehingga sisa sehat = 3 pcs
+                if ($mat->id === 282 && (int) $areaId === 1) {
+                    $reconciledStock = max(0.0, $reconciledStock - 1);
+                }
                 $ms->stock = $reconciledStock;
                 $ms->total_rolls = ($mpr > 0) ? ($reconciledStock / $mpr) : 0;
                 $ms->total_packs = ($ppp > 0) ? floor($reconciledStock / $ppp) : 0;
