@@ -377,7 +377,7 @@ class AttendanceCalculatorService
     /**
      * Resolusi timestamp lengkap jam masuk (clock_in), termasuk bila karyawan shift malam absen masuk lewat pukul 00:00
      */
-    public static function resolveClockInDateTime(Attendance $att, ?Shift $shift = null, string $tz = 'Asia/Jakarta'): ?Carbon
+    public static function resolveClockInDateTime(Attendance $att, ?object $shift = null, string $tz = 'Asia/Jakarta'): ?Carbon
     {
         if (empty($att->clock_in)) {
             return null;
@@ -394,7 +394,13 @@ class AttendanceCalculatorService
             $resolvedShift = WorkSchedule::where('employee_id', $att->employee_id)->where('date', $dateStr)->first()?->shift ?: Employee::find($att->employee_id)?->shift;
         }
 
-        if ($resolvedShift && $resolvedShift->isCrossMidnight()) {
+        $isCross = $resolvedShift && (
+            method_exists($resolvedShift, 'isCrossMidnight')
+                ? $resolvedShift->isCrossMidnight()
+                : (!empty($resolvedShift->start_time) && !empty($resolvedShift->end_time) && $resolvedShift->end_time < $resolvedShift->start_time)
+        );
+
+        if ($isCross) {
             $window = self::resolveShiftWindow($dateStr, $resolvedShift, $tz);
             if ($window) {
                 $nextDayClockIn = $sameDayClockIn->copy()->addDay();
@@ -412,7 +418,7 @@ class AttendanceCalculatorService
     /**
      * Resolusi timestamp lengkap jam pulang (clock_out), mendukung lintas tengah malam / shift malam
      */
-    public static function resolveClockOutDateTime(Attendance $att, ?Shift $shift = null, string $tz = 'Asia/Jakarta'): ?Carbon
+    public static function resolveClockOutDateTime(Attendance $att, ?object $shift = null, string $tz = 'Asia/Jakarta'): ?Carbon
     {
         if (empty($att->clock_out)) {
             return null;
@@ -613,10 +619,10 @@ class AttendanceCalculatorService
     public static function resolveEmployeeShiftForDate(
         Employee $employee,
         string $dateStr,
-        ?Shift $attendanceShift = null,
+        ?object $attendanceShift = null,
         ?Collection $empSchedules = null,
         ?Collection $shiftsById = null
-    ): ?Shift {
+    ): ?object {
         if ($attendanceShift) {
             return $attendanceShift;
         }
@@ -677,7 +683,7 @@ class AttendanceCalculatorService
          *   karyawan TIDAK BOLEH dianggap mangkir/alpha secara prematur!
          * - Hari setelah hari ini (masa depan): Belum jatuh tempo.
          */
-        $isWorkDayDue = function (string $dStr, ?Shift $shift = null) use ($now, $todayStr, $presentDates, $tz) {
+        $isWorkDayDue = function (string $dStr, ?object $shift = null) use ($now, $todayStr, $presentDates, $tz) {
             if ($dStr < $todayStr) {
                 return true;
             }
@@ -864,7 +870,7 @@ class AttendanceCalculatorService
      */
     public static function evaluateAttendancePunctuality(
         Attendance $att,
-        ?Shift $shift = null,
+        ?object $shift = null,
         ?array $settings = null,
         string $tz = 'Asia/Jakarta'
     ): array {
@@ -1042,7 +1048,9 @@ class AttendanceCalculatorService
         if ($empDuties && $empDuties->isNotEmpty()) {
             foreach ($empDuties as $fd) {
                 if (empty($fd->check_in_time)) continue;
-                $dStr = is_string($fd->duty_date) ? substr($fd->duty_date, 0, 10) : $fd->duty_date->format('Y-m-d');
+                $dutyDateVal = $fd->date ?? $fd->duty_date;
+                $dStr = is_string($dutyDateVal) ? substr($dutyDateVal, 0, 10) : ($dutyDateVal ? $dutyDateVal->format('Y-m-d') : '');
+                if (!$dStr) continue;
                 $presentDates[$dStr] = true;
                 $cIn = Carbon::parse($fd->check_in_time);
                 $rawClockInSecs[] = ($cIn->hour * 3600) + ($cIn->minute * 60) + $cIn->second;

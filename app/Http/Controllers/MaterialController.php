@@ -273,7 +273,7 @@ class MaterialController extends Controller
         $validated['selling_price'] = $validated['selling_price'] ?? 0;
         $validated['stock'] = $validated['stock'] ?? 0;
         $validated['initial_stock'] = $validated['initial_stock'] ?? $validated['stock'];
-        $validated['is_migration'] = true; // Tandai sebagai material fisik area (bukan master katalog toko)
+        $validated['is_migration'] = false; // Material baru yang ditambahkan di UI adalah material aktif (bukan legacy migrasi)
         $validated['is_active'] = true;
 
         // Cek jika sudah ada material dengan nama yang sama, lakukan penambahan stok / penggabungan

@@ -258,36 +258,39 @@ class Ont extends Model
                 });
             }
 
-            // 3. Kembalikan unit ONT ke stok Gudang (Requirement 1)
-            try {
-                $matItem = $ont->material_transaction_item_id 
-                    ? \App\Models\MaterialTransactionItem::with('material')->find($ont->material_transaction_item_id)
-                    : null;
+            // 3. Kembalikan unit ONT ke stok Gudang (hanya jika kondisi layak pakai, bukan rusak)
+            $isDamaged = in_array(strtolower((string)$ont->status), ['rusak', 'damaged']);
+            if (!$isDamaged) {
+                try {
+                    $matItem = $ont->material_transaction_item_id 
+                        ? \App\Models\MaterialTransactionItem::with('material')->find($ont->material_transaction_item_id)
+                        : null;
 
-                if ($matItem && $matItem->material) {
-                    \App\Services\CustomerMaterialService::returnMaterialToWarehouse(
-                        $matItem->material,
-                        1,
-                        $ont->area_id,
-                        'unit'
-                    );
-                } else {
-                    // Cari material ONT yang sesuai di tabel materials
-                    $mat = \App\Models\Material::where('category', 'like', '%ont%')
-                        ->orWhere('category', 'like', '%modem%')
-                        ->orWhere('name', 'like', "%{$ont->brand}%")
-                        ->first();
-                    if ($mat) {
+                    if ($matItem && $matItem->material) {
                         \App\Services\CustomerMaterialService::returnMaterialToWarehouse(
-                            $mat,
+                            $matItem->material,
                             1,
                             $ont->area_id,
                             'unit'
                         );
+                    } else {
+                        // Cari material ONT yang sesuai di tabel materials
+                        $mat = \App\Models\Material::where('category', 'like', '%ont%')
+                            ->orWhere('category', 'like', '%modem%')
+                            ->orWhere('name', 'like', "%{$ont->brand}%")
+                            ->first();
+                        if ($mat) {
+                            \App\Services\CustomerMaterialService::returnMaterialToWarehouse(
+                                $mat,
+                                1,
+                                $ont->area_id,
+                                'unit'
+                            );
+                        }
                     }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[Ont::deleting] Error returning ONT stock to warehouse: ' . $e->getMessage());
                 }
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('[Ont::deleting] Error returning ONT stock to warehouse: ' . $e->getMessage());
             }
 
             // 4. Release ODP Port & sinkronisasi counter ODP

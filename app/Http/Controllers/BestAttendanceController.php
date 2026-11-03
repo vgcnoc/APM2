@@ -75,7 +75,7 @@ class BestAttendanceController extends Controller
         $fieldDuties = collect();
         if (class_exists(FieldDuty::class)) {
             try {
-                $fieldDuties = FieldDuty::whereBetween('duty_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+                $fieldDuties = FieldDuty::whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
                     ->where('status', 'completed')
                     ->get()
                     ->groupBy('employee_id');
@@ -431,8 +431,8 @@ class BestAttendanceController extends Controller
         });
 
         $duties = FieldDuty::where('employee_id', $employeeId)
-            ->whereBetween('duty_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
-            ->orderBy('duty_date', 'desc')
+            ->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+            ->orderBy('date', 'desc')
             ->get();
 
         return response()->json([

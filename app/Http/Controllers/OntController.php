@@ -276,6 +276,96 @@ class OntController extends Controller
             }
         }
 
+        // Sinkronisasi stok material saat status ONT di gudang berubah rusak/diperbaiki
+        $oldStatus = strtolower((string)$ont->status);
+        $newStatus = strtolower((string)($validated['status'] ?? $ont->status));
+        $isOldRusak = in_array($oldStatus, ['rusak', 'damaged']);
+        $isNewRusak = in_array($newStatus, ['rusak', 'damaged']);
+        $isUninstalled = empty($ont->customer_id) && empty($validated['customer_id']);
+
+        if ($isUninstalled && $ont->area_id && $isOldRusak !== $isNewRusak) {
+            $brandName = $validated['brand'] ?? $ont->brand;
+            $mat = \App\Models\Material::where(function ($mq) use ($brandName) {
+                $mq->where('name', $brandName)
+                   ->orWhere('name', 'like', "%{$brandName}%");
+            })->where('category', 'like', '%ont%')->first()
+            ?: \App\Models\Material::where('name', $brandName)->first();
+
+            if ($mat) {
+                $matStock = \App\Models\MaterialStock::where('material_id', $mat->id)
+                    ->where('area_id', $ont->area_id)
+                    ->first();
+
+                if ($isNewRusak) {
+                    $stockBefore = (float)($matStock ? $matStock->stock : $mat->stock);
+                    // Berubah dari bagus ke rusak di gudang -> kurangi stok layak pakai
+                    if ($matStock && $matStock->stock > 0) {
+                        $matStock->decrement('stock', 1);
+                    }
+                    if ($mat->stock > 0) {
+                        $mat->decrement('stock', 1);
+                    }
+                    $stockAfter = max(0, $stockBefore - 1);
+
+                    $tx = \App\Models\MaterialTransaction::create([
+                        'transaction_number' => 'OUT-RUSAK-' . date('YmdHis') . '-' . $ont->id,
+                        'type' => 'out',
+                        'status' => 'approved',
+                        'date' => now(),
+                        'technician_name' => auth()->user() ? auth()->user()->name : 'System',
+                        'purpose' => 'ONT Rusak di Gudang',
+                        'user_id' => auth()->id(),
+                        'area_id' => $ont->area_id,
+                        'notes' => "Unit ONT {$brandName} (SN: {$ont->serial_number}) diubah status menjadi Rusak",
+                    ]);
+
+                    \App\Models\MaterialTransactionItem::create([
+                        'material_transaction_id' => $tx->id,
+                        'material_id' => $mat->id,
+                        'quantity' => 1,
+                        'unit' => $mat->unit ?: 'pcs',
+                        'price_per_unit' => $mat->unit_price ?? 0,
+                        'total_price' => $mat->unit_price ?? 0,
+                        'stock_before' => $stockBefore,
+                        'stock_after' => $stockAfter,
+                        'condition' => 'Rusak',
+                    ]);
+                } else {
+                    $stockBefore = (float)($matStock ? $matStock->stock : $mat->stock);
+                    // Berubah dari rusak ke bagus (diperbaiki) -> kembalikan ke stok layak pakai
+                    if ($matStock) {
+                        $matStock->increment('stock', 1);
+                    }
+                    $mat->increment('stock', 1);
+                    $stockAfter = $stockBefore + 1;
+
+                    $tx = \App\Models\MaterialTransaction::create([
+                        'transaction_number' => 'IN-REPAIR-' . date('YmdHis') . '-' . $ont->id,
+                        'type' => 'in',
+                        'status' => 'approved',
+                        'date' => now(),
+                        'technician_name' => auth()->user() ? auth()->user()->name : 'System',
+                        'purpose' => 'ONT Selesai Diperbaiki / Layak Pakai',
+                        'user_id' => auth()->id(),
+                        'area_id' => $ont->area_id,
+                        'notes' => "Unit ONT {$brandName} (SN: {$ont->serial_number}) kembali Layak Pakai",
+                    ]);
+
+                    \App\Models\MaterialTransactionItem::create([
+                        'material_transaction_id' => $tx->id,
+                        'material_id' => $mat->id,
+                        'quantity' => 1,
+                        'unit' => $mat->unit ?: 'pcs',
+                        'price_per_unit' => $mat->unit_price ?? 0,
+                        'total_price' => $mat->unit_price ?? 0,
+                        'stock_before' => $stockBefore,
+                        'stock_after' => $stockAfter,
+                        'condition' => 'Layak Pakai',
+                    ]);
+                }
+            }
+        }
+
         $ont->update($validated);
 
         if ($newOdpId && $newPortNumber && ($oldOdpId != $newOdpId || $oldPortNumber != $newPortNumber)) {
