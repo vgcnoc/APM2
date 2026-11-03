@@ -6031,6 +6031,7 @@ class CustomerController extends Controller
                     );
                 }
                 try { $installed->dismantles()->delete(); } catch (\Throwable $de) {}
+                $installed->skipStockReturnOnDelete = true;
                 $installed->delete();
             }
         } catch (\Throwable $e) {

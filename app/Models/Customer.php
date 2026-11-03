@@ -1021,6 +1021,7 @@ class Customer extends Model
                     );
                 }
                 $installed->dismantles()->delete();
+                $installed->skipStockReturnOnDelete = true;
                 $installed->delete();
             }
         } catch (\Throwable $e) {

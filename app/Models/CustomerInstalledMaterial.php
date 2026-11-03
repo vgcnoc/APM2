@@ -30,12 +30,21 @@ class CustomerInstalledMaterial extends Model
     ];
 
     public static bool $isCascadingDelete = false;
+    public bool $skipStockReturnOnDelete = false;
 
     protected static function booted(): void
     {
         static::deleting(function (CustomerInstalledMaterial $item) {
-            // 1. Kembalikan stok material ke gudang
-            if ($item->material_id && (float) $item->quantity > 0) {
+            // 1. Kembalikan stok material ke gudang HANYA jika bukan proses purge/cancel pelanggan (yang sudah ditangani eksplisit) dan bukan data migrasi
+            $isMigrated = strtolower((string) ($item->installation_source ?? '')) === 'migration';
+            if (
+                !$item->skipStockReturnOnDelete
+                && !static::$isCascadingDelete
+                && !\App\Models\Customer::$isPurging
+                && !$isMigrated
+                && $item->material_id
+                && (float) $item->quantity > 0
+            ) {
                 $areaId = $item->customer?->area_id;
                 \App\Services\CustomerMaterialService::returnMaterialToWarehouse(
                     (int) $item->material_id,
@@ -49,8 +58,6 @@ class CustomerInstalledMaterial extends Model
             try {
                 $item->dismantles()->delete();
             } catch (\Throwable $e) {}
-
-
         });
     }
 
