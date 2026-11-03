@@ -349,46 +349,31 @@ class InfrastructureWorkOrderService
                 if (!$material) continue;
 
                 $qty = (float) $woMat->requested_qty;
+                if ($qty <= 0) continue;
+
+                $unit = $woMat->unit ?? $material->unit ?? 'pcs';
+                $stockRes = MaterialService::deductOperationalStock($material, $qty, $workOrder->area_id, $unit);
 
                 // Hitung estimasi biaya
                 $unitPrice = (float) ($material->price_per_unit ?? 0);
+                if (strtolower($material->category ?? '') === 'kabel' && strtolower($unit) === 'meter') {
+                    $mpr = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
+                    $unitPrice = $unitPrice / $mpr;
+                }
                 $cost = $qty * $unitPrice;
                 $totalCost += $cost;
-
-                $stockBefore = (float) ($material->stock ?? 0);
-                $stockAfter = max(0, $stockBefore - $qty);
 
                 MaterialTransactionItem::create([
                     'material_transaction_id' => $transaction->id,
                     'material_id' => $material->id,
                     'quantity' => $qty,
-                    'unit' => $woMat->unit ?? $material->unit ?? 'pcs',
+                    'unit' => $unit,
                     'price_per_unit' => $unitPrice,
                     'total_price' => $cost,
-                    'stock_before' => $stockBefore,
-                    'stock_after' => $stockAfter,
+                    'stock_before' => $stockRes['stock_before'],
+                    'stock_after' => $stockRes['stock_after'],
                     'condition' => 'Layak Pakai',
                 ]);
-
-                // Kurangi stok di MaterialStock area jika ada, atau stok master jika non-area
-                $stockDeducted = false;
-                if ($workOrder->area_id) {
-                    $matStock = MaterialStock::where('material_id', $material->id)
-                        ->where('area_id', $workOrder->area_id)
-                        ->first();
-                    if ($matStock) {
-                        $matStock->decrement('stock', $qty);
-                        if ($material->meter_per_roll > 0) {
-                            $matStock->total_rolls = max(0, $matStock->stock / $material->meter_per_roll);
-                            $matStock->save();
-                        }
-                        $stockDeducted = true;
-                    }
-                }
-
-                if (!$stockDeducted) {
-                    $material->decrement('stock', $qty);
-                }
 
                 $woMat->update([
                     'status' => 'taken',
@@ -773,6 +758,12 @@ class InfrastructureWorkOrderService
             }
 
             // 3. Kembalikan material retur ke Inventory Gudang melalui Serah Terima Pengembalian
+            MaterialHandoverService::replacePendingOrApprovedReturnHandover(
+                'rollout_odc_odp',
+                $workOrder->id,
+                $workOrder->area_id,
+                $workOrder->wo_number
+            );
             $returnedMats = $workOrder->materials->filter(fn($m) => (float) $m->returned_qty > 0);
             if ($returnedMats->isNotEmpty()) {
                 $itemsToReturn = $returnedMats->map(function ($woMat) {

@@ -643,22 +643,23 @@ class InfrastructureWorkOrderController extends Controller
             $material = Material::findOrFail($validated['material_id']);
             $qty = !empty($validated['quantity']) ? (float) $validated['quantity'] : (float) $materialRequest->quantity;
             $areaId = $workOrder->area_id;
+            $unit = $material->unit ?? 'pcs';
 
-            $matStock = null;
-            if ($areaId) {
-                $matStock = MaterialStock::where('material_id', $material->id)
-                    ->where('area_id', $areaId)
-                    ->first();
+            $stockRes = \App\Services\MaterialService::deductOperationalStock($material, $qty, $areaId, $unit);
+
+            $unitPrice = (float) ($material->price_per_unit ?? 0);
+            if (strtolower($material->category ?? '') === 'kabel' && strtolower($unit) === 'meter') {
+                $mpr = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
+                $unitPrice = $unitPrice / $mpr;
             }
-
-            $stockBefore = $matStock ? (float) $matStock->stock : (float) $material->stock;
-            $stockAfter = max(0, $stockBefore - $qty);
+            $cost = $qty * $unitPrice;
 
             // 1. Catat Transaksi Pengeluaran Barang Outbound
             $outTrans = MaterialTransaction::create([
                 'transaction_number' => 'OUT-WO-REQ-' . date('YmdHis') . rand(10, 99),
                 'type' => 'out',
                 'status' => 'approved',
+                'request_type' => 'additional_material',
                 'date' => now()->toDateString(),
                 'technician_name' => $materialRequest->requester?->name ?: Auth::user()->name,
                 'purpose' => "Tambahan Material Rollout {$workOrder->target_name} ({$workOrder->wo_number})",
@@ -667,37 +668,21 @@ class InfrastructureWorkOrderController extends Controller
                 'source_reference' => $workOrder->wo_number,
                 'area_id' => $areaId,
                 'user_id' => Auth::id(),
-                'notes' => "Disetujui Ka. Teknisi: {$material->name} ({$qty} {$material->unit}). Kebutuhan teknisi: {$materialRequest->item_name} - {$materialRequest->notes}",
-                'total_cost' => 0,
+                'notes' => "Disetujui Ka. Teknisi: {$material->name} ({$qty} {$unit}). Kebutuhan teknisi: {$materialRequest->item_name} - {$materialRequest->notes}",
+                'total_cost' => $cost,
             ]);
-
-            $unitPrice = (float) ($material->price_per_unit ?? 0);
-            $cost = $qty * $unitPrice;
 
             MaterialTransactionItem::create([
                 'material_transaction_id' => $outTrans->id,
                 'material_id' => $material->id,
                 'quantity' => $qty,
-                'unit' => $material->unit ?? 'pcs',
+                'unit' => $unit,
                 'price_per_unit' => $unitPrice,
                 'total_price' => $cost,
-                'stock_before' => $stockBefore,
-                'stock_after' => $stockAfter,
+                'stock_before' => $stockRes['stock_before'],
+                'stock_after' => $stockRes['stock_after'],
                 'condition' => 'Layak Pakai',
             ]);
-
-            $outTrans->update(['total_cost' => $cost]);
-
-            // 2. Potong stok area jika ada, atau master jika non-area
-            if ($matStock) {
-                $matStock->decrement('stock', $qty);
-                if ($material->meter_per_roll > 0) {
-                    $matStock->total_rolls = max(0, $matStock->stock / $material->meter_per_roll);
-                    $matStock->save();
-                }
-            } else {
-                $material->decrement('stock', $qty);
-            }
 
             // 3. Tambahkan ke daftar material Work Order (taken) agar langsung muncul di rekonsiliasi teknisi
             $existingWoMat = InfrastructureWorkOrderMaterial::where('work_order_id', $workOrder->id)
@@ -794,9 +779,10 @@ class InfrastructureWorkOrderController extends Controller
         $target = $workOrder->target_name;
 
         DB::transaction(function () use ($workOrder) {
-            // 1. Kembalikan seluruh material pengeluaran (OUT) ke stok gudang & bersihkan transaksi
+            // 1. Kembalikan seluruh material pengeluaran (OUT) & balikkan retur (IN) secara simetris
+            $restoredByMat = [];
             try {
-                \App\Services\MaterialHandoverService::restoreDispatchedMaterials(
+                $restoredByMat = \App\Services\MaterialHandoverService::restoreDispatchedMaterials(
                     'rollout_odc_odp',
                     $workOrder->id,
                     $workOrder->area_id,
@@ -806,29 +792,19 @@ class InfrastructureWorkOrderController extends Controller
                 \Illuminate\Support\Facades\Log::warning('[InfrastructureWorkOrderController::destroy] Gagal restore material handover: ' . $e->getMessage());
             }
 
-            // 2. Fallback: Kembalikan dari tabel infrastructure_work_order_materials jika status taken
+            // 2. Fallback: Hanya jika ada baris infrastructure_work_order_materials yang belum punya transaksi OUT
             foreach ($workOrder->materials as $woMat) {
-                $qty = (float) ($woMat->used_qty ?: $woMat->requested_qty);
-                if ($woMat->status === 'taken' && $qty > 0 && $woMat->material_id) {
-                    $material = Material::find($woMat->material_id);
+                $matId = (int) $woMat->material_id;
+                $qty = (float) ($woMat->requested_qty ?: $woMat->used_qty);
+                if ($woMat->status === 'taken' && $qty > 0 && $matId && empty($restoredByMat[$matId])) {
+                    $material = Material::find($matId);
                     if ($material) {
-                        $material->increment('stock', $qty);
-                        if (str_contains(strtolower($material->category ?? ''), 'kabel') && $material->meter_per_roll > 0) {
-                            $material->total_rolls = $material->stock / $material->meter_per_roll;
-                            $material->save();
-                        }
-                    }
-                    if ($workOrder->area_id) {
-                        $matStock = \App\Models\MaterialStock::where('material_id', $woMat->material_id)
-                            ->where('area_id', $workOrder->area_id)
-                            ->first();
-                        if ($matStock) {
-                            $matStock->increment('stock', $qty);
-                            if ($material && $material->meter_per_roll > 0) {
-                                $matStock->total_rolls = $matStock->stock / $material->meter_per_roll;
-                                $matStock->save();
-                            }
-                        }
+                        \App\Services\MaterialService::restoreOperationalStock(
+                            $material,
+                            $qty,
+                            $workOrder->area_id,
+                            $woMat->unit
+                        );
                     }
                 }
             }

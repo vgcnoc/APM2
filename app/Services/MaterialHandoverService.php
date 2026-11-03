@@ -79,15 +79,7 @@ class MaterialHandoverService
                 $itemCost = $ppu * $qty;
                 $totalCost += $itemCost;
 
-                $matStock = null;
-                if ($areaId) {
-                    $matStock = MaterialStock::where('material_id', $material->id)
-                        ->where('area_id', $areaId)
-                        ->first();
-                }
-
-                $stockBefore = $matStock ? (float) $matStock->stock : (float) $material->stock;
-                $stockAfter = max(0, $stockBefore - $qty);
+                $stockRes = MaterialService::deductOperationalStock($material, $qty, $areaId, $unit);
 
                 MaterialTransactionItem::create([
                     'material_transaction_id' => $transaction->id,
@@ -96,17 +88,10 @@ class MaterialHandoverService
                     'unit' => $unit,
                     'price_per_unit' => $ppu,
                     'total_price' => $itemCost,
-                    'stock_before' => $stockBefore,
-                    'stock_after' => $stockAfter,
+                    'stock_before' => $stockRes['stock_before'],
+                    'stock_after' => $stockRes['stock_after'],
                     'condition' => 'Terpasang/Digunakan',
                 ]);
-
-                // Kurangi stok di Area atau Master Material (jika non-area)
-                if ($matStock) {
-                    $matStock->decrement('stock', $qty);
-                } else {
-                    $material->decrement('stock', $qty);
-                }
             }
 
             $transaction->update(['total_cost' => $totalCost]);
@@ -230,39 +215,29 @@ class MaterialHandoverService
                 $material = $trxItem->material;
 
                 if ($material && $newQty > 0) {
-                    $matStock = null;
-                    if ($areaId) {
-                        $matStock = MaterialStock::firstOrCreate(
+                    $matStock = $areaId
+                        ? MaterialStock::firstOrCreate(
                             ['material_id' => $material->id, 'area_id' => $areaId],
                             ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
-                        );
-                    }
+                        )
+                        : null;
 
                     $stockBefore = $matStock ? (float) $matStock->stock : (float) $material->stock;
-                    
+
                     // Cek kelayakan barang: Hanya barang Layak Pakai yang menambah stok aktif inventory
                     $isLayak = (trim($newCondition) === 'Layak Pakai');
-                    $stockAfter = $isLayak ? ($stockBefore + $newQty) : $stockBefore;
+                    $stockAfter = $stockBefore;
 
                     // TAMBAH STOK FISIK AKTIF KE GUDANG AREA ATAU GUDANG UTAMA HANYA JIKA LAYAK PAKAI
                     if ($isLayak) {
-                        if ($matStock) {
-                            $matStock->increment('stock', $newQty);
-                            if ($material->meter_per_roll > 0) {
-                                $matStock->total_rolls = max(0, $matStock->stock / $material->meter_per_roll);
-                            } else {
-                                $matStock->total_pieces = max(0, $matStock->stock);
-                            }
-                            $matStock->save();
-                            if ($material->is_migration) {
-                                $totalAreaStock = (float) MaterialStock::where('material_id', $material->id)->sum('stock');
-                                $material->stock = max(0, $totalAreaStock);
-                                $material->recalcUnitTotals()->save();
-                            }
-                        } else {
-                            $material->increment('stock', $newQty);
-                            $material->recalcUnitTotals()->save();
-                        }
+                        $restoreRes = MaterialService::restoreOperationalStock(
+                            $material,
+                            $newQty,
+                            $areaId,
+                            $trxItem->unit
+                        );
+                        $stockBefore = $restoreRes['stock_before'];
+                        $stockAfter = $restoreRes['stock_after'];
                     }
 
                     $ppu = (float) $trxItem->price_per_unit;
@@ -412,6 +387,11 @@ class MaterialHandoverService
                 $itemCost = $ppu * $qty;
                 $totalCost += $itemCost;
 
+                $matStock = $areaId
+                    ? MaterialStock::where('material_id', $material->id)->where('area_id', $areaId)->first()
+                    : null;
+                $currentStock = $matStock ? (float) $matStock->stock : (float) $material->stock;
+
                 MaterialTransactionItem::create([
                     'material_transaction_id' => $transaction->id,
                     'material_id' => $material->id,
@@ -419,8 +399,8 @@ class MaterialHandoverService
                     'unit' => $unit,
                     'price_per_unit' => $ppu,
                     'total_price' => $itemCost,
-                    'stock_before' => (float) $material->stock,
-                    'stock_after' => max(0, (float) $material->stock - $qty),
+                    'stock_before' => $currentStock,
+                    'stock_after' => max(0, $currentStock - $qty),
                     'condition' => 'Pengajuan',
                 ]);
             }
@@ -448,25 +428,16 @@ class MaterialHandoverService
                 $qty = (float) $trxItem->quantity;
 
                 if ($material && $qty > 0) {
-                    $matStock = null;
-                    if ($areaId) {
-                        $matStock = MaterialStock::where('material_id', $material->id)
-                            ->where('area_id', $areaId)
-                            ->first();
-                    }
-
-                    $stockBefore = $matStock ? (float) $matStock->stock : (float) $material->stock;
-                    $stockAfter = max(0, $stockBefore - $qty);
-
-                    if ($matStock) {
-                        $matStock->decrement('stock', $qty);
-                    } else {
-                        $material->decrement('stock', $qty);
-                    }
+                    $deductRes = MaterialService::deductOperationalStock(
+                        $material,
+                        $qty,
+                        $areaId,
+                        $trxItem->unit
+                    );
 
                     $trxItem->update([
-                        'stock_before' => $stockBefore,
-                        'stock_after' => $stockAfter,
+                        'stock_before' => $deductRes['stock_before'],
+                        'stock_after' => $deductRes['stock_after'],
                         'condition' => 'Terpasang/Digunakan',
                     ]);
                 }
@@ -478,6 +449,24 @@ class MaterialHandoverService
                 $oldOnt = $transaction->old_ont_id ? Ont::find($transaction->old_ont_id) : null;
 
                 if ($repOnt) {
+                    $ontMat = MaterialService::resolveOntMaterial($repOnt);
+                    if ($ontMat && !$transaction->items()->where('material_id', $ontMat->id)->exists()) {
+                        $ontAreaId = $areaId ?: $repOnt->area_id;
+                        $ontDeduct = MaterialService::deductOperationalStock($ontMat, 1, $ontAreaId, 'pcs');
+                        $ontPpu = (float) ($ontMat->selling_price ?: ($ontMat->price_per_unit ?? 0));
+                        MaterialTransactionItem::create([
+                            'material_transaction_id' => $transaction->id,
+                            'material_id' => $ontMat->id,
+                            'quantity' => 1,
+                            'unit' => $ontMat->unit ?: 'pcs',
+                            'price_per_unit' => $ontPpu,
+                            'total_price' => $ontPpu,
+                            'stock_before' => $ontDeduct['stock_before'],
+                            'stock_after' => $ontDeduct['stock_after'],
+                            'condition' => 'Terpasang/Digunakan',
+                        ]);
+                    }
+
                     $repUpdates = [
                         'status' => 'active',
                         'customer_id' => $transaction->customer_id ?? ($transaction->source_type === 'installation' ? $transaction->source_id : null),
@@ -542,20 +531,87 @@ class MaterialHandoverService
     }
 
     /**
-     * 8. Batalkan penugasan & Kembalikan seluruh material ke Gudang & Area (Instalasi, PGS, PGK, PGJ, Rollout ODC/ODP).
-     * Otomatis mengembalikan stok global master dan stok area inventory,
-     * serta membersihkan transaksi pengeluaran (OUT) dan pengembalian (IN).
+     * Bersihkan & batalkan transaksi retur sisa lama (RTR-...) sebelum membuat retur baru (misal saat re-edit laporan).
+     * Jika retur lama sudah berstatus 'approved' (sudah diterima gudang & menambah stok), maka penambahan tersebut dibalik dulu
+     * agar tidak terjadi penggelembungan stok ganda.
      */
-    public static function restoreDispatchedMaterials(
+    public static function replacePendingOrApprovedReturnHandover(
         string $sourceType,
         int $sourceId,
         ?int $areaId = null,
         ?string $reference = null
     ): void {
         DB::transaction(function () use ($sourceType, $sourceId, $areaId, $reference) {
+            $oldReturnTrxs = MaterialTransaction::with('items.material')
+                ->where('type', 'in')
+                ->whereNull('old_ont_id')
+                ->where('purpose', '!=', 'Pembelian Toko / Supplier')
+                ->where('transaction_number', 'not like', 'IN-AREA-%')
+                ->where('transaction_number', 'not like', 'IN-INIT-%')
+                ->where('transaction_number', 'not like', 'IN-REPAIR-%')
+                ->where('transaction_number', 'not like', 'PO-%')
+                ->where('transaction_number', 'not like', 'RET-DISM-%')
+                ->where(function ($q) use ($sourceType, $sourceId, $reference) {
+                    $q->where(function ($sq) use ($sourceType, $sourceId) {
+                        $sq->where('source_type', $sourceType)
+                           ->where('source_id', $sourceId);
+                    });
+
+                    if (in_array(strtolower($sourceType), ['instalasi', 'installation', 'customer'], true)) {
+                        $q->orWhere(function ($cq) use ($sourceId) {
+                            $cq->where('customer_id', $sourceId)
+                               ->where(function ($rq) {
+                                   $rq->where('transaction_number', 'like', 'RTR-%')
+                                      ->orWhere('request_type', 'return_handover');
+                               });
+                        });
+                    }
+                })
+                ->get();
+
+            foreach ($oldReturnTrxs as $ort) {
+                $targetAreaId = $ort->area_id ?: $areaId;
+                if ($ort->status === 'approved') {
+                    foreach ($ort->items as $item) {
+                        if ($item->material && (float) $item->quantity > 0 && trim((string) $item->condition) === 'Layak Pakai') {
+                            MaterialService::deductOperationalStock(
+                                $item->material,
+                                (float) $item->quantity,
+                                $targetAreaId,
+                                $item->unit
+                            );
+                        }
+                    }
+                }
+                $ort->skipStockRestoreOnDelete = true;
+                $ort->items()->delete();
+                $ort->delete();
+            }
+        });
+    }
+
+    /**
+     * 8. Batalkan penugasan & Kembalikan seluruh material ke Gudang & Area (Instalasi, PGS, PGK, PGJ, Rollout ODC/ODP).
+     * Otomatis mengembalikan stok area / master secara konsisten, membalikkan retur yang sudah disetujui,
+     * serta membersihkan transaksi pengeluaran (OUT) dan pengembalian (IN).
+     *
+     * @return array<int, float> Peta jumlah kuantitas (base unit) yang dipulihkan per material_id
+     */
+    public static function restoreDispatchedMaterials(
+        string $sourceType,
+        int $sourceId,
+        ?int $areaId = null,
+        ?string $reference = null
+    ): array {
+        return DB::transaction(function () use ($sourceType, $sourceId, $areaId, $reference) {
+            $restoredByMaterialId = [];
+
             // 1. Ambil transaksi material keluar (OUT) terkait penugasan ini
             $outTransactions = MaterialTransaction::with(['items.material', 'items.onts'])
                 ->where('type', 'out')
+                ->where('purpose', '!=', 'Pembelian Toko / Supplier')
+                ->where('transaction_number', 'not like', 'PO-%')
+                ->where('transaction_number', 'not like', 'OUT-RUSAK-%')
                 ->where(function ($q) use ($sourceType, $sourceId, $reference) {
                     $q->where(function ($sq) use ($sourceType, $sourceId) {
                         $sq->where('source_type', $sourceType)
@@ -563,7 +619,7 @@ class MaterialHandoverService
                     });
 
                     // Khusus instalasi / customer
-                    if (in_array(strtolower($sourceType), ['instalasi', 'installation', 'customer', 'jadwal_instalasi'])) {
+                    if (in_array(strtolower($sourceType), ['instalasi', 'installation', 'customer', 'jadwal_instalasi'], true)) {
                         $q->orWhere('customer_id', $sourceId)
                           ->orWhere(function ($cq) use ($sourceId) {
                               $cq->whereIn('source_type', ['instalasi', 'installation', 'customer', 'jadwal_instalasi'])
@@ -575,57 +631,57 @@ class MaterialHandoverService
                     if ($reference) {
                         $q->orWhere('source_reference', $reference)
                           ->orWhere('transaction_number', 'like', "%{$reference}%")
-                          ->orWhere('purpose', 'like', "%{$reference}%")
-                          ->orWhere('notes', 'like', "%{$reference}%");
+                          ->orWhere('purpose', 'like', "%{$reference}%");
                     }
                 })
                 ->get();
 
             foreach ($outTransactions as $trx) {
                 $targetAreaId = $trx->area_id ?: $areaId;
+                $shouldRestore = ($trx->status === 'approved') && !$trx->is_migration;
 
                 foreach ($trx->items as $item) {
                     $material = $item->material;
                     $qty = (float) $item->quantity;
 
-                    if ($material && $qty > 0) {
-                        // Tambah stok area gudang jika ada target area, atau master material jika non-area
-                        if ($targetAreaId) {
-                            $matStock = MaterialStock::where('material_id', $material->id)
-                                ->where('area_id', $targetAreaId)
-                                ->first();
-                            if ($matStock) {
-                                $matStock->increment('stock', $qty);
-                                if ($material->meter_per_roll > 0) {
-                                    $matStock->total_rolls = max(0, $matStock->stock / $material->meter_per_roll);
-                                } else {
-                                    $matStock->total_pieces = max(0, $matStock->stock);
-                                }
-                                $matStock->save();
-                            }
-                            if ($material->is_migration) {
-                                $totalAreaStock = (float) MaterialStock::where('material_id', $material->id)->sum('stock');
-                                $material->stock = max(0, $totalAreaStock);
-                                $material->recalcUnitTotals()->save();
-                            }
-                        } else {
-                            $material->increment('stock', $qty);
-                            $material->recalcUnitTotals()->save();
-                        }
+                    if ($shouldRestore && $material && $qty > 0) {
+                        $res = MaterialService::restoreOperationalStock(
+                            $material,
+                            $qty,
+                            $targetAreaId,
+                            $item->unit
+                        );
+                        $restoredByMaterialId[$material->id] = ($restoredByMaterialId[$material->id] ?? 0.0) + $res['base_qty'];
                     }
 
                     // Kembalikan ONT yang terhubung ke Gudang
                     if ($item->onts && $item->onts->isNotEmpty()) {
                         foreach ($item->onts as $ont) {
+                            $restoredStatus = ($ont->pppoe_user || $ont->hotspot_user || $ont->status === 'Sudah Set')
+                                ? 'Sudah Set'
+                                : 'Belum Set/Baru Input';
                             $ont->update([
                                 'customer_id' => null,
                                 'odp_id' => null,
                                 'odp_port_id' => null,
                                 'port_number' => null,
-                                'status' => 'Belum Set/Baru Input',
+                                'status' => $restoredStatus,
                                 'description' => trim(($ont->description ? $ont->description . ' | ' : '') . 'Kembali ke Gudang (Batal ' . $sourceType . ')'),
                             ]);
                         }
+                    }
+                }
+
+                if ($trx->replacement_ont_id) {
+                    $repOnt = Ont::find($trx->replacement_ont_id);
+                    if ($repOnt) {
+                        $repOnt->update([
+                            'customer_id' => null,
+                            'odp_id' => null,
+                            'odp_port_id' => null,
+                            'port_number' => null,
+                            'status' => 'Sudah Set',
+                        ]);
                     }
                 }
 
@@ -634,30 +690,65 @@ class MaterialHandoverService
                 $trx->delete();
             }
 
-            // 2. Bersihkan transaksi pengembalian (IN / pending serah terima) terkait penugasan ini
-            $inTransactions = MaterialTransaction::where('type', 'in')
+            // 2. Bersihkan transaksi pengembalian (IN / serah terima) terkait penugasan ini
+            // Jika sudah berstatus 'approved' (sudah menambah stok gudang), balikkan penambahannya agar stok tidak terhitung ganda!
+            $inTransactions = MaterialTransaction::with('items.material')
+                ->where('type', 'in')
+                ->where('purpose', '!=', 'Pembelian Toko / Supplier')
+                ->where('transaction_number', 'not like', 'IN-AREA-%')
+                ->where('transaction_number', 'not like', 'IN-INIT-%')
+                ->where('transaction_number', 'not like', 'IN-REPAIR-%')
+                ->where('transaction_number', 'not like', 'PO-%')
                 ->where(function ($q) use ($sourceType, $sourceId, $reference) {
-                    $q->where('source_type', $sourceType)
-                       ->where('source_id', $sourceId);
+                    $q->where(function ($sq) use ($sourceType, $sourceId) {
+                        $sq->where('source_type', $sourceType)
+                           ->where('source_id', $sourceId);
+                    });
 
-                    if (in_array(strtolower($sourceType), ['instalasi', 'installation', 'customer'])) {
+                    if (in_array(strtolower($sourceType), ['instalasi', 'installation', 'customer', 'jadwal_instalasi'], true)) {
                         $q->orWhere('customer_id', $sourceId);
                     }
 
                     if ($reference) {
                         $q->orWhere('source_reference', $reference)
                           ->orWhere('transaction_number', 'like', "%{$reference}%")
-                          ->orWhere('purpose', 'like', "%{$reference}%")
-                          ->orWhere('notes', 'like', "%{$reference}%");
+                          ->orWhere('purpose', 'like', "%{$reference}%");
                     }
                 })
                 ->get();
 
             foreach ($inTransactions as $inTrx) {
+                $targetAreaId = $inTrx->area_id ?: $areaId;
+                if ($inTrx->status === 'approved' && !$inTrx->is_migration) {
+                    $isDismantle = str_starts_with((string) $inTrx->transaction_number, 'RET-DISM-');
+                    $shouldReverseIn = true;
+
+                    if ($isDismantle) {
+                        $dismantleDisp = \App\Models\CustomerMaterialDismantle::where('material_transaction_id', $inTrx->id)->value('disposition');
+                        $shouldReverseIn = ($dismantleDisp === 'restocked');
+                    }
+
+                    if ($shouldReverseIn) {
+                        foreach ($inTrx->items as $inItem) {
+                            $isLayak = $isDismantle || (trim((string) $inItem->condition) === 'Layak Pakai');
+                            if ($isLayak && $inItem->material && (float) $inItem->quantity > 0) {
+                                MaterialService::deductOperationalStock(
+                                    $inItem->material,
+                                    (float) $inItem->quantity,
+                                    $targetAreaId,
+                                    $inItem->unit
+                                );
+                            }
+                        }
+                    }
+                }
+
                 $inTrx->skipStockRestoreOnDelete = true;
                 $inTrx->items()->delete();
                 $inTrx->delete();
             }
+
+            return $restoredByMaterialId;
         });
     }
 }

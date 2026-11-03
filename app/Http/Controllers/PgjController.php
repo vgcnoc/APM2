@@ -838,27 +838,50 @@ class PgjController extends Controller
         $techIds = $request->technician_ids ?? $request->technicians ?? [];
         $pgj->technicians()->sync($techIds);
 
-        // Kelola alokasi material gudang jalur
-        if (!empty($validated['materials'])) {
-            // Kembalikan alokasi material sebelumnya jika ada revisi jadwal
-            $previousMaterials = $pgj->materials()->get();
-            foreach ($previousMaterials as $prevMat) {
-                $prevQty = (float) $prevMat->quantity_prepared;
-                if ($prevQty > 0) {
-                    if ($pgj->area_id) {
-                        $matStock = \App\Models\MaterialStock::where('material_id', $prevMat->material_id)
-                            ->where('area_id', $pgj->area_id)
-                            ->first();
-                        if ($matStock) {
-                            $matStock->increment('stock', $prevQty);
-                        }
+        // Kelola alokasi material gudang jalur (pulihkan alokasi jadwal sebelumnya terlebih dahulu secara simetris)
+        $restoredScheduleMats = [];
+        $prevScheduleOuts = MaterialTransaction::with('items.material')
+            ->where('source_type', 'pgj')
+            ->where('source_id', $pgj->id)
+            ->where('type', 'out')
+            ->where('transaction_number', 'like', 'OUT-PGJ-%')
+            ->where('transaction_number', 'not like', 'OUT-PGJ-OVERAGE-%')
+            ->get();
+
+        foreach ($prevScheduleOuts as $prevOut) {
+            $restoreAreaId = $prevOut->area_id ?: $pgj->area_id;
+            if ($prevOut->status === 'approved' && !$prevOut->is_migration) {
+                foreach ($prevOut->items as $prevItem) {
+                    if ($prevItem->material && (float) $prevItem->quantity > 0) {
+                        $res = \App\Services\MaterialService::restoreOperationalStock(
+                            $prevItem->material,
+                            (float) $prevItem->quantity,
+                            $restoreAreaId,
+                            $prevItem->unit
+                        );
+                        $restoredScheduleMats[$prevItem->material->id] = ($restoredScheduleMats[$prevItem->material->id] ?? 0) + $res['base_qty'];
                     }
-                    Material::where('id', $prevMat->material_id)->increment('stock', $prevQty);
                 }
             }
+            $prevOut->skipStockRestoreOnDelete = true;
+            $prevOut->items()->delete();
+            $prevOut->delete();
+        }
 
-            $pgj->materials()->delete();
+        $previousMaterials = $pgj->materials()->get();
+        foreach ($previousMaterials as $prevMat) {
+            $prevQty = (float) $prevMat->quantity_prepared;
+            if ($prevQty > 0 && $prevMat->material_id && empty($restoredScheduleMats[(int) $prevMat->material_id])) {
+                $matModel = Material::find($prevMat->material_id);
+                if ($matModel) {
+                    \App\Services\MaterialService::restoreOperationalStock($matModel, $prevQty, $pgj->area_id, $prevMat->unit);
+                }
+            }
+        }
 
+        $pgj->materials()->delete();
+
+        if (!empty($validated['materials'])) {
             $techNames = User::whereIn('id', $techIds)->pluck('name')->join(', ');
 
             $sourceOrders = array_filter(array_unique(array_column($validated['materials'], 'trx_number')));
@@ -869,6 +892,7 @@ class PgjController extends Controller
                 'user_id' => auth()->id(),
                 'type' => 'out',
                 'status' => 'approved',
+                'request_type' => 'regular',
                 'technician_name' => $techNames ?: auth()->user()->name,
                 'purpose' => "Material Jalur PGJ #{$pgj->ticket_number} ({$pgj->segment_type}: {$pgj->category}){$orderRefStr}",
                 'source_type' => 'pgj',
@@ -878,6 +902,7 @@ class PgjController extends Controller
                 'area_id' => $pgj->area_id,
             ]);
 
+            $totalScheduleCost = 0;
             foreach ($validated['materials'] as $matItem) {
                 if (empty($matItem['material_id'])) continue;
                 $material = Material::find($matItem['material_id']);
@@ -885,31 +910,16 @@ class PgjController extends Controller
                 if ($qty <= 0) continue;
 
                 if ($material) {
-                    $stockBefore = (float) $material->stock;
-                    $stockAfter = max(0, $stockBefore - $qty);
-
-                    // Kurangkan stok area jika ada, atau gudang utama jika non-area
-                    $stockDeducted = false;
-                    if ($pgj->area_id) {
-                        $matStock = \App\Models\MaterialStock::where('material_id', $material->id)
-                            ->where('area_id', $pgj->area_id)
-                            ->first();
-                        if ($matStock) {
-                            $matStock->decrement('stock', $qty);
-                            if ($material->meter_per_roll > 0) {
-                                $matStock->total_rolls = max(0, $matStock->stock / $material->meter_per_roll);
-                                $matStock->save();
-                            }
-                            $stockDeducted = true;
-                        }
-                    }
-
-                    if (!$stockDeducted) {
-                        $material->decrement('stock', $qty);
-                    }
-
                     $unit = $matItem['unit'] ?? $material->unit;
+                    $stockRes = \App\Services\MaterialService::deductOperationalStock($material, $qty, $pgj->area_id, $unit);
+
                     $ppu = $material->price ?? ($material->selling_price ?: ($material->price_per_unit ?? 0));
+                    if (strtolower($material->category ?? '') === 'kabel' && strtolower($unit) === 'meter') {
+                        $mpr = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
+                        $ppu = $ppu / $mpr;
+                    }
+                    $itemTotal = $ppu * $qty;
+                    $totalScheduleCost += $itemTotal;
 
                     MaterialTransactionItem::create([
                         'material_transaction_id' => $transaction->id,
@@ -917,9 +927,9 @@ class PgjController extends Controller
                         'quantity' => $qty,
                         'unit' => $unit,
                         'price_per_unit' => $ppu,
-                        'total_price' => $ppu * $qty,
-                        'stock_before' => $stockBefore,
-                        'stock_after' => $stockAfter,
+                        'total_price' => $itemTotal,
+                        'stock_before' => $stockRes['stock_before'],
+                        'stock_after' => $stockRes['stock_after'],
                     ]);
 
                     PgjMaterial::create([
@@ -928,13 +938,14 @@ class PgjController extends Controller
                         'material_transaction_item_id' => $matItem['material_transaction_item_id'] ?? null,
                         'trx_number' => $matItem['trx_number'] ?? null,
                         'quantity_prepared' => $qty,
-                        'quantity_used' => 0,
+                        'quantity_used' => $qty,
                         'quantity_returned' => 0,
                         'unit' => $unit,
                         'notes' => $matItem['notes'] ?? null,
                     ]);
                 }
             }
+            $transaction->update(['total_cost' => $totalScheduleCost]);
         }
 
         AuditLog::createLog(
@@ -1080,7 +1091,39 @@ class PgjController extends Controller
 
         // Rekonsiliasi material terpakai vs sisa dikembalikan ke gudang (Serah Terima Gudang)
         if (!empty($validated['materials'])) {
+            \App\Services\MaterialHandoverService::replacePendingOrApprovedReturnHandover(
+                'pgj',
+                $pgj->id,
+                $pgj->area_id,
+                $pgj->ticket_number
+            );
+
+            $oldOverages = MaterialTransaction::with('items.material')
+                ->where('source_type', 'pgj')
+                ->where('source_id', $pgj->id)
+                ->where('type', 'out')
+                ->where('transaction_number', 'like', 'OUT-PGJ-OVERAGE-%')
+                ->get();
+            foreach ($oldOverages as $oo) {
+                if ($oo->status === 'approved' && !$oo->is_migration) {
+                    foreach ($oo->items as $ooItem) {
+                        if ($ooItem->material && (float) $ooItem->quantity > 0) {
+                            \App\Services\MaterialService::restoreOperationalStock(
+                                $ooItem->material,
+                                (float) $ooItem->quantity,
+                                $oo->area_id ?: $pgj->area_id,
+                                $ooItem->unit
+                            );
+                        }
+                    }
+                }
+                $oo->skipStockRestoreOnDelete = true;
+                $oo->items()->delete();
+                $oo->delete();
+            }
+
             $itemsToReturn = [];
+            $overageItems = [];
 
             foreach ($validated['materials'] as $matItem) {
                 $pgjMat = PgjMaterial::find($matItem['pgj_material_id']);
@@ -1103,7 +1146,57 @@ class PgjController extends Controller
                             'condition' => 'Layak Pakai',
                         ];
                     }
+
+                    // Jika pemakaian aktual melebihi bekal awal, potong selisihnya
+                    if ($qtyUsed > $qtyPrepared && $pgjMat->material_id) {
+                        $overageItems[] = [
+                            'material_id' => $pgjMat->material_id,
+                            'quantity' => $qtyUsed - $qtyPrepared,
+                            'unit' => $pgjMat->unit ?? 'pcs',
+                        ];
+                    }
                 }
+            }
+
+            if (!empty($overageItems)) {
+                $ovTrans = MaterialTransaction::create([
+                    'transaction_number' => 'OUT-PGJ-OVERAGE-' . date('YmdHis') . rand(10, 99),
+                    'user_id' => auth()->id(),
+                    'type' => 'out',
+                    'status' => 'approved',
+                    'request_type' => 'additional_material',
+                    'technician_name' => auth()->user()->name,
+                    'purpose' => "Selisih Lebih Pemakaian Material PGJ #{$pgj->ticket_number}",
+                    'source_type' => 'pgj',
+                    'source_id' => $pgj->id,
+                    'source_reference' => $pgj->ticket_number,
+                    'date' => now(),
+                    'area_id' => $pgj->area_id,
+                ]);
+                $ovCost = 0;
+                foreach ($overageItems as $ov) {
+                    $ovMat = Material::find($ov['material_id']);
+                    if (!$ovMat) continue;
+                    $ovStock = \App\Services\MaterialService::deductOperationalStock($ovMat, (float) $ov['quantity'], $pgj->area_id, $ov['unit']);
+                    $ppu = $ovMat->selling_price ?: ($ovMat->price_per_unit ?? 0);
+                    if (strtolower($ovMat->category ?? '') === 'kabel' && strtolower($ov['unit']) === 'meter') {
+                        $mpr = $ovMat->meter_per_roll > 0 ? $ovMat->meter_per_roll : 1000;
+                        $ppu = $ppu / $mpr;
+                    }
+                    $ovTotal = $ppu * (float) $ov['quantity'];
+                    $ovCost += $ovTotal;
+                    MaterialTransactionItem::create([
+                        'material_transaction_id' => $ovTrans->id,
+                        'material_id' => $ovMat->id,
+                        'quantity' => $ov['quantity'],
+                        'unit' => $ov['unit'],
+                        'price_per_unit' => $ppu,
+                        'total_price' => $ovTotal,
+                        'stock_before' => $ovStock['stock_before'],
+                        'stock_after' => $ovStock['stock_after'],
+                    ]);
+                }
+                $ovTrans->update(['total_cost' => $ovCost]);
             }
 
             if (!empty($itemsToReturn)) {
@@ -1268,10 +1361,11 @@ class PgjController extends Controller
     protected function cleanupAndRestoreTicketStock(PgjTicket $pgj): void
     {
         $areaId = $pgj->area_id;
+        $restoredByMat = [];
 
-        // 1. Kembalikan seluruh material pengeluaran (OUT) ke stok gudang & bersihkan transaksi
+        // 1. Kembalikan seluruh material pengeluaran (OUT) & balikkan retur (IN) yang sudah diterima secara simetris
         try {
-            \App\Services\MaterialHandoverService::restoreDispatchedMaterials(
+            $restoredByMat = \App\Services\MaterialHandoverService::restoreDispatchedMaterials(
                 'pgj',
                 $pgj->id,
                 $areaId,
@@ -1281,25 +1375,14 @@ class PgjController extends Controller
             \Illuminate\Support\Facades\Log::warning('[PgjController::cleanup] Gagal restore material handover: ' . $e->getMessage());
         }
 
-        // 2. Fallback: Kembalikan dari tabel pgj_materials jika ada
+        // 2. Fallback: Hanya jika ada baris pgj_materials lama yang belum punya transaksi OUT
         foreach ($pgj->materials as $pgjMat) {
+            $matId = (int) $pgjMat->material_id;
             $qty = (float) ($pgjMat->quantity_prepared ?: $pgjMat->quantity_used);
-            if ($qty > 0 && $pgjMat->material_id) {
-                $material = Material::find($pgjMat->material_id);
+            if ($qty > 0 && $matId && empty($restoredByMat[$matId])) {
+                $material = Material::find($matId);
                 if ($material) {
-                    $material->increment('stock', $qty);
-                    if (str_contains(strtolower($material->category ?? ''), 'kabel') && $material->meter_per_roll > 0) {
-                        $material->total_rolls = $material->stock / $material->meter_per_roll;
-                        $material->save();
-                    }
-                }
-                if ($areaId) {
-                    $matStock = \App\Models\MaterialStock::where('material_id', $pgjMat->material_id)
-                        ->where('area_id', $areaId)
-                        ->first();
-                    if ($matStock) {
-                        $matStock->increment('stock', $qty);
-                    }
+                    \App\Services\MaterialService::restoreOperationalStock($material, $qty, $areaId, $pgjMat->unit);
                 }
             }
         }

@@ -233,6 +233,10 @@ class CustomerMaterialService
             if ($materialId) {
                 $material = Material::find($materialId);
                 $ppu = (float) ($material?->selling_price ?: ($material?->price_per_unit ?? 0));
+                $matStock = ($areaId && $material)
+                    ? MaterialStock::where('material_id', $material->id)->where('area_id', $areaId)->first()
+                    : null;
+                $currentStock = $matStock ? (float) $matStock->stock : ($material ? (float) $material->stock : 0);
                 
                 MaterialTransactionItem::create([
                     'material_transaction_id' => $trans->id,
@@ -241,8 +245,8 @@ class CustomerMaterialService
                     'unit' => $unit,
                     'price_per_unit' => $ppu,
                     'total_price' => $ppu * $dismantledQty,
-                    'stock_before' => $material ? (float) $material->stock : 0,
-                    'stock_after' => $material ? (float) $material->stock : 0, // Belum bertambah sebelum disetujui gudang
+                    'stock_before' => $currentStock,
+                    'stock_after' => $currentStock, // Belum bertambah sebelum disetujui gudang
                     'condition' => $conditionLabel,
                 ]);
             }
@@ -316,26 +320,12 @@ class CustomerMaterialService
                 if ($material) {
                     $customer = $dismantle->customer;
                     $areaId = $customer?->area_id;
-
-                    if ($areaId) {
-                        $matStock = MaterialStock::firstOrCreate(
-                            ['material_id' => $material->id, 'area_id' => $areaId],
-                            ['stock' => 0, 'initial_stock' => 0]
-                        );
-                        $matStock->increment('stock', (float) $dismantle->quantity);
-                        if ($material->meter_per_roll > 0) {
-                            $matStock->total_rolls = max(0, $matStock->stock / $material->meter_per_roll);
-                            $matStock->save();
-                        }
-                        if ($material->is_migration) {
-                            $totalAreaStock = (float) MaterialStock::where('material_id', $material->id)->sum('stock');
-                            $material->stock = max(0, $totalAreaStock);
-                            $material->recalcUnitTotals()->save();
-                        }
-                    } else {
-                        $material->increment('stock', (float) $dismantle->quantity);
-                        $material->recalcUnitTotals()->save();
-                    }
+                    MaterialService::restoreOperationalStock(
+                        $material,
+                        (float) $dismantle->quantity,
+                        $areaId,
+                        $dismantle->unit
+                    );
                 }
             }
 
@@ -375,56 +365,9 @@ class CustomerMaterialService
             return;
         }
 
-        $addition = (float) $quantity;
-        $itemUnit = strtolower((string) ($unit ?? $mat->unit));
+        $res = MaterialService::restoreOperationalStock($mat, $quantity, $areaId, $unit);
 
-        // Konversi jika satuan berupa roll/pack/bungkus
-        if (str_contains(strtolower((string) $mat->category), 'kabel') && in_array($itemUnit, ['roll', 'rol'])) {
-            $meterPerRoll = $mat->meter_per_roll > 0 ? (float) $mat->meter_per_roll : 1000;
-            $addition = $quantity * $meterPerRoll;
-        } elseif (($mat->category === 'Paku Klem' || stripos($mat->name, 'klem') !== false) && in_array($itemUnit, ['pack', 'bungkus'])) {
-            $pcsPerPack = $mat->pcs_per_pack > 0 ? (float) $mat->pcs_per_pack : 1;
-            $addition = $quantity * $pcsPerPack;
-        } elseif ($mat->category === 'Isolasi' && $itemUnit === 'pack') {
-            $cmPerPcs = $mat->cm_per_pcs > 0 ? (float) $mat->cm_per_pcs : 50;
-            $pcsPerPack = $mat->pcs_per_pack > 0 ? (float) $mat->pcs_per_pack : 1;
-            $addition = $quantity * ($cmPerPcs * $pcsPerPack);
-        }
-
-        // 1. Tambah Stok Area Gudang jika ada area_id
-        if ($areaId) {
-            $matStock = MaterialStock::firstOrCreate(
-                ['material_id' => $mat->id, 'area_id' => $areaId],
-                ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
-            );
-            $matStock->stock = (float) ($matStock->stock ?? 0) + $addition;
-            if ($mat->meter_per_roll > 0) {
-                $matStock->total_rolls = $matStock->stock / $mat->meter_per_roll;
-            }
-            if ($mat->pcs_per_pack > 0) {
-                $matStock->total_packs = $matStock->stock / $mat->pcs_per_pack;
-            }
-            if ($mat->cm_per_pcs > 0) {
-                $matStock->total_pieces = $matStock->stock / $mat->cm_per_pcs;
-            } else {
-                $matStock->total_pieces = $matStock->stock;
-            }
-            $matStock->save();
-
-            // Hanya sinkronkan ke master material jika merupakan material fisik khusus area (is_migration = true),
-            // agar tidak merusak stok Katalog Gudang Pusat (/products)
-            if ($mat->is_migration) {
-                $totalAreaStock = (float) MaterialStock::where('material_id', $mat->id)->sum('stock');
-                $mat->stock = max(0, $totalAreaStock);
-                $mat->recalcUnitTotals()->save();
-            }
-        } else {
-            // 2. Jika tanpa area_id, kembalikan ke Stok Global Gudang Utama
-            $mat->stock = (float) ($mat->stock ?? 0) + $addition;
-            $mat->recalcUnitTotals()->save();
-        }
-
-        \Illuminate\Support\Facades\Log::info("[CustomerMaterialService] Berhasil mengembalikan {$addition} {$mat->unit} material {$mat->name} (ID: {$mat->id}) ke gudang (Area: {$areaId}).");
+        \Illuminate\Support\Facades\Log::info("[CustomerMaterialService] Berhasil mengembalikan {$res['base_qty']} {$mat->unit} material {$mat->name} (ID: {$mat->id}) ke gudang (Area: {$areaId}).");
     }
 }
 

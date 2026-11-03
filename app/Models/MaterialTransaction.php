@@ -67,25 +67,59 @@ class MaterialTransaction extends Model
                 return;
             }
 
-            // Hanya kembalikan stok jika transaksi bertipe 'out', berstatus 'approved', dan bukan transaksi migrasi
-            $shouldRestoreStock = ($transaction->type === 'out')
-                && ($transaction->status === 'approved')
-                && !$transaction->is_migration;
+            $isStorePurchase = ($transaction->purpose === 'Pembelian Toko / Supplier')
+                || str_starts_with((string) $transaction->transaction_number, 'PO-');
 
             // Ambil item langsung dari database agar item yang sudah dihapus manual tidak terproses dua kali karena cache relasi di memori
             $items = MaterialTransactionItem::with('material')
                 ->where('material_transaction_id', $transaction->id)
                 ->get();
 
-            foreach ($items as $item) {
-                if ($shouldRestoreStock && $item->material && (float) $item->quantity > 0) {
-                    \App\Services\CustomerMaterialService::returnMaterialToWarehouse(
-                        $item->material,
-                        (float) $item->quantity,
-                        $transaction->area_id,
-                        $item->unit
-                    );
+            if ($transaction->status === 'approved' && !$transaction->is_migration) {
+                foreach ($items as $item) {
+                    $material = $item->material;
+                    $qty = (float) $item->quantity;
+                    if (!$material || $qty <= 0) {
+                        continue;
+                    }
+
+                    if ($isStorePurchase) {
+                        // Order Toko memindahkan stok dari Gudang Pusat (materials.stock) ke Gudang Cabang Area (material_stocks.stock)
+                        $baseQty = \App\Services\MaterialService::convertToBaseQuantity($material, $qty, $item->unit);
+                        if ($transaction->area_id) {
+                            $matStock = MaterialStock::where('material_id', $material->id)
+                                ->where('area_id', $transaction->area_id)
+                                ->first();
+                            if ($matStock) {
+                                $matStock->stock = max(0, (float) $matStock->stock - $baseQty);
+                                \App\Services\MaterialService::recalcAreaStockUnits($matStock, $material);
+                                $matStock->save();
+                            }
+                        }
+                        $material->stock = (float) $material->stock + $baseQty;
+                        $material->recalcUnitTotals()->save();
+                    } elseif ($transaction->type === 'out') {
+                        \App\Services\MaterialService::restoreOperationalStock(
+                            $material,
+                            $qty,
+                            $transaction->area_id,
+                            $item->unit
+                        );
+                    } elseif ($transaction->type === 'in') {
+                        $cond = trim((string) ($item->condition ?? 'Layak Pakai'));
+                        if ($cond === 'Layak Pakai') {
+                            \App\Services\MaterialService::deductOperationalStock(
+                                $material,
+                                $qty,
+                                $transaction->area_id,
+                                $item->unit
+                            );
+                        }
+                    }
                 }
+            }
+
+            foreach ($items as $item) {
                 $item->delete();
             }
         });

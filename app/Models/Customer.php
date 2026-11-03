@@ -771,6 +771,7 @@ class Customer extends Model
 
                 // Jika ONT hanya dummy/nama orang tanpa SN fisik nyata, hapus agar tidak menimbulkan ghost records
                 if ($isDummyOrNameOnly) {
+                    $ont->skipStockReturnOnDelete = true;
                     $ont->delete();
                 } else {
                     $ont->update([
@@ -909,6 +910,20 @@ class Customer extends Model
                 } catch (\Throwable $e) {
                     // ignore
                 }
+                if (!in_array((string) $pgs->status, ['completed', 'closed'], true)) {
+                    if ($pgs->prepared_ont_id) {
+                        $prepOnt = Ont::find($pgs->prepared_ont_id);
+                        if ($prepOnt) {
+                            $prepOnt->update(['status' => 'Sudah Set', 'customer_id' => null]);
+                        }
+                    }
+                    \App\Services\MaterialHandoverService::restoreDispatchedMaterials(
+                        'pgs',
+                        $pgs->id,
+                        $pgs->area_id ?: $this->area_id,
+                        $pgs->ticket_number
+                    );
+                }
                 $pgs->technicians()->detach();
                 $pgs->materials()->delete();
                 $pgs->materialRequests()->delete();
@@ -931,6 +946,20 @@ class Customer extends Model
                     }
                 } catch (\Throwable $e) {
                     // ignore
+                }
+                if (!in_array((string) $pgk->status, ['completed', 'closed'], true)) {
+                    if ($pgk->prepared_ont_id) {
+                        $prepOnt = Ont::find($pgk->prepared_ont_id);
+                        if ($prepOnt) {
+                            $prepOnt->update(['status' => 'Sudah Set', 'customer_id' => null]);
+                        }
+                    }
+                    \App\Services\MaterialHandoverService::restoreDispatchedMaterials(
+                        'pgk',
+                        $pgk->id,
+                        $pgk->area_id ?: $this->area_id,
+                        $pgk->ticket_number
+                    );
                 }
                 $pgk->technicians()->detach();
                 $pgk->materials()->delete();
@@ -959,28 +988,10 @@ class Customer extends Model
             Log::warning('[Customer::purgeConnectedData] Error handling CBP requests: ' . $e->getMessage());
         }
 
-        // 10. Tangani Seluruh Material Terpasang & Kembalikan ke Stok Gudang (Requirement 3)
+        // 10. Tangani Transaksi Material Pengeluaran (type: out) ke pelanggan ini & kembalikan stok ke gudang
+        $restoredByMat = [];
         try {
-            $installedMaterials = CustomerInstalledMaterial::where('customer_id', $this->id)->get();
-            foreach ($installedMaterials as $installed) {
-                if ($installed->material_id && (float) $installed->quantity > 0) {
-                    \App\Services\CustomerMaterialService::returnMaterialToWarehouse(
-                        (int) $installed->material_id,
-                        (float) $installed->quantity,
-                        $this->area_id,
-                        $installed->unit
-                    );
-                }
-                $installed->dismantles()->delete();
-                $installed->delete();
-            }
-        } catch (\Throwable $e) {
-            Log::warning('[Customer::purgeConnectedData] Error returning installed materials: ' . $e->getMessage());
-        }
-
-        // 11. Tangani Transaksi Material Pengeluaran (type: out) ke pelanggan ini & kembalikan stok ke gudang
-        try {
-            \App\Services\MaterialHandoverService::restoreDispatchedMaterials(
+            $restoredByMat = \App\Services\MaterialHandoverService::restoreDispatchedMaterials(
                 'instalasi',
                 $this->id,
                 $this->area_id,
@@ -991,6 +1002,29 @@ class Customer extends Model
             }
         } catch (\Throwable $e) {
             Log::warning('[Customer::purgeConnectedData] Error handling material transactions: ' . $e->getMessage());
+        }
+
+        // 11. Tangani Material Terpasang (CustomerInstalledMaterial) HANYA jika non-migrasi dan belum dipulihkan dari transaksi OUT di atas
+        try {
+            $installedMaterials = CustomerInstalledMaterial::where('customer_id', $this->id)->get();
+            foreach ($installedMaterials as $installed) {
+                $matId = (int) $installed->material_id;
+                $isMigrated = strtolower((string) ($installed->installation_source ?? '')) === 'migration';
+                $alreadyRestored = !empty($restoredByMat[$matId]);
+
+                if ($matId && (float) $installed->quantity > 0 && !$isMigrated && !$alreadyRestored) {
+                    \App\Services\CustomerMaterialService::returnMaterialToWarehouse(
+                        $matId,
+                        (float) $installed->quantity,
+                        $this->area_id,
+                        $installed->unit
+                    );
+                }
+                $installed->dismantles()->delete();
+                $installed->delete();
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[Customer::purgeConnectedData] Error returning installed materials: ' . $e->getMessage());
         }
 
         // 12. Tangani Data Reseller & Seluruh Keuangan Reseller jika ada

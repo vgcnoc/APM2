@@ -104,6 +104,7 @@ class Ont extends Model
     }
 
     public static bool $isCascadingCustomerDelete = false;
+    public bool $skipStockReturnOnDelete = false;
 
     protected static function boot()
     {
@@ -221,12 +222,14 @@ class Ont extends Model
 
         static::deleting(function ($ont) {
             // 1. Ketika ONT dihapus bukan edit, maka data pelanggan serta yang berhubungan ikut terhapus (Requirement 1)
+            $restoredViaCustomerDelete = false;
             if ($ont->customer_id && !static::$isCascadingCustomerDelete && !\App\Models\Customer::$isPurging) {
                 $customer = \App\Models\Customer::find($ont->customer_id);
                 if ($customer) {
                     static::$isCascadingCustomerDelete = true;
                     try {
                         $customer->delete();
+                        $restoredViaCustomerDelete = true;
                     } finally {
                         static::$isCascadingCustomerDelete = false;
                     }
@@ -258,35 +261,28 @@ class Ont extends Model
                 });
             }
 
-            // 3. Kembalikan unit ONT ke stok Gudang (hanya jika kondisi layak pakai, bukan rusak)
+            // 3. Kembalikan unit ONT ke stok Gudang HANYA jika ONT sebelumnya terpasang di pelanggan (customer_id ada)
+            // dan belum dipulihkan oleh penghapusan Customer (purgeConnectedData).
+            // ONT yang masih di gudang (customer_id == null) SUDAH terhitung di stok gudang sehingga tidak boleh ditambah lagi!
+            $wasInstalledOnCustomer = !empty($ont->getOriginal('customer_id')) || !empty($ont->customer_id);
             $isDamaged = in_array(strtolower((string)$ont->status), ['rusak', 'damaged']);
-            if (!$isDamaged) {
+            if (
+                $wasInstalledOnCustomer
+                && !$restoredViaCustomerDelete
+                && !$ont->skipStockReturnOnDelete
+                && !\App\Models\Customer::$isPurging
+                && !static::$isCascadingCustomerDelete
+                && !$isDamaged
+            ) {
                 try {
-                    $matItem = $ont->material_transaction_item_id 
-                        ? \App\Models\MaterialTransactionItem::with('material')->find($ont->material_transaction_item_id)
-                        : null;
-
-                    if ($matItem && $matItem->material) {
+                    $mat = \App\Services\MaterialService::resolveOntMaterial($ont);
+                    if ($mat) {
                         \App\Services\CustomerMaterialService::returnMaterialToWarehouse(
-                            $matItem->material,
+                            $mat,
                             1,
                             $ont->area_id,
-                            'unit'
+                            'pcs'
                         );
-                    } else {
-                        // Cari material ONT yang sesuai di tabel materials
-                        $mat = \App\Models\Material::where('category', 'like', '%ont%')
-                            ->orWhere('category', 'like', '%modem%')
-                            ->orWhere('name', 'like', "%{$ont->brand}%")
-                            ->first();
-                        if ($mat) {
-                            \App\Services\CustomerMaterialService::returnMaterialToWarehouse(
-                                $mat,
-                                1,
-                                $ont->area_id,
-                                'unit'
-                            );
-                        }
                     }
                 } catch (\Throwable $e) {
                     \Illuminate\Support\Facades\Log::warning('[Ont::deleting] Error returning ONT stock to warehouse: ' . $e->getMessage());

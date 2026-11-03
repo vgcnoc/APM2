@@ -234,5 +234,268 @@ class MaterialService
             return $target;
         });
     }
+
+    /**
+     * Konversi kuantitas input ke satuan dasar (base unit) material bila diinput dalam roll/pack/bungkus.
+     */
+    public static function convertToBaseQuantity(Material $material, float $quantity, ?string $unit = null): float
+    {
+        if ($quantity <= 0) {
+            return 0.0;
+        }
+
+        $baseQty = (float) $quantity;
+        $itemUnit = strtolower(trim((string) ($unit ?? $material->unit ?? '')));
+        $matUnit = strtolower(trim((string) ($material->unit ?? '')));
+        $catLower = strtolower((string) ($material->category ?? ''));
+        $nameLower = strtolower((string) ($material->name ?? ''));
+
+        if ($itemUnit === '' || $itemUnit === $matUnit) {
+            return $baseQty;
+        }
+
+        if ((str_contains($catLower, 'kabel') || str_contains($nameLower, 'kabel') || str_contains($nameLower, 'dropcore')) && in_array($itemUnit, ['roll', 'rol'], true)) {
+            $meterPerRoll = (float) $material->meter_per_roll > 0 ? (float) $material->meter_per_roll : 1000.0;
+            return $quantity * $meterPerRoll;
+        }
+
+        if (($material->category === 'Paku Klem' || str_contains($nameLower, 'klem')) && in_array($itemUnit, ['pack', 'bungkus'], true)) {
+            $pcsPerPack = (float) $material->pcs_per_pack > 0 ? (float) $material->pcs_per_pack : 1.0;
+            return $quantity * $pcsPerPack;
+        }
+
+        if (($material->category === 'Isolasi' || str_contains($nameLower, 'isolasi')) && in_array($itemUnit, ['pack', 'bungkus'], true)) {
+            $cmPerPcs = (float) $material->cm_per_pcs > 0 ? (float) $material->cm_per_pcs : 50.0;
+            $pcsPerPack = (float) $material->pcs_per_pack > 0 ? (float) $material->pcs_per_pack : 1.0;
+            return $quantity * ($cmPerPcs * $pcsPerPack);
+        }
+
+        return $baseQty;
+    }
+
+    /**
+     * Hitung ulang konversi total_rolls, total_packs, dan total_pieces pada MaterialStock area.
+     */
+    public static function recalcAreaStockUnits(MaterialStock $matStock, Material $material): MaterialStock
+    {
+        $stock = max(0.0, (float) ($matStock->stock ?? 0));
+        $matStock->stock = $stock;
+
+        $category = strtolower((string) ($material->category ?? ''));
+        $isIsolasi = str_contains(strtolower((string) ($material->name ?? '')), 'isolasi') || str_contains($category, 'isolasi');
+
+        if ((float) $material->meter_per_roll > 0) {
+            $matStock->total_rolls = $stock / (float) $material->meter_per_roll;
+        }
+
+        if ($isIsolasi) {
+            $cmPerPcs = (float) $material->cm_per_pcs > 0 ? (float) $material->cm_per_pcs : 50.0;
+            $pcsPerPack = (float) $material->pcs_per_pack > 0 ? (float) $material->pcs_per_pack : 1.0;
+            $matStock->total_pieces = $stock / $cmPerPcs;
+            $matStock->total_packs = $stock / ($cmPerPcs * $pcsPerPack);
+        } else {
+            if ((float) $material->pcs_per_pack > 0) {
+                $matStock->total_packs = $stock / (float) $material->pcs_per_pack;
+            }
+            if ((float) $material->meter_per_roll <= 0) {
+                $matStock->total_pieces = $stock;
+            }
+        }
+
+        return $matStock;
+    }
+
+    /**
+     * Tentukan apakah materials.stock (master) boleh disinkronkan dari sum(material_stocks.stock).
+     * Produk katalog Gudang Pusat / Order Toko TIDAK disinkronkan agar stok Gudang Pusat tetap terpisah dari stok cabang.
+     */
+    public static function shouldSyncMasterStockFromAreas(Material $material): bool
+    {
+        if ($material->is_migration || (int) $material->id <= 260) {
+            return true;
+        }
+
+        $hasOrderToko = MaterialTransactionItem::where('material_id', $material->id)
+            ->whereHas('transaction', function ($q) {
+                $q->where('purpose', 'Pembelian Toko / Supplier');
+            })
+            ->exists();
+
+        if ($hasOrderToko) {
+            return false;
+        }
+
+        return MaterialTransactionItem::where('material_id', $material->id)
+            ->whereHas('transaction', function ($q) {
+                $q->where('transaction_number', 'like', 'IN-AREA-%')
+                  ->orWhere('purpose', 'like', '%Material Fisik Area%');
+            })
+            ->exists();
+    }
+
+    /**
+     * Sinkronkan materials.stock dengan total stok seluruh area khusus untuk material fisik area / migrasi.
+     */
+    public static function syncMasterStockIfAreaOnly(Material $material): void
+    {
+        if (self::shouldSyncMasterStockFromAreas($material)) {
+            $totalAreaStock = (float) MaterialStock::where('material_id', $material->id)->sum('stock');
+            $material->stock = max(0.0, $totalAreaStock);
+            $material->recalcUnitTotals()->save();
+        }
+    }
+
+    /**
+     * Potong stok operasional secara atomik & konsisten (prioritas Gudang Area jika areaId tersedia).
+     *
+     * @return array{stock_before: float, stock_after: float, base_qty: float}
+     */
+    public static function deductOperationalStock(
+        Material $material,
+        float $quantity,
+        ?int $areaId = null,
+        ?string $unit = null
+    ): array {
+        $baseQty = self::convertToBaseQuantity($material, $quantity, $unit);
+        if ($baseQty <= 0) {
+            $cur = $areaId
+                ? (float) (MaterialStock::where('material_id', $material->id)->where('area_id', $areaId)->value('stock') ?? 0)
+                : (float) ($material->stock ?? 0);
+            return ['stock_before' => $cur, 'stock_after' => $cur, 'base_qty' => 0.0];
+        }
+
+        if ($areaId) {
+            $matStock = MaterialStock::firstOrCreate(
+                ['material_id' => $material->id, 'area_id' => $areaId],
+                ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
+            );
+            $stockBefore = (float) ($matStock->stock ?? 0);
+            $stockAfter = max(0.0, $stockBefore - $baseQty);
+            $matStock->stock = $stockAfter;
+            self::recalcAreaStockUnits($matStock, $material)->save();
+            self::syncMasterStockIfAreaOnly($material);
+
+            return [
+                'stock_before' => $stockBefore,
+                'stock_after' => $stockAfter,
+                'base_qty' => $baseQty,
+            ];
+        }
+
+        $stockBefore = (float) ($material->stock ?? 0);
+        $stockAfter = max(0.0, $stockBefore - $baseQty);
+        $material->stock = $stockAfter;
+        $material->recalcUnitTotals()->save();
+
+        return [
+            'stock_before' => $stockBefore,
+            'stock_after' => $stockAfter,
+            'base_qty' => $baseQty,
+        ];
+    }
+
+    /**
+     * Kembalikan / tambah stok operasional secara atomik & konsisten (prioritas Gudang Area jika areaId tersedia).
+     *
+     * @return array{stock_before: float, stock_after: float, base_qty: float}
+     */
+    public static function restoreOperationalStock(
+        Material $material,
+        float $quantity,
+        ?int $areaId = null,
+        ?string $unit = null
+    ): array {
+        $baseQty = self::convertToBaseQuantity($material, $quantity, $unit);
+        if ($baseQty <= 0) {
+            $cur = $areaId
+                ? (float) (MaterialStock::where('material_id', $material->id)->where('area_id', $areaId)->value('stock') ?? 0)
+                : (float) ($material->stock ?? 0);
+            return ['stock_before' => $cur, 'stock_after' => $cur, 'base_qty' => 0.0];
+        }
+
+        if ($areaId) {
+            $matStock = MaterialStock::firstOrCreate(
+                ['material_id' => $material->id, 'area_id' => $areaId],
+                ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
+            );
+            $stockBefore = (float) ($matStock->stock ?? 0);
+            $stockAfter = $stockBefore + $baseQty;
+            $matStock->stock = $stockAfter;
+            self::recalcAreaStockUnits($matStock, $material)->save();
+            self::syncMasterStockIfAreaOnly($material);
+
+            return [
+                'stock_before' => $stockBefore,
+                'stock_after' => $stockAfter,
+                'base_qty' => $baseQty,
+            ];
+        }
+
+        $stockBefore = (float) ($material->stock ?? 0);
+        $stockAfter = $stockBefore + $baseQty;
+        $material->stock = $stockAfter;
+        $material->recalcUnitTotals()->save();
+
+        return [
+            'stock_before' => $stockBefore,
+            'stock_after' => $stockAfter,
+            'base_qty' => $baseQty,
+        ];
+    }
+
+    /**
+     * Resolusi model Material yang terkait dengan suatu unit perangkat ONT.
+     */
+    public static function resolveOntMaterial(\App\Models\Ont $ont): ?Material
+    {
+        if (!empty($ont->material_transaction_item_id)) {
+            $mItem = MaterialTransactionItem::with('material')->find($ont->material_transaction_item_id);
+            if ($mItem && $mItem->material) {
+                return $mItem->material;
+            }
+        }
+
+        $brand = trim((string) ($ont->brand ?? ''));
+        $model = trim((string) ($ont->model ?? ''));
+
+        if ($brand === '' && $model === '') {
+            return null;
+        }
+
+        $baseQuery = Material::where(function ($q) {
+            $q->where('is_active', true)->orWhereNull('is_active');
+        })->where(function ($q) {
+            $q->where('category', 'ONT')
+              ->orWhere('category', 'like', '%ont%')
+              ->orWhere('category', 'like', '%modem%');
+        });
+
+        if ($brand !== '' && $model !== '' && stripos($brand, $model) === false) {
+            $exact = (clone $baseQuery)
+                ->where('name', 'like', "%{$brand}%")
+                ->where('name', 'like', "%{$model}%")
+                ->orderByRaw('CASE WHEN id > 260 THEN 0 ELSE 1 END')
+                ->first();
+            if ($exact) {
+                return $exact;
+            }
+        }
+
+        if ($brand !== '') {
+            $byBrand = (clone $baseQuery)
+                ->where(function ($q) use ($brand) {
+                    $q->whereRaw('LOWER(TRIM(name)) = ?', [strtolower($brand)])
+                      ->orWhere('name', 'like', "%{$brand}%");
+                })
+                ->orderByRaw('CASE WHEN LOWER(TRIM(name)) = ? THEN 0 ELSE 1 END', [strtolower($brand)])
+                ->orderByRaw('CASE WHEN id > 260 THEN 0 ELSE 1 END')
+                ->first();
+            if ($byBrand) {
+                return $byBrand;
+            }
+        }
+
+        return null;
+    }
 }
 

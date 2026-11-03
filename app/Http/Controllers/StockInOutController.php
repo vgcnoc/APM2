@@ -139,10 +139,44 @@ class StockInOutController extends Controller
                 'total_cost' => 0 
             ]);
 
+            $totalCost = 0;
+
             foreach ($validated['items'] as $item) {
                 $material = Material::findOrFail($item['material_id']);
                 $quantity = (float) $item['quantity'];
                 $itemCondition = $item['condition'] ?? 'Layak Pakai';
+                $targetAreaId = $matchedArea?->id;
+
+                $currentStock = $targetAreaId
+                    ? (float) (\App\Models\MaterialStock::where('material_id', $material->id)->where('area_id', $targetAreaId)->value('stock') ?? 0)
+                    : (float) $material->stock;
+                $stockBefore = $currentStock;
+                $stockAfter = $currentStock;
+
+                // Update Stock (Untuk retur 'in', hanya tambah stok aktif jika kondisi Layak Pakai)
+                $shouldAdjustStock = ($validated['type'] === 'out') || ($itemCondition === 'Layak Pakai');
+                if ($shouldAdjustStock) {
+                    if ($validated['type'] === 'out') {
+                        $stockRes = \App\Services\MaterialService::deductOperationalStock(
+                            $material,
+                            $quantity,
+                            $targetAreaId,
+                            $material->unit
+                        );
+                    } else {
+                        $stockRes = \App\Services\MaterialService::restoreOperationalStock(
+                            $material,
+                            $quantity,
+                            $targetAreaId,
+                            $material->unit
+                        );
+                    }
+                    $stockBefore = $stockRes['stock_before'];
+                    $stockAfter = $stockRes['stock_after'];
+                }
+
+                $itemCost = $quantity * (float) $material->price_per_unit;
+                $totalCost += $itemCost;
 
                 MaterialTransactionItem::create([
                     'material_transaction_id' => $transaction->id,
@@ -150,43 +184,14 @@ class StockInOutController extends Controller
                     'quantity' => $quantity,
                     'unit' => $material->unit,
                     'price_per_unit' => $material->price_per_unit,
-                    'total_price' => $quantity * $material->price_per_unit,
+                    'total_price' => $itemCost,
+                    'stock_before' => $stockBefore,
+                    'stock_after' => $stockAfter,
                     'condition' => $itemCondition,
                 ]);
-
-                // Update Stock (Untuk retur 'in', hanya tambah stok aktif jika kondisi Layak Pakai)
-                $shouldAdjustStock = ($validated['type'] === 'out') || ($itemCondition === 'Layak Pakai');
-                if ($shouldAdjustStock) {
-                    if ($matchedArea) {
-                        $matStock = \App\Models\MaterialStock::firstOrCreate(
-                            ['material_id' => $material->id, 'area_id' => $matchedArea->id],
-                            ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
-                        );
-                        $matStock->stock = $validated['type'] === 'out'
-                            ? max(0, (float) $matStock->stock - $quantity)
-                            : ((float) $matStock->stock + $quantity);
-                        if ($material->meter_per_roll > 0) {
-                            $matStock->total_rolls = max(0, $matStock->stock / $material->meter_per_roll);
-                        } else {
-                            $matStock->total_pieces = max(0, $matStock->stock);
-                        }
-                        $matStock->save();
-
-                        if ($material->is_migration) {
-                            $totalAreaStock = (float) \App\Models\MaterialStock::where('material_id', $material->id)->sum('stock');
-                            $material->stock = max(0, $totalAreaStock);
-                            $material->recalcUnitTotals()->save();
-                        }
-                    } else {
-                        if ($validated['type'] === 'out') {
-                            $material->stock = max(0, (float) $material->stock - $quantity);
-                        } else {
-                            $material->stock = (float) $material->stock + $quantity;
-                        }
-                        $material->recalcUnitTotals()->save();
-                    }
-                }
             }
+
+            $transaction->update(['total_cost' => $totalCost]);
 
             DB::commit();
             return redirect()->back()->with('success', 'Transaksi mutasi berhasil dicatat.');
@@ -198,22 +203,44 @@ class StockInOutController extends Controller
 
     public function destroy($id)
     {
-        $transaction = MaterialTransaction::findOrFail($id);
+        $transaction = MaterialTransaction::with('items.material')->findOrFail($id);
 
         DB::beginTransaction();
         try {
-            // Revert stock
-            foreach ($transaction->items as $item) {
-                $material = $item->material;
-                if ($material) {
+            $targetAreaId = $transaction->area_id;
+            if (!$targetAreaId && $transaction->technician_name) {
+                $targetAreaId = \App\Models\Area::where('name', trim($transaction->technician_name))->value('id');
+            }
+
+            // Revert stock secara simetris per area atau gudang utama
+            if ($transaction->status === 'approved' && !$transaction->is_migration) {
+                foreach ($transaction->items as $item) {
+                    $material = $item->material;
+                    $qty = (float) $item->quantity;
+                    if (!$material || $qty <= 0) {
+                        continue;
+                    }
+
                     if ($transaction->type === 'out') {
                         // Reverting an 'out' transaction means adding stock back
-                        $material->stock += $item->quantity;
+                        \App\Services\MaterialService::restoreOperationalStock(
+                            $material,
+                            $qty,
+                            $targetAreaId,
+                            $item->unit
+                        );
                     } else {
-                        // Reverting an 'in' transaction means removing stock
-                        $material->stock -= $item->quantity;
+                        // Reverting an 'in' transaction only deducts if it previously added Layak Pakai stock
+                        $itemCond = trim((string) ($item->condition ?? 'Layak Pakai'));
+                        if ($itemCond === 'Layak Pakai') {
+                            \App\Services\MaterialService::deductOperationalStock(
+                                $material,
+                                $qty,
+                                $targetAreaId,
+                                $item->unit
+                            );
+                        }
                     }
-                    $material->save();
                 }
             }
 

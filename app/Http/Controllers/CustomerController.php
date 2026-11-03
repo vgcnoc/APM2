@@ -3278,27 +3278,16 @@ class CustomerController extends Controller
 
             foreach ($oldTrans as $ot) {
                 $restoreAreaId = $ot->area_id ?: $customer->area_id;
-                foreach ($ot->items as $oi) {
-                    $mStock = \App\Models\MaterialStock::where('material_id', $oi->material_id)
-                        ->where('area_id', $restoreAreaId)
-                        ->first();
-                    if ($mStock) {
-                        $mStock->increment('stock', (float) $oi->quantity);
-                        if ($oi->material && $oi->material->meter_per_roll > 0) {
-                            $mStock->total_rolls = max(0, $mStock->stock / $oi->material->meter_per_roll);
-                        } else {
-                            $mStock->total_pieces = max(0, $mStock->stock);
+                if ($ot->status === 'approved' && !$ot->is_migration) {
+                    foreach ($ot->items as $oi) {
+                        if ($oi->material && (float) $oi->quantity > 0) {
+                            \App\Services\MaterialService::restoreOperationalStock(
+                                $oi->material,
+                                (float) $oi->quantity,
+                                $restoreAreaId,
+                                $oi->unit
+                            );
                         }
-                        $mStock->save();
-                    }
-                    // Hanya sinkronkan stok master material jika material khusus area (is_migration = true),
-                    // agar tidak menimpa stok Katalog Gudang Pusat (/products)
-                    if ($oi->material && $oi->material->is_migration) {
-                        $totalAreaStock = \App\Models\MaterialStock::where('material_id', $oi->material_id)->sum('stock');
-                        $oi->material->update([
-                            'stock' => max(0, $totalAreaStock),
-                            'total_rolls' => ($oi->material->meter_per_roll > 0) ? max(0, $totalAreaStock / $oi->material->meter_per_roll) : $oi->material->total_rolls,
-                        ]);
                     }
                 }
                 $ot->skipStockRestoreOnDelete = true;
@@ -3306,18 +3295,13 @@ class CustomerController extends Controller
                 $ot->delete();
             }
 
-            // Bersihkan juga transaksi retur sisa lama agar sinkron
-            $oldReturTrans = \App\Models\MaterialTransaction::where('customer_id', $customer->id)
-                ->where(function($q) {
-                    $q->where('transaction_number', 'like', 'RTR-EXCESS-%')
-                      ->orWhere('transaction_number', 'like', 'RTR-INS-%');
-                })
-                ->get();
-            foreach ($oldReturTrans as $ort) {
-                $ort->skipStockRestoreOnDelete = true;
-                $ort->items()->delete();
-                $ort->delete();
-            }
+            // Bersihkan & balikkan juga transaksi retur sisa lama (termasuk jika sudah sempat diterima gudang) agar sinkron tanpa double-stock
+            \App\Services\MaterialHandoverService::replacePendingOrApprovedReturnHandover(
+                'instalasi',
+                $customer->id,
+                $customer->area_id,
+                $customer->customer_code ?? ('CUST-' . $customer->id)
+            );
 
             $allocatedDetails = [];
             $returnFormattedDetails = [];
@@ -3386,9 +3370,10 @@ class CustomerController extends Controller
                             $allocatedDetails[] = $material->name . ' (' . $assignedQty . ' ' . $unitStr . ')';
                         }
 
-                        // Jika ada bekal awal yang dibawa teknisi (> usedQty), kurangi stok sebesar bekal yang dibawa,
-                        // sisa yang tidak terpakai akan dikembalikan ke stok gudang area saat petugas menerima form serah terima.
-                        $deductQty = ($assignedQty > 0) ? $assignedQty : $usedQty;
+                        // Jika ada bekal awal yang dibawa teknisi (> usedQty), kurangi stok sebesar bekal yang dibawa
+                        // (sisa yang tidak terpakai akan dikembalikan ke stok gudang area saat petugas menerima form serah terima).
+                        // Jika pemakaian lapangan melebihi bekal awal (usedQty > assignedQty), potong sesuai aktual terpakai!
+                        $deductQty = max($assignedQty, $usedQty);
 
                         // 1. Catat pengeluaran material bekal / pemakaian instalasi
                         if ($deductQty > 0) {
@@ -3399,7 +3384,13 @@ class CustomerController extends Controller
                                 'actual_used' => $usedQty,
                                 'assigned_qty' => $assignedQty,
                             ];
-                            $rincianNotesUsed[] = "- {$material->name}: {$usedQty} {$unitStr} terpasang" . ($assignedQty > $usedQty ? " (Bekal dibawa: {$assignedQty} {$unitStr}, Sisa dikembalikan: " . ($assignedQty - $usedQty) . " {$unitStr})" : "");
+                            $extraInfo = '';
+                            if ($assignedQty > $usedQty) {
+                                $extraInfo = " (Bekal dibawa: {$assignedQty} {$unitStr}, Sisa dikembalikan: " . ($assignedQty - $usedQty) . " {$unitStr})";
+                            } elseif ($assignedQty > 0 && $usedQty > $assignedQty) {
+                                $extraInfo = " (Bekal awal: {$assignedQty} {$unitStr}, Tambahan lapangan: " . ($usedQty - $assignedQty) . " {$unitStr})";
+                            }
+                            $rincianNotesUsed[] = "- {$material->name}: {$usedQty} {$unitStr} terpasang{$extraInfo}";
                             $usageDetails[] = $material->name . ' (' . $usedQty . ' ' . $unitStr . ')';
                         }
                         
@@ -3420,39 +3411,32 @@ class CustomerController extends Controller
                 // Tambahkan ONT ke dalam pemakaian (usedItems) agar terpotong dari Stok Area dan masuk log Riwayat Order
                 $customerOnts = $customer->onts()->where('status', 'active')->get();
                 foreach ($customerOnts as $cOnt) {
-                    $ontMat = null;
-                    if ($cOnt->material_transaction_item_id) {
-                        $mItem = \App\Models\MaterialTransactionItem::find($cOnt->material_transaction_item_id);
-                        $ontMat = $mItem?->material;
-                    }
-                    if (!$ontMat) {
-                        $ontMat = \App\Models\Material::where('category', 'ONT')
-                            ->where(function ($q) use ($cOnt) {
-                                $brand = trim($cOnt->brand ?? '');
-                                $model = trim($cOnt->model ?? '');
-                                if ($brand && $model) {
-                                    $q->where('name', 'like', "%{$brand}%")->where('name', 'like', "%{$model}%");
-                                } elseif ($brand) {
-                                    $q->where('name', 'like', "%{$brand}%");
-                                }
-                            })->first();
-                    }
+                    $ontMat = \App\Services\MaterialService::resolveOntMaterial($cOnt);
                     if ($ontMat) {
-                        $usedItems[] = [
-                            'material' => $ontMat,
-                            'qty' => 1,
-                            'unit' => 'pcs',
-                            'actual_used' => 1,
-                            'assigned_qty' => 1,
-                        ];
-                        $rincianNotesUsed[] = "- {$ontMat->name}: 1 pcs (SN: {$cOnt->serial_number})";
+                        $alreadyInUsed = false;
+                        foreach ($usedItems as $existingUi) {
+                            if ($existingUi['material']->id === $ontMat->id) {
+                                $alreadyInUsed = true;
+                                break;
+                            }
+                        }
+                        if (!$alreadyInUsed) {
+                            $usedItems[] = [
+                                'material' => $ontMat,
+                                'qty' => 1,
+                                'unit' => 'pcs',
+                                'actual_used' => 1,
+                                'assigned_qty' => 1,
+                            ];
+                            $rincianNotesUsed[] = "- {$ontMat->name}: 1 pcs (SN: {$cOnt->serial_number})";
+                        }
                     }
                 }
 
                 // Proses Instalasi (Memotong Stok Area sesuai Pemakaian / Bekal)
                 if (count($usedItems) > 0) {
                     $transactionOut = \App\Models\MaterialTransaction::create([
-                        'transaction_number' => 'OUT-INSTALASI-' . date('YmdHis'),
+                        'transaction_number' => 'OUT-INSTALASI-' . date('YmdHis') . '-' . $customer->id,
                         'type' => 'out',
                         'status' => 'approved',
                         'date' => now(),
@@ -3469,12 +3453,12 @@ class CustomerController extends Controller
 
                     $totalCostOut = 0;
                     foreach ($usedItems as $ui) {
-                        $materialStock = \App\Models\MaterialStock::where('material_id', $ui['material']->id)
-                                        ->where('area_id', $customer->area_id)
-                                        ->first();
-                        
-                        $stockBefore = $materialStock ? $materialStock->stock : 0;
-                        $stockAfter = $stockBefore - $ui['qty'];
+                        $stockRes = \App\Services\MaterialService::deductOperationalStock(
+                            $ui['material'],
+                            (float) $ui['qty'],
+                            $customer->area_id,
+                            $ui['unit']
+                        );
 
                         $ppuOut = $ui['material']->selling_price ?: ($ui['material']->price_per_unit ?? 0);
                         if (strtolower($ui['material']->category ?? '') === 'kabel' && strtolower($ui['unit'] ?? '') === 'meter') {
@@ -3491,51 +3475,21 @@ class CustomerController extends Controller
                             'unit' => $ui['unit'],
                             'price_per_unit' => $ppuOut,
                             'total_price' => $totalItemPrice,
-                            'stock_before' => $stockBefore,
-                            'stock_after' => $stockAfter,
+                            'stock_before' => $stockRes['stock_before'],
+                            'stock_after' => $stockRes['stock_after'],
                             'condition' => 'Terpasang/Digunakan'
                         ]);
-
-                        if ($materialStock) {
-                            $materialStock->update([
-                                'stock' => max(0, (float)$materialStock->stock - $ui['qty'])
-                            ]);
-                            if ($ui['material']->meter_per_roll > 0) {
-                                $materialStock->total_rolls = max(0, $materialStock->stock / $ui['material']->meter_per_roll);
-                            } else {
-                                $materialStock->total_pieces = max(0, $materialStock->stock);
-                            }
-                            $materialStock->save();
-                        } else {
-                            $materialStock = \App\Models\MaterialStock::create([
-                                'material_id' => $ui['material']->id,
-                                'area_id' => $customer->area_id,
-                                'stock' => 0,
-                                'initial_stock' => 0,
-                                'total_rolls' => 0,
-                                'total_packs' => 0,
-                                'total_pieces' => 0
-                            ]);
-                        }
-
-                        // Hanya sinkronkan stok master material jika material khusus area (is_migration = true)
-                        if ($ui['material']->is_migration) {
-                            $totalAreaStock = \App\Models\MaterialStock::where('material_id', $ui['material']->id)->sum('stock');
-                            $ui['material']->update([
-                                'stock' => max(0, $totalAreaStock),
-                                'total_rolls' => $ui['material']->meter_per_roll > 0 ? max(0, $totalAreaStock / $ui['material']->meter_per_roll) : $ui['material']->total_rolls,
-                            ]);
-                        }
                     }
                     $transactionOut->update(['total_cost' => $totalCostOut]);
                 }
 
                 // Proses Serah Terima Pengembalian Sisa ke Gudang (Verifikasi Fisik oleh Petugas Gudang / Ka. Teknisi)
                 if (count($returnItems) > 0) {
+                    $custRef = $customer->customer_code ?: ($customer->customer_id ?? ('CUST-' . $customer->id));
                     $returnTrx = \App\Services\MaterialHandoverService::submitReturnHandover(
                         sourceType: 'instalasi',
                         sourceId: $customer->id,
-                        sourceRef: $customer->customer_id ?? ('CUST-' . $customer->id),
+                        sourceRef: $custRef,
                         items: array_map(function ($ri) {
                             return [
                                 'material_id' => $ri['material']->id,
@@ -3546,7 +3500,7 @@ class CustomerController extends Controller
                         }, $returnItems),
                         technicianName: auth()->user()->name,
                         areaId: $customer->area_id,
-                        notes: "Pengembalian Sisa Material Instalasi Pelanggan {$customer->name} (" . ($customer->customer_id ?? 'ID:'.$customer->id) . ")\nRincian Hitungan Sisa:\n" . implode("\n", $rincianNotesReturn)
+                        notes: "Pengembalian Sisa Material Instalasi Pelanggan {$customer->name} ({$custRef})\nRincian Hitungan Sisa:\n" . implode("\n", $rincianNotesReturn)
                     );
                 }
             }
@@ -4675,28 +4629,16 @@ class CustomerController extends Controller
 
         foreach ($prevAllocations as $pa) {
             $allocAreaId = $pa->area_id ?: $targetAreaId;
-            foreach ($pa->items as $pi) {
-                if ($allocAreaId) {
-                    $mStock = \App\Models\MaterialStock::where('material_id', $pi->material_id)
-                        ->where('area_id', $allocAreaId)
-                        ->first();
-                    if ($mStock) {
-                        $mStock->increment('stock', (float) $pi->quantity);
-                        if ($pi->material && $pi->material->meter_per_roll > 0) {
-                            $mStock->total_rolls = max(0, $mStock->stock / $pi->material->meter_per_roll);
-                        } else {
-                            $mStock->total_pieces = max(0, $mStock->stock);
-                        }
-                        $mStock->save();
+            if ($pa->status === 'approved' && !$pa->is_migration) {
+                foreach ($pa->items as $pi) {
+                    if ($pi->material && (float) $pi->quantity > 0) {
+                        \App\Services\MaterialService::restoreOperationalStock(
+                            $pi->material,
+                            (float) $pi->quantity,
+                            $allocAreaId,
+                            $pi->unit
+                        );
                     }
-                }
-                // Hanya sinkronkan stok master material jika material khusus area (is_migration = true)
-                if ($pi->material && $pi->material->is_migration) {
-                    $totalAreaStock = \App\Models\MaterialStock::where('material_id', $pi->material_id)->sum('stock');
-                    $pi->material->update([
-                        'stock' => max(0, $totalAreaStock),
-                        'total_rolls' => ($pi->material->meter_per_roll > 0) ? max(0, $totalAreaStock / $pi->material->meter_per_roll) : $pi->material->total_rolls,
-                    ]);
                 }
             }
             $pa->skipStockRestoreOnDelete = true;
@@ -4803,23 +4745,7 @@ class CustomerController extends Controller
         // Tambahkan ONT ke alokasi stok bekal jika belum ada di deductItems
         if (!empty($onts)) {
             foreach ($onts as $ont) {
-                $ontMaterial = null;
-                if ($ont->material_transaction_item_id) {
-                    $mItem = \App\Models\MaterialTransactionItem::find($ont->material_transaction_item_id);
-                    $ontMaterial = $mItem?->material;
-                }
-                if (!$ontMaterial) {
-                    $ontMaterial = \App\Models\Material::where('category', 'ONT')
-                        ->where(function ($q) use ($ont) {
-                            $brand = trim($ont->brand ?? '');
-                            $model = trim($ont->model ?? '');
-                            if ($brand && $model) {
-                                $q->where('name', 'like', "%{$brand}%")->where('name', 'like', "%{$model}%");
-                            } elseif ($brand) {
-                                $q->where('name', 'like', "%{$brand}%");
-                            }
-                        })->first();
-                }
+                $ontMaterial = \App\Services\MaterialService::resolveOntMaterial($ont);
 
                 if ($ontMaterial) {
                     $alreadyInDeduct = false;
@@ -4868,13 +4794,12 @@ class CustomerController extends Controller
                 $qty = (float) $di['qty'];
                 $unit = $di['unit'];
 
-                $matStock = \App\Models\MaterialStock::firstOrCreate(
-                    ['material_id' => $mat->id, 'area_id' => $targetAreaId],
-                    ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
+                $stockRes = \App\Services\MaterialService::deductOperationalStock(
+                    $mat,
+                    $qty,
+                    $targetAreaId,
+                    $unit
                 );
-
-                $stockBefore = (float) $matStock->stock;
-                $stockAfter = max(0, $stockBefore - $qty);
 
                 $ppu = $mat->selling_price ?: ($mat->price_per_unit ?? 0);
                 if (strtolower($mat->category ?? '') === 'kabel' && strtolower($unit) === 'meter') {
@@ -4891,27 +4816,10 @@ class CustomerController extends Controller
                     'unit' => $unit,
                     'price_per_unit' => $ppu,
                     'total_price' => $itemTotal,
-                    'stock_before' => $stockBefore,
-                    'stock_after' => $stockAfter,
+                    'stock_before' => $stockRes['stock_before'],
+                    'stock_after' => $stockRes['stock_after'],
                     'condition' => 'Bekal Instalasi',
                 ]);
-
-                $matStock->update(['stock' => $stockAfter]);
-                if ($mat->meter_per_roll > 0) {
-                    $matStock->total_rolls = max(0, $matStock->stock / $mat->meter_per_roll);
-                } else {
-                    $matStock->total_pieces = max(0, $matStock->stock);
-                }
-                $matStock->save();
-
-                // Hanya sinkronkan stok master material jika material khusus area (is_migration = true)
-                if ($mat->is_migration) {
-                    $totalAreaStock = \App\Models\MaterialStock::where('material_id', $mat->id)->sum('stock');
-                    $mat->update([
-                        'stock' => max(0, $totalAreaStock),
-                        'total_rolls' => $mat->meter_per_roll > 0 ? max(0, $totalAreaStock / $mat->meter_per_roll) : $mat->total_rolls,
-                    ]);
-                }
             }
 
             $transactionOut->update(['total_cost' => $totalCost]);
@@ -6069,8 +5977,9 @@ class CustomerController extends Controller
         ]);
 
         // 1. Kembalikan seluruh material pengeluaran instalasi (OUT) ke stok gudang & bersihkan transaksi
+        $restoredByMat = [];
         try {
-            \App\Services\MaterialHandoverService::restoreDispatchedMaterials(
+            $restoredByMat = \App\Services\MaterialHandoverService::restoreDispatchedMaterials(
                 'instalasi',
                 $customer->id,
                 $customer->area_id,
@@ -6080,13 +5989,17 @@ class CustomerController extends Controller
             \Illuminate\Support\Facades\Log::warning('[CustomerController::cancel] Gagal restore material handover: ' . $e->getMessage());
         }
 
-        // 2. Kembalikan seluruh material terpasang (CustomerInstalledMaterial) ke stok gudang
+        // 2. Kembalikan material terpasang (CustomerInstalledMaterial) HANYA jika non-migrasi dan belum dipulihkan dari transaksi OUT di atas
         try {
             $installedMaterials = \App\Models\CustomerInstalledMaterial::where('customer_id', $customer->id)->get();
             foreach ($installedMaterials as $installed) {
-                if ($installed->material_id && (float) $installed->quantity > 0) {
+                $matId = (int) $installed->material_id;
+                $isMigrated = strtolower((string) ($installed->installation_source ?? '')) === 'migration';
+                $alreadyRestored = !empty($restoredByMat[$matId]);
+
+                if ($matId && (float) $installed->quantity > 0 && !$isMigrated && !$alreadyRestored) {
                     \App\Services\CustomerMaterialService::returnMaterialToWarehouse(
-                        (int) $installed->material_id,
+                        $matId,
                         (float) $installed->quantity,
                         $customer->area_id,
                         $installed->unit

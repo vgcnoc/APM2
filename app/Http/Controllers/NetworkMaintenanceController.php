@@ -424,6 +424,7 @@ class NetworkMaintenanceController extends Controller
                     'area_id' => $maintenance->area_id,
                 ]);
 
+                $totalMaintCost = 0;
                 foreach ($validated['materials'] as $matItem) {
                     if (empty($matItem['material_id'])) continue;
                     $qty = (float) ($matItem['quantity_prepared'] ?? ($matItem['quantity'] ?? 0));
@@ -432,6 +433,15 @@ class NetworkMaintenanceController extends Controller
                     $material = Material::find($matItem['material_id']);
                     if ($material) {
                         $itemUnit = $matItem['unit'] ?? ($material->unit ?? 'pcs');
+                        $stockRes = \App\Services\MaterialService::deductOperationalStock($material, $qty, $maintenance->area_id, $itemUnit);
+
+                        $ppu = (float) ($material->selling_price ?: ($material->price_per_unit ?? 0));
+                        if (strtolower($material->category ?? '') === 'kabel' && strtolower($itemUnit) === 'meter') {
+                            $mpr = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
+                            $ppu = $ppu / $mpr;
+                        }
+                        $itemCost = $ppu * $qty;
+                        $totalMaintCost += $itemCost;
 
                         NetworkMaintenanceMaterial::create([
                             'network_maintenance_id' => $maintenance->id,
@@ -439,7 +449,7 @@ class NetworkMaintenanceController extends Controller
                             'material_transaction_item_id' => $matItem['material_transaction_item_id'] ?? null,
                             'trx_number' => $matItem['trx_number'] ?? null,
                             'quantity_prepared' => $qty,
-                            'quantity_used' => 0,
+                            'quantity_used' => $qty,
                             'quantity_returned' => 0,
                             'unit' => $itemUnit,
                             'notes' => $matItem['notes'] ?? null,
@@ -450,32 +460,14 @@ class NetworkMaintenanceController extends Controller
                             'material_id' => $material->id,
                             'quantity' => $qty,
                             'unit' => $itemUnit,
+                            'price_per_unit' => $ppu,
+                            'total_price' => $itemCost,
+                            'stock_before' => $stockRes['stock_before'],
+                            'stock_after' => $stockRes['stock_after'],
                         ]);
-
-                        $stockDeducted = false;
-                        if ($maintenance->area_id) {
-                            $matStock = MaterialStock::where('material_id', $material->id)
-                                ->where('area_id', $maintenance->area_id)
-                                ->first();
-                            if ($matStock) {
-                                $matStock->decrement('stock', $qty);
-                                if ($material->meter_per_roll > 0) {
-                                    $matStock->total_rolls = max(0, $matStock->stock / $material->meter_per_roll);
-                                    $matStock->save();
-                                }
-                                $stockDeducted = true;
-                            }
-                        }
-
-                        if (!$stockDeducted) {
-                            $material->decrement('stock', $qty);
-                            if ($material->meter_per_roll > 0) {
-                                $material->total_rolls = max(0, $material->stock / $material->meter_per_roll);
-                                $material->save();
-                            }
-                        }
                     }
                 }
+                $matTrx->update(['total_cost' => $totalMaintCost]);
             }
 
             DB::commit();
@@ -633,57 +625,48 @@ class NetworkMaintenanceController extends Controller
                             if ($returnDiff != 0) {
                                 $material = Material::find($matRow->material_id);
                                 if ($material) {
-                                    $adjustedArea = false;
-                                    if ($maintenance->area_id) {
-                                        $matStock = MaterialStock::where('material_id', $material->id)
-                                            ->where('area_id', $maintenance->area_id)
-                                            ->first();
-                                        if ($matStock) {
-                                            if ($returnDiff > 0) {
-                                                $matStock->increment('stock', $returnDiff);
-                                            } else {
-                                                $matStock->decrement('stock', abs($returnDiff));
-                                            }
-                                            if ($material->meter_per_roll > 0) {
-                                                $matStock->total_rolls = max(0, $matStock->stock / $material->meter_per_roll);
-                                                $matStock->save();
-                                            }
-                                            $adjustedArea = true;
-                                        }
-                                    }
-
-                                    if (!$adjustedArea) {
-                                        if ($returnDiff > 0) {
-                                            $material->increment('stock', $returnDiff);
-                                        } else {
-                                            $material->decrement('stock', abs($returnDiff));
-                                        }
-                                        if ($material->meter_per_roll > 0) {
-                                            $material->total_rolls = max(0, $material->stock / $material->meter_per_roll);
-                                            $material->save();
-                                        }
-                                    }
-
-                                    // Catat riwayat transaksi mutasi pengembalian sisa material
+                                    $unitStr = $matRow->unit ?: ($material->unit ?? 'pcs');
                                     if ($returnDiff > 0) {
+                                        $stockRes = \App\Services\MaterialService::restoreOperationalStock(
+                                            $material,
+                                            $returnDiff,
+                                            $maintenance->area_id,
+                                            $unitStr
+                                        );
                                         try {
                                             $trx = MaterialTransaction::create([
-                                                'transaction_number' => MaterialTransaction::generateTransactionNumber(),
+                                                'transaction_number' => 'RTR-MNT-' . date('YmdHis') . '-' . rand(10, 99),
                                                 'type' => 'in',
+                                                'status' => 'approved',
+                                                'date' => now()->toDateString(),
+                                                'technician_name' => auth()->user()?->name ?? 'Tim Maintenance',
                                                 'purpose' => "Pengembalian Sisa Material Pemeliharaan ({$maintenance->maintenance_number})",
+                                                'source_type' => 'network_maintenance',
+                                                'source_id' => $maintenance->id,
+                                                'source_reference' => $maintenance->maintenance_number,
                                                 'area_id' => $maintenance->area_id,
                                                 'notes' => "Sisa material dikembalikan dari kegiatan {$maintenance->title}",
-                                                'created_by' => auth()->id() ?? 1,
+                                                'user_id' => auth()->id() ?? 1,
                                             ]);
                                             MaterialTransactionItem::create([
                                                 'material_transaction_id' => $trx->id,
                                                 'material_id' => $material->id,
                                                 'quantity' => $returnDiff,
-                                                'unit' => $matRow->unit ?: ($material->unit ?? 'pcs'),
+                                                'unit' => $unitStr,
+                                                'condition' => 'Layak Pakai',
+                                                'stock_before' => $stockRes['stock_before'],
+                                                'stock_after' => $stockRes['stock_after'],
                                             ]);
                                         } catch (\Throwable $te) {
                                             Log::warning('[NetworkMaintenanceController::quickUpdate] Trx Log Warning: ' . $te->getMessage());
                                         }
+                                    } else {
+                                        \App\Services\MaterialService::deductOperationalStock(
+                                            $material,
+                                            abs($returnDiff),
+                                            $maintenance->area_id,
+                                            $unitStr
+                                        );
                                     }
                                 }
                             }
@@ -801,24 +784,36 @@ class NetworkMaintenanceController extends Controller
         try {
             DB::beginTransaction();
 
-            // Kembalikan alokasi material ke stok jika belum dipakai
+            // Kembalikan seluruh pengeluaran material (OUT) & balikkan retur (IN) secara simetris
+            $restoredByMat = \App\Services\MaterialHandoverService::restoreDispatchedMaterials(
+                'network_maintenance',
+                $maintenance->id,
+                $maintenance->area_id,
+                $maintenance->maintenance_number
+            );
+            \App\Services\MaterialHandoverService::restoreDispatchedMaterials(
+                'maintenance',
+                $maintenance->id,
+                $maintenance->area_id,
+                $maintenance->maintenance_number
+            );
+
+            // Fallback hanya jika ada baris lama tanpa transaksi OUT
             foreach ($maintenance->materials as $mat) {
-                $qtyPrepared = (float) $mat->quantity_prepared;
-                $qtyUsed = (float) $mat->quantity_used;
-                $qtyReturned = (float) $mat->quantity_returned;
-                
-                $qtyToRestore = max(0, $qtyPrepared - $qtyUsed - $qtyReturned);
-                if ($qtyToRestore > 0) {
-                    $material = Material::find($mat->material_id);
-                    if ($material) {
-                        $material->increment('stock', $qtyToRestore);
-                        if ($maintenance->area_id) {
-                            $matStock = MaterialStock::where('material_id', $material->id)
-                                ->where('area_id', $maintenance->area_id)
-                                ->first();
-                            if ($matStock) {
-                                $matStock->increment('stock', $qtyToRestore);
-                            }
+                $matId = (int) $mat->material_id;
+                if ($matId && empty($restoredByMat[$matId])) {
+                    $qtyPrepared = (float) $mat->quantity_prepared;
+                    $qtyReturned = (float) $mat->quantity_returned;
+                    $qtyToRestore = max(0, $qtyPrepared - $qtyReturned);
+                    if ($qtyToRestore > 0) {
+                        $material = Material::find($matId);
+                        if ($material) {
+                            \App\Services\MaterialService::restoreOperationalStock(
+                                $material,
+                                $qtyToRestore,
+                                $maintenance->area_id,
+                                $mat->unit
+                            );
                         }
                     }
                 }

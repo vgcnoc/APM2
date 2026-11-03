@@ -285,27 +285,21 @@ class OntController extends Controller
 
         if ($isUninstalled && $ont->area_id && $isOldRusak !== $isNewRusak) {
             $brandName = $validated['brand'] ?? $ont->brand;
-            $mat = \App\Models\Material::where(function ($mq) use ($brandName) {
-                $mq->where('name', $brandName)
-                   ->orWhere('name', 'like', "%{$brandName}%");
-            })->where('category', 'like', '%ont%')->first()
-            ?: \App\Models\Material::where('name', $brandName)->first();
+            $mat = \App\Services\MaterialService::resolveOntMaterial($ont);
+            if (!$mat && $brandName) {
+                $mat = \App\Models\Material::where(function ($mq) use ($brandName) {
+                    $mq->where('name', $brandName)
+                       ->orWhere('name', 'like', "%{$brandName}%");
+                })->where('category', 'like', '%ont%')->first()
+                ?: \App\Models\Material::where('name', $brandName)->first();
+            }
 
             if ($mat) {
-                $matStock = \App\Models\MaterialStock::where('material_id', $mat->id)
-                    ->where('area_id', $ont->area_id)
-                    ->first();
+                $ppu = (float) ($mat->price_per_unit ?: ($mat->unit_price ?? 0));
 
                 if ($isNewRusak) {
-                    $stockBefore = (float)($matStock ? $matStock->stock : $mat->stock);
-                    // Berubah dari bagus ke rusak di gudang -> kurangi stok layak pakai
-                    if ($matStock && $matStock->stock > 0) {
-                        $matStock->decrement('stock', 1);
-                    }
-                    if ($mat->stock > 0) {
-                        $mat->decrement('stock', 1);
-                    }
-                    $stockAfter = max(0, $stockBefore - 1);
+                    // Berubah dari bagus ke rusak di gudang -> kurangi stok layak pakai area (tanpa mengotori Gudang Pusat Order Toko)
+                    $stockRes = \App\Services\MaterialService::deductOperationalStock($mat, 1, $ont->area_id, 'pcs');
 
                     $tx = \App\Models\MaterialTransaction::create([
                         'transaction_number' => 'OUT-RUSAK-' . date('YmdHis') . '-' . $ont->id,
@@ -324,20 +318,15 @@ class OntController extends Controller
                         'material_id' => $mat->id,
                         'quantity' => 1,
                         'unit' => $mat->unit ?: 'pcs',
-                        'price_per_unit' => $mat->unit_price ?? 0,
-                        'total_price' => $mat->unit_price ?? 0,
-                        'stock_before' => $stockBefore,
-                        'stock_after' => $stockAfter,
+                        'price_per_unit' => $ppu,
+                        'total_price' => $ppu,
+                        'stock_before' => $stockRes['stock_before'],
+                        'stock_after' => $stockRes['stock_after'],
                         'condition' => 'Rusak',
                     ]);
                 } else {
-                    $stockBefore = (float)($matStock ? $matStock->stock : $mat->stock);
-                    // Berubah dari rusak ke bagus (diperbaiki) -> kembalikan ke stok layak pakai
-                    if ($matStock) {
-                        $matStock->increment('stock', 1);
-                    }
-                    $mat->increment('stock', 1);
-                    $stockAfter = $stockBefore + 1;
+                    // Berubah dari rusak ke bagus (diperbaiki) -> kembalikan ke stok layak pakai area
+                    $stockRes = \App\Services\MaterialService::restoreOperationalStock($mat, 1, $ont->area_id, 'pcs');
 
                     $tx = \App\Models\MaterialTransaction::create([
                         'transaction_number' => 'IN-REPAIR-' . date('YmdHis') . '-' . $ont->id,
@@ -356,10 +345,10 @@ class OntController extends Controller
                         'material_id' => $mat->id,
                         'quantity' => 1,
                         'unit' => $mat->unit ?: 'pcs',
-                        'price_per_unit' => $mat->unit_price ?? 0,
-                        'total_price' => $mat->unit_price ?? 0,
-                        'stock_before' => $stockBefore,
-                        'stock_after' => $stockAfter,
+                        'price_per_unit' => $ppu,
+                        'total_price' => $ppu,
+                        'stock_before' => $stockRes['stock_before'],
+                        'stock_after' => $stockRes['stock_after'],
                         'condition' => 'Layak Pakai',
                     ]);
                 }
