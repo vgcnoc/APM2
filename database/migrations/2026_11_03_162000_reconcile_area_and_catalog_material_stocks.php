@@ -79,7 +79,11 @@ return new class extends Migration
                     }
 
                     if ($poTotal > 0) {
-                        $ms->initial_stock = $poTotal;
+                        $ms->initial_stock = max((float) $ms->initial_stock, $poTotal);
+                    }
+                    // Khusus ONT ZVOLIN P613s (ID 282) di BC 2 (area_id 1): terdapat 12 pcs PO + 2 pcs tambah stok langsung = 14 pcs
+                    if ($mat->id === 282 && (int) $areaId === 1 && (float) $ms->initial_stock < 14) {
+                        $ms->initial_stock = 14;
                     }
                 }
 
@@ -146,6 +150,9 @@ return new class extends Migration
             } else {
                 // Material Katalog Gudang Pusat (/products): master stock = initial_stock Gudang Pusat dikurangi total PO yang sudah diambil area
                 $totalOrderedByAreas = (float) $refreshedAreaStocks->sum('initial_stock');
+                if ($totalOrderedByAreas > (float) $mat->initial_stock) {
+                    $mat->initial_stock = $totalOrderedByAreas;
+                }
                 if ((float) $mat->initial_stock > 0) {
                     $mat->stock = max(0.0, (float) $mat->initial_stock - $totalOrderedByAreas);
                     $mat->recalcUnitTotals()->save();
