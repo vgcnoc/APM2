@@ -143,10 +143,55 @@ return new class extends Migration
             $cpp = (float) ($mat->cm_per_pcs ?? 0);
             $isCable = str_contains(strtolower((string) $mat->category), 'kabel') || $mpr > 0;
 
+            // Pastikan setiap area yang pernah melakukan PO untuk material ini memiliki record MaterialStock
+            $poAreaIds = MaterialTransaction::where('type', 'in')
+                ->where('status', 'approved')
+                ->whereNotNull('area_id')
+                ->where(function ($sq) {
+                    $sq->where('transaction_number', 'like', 'PO-%')
+                       ->orWhere('purpose', 'Pembelian Toko / Supplier');
+                })
+                ->whereHas('items', fn ($iq) => $iq->where('material_id', $mat->id))
+                ->pluck('area_id')
+                ->unique();
+
+            foreach ($poAreaIds as $pAreaId) {
+                MaterialStock::firstOrCreate(
+                    ['material_id' => $mat->id, 'area_id' => $pAreaId],
+                    ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
+                );
+            }
+
             $areaStocks = MaterialStock::where('material_id', $mat->id)->get();
 
             foreach ($areaStocks as $ms) {
                 $areaId = (int) $ms->area_id;
+
+                $poItems = MaterialTransactionItem::where('material_id', $mat->id)
+                    ->whereHas('transaction', function ($q) use ($areaId) {
+                        $q->where('type', 'in')
+                          ->where('status', 'approved')
+                          ->where('area_id', $areaId)
+                          ->where(function ($sq) {
+                              $sq->where('transaction_number', 'like', 'PO-%')
+                                 ->orWhere('purpose', 'Pembelian Toko / Supplier');
+                          });
+                    })
+                    ->get();
+
+                $poTotal = 0.0;
+                foreach ($poItems as $pi) {
+                    $q = (float) $pi->quantity;
+                    $u = strtolower((string) ($pi->unit ?? $mat->unit));
+                    if ($isCable && in_array($u, ['roll', 'rol']) && $mpr > 0) {
+                        $q *= $mpr;
+                    }
+                    $poTotal += $q;
+                }
+
+                if ($poTotal > 0) {
+                    $ms->initial_stock = $poTotal;
+                }
 
                 $outItems = MaterialTransactionItem::where('material_id', $mat->id)
                     ->whereHas('transaction', function ($q) use ($areaId) {
