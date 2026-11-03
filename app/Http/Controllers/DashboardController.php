@@ -554,15 +554,15 @@ class DashboardController extends Controller
 
         $currentEmployee = null;
         if ($employeeId && $user && in_array($user->role, ['superadmin', 'admin', 'hrd'])) {
-            $currentEmployee = Employee::with(['area', 'shift'])->find($employeeId);
+            $currentEmployee = Employee::with(['area', 'shift'])->excludeTokoAndDemo()->find($employeeId);
         }
 
-        if (!$currentEmployee && $user) {
-            $currentEmployee = Employee::with(['area', 'shift'])->where('email', $user->email)->first();
+        if (!$currentEmployee && $user && !$user->isExemptFromAttendanceAndPayroll()) {
+            $currentEmployee = Employee::with(['area', 'shift'])->excludeTokoAndDemo()->where('email', $user->email)->first();
         }
 
         if (!$currentEmployee && $user && in_array($user->role, ['superadmin', 'admin', 'hrd'])) {
-            $currentEmployee = Employee::with(['area', 'shift'])->first();
+            $currentEmployee = Employee::with(['area', 'shift'])->excludeTokoAndDemo()->first();
         }
 
         // Cek apakah karyawan ini terdaftar di grup Tim Khusus aktif
@@ -802,6 +802,7 @@ class DashboardController extends Controller
         $allEmployees = [];
         if ($user && in_array($user->role, ['superadmin', 'admin', 'hrd'])) {
             $allEmployees = Employee::with(['area', 'shift', 'specialTeams'])
+                ->excludeTokoAndDemo()
                 ->orderBy('name')
                 ->get(['id', 'name', 'position', 'branch', 'area_id', 'shift_id', 'email', 'iak_number'])
                 ->map(function ($emp) {
@@ -819,10 +820,10 @@ class DashboardController extends Controller
             $lateToday = SpecialAttendance::where('special_team_id', $specialTeam->id)->where('date', $today)->where('status', 'late')->count();
             $completedToday = SpecialAttendance::where('special_team_id', $specialTeam->id)->where('date', $today)->whereNotNull('clock_out')->count();
         } else {
-            $totalEmployees = Employee::count();
-            $presentToday = Attendance::where('date', $today)->whereNotNull('clock_in')->count();
-            $lateToday = Attendance::where('date', $today)->where('status', 'late')->count();
-            $completedToday = Attendance::where('date', $today)->whereNotNull('clock_out')->count();
+            $totalEmployees = Employee::excludeTokoAndDemo()->count();
+            $presentToday = Attendance::where('date', $today)->whereNotNull('clock_in')->whereHas('employee', fn($q) => $q->excludeTokoAndDemo())->count();
+            $lateToday = Attendance::where('date', $today)->where('status', 'late')->whereHas('employee', fn($q) => $q->excludeTokoAndDemo())->count();
+            $completedToday = Attendance::where('date', $today)->whereNotNull('clock_out')->whereHas('employee', fn($q) => $q->excludeTokoAndDemo())->count();
         }
 
         // Jendela Waktu Buka Absen Masuk (Early Clock-in Limit)
@@ -1943,7 +1944,7 @@ class DashboardController extends Controller
             $selectedMonth = $now->format('Y-m');
         }
 
-        $cacheKey = "worst_att_rankings_{$selectedAreaId}_{$selectedMonth}";
+        $cacheKey = "worst_att_rankings_v2_{$selectedAreaId}_{$selectedMonth}";
         $data = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function () use ($selectedAreaId, $selectedMonth, $monthCarbon, $now) {
             $startOfMonth = $monthCarbon->copy()->startOfMonth()->format('Y-m-d');
             $endOfMonth = $monthCarbon->copy()->endOfMonth()->format('Y-m-d');
@@ -1969,6 +1970,7 @@ class DashboardController extends Controller
 
             // Ambil Data Karyawan
             $empQuery = Employee::with(['area', 'shift'])
+                ->excludeTokoAndDemo()
                 ->where(function ($q) {
                     $q->where('status', '!=', 'resigned')->orWhereNull('status');
                 });

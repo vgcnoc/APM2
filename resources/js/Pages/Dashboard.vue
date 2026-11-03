@@ -159,11 +159,15 @@
         </div>
 
         <!-- ═══ Presensi Reguler Staf Widget ═══ -->
-        <DashboardAttendanceWidget :attendance-data="attendanceData" class="mb-6" />
+        <DashboardAttendanceWidget
+            v-if="!['customer', 'reseller', 'toko', 'demo'].includes(String($page.props.auth?.user?.role || '').toLowerCase())"
+            :attendance-data="attendanceData"
+            class="mb-6"
+        />
 
         <!-- ═══ Evaluasi Pelanggaran Presensi, Absen Terburuk & Potongan Denda ═══ -->
         <DashboardWorstAttendanceWidget 
-            v-if="!['customer', 'reseller'].includes($page.props.auth?.user?.role)"
+            v-if="!['customer', 'reseller', 'toko', 'demo'].includes(String($page.props.auth?.user?.role || '').toLowerCase())"
             :data="worstAttendanceData" 
             :worst-month="worstMonth"
             class="mb-6" 

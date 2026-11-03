@@ -131,9 +131,10 @@ class PayrollController extends Controller
         $authUser = auth()->user();
         $isSuperAdmin = $authUser && ($authUser->is_admin || $authUser->hasRole('admin'));
 
-        $excludedRoles = ['customer', 'pelanggan', 'reseller', 'superadmin', 'super admin'];
+        $excludedRoles = ['customer', 'pelanggan', 'reseller', 'superadmin', 'super admin', 'toko', 'demo'];
 
         $usersQuery = User::where('is_active', true)
+            ->excludeTokoAndDemo()
             ->whereNotIn('role', $excludedRoles)
             ->whereDoesntHave('roles', function($q) use ($excludedRoles) {
                 $q->whereIn('name', $excludedRoles);
@@ -481,6 +482,10 @@ class PayrollController extends Controller
             abort(403, 'Anda tidak memiliki hak akses untuk menambah insentif.');
         }
 
+        if ($user->isExemptFromAttendanceAndPayroll()) {
+            return back()->with('error', 'Akun Toko dan Demo tidak diberlakukan penggajian atau insentif.');
+        }
+
         $date = $request->input('incentive_date', $request->input('date', now()->toDateString()));
         $request->merge(['incentive_date' => $date]);
 
@@ -534,6 +539,10 @@ class PayrollController extends Controller
             abort(403, 'Anda tidak memiliki hak akses untuk menambah potongan.');
         }
 
+        if ($user->isExemptFromAttendanceAndPayroll()) {
+            return back()->with('error', 'Akun Toko dan Demo tidak diberlakukan penggajian atau potongan.');
+        }
+
         $date = $request->input('deduction_date', $request->input('date', now()->toDateString()));
         $request->merge(['deduction_date' => $date]);
 
@@ -580,6 +589,10 @@ class PayrollController extends Controller
         $authUser = auth()->user();
         if (!$authUser->is_admin && !$authUser->hasRole('admin') && !$authUser->can('payroll_disburse')) {
             abort(403, 'Anda tidak memiliki hak akses untuk mencairkan gaji.');
+        }
+
+        if ($user->isExemptFromAttendanceAndPayroll()) {
+            return back()->with('error', 'Akun Toko dan Demo tidak diberlakukan penggajian.');
         }
 
         $month = (int) $request->get('month', now()->month);
@@ -782,9 +795,10 @@ class PayrollController extends Controller
             \Illuminate\Support\Facades\Log::warning("[Payroll DisburseAll Auto-Sync] " . $e->getMessage());
         }
 
-        $excludedRoles = ['customer', 'pelanggan', 'reseller', 'superadmin', 'super admin'];
+        $excludedRoles = ['customer', 'pelanggan', 'reseller', 'superadmin', 'super admin', 'toko', 'demo'];
 
         $usersQuery = User::where('is_active', true)
+            ->excludeTokoAndDemo()
             ->whereNotIn('role', $excludedRoles)
             ->whereDoesntHave('roles', function($q) use ($excludedRoles) {
                 $q->whereIn('name', $excludedRoles);

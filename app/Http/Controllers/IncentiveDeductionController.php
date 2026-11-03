@@ -23,10 +23,12 @@ class IncentiveDeductionController extends Controller
         $isSuperAdmin = $authUser && ($authUser->is_admin || $authUser->hasRole('admin'));
 
         $incentivesQuery = Incentive::with(['user.area'])
+            ->whereHas('user', fn($q) => $q->excludeTokoAndDemo())
             ->whereMonth('incentive_date', $month)
             ->whereYear('incentive_date', $year);
             
         $deductionsQuery = Deduction::with(['user.area'])
+            ->whereHas('user', fn($q) => $q->excludeTokoAndDemo())
             ->whereMonth('deduction_date', $month)
             ->whereYear('deduction_date', $year);
 
@@ -132,8 +134,9 @@ class IncentiveDeductionController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        $excludedRoles = ['customer', 'pelanggan', 'reseller', 'superadmin', 'super admin'];
+        $excludedRoles = ['customer', 'pelanggan', 'reseller', 'superadmin', 'super admin', 'toko', 'demo'];
         $usersQuery = User::with('area')->where('is_active', true)
+            ->excludeTokoAndDemo()
             ->whereNotIn('role', $excludedRoles)
             ->whereDoesntHave('roles', function($q) use ($excludedRoles) {
                 $q->whereIn('name', $excludedRoles);

@@ -42,7 +42,7 @@ class BestAttendanceController extends Controller
         // 1. Ambil seluruh data master
         $areas = Area::orderBy('name')->get();
         $shiftsById = Shift::all()->keyBy('id');
-        $employeesQuery = Employee::with(['area', 'shift', 'specialTeamMembers']);
+        $employeesQuery = Employee::with(['area', 'shift', 'specialTeamMembers'])->excludeTokoAndDemo();
 
         if (($scope === 'branch' || $scope === 'maintenance') && $selectedAreaId) {
             $employeesQuery->where('area_id', $selectedAreaId);
@@ -335,7 +335,7 @@ class BestAttendanceController extends Controller
         $totalAlphas = (int) $filteredCollection->sum('alphas');
 
         // Daftar posisi unik untuk filter departemen (kecualikan tim serbu dan tim khusus)
-        $positions = Employee::whereNotNull('position')
+        $positions = Employee::excludeTokoAndDemo()->whereNotNull('position')
             ->where('position', '!=', '')
             ->where('position', 'NOT LIKE', '%serbu%')
             ->where('position', 'NOT LIKE', '%khusus%')
@@ -480,11 +480,11 @@ class BestAttendanceController extends Controller
 
                 if (!$empId || $rewardAmount <= 0) continue;
 
-                $emp = Employee::find($empId);
-                if (!$emp || !$emp->email) continue;
+                $emp = Employee::excludeTokoAndDemo()->find($empId);
+                if (!$emp || !$emp->email || $emp->isExemptFromAttendanceAndPayroll()) continue;
 
                 $user = User::where('email', $emp->email)->first();
-                if (!$user) continue;
+                if (!$user || $user->isExemptFromAttendanceAndPayroll()) continue;
 
                 $periodName = Carbon::createFromDate($year, $month, 1)->translatedFormat('F Y');
 

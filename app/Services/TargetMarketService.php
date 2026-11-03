@@ -40,7 +40,7 @@ class TargetMarketService
         }
 
         $employee = User::find($customer->sales_id);
-        if (!$employee) {
+        if (!$employee || $employee->isExemptFromAttendanceAndPayroll()) {
             return;
         }
 
@@ -206,7 +206,7 @@ class TargetMarketService
 
         foreach ($customers as $cust) {
             $employee = $cust->sales;
-            if (!$employee) continue;
+            if (!$employee || $employee->isExemptFromAttendanceAndPayroll()) continue;
 
             foreach ($programs as $prog) {
                 if (!empty($prog->target_role) && $prog->target_role !== 'all' && $employee->role !== $prog->target_role) {
@@ -260,7 +260,7 @@ class TargetMarketService
                 $count = $userLogs->count();
 
                 $user = User::find($userId);
-                if (!$user) continue;
+                if (!$user || $user->isExemptFromAttendanceAndPayroll()) continue;
 
                 $refId = "target_market_{$user->id}_{$year}_{$month}";
 

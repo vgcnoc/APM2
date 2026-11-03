@@ -297,6 +297,56 @@ class User extends Authenticatable
         return $this->role === 'noc';
     }
 
+    /**
+     * Cek apakah user ini merupakan akun Toko atau Demo yang dibebaskan dari kewajiban Absensi & Penggajian (Payroll).
+     */
+    public function isExemptFromAttendanceAndPayroll(): bool
+    {
+        $exemptTokens = ['toko', 'demo', 'akun toko', 'akun demo'];
+        $exemptEmails = ['toko@gmail.com', 'demo@gmail.com', 'toko@isp.local', 'demo@isp.local'];
+
+        $role = mb_strtolower(trim((string) ($this->role ?? '')));
+        $name = mb_strtolower(trim((string) ($this->name ?? '')));
+        $email = mb_strtolower(trim((string) ($this->email ?? '')));
+
+        if (in_array($role, $exemptTokens, true) || in_array($name, $exemptTokens, true) || in_array($email, $exemptEmails, true)) {
+            return true;
+        }
+
+        if ($this->relationLoaded('roles')) {
+            foreach ($this->roles as $r) {
+                if (in_array(mb_strtolower(trim((string) $r->name)), $exemptTokens, true)) {
+                    return true;
+                }
+            }
+        } else {
+            try {
+                if ($this->hasAnyRole(['toko', 'demo'])) {
+                    return true;
+                }
+            } catch (\Throwable $e) {}
+        }
+
+        return false;
+    }
+
+    /**
+     * Scope untuk mengecualikan akun Toko dan Demo dari perhitungan Absensi & Penggajian (Payroll).
+     */
+    public function scopeExcludeTokoAndDemo($query)
+    {
+        return $query
+            ->where(function ($q) {
+                $q->whereNull('users.role')
+                  ->orWhereNotIn(\Illuminate\Support\Facades\DB::raw("LOWER(TRIM(COALESCE(users.role, '')))"), ['toko', 'demo', 'akun toko', 'akun demo']);
+            })
+            ->whereNotIn(\Illuminate\Support\Facades\DB::raw("LOWER(TRIM(COALESCE(users.name, '')))"), ['toko', 'demo', 'akun toko', 'akun demo'])
+            ->whereNotIn(\Illuminate\Support\Facades\DB::raw("LOWER(TRIM(COALESCE(users.email, '')))"), ['toko@gmail.com', 'demo@gmail.com', 'toko@isp.local', 'demo@isp.local'])
+            ->whereDoesntHave('roles', function ($rq) {
+                $rq->whereIn(\Illuminate\Support\Facades\DB::raw("LOWER(TRIM(COALESCE(name, '')))"), ['toko', 'demo', 'akun toko', 'akun demo']);
+            });
+    }
+
     public function customer(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(Customer::class, 'user_id');

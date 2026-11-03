@@ -33,10 +33,19 @@ const formatDate = (dateStr) => {
 <template>
     <AppLayout title="Dashboard Teknisi & Maintenance" subtitle="Ringkasan tugas lapangan, pemeliharaan jalur, dan jadwal kerja Anda">
         <!-- Presensi Reguler Teknisi Widget -->
-        <DashboardAttendanceWidget :attendance-data="attendanceData" class="mb-6" />
+        <DashboardAttendanceWidget
+            v-if="!['customer', 'reseller', 'toko', 'demo'].includes(String($page.props.auth?.user?.role || '').toLowerCase())"
+            :attendance-data="attendanceData"
+            class="mb-6"
+        />
 
         <!-- ═══ Evaluasi Pelanggaran Presensi, Absen Terburuk & Potongan Denda ═══ -->
-        <DashboardWorstAttendanceWidget :data="worstAttendanceData" :worst-month="worstMonth" class="mb-6" />
+        <DashboardWorstAttendanceWidget
+            v-if="!['customer', 'reseller', 'toko', 'demo'].includes(String($page.props.auth?.user?.role || '').toLowerCase())"
+            :data="worstAttendanceData"
+            :worst-month="worstMonth"
+            class="mb-6"
+        />
 
         <!-- ═══ Pencarian Cepat Pelanggan & Foto Rumah (Tampil untuk Semua User) ═══ -->
         <CustomerSearchWidget class="mb-6" />

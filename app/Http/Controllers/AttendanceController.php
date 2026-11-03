@@ -61,8 +61,12 @@ class AttendanceController extends Controller
 
         // 1. Tentukan Karyawan Aktif
         $currentEmployee = null;
-        if ($user) {
-            $currentEmployee = Employee::with(['area', 'shift'])->where('email', $user->email)->first();
+        $isUserExempt = $user && $user->isExemptFromAttendanceAndPayroll();
+        if ($user && !$isUserExempt) {
+            $currentEmployee = Employee::with(['area', 'shift'])
+                ->excludeTokoAndDemo()
+                ->where('email', $user->email)
+                ->first();
         }
 
         $canViewAll = $user && ($user->hasRole('admin') || $user->can('attendances_view_all'));
@@ -70,7 +74,7 @@ class AttendanceController extends Controller
 
         // Jika ada filter / switcher employee_id (hanya jika memiliki hak akses melihat karyawan lain)
         if (($canViewAll || $canViewArea) && $request->filled('employee_id')) {
-            $selected = Employee::with(['area', 'shift'])->find($request->employee_id);
+            $selected = Employee::with(['area', 'shift'])->excludeTokoAndDemo()->find($request->employee_id);
             if ($selected) {
                 if ($canViewAll || in_array($selected->area_id, $user->getAccessibleAreaIds())) {
                     $currentEmployee = $selected;
@@ -79,23 +83,24 @@ class AttendanceController extends Controller
         }
 
         // Fallback jika belum ada employee sama sekali untuk user ini (misal Admin login)
-        if (!$currentEmployee && ($canViewAll || $canViewArea)) {
+        if (!$currentEmployee && ($canViewAll || $canViewArea) && !$isUserExempt) {
             // Prioritaskan karyawan yang memiliki jadwal kerja hari ini, atau karyawan pertama
             $scheduledTodayEmpId = WorkSchedule::where('date', $today)
                 ->whereNotNull('shift_id')
                 ->where('status', '!=', 'off')
+                ->whereHas('employee', fn($q) => $q->excludeTokoAndDemo())
                 ->value('employee_id');
 
             if ($scheduledTodayEmpId) {
-                $currentEmployee = Employee::with(['area', 'shift'])->find($scheduledTodayEmpId);
+                $currentEmployee = Employee::with(['area', 'shift'])->excludeTokoAndDemo()->find($scheduledTodayEmpId);
             }
 
             if (!$currentEmployee) {
-                $currentEmployee = Employee::with(['area', 'shift'])->first();
+                $currentEmployee = Employee::with(['area', 'shift'])->excludeTokoAndDemo()->first();
             }
         }
 
-        $employeeQuery = Employee::with(['area', 'shift'])->orderBy('name');
+        $employeeQuery = Employee::with(['area', 'shift'])->excludeTokoAndDemo()->orderBy('name');
         if (!$canViewAll) {
             if ($canViewArea) {
                 $employeeQuery->whereIn('area_id', $user->getAccessibleAreaIds());
@@ -362,7 +367,9 @@ class AttendanceController extends Controller
         }
 
         // 7. Data Monitoring Kehadiran Seluruh Karyawan Hari Ini (Admin Tab)
-        $monitoringQuery = Attendance::with(['employee.area', 'area', 'shift'])->where('date', $today);
+        $monitoringQuery = Attendance::with(['employee.area', 'area', 'shift'])
+            ->where('date', $today)
+            ->whereHas('employee', fn($q) => $q->excludeTokoAndDemo());
         if ($request->filled('area_id')) {
             $monitoringQuery->where(function ($q) use ($request) {
                 $q->where('area_id', $request->area_id)
@@ -373,7 +380,7 @@ class AttendanceController extends Controller
         }
         $todayAllAttendances = $monitoringQuery->latest()->get();
 
-        $totalEmployeesCount = Employee::count();
+        $totalEmployeesCount = Employee::excludeTokoAndDemo()->count();
         $presentCount = $todayAllAttendances->whereNotNull('clock_in')->count();
         $lateCount = $todayAllAttendances->where('status', 'late')->count();
         $onTimeCount = $todayAllAttendances->where('status', 'present')->where('late_minutes', '<=', 5)->count();
@@ -514,6 +521,10 @@ class AttendanceController extends Controller
         ]);
 
         $employee = Employee::with(['area', 'shift'])->findOrFail($request->employee_id);
+
+        if ($employee->isExemptFromAttendanceAndPayroll() || ($request->user() && $request->user()->isExemptFromAttendanceAndPayroll())) {
+            return back()->with('error', 'Akun Toko dan Demo tidak diberlakukan absensi.');
+        }
 
         // Karyawan Tim Khusus harus absen lewat menu Absen Tim Khusus
         $specialCheck = SpecialTeamMember::with('team')
@@ -1201,6 +1212,7 @@ class AttendanceController extends Controller
             ->get();
 
         $employees = Employee::with('area')
+            ->excludeTokoAndDemo()
             ->where(function ($q) {
                 $q->where('status', '!=', 'resigned')->orWhereNull('status');
             })

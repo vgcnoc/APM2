@@ -95,19 +95,19 @@ class SpecialAttendanceController extends Controller
 
         // 2. Karyawan Aktif (Login User / Switcher)
         $currentEmployee = null;
-        if ($user) {
-            $currentEmployee = Employee::with(['area'])->where('email', $user->email)->first();
+        if ($user && !$user->isExemptFromAttendanceAndPayroll()) {
+            $currentEmployee = Employee::with(['area'])->excludeTokoAndDemo()->where('email', $user->email)->first();
         }
         if (($canViewAll || $canViewArea) && $request->filled('employee_id')) {
-            $selected = Employee::with(['area'])->find($request->employee_id);
+            $selected = Employee::with(['area'])->excludeTokoAndDemo()->find($request->employee_id);
             if ($selected) {
                 if ($canViewAll || in_array($selected->area_id, $user->getAccessibleAreaIds())) {
                     $currentEmployee = $selected;
                 }
             }
         }
-        if (!$currentEmployee && ($canViewAll || $canViewArea)) {
-            $currentEmployee = Employee::with(['area'])->first();
+        if (!$currentEmployee && ($canViewAll || $canViewArea) && !($user && $user->isExemptFromAttendanceAndPayroll())) {
+            $currentEmployee = Employee::with(['area'])->excludeTokoAndDemo()->first();
         }
 
         // Tentukan Tim Aktif
@@ -507,12 +507,12 @@ class SpecialAttendanceController extends Controller
 
         // Daftar karyawan untuk switcher dan modal kelola anggota grup
         if ($canViewAll || $canManageSpecial) {
-            $allEmployees = Employee::where(function ($q) {
+            $allEmployees = Employee::excludeTokoAndDemo()->where(function ($q) {
                 $q->where('status', '!=', 'resigned')->orWhereNull('status');
             })->orderBy('name')->get(['id', 'name', 'position', 'branch', 'email']);
         } elseif ($canViewArea) {
             $accessibleAreaIds = $user->getAccessibleAreaIds();
-            $allEmployees = Employee::where(function ($q) {
+            $allEmployees = Employee::excludeTokoAndDemo()->where(function ($q) {
                 $q->where('status', '!=', 'resigned')->orWhereNull('status');
             })->whereIn('area_id', $accessibleAreaIds)->orderBy('name')->get(['id', 'name', 'position', 'branch', 'email']);
         } else {
@@ -520,7 +520,7 @@ class SpecialAttendanceController extends Controller
         }
 
         // Daftar seluruh karyawan tim khusus untuk filter riwayat
-        $allSpecialEmployees = Employee::whereHas('specialTeamMembers')
+        $allSpecialEmployees = Employee::excludeTokoAndDemo()->whereHas('specialTeamMembers')
             ->where(function ($q) {
                 $q->where('status', '!=', 'resigned')->orWhereNull('status');
             })
@@ -999,9 +999,9 @@ class SpecialAttendanceController extends Controller
 
                 foreach ($attendances as $empId => $atts) {
                     $emp = $atts->first()->employee;
-                    if (!$emp || !$emp->email) continue;
+                    if (!$emp || !$emp->email || $emp->isExemptFromAttendanceAndPayroll()) continue;
                     $u = User::where('email', $emp->email)->first();
-                    if (!$u) continue;
+                    if (!$u || $u->isExemptFromAttendanceAndPayroll()) continue;
 
                     $presents = $atts->whereNotNull('clock_in')->count();
                     $lates = $atts->where('status', 'late')->count();
@@ -1057,11 +1057,11 @@ class SpecialAttendanceController extends Controller
 
                 foreach ($allMembers as $member) {
                     $emp = $member->employee;
-                    if (!$emp || in_array($emp->id, $processedEmpIds) || !$emp->email) continue;
+                    if (!$emp || in_array($emp->id, $processedEmpIds) || !$emp->email || $emp->isExemptFromAttendanceAndPayroll()) continue;
                     $processedEmpIds[] = $emp->id;
 
                     $u = User::where('email', $emp->email)->first();
-                    if (!$u) continue;
+                    if (!$u || $u->isExemptFromAttendanceAndPayroll()) continue;
 
                     $mTeam = $member->team;
                     $mAtts = $allMonthAtts->get($emp->id, collect());

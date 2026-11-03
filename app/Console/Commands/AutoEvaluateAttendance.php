@@ -63,7 +63,7 @@ class AutoEvaluateAttendance extends Command
         $this->info("Evaluasi Clock-Out (Berbasis Shift): {$missingOutCount} sesi melewati batas absen pulang.");
 
         // 2. Kalkulasi Rekapitulasi Periode Awal s/d Akhir Bulan
-        $employees = Employee::where(function ($q) {
+        $employees = Employee::excludeTokoAndDemo()->where(function ($q) {
             $q->where('status', 'active')->orWhereNull('status');
         })->get();
 

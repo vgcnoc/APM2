@@ -213,6 +213,7 @@ class AttendanceReportController extends Controller
         $areas = $areasQuery->get();
 
         $employeesQuery = Employee::with('area:id,name', 'shift:id,name')
+            ->excludeTokoAndDemo()
             ->where(function ($q) {
                 $q->where('status', 'active')->orWhereNull('status');
             })
@@ -237,6 +238,7 @@ class AttendanceReportController extends Controller
             'shift:id,name,start_time,end_time,is_night_shift',
             'area:id,name',
         ])
+        ->whereHas('employee', fn($q) => $q->excludeTokoAndDemo())
         ->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]);
 
         if ($isAreaRestricted && !empty($userAreaIds)) {
@@ -271,7 +273,8 @@ class AttendanceReportController extends Controller
 
         // Ambil data absensi tim khusus
         $specialAttQuery = SpecialAttendance::with(['employee', 'team'])
-            ->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]);
+            ->whereHas('employee', fn($q) => $q->excludeTokoAndDemo())
+        ->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]);
 
         if ($isAreaRestricted && !empty($userAreaIds)) {
             $specialAttQuery->whereHas('employee', fn($eq) => $eq->whereIn('area_id', $userAreaIds));

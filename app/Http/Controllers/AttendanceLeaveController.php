@@ -62,7 +62,7 @@ class AttendanceLeaveController extends Controller
         ];
 
         // Daftar Karyawan Aktif untuk pilihan input
-        $employees = Employee::orderBy('name', 'asc')
+        $employees = Employee::excludeTokoAndDemo()->orderBy('name', 'asc')
             ->get(['id', 'name', 'iak_number', 'position', 'branch', 'area_id']);
 
         // Default setting nominal denda dari Master Settings

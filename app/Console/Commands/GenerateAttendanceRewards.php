@@ -112,6 +112,7 @@ class GenerateAttendanceRewards extends Command
             ->get();
 
         $employees = Employee::with('area')
+            ->excludeTokoAndDemo()
             ->where(function ($q) {
                 $q->where('status', '!=', 'resigned')->orWhereNull('status');
             })
@@ -131,9 +132,9 @@ class GenerateAttendanceRewards extends Command
             $performance = [];
 
             foreach ($employees as $employee) {
-                if (!$employee->email) continue;
+                if (!$employee->email || $employee->isExemptFromAttendanceAndPayroll()) continue;
                 $linkedUser = User::where('email', $employee->email)->first();
-                if (!$linkedUser) continue;
+                if (!$linkedUser || $linkedUser->isExemptFromAttendanceAndPayroll()) continue;
 
                 $empAtts = $allMonthAtts->where('employee_id', $employee->id);
                 $empSpecialAtts = $allSpecialAtts->where('employee_id', $employee->id);

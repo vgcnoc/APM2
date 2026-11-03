@@ -221,6 +221,40 @@ class Employee extends Model
     {
         return $this->hasMany(AttendanceLeave::class);
     }
+
+    /**
+     * Cek apakah data karyawan ini merupakan akun Toko atau Demo yang dibebaskan dari kewajiban Absensi & Penggajian.
+     */
+    public function isExemptFromAttendanceAndPayroll(): bool
+    {
+        $exemptTokens = ['toko', 'demo', 'akun toko', 'akun demo'];
+        $exemptEmails = ['toko@gmail.com', 'demo@gmail.com', 'toko@isp.local', 'demo@isp.local'];
+
+        $name = mb_strtolower(trim((string) ($this->name ?? '')));
+        $position = mb_strtolower(trim((string) ($this->position ?? '')));
+        $email = mb_strtolower(trim((string) ($this->email ?? '')));
+
+        if (
+            in_array($name, $exemptTokens, true)
+            || in_array($position, $exemptTokens, true)
+            || in_array($email, $exemptEmails, true)
+        ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Scope untuk mengecualikan akun Toko dan Demo dari daftar Absensi, Jadwal Kerja, dan Evaluasi Disiplin.
+     */
+    public function scopeExcludeTokoAndDemo($query)
+    {
+        return $query
+            ->whereNotIn(\Illuminate\Support\Facades\DB::raw("LOWER(TRIM(COALESCE(employees.name, '')))"), ['toko', 'demo', 'akun toko', 'akun demo'])
+            ->whereNotIn(\Illuminate\Support\Facades\DB::raw("LOWER(TRIM(COALESCE(employees.position, '')))"), ['toko', 'demo', 'akun toko', 'akun demo'])
+            ->whereNotIn(\Illuminate\Support\Facades\DB::raw("LOWER(TRIM(COALESCE(employees.email, '')))"), ['toko@gmail.com', 'demo@gmail.com', 'toko@isp.local', 'demo@isp.local']);
+    }
 }
 
 

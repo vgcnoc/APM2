@@ -122,7 +122,7 @@ class WorkScheduleController extends Controller
         }
 
         // Query Employees dengan eager load area & shift
-        $employeeQuery = Employee::with(['area', 'shift']);
+        $employeeQuery = Employee::with(['area', 'shift'])->excludeTokoAndDemo();
 
         // Terapkan Scope Hak Akses Jadwal Roster (all, area, own)
         \App\Services\DataScopeService::applyWorkScheduleEmployeeScope($employeeQuery, $user);

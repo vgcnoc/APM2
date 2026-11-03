@@ -1237,6 +1237,10 @@ class AttendanceCalculatorService
                 ->get();
         }
 
+        $employees = $employees->reject(function ($emp) {
+            return method_exists($emp, 'isExemptFromAttendanceAndPayroll') && $emp->isExemptFromAttendanceAndPayroll();
+        })->values();
+
         return $employees->map(function ($emp) use (
             $attendances,
             $workSchedules,
@@ -1533,6 +1537,7 @@ class AttendanceCalculatorService
             ->get();
 
         $employees = Employee::with('area', 'shift')
+            ->excludeTokoAndDemo()
             ->where(function ($q) {
                 $q->where('status', 'active')->orWhereNull('status');
             })
@@ -1561,7 +1566,7 @@ class AttendanceCalculatorService
 
             foreach ($recap as $row) {
                 $emp = Employee::find($row['employee_id']);
-                if (!$emp) continue;
+                if (!$emp || $emp->isExemptFromAttendanceAndPayroll()) continue;
 
                 $user = null;
                 if (!empty($emp->email)) {
@@ -1573,7 +1578,7 @@ class AttendanceCalculatorService
                 if (!$user && !empty($emp->name)) {
                     $user = User::where('name', $emp->name)->first();
                 }
-                if (!$user) continue;
+                if (!$user || $user->isExemptFromAttendanceAndPayroll()) continue;
 
                 // Jangan ubah potongan jika gaji karyawan bulan ini sudah dicairkan (status: paid)
                 $isPaidPayroll = Payroll::where('user_id', $user->id)

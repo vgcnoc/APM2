@@ -44,12 +44,12 @@ class ShiftController extends Controller
             'total_shifts' => $allShifts->count(),
             'active_shifts' => $allShifts->where('is_active', true)->count(),
             'inactive_shifts' => $allShifts->where('is_active', false)->count(),
-            'total_assigned_employees' => Employee::whereNotNull('shift_id')->count(),
-            'total_employees' => Employee::count(),
+            'total_assigned_employees' => Employee::excludeTokoAndDemo()->whereNotNull('shift_id')->count(),
+            'total_employees' => Employee::excludeTokoAndDemo()->count(),
         ];
 
         // Daftar karyawan untuk modal assign shift
-        $employees = Employee::select('id', 'name', 'position', 'branch', 'shift_id')
+        $employees = Employee::excludeTokoAndDemo()->select('id', 'name', 'position', 'branch', 'shift_id')
             ->orderBy('name')
             ->get();
 
