@@ -3347,22 +3347,40 @@ class CustomerController extends Controller
                     }
 
                     if ($material) {
+                        $rawParsedUnit = strtolower(trim((string) ($item['unit'] ?? '')));
+                        if ($rawParsedUnit === '' && preg_match('/\((\d+(?:\.\d+)?)\s*([a-zA-Z]+)\)/', (string) $item['name'], $uMatches)) {
+                            $rawParsedUnit = strtolower(trim($uMatches[2]));
+                        }
+
                         $unitStr = $material->unit ?: 'pcs';
                         if (!$unitStr || $unitStr === 'pcs') {
                             if (str_contains($nameLower, 'kabel') || str_contains($nameLower, 'meter') || str_contains($nameLower, 'frecon')) {
                                 $unitStr = 'meter';
-                            } elseif (preg_match('/\((\d+(?:\.\d+)?)\s*([a-zA-Z]+)\)/', $item['name'], $uMatches)) {
-                                $unitStr = $uMatches[2];
+                            } elseif ($rawParsedUnit !== '') {
+                                $unitStr = $rawParsedUnit;
                             }
                         }
 
-                        // Konversi jika material kabel/frecon bersatuan meter tetapi diinput roll/pcs (misal: 1 atau 2 roll)
-                        if ($material->meter_per_roll > 0 && strtolower($unitStr) === 'meter') {
-                            if ($assignedQty > 0 && $assignedQty < ($material->meter_per_roll / 2)) {
-                                $assignedQty = $assignedQty * $material->meter_per_roll;
-                            }
-                            if ($usedQty > 0 && $usedQty < ($material->meter_per_roll / 2)) {
-                                $usedQty = $usedQty * $material->meter_per_roll;
+                        // Konversi HANYA jika diinput dalam satuan roll/pcs kecil (misal 1-5 roll), JANGAN kalikan meter aktual (misal 50m/150m)!
+                        if ($material->meter_per_roll > 0) {
+                            $isExplicitRoll = in_array($rawParsedUnit, ['roll', 'rol', 'haspel'], true)
+                                || ($rawParsedUnit === 'pcs' && max($assignedQty, $usedQty) <= 10);
+
+                            if ($isExplicitRoll) {
+                                if ($assignedQty > 0) {
+                                    $assignedQty = $assignedQty * $material->meter_per_roll;
+                                }
+                                if ($usedQty > 0) {
+                                    $usedQty = $usedQty * $material->meter_per_roll;
+                                }
+                                $unitStr = 'meter';
+                            } elseif (strtolower($unitStr) === 'meter') {
+                                if ($assignedQty > 0 && $assignedQty <= 5) {
+                                    $assignedQty = $assignedQty * $material->meter_per_roll;
+                                }
+                                if ($usedQty > 0 && $usedQty <= 5) {
+                                    $usedQty = $usedQty * $material->meter_per_roll;
+                                }
                             }
                         }
                         
@@ -4714,6 +4732,7 @@ class CustomerController extends Controller
             }
 
             if ($material) {
+                $rawInputUnit = strtolower(trim($unitStr));
                 if (!$unitStr || $unitStr === 'pcs') {
                     $unitStr = $material->unit ?: 'pcs';
                     if (str_contains(strtolower($material->name), 'kabel') || str_contains(strtolower($material->name), 'frecon')) {
@@ -4721,9 +4740,15 @@ class CustomerController extends Controller
                     }
                 }
 
-                // Konversi kabel/frecon jika diinput roll
-                if ($material->meter_per_roll > 0 && strtolower($unitStr) === 'meter') {
-                    if ($qty > 0 && $qty < ($material->meter_per_roll / 2)) {
+                // Konversi HANYA jika diinput dalam satuan roll/pcs kecil (misal 1-5 roll), JANGAN kalikan meter aktual (misal 50m/150m)!
+                if ($material->meter_per_roll > 0) {
+                    $isExplicitRoll = in_array($rawInputUnit, ['roll', 'rol', 'haspel'], true)
+                        || ($rawInputUnit === 'pcs' && $qty <= 10);
+
+                    if ($isExplicitRoll) {
+                        $qty = $qty * $material->meter_per_roll;
+                        $unitStr = 'meter';
+                    } elseif (strtolower($unitStr) === 'meter' && $qty > 0 && $qty <= 5) {
                         $qty = $qty * $material->meter_per_roll;
                     }
                 }
