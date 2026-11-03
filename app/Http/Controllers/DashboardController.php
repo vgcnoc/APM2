@@ -588,10 +588,18 @@ class DashboardController extends Controller
         $shiftToday = null;
         $todayAttendance = null;
         $officeLocation = null;
+        $officeLocations = [];
         $isDayOff = false;
         $dayOffReason = null;
         $activeBaseDate = $today;
         $isCrossMidnightSession = false;
+        $canBypassAreaLock = (bool) ($user && (
+            $user->hasRole('admin')
+            || $user->hasRole('super admin')
+            || in_array($user->role, ['superadmin', 'admin', 'hrd'])
+            || $user->can('attendance_bypass_area_restriction')
+            || $user->can('attendances_manage')
+        ));
 
         if ($currentEmployee) {
             if ($isSpecialTeam) {
@@ -743,17 +751,19 @@ class DashboardController extends Controller
                 if (!$canBypassAreaLock && !empty($allowedAreaIds)) {
                     $officeLocationsQuery->whereIn('id', $allowedAreaIds);
                 }
-                $officeLocations = $officeLocationsQuery->get()->map(function ($a) {
-                    return [
-                        'id' => $a->id,
-                        'name' => $a->name,
-                        'address' => $a->address,
-                        'latitude' => $a->latitude ? (float) $a->latitude : null,
-                        'longitude' => $a->longitude ? (float) $a->longitude : null,
-                        'radius_meters' => $a->radius_meters ? (int) $a->radius_meters : 200,
-                        'without_radius' => false,
-                    ];
-                })->values()->all();
+                $officeLocations = $officeLocationsQuery->get()
+                    ->sortBy(fn ($a) => ((int) $a->id === (int) $currentEmployee->area_id) ? 0 : 1)
+                    ->map(function ($a) {
+                        return [
+                            'id' => $a->id,
+                            'name' => $a->name,
+                            'address' => $a->address,
+                            'latitude' => $a->latitude ? (float) $a->latitude : null,
+                            'longitude' => $a->longitude ? (float) $a->longitude : null,
+                            'radius_meters' => $a->radius_meters ? (int) $a->radius_meters : 200,
+                            'without_radius' => false,
+                        ];
+                    })->values()->all();
 
                 if (empty($officeLocations) && $currentEmployee->area) {
                     $officeLocations = [[
