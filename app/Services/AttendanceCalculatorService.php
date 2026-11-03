@@ -159,9 +159,9 @@ class AttendanceCalculatorService
     /**
      * Hitung rentang waktu mulai & selesai shift untuk tanggal presensi tertentu (mendukung lintas hari / shift malam)
      */
-    public static function resolveShiftWindow(string $dateStr, ?Shift $shift, string $tz = 'Asia/Jakarta'): ?array
+    public static function resolveShiftWindow(string $dateStr, ?object $shift, string $tz = 'Asia/Jakarta'): ?array
     {
-        if (!$shift || !$shift->start_time || !$shift->end_time) {
+        if (!$shift || empty($shift->start_time) || empty($shift->end_time)) {
             return null;
         }
 
@@ -172,7 +172,9 @@ class AttendanceCalculatorService
         $start = Carbon::createFromFormat('Y-m-d H:i', "{$cleanDate} {$startStr}", $tz)->startOfMinute();
         $end = Carbon::createFromFormat('Y-m-d H:i', "{$cleanDate} {$endStr}", $tz)->startOfMinute();
 
-        $isCrossMidnight = $shift->isCrossMidnight();
+        $isCrossMidnight = method_exists($shift, 'isCrossMidnight')
+            ? $shift->isCrossMidnight()
+            : (!empty($shift->is_night_shift) || $end->lessThanOrEqualTo($start));
         if ($isCrossMidnight) {
             $end->addDay();
         }
@@ -190,7 +192,7 @@ class AttendanceCalculatorService
      */
     public static function resolveEarliestClockInTime(
         string $dateStr,
-        ?Shift $shift,
+        ?object $shift,
         ?int $earlyLimitMinutes = null,
         string $tz = 'Asia/Jakarta'
     ): ?Carbon {
@@ -220,7 +222,7 @@ class AttendanceCalculatorService
      */
     public static function isClockInWindowOpen(
         string $dateStr,
-        ?Shift $shift,
+        ?object $shift,
         ?Carbon $now = null,
         ?int $earlyLimitMinutes = null,
         ?bool $limitEnabled = null,
@@ -299,7 +301,7 @@ class AttendanceCalculatorService
      */
     public static function isClockOutWindowOpen(
         string $dateStr,
-        ?Shift $shift,
+        ?object $shift,
         ?Carbon $now = null,
         ?int $earlyToleranceMinutes = null,
         ?bool $limitEnabled = null,
@@ -445,7 +447,7 @@ class AttendanceCalculatorService
      */
     public static function resolveCheckoutDeadlineForShift(
         string $dateStr,
-        ?Shift $shift = null,
+        ?object $shift = null,
         ?array $settings = null,
         string $tz = 'Asia/Jakarta'
     ): Carbon {

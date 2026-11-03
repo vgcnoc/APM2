@@ -889,8 +889,12 @@ class DashboardController extends Controller
         }
 
         // Informasi Batas Waktu Terakhir Absen Pulang (Deadline Checkout)
-        $effectiveShiftForDeadline = $todayAttendance?->shift ?: ($shiftToday ?: $currentEmployee?->shift);
-        $activeCheckoutDeadline = AttendanceCalculatorService::resolveCheckoutDeadlineForShift($activeBaseDate, $effectiveShiftForDeadline);
+        if ($isSpecialTeam && $specialTeam) {
+            $activeCheckoutDeadline = AttendanceCalculatorService::resolveSpecialCheckoutDeadline($activeBaseDate, $specialTeam);
+        } else {
+            $effectiveShiftForDeadline = $todayAttendance?->shift ?: ($shiftToday ?: $currentEmployee?->shift);
+            $activeCheckoutDeadline = AttendanceCalculatorService::resolveCheckoutDeadlineForShift($activeBaseDate, $effectiveShiftForDeadline);
+        }
         $checkoutDeadlineInfo = [
             'mode' => Setting::get('attendance_checkout_deadline_mode', 'shift_relative'),
             'deadline_hours' => max(1, (int) Setting::get('attendance_checkout_deadline_hours', 4)),
