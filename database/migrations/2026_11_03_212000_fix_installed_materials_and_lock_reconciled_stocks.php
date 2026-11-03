@@ -242,8 +242,8 @@ return new class extends Migration
                 if ($mat->id === 282 && $areaId === 1) {
                     $reconciledStock = 3.0;
                 }
-                // Khusus ONT di BC 3 (area_id = 3): seluruh ONT sudah terpasang ke pelanggan (available = 0 di tabel onts)
-                if (strtoupper((string) $mat->category) === 'ONT' && $areaId === 3) {
+                // Khusus ONT di BC 3 (area_id = 3) atau ONT H609e (ID 269) di BC 2: seluruh ONT sudah terpasang (available = 0 di tabel onts)
+                if ((strtoupper((string) $mat->category) === 'ONT' && $areaId === 3) || ($mat->id === 269 && $areaId === 1)) {
                     $reconciledStock = 0.0;
                 }
 
