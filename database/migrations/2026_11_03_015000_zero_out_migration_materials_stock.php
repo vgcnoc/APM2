@@ -13,22 +13,27 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Material migrasi pelanggan lama dari CSV (ID <= 260) adalah barang historis
+        // Seluruh material migrasi (ID <= 260 atau is_migration = true) adalah barang historis
         // yang sudah terpasang di rumah pelanggan lama sejak awal, sehingga sisa stok fisik di gudang adalah 0.
-        // Material fisik area baru (ID > 260) TIDAK boleh di-nol-kan.
-        MaterialStock::where('material_id', '<=', 260)->update([
+        // Riwayat 'initial_stock' (Awal Area) tetap dipertahankan untuk pencatatan audit aset.
+        MaterialStock::where(function ($q) {
+            $q->where('material_id', '<=', 260)
+              ->orWhereHas('material', fn ($mq) => $mq->where('is_migration', true));
+        })->update([
             'stock' => 0,
             'total_rolls' => 0,
             'total_packs' => 0,
             'total_pieces' => 0,
         ]);
 
-        Material::where('id', '<=', 260)->update([
-            'stock' => 0,
-            'total_rolls' => 0,
-            'total_packs' => 0,
-            'total_pieces' => 0,
-        ]);
+        Material::where('id', '<=', 260)
+            ->orWhere('is_migration', true)
+            ->update([
+                'stock' => 0,
+                'total_rolls' => 0,
+                'total_packs' => 0,
+                'total_pieces' => 0,
+            ]);
     }
 
     /**

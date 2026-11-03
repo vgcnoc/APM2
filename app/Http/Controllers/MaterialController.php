@@ -409,12 +409,38 @@ class MaterialController extends Controller
             \Illuminate\Support\Facades\DB::beginTransaction();
             $hasTransactions = \App\Models\MaterialTransactionItem::where('material_id', $material->id)->exists();
             if ($hasTransactions) {
-                // Soft delete via is_active = false dan kosongkan stok agar tidak muncul & tidak terhitung
-                $material->update([
-                    'is_active' => false,
-                    'stock' => 0
-                ]);
-                \App\Models\MaterialStock::where('material_id', $material->id)->update(['stock' => 0]);
+                $normalizedName = trim(preg_replace('/^test\s+/i', '', trim($material->name)));
+                $replacement = Material::where('id', '!=', $material->id)
+                    ->where('id', '>', 260)
+                    ->where(function ($q) {
+                        $q->where('is_active', true)->orWhereNull('is_active');
+                    })
+                    ->whereRaw('LOWER(TRIM(name)) = ?', [strtolower($normalizedName)])
+                    ->first();
+
+                if ($replacement) {
+                    \App\Models\MaterialTransactionItem::where('material_id', $material->id)
+                        ->update(['material_id' => $replacement->id]);
+                    \App\Models\Ont::where('material_id', $material->id)
+                        ->update(['material_id' => $replacement->id]);
+                    \App\Models\MaterialStock::where('material_id', $material->id)->delete();
+                    $material->delete();
+                } else {
+                    // Soft delete via is_active = false dan kosongkan stok agar tidak muncul & tidak terhitung
+                    $material->update([
+                        'is_active' => false,
+                        'stock' => 0,
+                        'total_rolls' => 0,
+                        'total_packs' => 0,
+                        'total_pieces' => 0,
+                    ]);
+                    \App\Models\MaterialStock::where('material_id', $material->id)->update([
+                        'stock' => 0,
+                        'total_rolls' => 0,
+                        'total_packs' => 0,
+                        'total_pieces' => 0,
+                    ]);
+                }
             } else {
                 \App\Models\MaterialStock::where('material_id', $material->id)->delete();
                 $material->delete();

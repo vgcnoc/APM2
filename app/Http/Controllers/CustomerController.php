@@ -3339,13 +3339,27 @@ class CustomerController extends Controller
 
                     $nameLower = strtolower($item['name']);
                     $cleanName = trim(preg_replace('/\s*\(.*?\)\s*/', '', $nameLower));
-                    $material = \App\Models\Material::where('name', 'like', "%{$cleanName}%")->first();
+                    $cleanName = trim(preg_replace('/^test\s+/i', '', $cleanName));
+                    $material = \App\Models\Material::where('id', '>', 260)
+                        ->where(function ($q) {
+                            $q->where('is_active', true)->orWhereNull('is_active');
+                        })
+                        ->where('name', 'like', "%{$cleanName}%")
+                        ->orderByRaw('CASE WHEN is_migration = 0 OR is_migration IS NULL THEN 0 ELSE 1 END')
+                        ->first();
                     
                     if (!$material && (str_contains($cleanName, 'kabel') || str_contains($cleanName, 'frecon'))) {
-                        $material = \App\Models\Material::where('category', 'Kabel Drop')
-                            ->orWhere('category', 'Kabel')
-                            ->orWhere('name', 'like', '%kabel%')
-                            ->orWhere('name', 'like', '%frecon%')->first();
+                        $material = \App\Models\Material::where('id', '>', 260)
+                            ->where(function ($q) {
+                                $q->where('is_active', true)->orWhereNull('is_active');
+                            })
+                            ->where(function ($q) {
+                                $q->where('category', 'Kabel Drop')
+                                  ->orWhere('category', 'Kabel')
+                                  ->orWhere('name', 'like', '%kabel%')
+                                  ->orWhere('name', 'like', '%frecon%');
+                            })
+                            ->first();
                     }
 
                     if ($material) {
@@ -4734,12 +4748,26 @@ class CustomerController extends Controller
             if (!$material) {
                 $nameLower = strtolower($matName);
                 $cleanName = trim(preg_replace('/\s*\(.*?\)\s*/', '', $nameLower));
-                $material = \App\Models\Material::where('name', 'like', "%{$cleanName}%")->first();
+                $cleanName = trim(preg_replace('/^test\s+/i', '', $cleanName));
+                $material = \App\Models\Material::where('id', '>', 260)
+                    ->where(function ($q) {
+                        $q->where('is_active', true)->orWhereNull('is_active');
+                    })
+                    ->where('name', 'like', "%{$cleanName}%")
+                    ->orderByRaw('CASE WHEN is_migration = 0 OR is_migration IS NULL THEN 0 ELSE 1 END')
+                    ->first();
                 if (!$material && (str_contains($cleanName, 'kabel') || str_contains($cleanName, 'frecon'))) {
-                    $material = \App\Models\Material::where('category', 'Kabel Drop')
-                        ->orWhere('category', 'Kabel')
-                        ->orWhere('name', 'like', '%kabel%')
-                        ->orWhere('name', 'like', '%frecon%')->first();
+                    $material = \App\Models\Material::where('id', '>', 260)
+                        ->where(function ($q) {
+                            $q->where('is_active', true)->orWhereNull('is_active');
+                        })
+                        ->where(function ($q) {
+                            $q->where('category', 'Kabel Drop')
+                              ->orWhere('category', 'Kabel')
+                              ->orWhere('name', 'like', '%kabel%')
+                              ->orWhere('name', 'like', '%frecon%');
+                        })
+                        ->first();
                 }
             }
 

@@ -40,8 +40,12 @@ return new class extends Migration
             ->where('unit', 'cm')
             ->update(['unit' => 'pcs']);
 
-        // 2. Rekonsiliasi penuh seluruh Material Aktif (ID > 260) berdasarkan buku besar (ledger) transaksi
-        $materials = Material::where('id', '>', 260)->get();
+        // 2. Rekonsiliasi penuh seluruh Material Katalog Aktif (ID > 260 dan bukan migrasi) berdasarkan buku besar (ledger) transaksi
+        $materials = Material::where('id', '>', 260)
+            ->where(function ($q) {
+                $q->where('is_migration', false)->orWhereNull('is_migration');
+            })
+            ->get();
 
         foreach ($materials as $mat) {
             $mpr = (float) ($mat->meter_per_roll ?? 0);

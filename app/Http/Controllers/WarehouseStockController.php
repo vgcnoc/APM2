@@ -19,20 +19,27 @@ class WarehouseStockController extends Controller
         $scopedAreaIds = $selectedAreaId ? [$selectedAreaId] : (!$isGlobal && !empty($accessibleAreas) ? $accessibleAreas : null);
 
         // Filter material gudang yang relevan:
-        // - Barang katalog (ID > 260): Tampil jika ada alokasi di area
-        // - Barang migrasi (ID <= 260): HANYA tampil jika BENAR-BENAR memiliki sisa stok fisik di gudang (> 0)
+        // - Barang katalog (ID > 260 dan bukan migrasi): Tampil jika ada alokasi di area
+        // - Barang migrasi (ID <= 260 atau is_migration = true): HANYA tampil jika BENAR-BENAR memiliki sisa stok fisik di gudang (> 0)
         $warehouseFilter = function ($q) use ($scopedAreaIds) {
             $q->where(function ($sub) use ($scopedAreaIds) {
-                $sub->where('id', '>', 260)
-                    ->orWhere(function ($migQ) use ($scopedAreaIds) {
-                        $migQ->where('id', '<=', 260)
-                             ->whereHas('stocks', function ($sq) use ($scopedAreaIds) {
-                                 if ($scopedAreaIds) {
-                                     $sq->whereIn('area_id', $scopedAreaIds);
-                                 }
-                                 $sq->where('stock', '>', 0);
-                             });
+                $sub->where(function ($catQ) {
+                    $catQ->where('id', '>', 260)
+                         ->where(function ($mq) {
+                             $mq->where('is_migration', false)->orWhereNull('is_migration');
+                         });
+                })
+                ->orWhere(function ($migQ) use ($scopedAreaIds) {
+                    $migQ->where(function ($mq) {
+                        $mq->where('id', '<=', 260)->orWhere('is_migration', true);
+                    })
+                    ->whereHas('stocks', function ($sq) use ($scopedAreaIds) {
+                        if ($scopedAreaIds) {
+                            $sq->whereIn('area_id', $scopedAreaIds);
+                        }
+                        $sq->where('stock', '>', 0);
                     });
+                });
             });
         };
 
@@ -295,18 +302,50 @@ class WarehouseStockController extends Controller
             \Illuminate\Support\Facades\DB::transaction(function () use ($id) {
                 $material = Material::findOrFail($id);
 
-                // Unlink ONTs from material transaction items if any
                 $itemIds = \App\Models\MaterialTransactionItem::where('material_id', $id)->pluck('id');
                 if ($itemIds->isNotEmpty()) {
-                    \App\Models\Ont::whereIn('material_transaction_item_id', $itemIds)->update(['material_transaction_item_id' => null]);
-                    \App\Models\MaterialTransactionItem::whereIn('id', $itemIds)->delete();
+                    // Cari apakah ada material aktif lain dengan nama serupa (misal duplikat / prefix TEST)
+                    $normalizedName = trim(preg_replace('/^test\s+/i', '', trim($material->name)));
+                    $replacement = Material::where('id', '!=', $material->id)
+                        ->where('id', '>', 260)
+                        ->where(function ($q) {
+                            $q->where('is_active', true)->orWhereNull('is_active');
+                        })
+                        ->whereRaw('LOWER(TRIM(name)) = ?', [strtolower($normalizedName)])
+                        ->first();
+
+                    if ($replacement) {
+                        // Alihkan seluruh histori transaksi ke material pengganti agar histori pemakaian TIDAK HILANG
+                        \App\Models\MaterialTransactionItem::whereIn('id', $itemIds)->update([
+                            'material_id' => $replacement->id,
+                        ]);
+                        \App\Models\Ont::where('material_id', $material->id)->update([
+                            'material_id' => $replacement->id,
+                        ]);
+                        $material->stocks()->delete();
+                        $material->delete();
+                    } else {
+                        // JANGAN hapus MaterialTransactionItem agar riwayat pemakaian instalasi pelanggan tidak hilang!
+                        // Cukup nonaktifkan dan kosongkan stok.
+                        $material->update([
+                            'is_active' => false,
+                            'stock' => 0,
+                            'total_rolls' => 0,
+                            'total_packs' => 0,
+                            'total_pieces' => 0,
+                        ]);
+                        $material->stocks()->update([
+                            'stock' => 0,
+                            'total_rolls' => 0,
+                            'total_packs' => 0,
+                            'total_pieces' => 0,
+                        ]);
+                    }
+                } else {
+                    // Tidak ada histori transaksi, aman dihapus permanen
+                    $material->stocks()->delete();
+                    $material->delete();
                 }
-
-                // Hapus stok per area
-                $material->stocks()->delete();
-
-                // Hapus material
-                $material->delete();
             });
 
             return redirect()->back()->with('success', 'Barang berhasil dihapus dari inventory.');
