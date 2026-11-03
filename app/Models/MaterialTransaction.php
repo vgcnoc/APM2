@@ -73,19 +73,6 @@ class MaterialTransaction extends Model
                 }
                 $item->delete();
             }
-
-            // 2. Ketika transaksi material dihapus bukan edit, maka data pelanggan serta yang berhubungan ikut terhapus (Requirement 2)
-            if ($transaction->customer_id && !static::$isCascadingCustomerDelete && !\App\Models\Customer::$isPurging) {
-                $customer = \App\Models\Customer::find($transaction->customer_id);
-                if ($customer) {
-                    static::$isCascadingCustomerDelete = true;
-                    try {
-                        $customer->delete();
-                    } finally {
-                        static::$isCascadingCustomerDelete = false;
-                    }
-                }
-            }
         });
     }
 
