@@ -1319,21 +1319,19 @@ class AttendanceCalculatorService
                         $st = strtolower($s->status ?? '');
                         $nt = strtolower($s->notes ?? '');
 
-                        $isSick = ($st === 'sick') || str_contains($nt, 'sakit');
-                        $isLeaveOrPermit = ($st === 'leave') || ($st === 'permit') || str_contains($nt, 'izin');
-
-                        if ($isSick) {
+                        // Tentukan kategori status berdasarkan status resmi atau label prefix
+                        if ($st === 'sick' || $st === 'sick_no_cert' || str_starts_with($nt, '[sakit')) {
                             // Cek apakah tanpa surat dokter
                             if (str_contains($nt, 'tanpa surat') || str_contains($nt, 'tanpa dokter') || $st === 'sick_no_cert') {
                                 $totalSickNoCert++;
                             } else {
                                 $totalSickWithCert++;
                             }
-                        } elseif ($isLeaveOrPermit) {
-                            if (str_contains($nt, 'izin') || $st === 'permit') {
+                        } elseif ($st === 'permit' || $st === 'leave' || str_starts_with($nt, '[izin') || str_starts_with($nt, '[cuti') || str_contains($nt, 'izin tidak masuk')) {
+                            if ($st === 'permit' || str_contains($nt, 'izin') || str_starts_with($nt, '[izin')) {
                                 $totalPermit++;
                             }
-                        } elseif ($st === 'alpha' || str_contains($nt, 'alpha') || str_contains($nt, 'mangkir')) {
+                        } elseif ($st === 'alpha' || str_starts_with($nt, '[alpha') || str_contains($nt, 'mangkir')) {
                             $totalManualAlpha++;
                         }
                     }
@@ -1661,7 +1659,7 @@ class AttendanceCalculatorService
                     $sickSchedule = $empSchedules->filter(function ($s) {
                         $st = strtolower($s->status ?? '');
                         $nt = strtolower($s->notes ?? '');
-                        $isSick = ($st === 'sick') || str_contains($nt, 'sakit');
+                        $isSick = ($st === 'sick') || ($st === 'sick_no_cert') || str_starts_with($nt, '[sakit');
                         return $isSick && (str_contains($nt, 'tanpa surat') || str_contains($nt, 'tanpa dokter') || $st === 'sick_no_cert');
                     })->sortByDesc('date')->first();
                     $sickDeductDate = $sickSchedule 
@@ -1695,7 +1693,7 @@ class AttendanceCalculatorService
                     $permitSchedule = $empSchedules->filter(function ($s) {
                         $st = strtolower($s->status ?? '');
                         $nt = strtolower($s->notes ?? '');
-                        return ($st === 'leave') || ($st === 'permit') || str_contains($nt, 'izin');
+                        return ($st === 'leave') || ($st === 'permit') || str_starts_with($nt, '[izin') || str_contains($nt, 'izin');
                     })->sortByDesc('date')->first();
                     $permitDeductDate = $permitSchedule 
                         ? Carbon::parse($permitSchedule->date)->format('Y-m-d') 
