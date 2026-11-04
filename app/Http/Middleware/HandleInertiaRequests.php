@@ -106,6 +106,7 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
+                'isolated_customer' => fn () => $request->session()->get('isolated_customer'),
             ],
             'billingSettings' => fn () => [
                 'billing_cycle' => \App\Models\Setting::get('billing_cycle', 'anniversary'),

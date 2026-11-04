@@ -9,8 +9,9 @@ import {
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import axios from 'axios';
 import AppLogo from '@/Components/AppLogo.vue';
+import CustomerIsolatedBanner from '@/Components/CustomerIsolatedBanner.vue';
 
-const props = defineProps({ status: String, portal: String });
+const props = defineProps({ status: String, portal: String, isolatedCustomer: Object });
 const page = usePage();
 const brandName = computed(() => page.props.company_name || page.props.app_name || 'ISP Manager');
 const portals = [
@@ -43,6 +44,8 @@ const emailInput = ref(null);
 const billInput = ref(null);
 const showPassword = ref(false);
 const form = useForm({ email: '', password: '', remember: false });
+const showIsolatedModal = ref(false);
+const activeIsolationData = computed(() => props.isolatedCustomer || page.props.flash?.isolated_customer);
 
 const openLogin = (portal) => {
     selectedPortal.value = portal;
@@ -106,6 +109,9 @@ const handleCheckBill = async () => {
 onMounted(() => {
     document.body.classList.add('auth-device-scale');
     document.body.style.zoom = '100%';
+    if (activeIsolationData.value) {
+        showIsolatedModal.value = true;
+    }
 });
 onUnmounted(() => {
     billRequest?.abort();
@@ -213,6 +219,17 @@ onUnmounted(() => {
                         <button type="submit" class="primary-button" :disabled="form.processing"><span v-if="form.processing" class="spinner" aria-hidden="true"></span><span>{{ form.processing ? 'Sedang masuk…' : 'Masuk sekarang' }}</span><ArrowRightIcon v-if="!form.processing" /></button>
                     </form>
 
+                    <div v-if="selectedPortal.id === 'customer'" class="isolated-alert-prompt">
+                        <span class="pulse-dot"></span>
+                        <div class="prompt-text">
+                            <strong>Layanan internet Anda terputus / diisolir?</strong>
+                            <span>Periksa tagihan tertunggak atau lakukan pembayaran cepat.</span>
+                        </div>
+                        <button type="button" class="prompt-link" @click="openCheckBill">
+                            Cek Status Isolir &rarr;
+                        </button>
+                    </div>
+
                     <p class="portal-hint"><LockClosedIcon /><span>{{ selectedPortal.hint }}</span></p>
                     <p v-if="selectedPortal.registration" class="registration-note">Belum menjadi mitra? <Link :href="selectedPortal.registration">Daftar sekarang <ArrowUpRightIcon /></Link></p>
                     <button type="button" class="back-button" :disabled="form.processing" @click="closeDialog">Kembali ke pilihan portal</button>
@@ -231,6 +248,18 @@ onUnmounted(() => {
                     <p v-if="searchError" id="bill-error" class="notice notice-error" role="alert">{{ searchError }}</p>
 
                     <div v-if="billResult" class="bill-results" aria-live="polite">
+                        <!-- Banner Isolir Modern jika status pelanggan adalah suspended / terisolir -->
+                        <div v-if="billResult.is_isolated || billResult.customer?.status === 'suspended'" class="mb-5">
+                            <CustomerIsolatedBanner
+                                :customer="billResult.customer"
+                                :invoices="billResult.invoices"
+                                :total-unpaid="billResult.total_unpaid"
+                                :banks="billResult.banks"
+                                :company-phone="billResult.company_phone"
+                                :company-name="billResult.company_name"
+                                mode="compact"
+                            />
+                        </div>
                         <div class="customer-summary">
                             <div class="customer-summary-heading"><strong>{{ billResult.customer.name }}</strong><span class="service-badge">{{ billResult.customer.status === 'active' ? 'Aktif' : billResult.customer.status }}</span></div>
                             <span>{{ billResult.customer.customer_code }}</span>
@@ -250,6 +279,32 @@ onUnmounted(() => {
                     </div>
                 </template>
             </DialogPanel>
+        </div>
+    </Dialog>
+
+    <!-- Dialog Banner Isolir Modern Saat Pelanggan Terisolir Mau Login -->
+    <Dialog
+        v-if="showIsolatedModal && activeIsolationData"
+        :open="true"
+        class="access-dialog isolation-dialog-wrapper"
+        @close="showIsolatedModal = false"
+    >
+        <div class="dialog-backdrop" aria-hidden="true"></div>
+        <div class="dialog-viewport">
+            <div class="w-full max-w-4xl my-4 sm:my-8 px-2 sm:px-4">
+                <CustomerIsolatedBanner
+                    :customer="activeIsolationData.customer"
+                    :invoices="activeIsolationData.invoices"
+                    :total-unpaid="activeIsolationData.total_unpaid"
+                    :banks="activeIsolationData.banks"
+                    :company-phone="activeIsolationData.company_phone"
+                    :company-name="activeIsolationData.company_name"
+                    mode="full"
+                    :can-continue-to-dashboard="Boolean(activeIsolationData.user_id)"
+                    :show-close-button="true"
+                    @close="showIsolatedModal = false"
+                />
+            </div>
         </div>
     </Dialog>
 </template>
@@ -414,4 +469,64 @@ onUnmounted(() => {
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+.isolated-alert-prompt {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    margin: 16px 0 6px;
+    background: rgba(244, 63, 94, 0.1);
+    border: 1px solid rgba(244, 63, 94, 0.25);
+    border-radius: 12px;
+}
+.isolated-alert-prompt .pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #f43f5e;
+    flex-shrink: 0;
+    box-shadow: 0 0 10px #f43f5e;
+    animation: pulse 2s infinite;
+}
+.isolated-alert-prompt .prompt-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.isolated-alert-prompt .prompt-text strong {
+    font-size: 11px;
+    color: #fecdd3;
+    font-weight: 700;
+}
+.isolated-alert-prompt .prompt-text span {
+    font-size: 10px;
+    color: #fda4af;
+}
+.isolated-alert-prompt .prompt-link {
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    background: rgba(244, 63, 94, 0.3);
+    border: 1px solid rgba(244, 63, 94, 0.4);
+    padding: 6px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .2s, transform .2s;
+}
+.isolated-alert-prompt .prompt-link:hover {
+    background: rgba(244, 63, 94, 0.5);
+    transform: translateX(2px);
+}
+.isolation-dialog-wrapper .dialog-viewport {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    overflow-y: auto;
+}
+
 </style>

@@ -1,11 +1,14 @@
 <script setup>
 import { Head, Link } from '@inertiajs/vue3';
 import CustomerLayout from '@/Layouts/CustomerLayout.vue';
+import CustomerIsolatedBanner from '@/Components/CustomerIsolatedBanner.vue';
 
 const props = defineProps({
     customer: Object,
     latestInvoice: Object,
-    recentTickets: Array
+    recentTickets: Array,
+    isIsolated: Boolean,
+    isolationData: Object,
 });
 
 const formatRupiah = (amount) => {
@@ -35,6 +38,19 @@ const formatDate = (dateStr) => {
     <Head title="Area Pelanggan — Beranda" />
 
     <CustomerLayout>
+        <!-- Banner Isolir Modern jika status pelanggan adalah suspended / terisolir -->
+        <CustomerIsolatedBanner
+            v-if="isIsolated && isolationData"
+            :customer="isolationData.customer"
+            :invoices="isolationData.invoices"
+            :total-unpaid="isolationData.total_unpaid"
+            :banks="isolationData.banks"
+            :company-phone="isolationData.company_phone"
+            :company-name="isolationData.company_name"
+            mode="compact"
+            class="mb-8"
+        />
+
         <!-- Top Profile Welcome Banner -->
         <div class="relative overflow-hidden bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl mb-8 border border-slate-800">
             <div class="absolute -right-16 -top-16 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>

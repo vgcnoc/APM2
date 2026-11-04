@@ -18,6 +18,7 @@ class AuthController extends Controller
         return Inertia::render('Auth/Login', [
             'status' => session('status'),
             'portal' => request()->query('portal', 'staff'),
+            'isolatedCustomer' => session('isolated_customer'),
         ]);
     }
 
@@ -123,6 +124,21 @@ class AuthController extends Controller
                     $request->session()->regenerateToken();
 
                     return back()->withErrors(['email' => 'Akun tidak terdaftar sebagai Pelanggan. Gunakan email pelanggan yang terdaftar pada sistem.'])->onlyInput('email');
+                }
+
+                // Cek status isolir pelanggan
+                $isIsolated = ($customer && ($customer->status === 'suspended' || !empty($customer->billing_isolated_at) || $customer->service_status === 'isolir'));
+
+                if ($isIsolated && !$request->boolean('allow_isolated_dashboard')) {
+                    $isolationData = \App\Http\Controllers\CustomerIsolationController::getCustomerIsolationData($customer, $user->id);
+
+                    Auth::logout();
+                    $request->session()->invalidate();
+                    $request->session()->regenerateToken();
+
+                    $request->session()->put('isolated_login_user_id', $user->id);
+
+                    return back()->with('isolated_customer', $isolationData)->withInput(['email' => $request->input('email')]);
                 }
 
                 $request->session()->put('login_portal', 'customer');

@@ -20,6 +20,10 @@ use Illuminate\Support\Facades\Route;
 */
 
 // ── Public Routes (Tanpa Login) ─────────────────────────────────
+Route::get('/isolir', [\App\Http\Controllers\CustomerIsolationController::class, 'index'])->name('customer.isolated');
+Route::get('/pemberitahuan-isolir', [\App\Http\Controllers\CustomerIsolationController::class, 'index'])->name('customer.isolated.alias');
+Route::post('/customer/isolated-continue-login', [\App\Http\Controllers\CustomerIsolationController::class, 'continueLogin'])->name('customer.isolated.continue');
+
 Route::get('/public/check-bill', function (\Illuminate\Http\Request $request) {
     $q = trim($request->input('q', ''));
     if (strlen($q) < 3) {
@@ -36,39 +40,17 @@ Route::get('/public/check-bill', function (\Illuminate\Http\Request $request) {
         return response()->json(['success' => false, 'message' => 'Data pelanggan tidak ditemukan. Pastikan ID Pelanggan atau No. WhatsApp sudah sesuai.']);
     }
 
-    $unpaid = \App\Models\Invoice::with('payments')
-        ->where('customer_id', $customer->id)
-        ->where('is_reseller_balance', false)
-        ->whereIn('status', ['unpaid', 'partial', 'overdue'])
-        ->latest('due_date')
-        ->get()
-        ->map(function ($inv) {
-            $verifiedPaid = $inv->payments->where('status', 'verified')->sum('amount');
-            return [
-                'id' => $inv->id,
-                'invoice_number' => $inv->invoice_number,
-                'period_label' => $inv->period_label,
-                'due_date' => $inv->due_date ? \Carbon\Carbon::parse($inv->due_date)->translatedFormat('d M Y') : '-',
-                'amount' => (float) $inv->amount,
-                'remaining' => max(0, (float) ($inv->amount - $verifiedPaid)),
-                'status' => $inv->status,
-            ];
-        })
-        ->filter(fn($i) => $i['remaining'] > 0)
-        ->values();
+    $isolationData = \App\Http\Controllers\CustomerIsolationController::getCustomerIsolationData($customer);
 
     return response()->json([
         'success' => true,
-        'customer' => [
-            'name' => $customer->name,
-            'customer_code' => $customer->customer_code,
-            'package_name' => $customer->package?->name ?? 'Internet Rumah',
-            'package_price' => (float) ($customer->package?->price ?? 0),
-            'area' => $customer->areaModel?->name ?? $customer->area ?? '-',
-            'status' => $customer->status,
-        ],
-        'invoices' => $unpaid,
-        'total_unpaid' => (float) $unpaid->sum('remaining'),
+        'customer' => $isolationData['customer'],
+        'invoices' => $isolationData['invoices'],
+        'total_unpaid' => $isolationData['total_unpaid'],
+        'banks' => $isolationData['banks'],
+        'company_name' => $isolationData['company_name'],
+        'company_phone' => $isolationData['company_phone'],
+        'is_isolated' => $isolationData['customer']['is_isolated'],
     ]);
 })->name('public.check-bill');
 

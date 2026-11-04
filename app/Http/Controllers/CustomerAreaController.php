@@ -112,11 +112,16 @@ class CustomerAreaController extends Controller
             || (method_exists($user, 'hasRole') && $user->hasRole('reseller'))
             || Reseller::where('user_id', $user->id)->exists();
 
+        $isIsolated = ($customer && ($customer->status === 'suspended' || !empty($customer->billing_isolated_at) || $customer->service_status === 'isolir'));
+        $isolationData = $isIsolated ? \App\Http\Controllers\CustomerIsolationController::getCustomerIsolationData($customer, $user->id) : null;
+
         return Inertia::render('CustomerArea/Dashboard', [
             'customer' => $customer,
             'latestInvoice' => $latestInvoice,
             'recentTickets' => $recentTickets,
             'isReseller' => $isReseller,
+            'isIsolated' => $isIsolated,
+            'isolationData' => $isolationData,
         ]);
     }
 
