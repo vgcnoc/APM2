@@ -74,6 +74,7 @@ class ProductController extends Controller
         }
 
         $validated['is_migration'] = false;
+        $validated['is_catalog'] = true; // Produk katalog toko (master data produk)
 
         // Cek jika produk dengan nama yang sama sudah ada di sistem
         $existing = \App\Services\MaterialService::findByName($validated['name']);
@@ -123,6 +124,7 @@ class ProductController extends Controller
             return redirect()->back()->with('success', 'Produk berhasil diperbarui dan menimpa data material sebelumnya.');
         }
 
+        $validated['is_catalog'] = true;
         $product->update($validated);
 
         return redirect()->back()->with('success', 'Produk berhasil diperbarui.');

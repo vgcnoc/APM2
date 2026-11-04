@@ -26,6 +26,7 @@ class Material extends Model
         'total_pieces',
         'is_active',
         'is_migration',
+        'is_catalog',
         'requires_sn',
         'requires_mac',
     ];
@@ -33,6 +34,7 @@ class Material extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'is_migration' => 'boolean',
+        'is_catalog' => 'boolean',
         'requires_sn' => 'boolean',
         'requires_mac' => 'boolean',
     ];
@@ -55,26 +57,25 @@ class Material extends Model
     /**
      * Scope untuk tampilan di menu Katalog Produk & Satuan (Gudang Pusat):
      * Khusus produk/material murni untuk restock / order toko.
-     * Material dari hasil migrasi (pelanggan lama / aset historis) TIDAK BOLEH muncul di sini.
+     * Material dari hasil migrasi maupun material operasional lokal/bekas TIDAK BOLEH muncul di sini.
      */
     public function scopeCatalogProducts($query)
     {
-        return $query->where(function ($q) {
-            $q->where('is_migration', false)->orWhereNull('is_migration');
-        })->where(function ($q) {
-            $q->where('id', '>', 260);
-        })->where(function ($q) {
-            $q->whereNull('description')
-              ->orWhere(function ($dq) {
-                  $dq->where('description', 'not like', '%migrasi%')
-                     ->where('description', 'not like', '%hasil migrasi%');
-              });
-        });
+        return $query->where('is_catalog', true)
+            ->where(function ($q) {
+                $q->where('is_migration', false)->orWhereNull('is_migration');
+            })
+            ->where('id', '>', 260)
+            ->where(function ($q) {
+                $q->where('name', 'not like', '%(Bekas%')
+                  ->where('name', 'not like', '%kabel bekas%');
+            });
     }
 
     /**
      * Scope untuk tampilan di menu Data Material / Barang:
      * Menampilkan data hasil migrasi (is_migration = true atau ID <= 260 atau transaksi migrasi)
+     * DAN material operasional fisik area (is_catalog = false atau pencatatan area)
      * DAN material yang sudah selesai di-order via Order Toko (Pembelian Toko / Supplier).
      * Material yang baru sebatas katalog produk dan belum di-order tidak dimunculkan di Data Material.
      */
@@ -82,6 +83,7 @@ class Material extends Model
     {
         return $query->where(function ($q) {
             $q->where('is_migration', true)
+              ->orWhere('is_catalog', false)
               ->orWhere('id', '<=', 260)
               ->orWhereHas('transactionItems.transaction', function ($tq) {
                   $tq->where('transaction_number', 'like', '%MIG%')
