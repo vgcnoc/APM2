@@ -263,6 +263,24 @@
                             </div>
                         </Link>
 
+                        <!-- Syarat & Ketentuan (TTD Digital) -->
+                        <button 
+                            type="button"
+                            @click="openTermsModal(activeDropdownRow)"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-indigo-50/80 hover:text-indigo-700 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-indigo-50 group-hover:bg-indigo-100/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-slate-800 group-hover:text-indigo-700">Syarat &amp; Ketentuan (TTD)</span>
+                                <p class="text-[10px] text-slate-400 group-hover:text-indigo-500 font-normal leading-tight">Form S&amp;K &amp; Tanda Tangan Digital HP</p>
+                            </div>
+                        </button>
+
                         <!-- Cetak Formulir Booking -->
                         <a 
                             v-can="'customers_booking_print'"
@@ -764,6 +782,14 @@
                 </div>
             </div>
         </Teleport>
+        <!-- Syarat & Ketentuan Digital Signature Modal -->
+        <CustomerTermsModal
+            v-if="showTermsModal"
+            v-model:show="showTermsModal"
+            :customer-id="selectedTermsCustomer?.id"
+            stage="booking"
+        />
+
         <!-- Quick Detail & Edit Modal -->
         <CustomerQuickDetailModal
             :show="showQuickDetailModal"
@@ -781,6 +807,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import PipelineGuideCard from '@/Components/Customers/PipelineGuideCard.vue';
 import DataTable from '@/Components/DataTable.vue';
 import CustomerQuickDetailModal from '@/Components/CustomerQuickDetailModal.vue';
+import CustomerTermsModal from '@/Components/CustomerTermsModal.vue';
 
 const props = defineProps({ customers: Object, filters: Object, areas: Array, stats: Object, technicians: Array, cs_officers: Array });
 
@@ -1148,6 +1175,14 @@ function submitCancel() {
 }
 
 // ── Floating Action Dropdown Logic ─────────────────────────
+const showTermsModal = ref(false);
+const selectedTermsCustomer = ref(null);
+function openTermsModal(row) {
+    selectedTermsCustomer.value = row;
+    showTermsModal.value = true;
+    closeDropdown();
+}
+
 const activeDropdownRow = ref(null);
 const dropdownPos = ref({ top: 0, left: 0 });
 

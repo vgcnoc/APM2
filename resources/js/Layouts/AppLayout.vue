@@ -1310,10 +1310,11 @@ const menuItems = [
         icon: 'cog',
         label: 'Konfigurasi Sistem',
         theme: 'violet',
-        active: (url) => ['/settings/branding', '/settings/billing', '/settings/payroll', '/settings/resellers', '/settings/api', '/settings/data-migration'].some(path => (url || '').startsWith(path)),
+        active: (url) => ['/settings/branding', '/settings/terms-conditions', '/settings/billing', '/settings/payroll', '/settings/resellers', '/settings/api', '/settings/data-migration'].some(path => (url || '').startsWith(path)),
         permission: ['menu_settings_branding', 'menu_settings_billing', 'menu_settings_payroll', 'menu_settings_api', 'menu_settings_roles', 'menu_data_migration'],
         children: [
             { href: '/settings/branding', label: 'Branding & Tampilan', active: (url) => (url || '').startsWith('/settings/branding'), permission: 'menu_settings_branding' },
+            { href: '/settings/terms-conditions', label: 'Template S&K Berlangganan', active: (url) => (url || '').startsWith('/settings/terms-conditions'), permission: 'menu_settings_billing' },
             { href: '/settings/billing', label: 'Billing / Invoice', active: (url) => (url || '').startsWith('/settings/billing'), permission: 'menu_settings_billing' },
             { href: '/settings/payroll', label: 'Sistem Gaji', active: (url) => (url || '').startsWith('/settings/payroll'), permission: 'menu_settings_payroll' },
             { href: '/settings/resellers', label: 'Pengaturan Reseller', active: (url) => (url || '').startsWith('/settings/resellers'), permission: 'menu_settings_roles' },

@@ -1100,4 +1100,21 @@ class Customer extends Model
         }
     }
 
+    /**
+     * Relasi ke Dokumen Syarat & Ketentuan (Customer Agreements)
+     */
+    public function agreements()
+    {
+        return $this->hasMany(CustomerAgreement::class);
+    }
+
+    /**
+     * Perjanjian terbaru pelanggan
+     */
+    public function latestAgreement()
+    {
+        return $this->hasOne(CustomerAgreement::class)->latestOfMany();
+    }
+
 }
+

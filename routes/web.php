@@ -149,6 +149,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{customer}/print-termination', [CustomerController::class, 'printTermination'])->name('print-termination');
         Route::get('/{customer}/print-booking', [CustomerController::class, 'printBooking'])->name('print-booking');
         Route::get('/{customer}/print-psb', [CustomerController::class, 'printPsb'])->name('print-psb');
+
+        // Syarat & Ketentuan Berlangganan & Tanda Tangan Digital
+        Route::get('/{customer}/agreements/current', [\App\Http\Controllers\SubscriptionTermsController::class, 'getCustomerAgreementData'])->name('agreements.current');
+        Route::post('/{customer}/agreements', [\App\Http\Controllers\SubscriptionTermsController::class, 'storeCustomerAgreement'])->name('agreements.store');
+        Route::get('/agreements/{agreement}/print', [\App\Http\Controllers\SubscriptionTermsController::class, 'printAgreement'])->name('agreements.print');
         Route::post('/{customer}/suspend', [CustomerController::class, 'suspend'])->name('suspend');
         Route::post('/{customer}/unsuspend', [CustomerController::class, 'unsuspend'])->name('unsuspend');
         Route::post('/{customer}/connection-access', [CustomerController::class, 'connectionAccess'])->name('connection-access');
@@ -749,6 +754,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/settings/branding', [\App\Http\Controllers\SettingController::class, 'branding'])->name('settings.branding');
         Route::post('/settings/branding', [\App\Http\Controllers\SettingController::class, 'updateBranding'])->name('settings.branding.update');
         
+        // Template Syarat & Ketentuan Berlangganan
+        Route::get('/settings/terms-conditions', [\App\Http\Controllers\SubscriptionTermsController::class, 'index'])->name('settings.terms-conditions');
+        Route::post('/settings/terms-conditions', [\App\Http\Controllers\SubscriptionTermsController::class, 'update'])->name('settings.terms-conditions.update');
+        Route::post('/settings/terms-conditions/reset', [\App\Http\Controllers\SubscriptionTermsController::class, 'resetToDefault'])->name('settings.terms-conditions.reset');
+
         Route::get('/settings/billing', [\App\Http\Controllers\SettingController::class, 'billing'])->name('settings.billing');
         Route::post('/settings/billing', [\App\Http\Controllers\SettingController::class, 'updateBilling'])->name('settings.billing.update');
         Route::get('/settings/invoice-template/preview', [\App\Http\Controllers\SettingController::class, 'previewInvoiceTemplate'])->name('settings.invoice-template.preview');
