@@ -62,6 +62,10 @@ class MaterialTransaction extends Model
     protected static function booted(): void
     {
         static::deleting(function (MaterialTransaction $transaction) {
+            if ($transaction->expense_id) {
+                Expense::where('id', $transaction->expense_id)->delete();
+            }
+
             if ($transaction->skipStockRestoreOnDelete) {
                 MaterialTransactionItem::where('material_transaction_id', $transaction->id)->delete();
                 return;
@@ -76,6 +80,11 @@ class MaterialTransaction extends Model
                 ->get();
 
             if ($transaction->status === 'approved' && !$transaction->is_migration) {
+                $isDismantle = str_starts_with((string) $transaction->transaction_number, 'RET-DISM-');
+                $dismantleDisposition = $isDismantle
+                    ? CustomerMaterialDismantle::where('material_transaction_id', $transaction->id)->value('disposition')
+                    : null;
+
                 foreach ($items as $item) {
                     $material = $item->material;
                     $qty = (float) $item->quantity;
@@ -84,20 +93,31 @@ class MaterialTransaction extends Model
                     }
 
                     if ($isStorePurchase) {
+                        // Bersihkan ONT standby yang belum terpasang ke pelanggan dari item PO ini
+                        Ont::where('material_transaction_item_id', $item->id)
+                            ->whereNull('customer_id')
+                            ->whereNull('odp_id')
+                            ->delete();
+                        Ont::where('material_transaction_item_id', $item->id)
+                            ->update(['material_transaction_item_id' => null]);
+
                         // Order Toko memindahkan stok dari Gudang Pusat (materials.stock) ke Gudang Cabang Area (material_stocks.stock)
-                        $baseQty = \App\Services\MaterialService::convertToBaseQuantity($material, $qty, $item->unit);
-                        if ($transaction->area_id) {
-                            $matStock = MaterialStock::where('material_id', $material->id)
-                                ->where('area_id', $transaction->area_id)
+                        $lockedMat = Material::whereKey($material->id)->lockForUpdate()->first() ?? $material;
+                        $baseQty = \App\Services\MaterialService::convertToBaseQuantity($lockedMat, $qty, $item->unit);
+                        $targetAreaId = $transaction->area_id ?: ($transaction->technician_name ? Area::where('name', $transaction->technician_name)->value('id') : null);
+                        if ($targetAreaId) {
+                            $matStock = MaterialStock::where('material_id', $lockedMat->id)
+                                ->where('area_id', $targetAreaId)
+                                ->lockForUpdate()
                                 ->first();
                             if ($matStock) {
-                                $matStock->stock = max(0, (float) $matStock->stock - $baseQty);
-                                \App\Services\MaterialService::recalcAreaStockUnits($matStock, $material);
-                                $matStock->save();
+                                $matStock->stock = max(0.0, (float) $matStock->stock - $baseQty);
+                                $matStock->initial_stock = max(0.0, (float) $matStock->initial_stock - $baseQty);
+                                \App\Services\MaterialService::recalcAreaStockUnits($matStock, $lockedMat)->save();
                             }
                         }
-                        $material->stock = (float) $material->stock + $baseQty;
-                        $material->recalcUnitTotals()->save();
+                        $lockedMat->stock = max(0.0, (float) $lockedMat->stock + $baseQty);
+                        $lockedMat->recalcUnitTotals()->save();
                     } elseif ($transaction->type === 'out') {
                         \App\Services\MaterialService::restoreOperationalStock(
                             $material,
@@ -107,7 +127,11 @@ class MaterialTransaction extends Model
                         );
                     } elseif ($transaction->type === 'in') {
                         $cond = trim((string) ($item->condition ?? 'Layak Pakai'));
-                        if ($cond === 'Layak Pakai') {
+                        $shouldReverseIn = $isDismantle
+                            ? ($dismantleDisposition === 'restocked' || ($dismantleDisposition === null && $cond === 'Layak Pakai'))
+                            : ($cond === 'Layak Pakai');
+
+                        if ($shouldReverseIn) {
                             \App\Services\MaterialService::deductOperationalStock(
                                 $material,
                                 $qty,
@@ -118,6 +142,9 @@ class MaterialTransaction extends Model
                     }
                 }
             }
+
+            CustomerMaterialDismantle::where('material_transaction_id', $transaction->id)
+                ->update(['material_transaction_id' => null]);
 
             foreach ($items as $item) {
                 $item->delete();

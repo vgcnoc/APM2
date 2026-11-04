@@ -413,7 +413,7 @@ class CbpRequestController extends Controller
                         sourceRef: $cbp->cbp_number,
                         items: $returnItems,
                         technicianName: auth()->user()->name,
-                        areaId: $cbp->area_id ?? null,
+                        areaId: $cbp->area_id ?: ($cbp->customer?->area_id ?? null),
                         notes: 'Pengembalian Cabut Perangkat ' . $cbp->cbp_number . ' (' . ($cbp->customer?->name ?? '') . ')'
                     );
                 }
@@ -529,6 +529,13 @@ class CbpRequestController extends Controller
         $oldStatus = $cbp->status;
         $cbp->update(['status' => 'canceled']);
         
+        // Pulihkan / bersihkan transaksi material jika ada
+        try {
+            \App\Services\MaterialHandoverService::restoreDispatchedMaterials('cbp', $cbp->id, $cbp->area_id ?: ($cbp->customer?->area_id ?? null), $cbp->cbp_number);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[CbpRequestController::cancel] Gagal restore material: ' . $e->getMessage());
+        }
+
         \App\Models\AuditLog::createLog('CBP Dibatalkan', $cbp, $oldStatus, 'canceled', 'Membatalkan permintaan cabut perangkat ' . $cbp->cbp_number);
 
         return redirect()->back()->with('success', 'Permintaan Cabut Perangkat berhasil dibatalkan.');
@@ -550,6 +557,13 @@ class CbpRequestController extends Controller
         $cbpNumber = $cbp->cbp_number;
         $customerName = $cbp->customer?->name ?? 'Pelanggan';
         $oldStatus = $cbp->status;
+
+        // Pulihkan / bersihkan transaksi material jika ada
+        try {
+            \App\Services\MaterialHandoverService::restoreDispatchedMaterials('cbp', $cbp->id, $cbp->area_id ?: ($cbp->customer?->area_id ?? null), $cbp->cbp_number);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[CbpRequestController::destroy] Gagal restore material: ' . $e->getMessage());
+        }
 
         // Hapus foto jika ada di disk storage
         if ($cbp->photo && \Illuminate\Support\Facades\Storage::disk('public')->exists($cbp->photo)) {

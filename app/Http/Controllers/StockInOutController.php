@@ -13,11 +13,27 @@ class StockInOutController extends Controller
 {
     public function index(Request $request)
     {
+        $user = auth()->user();
+        $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('material_transactions_view_all') || $user->can('materials_view_all');
+        $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
+
         // Get all transactions EXCEPT purchasing ones (managed in Order Toko)
-        // Note: some legacy transactions might have different purposes. 
-        // We'll exclude 'Pembelian Toko / Supplier' to isolate mutasi internal.
         $query = MaterialTransaction::where('purpose', '!=', 'Pembelian Toko / Supplier')
-                            ->with('items.material');
+            ->with('items.material');
+
+        if (!$isGlobal) {
+            if (empty($accessibleAreas)) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $areaNames = \App\Models\Area::whereIn('id', $accessibleAreas)->pluck('name')->toArray();
+                $query->where(function ($q) use ($accessibleAreas, $areaNames) {
+                    $q->whereIn('area_id', $accessibleAreas);
+                    if (!empty($areaNames)) {
+                        $q->orWhereIn('area', $areaNames);
+                    }
+                });
+            }
+        }
 
         // 1. Pencarian Teks Fleksibel (No Ref, Teknisi/Penerima, Area, Keperluan, Catatan, Nama Material)
         if ($request->filled('search')) {
@@ -175,10 +191,13 @@ class StockInOutController extends Controller
 
         DB::beginTransaction();
         try {
-            // Generate Transaction Number (MUT)
-            $count = MaterialTransaction::whereDate('created_at', today())->count() + 1;
-            $prefix = $validated['type'] === 'out' ? 'OUT-' : 'RET-'; // Retur (In) or Out
-            $transactionNumber = $prefix . now()->format('Ymd') . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
+            $user = auth()->user();
+            $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('material_transactions_view_all') || $user->can('materials_view_all');
+            $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
+
+            $ymd = \Carbon\Carbon::parse($validated['date'])->format('Ymd');
+            $prefix = $validated['type'] === 'out' ? 'OUT' : 'RET';
+            $transactionNumber = \App\Services\MaterialService::generateTransactionNumber($prefix, $ymd);
 
             $singleMaterialId = count($validated['items']) === 1 ? (int) $validated['items'][0]['material_id'] : null;
             $resolvedAreaId = $this->resolveTransactionAreaId(
@@ -186,6 +205,11 @@ class StockInOutController extends Controller
                 $validated['technician_name'] ?? null,
                 $singleMaterialId
             );
+
+            if (!$isGlobal && !empty($accessibleAreas) && $resolvedAreaId && !in_array($resolvedAreaId, array_map('intval', $accessibleAreas), true)) {
+                throw new \Exception('Anda tidak memiliki hak akses untuk mencatat mutasi pada area ini.');
+            }
+
             $resolvedAreaName = $resolvedAreaId
                 ? \App\Models\Area::where('id', $resolvedAreaId)->value('name')
                 : null;
@@ -249,15 +273,17 @@ class StockInOutController extends Controller
                     $stockAfter = $stockRes['stock_after'];
                 }
 
-                $itemCost = $quantity * (float) $material->price_per_unit;
+                $baseUnitPrice = \App\Services\MaterialService::calculateBaseUnitPrice($material);
+                $itemCost = $quantity * $baseUnitPrice;
                 $totalCost += $itemCost;
 
                 MaterialTransactionItem::create([
                     'material_transaction_id' => $transaction->id,
                     'material_id' => $material->id,
+                    'material_name' => $material->name,
                     'quantity' => $quantity,
                     'unit' => $material->unit,
-                    'price_per_unit' => $material->price_per_unit,
+                    'price_per_unit' => $baseUnitPrice,
                     'total_price' => $itemCost,
                     'stock_before' => $stockBefore,
                     'stock_after' => $stockAfter,
@@ -280,8 +306,17 @@ class StockInOutController extends Controller
     {
         $transaction = MaterialTransaction::with('items.material')->findOrFail($id);
 
+        $user = auth()->user();
+        $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('material_transactions_view_all') || $user->can('materials_view_all');
+        $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
+
+        if (!$isGlobal && !empty($accessibleAreas) && $transaction->area_id && !in_array((int) $transaction->area_id, array_map('intval', $accessibleAreas), true)) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk membatalkan mutasi pada area ini.');
+        }
+
         DB::beginTransaction();
         try {
+            $transaction = MaterialTransaction::whereKey($id)->lockForUpdate()->with('items.material')->firstOrFail();
             $singleMatId = $transaction->items->count() === 1 ? (int) $transaction->items->first()?->material_id : null;
             $targetAreaId = $this->resolveTransactionAreaId(
                 $transaction->area_id ? (int) $transaction->area_id : null,
@@ -298,12 +333,18 @@ class StockInOutController extends Controller
                         continue;
                     }
 
+                    $itemAreaId = $targetAreaId ?: $this->resolveTransactionAreaId(
+                        null,
+                        $transaction->technician_name,
+                        $material->id
+                    );
+
                     if ($transaction->type === 'out') {
                         // Reverting an 'out' transaction means adding stock back
                         \App\Services\MaterialService::restoreOperationalStock(
                             $material,
                             $qty,
-                            $targetAreaId,
+                            $itemAreaId,
                             $item->unit
                         );
                     } else {
@@ -313,7 +354,7 @@ class StockInOutController extends Controller
                             \App\Services\MaterialService::deductOperationalStock(
                                 $material,
                                 $qty,
-                                $targetAreaId,
+                                $itemAreaId,
                                 $item->unit
                             );
                         }

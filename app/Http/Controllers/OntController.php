@@ -261,116 +261,122 @@ class OntController extends Controller
         $newOdpId = $validated['odp_id'] ?? null;
         $newPortNumber = $validated['port_number'] ?? null;
 
-        if ($oldOdpId && $oldPortNumber && ($oldOdpId != $newOdpId || $oldPortNumber != $newPortNumber)) {
-            // Release old port
-            \App\Models\OdpPort::where('odp_id', $oldOdpId)
-                ->where('port_number', $oldPortNumber)
-                ->update(['status' => 'available']);
-                
-            $oldOdp = \App\Models\Odp::find($oldOdpId);
-            if ($oldOdp && $oldOdp->used_ports > 0) {
-                $oldOdp->decrement('used_ports');
-                if ($oldOdp->used_ports - 1 < $oldOdp->total_ports && $oldOdp->status === 'full') {
-                    $oldOdp->update(['status' => 'active']);
+        DB::transaction(function () use ($ont, $validated, $oldOdpId, $oldPortNumber, $newOdpId, $newPortNumber) {
+            $lockedOnt = Ont::where('id', $ont->id)->lockForUpdate()->first();
+            if (!$lockedOnt) return;
+
+            if ($oldOdpId && $oldPortNumber && ($oldOdpId != $newOdpId || $oldPortNumber != $newPortNumber)) {
+                // Release old port
+                \App\Models\OdpPort::where('odp_id', $oldOdpId)
+                    ->where('port_number', $oldPortNumber)
+                    ->update(['status' => 'available']);
+                    
+                $oldOdp = \App\Models\Odp::find($oldOdpId);
+                if ($oldOdp && $oldOdp->used_ports > 0) {
+                    $oldOdp->decrement('used_ports');
+                    if ($oldOdp->used_ports - 1 < $oldOdp->total_ports && $oldOdp->status === 'full') {
+                        $oldOdp->update(['status' => 'active']);
+                    }
                 }
             }
-        }
 
-        // Sinkronisasi stok material saat status ONT di gudang berubah rusak/diperbaiki
-        $oldStatus = strtolower((string)$ont->status);
-        $newStatus = strtolower((string)($validated['status'] ?? $ont->status));
-        $isOldRusak = in_array($oldStatus, ['rusak', 'damaged']);
-        $isNewRusak = in_array($newStatus, ['rusak', 'damaged']);
-        $isUninstalled = empty($ont->customer_id) && empty($validated['customer_id']);
+            // Sinkronisasi stok material saat status ONT di gudang berubah rusak/diperbaiki
+            $oldStatus = strtolower((string)$lockedOnt->status);
+            $newStatus = strtolower((string)($validated['status'] ?? $lockedOnt->status));
+            $isOldRusak = in_array($oldStatus, ['rusak', 'damaged']);
+            $isNewRusak = in_array($newStatus, ['rusak', 'damaged']);
+            $isUninstalled = empty($lockedOnt->customer_id) && empty($validated['customer_id']);
 
-        if ($isUninstalled && $ont->area_id && $isOldRusak !== $isNewRusak) {
-            $brandName = $validated['brand'] ?? $ont->brand;
-            $mat = \App\Services\MaterialService::resolveOntMaterial($ont);
-            if (!$mat && $brandName) {
-                $mat = \App\Models\Material::where(function ($mq) use ($brandName) {
-                    $mq->where('name', $brandName)
-                       ->orWhere('name', 'like', "%{$brandName}%");
-                })->where('category', 'like', '%ont%')->first()
-                ?: \App\Models\Material::where('name', $brandName)->first();
-            }
+            if ($isUninstalled && $lockedOnt->area_id && $isOldRusak !== $isNewRusak) {
+                $brandName = $validated['brand'] ?? $lockedOnt->brand;
+                $mat = \App\Services\MaterialService::resolveOntMaterial($lockedOnt);
+                if (!$mat && $brandName) {
+                    $mat = \App\Models\Material::where(function ($mq) use ($brandName) {
+                        $mq->where('name', $brandName)
+                           ->orWhere('name', 'like', "%{$brandName}%");
+                    })->where('category', 'like', '%ont%')->first()
+                    ?: \App\Models\Material::where('name', $brandName)->first();
+                }
 
-            if ($mat) {
-                $ppu = (float) ($mat->price_per_unit ?: ($mat->unit_price ?? 0));
+                if ($mat) {
+                    $targetUnit = $mat->unit ?: 'pcs';
+                    $ppu = \App\Services\MaterialService::calculateUnitPrice($mat, $targetUnit);
 
-                if ($isNewRusak) {
-                    // Berubah dari bagus ke rusak di gudang -> kurangi stok layak pakai area (tanpa mengotori Gudang Pusat Order Toko)
-                    $stockRes = \App\Services\MaterialService::deductOperationalStock($mat, 1, $ont->area_id, 'pcs');
+                    if ($isNewRusak) {
+                        // Berubah dari bagus ke rusak di gudang -> kurangi stok layak pakai area (tanpa mengotori Gudang Pusat Order Toko)
+                        $stockRes = \App\Services\MaterialService::deductOperationalStock($mat, 1, $lockedOnt->area_id, $targetUnit);
 
-                    $tx = \App\Models\MaterialTransaction::create([
-                        'transaction_number' => 'OUT-RUSAK-' . date('YmdHis') . '-' . $ont->id,
-                        'type' => 'out',
-                        'status' => 'approved',
-                        'date' => now(),
-                        'technician_name' => auth()->user() ? auth()->user()->name : 'System',
-                        'purpose' => 'ONT Rusak di Gudang',
-                        'user_id' => auth()->id(),
-                        'area_id' => $ont->area_id,
-                        'notes' => "Unit ONT {$brandName} (SN: {$ont->serial_number}) diubah status menjadi Rusak",
-                    ]);
+                        $tx = \App\Models\MaterialTransaction::create([
+                            'transaction_number' => \App\Services\MaterialService::generateTransactionNumber('OUT-RUSAK'),
+                            'type' => 'out',
+                            'status' => 'approved',
+                            'date' => now(),
+                            'technician_name' => auth()->user() ? auth()->user()->name : 'System',
+                            'purpose' => 'ONT Rusak di Gudang',
+                            'user_id' => auth()->id(),
+                            'area_id' => $lockedOnt->area_id,
+                            'notes' => "Unit ONT {$brandName} (SN: {$lockedOnt->serial_number}) diubah status menjadi Rusak",
+                        ]);
 
-                    \App\Models\MaterialTransactionItem::create([
-                        'material_transaction_id' => $tx->id,
-                        'material_id' => $mat->id,
-                        'quantity' => 1,
-                        'unit' => $mat->unit ?: 'pcs',
-                        'price_per_unit' => $ppu,
-                        'total_price' => $ppu,
-                        'stock_before' => $stockRes['stock_before'],
-                        'stock_after' => $stockRes['stock_after'],
-                        'condition' => 'Rusak',
-                    ]);
-                } else {
-                    // Berubah dari rusak ke bagus (diperbaiki) -> kembalikan ke stok layak pakai area
-                    $stockRes = \App\Services\MaterialService::restoreOperationalStock($mat, 1, $ont->area_id, 'pcs');
+                        \App\Models\MaterialTransactionItem::create([
+                            'material_transaction_id' => $tx->id,
+                            'material_id' => $mat->id,
+                            'quantity' => 1,
+                            'unit' => $targetUnit,
+                            'price_per_unit' => $ppu,
+                            'total_price' => $ppu,
+                            'stock_before' => $stockRes['stock_before'],
+                            'stock_after' => $stockRes['stock_after'],
+                            'condition' => 'Rusak',
+                        ]);
+                    } else {
+                        // Berubah dari rusak ke bagus (diperbaiki) -> kembalikan ke stok layak pakai area
+                        $stockRes = \App\Services\MaterialService::restoreOperationalStock($mat, 1, $lockedOnt->area_id, $targetUnit);
 
-                    $tx = \App\Models\MaterialTransaction::create([
-                        'transaction_number' => 'IN-REPAIR-' . date('YmdHis') . '-' . $ont->id,
-                        'type' => 'in',
-                        'status' => 'approved',
-                        'date' => now(),
-                        'technician_name' => auth()->user() ? auth()->user()->name : 'System',
-                        'purpose' => 'ONT Selesai Diperbaiki / Layak Pakai',
-                        'user_id' => auth()->id(),
-                        'area_id' => $ont->area_id,
-                        'notes' => "Unit ONT {$brandName} (SN: {$ont->serial_number}) kembali Layak Pakai",
-                    ]);
+                        $tx = \App\Models\MaterialTransaction::create([
+                            'transaction_number' => \App\Services\MaterialService::generateTransactionNumber('IN-REPAIR'),
+                            'type' => 'in',
+                            'status' => 'approved',
+                            'date' => now(),
+                            'technician_name' => auth()->user() ? auth()->user()->name : 'System',
+                            'purpose' => 'ONT Selesai Diperbaiki / Layak Pakai',
+                            'user_id' => auth()->id(),
+                            'area_id' => $lockedOnt->area_id,
+                            'notes' => "Unit ONT {$brandName} (SN: {$lockedOnt->serial_number}) kembali Layak Pakai",
+                        ]);
 
-                    \App\Models\MaterialTransactionItem::create([
-                        'material_transaction_id' => $tx->id,
-                        'material_id' => $mat->id,
-                        'quantity' => 1,
-                        'unit' => $mat->unit ?: 'pcs',
-                        'price_per_unit' => $ppu,
-                        'total_price' => $ppu,
-                        'stock_before' => $stockRes['stock_before'],
-                        'stock_after' => $stockRes['stock_after'],
-                        'condition' => 'Layak Pakai',
-                    ]);
+                        \App\Models\MaterialTransactionItem::create([
+                            'material_transaction_id' => $tx->id,
+                            'material_id' => $mat->id,
+                            'quantity' => 1,
+                            'unit' => $targetUnit,
+                            'price_per_unit' => $ppu,
+                            'total_price' => $ppu,
+                            'stock_before' => $stockRes['stock_before'],
+                            'stock_after' => $stockRes['stock_after'],
+                            'condition' => 'Layak Pakai',
+                        ]);
+                    }
                 }
             }
-        }
 
-        $ont->update($validated);
+            $lockedOnt->update($validated);
 
-        if ($newOdpId && $newPortNumber && ($oldOdpId != $newOdpId || $oldPortNumber != $newPortNumber)) {
-            // Mark new port as used
-            \App\Models\OdpPort::where('odp_id', $newOdpId)
-                ->where('port_number', $newPortNumber)
-                ->update(['status' => 'used']);
-                
-            $newOdp = \App\Models\Odp::find($newOdpId);
-            if ($newOdp) {
-                $newOdp->increment('used_ports');
-                if ($newOdp->used_ports >= $newOdp->total_ports) {
-                    $newOdp->update(['status' => 'full']);
+            if ($newOdpId && $newPortNumber && ($oldOdpId != $newOdpId || $oldPortNumber != $newPortNumber)) {
+                // Mark new port as used
+                \App\Models\OdpPort::where('odp_id', $newOdpId)
+                    ->where('port_number', $newPortNumber)
+                    ->update(['status' => 'used']);
+                    
+                $newOdp = \App\Models\Odp::find($newOdpId);
+                if ($newOdp) {
+                    $newOdp->increment('used_ports');
+                    if ($newOdp->used_ports >= $newOdp->total_ports) {
+                        $newOdp->update(['status' => 'full']);
+                    }
                 }
             }
-        }
+        });
 
         return redirect()->route('onts.index')
             ->with('success', 'Data ONT berhasil diperbarui.');
@@ -382,35 +388,37 @@ class OntController extends Controller
             return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk menghapus data ONT.');
         }
 
-        $odp = $ont->odp;
-        $portNumber = $ont->port_number;
-        $transactionItemId = $ont->material_transaction_item_id;
-        
-        // Update ODP Port status back to available
-        if ($odp && $portNumber) {
-            \App\Models\OdpPort::where('odp_id', $odp->id)
-                ->where('port_number', $portNumber)
-                ->update(['status' => 'available']);
-        }
+        DB::transaction(function () use ($ont) {
+            $odp = $ont->odp;
+            $portNumber = $ont->port_number;
+            $transactionItemId = $ont->material_transaction_item_id;
+            
+            // Update ODP Port status back to available
+            if ($odp && $portNumber) {
+                \App\Models\OdpPort::where('odp_id', $odp->id)
+                    ->where('port_number', $portNumber)
+                    ->update(['status' => 'available']);
+            }
 
-        $ont->delete();
+            $ont->delete();
 
-        // Decrement port terpakai di ODP
-        if ($odp) {
-            if ($odp->used_ports > 0) {
-                $odp->decrement('used_ports');
+            // Decrement port terpakai di ODP
+            if ($odp) {
+                if ($odp->used_ports > 0) {
+                    $odp->decrement('used_ports');
+                }
+                if ($odp->status === 'full') {
+                    $odp->update(['status' => 'active']);
+                }
             }
-            if ($odp->status === 'full') {
-                $odp->update(['status' => 'active']);
+            
+            if ($transactionItemId) {
+                $remaining = Ont::where('material_transaction_item_id', $transactionItemId)->count();
+                if ($remaining === 0) {
+                    \App\Models\MaterialTransactionItem::where('id', $transactionItemId)->update(['is_registered_to_ont' => false]);
+                }
             }
-        }
-        
-        if ($transactionItemId) {
-            $remaining = Ont::where('material_transaction_item_id', $transactionItemId)->count();
-            if ($remaining === 0) {
-                \App\Models\MaterialTransactionItem::where('id', $transactionItemId)->update(['is_registered_to_ont' => false]);
-            }
-        }
+        });
 
         return redirect()->route('onts.index')
             ->with('success', 'Data ONT berhasil dihapus, data pelanggan terkait serta seluruh relasinya telah dihapus, dan unit ONT/material telah dikembalikan ke gudang.');

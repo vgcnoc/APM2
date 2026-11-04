@@ -377,7 +377,12 @@
                             +{{ number_format($item->quantity, 0, ',', '.') }} {{ $item->unit ?? $item->material?->unit ?? 'pcs' }}
                         </td>
                         <td class="text-right" style="color: #475569; font-family: monospace;">
-                            <div>Rp {{ number_format($item->price_per_unit, 0, ',', '.') }} / {{ $item->unit ?? $item->material?->unit ?? 'pcs' }}</div>
+                            @php
+                                $ppu = (float)($item->price_per_unit ?? 0);
+                                $hasDec = fmod($ppu, 1) != 0.0;
+                                $ppuFormatted = $hasDec ? number_format($ppu, 2, ',', '.') : number_format($ppu, 0, ',', '.');
+                            @endphp
+                            <div>Rp {{ $ppuFormatted }} / {{ $item->unit ?? $item->material?->unit ?? 'pcs' }}</div>
                             @php
                                 $mat = $item->material;
                                 $isIso = $mat && (str_contains(strtolower($mat->name ?? ''), 'isolasi') || str_contains(strtolower($mat->category ?? ''), 'isolasi'));

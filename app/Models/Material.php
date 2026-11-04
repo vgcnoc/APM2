@@ -116,22 +116,33 @@ class Material extends Model
      */
     public function recalcUnitTotals(): self
     {
-        $stock = (float) ($this->stock ?? 0);
-        $category = strtolower((string) $this->category);
+        $stock = max(0.0, (float) ($this->stock ?? 0));
+        $this->stock = $stock;
 
-        if ($this->meter_per_roll > 0) {
-            $this->total_rolls = $stock / $this->meter_per_roll;
+        $category = strtolower((string) $this->category);
+        $name = strtolower((string) $this->name);
+
+        if ((float) $this->meter_per_roll > 0) {
+            $this->total_rolls = $stock / (float) $this->meter_per_roll;
         }
 
-        $isIsolasi = str_contains(strtolower((string) $this->name), 'isolasi') || str_contains($category, 'isolasi');
+        $isIsolasi = str_contains($name, 'isolasi')
+            || str_contains($name, 'solasi')
+            || str_contains($category, 'isolasi')
+            || str_contains($category, 'solasi');
 
         if ($isIsolasi) {
-            $cmPerPcs = $this->cm_per_pcs > 0 ? $this->cm_per_pcs : 50;
-            $pcsPerPack = $this->pcs_per_pack > 0 ? $this->pcs_per_pack : 1;
+            $cmPerPcs = (float) $this->cm_per_pcs > 0 ? (float) $this->cm_per_pcs : 50.0;
+            $pcsPerPack = (float) $this->pcs_per_pack > 0 ? (float) $this->pcs_per_pack : 1.0;
             $this->total_pieces = $stock / $cmPerPcs;
             $this->total_packs = $stock / ($cmPerPcs * $pcsPerPack);
-        } elseif ($this->pcs_per_pack > 0) {
-            $this->total_packs = $stock / $this->pcs_per_pack;
+        } else {
+            if ((float) $this->pcs_per_pack > 0) {
+                $this->total_packs = $stock / (float) $this->pcs_per_pack;
+            }
+            if ((float) $this->meter_per_roll <= 0) {
+                $this->total_pieces = $stock;
+            }
         }
 
         return $this;

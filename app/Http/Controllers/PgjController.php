@@ -887,8 +887,9 @@ class PgjController extends Controller
             $sourceOrders = array_filter(array_unique(array_column($validated['materials'], 'trx_number')));
             $orderRefStr = !empty($sourceOrders) ? ' (Ref Order/SJ: ' . implode(', ', $sourceOrders) . ')' : '';
 
+            $trxNumber = \App\Services\MaterialService::generateTransactionNumber('OUT-PGJ');
             $transaction = MaterialTransaction::create([
-                'transaction_number' => 'OUT-PGJ-' . date('YmdHis') . rand(10, 99),
+                'transaction_number' => $trxNumber,
                 'user_id' => auth()->id(),
                 'type' => 'out',
                 'status' => 'approved',
@@ -913,11 +914,7 @@ class PgjController extends Controller
                     $unit = $matItem['unit'] ?? $material->unit;
                     $stockRes = \App\Services\MaterialService::deductOperationalStock($material, $qty, $pgj->area_id, $unit);
 
-                    $ppu = $material->price ?? ($material->selling_price ?: ($material->price_per_unit ?? 0));
-                    if (strtolower($material->category ?? '') === 'kabel' && strtolower($unit) === 'meter') {
-                        $mpr = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
-                        $ppu = $ppu / $mpr;
-                    }
+                    $ppu = \App\Services\MaterialService::calculateUnitPrice($material, $unit);
                     $itemTotal = $ppu * $qty;
                     $totalScheduleCost += $itemTotal;
 
@@ -1159,8 +1156,9 @@ class PgjController extends Controller
             }
 
             if (!empty($overageItems)) {
+                $ovTrxNum = \App\Services\MaterialService::generateTransactionNumber('OUT-PGJ-OVERAGE');
                 $ovTrans = MaterialTransaction::create([
-                    'transaction_number' => 'OUT-PGJ-OVERAGE-' . date('YmdHis') . rand(10, 99),
+                    'transaction_number' => $ovTrxNum,
                     'user_id' => auth()->id(),
                     'type' => 'out',
                     'status' => 'approved',
@@ -1178,11 +1176,7 @@ class PgjController extends Controller
                     $ovMat = Material::find($ov['material_id']);
                     if (!$ovMat) continue;
                     $ovStock = \App\Services\MaterialService::deductOperationalStock($ovMat, (float) $ov['quantity'], $pgj->area_id, $ov['unit']);
-                    $ppu = $ovMat->selling_price ?: ($ovMat->price_per_unit ?? 0);
-                    if (strtolower($ovMat->category ?? '') === 'kabel' && strtolower($ov['unit']) === 'meter') {
-                        $mpr = $ovMat->meter_per_roll > 0 ? $ovMat->meter_per_roll : 1000;
-                        $ppu = $ppu / $mpr;
-                    }
+                    $ppu = \App\Services\MaterialService::calculateUnitPrice($ovMat, $ov['unit']);
                     $ovTotal = $ppu * (float) $ov['quantity'];
                     $ovCost += $ovTotal;
                     MaterialTransactionItem::create([

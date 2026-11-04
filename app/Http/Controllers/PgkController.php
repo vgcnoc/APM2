@@ -894,8 +894,10 @@ class PgkController extends Controller
             $sourceOrders = array_filter(array_unique(array_column($validated['materials'], 'trx_number')));
             $orderRefStr = !empty($sourceOrders) ? ' (Ref Order/SJ: ' . implode(', ', $sourceOrders) . ')' : '';
 
+            // Buat transaksi material keluar
+            $trxNumber = \App\Services\MaterialService::generateTransactionNumber('OUT-PGK');
             $trans = MaterialTransaction::create([
-                'transaction_number' => 'OUT-PGK-' . date('YmdHis') . rand(10, 99),
+                'transaction_number' => $trxNumber,
                 'type' => 'out',
                 'status' => 'approved',
                 'request_type' => 'regular',
@@ -938,11 +940,7 @@ class PgkController extends Controller
                         'notes' => $matItem['notes'] ?? null,
                     ]);
 
-                    $ppu = $material->selling_price ?: ($material->price_per_unit ?? 0);
-                    if (strtolower($material->category ?? '') === 'kabel' && strtolower($unit) === 'meter') {
-                        $mpr = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
-                        $ppu = $ppu / $mpr;
-                    }
+                    $ppu = \App\Services\MaterialService::calculateUnitPrice($material, $unit);
                     $itemTotal = $ppu * $qty;
                     $totalScheduleCost += $itemTotal;
 
@@ -1062,14 +1060,17 @@ class PgkController extends Controller
                 $pgk->ticket_number
             );
 
-            // Pulihkan transaksi overage sebelumnya jika laporan diedit ulang
-            $oldOverages = MaterialTransaction::with('items.material')
+            // Pulihkan transaksi overage dan extra sebelumnya jika laporan diedit ulang
+            $oldOuts = MaterialTransaction::with('items.material')
                 ->where('source_type', 'pgk')
                 ->where('source_id', $pgk->id)
                 ->where('type', 'out')
-                ->where('transaction_number', 'like', 'OUT-PGK-OVERAGE-%')
+                ->where(function ($q) {
+                    $q->where('transaction_number', 'like', 'OUT-PGK-OVERAGE-%')
+                      ->orWhere('transaction_number', 'like', 'OUT-PGK-EXTRA-%');
+                })
                 ->get();
-            foreach ($oldOverages as $oo) {
+            foreach ($oldOuts as $oo) {
                 if ($oo->status === 'approved' && !$oo->is_migration) {
                     foreach ($oo->items as $ooItem) {
                         if ($ooItem->material && (float) $ooItem->quantity > 0) {
@@ -1086,6 +1087,11 @@ class PgkController extends Controller
                 $oo->items()->delete();
                 $oo->delete();
             }
+
+            // Bersihkan baris pgk_materials tambahan lama agar tidak terduplikasi
+            PgkMaterial::where('pgk_ticket_id', $pgk->id)
+                ->where('notes', 'like', 'Tambahan:%')
+                ->delete();
 
             $itemsToReturn = [];
             $overageItems = [];
@@ -1129,8 +1135,9 @@ class PgkController extends Controller
             }
 
             if (!empty($overageItems)) {
+                $ovTrxNum = \App\Services\MaterialService::generateTransactionNumber('OUT-PGK-OVERAGE');
                 $ovTrans = MaterialTransaction::create([
-                    'transaction_number' => 'OUT-PGK-OVERAGE-' . date('YmdHis') . rand(10, 99),
+                    'transaction_number' => $ovTrxNum,
                     'type' => 'out',
                     'status' => 'approved',
                     'request_type' => 'additional_material',
@@ -1149,11 +1156,7 @@ class PgkController extends Controller
                     $ovMat = Material::find($ov['material_id']);
                     if (!$ovMat) continue;
                     $ovStock = \App\Services\MaterialService::deductOperationalStock($ovMat, (float) $ov['quantity'], $areaId, $ov['unit']);
-                    $ppu = $ovMat->selling_price ?: ($ovMat->price_per_unit ?? 0);
-                    if (strtolower($ovMat->category ?? '') === 'kabel' && strtolower($ov['unit']) === 'meter') {
-                        $mpr = $ovMat->meter_per_roll > 0 ? $ovMat->meter_per_roll : 1000;
-                        $ppu = $ppu / $mpr;
-                    }
+                    $ppu = \App\Services\MaterialService::calculateUnitPrice($ovMat, $ov['unit']);
                     $ovTotal = $ppu * (float) $ov['quantity'];
                     $ovCost += $ovTotal;
                     MaterialTransactionItem::create([
@@ -1190,8 +1193,9 @@ class PgkController extends Controller
             });
 
             if (!empty($extraItems)) {
+                $extraTrxNum = \App\Services\MaterialService::generateTransactionNumber('OUT-PGK-EXTRA');
                 $outTrans = MaterialTransaction::create([
-                    'transaction_number' => 'OUT-PGK-EXTRA-' . date('YmdHis') . rand(10, 99),
+                    'transaction_number' => $extraTrxNum,
                     'type' => 'out',
                     'status' => 'approved',
                     'date' => now(),
@@ -1229,11 +1233,7 @@ class PgkController extends Controller
                         'notes' => $notes,
                     ]);
 
-                    $ppu = $material->selling_price ?: ($material->price_per_unit ?? 0);
-                    if (strtolower($material->category ?? '') === 'kabel' && strtolower($unit) === 'meter') {
-                        $mpr = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
-                        $ppu = $ppu / $mpr;
-                    }
+                    $ppu = \App\Services\MaterialService::calculateUnitPrice($material, $unit);
                     $itemTotal = $ppu * $extraQty;
                     $extraTotalCost += $itemTotal;
 
@@ -1588,103 +1588,103 @@ class PgkController extends Controller
      */
     public function approveMaterialRequest(Request $request, PgkTicket $pgk, PgkMaterialRequest $materialRequest)
     {
-        if ($materialRequest->status !== 'pending') {
-            return redirect()->back()->with('error', 'Permintaan material ini sudah diproses sebelumnya.');
-        }
-
-        // Ka. Teknisi menentukan item material dari stok gudang
         $validated = $request->validate([
             'material_id' => 'required|exists:materials,id',
             'quantity' => 'nullable|numeric|min:0.01',
             'notes' => 'nullable|string',
         ]);
 
-        $material = Material::findOrFail($validated['material_id']);
-        $qty = !empty($validated['quantity']) ? (float) $validated['quantity'] : (float) $materialRequest->quantity;
-        $areaId = $pgk->area_id ?? $pgk->customer?->area_id;
-        $unit = $material->unit;
+        return DB::transaction(function () use ($pgk, $materialRequest, $validated) {
+            $lockedReq = PgkMaterialRequest::where('id', $materialRequest->id)->lockForUpdate()->first();
+            if (!$lockedReq || $lockedReq->status !== 'pending') {
+                return redirect()->back()->with('error', 'Permintaan material ini sudah diproses sebelumnya.');
+            }
+            $materialRequest = $lockedReq;
 
-        $stockRes = \App\Services\MaterialService::deductOperationalStock($material, $qty, $areaId, $unit);
+            $material = Material::findOrFail($validated['material_id']);
+            $qty = !empty($validated['quantity']) ? (float) $validated['quantity'] : (float) $materialRequest->quantity;
+            $areaId = $pgk->area_id ?? $pgk->customer?->area_id;
+            $unit = $materialRequest->unit ?: ($material->unit ?? 'pcs');
 
-        $ppu = $material->selling_price ?: ($material->price_per_unit ?? 0);
-        if (strtolower($material->category ?? '') === 'kabel' && strtolower($unit) === 'meter') {
-            $mpr = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
-            $ppu = $ppu / $mpr;
-        }
-        $itemTotal = $ppu * $qty;
+            $stockRes = \App\Services\MaterialService::deductOperationalStock($material, $qty, $areaId, $unit);
 
-        // Catat transaksi pengeluaran barang
-        $outTrans = MaterialTransaction::create([
-            'transaction_number' => 'OUT-PGK-REQ-' . date('YmdHis') . rand(10, 99),
-            'type' => 'out',
-            'status' => 'approved',
-            'request_type' => 'additional_material',
-            'date' => now(),
-            'technician_name' => $materialRequest->requester?->name ?: auth()->user()->name,
-            'purpose' => 'Persetujuan Material Tambahan PGK: ' . $pgk->ticket_number . ' (' . ($pgk->customer?->name ?? '') . ')',
-            'source_type' => 'pgk',
-            'source_id' => $pgk->id,
-            'source_reference' => $pgk->ticket_number,
-            'user_id' => auth()->id(),
-            'customer_id' => $pgk->customer_id,
-            'area_id' => $areaId,
-            'total_cost' => $itemTotal,
-            'notes' => 'Disetujui Ka. Teknisi: ' . $material->name . ' (' . $qty . ' ' . $material->unit . '). Kebutuhan teknisi: ' . ($materialRequest->item_name ?? '-') . ' - ' . ($materialRequest->notes ?? '-'),
-        ]);
+            $ppu = \App\Services\MaterialService::calculateUnitPrice($material, $unit);
+            $itemTotal = $ppu * $qty;
 
-        MaterialTransactionItem::create([
-            'material_transaction_id' => $outTrans->id,
-            'material_id' => $material->id,
-            'quantity' => $qty,
-            'unit' => $unit,
-            'price_per_unit' => $ppu,
-            'total_price' => $itemTotal,
-            'stock_before' => $stockRes['stock_before'],
-            'stock_after' => $stockRes['stock_after'],
-        ]);
-
-        // Tambahkan ke pgk_materials (jika sudah ada, tambahkan quantity_prepared, jika belum buat baru)
-        $existingPgkMat = PgkMaterial::where('pgk_ticket_id', $pgk->id)
-            ->where('material_id', $material->id)
-            ->first();
-
-        if ($existingPgkMat) {
-            $newPrep = (float) $existingPgkMat->quantity_prepared + $qty;
-            $existingPgkMat->update([
-                'quantity_prepared' => $newPrep,
-                'quantity_used' => (float) $existingPgkMat->quantity_used + $qty,
-                'notes' => trim(($existingPgkMat->notes ?? '') . ' | Tambahan disetujui: +' . $qty . ' ' . $unit),
+            // Catat transaksi pengeluaran barang
+            $trxNumber = \App\Services\MaterialService::generateTransactionNumber('OUT-PGK-REQ');
+            $outTrans = MaterialTransaction::create([
+                'transaction_number' => $trxNumber,
+                'type' => 'out',
+                'status' => 'approved',
+                'request_type' => 'additional_material',
+                'date' => now(),
+                'technician_name' => $materialRequest->requester?->name ?: auth()->user()->name,
+                'purpose' => 'Persetujuan Material Tambahan PGK: ' . $pgk->ticket_number . ' (' . ($pgk->customer?->name ?? '') . ')',
+                'source_type' => 'pgk',
+                'source_id' => $pgk->id,
+                'source_reference' => $pgk->ticket_number,
+                'user_id' => auth()->id(),
+                'customer_id' => $pgk->customer_id,
+                'area_id' => $areaId,
+                'total_cost' => $itemTotal,
+                'notes' => 'Disetujui Ka. Teknisi: ' . $material->name . ' (' . $qty . ' ' . $unit . '). Kebutuhan teknisi: ' . ($materialRequest->item_name ?? '-') . ' - ' . ($materialRequest->notes ?? '-'),
             ]);
-        } else {
-            PgkMaterial::create([
-                'pgk_ticket_id' => $pgk->id,
+
+            MaterialTransactionItem::create([
+                'material_transaction_id' => $outTrans->id,
                 'material_id' => $material->id,
-                'quantity_prepared' => $qty,
-                'quantity_used' => $qty,
-                'quantity_returned' => 0,
+                'quantity' => $qty,
                 'unit' => $unit,
-                'notes' => 'Tambahan disetujui Ka. Teknisi (Kebutuhan: ' . ($materialRequest->item_name ?: $material->name) . '): ' . ($materialRequest->notes ?? '-'),
+                'price_per_unit' => $ppu,
+                'total_price' => $itemTotal,
+                'stock_before' => $stockRes['stock_before'],
+                'stock_after' => $stockRes['stock_after'],
             ]);
-        }
 
-        $materialRequest->update([
-            'material_id' => $material->id,
-            'quantity' => $qty,
-            'unit' => $unit,
-            'status' => 'approved',
-            'reviewed_by' => auth()->id(),
-            'reviewed_at' => now(),
-        ]);
+            // Tambahkan ke pgk_materials (jika sudah ada, tambahkan quantity_prepared, jika belum buat baru)
+            $existingPgkMat = PgkMaterial::where('pgk_ticket_id', $pgk->id)
+                ->where('material_id', $material->id)
+                ->first();
 
-        AuditLog::createLog(
-            'Setujui Permintaan Material PGK',
-            $pgk,
-            'pending',
-            'approved',
-            'Kepala Teknisi menyetujui tambahan ' . $qty . ' ' . $unit . ' ' . $material->name . ' untuk teknisi ' . ($materialRequest->requester?->name ?? '-')
-        );
+            if ($existingPgkMat) {
+                $newPrep = (float) $existingPgkMat->quantity_prepared + $qty;
+                $existingPgkMat->update([
+                    'quantity_prepared' => $newPrep,
+                    'quantity_used' => (float) $existingPgkMat->quantity_used + $qty,
+                    'notes' => trim(($existingPgkMat->notes ?? '') . ' | Tambahan disetujui: +' . $qty . ' ' . $unit),
+                ]);
+            } else {
+                PgkMaterial::create([
+                    'pgk_ticket_id' => $pgk->id,
+                    'material_id' => $material->id,
+                    'quantity_prepared' => $qty,
+                    'quantity_used' => $qty,
+                    'quantity_returned' => 0,
+                    'unit' => $unit,
+                    'notes' => 'Tambahan disetujui Ka. Teknisi (Kebutuhan: ' . ($materialRequest->item_name ?: $material->name) . '): ' . ($materialRequest->notes ?? '-'),
+                ]);
+            }
 
-        return redirect()->back()->with('success', 'Permintaan tambahan material disetujui dan ditambahkan ke penugasan teknisi.');
+            $materialRequest->update([
+                'material_id' => $material->id,
+                'quantity' => $qty,
+                'unit' => $unit,
+                'status' => 'approved',
+                'reviewed_by' => auth()->id(),
+                'reviewed_at' => now(),
+            ]);
+
+            AuditLog::createLog(
+                'Setujui Permintaan Material PGK',
+                $pgk,
+                'pending',
+                'approved',
+                'Kepala Teknisi menyetujui tambahan ' . $qty . ' ' . $unit . ' ' . $material->name . ' untuk teknisi ' . ($materialRequest->requester?->name ?? '-')
+            );
+
+            return redirect()->back()->with('success', 'Permintaan tambahan material disetujui dan ditambahkan ke penugasan teknisi.');
+        });
     }
 
     /**
@@ -1993,113 +1993,116 @@ class PgkController extends Controller
             'prepared_ont_id' => 'required|exists:onts,id',
         ]);
 
-        $ont = Ont::findOrFail($validated['prepared_ont_id']);
-        if (!empty($ont->customer_id)) {
-            return redirect()->back()->with('error', 'ONT tersebut sudah terpasang pada pelanggan lain!');
-        }
-
-        // Jika sebelumnya sudah menyiapkan ONT lain pada tiket ini, pulihkan unit & stok sebelumnya terlebih dahulu
-        if ($pgk->prepared_ont_id && (int) $pgk->prepared_ont_id !== (int) $ont->id) {
-            $prevPrepOnt = Ont::find($pgk->prepared_ont_id);
-            if ($prevPrepOnt && empty($prevPrepOnt->customer_id)) {
-                $prevPrepOnt->update(['status' => 'Sudah Set']);
+        return DB::transaction(function () use ($pgk, $validated) {
+            $ont = Ont::where('id', $validated['prepared_ont_id'])->lockForUpdate()->firstOrFail();
+            if (!empty($ont->customer_id)) {
+                return redirect()->back()->with('error', 'ONT tersebut sudah terpasang pada pelanggan lain!');
             }
-        }
-        $this->restorePreparedOntStock($pgk);
 
-        // Pre-fill akun PPPoE & VLAN dari ONT lama jika unit pengganti belum memiliki PPPoE
-        $customer = $pgk->customer;
-        $oldOnt = Ont::where('customer_id', $pgk->customer_id)->first() ?: ($pgk->old_ont_id ? Ont::find($pgk->old_ont_id) : null);
-        $prepAreaId = $ont->area_id ?: ($pgk->area_id ?? $customer?->area_id ?? null);
+            // Jika sebelumnya sudah menyiapkan ONT lain pada tiket ini, pulihkan unit & stok sebelumnya terlebih dahulu
+            if ($pgk->prepared_ont_id && (int) $pgk->prepared_ont_id !== (int) $ont->id) {
+                $prevPrepOnt = Ont::find($pgk->prepared_ont_id);
+                if ($prevPrepOnt && empty($prevPrepOnt->customer_id)) {
+                    $prevPrepOnt->update(['status' => 'Sudah Set']);
+                }
+            }
+            $this->restorePreparedOntStock($pgk);
 
-        $prepUpdates = [
-            'status' => 'Disiapkan Teknisi',
-            'area_id' => $prepAreaId,
-        ];
+            // Pre-fill akun PPPoE & VLAN dari ONT lama jika unit pengganti belum memiliki PPPoE
+            $customer = $pgk->customer;
+            $oldOnt = Ont::where('customer_id', $pgk->customer_id)->first() ?: ($pgk->old_ont_id ? Ont::find($pgk->old_ont_id) : null);
+            $prepAreaId = $ont->area_id ?: ($pgk->area_id ?? $customer?->area_id ?? null);
 
-        if (empty($ont->pppoe_user) && !empty($oldOnt?->pppoe_user)) {
-            $prepUpdates['pppoe_user'] = $oldOnt->pppoe_user;
-            $prepUpdates['pppoe_password'] = $oldOnt->pppoe_password;
-        }
-        if (empty($ont->access_mode) && !empty($oldOnt?->access_mode)) {
-            $prepUpdates['access_mode'] = $oldOnt->access_mode;
-        }
-        if (empty($ont->vlan_id) && !empty($oldOnt?->vlan_id)) {
-            $prepUpdates['vlan_id'] = $oldOnt->vlan_id;
-            $prepUpdates['vlan_mode'] = $oldOnt->vlan_mode;
-        }
-        if (empty($ont->ip_login) && !empty($oldOnt?->ip_login)) {
-            $prepUpdates['ip_login'] = $oldOnt->ip_login;
-        }
-        if (empty($ont->login_user) && !empty($oldOnt?->login_user)) {
-            $prepUpdates['login_user'] = $oldOnt->login_user;
-            $prepUpdates['login_password'] = $oldOnt->login_password;
-        }
-        if (!empty($oldOnt?->free_hotspot) && empty($ont->free_hotspot)) {
-            $prepUpdates['free_hotspot'] = $oldOnt->free_hotspot;
-            $prepUpdates['hotspot_user'] = $oldOnt->hotspot_user;
-            $prepUpdates['hotspot_password'] = $oldOnt->hotspot_password;
-            $prepUpdates['hotspot_vlan_id'] = $oldOnt->hotspot_vlan_id;
-        }
-
-        // Tandai status ONT di inventory dan update konfigurasi siap pakai
-        $ont->update($prepUpdates);
-
-        // Potong stok ONT di gudang area saat disiapkan untuk teknisi (Tahap 1)
-        $ontMat = \App\Services\MaterialService::resolveOntMaterial($ont);
-        if ($ontMat) {
-            $stockRes = \App\Services\MaterialService::deductOperationalStock($ontMat, 1, $prepAreaId, 'pcs');
-            $ppu = (float) ($ontMat->selling_price ?: ($ontMat->price_per_unit ?? 0));
-            $techNames = $pgk->technicians()->pluck('name')->join(', ') ?: (auth()->user()->name ?? 'Teknisi');
-
-            $ontOutTx = MaterialTransaction::create([
-                'transaction_number' => 'OUT-PGK-ONT-' . date('YmdHis') . '-' . $pgk->id,
-                'type' => 'out',
-                'status' => 'approved',
-                'request_type' => 'ont_replacement',
-                'date' => now(),
-                'technician_name' => $techNames,
-                'purpose' => 'Penyiapan Unit ONT Pengganti PGK: ' . $pgk->ticket_number . ' (SN: ' . $ont->serial_number . ')',
-                'source_type' => 'pgk',
-                'source_id' => $pgk->id,
-                'source_reference' => $pgk->ticket_number,
-                'replacement_ont_id' => $ont->id,
-                'old_ont_id' => $oldOnt?->id,
-                'user_id' => auth()->id(),
-                'customer_id' => $pgk->customer_id,
+            $prepUpdates = [
+                'status' => 'Disiapkan Teknisi',
                 'area_id' => $prepAreaId,
-                'total_cost' => $ppu,
+            ];
+
+            if (empty($ont->pppoe_user) && !empty($oldOnt?->pppoe_user)) {
+                $prepUpdates['pppoe_user'] = $oldOnt->pppoe_user;
+                $prepUpdates['pppoe_password'] = $oldOnt->pppoe_password;
+            }
+            if (empty($ont->access_mode) && !empty($oldOnt?->access_mode)) {
+                $prepUpdates['access_mode'] = $oldOnt->access_mode;
+            }
+            if (empty($ont->vlan_id) && !empty($oldOnt?->vlan_id)) {
+                $prepUpdates['vlan_id'] = $oldOnt->vlan_id;
+                $prepUpdates['vlan_mode'] = $oldOnt->vlan_mode;
+            }
+            if (empty($ont->ip_login) && !empty($oldOnt?->ip_login)) {
+                $prepUpdates['ip_login'] = $oldOnt->ip_login;
+            }
+            if (empty($ont->login_user) && !empty($oldOnt?->login_user)) {
+                $prepUpdates['login_user'] = $oldOnt->login_user;
+                $prepUpdates['login_password'] = $oldOnt->login_password;
+            }
+            if (!empty($oldOnt?->free_hotspot) && empty($ont->free_hotspot)) {
+                $prepUpdates['free_hotspot'] = $oldOnt->free_hotspot;
+                $prepUpdates['hotspot_user'] = $oldOnt->hotspot_user;
+                $prepUpdates['hotspot_password'] = $oldOnt->hotspot_password;
+                $prepUpdates['hotspot_vlan_id'] = $oldOnt->hotspot_vlan_id;
+            }
+
+            // Tandai status ONT di inventory dan update konfigurasi siap pakai
+            $ont->update($prepUpdates);
+
+            // Potong stok ONT di gudang area saat disiapkan untuk teknisi (Tahap 1)
+            $ontMat = \App\Services\MaterialService::resolveOntMaterial($ont);
+            if ($ontMat) {
+                $stockRes = \App\Services\MaterialService::deductOperationalStock($ontMat, 1, $prepAreaId, 'pcs');
+                $ppu = \App\Services\MaterialService::calculateUnitPrice($ontMat, 'pcs');
+                $techNames = $pgk->technicians()->pluck('name')->join(', ') ?: (auth()->user()->name ?? 'Teknisi');
+
+                $trxNumber = \App\Services\MaterialService::generateTransactionNumber('OUT-PGK-ONT');
+                $ontOutTx = MaterialTransaction::create([
+                    'transaction_number' => $trxNumber,
+                    'type' => 'out',
+                    'status' => 'approved',
+                    'request_type' => 'ont_replacement',
+                    'date' => now(),
+                    'technician_name' => $techNames,
+                    'purpose' => 'Penyiapan Unit ONT Pengganti PGK: ' . $pgk->ticket_number . ' (SN: ' . $ont->serial_number . ')',
+                    'source_type' => 'pgk',
+                    'source_id' => $pgk->id,
+                    'source_reference' => $pgk->ticket_number,
+                    'replacement_ont_id' => $ont->id,
+                    'old_ont_id' => $oldOnt?->id,
+                    'user_id' => auth()->id(),
+                    'customer_id' => $pgk->customer_id,
+                    'area_id' => $prepAreaId,
+                    'total_cost' => $ppu,
+                ]);
+
+                MaterialTransactionItem::create([
+                    'material_transaction_id' => $ontOutTx->id,
+                    'material_id' => $ontMat->id,
+                    'quantity' => 1,
+                    'unit' => 'pcs',
+                    'price_per_unit' => $ppu,
+                    'total_price' => $ppu,
+                    'stock_before' => $stockRes['stock_before'],
+                    'stock_after' => $stockRes['stock_after'],
+                    'condition' => 'Disiapkan Teknisi',
+                ]);
+            }
+
+            $pgk->update([
+                'ont_replacement_status' => 'prepared',
+                'prepared_ont_id' => $ont->id,
+                'prepared_ont_at' => now(),
+                'prepared_by' => auth()->id(),
             ]);
 
-            MaterialTransactionItem::create([
-                'material_transaction_id' => $ontOutTx->id,
-                'material_id' => $ontMat->id,
-                'quantity' => 1,
-                'unit' => 'pcs',
-                'price_per_unit' => $ppu,
-                'total_price' => $ppu,
-                'stock_before' => $stockRes['stock_before'],
-                'stock_after' => $stockRes['stock_after'],
-                'condition' => 'Disiapkan Teknisi',
-            ]);
-        }
+            AuditLog::createLog(
+                'Kepala Teknisi Menyiapkan ONT Baru PGK',
+                $pgk,
+                'requested',
+                'prepared',
+                'Kepala Teknisi menyiapkan unit ONT baru SN: ' . $ont->serial_number . ' (' . ($ont->brand ?? 'ONT') . ')'
+            );
 
-        $pgk->update([
-            'ont_replacement_status' => 'prepared',
-            'prepared_ont_id' => $ont->id,
-            'prepared_ont_at' => now(),
-            'prepared_by' => auth()->id(),
-        ]);
-
-        AuditLog::createLog(
-            'Kepala Teknisi Menyiapkan ONT Baru PGK',
-            $pgk,
-            'requested',
-            'prepared',
-            'Kepala Teknisi menyiapkan unit ONT baru SN: ' . $ont->serial_number . ' (' . ($ont->brand ?? 'ONT') . ')'
-        );
-
-        return redirect()->back()->with('success', 'ONT baru berhasil disiapkan dari Inventory Gudang untuk teknisi lapangan.');
+            return redirect()->back()->with('success', 'ONT baru berhasil disiapkan dari Inventory Gudang untuk teknisi lapangan.');
+        });
     }
 
     /**

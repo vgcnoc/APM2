@@ -410,8 +410,9 @@ class NetworkMaintenanceController extends Controller
                 $sourceOrders = array_filter(array_unique(array_column($validated['materials'], 'trx_number')));
                 $orderRefStr = !empty($sourceOrders) ? ' (Ref: ' . implode(', ', $sourceOrders) . ')' : '';
 
+                $trxNumber = \App\Services\MaterialService::generateTransactionNumber('OUT-MNT');
                 $matTrx = MaterialTransaction::create([
-                    'transaction_number' => 'OUT-MNT-' . date('YmdHis') . rand(10, 99),
+                    'transaction_number' => $trxNumber,
                     'type' => 'out',
                     'status' => 'approved',
                     'date' => now(),
@@ -435,11 +436,7 @@ class NetworkMaintenanceController extends Controller
                         $itemUnit = $matItem['unit'] ?? ($material->unit ?? 'pcs');
                         $stockRes = \App\Services\MaterialService::deductOperationalStock($material, $qty, $maintenance->area_id, $itemUnit);
 
-                        $ppu = (float) ($material->selling_price ?: ($material->price_per_unit ?? 0));
-                        if (strtolower($material->category ?? '') === 'kabel' && strtolower($itemUnit) === 'meter') {
-                            $mpr = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
-                            $ppu = $ppu / $mpr;
-                        }
+                        $ppu = \App\Services\MaterialService::calculateUnitPrice($material, $itemUnit);
                         $itemCost = $ppu * $qty;
                         $totalMaintCost += $itemCost;
 
@@ -634,8 +631,9 @@ class NetworkMaintenanceController extends Controller
                                             $unitStr
                                         );
                                         try {
+                                            $trxNumber = \App\Services\MaterialService::generateTransactionNumber('RTR-MNT');
                                             $trx = MaterialTransaction::create([
-                                                'transaction_number' => 'RTR-MNT-' . date('YmdHis') . '-' . rand(10, 99),
+                                                'transaction_number' => $trxNumber,
                                                 'type' => 'in',
                                                 'status' => 'approved',
                                                 'date' => now()->toDateString(),

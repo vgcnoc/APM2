@@ -43,6 +43,84 @@ class MaterialService
     }
 
     /**
+     * Deteksi apakah material termasuk kategori / jenis Isolasi (termasuk penulisan 'Solasi').
+     */
+    public static function isIsolasi(Material $material): bool
+    {
+        $cat = strtolower(trim((string) ($material->category ?? '')));
+        $name = strtolower(trim((string) ($material->name ?? '')));
+
+        return str_contains($cat, 'isolasi')
+            || str_contains($cat, 'solasi')
+            || str_contains($name, 'isolasi')
+            || str_contains($name, 'solasi');
+    }
+
+    /**
+     * Ambil atau buat baris MaterialStock untuk suatu area dengan row-level lock (anti race condition).
+     */
+    public static function getOrCreateLockedAreaStock(int $materialId, int $areaId): MaterialStock
+    {
+        $matStock = MaterialStock::where('material_id', $materialId)
+            ->where('area_id', $areaId)
+            ->lockForUpdate()
+            ->first();
+
+        if ($matStock) {
+            return $matStock;
+        }
+
+        try {
+            MaterialStock::create([
+                'material_id' => $materialId,
+                'area_id' => $areaId,
+                'stock' => 0,
+                'initial_stock' => 0,
+                'total_rolls' => 0,
+                'total_packs' => 0,
+                'total_pieces' => 0,
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Baris baru saja dibuat oleh request paralel; ambil ulang dengan lock di bawah
+        }
+
+        return MaterialStock::where('material_id', $materialId)
+            ->where('area_id', $areaId)
+            ->lockForUpdate()
+            ->firstOrFail();
+    }
+
+    /**
+     * Generate nomor transaksi material unik & bebas bentrok meskipun ada penghapusan atau request bersamaan.
+     */
+    public static function generateTransactionNumber(string $prefix, ?string $ymd = null): string
+    {
+        $cleanPrefix = rtrim(strtoupper(trim($prefix)), '-');
+        $datePart = $ymd ?: now()->format('Ymd');
+        $likePattern = "{$cleanPrefix}-{$datePart}-%";
+
+        $lastNumber = MaterialTransaction::where('transaction_number', 'like', $likePattern)
+            ->orderByRaw('LENGTH(transaction_number) DESC')
+            ->orderByDesc('transaction_number')
+            ->value('transaction_number');
+
+        $seq = 1;
+        if ($lastNumber && preg_match('/-(\d+)$/', $lastNumber, $matches)) {
+            $seq = ((int) $matches[1]) + 1;
+        } else {
+            $seq = MaterialTransaction::whereDate('created_at', today())->count() + 1;
+        }
+
+        do {
+            $candidate = "{$cleanPrefix}-{$datePart}-" . str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
+            $exists = MaterialTransaction::where('transaction_number', $candidate)->exists();
+            $seq++;
+        } while ($exists);
+
+        return $candidate;
+    }
+
+    /**
      * Gabungkan / Timpa data material $source ke dalam material $target.
      * Semua stok area, mutasi transaksi, penggunaan teknisi, dan dismantle dialihkan ke $target.
      * Material $source kemudian dihapus agar tidak terjadi duplikasi.
@@ -50,6 +128,16 @@ class MaterialService
     public static function mergeMaterials(Material $target, Material $source, array $attributes = [], ?int $areaId = null, ?float $inputStock = null): Material
     {
         return DB::transaction(function () use ($target, $source, $attributes, $areaId, $inputStock) {
+            // Lock kedua material secara berurutan (ID kecil lebih dulu untuk mencegah deadlock)
+            $firstId = min((int) $target->id, (int) $source->id);
+            $secondId = max((int) $target->id, (int) $source->id);
+            Material::whereKey($firstId)->lockForUpdate()->first();
+            if ($secondId !== $firstId) {
+                Material::whereKey($secondId)->lockForUpdate()->first();
+            }
+            $target->refresh();
+            $source->refresh();
+
             // 1. Perbarui atribut target dengan data form terbaru
             $fillableAttributes = [
                 'name', 'supplier', 'category', 'unit', 'meter_per_roll', 'total_rolls',
@@ -68,24 +156,22 @@ class MaterialService
             }
             $target->is_active = true;
 
-            // 2. Gabungkan stok area (material_stocks)
-            $sourceStocks = MaterialStock::where('material_id', $source->id)->get();
+            // 2. Gabungkan stok area (material_stocks) dengan lock
+            $sourceStocks = MaterialStock::where('material_id', $source->id)->lockForUpdate()->get();
             foreach ($sourceStocks as $sStock) {
                 $targetStock = MaterialStock::where('material_id', $target->id)
                     ->where('area_id', $sStock->area_id)
+                    ->lockForUpdate()
                     ->first();
 
                 if ($targetStock) {
-                    $targetStock->stock = (float)$targetStock->stock + (float)$sStock->stock;
-                    $targetStock->initial_stock = (float)$targetStock->initial_stock + (float)$sStock->initial_stock;
-                    $targetStock->total_rolls = (float)$targetStock->total_rolls + (float)$sStock->total_rolls;
-                    $targetStock->total_packs = (float)$targetStock->total_packs + (float)$sStock->total_packs;
-                    $targetStock->total_pieces = (float)$targetStock->total_pieces + (float)$sStock->total_pieces;
-                    $targetStock->save();
+                    $targetStock->stock = max(0.0, (float) $targetStock->stock + (float) $sStock->stock);
+                    $targetStock->initial_stock = max(0.0, (float) $targetStock->initial_stock + (float) $sStock->initial_stock);
+                    self::recalcAreaStockUnits($targetStock, $target)->save();
                     $sStock->delete();
                 } else {
                     $sStock->material_id = $target->id;
-                    $sStock->save();
+                    self::recalcAreaStockUnits($sStock, $target)->save();
                 }
             }
 
@@ -93,18 +179,14 @@ class MaterialService
             if ($areaId) {
                 $targetAreaStock = MaterialStock::where('material_id', $target->id)
                     ->where('area_id', $areaId)
+                    ->lockForUpdate()
                     ->first();
 
                 if (!$targetAreaStock) {
-                    MaterialStock::create([
-                        'material_id' => $target->id,
-                        'area_id' => $areaId,
-                        'stock' => $inputStock !== null ? $inputStock : 0,
-                        'initial_stock' => $inputStock !== null ? $inputStock : 0,
-                        'total_rolls' => $target->total_rolls ?? 0,
-                        'total_packs' => $target->total_packs ?? 0,
-                        'total_pieces' => $target->total_pieces ?? 0,
-                    ]);
+                    $createdAreaStock = self::getOrCreateLockedAreaStock($target->id, $areaId);
+                    $createdAreaStock->stock = max(0.0, (float) ($inputStock ?? 0));
+                    $createdAreaStock->initial_stock = max(0.0, (float) ($inputStock ?? 0));
+                    self::recalcAreaStockUnits($createdAreaStock, $target)->save();
                 }
             }
 
@@ -128,18 +210,27 @@ class MaterialService
                 DB::table('material_request_items')->where('material_id', $source->id)->update(['material_id' => $target->id]);
             }
 
-            // Update brand pada ONT dan nama di material_transaction_items
+            // Update brand/material_id pada ONT dan nama di material_transaction_items
             \App\Models\Ont::where('brand', $source->name)->update(['brand' => $target->name]);
+            if (Schema::hasColumn('onts', 'material_id')) {
+                \App\Models\Ont::where('material_id', $source->id)->update(['material_id' => $target->id]);
+            }
             MaterialTransactionItem::where('material_id', $target->id)->update(['material_name' => $target->name]);
 
             // 4. Bersihkan sisa stok source & hapus source material
+            $sourceMasterStock = max(0.0, (float) ($source->stock ?? 0));
+            $sourceMasterInitial = max(0.0, (float) ($source->initial_stock ?? 0));
             MaterialStock::where('material_id', $source->id)->delete();
             $source->delete();
 
-            // 5. Hitung ulang total stok Gudang Pusat & satuan konversi target
-            if ($inputStock !== null && (float)$inputStock > 0) {
-                $target->stock = (float)$target->stock + (float)$inputStock;
-                $target->initial_stock = (float)$target->initial_stock + (float)$inputStock;
+            // 5. Hitung ulang total stok Gudang Pusat / Area & satuan konversi target
+            if ($areaId) {
+                self::syncMasterStockIfAreaOnly($target);
+            } elseif ($inputStock !== null) {
+                $target->stock = max(0.0, (float) $inputStock);
+            } elseif ($sourceMasterStock > 0 && !self::shouldSyncMasterStockFromAreas($target)) {
+                $target->stock = max(0.0, (float) $target->stock + $sourceMasterStock);
+                $target->initial_stock = max(0.0, (float) $target->initial_stock + $sourceMasterInitial);
             }
 
             $target->recalcUnitTotals();
@@ -155,52 +246,37 @@ class MaterialService
     public static function addStockToExistingMaterial(Material $target, array $validated, ?int $areaId = null): Material
     {
         return DB::transaction(function () use ($target, $validated, $areaId) {
-            $inputStock = (float)($validated['stock'] ?? 0);
-            $initialStock = (float)($validated['initial_stock'] ?? $inputStock);
+            $lockedTarget = Material::whereKey($target->id)->lockForUpdate()->firstOrFail();
+            $inputStock = max(0.0, (float) ($validated['stock'] ?? 0));
+            $initialStock = max(0.0, (float) ($validated['initial_stock'] ?? $inputStock));
 
-            $target->is_active = true;
+            $lockedTarget->is_active = true;
 
             // Update info konversi atau supplier jika belum terisi di target
-            if (empty($target->supplier) && !empty($validated['supplier'])) {
-                $target->supplier = $validated['supplier'];
+            if (empty($lockedTarget->supplier) && !empty($validated['supplier'])) {
+                $lockedTarget->supplier = $validated['supplier'];
             }
-            if ((float)$target->meter_per_roll <= 0 && !empty($validated['meter_per_roll'])) {
-                $target->meter_per_roll = $validated['meter_per_roll'];
+            if ((float) $lockedTarget->meter_per_roll <= 0 && !empty($validated['meter_per_roll'])) {
+                $lockedTarget->meter_per_roll = $validated['meter_per_roll'];
             }
-            if ((float)$target->pcs_per_pack <= 0 && !empty($validated['pcs_per_pack'])) {
-                $target->pcs_per_pack = $validated['pcs_per_pack'];
+            if ((float) $lockedTarget->pcs_per_pack <= 0 && !empty($validated['pcs_per_pack'])) {
+                $lockedTarget->pcs_per_pack = $validated['pcs_per_pack'];
             }
-            if ((float)$target->cm_per_pcs <= 0 && !empty($validated['cm_per_pcs'])) {
-                $target->cm_per_pcs = $validated['cm_per_pcs'];
+            if ((float) $lockedTarget->cm_per_pcs <= 0 && !empty($validated['cm_per_pcs'])) {
+                $lockedTarget->cm_per_pcs = $validated['cm_per_pcs'];
             }
 
             if ($areaId) {
-                $stockRecord = MaterialStock::where('material_id', $target->id)
-                    ->where('area_id', $areaId)
-                    ->first();
-
-                if ($stockRecord) {
-                    $stockRecord->stock = (float)$stockRecord->stock + $inputStock;
-                    $stockRecord->initial_stock = (float)$stockRecord->initial_stock + $initialStock;
-                    $stockRecord->total_rolls = (float)$stockRecord->total_rolls + (float)($validated['total_rolls'] ?? 0);
-                    $stockRecord->total_packs = (float)$stockRecord->total_packs + (float)($validated['total_packs'] ?? 0);
-                    $stockRecord->total_pieces = (float)$stockRecord->total_pieces + (float)($validated['total_pieces'] ?? 0);
-                    $stockRecord->save();
-                } else {
-                    MaterialStock::create([
-                        'material_id' => $target->id,
-                        'area_id' => $areaId,
-                        'stock' => $inputStock,
-                        'initial_stock' => $initialStock,
-                        'total_rolls' => $validated['total_rolls'] ?? 0,
-                        'total_packs' => $validated['total_packs'] ?? 0,
-                        'total_pieces' => $validated['total_pieces'] ?? 0,
-                    ]);
-                }
+                $stockRecord = self::getOrCreateLockedAreaStock($lockedTarget->id, $areaId);
+                $stockBefore = (float) ($stockRecord->stock ?? 0);
+                $stockRecord->stock = $stockBefore + $inputStock;
+                $stockRecord->initial_stock = (float) ($stockRecord->initial_stock ?? 0) + $initialStock;
+                self::recalcAreaStockUnits($stockRecord, $lockedTarget)->save();
 
                 if ($inputStock > 0) {
+                    $baseRate = self::calculateBaseUnitPrice($lockedTarget);
                     $transaction = MaterialTransaction::create([
-                        'transaction_number' => 'IN-AREA-' . date('YmdHis') . '-' . $target->id,
+                        'transaction_number' => self::generateTransactionNumber('IN-AREA'),
                         'type' => 'in',
                         'status' => 'approved',
                         'date' => now(),
@@ -208,35 +284,39 @@ class MaterialService
                         'purpose' => 'Penambahan Stok Material Fisik Area',
                         'user_id' => auth()->id(),
                         'area_id' => $areaId,
+                        'total_cost' => $baseRate * $inputStock,
                         'notes' => 'Penambahan stok material fisik yang sudah ada di sistem'
                     ]);
 
                     MaterialTransactionItem::create([
                         'material_transaction_id' => $transaction->id,
-                        'material_id' => $target->id,
+                        'material_id' => $lockedTarget->id,
+                        'material_name' => $lockedTarget->name,
                         'quantity' => $inputStock,
-                        'unit' => $target->unit,
-                        'price_per_unit' => 0,
-                        'total_price' => 0,
-                        'stock_before' => $stockRecord ? (float)$stockRecord->stock - $inputStock : 0,
-                        'stock_after' => $stockRecord ? (float)$stockRecord->stock : $inputStock,
+                        'unit' => $lockedTarget->unit,
+                        'price_per_unit' => $baseRate,
+                        'total_price' => $baseRate * $inputStock,
+                        'stock_before' => $stockBefore,
+                        'stock_after' => (float) $stockRecord->stock,
                         'condition' => 'Layak Pakai'
                     ]);
                 }
+
+                self::syncMasterStockIfAreaOnly($lockedTarget);
             } else {
-                $target->stock = (float)$target->stock + $inputStock;
-                $target->initial_stock = (float)$target->initial_stock + $initialStock;
+                $lockedTarget->stock = (float) $lockedTarget->stock + $inputStock;
+                $lockedTarget->initial_stock = (float) $lockedTarget->initial_stock + $initialStock;
             }
 
-            $target->recalcUnitTotals();
-            $target->save();
+            $lockedTarget->recalcUnitTotals();
+            $lockedTarget->save();
 
-            return $target;
+            return $lockedTarget;
         });
     }
 
     /**
-     * Konversi kuantitas input ke satuan dasar (base unit) material bila diinput dalam roll/pack/bungkus.
+     * Konversi kuantitas input ke satuan dasar (base unit) material bila diinput dalam roll/pack/bungkus/pcs.
      */
     public static function convertToBaseQuantity(Material $material, float $quantity, ?string $unit = null): float
     {
@@ -250,27 +330,181 @@ class MaterialService
         $catLower = strtolower((string) ($material->category ?? ''));
         $nameLower = strtolower((string) ($material->name ?? ''));
 
-        if ($itemUnit === '' || $itemUnit === $matUnit) {
+        if ($itemUnit === '' || $itemUnit === 'base' || $itemUnit === $matUnit) {
             return $baseQty;
         }
 
-        if ((str_contains($catLower, 'kabel') || str_contains($nameLower, 'kabel') || str_contains($nameLower, 'dropcore')) && in_array($itemUnit, ['roll', 'rol'], true)) {
+        // 1. Isolasi / Solasi (base unit umumnya 'cm')
+        if (self::isIsolasi($material)) {
+            $cmPerPcs = (float) $material->cm_per_pcs > 0 ? (float) $material->cm_per_pcs : 50.0;
+            $pcsPerPack = (float) $material->pcs_per_pack > 0 ? (float) $material->pcs_per_pack : 1.0;
+
+            if (in_array($itemUnit, ['pack', 'bungkus', 'bks'], true)) {
+                if ($matUnit === 'pcs') {
+                    return $quantity * $pcsPerPack;
+                }
+                return $quantity * ($cmPerPcs * $pcsPerPack);
+            }
+
+            if (in_array($itemUnit, ['pcs', 'pc', 'buah', 'biji', 'roll', 'rol'], true) && $matUnit === 'cm') {
+                return $quantity * $cmPerPcs;
+            }
+
+            return $baseQty;
+        }
+
+        // 2. Kabel / Dropcore / Patchcord gulungan (roll -> meter)
+        $hasRollConfig = (float) $material->meter_per_roll > 0
+            || str_contains($catLower, 'kabel')
+            || str_contains($nameLower, 'kabel')
+            || str_contains($nameLower, 'dropcore');
+
+        if ($hasRollConfig && in_array($itemUnit, ['roll', 'rol', 'haspel'], true) && $matUnit !== 'roll') {
             $meterPerRoll = (float) $material->meter_per_roll > 0 ? (float) $material->meter_per_roll : 1000.0;
             return $quantity * $meterPerRoll;
         }
 
-        if (($material->category === 'Paku Klem' || str_contains($nameLower, 'klem')) && in_array($itemUnit, ['pack', 'bungkus'], true)) {
+        // 3. Klem / Paku Klem / Aksesoris ber-pack (pack/bungkus -> pcs)
+        $hasPackConfig = (float) $material->pcs_per_pack > 0
+            || in_array($catLower, ['klem', 'paku klem'], true)
+            || str_contains($catLower, 'klem')
+            || str_contains($nameLower, 'klem');
+
+        if ($hasPackConfig && in_array($itemUnit, ['pack', 'bungkus', 'bks'], true) && !in_array($matUnit, ['pack', 'bungkus'], true)) {
             $pcsPerPack = (float) $material->pcs_per_pack > 0 ? (float) $material->pcs_per_pack : 1.0;
             return $quantity * $pcsPerPack;
         }
 
-        if (($material->category === 'Isolasi' || str_contains($nameLower, 'isolasi')) && in_array($itemUnit, ['pack', 'bungkus'], true)) {
-            $cmPerPcs = (float) $material->cm_per_pcs > 0 ? (float) $material->cm_per_pcs : 50.0;
-            $pcsPerPack = (float) $material->pcs_per_pack > 0 ? (float) $material->pcs_per_pack : 1.0;
-            return $quantity * ($cmPerPcs * $pcsPerPack);
+        // 4. Material umum dengan cm_per_pcs (pcs -> cm)
+        if ((float) $material->cm_per_pcs > 0 && in_array($itemUnit, ['pcs', 'pc', 'buah'], true) && $matUnit === 'cm') {
+            return $quantity * (float) $material->cm_per_pcs;
         }
 
         return $baseQty;
+    }
+
+    /**
+     * Hitung harga satuan dasar (per 1 base unit: meter / cm / pcs) secara konsisten sesuai konfigurasi master produk.
+     */
+    public static function calculateBaseUnitPrice(Material $material, bool $preferSellingPrice = false): float
+    {
+        $rawMasterPrice = $preferSellingPrice
+            ? (float) ($material->selling_price ?: ($material->price_per_unit ?? 0))
+            : (float) ($material->price_per_unit ?? 0);
+
+        if ($rawMasterPrice <= 0) {
+            return 0.0;
+        }
+
+        $matUnit = strtolower(trim((string) ($material->unit ?? 'pcs')));
+
+        // 1. Isolasi: di Katalog Produk (unit = 'cm'), price_per_unit sudah disimpan per cm
+        if (self::isIsolasi($material)) {
+            $cmPerPcs = (float) $material->cm_per_pcs > 0 ? (float) $material->cm_per_pcs : 50.0;
+            $pcsPerPack = (float) $material->pcs_per_pack > 0 ? (float) $material->pcs_per_pack : 1.0;
+
+            if ($matUnit === 'cm') {
+                return $rawMasterPrice;
+            }
+            if (in_array($matUnit, ['pack', 'bungkus', 'bks'], true)) {
+                return $rawMasterPrice;
+            }
+            // Bila unit disimpan 'pcs', maka harga master adalah per pcs
+            return $rawMasterPrice;
+        }
+
+        // 2. Kabel / Patchcord dengan meter_per_roll > 0: harga master adalah per Roll, base unit 'meter'
+        if ((float) $material->meter_per_roll > 0 && !in_array($matUnit, ['roll', 'rol', 'haspel'], true)) {
+            return $rawMasterPrice / (float) $material->meter_per_roll;
+        }
+
+        // 3. Klem / Aksesoris ber-pack dengan pcs_per_pack > 0: harga master adalah per Bungkus/Pack, base unit 'pcs'
+        if ((float) $material->pcs_per_pack > 0 && !in_array($matUnit, ['pack', 'bungkus', 'bks'], true)) {
+            return $rawMasterPrice / (float) $material->pcs_per_pack;
+        }
+
+        return $rawMasterPrice;
+    }
+
+    /**
+     * Hitung harga per 1 satuan spesifik ($unit: 'roll', 'pack', 'bungkus', 'pcs', 'meter', 'cm', atau 'base').
+     */
+    public static function calculateUnitPrice(Material $material, ?string $unit = null, bool $preferSellingPrice = false): float
+    {
+        $targetUnit = strtolower(trim((string) ($unit ?? $material->unit ?? 'base')));
+        $matUnit = strtolower(trim((string) ($material->unit ?? 'pcs')));
+        $basePrice = self::calculateBaseUnitPrice($material, $preferSellingPrice);
+
+        if ($basePrice <= 0) {
+            return 0.0;
+        }
+
+        if ($targetUnit === '' || $targetUnit === 'base' || $targetUnit === $matUnit) {
+            return $basePrice;
+        }
+
+        if (self::isIsolasi($material)) {
+            $cmPerPcs = (float) $material->cm_per_pcs > 0 ? (float) $material->cm_per_pcs : 50.0;
+            $pcsPerPack = (float) $material->pcs_per_pack > 0 ? (float) $material->pcs_per_pack : 1.0;
+            // Konversi ke rate per cm dulu bila matUnit bukan cm
+            $perCm = $matUnit === 'cm'
+                ? $basePrice
+                : (in_array($matUnit, ['pack', 'bungkus', 'bks'], true)
+                    ? ($basePrice / ($cmPerPcs * $pcsPerPack))
+                    : ($basePrice / $cmPerPcs));
+
+            if (in_array($targetUnit, ['pack', 'bungkus', 'bks'], true)) {
+                return $perCm * ($cmPerPcs * $pcsPerPack);
+            }
+            if (in_array($targetUnit, ['pcs', 'pc', 'buah', 'biji', 'roll', 'rol'], true)) {
+                return $perCm * $cmPerPcs;
+            }
+            if ($targetUnit === 'cm') {
+                return $perCm;
+            }
+        }
+
+        $factor = self::convertToBaseQuantity($material, 1.0, $targetUnit);
+        return $basePrice * ($factor > 0 ? $factor : 1.0);
+    }
+
+    /**
+     * Hitung konversi kuantitas & harga total untuk Order Toko / Transaksi Material secara terpusat.
+     *
+     * @return array{converted_qty: float, base_unit: string, unit_price: float, base_unit_price: float, total_price: float}
+     */
+    public static function calculateOrderPricing(
+        Material $material,
+        float $quantity,
+        ?string $purchaseUnit = null,
+        ?float $overrideUnitPrice = null,
+        bool $preferSellingPrice = false
+    ): array {
+        $qty = max(0.0, (float) $quantity);
+        $pUnit = strtolower(trim((string) ($purchaseUnit ?? 'base')));
+
+        // Pastikan Isolasi katalog selalu ber-unit dasar 'cm' jika memiliki cm_per_pcs
+        $baseUnit = $material->unit ?: 'pcs';
+        if (self::isIsolasi($material) && (float) $material->cm_per_pcs > 0 && strtolower((string) $material->unit) !== 'cm' && $material->is_catalog) {
+            $material->unit = 'cm';
+            $baseUnit = 'cm';
+        }
+
+        $convertedQty = self::convertToBaseQuantity($material, $qty, $pUnit);
+        $unitPrice = ($overrideUnitPrice !== null && $overrideUnitPrice >= 0)
+            ? (float) $overrideUnitPrice
+            : self::calculateUnitPrice($material, $pUnit, $preferSellingPrice);
+
+        $totalPrice = $qty * $unitPrice;
+        $baseUnitPrice = $convertedQty > 0 ? ($totalPrice / $convertedQty) : self::calculateBaseUnitPrice($material, $preferSellingPrice);
+
+        return [
+            'converted_qty' => $convertedQty,
+            'base_unit' => $baseUnit,
+            'unit_price' => $unitPrice,
+            'base_unit_price' => $baseUnitPrice,
+            'total_price' => $totalPrice,
+        ];
     }
 
     /**
@@ -281,8 +515,7 @@ class MaterialService
         $stock = max(0.0, (float) ($matStock->stock ?? 0));
         $matStock->stock = $stock;
 
-        $category = strtolower((string) ($material->category ?? ''));
-        $isIsolasi = str_contains(strtolower((string) ($material->name ?? '')), 'isolasi') || str_contains($category, 'isolasi');
+        $isIsolasi = self::isIsolasi($material);
 
         if ((float) $material->meter_per_roll > 0) {
             $matStock->total_rolls = $stock / (float) $material->meter_per_roll;
@@ -311,6 +544,10 @@ class MaterialService
      */
     public static function shouldSyncMasterStockFromAreas(Material $material): bool
     {
+        if ($material->is_catalog && !$material->is_migration && (int) $material->id > 260) {
+            return false;
+        }
+
         if ($material->is_migration || (int) $material->id <= 260) {
             return true;
         }
@@ -364,34 +601,37 @@ class MaterialService
             return ['stock_before' => $cur, 'stock_after' => $cur, 'base_qty' => 0.0];
         }
 
-        if ($areaId) {
-            $matStock = MaterialStock::firstOrCreate(
-                ['material_id' => $material->id, 'area_id' => $areaId],
-                ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
-            );
-            $stockBefore = (float) ($matStock->stock ?? 0);
+        return DB::transaction(function () use ($material, $baseQty, $areaId) {
+            $lockedMat = Material::whereKey($material->id)->lockForUpdate()->first() ?? $material;
+
+            if ($areaId) {
+                $matStock = self::getOrCreateLockedAreaStock($lockedMat->id, $areaId);
+                $stockBefore = (float) ($matStock->stock ?? 0);
+                $stockAfter = max(0.0, $stockBefore - $baseQty);
+                $matStock->stock = $stockAfter;
+                self::recalcAreaStockUnits($matStock, $lockedMat)->save();
+                self::syncMasterStockIfAreaOnly($lockedMat);
+                $material->stock = $lockedMat->stock;
+
+                return [
+                    'stock_before' => $stockBefore,
+                    'stock_after' => $stockAfter,
+                    'base_qty' => $baseQty,
+                ];
+            }
+
+            $stockBefore = (float) ($lockedMat->stock ?? 0);
             $stockAfter = max(0.0, $stockBefore - $baseQty);
-            $matStock->stock = $stockAfter;
-            self::recalcAreaStockUnits($matStock, $material)->save();
-            self::syncMasterStockIfAreaOnly($material);
+            $lockedMat->stock = $stockAfter;
+            $lockedMat->recalcUnitTotals()->save();
+            $material->stock = $lockedMat->stock;
 
             return [
                 'stock_before' => $stockBefore,
                 'stock_after' => $stockAfter,
                 'base_qty' => $baseQty,
             ];
-        }
-
-        $stockBefore = (float) ($material->stock ?? 0);
-        $stockAfter = max(0.0, $stockBefore - $baseQty);
-        $material->stock = $stockAfter;
-        $material->recalcUnitTotals()->save();
-
-        return [
-            'stock_before' => $stockBefore,
-            'stock_after' => $stockAfter,
-            'base_qty' => $baseQty,
-        ];
+        });
     }
 
     /**
@@ -413,34 +653,37 @@ class MaterialService
             return ['stock_before' => $cur, 'stock_after' => $cur, 'base_qty' => 0.0];
         }
 
-        if ($areaId) {
-            $matStock = MaterialStock::firstOrCreate(
-                ['material_id' => $material->id, 'area_id' => $areaId],
-                ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
-            );
-            $stockBefore = (float) ($matStock->stock ?? 0);
-            $stockAfter = $stockBefore + $baseQty;
-            $matStock->stock = $stockAfter;
-            self::recalcAreaStockUnits($matStock, $material)->save();
-            self::syncMasterStockIfAreaOnly($material);
+        return DB::transaction(function () use ($material, $baseQty, $areaId) {
+            $lockedMat = Material::whereKey($material->id)->lockForUpdate()->first() ?? $material;
+
+            if ($areaId) {
+                $matStock = self::getOrCreateLockedAreaStock($lockedMat->id, $areaId);
+                $stockBefore = (float) ($matStock->stock ?? 0);
+                $stockAfter = max(0.0, $stockBefore + $baseQty);
+                $matStock->stock = $stockAfter;
+                self::recalcAreaStockUnits($matStock, $lockedMat)->save();
+                self::syncMasterStockIfAreaOnly($lockedMat);
+                $material->stock = $lockedMat->stock;
+
+                return [
+                    'stock_before' => $stockBefore,
+                    'stock_after' => $stockAfter,
+                    'base_qty' => $baseQty,
+                ];
+            }
+
+            $stockBefore = (float) ($lockedMat->stock ?? 0);
+            $stockAfter = max(0.0, $stockBefore + $baseQty);
+            $lockedMat->stock = $stockAfter;
+            $lockedMat->recalcUnitTotals()->save();
+            $material->stock = $lockedMat->stock;
 
             return [
                 'stock_before' => $stockBefore,
                 'stock_after' => $stockAfter,
                 'base_qty' => $baseQty,
             ];
-        }
-
-        $stockBefore = (float) ($material->stock ?? 0);
-        $stockAfter = $stockBefore + $baseQty;
-        $material->stock = $stockAfter;
-        $material->recalcUnitTotals()->save();
-
-        return [
-            'stock_before' => $stockBefore,
-            'stock_after' => $stockAfter,
-            'base_qty' => $baseQty,
-        ];
+        });
     }
 
     /**

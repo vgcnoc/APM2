@@ -16,19 +16,26 @@ class MaterialMutationController extends Controller
 
         $query = MaterialTransactionItem::with(['material', 'transaction.user']);
 
-        if (!$isGlobal && !empty($accessibleAreas)) {
-            $query->whereHas('transaction', function ($tq) use ($accessibleAreas) {
-                $tq->whereIn('area_id', $accessibleAreas);
-            });
+        if (!$isGlobal) {
+            if (empty($accessibleAreas)) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->whereHas('transaction', function ($tq) use ($accessibleAreas) {
+                    $tq->whereIn('area_id', $accessibleAreas);
+                });
+            }
         }
 
-        if ($request->has('search') && $request->search != '') {
-            $search = $request->search;
-            $query->whereHas('material', function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%");
-            })->orWhereHas('transaction', function($q) use ($search) {
-                $q->where('transaction_number', 'like', "%{$search}%")
-                  ->orWhere('purpose', 'like', "%{$search}%");
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function ($sq) use ($search) {
+                $sq->whereHas('material', function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%");
+                })->orWhereHas('transaction', function ($q) use ($search) {
+                    $q->where('transaction_number', 'like', "%{$search}%")
+                      ->orWhere('purpose', 'like', "%{$search}%")
+                      ->orWhere('technician_name', 'like', "%{$search}%");
+                });
             });
         }
 

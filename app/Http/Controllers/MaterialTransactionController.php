@@ -165,116 +165,69 @@ class MaterialTransactionController extends Controller
             return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk area ini.');
         }
 
-        DB::transaction(function () use ($request) {
-            $totalCost = 0;
-            
-            // Create Transaction
-            $transaction = MaterialTransaction::create([
-                'transaction_number' => 'IN-AREA-' . date('Ymd') . '-' . strtoupper(Str::random(5)),
-                'type' => 'in',
-                'date' => $request->date,
-                'technician_name' => $request->technician_name,
-                'purpose' => $request->purpose,
-                'area_id' => $request->area_id,
-                'notes' => $request->notes,
-                'user_id' => auth()->id(),
-                'total_cost' => 0, // Will be updated
-            ]);
+        try {
+            DB::transaction(function () use ($request) {
+                $totalCost = 0;
 
-            foreach ($request->items as $itemData) {
-                $material = Material::findOrFail($itemData['material_id']);
-                
-                $materialStock = \App\Models\MaterialStock::firstOrCreate(
-                    ['material_id' => $material->id, 'area_id' => $request->area_id],
-                    ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
-                );
-
-                // Ensure sufficient stock in global inventory
-                if ($material->stock < $itemData['quantity']) {
-                    throw new \Exception("Stok {$material->name} di Gudang Utama tidak mencukupi. Sisa stok: {$material->stock}");
-                }
-
-                $pricePerUnit = $material->selling_price ?? 0;
-                
-                // Jika barang adalah Kabel dan satuan yang diambil adalah meter, 
-                // hitung harga jual per meter (harga 1 roll dibagi panjang 1 roll)
-                if (str_contains(strtolower($material->category), 'kabel') && strtolower($itemData['unit'] ?? '') === 'meter') {
-                    $meterPerRoll = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
-                    $pricePerUnit = $pricePerUnit / $meterPerRoll;
-                }
-                
-                // Jika barang adalah Paku Klem, hitung harga jual per pcs (harga 1 bungkus dibagi isi)
-                if ($material->category === 'Paku Klem' && strtolower($itemData['unit'] ?? '') === 'pcs') {
-                    $pcsPerPack = $material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1;
-                    $pricePerUnit = $pricePerUnit / $pcsPerPack;
-                }
-                
-                // Jika barang adalah Isolasi, hitung harga jual per cm (harga 1 pack dibagi total cm)
-                if ($material->category === 'Isolasi' && strtolower($itemData['unit'] ?? '') === 'pack') {
-                    $cmPerPack = ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1) * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
-                    $pricePerUnit = $pricePerUnit / $cmPerPack;
-                }
-
-                $totalPrice = $itemData['quantity'] * $pricePerUnit;
-                $totalCost += $totalPrice;
-
-                // Deduct Stock
-                $deduction = $itemData['quantity'];
-                $itemUnit = strtolower($itemData['unit'] ?? '');
-                
-                if (str_contains(strtolower($material->category), 'kabel') && ($itemUnit === 'roll' || $itemUnit === 'rol')) {
-                    $deduction = $itemData['quantity'] * ($material->meter_per_roll > 0 ? $material->meter_per_roll : 1000);
-                }
-                if (($material->category === 'Paku Klem' || stripos($material->name, 'klem') !== false) && ($itemUnit === 'pack' || $itemUnit === 'bungkus')) {
-                    $deduction = $itemData['quantity'] * ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
-                }
-                if ($material->category === 'Isolasi' && ($itemUnit === 'pack')) {
-                    $deduction = $itemData['quantity'] * (($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1) * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50));
-                }
-
-                $stockBefore = $materialStock->stock;
-                $stockAfter = $materialStock->stock + $deduction;
-                
-                $material->stock -= $deduction; // still deduct global stock
-                $materialStock->stock += $deduction;
-
-                // Create Item
-                MaterialTransactionItem::create([
-                    'material_transaction_id' => $transaction->id,
-                    'material_id' => $material->id,
-                    'quantity' => $itemData['quantity'],
-                    'unit' => $itemData['unit'] ?? $material->unit,
-                    'price_per_unit' => $pricePerUnit,
-                    'total_price' => $totalPrice,
-                    'stock_before' => $stockBefore,
-                    'stock_after' => $stockAfter,
-                    'condition' => 'Layak Pakai'
+                // Create Transaction
+                $transaction = MaterialTransaction::create([
+                    'transaction_number' => \App\Services\MaterialService::generateTransactionNumber('IN-AREA'),
+                    'type' => 'in',
+                    'status' => 'approved',
+                    'date' => $request->date,
+                    'technician_name' => $request->technician_name,
+                    'purpose' => $request->purpose,
+                    'area_id' => $request->area_id,
+                    'notes' => $request->notes,
+                    'user_id' => auth()->id(),
+                    'total_cost' => 0,
                 ]);
-                
-                // Recalculate total_rolls roughly
-                if (str_contains(strtolower($material->category), 'kabel') && $material->meter_per_roll > 0) {
-                    $material->total_rolls = $material->stock / $material->meter_per_roll;
-                    $materialStock->total_rolls = $materialStock->stock / $material->meter_per_roll;
-                }
-                
-                // Recalculate total_packs roughly
-                if ($material->category === 'Paku Klem' && $material->pcs_per_pack > 0) {
-                    $material->total_packs = $material->stock / $material->pcs_per_pack;
-                    $materialStock->total_packs = $materialStock->stock / $material->pcs_per_pack;
+
+                foreach ($request->items as $itemData) {
+                    $material = Material::lockForUpdate()->findOrFail($itemData['material_id']);
+                    $materialStock = \App\Services\MaterialService::getOrCreateLockedAreaStock($material->id, (int) $request->area_id);
+
+                    $itemUnit = $itemData['unit'] ?? $material->unit;
+                    $deduction = \App\Services\MaterialService::convertToBaseQuantity($material, (float) $itemData['quantity'], $itemUnit);
+
+                    // Ensure sufficient stock in global inventory AFTER converting to base unit
+                    if ((float) $material->stock < $deduction) {
+                        throw new \Exception("Stok {$material->name} di Gudang Utama tidak mencukupi (Tersisa: {$material->stock} {$material->unit}, dibutuhkan: {$deduction} {$material->unit}).");
+                    }
+
+                    $pricePerUnit = \App\Services\MaterialService::calculateUnitPrice($material, $itemUnit, true);
+                    $totalPrice = (float) $itemData['quantity'] * $pricePerUnit;
+                    $totalCost += $totalPrice;
+
+                    $stockBefore = (float) $materialStock->stock;
+                    $stockAfter = $stockBefore + $deduction;
+
+                    $material->stock = max(0.0, (float) $material->stock - $deduction);
+                    $material->recalcUnitTotals()->save();
+
+                    $materialStock->stock = $stockAfter;
+                    $materialStock->initial_stock = (float) ($materialStock->initial_stock ?? 0) + $deduction;
+                    \App\Services\MaterialService::recalcAreaStockUnits($materialStock, $material)->save();
+
+                    MaterialTransactionItem::create([
+                        'material_transaction_id' => $transaction->id,
+                        'material_id' => $material->id,
+                        'material_name' => $material->name,
+                        'quantity' => $itemData['quantity'],
+                        'unit' => $itemUnit,
+                        'price_per_unit' => $pricePerUnit,
+                        'total_price' => $totalPrice,
+                        'stock_before' => $stockBefore,
+                        'stock_after' => $stockAfter,
+                        'condition' => 'Layak Pakai'
+                    ]);
                 }
 
-                // Recalculate total_pieces roughly
-                if ($material->category === 'Isolasi' && $material->cm_per_pcs > 0) {
-                    $material->total_pieces = $material->stock / $material->cm_per_pcs;
-                    $materialStock->total_pieces = $materialStock->stock / $material->cm_per_pcs;
-                }
-                
-                $material->save();
-                $materialStock->save();
-            }
-
-            $transaction->update(['total_cost' => $totalCost]);
-        });
+                $transaction->update(['total_cost' => $totalCost]);
+            });
+        } catch (\Exception $e) {
+            return redirect()->back()->withInput()->with('error', $e->getMessage());
+        }
 
         return redirect()->route('material-transactions.index')
             ->with('success', 'Order/Pengambilan Barang berhasil dicatat dan stok telah dikurangi.');
@@ -282,45 +235,84 @@ class MaterialTransactionController extends Controller
 
     public function approveReturn(MaterialTransaction $material_transaction)
     {
+        $user = auth()->user();
+        $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('material_transactions_view_all');
+        $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
+
+        if (!$isGlobal && !empty($accessibleAreas) && $material_transaction->area_id && !in_array((int) $material_transaction->area_id, array_map('intval', $accessibleAreas), true)) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk menyetujui pengembalian area ini.');
+        }
+
         if ($material_transaction->type !== 'out' || $material_transaction->status !== 'pending' || !str_contains($material_transaction->purpose, 'Pengembalian Sisa')) {
             return redirect()->back()->with('error', 'Transaksi tidak valid untuk disetujui.');
         }
 
-        DB::transaction(function () use ($material_transaction) {
-            $material_transaction->update(['status' => 'approved']);
-
-            // Kembalikan ke Stok Area
-            foreach ($material_transaction->items as $item) {
-                $materialStock = \App\Models\MaterialStock::where('material_id', $item->material_id)
-                    ->where('area_id', $material_transaction->area_id)
-                    ->first();
-                $material = \App\Models\Material::find($item->material_id);
-                
-                if ($materialStock && $material) {
-                    $stockBefore = $materialStock->stock;
-                    $stockAfter = $stockBefore - $item->quantity; // Kurangi dari Area
-                    
-                    $item->update([
-                        'stock_before' => $stockBefore,
-                        'stock_after' => $stockAfter
-                    ]);
-
-                    $materialStock->update(['stock' => $stockAfter]);
-                    $material->increment('stock', $item->quantity); // Tambahkan ke Gudang
+        try {
+            DB::transaction(function () use ($material_transaction) {
+                $lockedTrx = MaterialTransaction::whereKey($material_transaction->id)->lockForUpdate()->with('items')->firstOrFail();
+                if ($lockedTrx->status !== 'pending') {
+                    throw new \Exception('Transaksi pengembalian ini sudah diproses sebelumnya.');
                 }
-            }
-        });
+
+                $lockedTrx->update(['status' => 'approved']);
+
+                // Kembalikan dari Stok Area ke Gudang Pusat
+                foreach ($lockedTrx->items as $item) {
+                    $material = \App\Models\Material::whereKey($item->material_id)->lockForUpdate()->first();
+                    $materialStock = $lockedTrx->area_id
+                        ? \App\Models\MaterialStock::where('material_id', $item->material_id)
+                            ->where('area_id', $lockedTrx->area_id)
+                            ->lockForUpdate()
+                            ->first()
+                        : null;
+
+                    if ($material) {
+                        $baseQty = \App\Services\MaterialService::convertToBaseQuantity($material, (float) $item->quantity, $item->unit);
+                        $stockBefore = $materialStock ? (float) $materialStock->stock : (float) $material->stock;
+                        $stockAfter = $materialStock ? max(0.0, $stockBefore - $baseQty) : ($stockBefore + $baseQty);
+
+                        $item->update([
+                            'stock_before' => $stockBefore,
+                            'stock_after' => $stockAfter,
+                        ]);
+
+                        if ($materialStock) {
+                            $materialStock->stock = $stockAfter;
+                            \App\Services\MaterialService::recalcAreaStockUnits($materialStock, $material)->save();
+                        }
+
+                        $material->stock = max(0.0, (float) $material->stock + $baseQty);
+                        $material->recalcUnitTotals()->save();
+                    }
+                }
+            });
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
 
         return redirect()->back()->with('success', 'Serah terima pengembalian material berhasil disetujui! Stok Gudang bertambah dan Stok Area berkurang.');
     }
 
     public function rejectReturn(MaterialTransaction $material_transaction)
     {
+        $user = auth()->user();
+        $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('material_transactions_view_all');
+        $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
+
+        if (!$isGlobal && !empty($accessibleAreas) && $material_transaction->area_id && !in_array((int) $material_transaction->area_id, array_map('intval', $accessibleAreas), true)) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk menolak pengembalian area ini.');
+        }
+
         if ($material_transaction->type !== 'out' || $material_transaction->status !== 'pending' || !str_contains($material_transaction->purpose, 'Pengembalian Sisa')) {
             return redirect()->back()->with('error', 'Transaksi tidak valid untuk ditolak.');
         }
 
-        $material_transaction->update(['status' => 'rejected']);
+        DB::transaction(function () use ($material_transaction) {
+            $lockedTrx = MaterialTransaction::whereKey($material_transaction->id)->lockForUpdate()->firstOrFail();
+            if ($lockedTrx->status === 'pending') {
+                $lockedTrx->update(['status' => 'rejected']);
+            }
+        });
 
         return redirect()->back()->with('success', 'Pengembalian material telah ditolak.');
     }
@@ -372,142 +364,83 @@ class MaterialTransactionController extends Controller
             }
         }
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($request, $materialTransaction) {
-            // Revert old stocks
-            $materialTransaction->load('items.material');
-            foreach ($materialTransaction->items as $item) {
-                $material = $item->material;
-                if ($material) {
-                    $addition = $item->quantity;
-                    if (str_contains(strtolower($material->category), 'kabel') && ($item->unit === 'roll' || $item->unit === 'rol')) {
-                        $addition = $item->quantity * ($material->meter_per_roll > 0 ? $material->meter_per_roll : 1000);
-                    }
-                    if (($material->category === 'Paku Klem' || stripos($material->name, 'klem') !== false) && ($item->unit === 'pack' || $item->unit === 'bungkus')) {
-                        $addition = $item->quantity * ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
-                    }
-                    if ($material->category === 'Isolasi' && ($item->unit === 'pack')) {
-                        $addition = $item->quantity * (($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1) * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50));
-                    }
-                    $material->stock += $addition;
-                    if (str_contains(strtolower($material->category), 'kabel') && $material->meter_per_roll > 0) {
-                        $material->total_rolls = $material->stock / $material->meter_per_roll;
-                    }
-                    if ($material->category === 'Paku Klem' && $material->pcs_per_pack > 0) {
-                        $material->total_packs = $material->stock / $material->pcs_per_pack;
-                    }
-                    if ($material->category === 'Isolasi' && $material->cm_per_pcs > 0) {
-                        $material->total_pieces = $material->stock / $material->cm_per_pcs;
-                    }
-                    $material->save();
-                    
-                    if ($materialTransaction->area_id) {
-                        $materialStock = \App\Models\MaterialStock::firstOrCreate(
-                            ['material_id' => $material->id, 'area_id' => $materialTransaction->area_id],
-                            ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
-                        );
-                        $materialStock->stock -= $addition; // Revert by subtracting what was added
-                        if (str_contains(strtolower($material->category), 'kabel') && $material->meter_per_roll > 0) {
-                            $materialStock->total_rolls = $materialStock->stock / $material->meter_per_roll;
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($request, $materialTransaction) {
+                $lockedTrx = MaterialTransaction::whereKey($materialTransaction->id)->lockForUpdate()->with('items.material')->firstOrFail();
+
+                // Revert old stocks
+                foreach ($lockedTrx->items as $item) {
+                    $material = Material::whereKey($item->material_id)->lockForUpdate()->first();
+                    if ($material) {
+                        $addition = \App\Services\MaterialService::convertToBaseQuantity($material, (float) $item->quantity, $item->unit);
+                        $material->stock = max(0.0, (float) $material->stock + $addition);
+                        $material->recalcUnitTotals()->save();
+
+                        if ($lockedTrx->area_id) {
+                            $materialStock = \App\Services\MaterialService::getOrCreateLockedAreaStock($material->id, (int) $lockedTrx->area_id);
+                            $materialStock->stock = max(0.0, (float) $materialStock->stock - $addition);
+                            $materialStock->initial_stock = max(0.0, (float) $materialStock->initial_stock - $addition);
+                            \App\Services\MaterialService::recalcAreaStockUnits($materialStock, $material)->save();
                         }
-                        if ($material->category === 'Paku Klem' && $material->pcs_per_pack > 0) {
-                            $materialStock->total_packs = $materialStock->stock / $material->pcs_per_pack;
-                        }
-                        if ($material->category === 'Isolasi' && $material->cm_per_pcs > 0) {
-                            $materialStock->total_pieces = $materialStock->stock / $material->cm_per_pcs;
-                        }
-                        $materialStock->save();
                     }
                 }
-            }
-            
-            // Delete old items
-            $materialTransaction->items()->delete();
 
-            $totalCost = 0;
-            // Create New Items and deduct stock
-            foreach ($request->items as $itemData) {
-                $material = \App\Models\Material::findOrFail($itemData['material_id']);
-                
-                $materialStock = \App\Models\MaterialStock::firstOrCreate(
-                    ['material_id' => $material->id, 'area_id' => $request->area_id],
-                    ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
-                );
+                // Delete old items
+                $lockedTrx->items()->delete();
 
-                if ($material->stock < $itemData['quantity']) {
-                    throw new \Exception("Stok {$material->name} di Gudang Utama tidak mencukupi. Sisa stok: {$material->stock}");
+                $totalCost = 0;
+                // Create New Items and deduct stock
+                foreach ($request->items as $itemData) {
+                    $material = \App\Models\Material::lockForUpdate()->findOrFail($itemData['material_id']);
+                    $materialStock = \App\Services\MaterialService::getOrCreateLockedAreaStock($material->id, (int) $request->area_id);
+
+                    $itemUnit = $itemData['unit'] ?? $material->unit;
+                    $deduction = \App\Services\MaterialService::convertToBaseQuantity($material, (float) $itemData['quantity'], $itemUnit);
+
+                    if ((float) $material->stock < $deduction) {
+                        throw new \Exception("Stok {$material->name} di Gudang Utama tidak mencukupi (Tersisa: {$material->stock} {$material->unit}, dibutuhkan: {$deduction} {$material->unit}).");
+                    }
+
+                    $pricePerUnit = \App\Services\MaterialService::calculateUnitPrice($material, $itemUnit, true);
+                    $totalPrice = (float) $itemData['quantity'] * $pricePerUnit;
+                    $totalCost += $totalPrice;
+
+                    $stockBefore = (float) $materialStock->stock;
+                    $stockAfter = $stockBefore + $deduction;
+
+                    $material->stock = max(0.0, (float) $material->stock - $deduction);
+                    $material->recalcUnitTotals()->save();
+
+                    $materialStock->stock = $stockAfter;
+                    $materialStock->initial_stock = (float) ($materialStock->initial_stock ?? 0) + $deduction;
+                    \App\Services\MaterialService::recalcAreaStockUnits($materialStock, $material)->save();
+
+                    \App\Models\MaterialTransactionItem::create([
+                        'material_transaction_id' => $lockedTrx->id,
+                        'material_id' => $material->id,
+                        'material_name' => $material->name,
+                        'quantity' => $itemData['quantity'],
+                        'unit' => $itemUnit,
+                        'price_per_unit' => $pricePerUnit,
+                        'total_price' => $totalPrice,
+                        'stock_before' => $stockBefore,
+                        'stock_after' => $stockAfter,
+                        'condition' => 'Layak Pakai',
+                    ]);
                 }
 
-                $pricePerUnit = $material->selling_price ?? 0;
-                
-                if (str_contains(strtolower($material->category), 'kabel') && strtolower($itemData['unit'] ?? '') === 'meter') {
-                    $meterPerRoll = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
-                    $pricePerUnit = $pricePerUnit / $meterPerRoll;
-                }
-                
-                if ($material->category === 'Paku Klem' && strtolower($itemData['unit'] ?? '') === 'pcs') {
-                    $pcsPerPack = $material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1;
-                    $pricePerUnit = $pricePerUnit / $pcsPerPack;
-                }
-                
-                if ($material->category === 'Isolasi' && strtolower($itemData['unit'] ?? '') === 'cm') {
-                    $cmPerPcs = $material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50;
-                    $pricePerUnit = $pricePerUnit / $cmPerPcs;
-                }
-
-                $totalPrice = $itemData['quantity'] * $pricePerUnit;
-                $totalCost += $totalPrice;
-
-                \App\Models\MaterialTransactionItem::create([
-                    'material_transaction_id' => $materialTransaction->id,
-                    'material_id' => $material->id,
-                    'quantity' => $itemData['quantity'],
-                    'unit' => $itemData['unit'] ?? $material->unit,
-                    'price_per_unit' => $pricePerUnit,
-                    'total_price' => $totalPrice,
+                $lockedTrx->update([
+                    'date' => $request->date,
+                    'technician_name' => $request->technician_name,
+                    'purpose' => $request->purpose,
+                    'area_id' => $request->area_id,
+                    'notes' => $request->notes,
+                    'total_cost' => $totalCost
                 ]);
-
-                // Deduct Stock
-                $deduction = $itemData['quantity'];
-                if (str_contains(strtolower($material->category), 'kabel') && ($itemData['unit'] === 'roll' || $itemData['unit'] === 'rol')) {
-                    $deduction = $itemData['quantity'] * ($material->meter_per_roll > 0 ? $material->meter_per_roll : 1000);
-                }
-                if (($material->category === 'Paku Klem' || stripos($material->name, 'klem') !== false) && ($itemData['unit'] === 'pack' || $itemData['unit'] === 'bungkus')) {
-                    $deduction = $itemData['quantity'] * ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
-                }
-                if ($material->category === 'Isolasi' && ($itemData['unit'] === 'pack')) {
-                    $deduction = $itemData['quantity'] * (($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1) * ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50));
-                }
-                
-                $material->stock -= $deduction;
-                $materialStock->stock += $deduction;
-                
-                // Recalculate total_rolls roughly
-                if (str_contains(strtolower($material->category), 'kabel') && $material->meter_per_roll > 0) {
-                    $material->total_rolls = $material->stock / $material->meter_per_roll;
-                    $materialStock->total_rolls = $materialStock->stock / $material->meter_per_roll;
-                }
-                if ($material->category === 'Paku Klem' && $material->pcs_per_pack > 0) {
-                    $material->total_packs = $material->stock / $material->pcs_per_pack;
-                    $materialStock->total_packs = $materialStock->stock / $material->pcs_per_pack;
-                }
-                if ($material->category === 'Isolasi' && $material->cm_per_pcs > 0) {
-                    $material->total_pieces = $material->stock / $material->cm_per_pcs;
-                    $materialStock->total_pieces = $materialStock->stock / $material->cm_per_pcs;
-                }
-                
-                $material->save();
-                $materialStock->save();
-            }
-
-            $materialTransaction->update([
-                'date' => $request->date,
-                'technician_name' => $request->technician_name,
-                'purpose' => $request->purpose,
-                'area_id' => $request->area_id,
-                'notes' => $request->notes,
-                'total_cost' => $totalCost
-            ]);
-        });
+            });
+        } catch (\Exception $e) {
+            return redirect()->back()->withInput()->with('error', $e->getMessage());
+        }
 
         return redirect()->route('material-transactions.index')
             ->with('success', 'Order/Pengambilan Barang berhasil diperbarui.');
@@ -620,17 +553,30 @@ class MaterialTransactionController extends Controller
             'ids.*' => 'exists:material_transactions,id',
         ]);
 
+        $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('material_transactions_view_all');
+        $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
+
         try {
-            DB::transaction(function () use ($request) {
-                $transactions = MaterialTransaction::whereIn('id', $request->ids)->get();
-                
+            $deletedCount = 0;
+            DB::transaction(function () use ($request, $isGlobal, $accessibleAreas, &$deletedCount) {
+                $query = MaterialTransaction::whereIn('id', $request->ids)->lockForUpdate();
+                if (!$isGlobal) {
+                    if (empty($accessibleAreas)) {
+                        $query->whereRaw('1 = 0');
+                    } else {
+                        $query->whereIn('area_id', $accessibleAreas);
+                    }
+                }
+                $transactions = $query->get();
+
                 foreach ($transactions as $transaction) {
                     // Delete transaction (model deleting event automatically restores stock and cascades customer if linked)
                     $transaction->delete();
+                    $deletedCount++;
                 }
             });
 
-            return redirect()->back()->with('success', 'Berhasil menghapus ' . count($request->ids) . ' transaksi, stok telah dikembalikan ke Gudang, dan data terkait telah disinkronkan.');
+            return redirect()->back()->with('success', 'Berhasil menghapus ' . $deletedCount . ' transaksi, stok telah dikembalikan ke Gudang, dan data terkait telah disinkronkan.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }

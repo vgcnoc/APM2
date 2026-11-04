@@ -319,14 +319,23 @@ class InfrastructureWorkOrderService
     public static function approveMaterialDispatch(InfrastructureWorkOrder $workOrder, ?User $warehouseUser = null): void
     {
         DB::transaction(function () use ($workOrder, $warehouseUser) {
+            $lockedWo = InfrastructureWorkOrder::where('id', $workOrder->id)->lockForUpdate()->first();
+            if (!$lockedWo) return;
+            if ($lockedWo->material_status === 'released') {
+                return; // Sudah dikeluarkan sebelumnya, hindari pemotongan ganda
+            }
+            $workOrder = $lockedWo;
+
             $userId = $warehouseUser?->id ?? auth()->id() ?? User::value('id');
 
             // Potong stok gudang
             $area = Area::find($workOrder->area_id);
             $areaName = $area?->name ?? 'Gudang Utama';
 
+            $trxNumber = MaterialService::generateTransactionNumber('OUT-WO');
+
             $transaction = MaterialTransaction::create([
-                'transaction_number' => 'TRX-WO-' . date('Ymd') . '-' . strtoupper(Str::random(4)),
+                'transaction_number' => $trxNumber,
                 'type' => 'out',
                 'status' => 'approved',
                 'date' => now()->toDateString(),
@@ -355,11 +364,7 @@ class InfrastructureWorkOrderService
                 $stockRes = MaterialService::deductOperationalStock($material, $qty, $workOrder->area_id, $unit);
 
                 // Hitung estimasi biaya
-                $unitPrice = (float) ($material->price_per_unit ?? 0);
-                if (strtolower($material->category ?? '') === 'kabel' && strtolower($unit) === 'meter') {
-                    $mpr = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
-                    $unitPrice = $unitPrice / $mpr;
-                }
+                $unitPrice = MaterialService::calculateUnitPrice($material, $unit);
                 $cost = $qty * $unitPrice;
                 $totalCost += $cost;
 

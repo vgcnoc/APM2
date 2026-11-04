@@ -895,14 +895,14 @@ class DataScopeService
             return $query;
         }
 
-        if ($level === 'area') {
-            $accessibleAreas = $user->getAccessibleAreaIds();
-            return $query->whereHas('stocks', function ($sq) use ($accessibleAreas) {
-                $sq->whereIn('area_id', $accessibleAreas);
-            });
+        $accessibleAreas = $user->getAccessibleAreaIds();
+        if (empty($accessibleAreas)) {
+            return $query->whereRaw('1 = 0');
         }
 
-        return $query;
+        return $query->whereHas('stocks', function ($sq) use ($accessibleAreas) {
+            $sq->whereIn('area_id', $accessibleAreas);
+        });
     }
 
     /**
@@ -920,14 +920,14 @@ class DataScopeService
             return $query;
         }
 
-        if ($level === 'area' || $user->can('materials_view_area')) {
-            $accessibleAreas = $user->getAccessibleAreaIds();
-            return $query->whereHas('stocks', function ($sq) use ($accessibleAreas) {
-                $sq->whereIn('area_id', $accessibleAreas);
-            });
+        $accessibleAreas = $user->getAccessibleAreaIds();
+        if (empty($accessibleAreas)) {
+            return $query->whereRaw('1 = 0');
         }
 
-        return $query;
+        return $query->whereHas('stocks', function ($sq) use ($accessibleAreas) {
+            $sq->whereIn('area_id', $accessibleAreas);
+        });
     }
 
     /**

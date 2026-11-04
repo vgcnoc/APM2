@@ -3374,13 +3374,6 @@ class CustomerController extends Controller
                                     $usedQty = $usedQty * $material->meter_per_roll;
                                 }
                                 $unitStr = 'meter';
-                            } elseif (strtolower($unitStr) === 'meter') {
-                                if ($assignedQty > 0 && $assignedQty <= 5) {
-                                    $assignedQty = $assignedQty * $material->meter_per_roll;
-                                }
-                                if ($usedQty > 0 && $usedQty <= 5) {
-                                    $usedQty = $usedQty * $material->meter_per_roll;
-                                }
                             }
                         }
                         
@@ -4748,8 +4741,6 @@ class CustomerController extends Controller
                     if ($isExplicitRoll) {
                         $qty = $qty * $material->meter_per_roll;
                         $unitStr = 'meter';
-                    } elseif (strtolower($unitStr) === 'meter' && $qty > 0 && $qty <= 5) {
-                        $qty = $qty * $material->meter_per_roll;
                     }
                 }
 
@@ -5994,93 +5985,97 @@ class CustomerController extends Controller
             $reason = "{$prefix}: {$reason}";
         }
 
-        $customer->update([
-            'status' => 'canceled',
-            'cancel_stage' => $stage,
-            'cancel_reason' => $reason,
-            'cancel_date' => $request->cancel_date,
-        ]);
-
-        // 1. Kembalikan seluruh material pengeluaran instalasi (OUT) ke stok gudang & bersihkan transaksi
-        $restoredByMat = [];
-        try {
-            $restoredByMat = \App\Services\MaterialHandoverService::restoreDispatchedMaterials(
-                'instalasi',
-                $customer->id,
-                $customer->area_id,
-                $customer->customer_code ?? ('CUST-' . $customer->id)
-            );
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('[CustomerController::cancel] Gagal restore material handover: ' . $e->getMessage());
-        }
-
-        // 2. Kembalikan material terpasang (CustomerInstalledMaterial) HANYA jika non-migrasi dan belum dipulihkan dari transaksi OUT di atas
-        try {
-            $installedMaterials = \App\Models\CustomerInstalledMaterial::where('customer_id', $customer->id)->get();
-            foreach ($installedMaterials as $installed) {
-                $matId = (int) $installed->material_id;
-                $isMigrated = strtolower((string) ($installed->installation_source ?? '')) === 'migration';
-                $alreadyRestored = !empty($restoredByMat[$matId]);
-
-                if ($matId && (float) $installed->quantity > 0 && !$isMigrated && !$alreadyRestored) {
-                    \App\Services\CustomerMaterialService::returnMaterialToWarehouse(
-                        $matId,
-                        (float) $installed->quantity,
-                        $customer->area_id,
-                        $installed->unit
-                    );
-                }
-                try { $installed->dismantles()->delete(); } catch (\Throwable $de) {}
-                $installed->skipStockReturnOnDelete = true;
-                $installed->delete();
-            }
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('[CustomerController::cancel] Gagal restore installed materials: ' . $e->getMessage());
-        }
-
-        // 3. Lepaskan port ODP yang di-reservasi oleh survey jika ada
-        foreach ($customer->surveys as $survey) {
-            if ($survey->odp_id && $survey->port_number) {
-                \App\Models\OdpPort::where('odp_id', $survey->odp_id)
-                    ->where('port_number', $survey->port_number)
-                    ->where('status', 'reserved')
-                    ->update(['status' => 'available']);
-            }
-        }
-
-        // 4. Lepaskan seluruh ONT terpasang & kembalikan ke status Belum Set (Gudang)
-        $customerOnts = \App\Models\Ont::where('customer_id', $customer->id)->get();
-        foreach ($customerOnts as $cOnt) {
-            if ($cOnt->odp_id && $cOnt->port_number) {
-                \App\Models\OdpPort::where('odp_id', $cOnt->odp_id)
-                    ->where('port_number', $cOnt->port_number)
-                    ->update(['status' => 'available']);
-            }
-            $restoredOntStatus = ($cOnt->pppoe_user || $cOnt->hotspot_user || $cOnt->status === 'Sudah Set')
-                ? 'Sudah Set'
-                : 'Belum Set/Baru Input';
-            $cOnt->update([
-                'customer_id' => null,
-                'odp_id' => null,
-                'odp_port_id' => null,
-                'port_number' => null,
-                'status' => $restoredOntStatus,
-                'rx_power' => null,
-                'tx_power' => null,
-                'description' => 'Kembali ke Gudang (Batal Instalasi Pelanggan ' . $customer->name . ' [' . ($customer->customer_code ?? $customer->id) . '])',
+        DB::transaction(function () use ($customer, $stage, $reason, $request, $oldStatus) {
+            $customer->update([
+                'status' => 'canceled',
+                'cancel_stage' => $stage,
+                'cancel_reason' => $reason,
+                'cancel_date' => $request->cancel_date,
             ]);
-        }
 
-        // 5. Batalkan dan bersihkan jadwal teknisi instalasi
-        $customer->technicianSchedules()
-            ->where('type', 'installation')
-            ->delete();
+            // 1. Kembalikan seluruh material pengeluaran instalasi (OUT) ke stok gudang & bersihkan transaksi
+            $restoredByMat = [];
+            try {
+                $restoredByMat = \App\Services\MaterialHandoverService::restoreDispatchedMaterials(
+                    'instalasi',
+                    $customer->id,
+                    $customer->area_id,
+                    $customer->customer_code ?? ('CUST-' . $customer->id)
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[CustomerController::cancel] Gagal restore material handover: ' . $e->getMessage());
+            }
 
-        $customer->technicianSchedules()
-            ->whereIn('status', ['scheduled', 'on_the_way', 'working'])
-            ->update(['status' => 'cancelled']);
+            // 2. Kembalikan material terpasang (CustomerInstalledMaterial) HANYA jika non-migrasi dan belum dipulihkan dari transaksi OUT di atas
+            try {
+                $installedMaterials = \App\Models\CustomerInstalledMaterial::where('customer_id', $customer->id)->get();
+                foreach ($installedMaterials as $installed) {
+                    $matId = (int) $installed->material_id;
+                    $isMigrated = strtolower((string) ($installed->installation_source ?? '')) === 'migration';
+                    $alreadyRestored = !empty($restoredByMat[$matId]);
 
-        \App\Models\AuditLog::createLog('Pelanggan Dibatalkan', $customer, $oldStatus, 'canceled', "Pendaftaran dibatalkan: {$reason}");
+                    if ($matId && (float) $installed->quantity > 0 && !$isMigrated && !$alreadyRestored) {
+                        \App\Services\CustomerMaterialService::returnMaterialToWarehouse(
+                            $matId,
+                            (float) $installed->quantity,
+                            $customer->area_id,
+                            $installed->unit
+                        );
+                    }
+                    try { $installed->dismantles()->delete(); } catch (\Throwable $de) {}
+                    $installed->skipStockReturnOnDelete = true;
+                    $installed->delete();
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[CustomerController::cancel] Gagal restore installed materials: ' . $e->getMessage());
+            }
+
+            // 3. Lepaskan port ODP yang di-reservasi oleh survey jika ada
+            foreach ($customer->surveys as $survey) {
+                if ($survey->odp_id && $survey->port_number) {
+                    \App\Models\OdpPort::where('odp_id', $survey->odp_id)
+                        ->where('port_number', $survey->port_number)
+                        ->where('status', 'reserved')
+                        ->update(['status' => 'available']);
+                }
+            }
+
+            // 4. Lepaskan seluruh ONT terpasang & kembalikan ke status Belum Set (Gudang)
+            $customerOnts = \App\Models\Ont::where('customer_id', $customer->id)->get();
+            foreach ($customerOnts as $cOnt) {
+                if ($cOnt->odp_id && $cOnt->port_number) {
+                    \App\Models\OdpPort::where('odp_id', $cOnt->odp_id)
+                        ->where('port_number', $cOnt->port_number)
+                        ->update(['status' => 'available']);
+                }
+                $restoredOntStatus = ($cOnt->pppoe_user || $cOnt->hotspot_user || $cOnt->status === 'Sudah Set')
+                    ? 'Sudah Set'
+                    : 'Belum Set/Baru Input';
+                $cOnt->update([
+                    'customer_id' => null,
+                    'odp_id' => null,
+                    'odp_port_id' => null,
+                    'port_number' => null,
+                    'status' => $restoredOntStatus,
+                    'rx_power' => null,
+                    'tx_power' => null,
+                    'description' => 'Kembali ke Gudang (Batal Instalasi Pelanggan ' . $customer->name . ' [' . ($customer->customer_code ?? $customer->id) . '])',
+                ]);
+            }
+
+            // 5. Batalkan dan bersihkan jadwal teknisi instalasi
+            $customer->technicianSchedules()
+                ->where('type', 'installation')
+                ->delete();
+
+            $customer->technicianSchedules()
+                ->whereIn('status', ['scheduled', 'on_the_way', 'working'])
+                ->update(['status' => 'cancelled']);
+
+            \App\Models\AuditLog::createLog('Pelanggan Dibatalkan', $customer, $oldStatus, 'canceled', "Pendaftaran dibatalkan: {$reason}");
+        });
+
+        return redirect()->back()->with('success', "Pendaftaran pelanggan berhasil dibatalkan ({$prefix}).");
 
         return redirect()->back()->with('success', "Pendaftaran pelanggan berhasil dibatalkan ({$prefix}).");
     }

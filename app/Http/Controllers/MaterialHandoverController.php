@@ -59,16 +59,18 @@ class MaterialHandoverController extends Controller
             ->tap($applyAreaScope)
             ->count();
 
-        $totalReceivedCount = MaterialTransaction::where('handover_status', 'received')
-            ->orWhere(function ($sq) {
-                $sq->where('status', 'approved')
-                   ->where(function ($ssq) {
-                       $ssq->where('request_type', 'return_handover')
-                           ->orWhere('transaction_number', 'like', 'RTR-%')
-                           ->orWhere('transaction_number', 'like', 'IN-%-RET-%')
-                           ->orWhere('purpose', 'like', 'Pengembalian%')
-                           ->orWhereIn('request_type', ['additional_material', 'ont_replacement']);
-                   });
+        $totalReceivedCount = MaterialTransaction::where(function ($q) {
+                $q->where('handover_status', 'received')
+                  ->orWhere(function ($sq) {
+                      $sq->where('status', 'approved')
+                         ->where(function ($ssq) {
+                             $ssq->where('request_type', 'return_handover')
+                                 ->orWhere('transaction_number', 'like', 'RTR-%')
+                                 ->orWhere('transaction_number', 'like', 'IN-%-RET-%')
+                                 ->orWhere('purpose', 'like', 'Pengembalian%')
+                                 ->orWhereIn('request_type', ['additional_material', 'ont_replacement']);
+                         });
+                  });
             })
             ->tap($applyAreaScope)
             ->count();
@@ -291,7 +293,7 @@ class MaterialHandoverController extends Controller
     public function storeReturn(Request $request)
     {
         $validated = $request->validate([
-            'source_type' => 'required|string|in:installation,pgs,pgk,pgj,rollout_odc,rollout_odp,manual',
+            'source_type' => 'required|string|in:installation,instalasi,pgs,pgk,pgj,rollout_odc,rollout_odp,rollout_odc_odp,network_maintenance,maintenance,cbp,manual',
             'source_id' => 'nullable|integer',
             'source_reference' => 'nullable|string|max:100',
             'technician_name' => 'required|string|max:100',
@@ -324,7 +326,7 @@ class MaterialHandoverController extends Controller
     public function storeRequest(Request $request)
     {
         $validated = $request->validate([
-            'source_type' => 'required|string|in:installation,pgs,pgk,pgj,rollout_odc,rollout_odp,manual',
+            'source_type' => 'required|string|in:installation,instalasi,pgs,pgk,pgj,rollout_odc,rollout_odp,rollout_odc_odp,network_maintenance,maintenance,cbp,manual',
             'source_id' => 'nullable|integer',
             'source_reference' => 'nullable|string|max:100',
             'request_type' => 'required|string|in:additional_material,ont_replacement',

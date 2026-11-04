@@ -62,9 +62,8 @@ class CustomerIsolationController extends Controller
                 'package_speed' => $customer->package?->speed ? $customer->package->speed . ' Mbps' : 'Unlimited',
                 'package_price' => (float) ($customer->package?->price ?? 0),
                 'area' => $customer->areaModel?->name ?? $customer->area ?? 'Area Utama',
-                'address' => $customer->address ?: 'Alamat belum dilengkapi',
-                'phone' => $customer->phone,
-                'email' => $customer->email,
+                // Data kontak pribadi (alamat/HP/email) sengaja TIDAK dikirim: payload ini dipakai juga
+                // oleh endpoint publik tanpa login (cek tagihan & halaman /isolir).
                 'status' => $customer->status,
                 'is_isolated' => $isIsolated,
                 'isolated_at' => $customer->billing_isolated_at ? Carbon::parse($customer->billing_isolated_at)->translatedFormat('d M Y H:i') : null,
@@ -86,15 +85,15 @@ class CustomerIsolationController extends Controller
         $q = trim($request->input('q') ?? $request->input('id') ?? $request->input('phone') ?? '');
         $customer = null;
 
-        if (!empty($q)) {
+        if (mb_strlen($q) >= 3) {
+            // Prioritaskan kecocokan persis, baru kecocokan sebagian (min. 3 karakter agar tidak bisa enumerasi pelanggan)
             $customer = Customer::with(['package', 'areaModel'])
-                ->where('customer_code', $q)
-                ->orWhere('phone', $q)
-                ->orWhere('email', $q)
-                ->orWhere('customer_code', 'like', "%{$q}%")
-                ->orWhere('phone', 'like', "%{$q}%")
-                ->first();
-        } elseif (Auth::check()) {
+                ->where(fn ($w) => $w->where('customer_code', $q)->orWhere('phone', $q))
+                ->first()
+                ?? Customer::with(['package', 'areaModel'])
+                    ->where(fn ($w) => $w->where('customer_code', 'like', "%{$q}%")->orWhere('phone', 'like', "%{$q}%"))
+                    ->first();
+        } elseif ($q === '' && Auth::check()) {
             $user = Auth::user();
             $customer = Customer::with(['package', 'areaModel'])
                 ->where('user_id', $user->id)
@@ -104,7 +103,12 @@ class CustomerIsolationController extends Controller
 
         $isolationData = null;
         if ($customer) {
-            $isolationData = self::getCustomerIsolationData($customer, Auth::id());
+            // Tombol "Lanjut ke Dashboard" hanya untuk pelanggan yang baru saja lolos verifikasi password
+            $pendingUserId = $request->session()->get('isolated_login_user_id');
+            $isolationData = self::getCustomerIsolationData(
+                $customer,
+                ($pendingUserId && (int) $customer->user_id === (int) $pendingUserId) ? (int) $pendingUserId : null
+            );
         }
 
         $defaultBanks = [

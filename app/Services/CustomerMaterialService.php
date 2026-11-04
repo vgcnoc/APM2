@@ -40,10 +40,11 @@ class CustomerMaterialService
                 $ontModel = $customer->ont->model ?: 'Fiber Modem';
                 $ontName = "ONT {$ontBrand} {$ontModel}";
 
-                $matOnt = Material::where('category', 'like', '%ont%')
-                    ->orWhere('category', 'like', '%modem%')
-                    ->orWhere('name', 'like', "%{$ontBrand}%")
-                    ->first();
+                $matOnt = Material::where(function ($mq) use ($ontBrand) {
+                    $mq->where('category', 'like', '%ont%')
+                       ->orWhere('category', 'like', '%modem%')
+                       ->orWhere('name', 'like', "%{$ontBrand}%");
+                })->first();
 
                 $ontRecord = CustomerInstalledMaterial::create([
                     'customer_id' => $customer->id,
@@ -77,10 +78,11 @@ class CustomerMaterialService
                 $ontName = "ONT {$ontBrand} {$ontModel}";
                 
                 // Cari material ONT yang cocok jika ada
-                $matOnt = Material::where('category', 'like', '%ont%')
-                    ->orWhere('category', 'like', '%modem%')
-                    ->orWhere('name', 'like', "%{$ontBrand}%")
-                    ->first();
+                $matOnt = Material::where(function ($mq) use ($ontBrand) {
+                    $mq->where('category', 'like', '%ont%')
+                       ->orWhere('category', 'like', '%modem%')
+                       ->orWhere('name', 'like', "%{$ontBrand}%");
+                })->first();
 
                 $ontRecord = CustomerInstalledMaterial::create([
                     'customer_id' => $customer->id,
@@ -201,7 +203,7 @@ class CustomerMaterialService
             }
 
             // 2. Buat Transaksi Serah Terima (MaterialTransaction pending_handover)
-            $transNumber = 'RET-DISM-' . strtoupper(substr($ticketType, 0, 3)) . '-' . date('YmdHis') . '-' . strtoupper(Str::random(3));
+            $transNumber = MaterialService::generateTransactionNumber('RET-DISM-' . strtoupper(substr($ticketType, 0, 3)));
             $areaId = $customer->area_id;
 
             $conditionLabel = match ($condition) {
@@ -232,7 +234,7 @@ class CustomerMaterialService
 
             if ($materialId) {
                 $material = Material::find($materialId);
-                $ppu = (float) ($material?->selling_price ?: ($material?->price_per_unit ?? 0));
+                $ppu = $material ? MaterialService::calculateUnitPrice($material, $unit) : 0;
                 $matStock = ($areaId && $material)
                     ? MaterialStock::where('material_id', $material->id)->where('area_id', $areaId)->first()
                     : null;
@@ -304,6 +306,14 @@ class CustomerMaterialService
         bool $isLeadTechnician = false
     ): CustomerMaterialDismantle {
         return DB::transaction(function () use ($dismantle, $receiver, $disposition, $notes, $isLeadTechnician) {
+            $lockedDismantle = CustomerMaterialDismantle::where('id', $dismantle->id)->lockForUpdate()->first();
+            if (!$lockedDismantle) {
+                return $dismantle;
+            }
+            if (in_array($lockedDismantle->handover_status, ['received_lead', 'received_warehouse'], true)) {
+                return $lockedDismantle; // Sudah pernah diverifikasi, cegah penambahan stok ganda!
+            }
+            $dismantle = $lockedDismantle;
             $status = $isLeadTechnician ? 'received_lead' : 'received_warehouse';
 
             $dismantle->update([
@@ -314,8 +324,30 @@ class CustomerMaterialService
                 'disposition' => $disposition,
             ]);
 
-            // Jika barang layak pakai dan di-restock ke gudang, tambahkan stok inventori
-            if ($disposition === 'restocked' && $dismantle->material_id && $dismantle->quantity > 0) {
+            // Cek transaksi terkait terlebih dahulu
+            $transAlreadyReceived = false;
+            if ($dismantle->material_transaction_id) {
+                $trans = MaterialTransaction::where('id', $dismantle->material_transaction_id)->lockForUpdate()->first();
+                if ($trans) {
+                    $transAlreadyReceived = ($trans->handover_status === 'received' || $trans->status === 'approved');
+                    $trans->update([
+                        'status' => 'approved',
+                        'handover_status' => 'received',
+                        'received_by' => $receiver->id,
+                        'received_at' => now(),
+                        'received_notes' => $notes ?: ('Diterima: Disposisi ' . $disposition),
+                    ]);
+
+                    // Perbarui kondisi item pada transaksi agar serasi dengan disposisi
+                    $condLabel = ($disposition === 'restocked') ? 'Layak Pakai' : 'Rusak / Afkir';
+                    foreach ($trans->items as $ti) {
+                        $ti->update(['condition' => $condLabel]);
+                    }
+                }
+            }
+
+            // Jika barang layak pakai dan di-restock ke gudang, serta belum pernah di-restock oleh receiveHandover transaksi
+            if ($disposition === 'restocked' && $dismantle->material_id && $dismantle->quantity > 0 && !$transAlreadyReceived) {
                 $material = Material::find($dismantle->material_id);
                 if ($material) {
                     $customer = $dismantle->customer;
@@ -326,20 +358,6 @@ class CustomerMaterialService
                         $areaId,
                         $dismantle->unit
                     );
-                }
-            }
-
-            // Update transaksi terkait jika ada
-            if ($dismantle->material_transaction_id) {
-                $trans = MaterialTransaction::find($dismantle->material_transaction_id);
-                if ($trans) {
-                    $trans->update([
-                        'status' => 'approved',
-                        'handover_status' => 'received',
-                        'received_by' => $receiver->id,
-                        'received_at' => now(),
-                        'received_notes' => $notes ?: ('Diterima: Disposisi ' . $disposition),
-                    ]);
                 }
             }
 

@@ -50,30 +50,34 @@ class RestockStockService
         $itemIds = $transactions->pluck('items')->flatten()->pluck('id')->filter()->unique()->toArray();
 
         if (!empty($itemIds)) {
-            // Hitung alokasi di PGS (tiket yang masih berjalan atau telah terpakai)
+            // Hitung alokasi di PGS (tiket yang masih berjalan atau telah terpakai, kecualikan tiket dibatalkan)
             $pgsUsed = PgsMaterial::whereIn('material_transaction_item_id', $itemIds)
-                ->select('material_transaction_item_id', DB::raw('SUM(GREATEST(0, quantity_prepared - quantity_returned)) as total_used'))
+                ->whereHas('ticket', fn($q) => $q->whereNotIn('status', ['cancelled', 'dibatalkan']))
+                ->select('material_transaction_item_id', DB::raw('SUM(GREATEST(0, quantity_prepared - COALESCE(quantity_returned, 0))) as total_used'))
                 ->groupBy('material_transaction_item_id')
                 ->pluck('total_used', 'material_transaction_item_id');
 
-            // Hitung alokasi di PGK (tiket yang masih berjalan atau telah terpakai)
+            // Hitung alokasi di PGK (tiket yang masih berjalan atau telah terpakai, kecualikan tiket dibatalkan)
             $pgkUsed = PgkMaterial::whereIn('material_transaction_item_id', $itemIds)
-                ->select('material_transaction_item_id', DB::raw('SUM(GREATEST(0, quantity_prepared - quantity_returned)) as total_used'))
+                ->whereHas('ticket', fn($q) => $q->whereNotIn('status', ['cancelled', 'dibatalkan']))
+                ->select('material_transaction_item_id', DB::raw('SUM(GREATEST(0, quantity_prepared - COALESCE(quantity_returned, 0))) as total_used'))
                 ->groupBy('material_transaction_item_id')
                 ->pluck('total_used', 'material_transaction_item_id');
 
             // Hitung alokasi di PGJ (Jalur) jika modul tersedia
             $pgjUsed = class_exists(PgjMaterial::class)
                 ? PgjMaterial::whereIn('material_transaction_item_id', $itemIds)
-                    ->select('material_transaction_item_id', DB::raw('SUM(GREATEST(0, quantity_prepared - quantity_returned)) as total_used'))
+                    ->whereHas('ticket', fn($q) => $q->whereNotIn('status', ['cancelled', 'dibatalkan']))
+                    ->select('material_transaction_item_id', DB::raw('SUM(GREATEST(0, quantity_prepared - COALESCE(quantity_returned, 0))) as total_used'))
                     ->groupBy('material_transaction_item_id')
                     ->pluck('total_used', 'material_transaction_item_id')
                 : collect();
 
-            // Hitung alokasi di Work Order Infrastruktur (ODC / ODP) jika modul tersedia
+            // Hitung alokasi bersih di Work Order Infrastruktur (ODC / ODP) dikurangi retur sisa
             $woUsed = class_exists(InfrastructureWorkOrderMaterial::class)
                 ? InfrastructureWorkOrderMaterial::whereIn('material_transaction_item_id', $itemIds)
-                    ->select('material_transaction_item_id', DB::raw('SUM(requested_qty) as total_used'))
+                    ->whereHas('workOrder', fn($q) => $q->where('status', '!=', 'cancelled'))
+                    ->select('material_transaction_item_id', DB::raw('SUM(GREATEST(0, requested_qty - COALESCE(returned_qty, 0))) as total_used'))
                     ->groupBy('material_transaction_item_id')
                     ->pluck('total_used', 'material_transaction_item_id')
                 : collect();

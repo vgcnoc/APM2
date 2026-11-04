@@ -39,7 +39,7 @@ class MaterialHandoverService
             $areaName = $area?->name ?? 'Gudang Utama';
 
             $prefix = strtoupper(substr($sourceType, 0, 3));
-            $trxNumber = 'OUT-' . $prefix . '-' . date('YmdHis') . '-' . strtoupper(Str::random(3));
+            $trxNumber = MaterialService::generateTransactionNumber('OUT-' . $prefix);
 
             $transaction = MaterialTransaction::create([
                 'transaction_number' => $trxNumber,
@@ -71,11 +71,7 @@ class MaterialHandoverService
                 if (!$material) continue;
 
                 $unit = $item['unit'] ?? $material->unit ?? 'pcs';
-                $ppu = (float) ($material->selling_price ?: ($material->price_per_unit ?? 0));
-                if (strtolower($material->category ?? '') === 'kabel' && strtolower($unit) === 'meter') {
-                    $mpr = $material->meter_per_roll > 0 ? (float) $material->meter_per_roll : 1000;
-                    $ppu = $ppu / $mpr;
-                }
+                $ppu = MaterialService::calculateUnitPrice($material, $unit);
                 $itemCost = $ppu * $qty;
                 $totalCost += $itemCost;
 
@@ -119,7 +115,7 @@ class MaterialHandoverService
             $areaName = $area?->name ?? 'Gudang Utama';
 
             $prefix = strtoupper(substr($sourceType, 0, 3));
-            $trxNumber = 'RTR-' . $prefix . '-' . date('YmdHis') . '-' . strtoupper(Str::random(3));
+            $trxNumber = MaterialService::generateTransactionNumber('RTR-' . $prefix);
 
             $transaction = MaterialTransaction::create([
                 'transaction_number' => $trxNumber,
@@ -153,11 +149,7 @@ class MaterialHandoverService
 
                 $unit = $item['unit'] ?? ($material?->unit ?? 'pcs');
                 $condition = $item['condition'] ?? 'Rusak';
-                $ppu = $material ? (float) ($material->selling_price ?: ($material->price_per_unit ?? 0)) : 0;
-                if ($material && strtolower($material->category ?? '') === 'kabel' && strtolower($unit) === 'meter') {
-                    $mpr = $material->meter_per_roll > 0 ? (float) $material->meter_per_roll : 1000;
-                    $ppu = $ppu / $mpr;
-                }
+                $ppu = $material ? MaterialService::calculateUnitPrice($material, $unit) : 0;
                 $itemCost = $ppu * $qty;
                 $totalCost += $itemCost;
 
@@ -201,6 +193,14 @@ class MaterialHandoverService
         ?string $notes = null
     ): MaterialTransaction {
         return DB::transaction(function () use ($transaction, $verifiedItems, $receiver, $notes) {
+            $lockedTrx = MaterialTransaction::where('id', $transaction->id)->lockForUpdate()->first();
+            if (!$lockedTrx) {
+                throw new \Exception("Transaksi tidak ditemukan.");
+            }
+            if ($lockedTrx->handover_status === 'received' || $lockedTrx->status === 'approved') {
+                return $lockedTrx; // Sudah pernah diproses, hindari penambahan stok ganda
+            }
+            $transaction = $lockedTrx;
             $areaId = $transaction->area_id;
             $totalCost = 0;
 
@@ -241,12 +241,16 @@ class MaterialHandoverService
                     }
 
                     $ppu = (float) $trxItem->price_per_unit;
+                    if ($ppu <= 0) {
+                        $ppu = MaterialService::calculateUnitPrice($material, $trxItem->unit);
+                    }
                     $itemTotal = $ppu * $newQty;
                     $totalCost += $itemTotal;
 
                     $trxItem->update([
                         'quantity' => $newQty,
                         'condition' => $newCondition,
+                        'price_per_unit' => $ppu,
                         'total_price' => $itemTotal,
                         'stock_before' => $stockBefore,
                         'stock_after' => $stockAfter,
@@ -321,14 +325,23 @@ class MaterialHandoverService
         User $receiver,
         string $reason
     ): MaterialTransaction {
-        $transaction->update([
-            'status' => 'rejected',
-            'handover_status' => 'rejected',
-            'received_by' => $receiver->id,
-            'received_at' => now(),
-            'received_notes' => $reason,
-        ]);
-        return $transaction;
+        return DB::transaction(function () use ($transaction, $receiver, $reason) {
+            $lockedTrx = MaterialTransaction::where('id', $transaction->id)->lockForUpdate()->first();
+            if (!$lockedTrx) {
+                throw new \Exception("Transaksi tidak ditemukan.");
+            }
+            if ($lockedTrx->handover_status === 'received' || $lockedTrx->status === 'approved') {
+                throw new \Exception("Transaksi sudah disetujui/diterima, tidak dapat ditolak secara langsung.");
+            }
+            $lockedTrx->update([
+                'status' => 'rejected',
+                'handover_status' => 'rejected',
+                'received_by' => $receiver->id,
+                'received_at' => now(),
+                'received_notes' => $reason,
+            ]);
+            return $lockedTrx;
+        });
     }
 
     /**
@@ -351,7 +364,7 @@ class MaterialHandoverService
             $technicianName = $requester?->name ?? auth()->user()?->name ?? 'Teknisi Lapangan';
 
             $prefix = $requestType === 'ont_replacement' ? 'ONT' : 'MAT';
-            $trxNumber = 'REQ-' . $prefix . '-' . date('YmdHis') . '-' . strtoupper(Str::random(3));
+            $trxNumber = MaterialService::generateTransactionNumber('REQ-' . $prefix);
 
             $transaction = MaterialTransaction::create([
                 'transaction_number' => $trxNumber,
@@ -383,7 +396,7 @@ class MaterialHandoverService
                 if (!$material) continue;
 
                 $unit = $item['unit'] ?? $material->unit ?? 'pcs';
-                $ppu = (float) ($material->selling_price ?: ($material->price_per_unit ?? 0));
+                $ppu = MaterialService::calculateUnitPrice($material, $unit);
                 $itemCost = $ppu * $qty;
                 $totalCost += $itemCost;
 
@@ -420,6 +433,17 @@ class MaterialHandoverService
         ?string $notes = null
     ): MaterialTransaction {
         return DB::transaction(function () use ($transaction, $approver, $notes) {
+            $lockedTrx = MaterialTransaction::where('id', $transaction->id)->lockForUpdate()->first();
+            if (!$lockedTrx) {
+                throw new \Exception("Transaksi permintaan tidak ditemukan.");
+            }
+            if ($lockedTrx->status === 'approved') {
+                return $lockedTrx; // Sudah pernah disetujui, hindari pemotongan ganda
+            }
+            if ($lockedTrx->status !== 'pending') {
+                throw new \Exception("Permintaan tidak dalam status pending.");
+            }
+            $transaction = $lockedTrx;
             $areaId = $transaction->area_id;
 
             // Potong stok material
@@ -453,7 +477,7 @@ class MaterialHandoverService
                     if ($ontMat && !$transaction->items()->where('material_id', $ontMat->id)->exists()) {
                         $ontAreaId = $areaId ?: $repOnt->area_id;
                         $ontDeduct = MaterialService::deductOperationalStock($ontMat, 1, $ontAreaId, 'pcs');
-                        $ontPpu = (float) ($ontMat->selling_price ?: ($ontMat->price_per_unit ?? 0));
+                        $ontPpu = MaterialService::calculateUnitPrice($ontMat, 'pcs');
                         MaterialTransactionItem::create([
                             'material_transaction_id' => $transaction->id,
                             'material_id' => $ontMat->id,
@@ -521,13 +545,22 @@ class MaterialHandoverService
         User $approver,
         string $reason
     ): MaterialTransaction {
-        $transaction->update([
-            'status' => 'rejected',
-            'received_by' => $approver->id,
-            'received_at' => now(),
-            'received_notes' => $reason,
-        ]);
-        return $transaction;
+        return DB::transaction(function () use ($transaction, $approver, $reason) {
+            $lockedTrx = MaterialTransaction::where('id', $transaction->id)->lockForUpdate()->first();
+            if (!$lockedTrx) {
+                throw new \Exception("Transaksi permintaan tidak ditemukan.");
+            }
+            if ($lockedTrx->status === 'approved') {
+                throw new \Exception("Permintaan sudah disetujui, tidak dapat ditolak.");
+            }
+            $lockedTrx->update([
+                'status' => 'rejected',
+                'received_by' => $approver->id,
+                'received_at' => now(),
+                'received_notes' => $reason,
+            ]);
+            return $lockedTrx;
+        });
     }
 
     /**
@@ -565,6 +598,13 @@ class MaterialHandoverService
                                       ->orWhere('request_type', 'return_handover');
                                });
                         });
+                    }
+
+                    if ($reference) {
+                        $q->orWhere('source_reference', $reference)
+                          ->orWhere('purpose', 'like', "%[{$reference}]%")
+                          ->orWhere('purpose', 'like', "%({$reference})%")
+                          ->orWhere('purpose', 'like', "%#{$reference}%");
                     }
                 })
                 ->get();
@@ -627,11 +667,12 @@ class MaterialHandoverService
                           });
                     }
 
-                    // Cocokkan juga dengan reference / nomor tiket / WO jika ada
+                    // Cocokkan juga dengan reference / nomor tiket / WO secara aman (delimiters)
                     if ($reference) {
                         $q->orWhere('source_reference', $reference)
-                          ->orWhere('transaction_number', 'like', "%{$reference}%")
-                          ->orWhere('purpose', 'like', "%{$reference}%");
+                          ->orWhere('purpose', 'like', "%[{$reference}]%")
+                          ->orWhere('purpose', 'like', "%({$reference})%")
+                          ->orWhere('purpose', 'like', "%#{$reference}%");
                     }
                 })
                 ->get();
@@ -711,8 +752,9 @@ class MaterialHandoverService
 
                     if ($reference) {
                         $q->orWhere('source_reference', $reference)
-                          ->orWhere('transaction_number', 'like', "%{$reference}%")
-                          ->orWhere('purpose', 'like', "%{$reference}%");
+                          ->orWhere('purpose', 'like', "%[{$reference}]%")
+                          ->orWhere('purpose', 'like', "%({$reference})%")
+                          ->orWhere('purpose', 'like', "%#{$reference}%");
                     }
                 })
                 ->get();

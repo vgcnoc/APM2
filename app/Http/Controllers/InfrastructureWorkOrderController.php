@@ -629,34 +629,33 @@ class InfrastructureWorkOrderController extends Controller
             abort(403, 'Anda tidak memiliki hak akses untuk menyetujui permintaan tambahan material.');
         }
 
-        if ($materialRequest->status !== 'pending') {
-            return redirect()->back()->with('error', 'Permintaan material ini sudah diproses sebelumnya.');
-        }
-
         $validated = $request->validate([
             'material_id' => 'required|exists:materials,id',
             'quantity' => 'nullable|numeric|min:0.01',
             'notes' => 'nullable|string',
         ]);
 
-        DB::transaction(function () use ($workOrder, $materialRequest, $validated) {
+        return DB::transaction(function () use ($workOrder, $materialRequest, $validated) {
+            $lockedReq = InfrastructureWorkOrderMaterialRequest::where('id', $materialRequest->id)->lockForUpdate()->first();
+            if (!$lockedReq || $lockedReq->status !== 'pending') {
+                return redirect()->back()->with('error', 'Permintaan material ini sudah diproses sebelumnya.');
+            }
+            $materialRequest = $lockedReq;
+
             $material = Material::findOrFail($validated['material_id']);
             $qty = !empty($validated['quantity']) ? (float) $validated['quantity'] : (float) $materialRequest->quantity;
             $areaId = $workOrder->area_id;
-            $unit = $material->unit ?? 'pcs';
+            $unit = $materialRequest->unit ?: ($material->unit ?? 'pcs');
 
             $stockRes = \App\Services\MaterialService::deductOperationalStock($material, $qty, $areaId, $unit);
 
-            $unitPrice = (float) ($material->price_per_unit ?? 0);
-            if (strtolower($material->category ?? '') === 'kabel' && strtolower($unit) === 'meter') {
-                $mpr = $material->meter_per_roll > 0 ? $material->meter_per_roll : 1000;
-                $unitPrice = $unitPrice / $mpr;
-            }
+            $unitPrice = \App\Services\MaterialService::calculateUnitPrice($material, $unit);
             $cost = $qty * $unitPrice;
 
             // 1. Catat Transaksi Pengeluaran Barang Outbound
+            $trxNumber = \App\Services\MaterialService::generateTransactionNumber('OUT-WO-REQ');
             $outTrans = MaterialTransaction::create([
-                'transaction_number' => 'OUT-WO-REQ-' . date('YmdHis') . rand(10, 99),
+                'transaction_number' => $trxNumber,
                 'type' => 'out',
                 'status' => 'approved',
                 'request_type' => 'additional_material',

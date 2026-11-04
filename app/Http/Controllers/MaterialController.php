@@ -284,46 +284,45 @@ class MaterialController extends Controller
             return redirect()->route('materials.index')->with('success', 'Data material dengan nama tersebut sudah ada. Stok berhasil digabungkan ke material tersebut.');
         }
 
-        $material = Material::create($validated);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $areaId) {
+            $material = Material::create($validated);
 
-        if ($areaId) {
-            \App\Models\MaterialStock::create([
-                'material_id' => $material->id,
-                'area_id' => $areaId,
-                'stock' => $material->stock,
-                'initial_stock' => $material->initial_stock,
-                'total_rolls' => $material->total_rolls ?? 0,
-                'total_packs' => $material->total_packs ?? 0,
-                'total_pieces' => $material->total_pieces ?? 0,
-            ]);
+            if ($areaId) {
+                $matStock = \App\Services\MaterialService::getOrCreateLockedAreaStock($material->id, (int) $areaId);
+                $matStock->stock = max(0.0, (float) $material->stock);
+                $matStock->initial_stock = max(0.0, (float) $material->initial_stock);
+                \App\Services\MaterialService::recalcAreaStockUnits($matStock, $material)->save();
 
-            if ((float)$material->stock > 0) {
-                // Catat transaksi mutasi awal ke log
-                $transaction = \App\Models\MaterialTransaction::create([
-                    'transaction_number' => 'IN-AREA-' . date('YmdHis') . '-' . $material->id,
-                    'type' => 'in',
-                    'status' => 'approved',
-                    'date' => now(),
-                    'technician_name' => auth()->user() ? auth()->user()->name : 'Admin',
-                    'purpose' => 'Pencatatan Material Fisik Area',
-                    'user_id' => auth()->id(),
-                    'area_id' => $areaId,
-                    'notes' => 'Pencatatan stok material fisik di area (non-toko)'
-                ]);
+                if ((float) $material->stock > 0) {
+                    $baseRate = \App\Services\MaterialService::calculateBaseUnitPrice($material);
+                    $transaction = \App\Models\MaterialTransaction::create([
+                        'transaction_number' => \App\Services\MaterialService::generateTransactionNumber('IN-AREA'),
+                        'type' => 'in',
+                        'status' => 'approved',
+                        'date' => now(),
+                        'technician_name' => auth()->user() ? auth()->user()->name : 'Admin',
+                        'purpose' => 'Pencatatan Material Fisik Area',
+                        'user_id' => auth()->id(),
+                        'area_id' => $areaId,
+                        'total_cost' => $baseRate * (float) $material->stock,
+                        'notes' => 'Pencatatan stok material fisik di area (non-toko)'
+                    ]);
 
-                \App\Models\MaterialTransactionItem::create([
-                    'material_transaction_id' => $transaction->id,
-                    'material_id' => $material->id,
-                    'quantity' => $material->stock,
-                    'unit' => $material->unit,
-                    'price_per_unit' => 0,
-                    'total_price' => 0,
-                    'stock_before' => 0,
-                    'stock_after' => $material->stock,
-                    'condition' => 'Layak Pakai'
-                ]);
+                    \App\Models\MaterialTransactionItem::create([
+                        'material_transaction_id' => $transaction->id,
+                        'material_id' => $material->id,
+                        'material_name' => $material->name,
+                        'quantity' => $material->stock,
+                        'unit' => $material->unit,
+                        'price_per_unit' => $baseRate,
+                        'total_price' => $baseRate * (float) $material->stock,
+                        'stock_before' => 0,
+                        'stock_after' => $material->stock,
+                        'condition' => 'Layak Pakai'
+                    ]);
+                }
             }
-        }
+        });
 
         return redirect()->route('materials.index')->with('success', 'Data material area berhasil ditambahkan.');
     }
@@ -351,8 +350,16 @@ class MaterialController extends Controller
             'requires_mac' => 'nullable|boolean',
         ]);
 
-        $areaId = $validated['area_id'] ?? null;
+        $areaId = !empty($validated['area_id']) ? (int) $validated['area_id'] : null;
         unset($validated['area_id']);
+
+        $user = auth()->user();
+        $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('materials_view_all');
+        $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
+
+        if (!$isGlobal && !empty($accessibleAreas) && $areaId && !in_array($areaId, array_map('intval', $accessibleAreas), true)) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki hak akses untuk mengubah stok pada area ini.');
+        }
 
         if (array_key_exists('stock', $validated) && is_null($validated['stock'])) {
             unset($validated['stock']);
@@ -365,41 +372,47 @@ class MaterialController extends Controller
             return redirect()->route('materials.index')->with('success', 'Data material berhasil diperbarui dan menimpa data material sebelumnya.');
         }
 
-        $oldName = $material->name;
-        $material->update($validated);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($material, $validated, $areaId) {
+            $lockedMat = Material::whereKey($material->id)->lockForUpdate()->firstOrFail();
+            $oldName = $lockedMat->name;
+            $inputStock = array_key_exists('stock', $validated) ? (float) $validated['stock'] : null;
+            $inputInitial = array_key_exists('initial_stock', $validated) && $validated['initial_stock'] !== null
+                ? (float) $validated['initial_stock']
+                : null;
 
-        if ($oldName && $oldName !== $material->name) {
-            \App\Models\Ont::where('brand', $oldName)->update(['brand' => $material->name]);
-            \App\Models\MaterialTransactionItem::where('material_id', $material->id)->update(['material_name' => $material->name]);
-        }
-
-        if ($areaId) {
-            $existingStocks = \App\Models\MaterialStock::where('material_id', $material->id)->get();
-            if ($existingStocks->count() <= 1) {
-                \App\Models\MaterialStock::updateOrCreate(
-                    ['material_id' => $material->id],
-                    [
-                        'area_id' => $areaId,
-                        'stock' => $material->stock,
-                        'initial_stock' => $material->initial_stock ?? $material->stock,
-                        'total_rolls' => $material->total_rolls ?? 0,
-                        'total_packs' => $material->total_packs ?? 0,
-                        'total_pieces' => $material->total_pieces ?? 0,
-                    ]
-                );
-            } else {
-                \App\Models\MaterialStock::updateOrCreate(
-                    ['material_id' => $material->id, 'area_id' => $areaId],
-                    [
-                        'stock' => $material->stock,
-                        'initial_stock' => $material->initial_stock ?? $material->stock,
-                        'total_rolls' => $material->total_rolls ?? 0,
-                        'total_packs' => $material->total_packs ?? 0,
-                        'total_pieces' => $material->total_pieces ?? 0,
-                    ]
+            // Bila mengedit dalam konteks Area untuk Produk Katalog, JANGAN timpa stok Gudang Pusat (materials.stock)
+            $syncMasterFromAreas = \App\Services\MaterialService::shouldSyncMasterStockFromAreas($lockedMat);
+            if ($areaId && !$syncMasterFromAreas) {
+                unset(
+                    $validated['stock'],
+                    $validated['initial_stock'],
+                    $validated['total_rolls'],
+                    $validated['total_packs'],
+                    $validated['total_pieces']
                 );
             }
-        }
+
+            $lockedMat->update($validated);
+
+            if ($oldName && $oldName !== $lockedMat->name) {
+                \App\Models\Ont::where('brand', $oldName)->update(['brand' => $lockedMat->name]);
+                \App\Models\MaterialTransactionItem::where('material_id', $lockedMat->id)->update(['material_name' => $lockedMat->name]);
+            }
+
+            if ($areaId) {
+                $areaStock = \App\Services\MaterialService::getOrCreateLockedAreaStock($lockedMat->id, $areaId);
+                if ($inputStock !== null) {
+                    $areaStock->stock = max(0.0, $inputStock);
+                }
+                if ($inputInitial !== null) {
+                    $areaStock->initial_stock = max(0.0, $inputInitial);
+                } elseif ((float) $areaStock->initial_stock <= 0 && $inputStock !== null) {
+                    $areaStock->initial_stock = max(0.0, $inputStock);
+                }
+                \App\Services\MaterialService::recalcAreaStockUnits($areaStock, $lockedMat)->save();
+                \App\Services\MaterialService::syncMasterStockIfAreaOnly($lockedMat);
+            }
+        });
 
         return redirect()->route('materials.index')->with('success', 'Data material berhasil diperbarui.');
     }
@@ -575,29 +588,11 @@ class MaterialController extends Controller
      */
     protected function calculateItemAssetValue(Material $material, float $stock): float
     {
-        $price = (float) ($material->price_per_unit ?? 0);
-        if ($price <= 0 || $stock <= 0) return 0;
-
-        $cat = strtolower((string) $material->category);
-        $name = strtolower((string) $material->name);
-
-        if ((str_contains($cat, 'kabel') || str_contains($name, 'kabel')) && (float) $material->meter_per_roll > 0) {
-            return ($stock / (float) $material->meter_per_roll) * $price;
+        if ($stock <= 0) {
+            return 0.0;
         }
 
-        $isIsolasi = str_contains($cat, 'isolasi') || str_contains($name, 'isolasi');
-        if ($isIsolasi) {
-            $cmPerPcs = (float) ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
-            $pcsPerPack = (float) ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
-            $factor = $cmPerPcs * $pcsPerPack;
-            return ($stock / ($factor > 0 ? $factor : 1)) * $price;
-        }
-
-        if ((str_contains($cat, 'klem') || str_contains($name, 'klem')) && (float) $material->pcs_per_pack > 0) {
-            return ($stock / (float) $material->pcs_per_pack) * $price;
-        }
-
-        return $stock * $price;
+        return $stock * \App\Services\MaterialService::calculateBaseUnitPrice($material);
     }
 
     public function addStock(Request $request, Material $material)
@@ -616,89 +611,68 @@ class MaterialController extends Controller
         $isGlobal = !$user || $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->role === 'super admin' || $user->can('materials_view_all');
         $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
 
-        if (!$isGlobal && !empty($accessibleAreas) && !in_array((int)$validated['area_id'], array_map('intval', $accessibleAreas))) {
+        if (!$isGlobal && !empty($accessibleAreas) && !in_array((int) $validated['area_id'], array_map('intval', $accessibleAreas), true)) {
             return redirect()->back()->with('error', 'Anda tidak memiliki wewenang untuk menambah stok pada area ini.');
         }
 
-        // Update global stock
-        $material->stock += $validated['added_stock'];
-        $material->initial_stock += $validated['added_stock'];
+        \Illuminate\Support\Facades\DB::transaction(function () use ($material, $validated) {
+            $lockedMat = Material::whereKey($material->id)->lockForUpdate()->firstOrFail();
+            $addedStock = (float) $validated['added_stock'];
+            $areaId = (int) $validated['area_id'];
 
-        // Update Area stock
-        $materialStock = \App\Models\MaterialStock::firstOrCreate(
-            ['material_id' => $material->id, 'area_id' => $validated['area_id']],
-            ['stock' => 0, 'initial_stock' => 0, 'total_rolls' => 0, 'total_packs' => 0, 'total_pieces' => 0]
-        );
-        $materialStock->stock += $validated['added_stock'];
-        $materialStock->initial_stock += $validated['added_stock'];
+            if (isset($validated['price_per_unit']) && $validated['price_per_unit'] !== null && $validated['price_per_unit'] !== '') {
+                $lockedMat->price_per_unit = (float) $validated['price_per_unit'];
+            }
+            if (isset($validated['selling_price']) && $validated['selling_price'] !== null && $validated['selling_price'] !== '') {
+                $lockedMat->selling_price = (float) $validated['selling_price'];
+            }
 
-        if (str_contains(strtolower($material->category), 'kabel') && !empty($validated['added_rolls'])) {
-            $material->total_rolls += $validated['added_rolls'];
-            $materialStock->total_rolls += $validated['added_rolls'];
-        }
+            // Update Area stock dengan row lock & hitung konversi secara konsisten
+            $materialStock = \App\Services\MaterialService::getOrCreateLockedAreaStock($lockedMat->id, $areaId);
+            $stockBefore = (float) ($materialStock->stock ?? 0);
+            $stockAfter = $stockBefore + $addedStock;
+            $materialStock->stock = $stockAfter;
+            $materialStock->initial_stock = (float) ($materialStock->initial_stock ?? 0) + $addedStock;
+            \App\Services\MaterialService::recalcAreaStockUnits($materialStock, $lockedMat)->save();
 
-        if ($material->category === 'Paku Klem' && !empty($validated['added_packs'])) {
-            $material->total_packs += $validated['added_packs'];
-            $materialStock->total_packs += $validated['added_packs'];
-        }
+            // Hanya sinkronkan materials.stock untuk material non-katalog / area-only (jangan menggandakan stok Gudang Pusat)
+            if (\App\Services\MaterialService::shouldSyncMasterStockFromAreas($lockedMat)) {
+                $lockedMat->initial_stock = (float) ($lockedMat->initial_stock ?? 0) + $addedStock;
+                \App\Services\MaterialService::syncMasterStockIfAreaOnly($lockedMat);
+            } else {
+                $lockedMat->recalcUnitTotals()->save();
+            }
 
-        if ($material->category === 'Isolasi' && !empty($validated['added_pieces'])) {
-            $material->total_pieces += $validated['added_pieces'];
-            $materialStock->total_pieces += $validated['added_pieces'];
-        }
-        
-        $materialStock->save();
+            $baseRate = \App\Services\MaterialService::calculateBaseUnitPrice($lockedMat);
+            $itemTotal = $baseRate * $addedStock;
 
-        if (isset($validated['price_per_unit'])) {
-            $material->price_per_unit = $validated['price_per_unit'];
-        }
-        
-        if (isset($validated['selling_price'])) {
-            $material->selling_price = $validated['selling_price'];
-        }
+            // Rekam ke Log Mutasi (MaterialTransaction & MaterialTransactionItem)
+            $transactionIn = \App\Models\MaterialTransaction::create([
+                'transaction_number' => \App\Services\MaterialService::generateTransactionNumber('IN-RESTOCK'),
+                'type' => 'in',
+                'status' => 'approved',
+                'date' => now(),
+                'technician_name' => auth()->user() ? auth()->user()->name : 'Admin',
+                'purpose' => 'Stok Masuk / Restock Gudang',
+                'user_id' => auth()->id(),
+                'area_id' => $areaId,
+                'total_cost' => $itemTotal,
+                'notes' => 'Pemasukan stok baru via menu Material'
+            ]);
 
-        $material->save();
-
-        // Rekam ke Log Mutasi (MaterialTransaction & MaterialTransactionItem)
-        $transactionIn = \App\Models\MaterialTransaction::create([
-            'transaction_number' => 'IN-RESTOCK-' . date('YmdHis'),
-            'type' => 'in',
-            'status' => 'approved',
-            'date' => now(),
-            'technician_name' => auth()->user()->name,
-            'purpose' => 'Stok Masuk / Restock Gudang',
-            'user_id' => auth()->id(),
-            'area_id' => $validated['area_id'],
-            'notes' => 'Pemasukan stok baru via menu Material'
-        ]);
-
-        $unitPrice = (float) ($material->price_per_unit ?? 0);
-        $baseRate = $unitPrice;
-        $cat = strtolower((string) $material->category);
-        $name = strtolower((string) $material->name);
-        if ((str_contains($cat, 'kabel') || str_contains($name, 'kabel')) && (float) $material->meter_per_roll > 0) {
-            $baseRate = $unitPrice / (float) $material->meter_per_roll;
-        } elseif (str_contains($cat, 'isolasi') || str_contains($name, 'isolasi')) {
-            $cmPerPcs = (float) ($material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50);
-            $pcsPerPack = (float) ($material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1);
-            $factor = $cmPerPcs * $pcsPerPack;
-            $baseRate = $factor > 0 ? ($unitPrice / $factor) : $unitPrice;
-        } elseif ((str_contains($cat, 'klem') || str_contains($name, 'klem')) && (float) $material->pcs_per_pack > 0) {
-            $baseRate = $unitPrice / (float) $material->pcs_per_pack;
-        }
-        $itemTotal = $baseRate * (float) $validated['added_stock'];
-
-        \App\Models\MaterialTransactionItem::create([
-            'material_transaction_id' => $transactionIn->id,
-            'material_id' => $material->id,
-            'quantity' => $validated['added_stock'],
-            'unit' => $material->unit,
-            'price_per_unit' => $baseRate,
-            'total_price' => $itemTotal,
-            'stock_before' => $materialStock->stock - $validated['added_stock'],
-            'stock_after' => $materialStock->stock,
-            'condition' => 'Layak Pakai'
-        ]);
+            \App\Models\MaterialTransactionItem::create([
+                'material_transaction_id' => $transactionIn->id,
+                'material_id' => $lockedMat->id,
+                'material_name' => $lockedMat->name,
+                'quantity' => $addedStock,
+                'unit' => $lockedMat->unit,
+                'price_per_unit' => $baseRate,
+                'total_price' => $itemTotal,
+                'stock_before' => $stockBefore,
+                'stock_after' => $stockAfter,
+                'condition' => 'Layak Pakai'
+            ]);
+        });
 
         return redirect()->route('materials.index')->with('success', "Berhasil menambahkan stok masuk untuk {$material->name}.");
     }
