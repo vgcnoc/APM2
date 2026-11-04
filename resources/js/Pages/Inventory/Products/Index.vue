@@ -91,11 +91,19 @@
                                             <div class="flex items-baseline gap-1">
                                                 <span class="text-base font-black text-slate-800">{{ formatNum(Number(product.stock)) }}</span>
                                                 <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{{ product.unit }}</span>
+                                                <span class="text-[9px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-1 py-0.2 rounded ml-1" title="Stok di Buffer Gudang Pusat">Pusat</span>
                                             </div>
-                                            <div class="inline-flex items-center gap-1 text-[11px] text-slate-500 mt-1 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/60 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
-                                                <span class="text-slate-400 font-normal">Awal:</span>
-                                                <span class="font-bold text-slate-700">{{ formatNum(getInitialStock(product)) }}</span>
-                                                <span class="text-[9px] uppercase font-bold text-slate-400">{{ product.unit }}</span>
+                                            <div class="flex items-center gap-1.5 mt-1">
+                                                <div v-if="getAreaStockTotal(product) > 0" class="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200/60 shadow-[0_1px_2px_rgba(0,0,0,0.02)]" :title="`Total fisik perusahaan: ${formatNum(getTotalPhysicalStock(product))} ${product.unit}`">
+                                                    <span class="text-blue-500 font-normal">Cabang:</span>
+                                                    <span>{{ formatNum(getAreaStockTotal(product)) }}</span>
+                                                    <span class="text-[9px] uppercase font-bold text-blue-400">{{ product.unit }}</span>
+                                                </div>
+                                                <div class="inline-flex items-center gap-1 text-[11px] text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200/60 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+                                                    <span class="text-slate-400 font-normal">Awal:</span>
+                                                    <span class="font-bold text-slate-700">{{ formatNum(getInitialStock(product)) }}</span>
+                                                    <span class="text-[9px] uppercase font-bold text-slate-400">{{ product.unit }}</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </td>
@@ -591,6 +599,15 @@ const getInitialStock = (product) => {
         return Number(product.initial_stock);
     }
     return Number(product.stock) || 0;
+};
+
+const getAreaStockTotal = (product) => {
+    if (!product.stocks || !Array.isArray(product.stocks)) return 0;
+    return product.stocks.reduce((acc, s) => acc + (Number(s.stock) || 0), 0);
+};
+
+const getTotalPhysicalStock = (product) => {
+    return (Number(product.stock) || 0) + getAreaStockTotal(product);
 };
 
 const formatSmartUnit = (product) => {
