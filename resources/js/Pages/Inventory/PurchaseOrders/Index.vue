@@ -932,6 +932,10 @@ const estimatedTotalCost = computed(() => {
         const isIsolasi = (mat.category === 'Isolasi' || (mat.name && mat.name.toLowerCase().includes('isolasi')));
         
         if (item.purchase_unit === 'roll' || item.purchase_unit === 'pack' || item.purchase_unit === 'bungkus') {
+            if (isIsolasi) {
+                const factor = (Number(mat.pcs_per_pack) || 1) * (Number(mat.cm_per_pcs) || 50);
+                return sum + (qty * price * factor);
+            }
             return sum + (qty * price);
         }
         
@@ -940,12 +944,16 @@ const estimatedTotalCost = computed(() => {
             if (Number(mat.meter_per_roll) > 0) {
                 baseRate = price / Number(mat.meter_per_roll);
             } else if (isIsolasi) {
-                const factor = (Number(mat.pcs_per_pack) || 1) * (Number(mat.cm_per_pcs) || 50);
-                baseRate = factor > 0 ? (price / factor) : price;
+                baseRate = price; // already per cm
             } else if (Number(mat.pcs_per_pack) > 0) {
                 baseRate = price / Number(mat.pcs_per_pack);
             }
             return sum + (convertedQty(item) * baseRate);
+        }
+
+        if (isIsolasi && item.purchase_unit === 'pcs') {
+            const cpp = Number(mat.cm_per_pcs) > 0 ? Number(mat.cm_per_pcs) : 50;
+            return sum + (qty * price * cpp);
         }
         
         return sum + (qty * price);

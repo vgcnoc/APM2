@@ -252,23 +252,31 @@ class PurchaseOrderController extends Controller
                 } else {
                     $pUnitLower = strtolower($item['purchase_unit']);
                     if ($pUnitLower === 'roll' || $pUnitLower === 'pack' || $pUnitLower === 'bungkus') {
-                        $itemTotal = (float) $item['quantity'] * $masterPrice;
+                        if ($isIsolasi) {
+                            $pcsPerPack = $material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1;
+                            $cmPerPcs = $material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50;
+                            $itemTotal = (float) $item['quantity'] * ($masterPrice * ($pcsPerPack * $cmPerPcs));
+                        } else {
+                            $itemTotal = (float) $item['quantity'] * $masterPrice;
+                        }
                     } else {
                         if ($item['purchase_unit'] === 'base' || $item['purchase_unit'] === $material->unit) {
                             $baseUnitRate = $masterPrice;
                             if ($material->meter_per_roll > 0) {
                                 $baseUnitRate = $masterPrice / $material->meter_per_roll;
                             } elseif ($isIsolasi) {
-                                $pcsPerPack = $material->pcs_per_pack > 0 ? $material->pcs_per_pack : 1;
-                                $cmPerPcs = $material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50;
-                                $factor = $pcsPerPack * $cmPerPcs;
-                                $baseUnitRate = $factor > 0 ? ($masterPrice / $factor) : $masterPrice;
+                                $baseUnitRate = $masterPrice; // Untuk isolasi, masterPrice sudah tersimpan per cm (base unit)
                             } elseif ($material->pcs_per_pack > 0) {
                                 $baseUnitRate = $masterPrice / $material->pcs_per_pack;
                             }
                             $itemTotal = (float) $convertedQuantity * $baseUnitRate;
                         } else {
-                            $itemTotal = (float) $item['quantity'] * $masterPrice;
+                            if ($isIsolasi && $pUnitLower === 'pcs') {
+                                $cmPerPcs = $material->cm_per_pcs > 0 ? $material->cm_per_pcs : 50;
+                                $itemTotal = (float) $item['quantity'] * ($masterPrice * $cmPerPcs);
+                            } else {
+                                $itemTotal = (float) $item['quantity'] * $masterPrice;
+                            }
                         }
                     }
                 }
