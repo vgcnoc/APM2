@@ -152,3 +152,4 @@ class CustomerIsolationController extends Controller
         return redirect()->route('customer-area.dashboard');
     }
 }
+

@@ -231,3 +231,4 @@ const handleSearch = () => {
         </footer>
     </div>
 </template>
+

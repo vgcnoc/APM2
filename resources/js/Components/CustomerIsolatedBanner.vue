@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
+import AppLogo from '@/Components/AppLogo.vue';
 import {
     ArrowRightIcon,
     ArrowUpRightIcon,
@@ -139,6 +140,23 @@ const continueLogin = () => {
         </button>
 
         <div class="relative z-10 space-y-6">
+            <!-- Top Corporate Brand Bar with Company Logo -->
+            <div class="flex items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
+                <div class="flex items-center gap-3">
+                    <AppLogo context="navbar" :prefer-company-logo="true" white class="max-h-8 sm:max-h-9" />
+                    <div class="hidden sm:block h-4 w-[1px] bg-slate-800"></div>
+                    <span class="hidden sm:inline-block text-[10px] font-bold tracking-widest text-slate-400 uppercase">
+                        {{ companyName }} Network Security &amp; Billing
+                    </span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-slate-900/90 text-slate-300 border border-slate-800 shadow-xs">
+                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+                        Portal Resmi Isolir
+                    </span>
+                </div>
+            </div>
+
             <!-- 1. Header Alert Banner -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-rose-500/20 pb-5">
                 <div class="flex items-center gap-3.5">
@@ -402,3 +420,4 @@ const continueLogin = () => {
         </div>
     </div>
 </template>
+
