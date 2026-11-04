@@ -60,7 +60,7 @@ class NormalizeCoordinates
 
             // 2. Check if user pasted coordinate pair into latitude (e.g. "-6.123, 106.123" or "-6,123, 106,123")
             if ($rawLat !== '' && (empty($rawLng) || $rawLat === $rawLng || !is_numeric($rawLng))) {
-                if (preg_match('/^(-?\d+(?:[.,]\d+)?)\s*[,/ ;|]\s*(-?\d+(?:[.,]\d+)?)$/', $rawLat, $matches)) {
+                if (preg_match('~^(-?\d+(?:[.,]\d+)?)\s*[,/ ;|]\s*(-?\d+(?:[.,]\d+)?)$~', $rawLat, $matches)) {
                     $rawLat = str_replace(',', '.', $matches[1]);
                     $rawLng = str_replace(',', '.', $matches[2]);
                     $data[$latKey] = $rawLat;
