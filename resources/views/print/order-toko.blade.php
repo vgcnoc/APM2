@@ -377,7 +377,24 @@
                             +{{ number_format($item->quantity, 0, ',', '.') }} {{ $item->unit ?? $item->material?->unit ?? 'pcs' }}
                         </td>
                         <td class="text-right" style="color: #475569; font-family: monospace;">
-                            Rp {{ number_format($item->price_per_unit, 0, ',', '.') }}
+                            <div>Rp {{ number_format($item->price_per_unit, 0, ',', '.') }} / {{ $item->unit ?? $item->material?->unit ?? 'pcs' }}</div>
+                            @php
+                                $mat = $item->material;
+                                $isIso = $mat && (str_contains(strtolower($mat->name ?? ''), 'isolasi') || str_contains(strtolower($mat->category ?? ''), 'isolasi'));
+                            @endphp
+                            @if($mat && (float)$mat->meter_per_roll > 0)
+                                <div style="font-size: 10.5px; color: #64748b; font-family: sans-serif; margin-top: 2px;">
+                                    (Rp {{ number_format($item->price_per_unit * $mat->meter_per_roll, 0, ',', '.') }} / roll)
+                                </div>
+                            @elseif($isIso && (float)($mat->cm_per_pcs ?? 0) > 0)
+                                <div style="font-size: 10.5px; color: #64748b; font-family: sans-serif; margin-top: 2px;">
+                                    (Rp {{ number_format($item->price_per_unit * $mat->cm_per_pcs * ($mat->pcs_per_pack ?: 1), 0, ',', '.') }} / bungkus)
+                                </div>
+                            @elseif($mat && (float)$mat->pcs_per_pack > 0)
+                                <div style="font-size: 10.5px; color: #64748b; font-family: sans-serif; margin-top: 2px;">
+                                    (Rp {{ number_format($item->price_per_unit * $mat->pcs_per_pack, 0, ',', '.') }} / bungkus)
+                                </div>
+                            @endif
                         </td>
                         <td class="text-right" style="font-weight: 700; color: #0f172a; font-family: monospace;">
                             Rp {{ number_format($item->total_price, 0, ',', '.') }}
