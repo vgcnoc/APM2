@@ -58,21 +58,10 @@ class NormalizeCoordinates
                 }
             }
 
-            // 2. Check if user pasted coordinate pair into latitude (e.g. "-6.123, 106.123" or "-6,123, 106,123")
-            if ($rawLat !== '' && (empty($rawLng) || $rawLat === $rawLng || !is_numeric($rawLng))) {
-                if (preg_match('~^(-?\d+(?:[.,]\d+)?)\s*[,/ ;|]\s*(-?\d+(?:[.,]\d+)?)$~', $rawLat, $matches)) {
-                    $rawLat = str_replace(',', '.', $matches[1]);
-                    $rawLng = str_replace(',', '.', $matches[2]);
-                    $data[$latKey] = $rawLat;
-                    $data[$lngKey] = $rawLng;
-                    $modified = true;
-                }
-            }
-
-            // 3. Normalize single numbers with commas
+            // 2. Normalize single numbers with commas (e.g. Indonesian format "-6,123" -> "-6.123")
             if ($rawLat !== '') {
                 $normLat = $normalizeSingle($rawLat);
-                if ($normLat !== $rawLat) {
+                if ($normLat !== null && $normLat !== $rawLat) {
                     $rawLat = $normLat;
                     $data[$latKey] = $rawLat;
                     $modified = true;
@@ -80,8 +69,19 @@ class NormalizeCoordinates
             }
             if ($rawLng !== '') {
                 $normLng = $normalizeSingle($rawLng);
-                if ($normLng !== $rawLng) {
+                if ($normLng !== null && $normLng !== $rawLng) {
                     $rawLng = $normLng;
+                    $data[$lngKey] = $rawLng;
+                    $modified = true;
+                }
+            }
+
+            // 3. Check if user pasted coordinate pair into latitude (e.g. "-6.123, 106.123" or "-6.123; 106.123")
+            if ($rawLat !== '' && (empty($rawLng) || $rawLat === $rawLng || !is_numeric($rawLng))) {
+                if (preg_match('~^(-?\d+(?:[.,]\d+)?)\s*[,/ ;|]\s*(-?\d+(?:[.,]\d+)?)$~', $rawLat, $matches)) {
+                    $rawLat = str_replace(',', '.', $matches[1]);
+                    $rawLng = str_replace(',', '.', $matches[2]);
+                    $data[$latKey] = $rawLat;
                     $data[$lngKey] = $rawLng;
                     $modified = true;
                 }
