@@ -479,7 +479,8 @@ function getPos(canvas, event) {
 
 // Touch Event Handlers for Mobile (Prevents page scroll during signature)
 function attachTouchListeners(canvas, type) {
-    if (!canvas) return;
+    if (!canvas || canvas._hasTouchListeners) return;
+    canvas._hasTouchListeners = true;
 
     const onTouchStart = (e) => {
         e.preventDefault();
@@ -545,6 +546,7 @@ function clearEmployeeCanvas() {
     if (!employeeCanvasRef.value || !employeeCtx) return;
     const rect = employeeCanvasRef.value.getBoundingClientRect();
     employeeCtx.clearRect(0, 0, rect.width, rect.height);
+    employeeCtx.beginPath();
     employeeHasDrawn.value = false;
 }
 
@@ -568,6 +570,7 @@ function clearCustomerCanvas() {
     if (!customerCanvasRef.value || !customerCtx) return;
     const rect = customerCanvasRef.value.getBoundingClientRect();
     customerCtx.clearRect(0, 0, rect.width, rect.height);
+    customerCtx.beginPath();
     customerHasDrawn.value = false;
 }
 
@@ -620,6 +623,12 @@ async function submitAgreement() {
 
 watch(() => props.show, (newVal) => {
     if (newVal) {
+        loadData();
+    }
+});
+
+watch(() => props.customerId, () => {
+    if (props.show) {
         loadData();
     }
 });

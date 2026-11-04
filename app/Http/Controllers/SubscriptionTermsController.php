@@ -216,7 +216,7 @@ class SubscriptionTermsController extends Controller
                 'success' => true,
                 'message' => 'Surat Perjanjian & Tanda Tangan Digital berhasil disimpan.',
                 'agreement' => $agreement,
-                'print_url' => route('agreements.print', $agreement->id),
+                'print_url' => url('/agreements/' . $agreement->id . '/print'),
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -232,8 +232,12 @@ class SubscriptionTermsController extends Controller
     /**
      * Cetak Lembar Perjanjian & T&C Bertanda Tangan Digital
      */
-    public function printAgreement(CustomerAgreement $agreement)
+    public function printAgreement($agreement)
     {
+        if (!$agreement instanceof CustomerAgreement) {
+            $agreement = CustomerAgreement::findOrFail($agreement);
+        }
+
         $agreement->loadMissing(['customer.package', 'customer.areaModel', 'customer.sales.employee', 'employee']);
 
         $company = [

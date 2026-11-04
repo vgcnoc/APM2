@@ -153,7 +153,6 @@ Route::middleware(['auth'])->group(function () {
         // Syarat & Ketentuan Berlangganan & Tanda Tangan Digital
         Route::get('/{customer}/agreements/current', [\App\Http\Controllers\SubscriptionTermsController::class, 'getCustomerAgreementData'])->name('agreements.current');
         Route::post('/{customer}/agreements', [\App\Http\Controllers\SubscriptionTermsController::class, 'storeCustomerAgreement'])->name('agreements.store');
-        Route::get('/agreements/{agreement}/print', [\App\Http\Controllers\SubscriptionTermsController::class, 'printAgreement'])->name('agreements.print');
         Route::post('/{customer}/suspend', [CustomerController::class, 'suspend'])->name('suspend');
         Route::post('/{customer}/unsuspend', [CustomerController::class, 'unsuspend'])->name('unsuspend');
         Route::post('/{customer}/connection-access', [CustomerController::class, 'connectionAccess'])->name('connection-access');
@@ -253,6 +252,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/bulk-destroy', [CustomerController::class, 'bulkDestroy'])
             ->name('customers.bulk-destroy');
     });
+    // ── Dokumen Perjanjian Syarat & Ketentuan Berlangganan (Cetak) ────────
+    Route::get('/agreements/{agreement}/print', [\App\Http\Controllers\SubscriptionTermsController::class, 'printAgreement'])->name('agreements.print');
+    Route::get('/customers/agreements/{agreement}/print', function ($agreement) {
+        return redirect()->route('agreements.print', $agreement);
+    });
+
     Route::resource('customers', CustomerController::class)->missing(function (\Illuminate\Http\Request $request) {
         $id = $request->route('customer');
         if ($id == 3476 && \App\Models\Customer::where('id', 3477)->exists()) {
