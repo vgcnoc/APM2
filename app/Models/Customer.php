@@ -595,6 +595,15 @@ class Customer extends Model
                 }
             }
 
+            // 1b. Sinkronisasi Otomatis Bonus Target Market jika status berubah ke active atau tanggal aktivasi/sales berubah
+            if ($customer->status === 'active' && !static::$isMigrating && !$customer->is_migrated && ($customer->wasChanged('status') || $customer->wasChanged('activation_date') || $customer->wasChanged('sales_id') || $customer->wasChanged('area_id'))) {
+                try {
+                    \App\Services\TargetMarketService::processCustomerActivation($customer);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[TargetMarket Auto Hook] ' . $e->getMessage());
+                }
+            }
+
             // 2. Sinkronisasi Menyeluruh Area ke ONT, Jadwal Teknisi, Survey, PGS, PGK, Transaksi Material, Reseller, & User
             if ($customer->wasChanged('area_id') || $customer->wasChanged('area')) {
                 try {

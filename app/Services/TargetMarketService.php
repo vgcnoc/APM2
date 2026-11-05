@@ -325,6 +325,24 @@ class TargetMarketService
 
                     if ($existingInc && $existingInc->status === 'paid') {
                         $incentive = $existingInc;
+                        $remaining = $sum - (float) $existingInc->amount;
+                        if ($remaining > 0) {
+                            $adjRefId = "target_market_{$user->id}_{$year}_{$month}_extra";
+                            $adjDescription = "[Bonus Target Market Tambahan] Periode {$monthName} (+ Rp " . number_format($remaining, 0, ',', '.') . ")";
+                            Incentive::updateOrCreate(
+                                [
+                                    'user_id' => $user->id,
+                                    'reference_id' => $adjRefId,
+                                ],
+                                [
+                                    'description' => $adjDescription,
+                                    'amount' => $remaining,
+                                    'type' => 'auto',
+                                    'incentive_date' => now()->toDateString(),
+                                    'status' => 'pending',
+                                ]
+                            );
+                        }
                     } else {
                         $incentive = Incentive::updateOrCreate(
                             [

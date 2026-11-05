@@ -1104,6 +1104,13 @@ class PayrollController extends Controller
         $totalNominal = 0;
 
         foreach ($pendingAuto as $inc) {
+            // PENGAMAN: Jangan pernah hapus insentif sistem Target Market atau Presensi
+            if (str_starts_with($inc->reference_id ?? '', 'target_market_') 
+                || str_starts_with($inc->reference_id ?? '', 'attendance_') 
+                || str_contains($inc->description ?? '', '[Bonus Target Market]')) {
+                continue;
+            }
+
             $matched = false;
 
             if (!empty($inc->reference_id)) {
