@@ -1444,11 +1444,11 @@
                                     </p>
                                 </div>
                                 <div class="text-right">
-                                    <span v-if="selectedPsbCustomer.psb_payment_status === 'unpaid'" class="inline-flex items-center gap-1 px-2.5 py-0.5 bg-rose-100 text-rose-800 rounded-full text-xs font-bold border border-rose-200">
-                                        ⚠️ BELUM LUNAS
-                                    </span>
-                                    <span v-else-if="selectedPsbCustomer.psb_payment_status === 'free'" class="inline-flex items-center gap-1 px-2.5 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-bold border border-slate-200">
+                                    <span v-if="Number(selectedPsbCustomer.installation_fee || 0) <= 0 || selectedPsbCustomer.psb_payment_status === 'free'" class="inline-flex items-center gap-1 px-2.5 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-bold border border-slate-200">
                                         🎁 BEBAS BIAYA
+                                    </span>
+                                    <span v-else-if="selectedPsbCustomer.psb_payment_status === 'unpaid'" class="inline-flex items-center gap-1 px-2.5 py-0.5 bg-rose-100 text-rose-800 rounded-full text-xs font-bold border border-rose-200">
+                                        ⚠️ BELUM LUNAS
                                     </span>
                                     <span v-else class="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold border border-emerald-200">
                                         ✓ LUNAS
@@ -1460,7 +1460,7 @@
                             </div>
 
                             <!-- Alert Banner jika PSB Belum Lunas -->
-                            <div v-if="selectedPsbCustomer.psb_payment_status === 'unpaid'" class="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-between gap-3 text-xs">
+                            <div v-if="selectedPsbCustomer.psb_payment_status === 'unpaid' && Number(selectedPsbCustomer.installation_fee || 0) > 0" class="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-between gap-3 text-xs">
                                 <div class="flex items-center gap-2">
                                     <span class="w-6 h-6 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center font-bold text-xs shrink-0">!</span>
                                     <div>
@@ -2499,9 +2499,9 @@ function generatePsbWhatsAppText(customer) {
     const psbFee = formatRupiah(customer.installation_fee || 0);
 
     const feeNum = Number(customer.installation_fee || 0);
-    const isPaid = customer.psb_payment_status === 'paid' || (!customer.psb_payment_status && feeNum > 0);
-    const isUnpaid = customer.psb_payment_status === 'unpaid';
     const isFree = customer.psb_payment_status === 'free' || feeNum <= 0;
+    const isUnpaid = !isFree && customer.psb_payment_status === 'unpaid';
+    const isPaid = !isFree && !isUnpaid;
 
     let statusLine = '';
     let footerNote = '';

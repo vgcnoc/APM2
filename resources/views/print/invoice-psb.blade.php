@@ -344,21 +344,21 @@
         $actDateFmt = $customer->activation_date ? \Carbon\Carbon::parse($customer->activation_date)->translatedFormat('d F Y') : \Carbon\Carbon::now()->translatedFormat('d F Y');
         
         $psbStatus = $customer->psb_payment_status;
-        if (!$psbStatus) {
-            $psbStatus = ($psbFee > 0) ? 'paid' : 'free';
+        if (!$psbStatus || $psbFee <= 0) {
+            $psbStatus = ($psbFee > 0) ? ($psbStatus ?: 'paid') : 'free';
         }
-        $isPaid = ($psbStatus === 'paid');
-        $isUnpaid = ($psbStatus === 'unpaid');
         $isFree = ($psbStatus === 'free' || $psbFee <= 0);
+        $isUnpaid = (!$isFree && $psbStatus === 'unpaid');
+        $isPaid = (!$isFree && !$isUnpaid);
 
         $paidDateFmt = $customer->psb_paid_at ? \Carbon\Carbon::parse($customer->psb_paid_at)->translatedFormat('d F Y') : $actDateFmt;
         $payMethod = $customer->psb_payment_method ? strtoupper($customer->psb_payment_method) : 'TUNAI / TRANSFER';
 
-        if ($isPaid) {
-            $statusLabel = 'LUNAS';
-            $statusBadgeClass = 'badge-green';
-            $waStatusText = "✅ *Status Pembayaran*: LUNAS (Sudah Diterima via {$payMethod})\n";
-            $waExtra = "_Simpan pesan ini sebagai bukti pembayaran dan registrasi resmi pemasangan baru._\n\n";
+        if ($isFree) {
+            $statusLabel = 'BEBAS BIAYA';
+            $statusBadgeClass = 'badge-gray';
+            $waStatusText = "🎁 *Status Pembayaran*: GRATIS (Promo Bebas Biaya Registrasi)\n";
+            $waExtra = "_Layanan aktif dengan promo bebas biaya pasang baru._\n\n";
         } elseif ($isUnpaid) {
             $statusLabel = 'BELUM LUNAS';
             $statusBadgeClass = 'badge-red';
@@ -371,10 +371,10 @@
                 . "Setelah transfer, kirim bukti bayar ke No. WhatsApp ini.\n";
             $waExtra = "Aplikasi Pelanggan: https://viruzs.rlradius.com\n\n";
         } else {
-            $statusLabel = 'BEBAS BIAYA';
-            $statusBadgeClass = 'badge-gray';
-            $waStatusText = "🎁 *Status Pembayaran*: GRATIS (Promo Bebas Biaya Registrasi)\n";
-            $waExtra = "_Layanan aktif dengan promo bebas biaya pasang baru._\n\n";
+            $statusLabel = 'LUNAS';
+            $statusBadgeClass = 'badge-green';
+            $waStatusText = "✅ *Status Pembayaran*: LUNAS (Sudah Diterima via {$payMethod})\n";
+            $waExtra = "_Simpan pesan ini sebagai bukti pembayaran dan registrasi resmi pemasangan baru._\n\n";
         }
 
         $waMessage = "*INVOICE PEMASANGAN BARU (PSB)*\n"
