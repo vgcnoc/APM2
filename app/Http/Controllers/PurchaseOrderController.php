@@ -710,26 +710,25 @@ class PurchaseOrderController extends Controller
 
         $description = "Order Toko [{$transaction->transaction_number}] Wilayah {$areaName}: {$itemNames}";
 
+        $expensePayload = [
+            'amount' => $totalCost,
+            'expense_date' => $date,
+            'description' => $description,
+            'expense_category_id' => $category->id,
+            'area_id' => $transaction->area_id,
+            'area' => $areaName,
+        ];
+
         if ($transaction->expense_id) {
             $expense = Expense::find($transaction->expense_id);
             if ($expense) {
-                $expense->update([
-                    'amount' => $totalCost,
-                    'expense_date' => $date,
-                    'description' => $description,
-                    'expense_category_id' => $category->id,
-                ]);
+                $expense->update($expensePayload);
                 return;
             }
         }
 
-        $expense = Expense::create([
-            'amount' => $totalCost,
-            'expense_category_id' => $category->id,
-            'description' => $description,
-            'expense_date' => $date,
-            'user_id' => auth()->id() ?? $transaction->user_id,
-        ]);
+        $expensePayload['user_id'] = auth()->id() ?? $transaction->user_id;
+        $expense = Expense::create($expensePayload);
 
         $transaction->update(['expense_id' => $expense->id]);
     }

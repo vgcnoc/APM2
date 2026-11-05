@@ -298,13 +298,14 @@
         </div>
 
         <!-- Active Filter Info (If filtered) -->
-        @if(!empty($filters['search']) || ($filters['type'] && $filters['type'] !== 'all') || ($filters['category'] && $filters['category'] !== 'all') || !empty($filters['date_from']))
+        @if(!empty($filters['search']) || ($filters['type'] && $filters['type'] !== 'all') || ($filters['category'] && $filters['category'] !== 'all') || (!empty($filters['area']) && $filters['area'] !== 'all') || !empty($filters['date_from']))
         <div class="filter-banner">
             <div>
                 <strong>Filter Aktif:</strong>
                 @if(!empty($filters['search'])) [Cari: "{{ $filters['search'] }}"] @endif
                 @if($filters['type'] && $filters['type'] !== 'all') [Tipe: {{ $filters['type'] === 'income' ? 'Pemasukan Kas' : 'Pengeluaran Kas' }}] @endif
                 @if($filters['category'] && $filters['category'] !== 'all') [Kategori: {{ $filters['category'] === 'material' ? 'Belanja Material (Order Toko)' : ($filters['category'] === 'customer' ? 'Pelanggan Reguler' : ($filters['category'] === 'reseller' ? 'Reseller Voucher' : $filters['category'])) }}] @endif
+                @if(!empty($filters['area']) && $filters['area'] !== 'all') [Wilayah: {{ $filters['area'] }}] @endif
                 @if(!empty($filters['date_from']) || !empty($filters['date_to'])) [Tgl: {{ $filters['date_from'] ?: '...' }} s/d {{ $filters['date_to'] ?: '...' }}] @endif
             </div>
             <div>
@@ -347,6 +348,7 @@
                         <div style="font-size: 8.5px; color: #64748b; margin-top: 1px;">
                             Petugas: <strong>{{ $item['user'] }}</strong>
                             @if(!empty($item['person']) && $item['person'] !== '-') &bull; Terkait: {{ $item['person'] }} @endif
+                            @if(!empty($item['area'])) &bull; Wilayah: <strong style="color: #047857;">{{ $item['area'] }}</strong> @endif
                             @if(!empty($item['po_number'])) &bull; Ref PO: <strong>{{ $item['po_number'] }}</strong> @endif
                         </div>
                     </td>

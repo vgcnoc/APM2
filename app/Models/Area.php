@@ -14,8 +14,14 @@ class Area extends Model
             if ($area->wasChanged('name')) {
                 Customer::where('area_id', $area->id)->update(['area' => $area->name]);
                 MaterialTransaction::where('area_id', $area->id)->update(['area' => $area->name]);
+                Expense::where('area_id', $area->id)->update(['area' => $area->name]);
             }
         });
+    }
+
+    public function expenses()
+    {
+        return $this->hasMany(Expense::class);
     }
 
     public function stocks()

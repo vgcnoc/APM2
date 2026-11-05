@@ -182,10 +182,10 @@
                 <!-- FILTER LENGKAP TOOLBAR -->
                 <div class="p-4 sm:p-5 border-b border-gray-100 bg-white space-y-4">
                     <!-- Filter Controls Grid -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 items-end">
                         
-                        <!-- Search Box (4 Cols) -->
-                        <div class="sm:col-span-2 lg:col-span-4">
+                        <!-- Search Box -->
+                        <div>
                             <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">
                                 Pencarian Transaksi
                             </label>
@@ -197,7 +197,7 @@
                                     type="text" 
                                     v-model="ledgerFilter.search" 
                                     @keyup.enter="applyLedgerFilter(true)"
-                                    placeholder="Keterangan, nama pelanggan, admin, No PO..." 
+                                    placeholder="Keterangan, nama, admin..." 
                                     class="w-full pl-9 pr-8 py-2 text-xs sm:text-sm border-gray-200 bg-gray-50 focus:bg-white rounded-xl focus:ring-blue-500 focus:border-blue-500 font-medium placeholder-gray-400"
                                 />
                                 <button 
@@ -211,8 +211,8 @@
                             </div>
                         </div>
 
-                        <!-- Tipe Mutasi (2 Cols) -->
-                        <div class="lg:col-span-2">
+                        <!-- Tipe Mutasi -->
+                        <div>
                             <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">
                                 Tipe Mutasi
                             </label>
@@ -227,8 +227,8 @@
                             </select>
                         </div>
 
-                        <!-- Kategori (2 Cols) -->
-                        <div class="lg:col-span-2">
+                        <!-- Kategori -->
+                        <div>
                             <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">
                                 Kategori
                             </label>
@@ -251,8 +251,25 @@
                             </select>
                         </div>
 
-                        <!-- Rentang Tanggal (2 Cols) -->
-                        <div class="lg:col-span-2">
+                        <!-- Area / Wilayah -->
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">
+                                Area / Wilayah
+                            </label>
+                            <select 
+                                v-model="ledgerFilter.area" 
+                                @change="applyLedgerFilter(true)"
+                                class="w-full py-2 px-3 text-xs sm:text-sm border-gray-200 bg-gray-50 focus:bg-white rounded-xl focus:ring-blue-500 focus:border-blue-500 font-medium"
+                            >
+                                <option value="all">Semua Wilayah</option>
+                                <option v-for="a in areas" :key="a.id" :value="a.id">
+                                    {{ a.name }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- Rentang Tanggal -->
+                        <div>
                             <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">
                                 Tanggal Spesifik
                             </label>
@@ -272,8 +289,8 @@
                             </div>
                         </div>
 
-                        <!-- Baris Per Halaman & Tombol Aksi (2 Cols) -->
-                        <div class="lg:col-span-2 flex items-center gap-1.5">
+                        <!-- Baris Per Halaman & Tombol Aksi -->
+                        <div class="flex items-center gap-1.5">
                             <div class="w-24 shrink-0">
                                 <label class="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">
                                     Paginasi
@@ -293,7 +310,7 @@
                                 <button 
                                     @click="applyLedgerFilter(true)" 
                                     type="button"
-                                    class="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-2 px-2.5 rounded-xl text-xs font-bold transition shadow-xs flex items-center justify-center gap-1 cursor-pointer"
+                                    class="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-2 px-2 rounded-xl text-xs font-bold transition shadow-xs flex items-center justify-center gap-1 cursor-pointer"
                                     title="Terapkan Filter"
                                 >
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -332,6 +349,11 @@
                             <span v-if="ledgerFilter.category && ledgerFilter.category !== 'all'" class="inline-flex items-center gap-1 bg-purple-50 text-purple-700 px-2.5 py-1 rounded-lg text-xs font-bold border border-purple-200">
                                 <span>Kategori: {{ getCategoryLabel(ledgerFilter.category) }}</span>
                                 <button @click="ledgerFilter.category = 'all'; applyLedgerFilter(true)" class="text-purple-500 hover:text-purple-800 ml-0.5">&times;</button>
+                            </span>
+
+                            <span v-if="ledgerFilter.area && ledgerFilter.area !== 'all'" class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg text-xs font-bold border border-emerald-200">
+                                <span>Wilayah: {{ getAreaLabel(ledgerFilter.area) }}</span>
+                                <button @click="ledgerFilter.area = 'all'; applyLedgerFilter(true)" class="text-emerald-500 hover:text-emerald-800 ml-0.5">&times;</button>
                             </span>
 
                             <span v-if="ledgerFilter.date_from || ledgerFilter.date_to" class="inline-flex items-center gap-1 bg-amber-50 text-amber-800 px-2.5 py-1 rounded-lg text-xs font-bold border border-amber-200">
@@ -411,6 +433,10 @@
                                             <svg class="w-3 h-3 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                             {{ item.material_order.items_count }} Item Material
                                         </button>
+                                        <span v-if="item.area" class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                                            <svg class="w-3 h-3 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                            {{ item.area }}
+                                        </span>
                                     </div>
                                     <p class="text-xs text-gray-500 mt-0.5">Oleh: {{ item.user }}</p>
                                 </td>
@@ -518,6 +544,16 @@
                                 </option>
                             </select>
                             <p v-if="expenseForm.errors.expense_category_id" class="text-xs text-rose-500 mt-1 font-medium">{{ expenseForm.errors.expense_category_id }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Area / Wilayah</label>
+                            <select v-model="expenseForm.area_id" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-rose-500 focus:border-rose-500 text-sm font-medium">
+                                <option value="">-- Kantor Pusat / Semua Wilayah (Umum) --</option>
+                                <option v-for="a in areas" :key="a.id" :value="a.id">
+                                    {{ a.name }}
+                                </option>
+                            </select>
+                            <p v-if="expenseForm.errors.area_id" class="text-xs text-rose-500 mt-1 font-medium">{{ expenseForm.errors.area_id }}</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Nominal (Rp) <span class="text-rose-500">*</span></label>
@@ -700,6 +736,10 @@ const props = defineProps({
     expense_categories: {
         type: Array,
         default: () => []
+    },
+    areas: {
+        type: Array,
+        default: () => []
     }
 });
 
@@ -722,6 +762,7 @@ const ledgerFilter = ref({
     search: props.filters?.search || '',
     type: props.filters?.type || 'all',
     category: props.filters?.category || 'all',
+    area: props.filters?.area || 'all',
     date_from: props.filters?.date_from || '',
     date_to: props.filters?.date_to || '',
     per_page: Number(props.filters?.per_page) || 10,
@@ -744,6 +785,7 @@ const hasActiveFilters = computed(() => {
         ledgerFilter.value.search ||
         (ledgerFilter.value.type && ledgerFilter.value.type !== 'all') ||
         (ledgerFilter.value.category && ledgerFilter.value.category !== 'all') ||
+        (ledgerFilter.value.area && ledgerFilter.value.area !== 'all') ||
         ledgerFilter.value.date_from ||
         ledgerFilter.value.date_to ||
         Number(ledgerFilter.value.per_page) !== 10
@@ -758,6 +800,11 @@ const getCategoryLabel = (val) => {
     return found ? found.name : val;
 };
 
+const getAreaLabel = (val) => {
+    const found = props.areas.find(a => String(a.id) === String(val) || String(a.name) === String(val));
+    return found ? found.name : val;
+};
+
 // Actions to apply filter
 const applyLedgerFilter = (resetPage = true) => {
     const params = {
@@ -766,6 +813,7 @@ const applyLedgerFilter = (resetPage = true) => {
         search: ledgerFilter.value.search || undefined,
         type: ledgerFilter.value.type !== 'all' ? ledgerFilter.value.type : undefined,
         category: ledgerFilter.value.category !== 'all' ? ledgerFilter.value.category : undefined,
+        area: ledgerFilter.value.area !== 'all' ? ledgerFilter.value.area : undefined,
         date_from: ledgerFilter.value.date_from || undefined,
         date_to: ledgerFilter.value.date_to || undefined,
         per_page: Number(ledgerFilter.value.per_page) !== 10 ? ledgerFilter.value.per_page : 10,
@@ -802,6 +850,7 @@ const resetLedgerFilter = () => {
         search: '',
         type: 'all',
         category: 'all',
+        area: 'all',
         date_from: '',
         date_to: '',
         per_page: 10,
@@ -824,6 +873,7 @@ const printReport = () => {
     if (ledgerFilter.value.search) params.append('search', ledgerFilter.value.search);
     if (ledgerFilter.value.type && ledgerFilter.value.type !== 'all') params.append('type', ledgerFilter.value.type);
     if (ledgerFilter.value.category && ledgerFilter.value.category !== 'all') params.append('category', ledgerFilter.value.category);
+    if (ledgerFilter.value.area && ledgerFilter.value.area !== 'all') params.append('area', ledgerFilter.value.area);
     if (ledgerFilter.value.date_from) params.append('date_from', ledgerFilter.value.date_from);
     if (ledgerFilter.value.date_to) params.append('date_to', ledgerFilter.value.date_to);
 
@@ -854,6 +904,7 @@ const getTodayDate = () => {
 const showExpenseModal = ref(false);
 const expenseForm = useForm({
     expense_category_id: '',
+    area_id: '',
     amount: '',
     description: '',
     expense_date: getTodayDate(),
@@ -875,6 +926,7 @@ const submitExpense = () => {
             showExpenseModal.value = false;
             expenseForm.reset();
             expenseForm.expense_category_id = '';
+            expenseForm.area_id = '';
             expenseForm.expense_date = getTodayDate();
             Swal.fire({
                 icon: 'success',

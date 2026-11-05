@@ -42,7 +42,7 @@ class FinancialReportController extends Controller
         // 1. Grand Summary Cards (Period Selected)
         
         // Pemasukan: Hanya pembayaran yang sudah verified (Eager load relations to prevent N+1)
-        $paymentsThisMonth = Payment::with(['invoice.customer', 'customer', 'collector'])
+        $paymentsThisMonth = Payment::with(['invoice.customer.areaModel', 'customer.areaModel', 'collector'])
             ->where('status', 'verified')
             ->whereBetween('payment_date', [$startDate, $endDate])
             ->get();
@@ -146,6 +146,8 @@ class FinancialReportController extends Controller
             $type = ($p->invoice && $p->invoice->is_reseller_balance) ? 'reseller' : 'customer';
             $custName = $p->customer?->name ?? ($p->invoice?->customer?->name ?? 'Pelanggan');
             $collectorName = $p->collector?->name ?? 'System';
+            $custArea = $p->customer?->areaModel?->name ?? $p->customer?->area ?? ($p->invoice?->customer?->areaModel?->name ?? $p->invoice?->customer?->area ?? null);
+            $custAreaId = $p->customer?->area_id ?? ($p->invoice?->customer?->area_id ?? null);
 
             $ledger->push([
                 'id' => 'p_'.$p->id,
@@ -161,10 +163,12 @@ class FinancialReportController extends Controller
                 'person' => $custName,
                 'user' => $collectorName,
                 'material_order' => null,
+                'area_id' => $custAreaId,
+                'area' => $custArea,
             ]);
         }
         
-        $expensesThisMonth = Expense::with(['creator', 'category', 'materialTransaction.items.material'])
+        $expensesThisMonth = Expense::with(['creator', 'category', 'areaModel', 'materialTransaction.items.material'])
             ->whereBetween('expense_date', [$startDate, $endDate])
             ->get();
 
@@ -211,6 +215,9 @@ class FinancialReportController extends Controller
                 ];
             }
 
+            $expAreaName = $e->area ?: ($e->areaModel?->name ?: ($materialDetails['area_name'] ?? null));
+            $expAreaId = $e->area_id ?: ($po?->area_id ?? null);
+
             $ledger->push([
                 'id' => 'e_'.$e->id,
                 'expense_id' => $e->id,
@@ -226,6 +233,8 @@ class FinancialReportController extends Controller
                 'person' => '-',
                 'user' => $e->creator ? $e->creator->name : 'Unknown',
                 'material_order' => $materialDetails,
+                'area_id' => $expAreaId,
+                'area' => $expAreaName,
             ]);
         }
         
@@ -236,6 +245,7 @@ class FinancialReportController extends Controller
         $search = trim($request->get('search', ''));
         $filterType = $request->get('type', 'all'); // 'all', 'income', 'expense'
         $filterCategory = $request->get('category', 'all'); // 'all', 'customer', 'reseller', 'material', or category_id
+        $filterArea = $request->get('area', 'all'); // 'all', or area_id / area_name
 
         if ($search !== '') {
             $searchLower = strtolower($search);
@@ -244,7 +254,7 @@ class FinancialReportController extends Controller
                 $person = strtolower($item['person'] ?? '');
                 $user = strtolower($item['user'] ?? '');
                 $poNum = strtolower($item['material_order']['transaction_number'] ?? '');
-                $area = strtolower($item['material_order']['area_name'] ?? '');
+                $area = strtolower($item['area'] ?? ($item['material_order']['area_name'] ?? ''));
                 $catName = strtolower($item['category_name'] ?? '');
                 $catCode = strtolower($item['category_code'] ?? '');
 
@@ -277,6 +287,13 @@ class FinancialReportController extends Controller
                 return ($item['category_id'] ?? null) == $filterCategory 
                     || ($item['category_code'] ?? null) == $filterCategory
                     || ($item['category'] ?? null) == $filterCategory;
+            });
+        }
+
+        if ($filterArea !== 'all' && $filterArea !== '' && !empty($filterArea)) {
+            $ledger = $ledger->filter(function($item) use ($filterArea) {
+                return (string)($item['area_id'] ?? '') === (string)$filterArea 
+                    || strtolower(trim($item['area'] ?? '')) === strtolower(trim($filterArea));
             });
         }
 
@@ -352,11 +369,13 @@ class FinancialReportController extends Controller
                 'search' => $search,
                 'type' => $filterType,
                 'category' => $filterCategory,
+                'area' => $filterArea,
                 'date_from' => $dateFrom ?: '',
                 'date_to' => $dateTo ?: '',
                 'per_page' => $perPage,
             ],
             'kpi' => $collectorKpi,
+            'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
             'expense_categories' => ExpenseCategory::active()->orderBy('name')->get(['id', 'code', 'name', 'color']),
         ]);
     }
@@ -387,7 +406,7 @@ class FinancialReportController extends Controller
         }
 
         // Verified Payments
-        $paymentsThisMonth = Payment::with(['invoice.customer', 'customer', 'collector'])
+        $paymentsThisMonth = Payment::with(['invoice.customer.areaModel', 'customer.areaModel', 'collector'])
             ->where('status', 'verified')
             ->whereBetween('payment_date', [$startDate, $endDate])
             ->get();
@@ -440,6 +459,8 @@ class FinancialReportController extends Controller
             $type = ($p->invoice && $p->invoice->is_reseller_balance) ? 'reseller' : 'customer';
             $custName = $p->customer?->name ?? ($p->invoice?->customer?->name ?? 'Pelanggan');
             $collectorName = $p->collector?->name ?? 'System';
+            $custArea = $p->customer?->areaModel?->name ?? $p->customer?->area ?? ($p->invoice?->customer?->areaModel?->name ?? $p->invoice?->customer?->area ?? null);
+            $custAreaId = $p->customer?->area_id ?? ($p->invoice?->customer?->area_id ?? null);
 
             $ledger->push([
                 'id' => 'p_'.$p->id,
@@ -454,10 +475,12 @@ class FinancialReportController extends Controller
                 'person' => $custName,
                 'user' => $collectorName,
                 'po_number' => null,
+                'area_id' => $custAreaId,
+                'area' => $custArea,
             ]);
         }
 
-        $expensesThisMonth = Expense::with(['creator', 'category', 'materialTransaction'])
+        $expensesThisMonth = Expense::with(['creator', 'category', 'areaModel', 'materialTransaction'])
             ->whereBetween('expense_date', [$startDate, $endDate])
             ->get();
 
@@ -465,12 +488,16 @@ class FinancialReportController extends Controller
             $catName = $e->category ? $e->category->name : 'Operasional';
             $catCode = $e->category ? $e->category->code : null;
             $poNum = null;
+            $orderArea = null;
             if ($e->materialTransaction) {
                 $poNum = $e->materialTransaction->transaction_number;
+                $orderArea = $e->materialTransaction->area ?: $e->materialTransaction->technician_name;
             } elseif (preg_match('/\[(PO-[^\]]+)\]/', $e->description, $matches)) {
                 $poNum = $matches[1];
             }
 
+            $expArea = $e->area ?: ($e->areaModel?->name ?: $orderArea);
+            $expAreaId = $e->area_id ?: ($e->materialTransaction?->area_id ?? null);
             $isMaterial = !empty($poNum) || $catCode === 'MAT';
 
             $ledger->push([
@@ -486,6 +513,8 @@ class FinancialReportController extends Controller
                 'person' => '-',
                 'user' => $e->creator ? $e->creator->name : 'Unknown',
                 'po_number' => $poNum,
+                'area_id' => $expAreaId,
+                'area' => $expArea,
             ]);
         }
 
@@ -495,6 +524,7 @@ class FinancialReportController extends Controller
         $search = trim($request->get('search', ''));
         $filterType = $request->get('type', 'all');
         $filterCategory = $request->get('category', 'all');
+        $filterArea = $request->get('area', 'all');
 
         if ($search !== '') {
             $searchLower = strtolower($search);
@@ -503,6 +533,7 @@ class FinancialReportController extends Controller
                     || str_contains(strtolower($item['person'] ?? ''), $searchLower)
                     || str_contains(strtolower($item['user'] ?? ''), $searchLower)
                     || str_contains(strtolower($item['po_number'] ?? ''), $searchLower)
+                    || str_contains(strtolower($item['area'] ?? ''), $searchLower)
                     || str_contains(strtolower($item['category_name'] ?? ''), $searchLower);
             });
         }
@@ -525,6 +556,13 @@ class FinancialReportController extends Controller
                 return ($item['category_id'] ?? null) == $filterCategory 
                     || ($item['category_code'] ?? null) == $filterCategory
                     || ($item['category'] ?? null) == $filterCategory;
+            });
+        }
+
+        if ($filterArea !== 'all' && $filterArea !== '' && !empty($filterArea)) {
+            $ledger = $ledger->filter(function($item) use ($filterArea) {
+                return (string)($item['area_id'] ?? '') === (string)$filterArea 
+                    || strtolower(trim($item['area'] ?? '')) === strtolower(trim($filterArea));
             });
         }
 
@@ -568,6 +606,7 @@ class FinancialReportController extends Controller
                 'search' => $search,
                 'type' => $filterType,
                 'category' => $filterCategory,
+                'area' => $filterArea,
                 'date_from' => $dateFrom,
                 'date_to' => $dateTo,
             ],

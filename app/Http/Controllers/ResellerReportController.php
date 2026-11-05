@@ -84,6 +84,7 @@ class ResellerReportController extends Controller
             'resellers' => $resellers,
             'recent_transactions' => $recentTransactions,
             'recent_expenses' => $recentExpenses,
+            'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
             'expense_categories' => \App\Models\ExpenseCategory::active()->orderBy('name')->get(['id', 'code', 'name', 'color']),
         ]);
     }

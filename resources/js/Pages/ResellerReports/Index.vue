@@ -155,6 +155,9 @@
                                         <span v-if="exp.category" class="text-[10px] font-bold px-2 py-0.5 rounded-md border shrink-0" :class="exp.category?.code === 'MAT' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-rose-50 text-rose-700 border-rose-200'">
                                             {{ exp.category.name }}
                                         </span>
+                                        <span v-if="exp.area" class="text-[10px] font-bold px-2 py-0.5 rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200 shrink-0">
+                                            Wilayah: {{ exp.area }}
+                                        </span>
                                     </div>
                                     <p class="text-[10px] text-gray-400 mt-0.5">{{ new Date(exp.expense_date).toLocaleDateString('id-ID') }} &middot; Oleh: {{ exp.user?.name || 'Sistem' }}</p>
                                 </div>
@@ -215,6 +218,16 @@
                                     <p v-if="expenseForm.errors.expense_category_id" class="text-xs text-rose-500 mt-1 font-medium">{{ expenseForm.errors.expense_category_id }}</p>
                                 </div>
                                 <div>
+                                    <label class="block text-sm font-medium text-gray-700">Area / Wilayah</label>
+                                    <select v-model="expenseForm.area_id" class="mt-1 block w-full border-gray-300 rounded-xl shadow-sm focus:ring-rose-500 focus:border-rose-500 text-sm font-medium">
+                                        <option value="">-- Kantor Pusat / Semua Wilayah (Umum) --</option>
+                                        <option v-for="a in areas" :key="a.id" :value="a.id">
+                                            {{ a.name }}
+                                        </option>
+                                    </select>
+                                    <p v-if="expenseForm.errors.area_id" class="text-xs text-rose-500 mt-1 font-medium">{{ expenseForm.errors.area_id }}</p>
+                                </div>
+                                <div>
                                     <label class="block text-sm font-medium text-gray-700">Nominal (Rp) <span class="text-rose-500">*</span></label>
                                     <div class="relative mt-1">
                                         <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-sm font-bold text-gray-400">Rp</span>
@@ -260,7 +273,11 @@ const props = defineProps({
     resellers: Array,
     recent_transactions: Array,
     recent_expenses: Array,
-    expense_categories: Array
+    expense_categories: Array,
+    areas: {
+        type: Array,
+        default: () => []
+    }
 });
 
 const formatRupiah = (number) => {
@@ -280,6 +297,7 @@ const showExpenseModal = ref(false);
 const expenseForm = useForm({
     amount: '',
     expense_category_id: '',
+    area_id: '',
     description: '',
     expense_date: getTodayDate(),
 });
@@ -291,6 +309,7 @@ const submitExpense = () => {
             showExpenseModal.value = false;
             expenseForm.reset();
             expenseForm.expense_category_id = '';
+            expenseForm.area_id = '';
             expenseForm.expense_date = getTodayDate();
             Swal.fire({
                 icon: 'success',

@@ -43,3 +43,4 @@ return new class extends Migration
         // Tidak perlu rollback karena token di-render otomatis oleh model
     }
 };
+
