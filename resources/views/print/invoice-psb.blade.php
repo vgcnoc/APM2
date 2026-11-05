@@ -237,44 +237,191 @@
             color: #475569;
             border: 1px solid #e2e8f0;
         }
-        .paid-stamp {
-            display: inline-block;
-            border: 3px solid #059669;
-            color: #059669;
-            font-weight: 900;
-            font-size: 16px;
-            letter-spacing: 2px;
-            padding: 6px 16px;
-            text-transform: uppercase;
-            border-radius: 8px;
-            transform: rotate(-5deg);
-            opacity: 0.9;
+        /* ══════════════════════════════════════════════════════════════
+           REAL OFFICIAL CORPORATE RUBBER STAMP (STEMPEL RESMI BERLOGO)
+           ══════════════════════════════════════════════════════════════ */
+        .stamp-section {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            margin: 18px 0;
+            padding: 12px 18px;
+            background: #f8fafc;
+            border: 1px dashed #cbd5e1;
+            border-radius: 12px;
+            page-break-inside: avoid;
         }
-        .unpaid-stamp {
+        .stamp-wrap {
+            flex-shrink: 0;
+        }
+        .real-stamp {
+            position: relative;
             display: inline-block;
-            border: 3px solid #dc2626;
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            border: 2.5px solid currentColor;
+            padding: 3px;
+            box-sizing: border-box;
+            transform: rotate(-5deg);
+            opacity: 0.92;
+            user-select: none;
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.4);
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .real-stamp::before {
+            content: '';
+            position: absolute;
+            inset: 4px;
+            border-radius: 50%;
+            border: 1px dashed currentColor;
+            opacity: 0.75;
+            pointer-events: none;
+        }
+        .stamp-inner-ring {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 1.5px solid currentColor;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 5px 4px 6px;
+            z-index: 1;
+        }
+        .stamp-top-text {
+            font-size: 8px;
+            font-weight: 800;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            line-height: 1.1;
+            color: currentColor;
+            padding-top: 1px;
+            max-width: 95%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .stamp-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            margin: auto 0;
+        }
+        .stamp-logo {
+            max-height: 28px;
+            max-width: 68px;
+            object-fit: contain;
+            margin-bottom: 2px;
+            filter: drop-shadow(0 0 0.5px currentColor);
+        }
+        .stamp-logo-fallback {
+            font-size: 10px;
+            letter-spacing: 2px;
+            margin-bottom: 2px;
+            font-weight: 900;
+        }
+        .stamp-status-ribbon {
+            width: 100%;
+            border-top: 1.5px solid currentColor;
+            border-bottom: 1.5px solid currentColor;
+            padding: 2px 0;
+            margin: 1px 0;
+            background: rgba(255, 255, 255, 0.75);
+        }
+        .stamp-status-text {
+            font-size: 11px;
+            font-weight: 900;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            display: block;
+            line-height: 1.1;
+        }
+        .stamp-date-text {
+            font-size: 7.5px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin-top: 2px;
+            line-height: 1;
+        }
+        .stamp-bottom-text {
+            font-size: 7.5px;
+            font-weight: 800;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            line-height: 1.1;
+            color: currentColor;
+            padding-bottom: 1px;
+        }
+        .stamp-paid {
+            color: #047857;
+            border-color: #047857;
+        }
+        .stamp-unpaid {
             color: #dc2626;
-            font-weight: 900;
-            font-size: 16px;
-            letter-spacing: 2px;
-            padding: 6px 16px;
-            text-transform: uppercase;
-            border-radius: 8px;
-            transform: rotate(-5deg);
-            opacity: 0.9;
+            border-color: #dc2626;
         }
-        .free-stamp {
-            display: inline-block;
-            border: 3px solid #64748b;
-            color: #475569;
-            font-weight: 900;
-            font-size: 16px;
-            letter-spacing: 2px;
-            padding: 6px 16px;
-            text-transform: uppercase;
-            border-radius: 8px;
-            transform: rotate(-5deg);
-            opacity: 0.9;
+        .stamp-free {
+            color: #0f766e;
+            border-color: #0f766e;
+        }
+        .stamp-desc-box {
+            flex: 1;
+            min-width: 0;
+        }
+        .stamp-desc-title {
+            font-size: 13px;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+        .stamp-desc-title.text-green { color: #047857; }
+        .stamp-desc-title.text-red { color: #dc2626; }
+        .stamp-desc-title.text-teal { color: #0f766e; }
+        .stamp-desc-meta {
+            font-size: 11.5px;
+            color: #334155;
+            margin-bottom: 6px;
+        }
+        .stamp-desc-note {
+            font-size: 11px;
+            color: #64748b;
+            line-height: 1.5;
+        }
+        .stamp-signature-stamp {
+            width: 105px !important;
+            height: 105px !important;
+            opacity: 0.82;
+            transform: rotate(-6deg);
+            position: absolute;
+            top: -24px;
+            left: 50%;
+            margin-left: -52px;
+            pointer-events: none;
+        }
+        .stamp-signature-stamp .stamp-logo {
+            max-height: 20px;
+            max-width: 50px;
+        }
+        .stamp-signature-stamp .stamp-status-text {
+            font-size: 8.5px;
+            letter-spacing: 1px;
+        }
+        .stamp-signature-stamp .stamp-top-text,
+        .stamp-signature-stamp .stamp-bottom-text {
+            font-size: 6.5px;
+            letter-spacing: 0.8px;
+        }
+        .stamp-signature-stamp .stamp-inner-ring {
+            padding: 3px 2px 4px;
         }
         .terms {
             background: #fafafa;
@@ -353,6 +500,19 @@
 
         $paidDateFmt = $customer->psb_paid_at ? \Carbon\Carbon::parse($customer->psb_paid_at)->translatedFormat('d F Y') : $actDateFmt;
         $payMethod = $customer->psb_payment_method ? strtoupper($customer->psb_payment_method) : 'TUNAI / TRANSFER';
+
+        $rawLogo = $company['logo'] ?? \App\Models\Setting::get('company_logo', null);
+        $logoUrl = null;
+        if (!empty($rawLogo)) {
+            if (str_starts_with($rawLogo, 'http://') || str_starts_with($rawLogo, 'https://') || str_starts_with($rawLogo, 'data:')) {
+                $logoUrl = $rawLogo;
+            } elseif (str_starts_with($rawLogo, 'storage/') || str_starts_with($rawLogo, '/storage/')) {
+                $logoUrl = asset(ltrim($rawLogo, '/'));
+            } else {
+                $logoUrl = asset('storage/' . ltrim($rawLogo, '/'));
+            }
+        }
+        $stampClass = $isPaid ? 'stamp-paid' : ($isUnpaid ? 'stamp-unpaid' : 'stamp-free');
 
         if ($isFree) {
             $statusLabel = 'BEBAS BIAYA';
@@ -559,51 +719,70 @@
             </tbody>
         </table>
 
-        <!-- STATUS CAP LUNAS / BELUM LUNAS / BEBAS BIAYA -->
-        @if($isPaid)
-        <div style="display: flex; justify-content: space-between; align-items: center; margin: 16px 0;">
-            <div>
-                <span class="paid-stamp">LUNAS</span>
-                <span style="font-size: 11px; color: #059669; font-weight: 700; margin-left: 10px;">
-                    Pembayaran telah diterima dan diverifikasi ({{ $payMethod }})
-                </span>
+        <!-- STATUS CAP LUNAS / BELUM LUNAS / BEBAS BIAYA (REAL STEMPEL RESMI BERLOGO) -->
+        <div class="stamp-section">
+            <div class="stamp-wrap">
+                <div class="real-stamp {{ $stampClass }}">
+                    <div class="stamp-inner-ring">
+                        <div class="stamp-top-text">★ {{ strtoupper($company['name'] ?? 'VIRUZS') }} ★</div>
+                        <div class="stamp-center">
+                            @if(!empty($logoUrl))
+                                <img src="{{ $logoUrl }}" alt="{{ $company['name'] }}" class="stamp-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                <div class="stamp-logo-fallback" style="display: none;">★ ★ ★</div>
+                            @else
+                                <div class="stamp-logo-fallback">★ ★ ★</div>
+                            @endif
+                            <div class="stamp-status-ribbon">
+                                <span class="stamp-status-text">{{ $statusLabel }}</span>
+                            </div>
+                            @if($isPaid && !empty($paidDateFmt))
+                                <div class="stamp-date-text">{{ $paidDateFmt }}</div>
+                            @elseif($isFree)
+                                <div class="stamp-date-text">PROMO REGISTRASI</div>
+                            @else
+                                <div class="stamp-date-text">TAGIHAN PIUTANG</div>
+                            @endif
+                        </div>
+                        <div class="stamp-bottom-text">★ FINANCE & BILLING ★</div>
+                    </div>
+                </div>
             </div>
-            <div style="text-align: right; font-size: 11px; color: #64748b;">
-                Tanggal Pelunasan: <strong>{{ $paidDateFmt }}</strong>
-                @if($customer->psbReceiver) &bull; Penerima: <strong>{{ $customer->psbReceiver->name }}</strong> @endif
+
+            <div class="stamp-desc-box">
+                @if($isPaid)
+                    <div class="stamp-desc-title text-green">
+                        ✓ PEMBAYARAN TELAH DITERIMA & LUNAS
+                    </div>
+                    <div class="stamp-desc-meta">
+                        Metode: <strong>{{ $payMethod }}</strong> &bull; Tgl Pelunasan: <strong>{{ $paidDateFmt }}</strong>
+                        @if($customer->psbReceiver) &bull; Diterima Oleh: <strong>{{ $customer->psbReceiver->name }}</strong> @endif
+                    </div>
+                    <div class="stamp-desc-note">
+                        Invoice ini sah sebagai bukti tanda terima pembayaran resmi pasang baru dan registrasi aktivasi layanan internet.
+                    </div>
+                @elseif($isUnpaid)
+                    <div class="stamp-desc-title text-red">
+                        ⚠️ MENUNGGAK / MENUNGGU PEMBAYARAN
+                    </div>
+                    <div class="stamp-desc-meta">
+                        Status: <strong>PIUTANG PSB</strong> &bull; Total Tagihan: <strong>{{ $psbFeeFmt }}</strong>
+                    </div>
+                    <div class="stamp-desc-note">
+                        Silakan lakukan pembayaran tunai ke petugas teknisi resmi atau transfer ke rekening <strong>BANK BRI: 410101025028534 a.n Deri Gantinayasa</strong>. Setelah transfer, kirim bukti bayar ke WhatsApp layanan pelanggan.
+                    </div>
+                @else
+                    <div class="stamp-desc-title text-teal">
+                        🎁 PROGRAM PROMO BEBAS BIAYA REGISTRASI
+                    </div>
+                    <div class="stamp-desc-meta">
+                        Status: <strong>GRATIS (Bebas Biaya Pasang)</strong> &bull; Biaya Tagihan: <strong>Rp 0</strong>
+                    </div>
+                    <div class="stamp-desc-note">
+                        Pelanggan mendapatkan fasilitas bebas biaya pasang baru (PSB). Layanan internet langsung aktif tanpa kewajiban biaya registrasi.
+                    </div>
+                @endif
             </div>
         </div>
-        @elseif($isUnpaid)
-        <div style="display: flex; justify-content: space-between; align-items: center; margin: 16px 0;">
-            <div>
-                <span class="unpaid-stamp">BELUM LUNAS</span>
-                <span style="font-size: 11px; color: #dc2626; font-weight: 700; margin-left: 10px;">
-                    MENUNGGAK / MENUNGGU PEMBAYARAN PELANGGAN
-                </span>
-            </div>
-            <div style="text-align: right; font-size: 11px; color: #dc2626; font-weight: 700;">
-                Status: PIUTANG PSB
-            </div>
-        </div>
-        <div style="background-color: #fef2f2; border: 1.5px dashed #f87171; border-radius: 8px; padding: 12px 16px; margin: 14px 0;">
-            <strong style="color: #991b1b; font-size: 12px; display: block; margin-bottom: 4px;">Instruksi Pembayaran Biaya Pasang Baru (PSB):</strong>
-            <p style="color: #7f1d1d; margin: 0; font-size: 12px; line-height: 1.6;">
-                Silakan melakukan transfer ke <strong>BANK BRI: 410101025028534 a/n Deri Gantinayasa</strong> atau pembayaran tunai langsung kepada teknisi resmi kami. Setelah melakukan transfer, harap kirimkan foto bukti transfer ke WhatsApp <strong>{{ $company['phone'] ?? '088976397034' }}</strong> atau login ke Aplikasi Client Area di <strong>https://viruzs.rlradius.com</strong>.
-            </p>
-        </div>
-        @else
-        <div style="display: flex; justify-content: space-between; align-items: center; margin: 16px 0;">
-            <div>
-                <span class="free-stamp">BEBAS BIAYA</span>
-                <span style="font-size: 11px; color: #475569; font-weight: 700; margin-left: 10px;">
-                    Program Promo Bebas Biaya Registrasi / Gratis Pasang
-                </span>
-            </div>
-            <div style="text-align: right; font-size: 11px; color: #64748b;">
-                Biaya Tagihan PSB: <strong>Rp 0</strong>
-            </div>
-        </div>
-        @endif
 
         <!-- CATATAN & SYARAT KETENTUAN -->
         <div class="terms">
@@ -627,9 +806,27 @@
             <div class="sign-box" style="border: none; background: transparent;">
                 <!-- Ruang tengah -->
             </div>
-            <div class="sign-box">
+            <div class="sign-box" style="position: relative; overflow: visible;">
                 <div class="sign-title">Diterbitkan & Diverifikasi Oleh,</div>
-                <div class="sign-space"></div>
+                <div class="sign-space" style="position: relative; height: 60px;">
+                    <div class="real-stamp stamp-signature-stamp {{ $stampClass }}">
+                        <div class="stamp-inner-ring">
+                            <div class="stamp-top-text">★ {{ strtoupper($company['name'] ?? 'VIRUZS') }} ★</div>
+                            <div class="stamp-center">
+                                @if(!empty($logoUrl))
+                                    <img src="{{ $logoUrl }}" alt="{{ $company['name'] }}" class="stamp-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                    <div class="stamp-logo-fallback" style="display: none;">★ ★ ★</div>
+                                @else
+                                    <div class="stamp-logo-fallback">★ ★ ★</div>
+                                @endif
+                                <div class="stamp-status-ribbon">
+                                    <span class="stamp-status-text">{{ $statusLabel }}</span>
+                                </div>
+                            </div>
+                            <div class="stamp-bottom-text">★ OFFICIAL STAMP ★</div>
+                        </div>
+                    </div>
+                </div>
                 <div class="sign-name">{{ auth()->user()->name ?? 'Petugas Administrasi' }}</div>
                 <div class="sign-role">{{ $company['name'] }}</div>
             </div>

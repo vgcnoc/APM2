@@ -135,6 +135,20 @@
             }
             $banks = $banks ?? (json_decode(\App\Models\Setting::get('payment_banks', '[]'), true) ?: []);
             $activeTemplate = $template ?? \App\Models\Setting::get('invoice_template', 'modern');
+
+            $rawLogo = $company['logo'] ?? \App\Models\Setting::get('company_logo', null);
+            $logoUrl = null;
+            if (!empty($rawLogo)) {
+                if (str_starts_with($rawLogo, 'http://') || str_starts_with($rawLogo, 'https://') || str_starts_with($rawLogo, 'data:')) {
+                    $logoUrl = $rawLogo;
+                } elseif (str_starts_with($rawLogo, 'storage/') || str_starts_with($rawLogo, '/storage/')) {
+                    $logoUrl = asset(ltrim($rawLogo, '/'));
+                } else {
+                    $logoUrl = asset('storage/' . ltrim($rawLogo, '/'));
+                }
+            }
+            $isPaid = ($invoice->status === 'paid');
+            $stampClass = $isPaid ? 'stamp-paid' : 'stamp-unpaid';
         @endphp
 
         /* ═════════════════════════════════════════════════════════
@@ -1299,23 +1313,115 @@
             box-shadow: 0 10px 25px rgba(124, 58, 237, 0.25);
         }
 
-        /* ── Stempel & Signature Shared ─────────────────────────── */
-        .official-stamp {
-            width: 140px;
-            height: 90px;
-            border: 2px solid #2563eb;
+        /* ── Stempel & Signature Shared (Real Corporate Rubber Stamp) ─────────────────────────── */
+        .real-stamp {
+            position: relative;
+            display: inline-block;
+            width: 130px;
+            height: 130px;
             border-radius: 50%;
+            border: 2.5px solid currentColor;
+            padding: 3px;
+            box-sizing: border-box;
+            transform: rotate(-6deg);
+            opacity: 0.90;
+            user-select: none;
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.45);
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .real-stamp::before {
+            content: '';
+            position: absolute;
+            inset: 4px;
+            border-radius: 50%;
+            border: 1px dashed currentColor;
+            opacity: 0.75;
+            pointer-events: none;
+        }
+        .stamp-inner-ring {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 1.5px solid currentColor;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 5px 4px 6px;
+            z-index: 1;
+        }
+        .stamp-top-text {
+            font-size: 7.5px;
+            font-weight: 800;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            line-height: 1.1;
+            color: currentColor;
+            padding-top: 1px;
+            max-width: 95%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .stamp-center {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 4px;
-            color: #2563eb;
-            background: rgba(255, 255, 255, 0.6);
-            transform: rotate(-10deg);
-            opacity: 0.88;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
+            width: 100%;
+            margin: auto 0;
+        }
+        .stamp-logo {
+            max-height: 26px;
+            max-width: 62px;
+            object-fit: contain;
+            margin-bottom: 2px;
+            filter: drop-shadow(0 0 0.5px currentColor);
+        }
+        .stamp-status-ribbon {
+            width: 100%;
+            border-top: 1.5px solid currentColor;
+            border-bottom: 1.5px solid currentColor;
+            padding: 1.5px 0;
+            margin: 1px 0;
+            background: rgba(255, 255, 255, 0.75);
+        }
+        .stamp-status-text {
+            font-size: 10px;
+            font-weight: 900;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            display: block;
+            line-height: 1.1;
+        }
+        .stamp-date-text {
+            font-size: 7px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin-top: 1px;
+            line-height: 1;
+        }
+        .stamp-bottom-text {
+            font-size: 7px;
+            font-weight: 800;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            line-height: 1.1;
+            color: currentColor;
+            padding-bottom: 1px;
+        }
+        .stamp-paid {
+            color: #047857;
+            border-color: #047857;
+        }
+        .stamp-unpaid {
+            color: #dc2626;
+            border-color: #dc2626;
         }
 
         /* ── Media Print ────────────────────────────────────────── */
@@ -1525,14 +1631,25 @@
                     <div class="modern-stamp-box">
                         <div style="font-size: 11px; color: #64748b;">{{ $invoice->issued_date ? $invoice->issued_date->format('d M Y') : date('d M Y') }}</div>
                         <div style="font-size: 12px; font-weight: 700; color: #0f172a; margin-top: 2px;">Bagian Keuangan,</div>
-                        <div style="height: 70px; display: flex; align-items: center; justify-content: center; position: relative;">
-                            @if(!empty($company['logo']))
-                            <div class="official-stamp">
-                                <div style="font-size: 8px; font-weight: 800; text-transform: uppercase;">{{ $company['name'] }}</div>
-                                <div style="font-size: 9px; font-weight: 900; margin: 2px 0;">★ LUNAS ★</div>
-                                <div style="font-size: 7px;">FINANCE DIVISION</div>
+                        <div style="height: 115px; display: flex; align-items: center; justify-content: center; position: relative; margin: 4px 0;">
+                            <div class="real-stamp {{ $stampClass }}">
+                                <div class="stamp-inner-ring">
+                                    <div class="stamp-top-text">★ {{ strtoupper($company['name'] ?? 'VIRUZS') }} ★</div>
+                                    <div class="stamp-center">
+                                        @if(!empty($logoUrl))
+                                            <img src="{{ $logoUrl }}" alt="{{ $company['name'] }}" class="stamp-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                            <div style="display: none; font-size: 10px; font-weight: 900;">★ ★ ★</div>
+                                        @else
+                                            <div style="font-size: 10px; font-weight: 900;">★ ★ ★</div>
+                                        @endif
+                                        <div class="stamp-status-ribbon">
+                                            <span class="stamp-status-text">{{ $isPaid ? 'LUNAS' : 'TAGIHAN' }}</span>
+                                        </div>
+                                        <div class="stamp-date-text">{{ $invoice->paid_at ? \Carbon\Carbon::parse($invoice->paid_at)->format('d/m/Y') : ($invoice->issued_date ? $invoice->issued_date->format('d/m/Y') : date('d/m/Y')) }}</div>
+                                    </div>
+                                    <div class="stamp-bottom-text">★ FINANCE & BILLING ★</div>
+                                </div>
                             </div>
-                            @endif
                         </div>
                         <div style="font-weight: 700; font-size: 12px; border-top: 1px solid #94a3b8; display: inline-block; padding-top: 4px; min-width: 140px;">
                             {{ $company['name'] }}
@@ -1655,12 +1772,28 @@
                     </div>
                 </div>
 
-                <div class="classic-signature">
+                <div class="classic-signature" style="position: relative; overflow: visible;">
                     <p>{{ date('d F Y') }}</p>
                     <p style="margin-top: 4px;">Hormat kami,</p>
-                    <div style="height: 65px;"></div>
-                    <p style="text-decoration: underline; font-weight: bold; margin: 0;">( {{ $invoice->payments->first()?->collector?->name ?? auth()->user()?->name ?? 'Bagian Keuangan' }} )</p>
-                    <p style="margin: 2px 0 0;">{{ $company['name'] }}</p>
+                    <div style="height: 70px; display: flex; align-items: center; justify-content: center; position: relative;">
+                        <div class="real-stamp {{ $stampClass }}" style="position: absolute; top: -15px; width: 110px; height: 110px; transform: rotate(-5deg); opacity: 0.85;">
+                            <div class="stamp-inner-ring">
+                                <div class="stamp-top-text" style="font-size: 6.5px;">★ {{ strtoupper($company['name'] ?? 'VIRUZS') }} ★</div>
+                                <div class="stamp-center">
+                                    @if(!empty($logoUrl))
+                                        <img src="{{ $logoUrl }}" alt="{{ $company['name'] }}" class="stamp-logo" style="max-height: 22px; max-width: 50px;" onerror="this.style.display='none';">
+                                    @endif
+                                    <div class="stamp-status-ribbon" style="padding: 1px 0;">
+                                        <span class="stamp-status-text" style="font-size: 9px;">{{ $isPaid ? 'LUNAS' : 'TAGIHAN' }}</span>
+                                    </div>
+                                    <div class="stamp-date-text" style="font-size: 6.5px;">{{ $invoice->paid_at ? \Carbon\Carbon::parse($invoice->paid_at)->format('d/m/Y') : date('d/m/Y') }}</div>
+                                </div>
+                                <div class="stamp-bottom-text" style="font-size: 6px;">★ OFFICIAL STAMP ★</div>
+                            </div>
+                        </div>
+                    </div>
+                    <p style="text-decoration: underline; font-weight: bold; margin: 0; position: relative; z-index: 2;">( {{ $invoice->payments->first()?->collector?->name ?? auth()->user()?->name ?? 'Bagian Keuangan' }} )</p>
+                    <p style="margin: 2px 0 0; position: relative; z-index: 2;">{{ $company['name'] }}</p>
                 </div>
             </div>
         </div>

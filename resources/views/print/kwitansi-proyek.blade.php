@@ -153,6 +153,109 @@
             color: #0f172a;
             display: inline-block;
         }
+        /* ── Real Rubber Stamp Style ── */
+        .real-stamp {
+            position: relative;
+            display: inline-block;
+            width: 105px;
+            height: 105px;
+            border-radius: 50%;
+            border: 2px solid #047857;
+            color: #047857;
+            padding: 2.5px;
+            box-sizing: border-box;
+            transform: rotate(-5deg);
+            opacity: 0.88;
+            user-select: none;
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.45);
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .real-stamp::before {
+            content: '';
+            position: absolute;
+            inset: 3px;
+            border-radius: 50%;
+            border: 1px dashed currentColor;
+            opacity: 0.75;
+            pointer-events: none;
+        }
+        .stamp-inner-ring {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 1px solid currentColor;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 3px 5px;
+            z-index: 1;
+        }
+        .stamp-top-text {
+            font-size: 6.5px;
+            font-weight: 800;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            line-height: 1;
+            color: currentColor;
+            padding-top: 1px;
+            max-width: 95%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .stamp-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            margin: auto 0;
+        }
+        .stamp-logo {
+            max-height: 20px;
+            max-width: 50px;
+            object-fit: contain;
+            margin-bottom: 1.5px;
+            filter: drop-shadow(0 0 0.5px currentColor);
+        }
+        .stamp-status-ribbon {
+            width: 100%;
+            border-top: 1px solid currentColor;
+            border-bottom: 1px solid currentColor;
+            padding: 1px 0;
+            margin: 1px 0;
+            background: rgba(255, 255, 255, 0.75);
+        }
+        .stamp-status-text {
+            font-size: 8.5px;
+            font-weight: 900;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            display: block;
+            line-height: 1;
+        }
+        .stamp-date-text {
+            font-size: 6.5px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            margin-top: 1px;
+            line-height: 1;
+        }
+        .stamp-bottom-text {
+            font-size: 6px;
+            font-weight: 800;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            line-height: 1;
+            color: currentColor;
+            padding-bottom: 1px;
+        }
         .sign-area {
             text-align: center;
             width: 220px;
@@ -240,9 +343,26 @@
                 </div>
             </div>
 
-            <div class="sign-area">
+            <div class="sign-area" style="position: relative; overflow: visible;">
                 <div class="sign-date">
                     {{ \Carbon\Carbon::parse($invoice->paid_at ?? now())->translatedFormat('d F Y') }}
+                </div>
+                <div style="height: 65px; display: flex; align-items: center; justify-content: center; position: relative;">
+                    <div class="real-stamp" style="position: absolute; top: -15px;">
+                        <div class="stamp-inner-ring">
+                            <div class="stamp-top-text">★ {{ strtoupper($company['name'] ?? 'VIRUZS') }} ★</div>
+                            <div class="stamp-center">
+                                @if(!empty($company['logo']))
+                                    <img src="{{ asset('storage/' . $company['logo']) }}" alt="{{ $company['name'] }}" class="stamp-logo" onerror="this.style.display='none';">
+                                @endif
+                                <div class="stamp-status-ribbon">
+                                    <span class="stamp-status-text">LUNAS</span>
+                                </div>
+                                <div class="stamp-date-text">{{ \Carbon\Carbon::parse($invoice->paid_at ?? now())->format('d/m/Y') }}</div>
+                            </div>
+                            <div class="stamp-bottom-text">★ OFFICIAL RECEIPT ★</div>
+                        </div>
+                    </div>
                 </div>
                 <div class="sign-person">
                     {{ $invoice->creator->name ?? 'Bagian Keuangan' }}<br>

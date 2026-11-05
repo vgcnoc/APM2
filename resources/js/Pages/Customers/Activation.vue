@@ -1443,19 +1443,49 @@
                                         {{ $page.props.company_address || 'Penyedia Layanan Internet Cepat & Stabil' }}
                                     </p>
                                 </div>
-                                <div class="text-right">
-                                    <span v-if="Number(selectedPsbCustomer.installation_fee || 0) <= 0 || selectedPsbCustomer.psb_payment_status === 'free'" class="inline-flex items-center gap-1 px-2.5 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-bold border border-slate-200">
-                                        🎁 BEBAS BIAYA
-                                    </span>
-                                    <span v-else-if="selectedPsbCustomer.psb_payment_status === 'unpaid'" class="inline-flex items-center gap-1 px-2.5 py-0.5 bg-rose-100 text-rose-800 rounded-full text-xs font-bold border border-rose-200">
-                                        ⚠️ BELUM LUNAS
-                                    </span>
-                                    <span v-else class="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold border border-emerald-200">
-                                        ✓ LUNAS
-                                    </span>
-                                    <p class="text-[10px] text-gray-400 mt-1 font-mono">
-                                        {{ formatDateIndo(selectedPsbCustomer.activation_date || new Date()) }}
-                                    </p>
+                                <div class="text-right flex items-center justify-end">
+                                    <!-- Stempel Resmi Berlogo Perusahaan -->
+                                    <div 
+                                        class="relative w-24 h-24 rounded-full border-[2.5px] p-1 flex flex-col items-center justify-between text-center select-none rotate-[-6deg] transition-all shadow-xs"
+                                        :class="Number(selectedPsbCustomer.installation_fee || 0) <= 0 || selectedPsbCustomer.psb_payment_status === 'free'
+                                            ? 'border-teal-700 text-teal-800 bg-teal-50/60'
+                                            : (selectedPsbCustomer.psb_payment_status === 'unpaid'
+                                                ? 'border-rose-700 text-rose-800 bg-rose-50/60'
+                                                : 'border-emerald-700 text-emerald-800 bg-emerald-50/60')"
+                                    >
+                                        <!-- Dashed inner ring watermark -->
+                                        <div class="absolute inset-1 rounded-full border border-dashed border-current opacity-60 pointer-events-none"></div>
+
+                                        <!-- Top Company Text -->
+                                        <div class="text-[7px] font-black uppercase tracking-wider leading-none z-10 pt-0.5 truncate max-w-[90%]">
+                                            ★ {{ $page.props.company_name || 'VIRUZS' }} ★
+                                        </div>
+
+                                        <!-- Center Logo & Status Ribbon -->
+                                        <div class="flex flex-col items-center justify-center my-auto w-full z-10 px-1">
+                                            <img 
+                                                v-if="$page.props.company_logo" 
+                                                :src="$page.props.company_logo" 
+                                                alt="Logo" 
+                                                class="max-h-5 max-w-[48px] object-contain drop-shadow-2xs mb-0.5"
+                                            />
+                                            <div 
+                                                class="w-full border-y-[1.5px] border-current py-0.5 my-0.5 font-black uppercase text-[8.5px] tracking-wider leading-none bg-white/85"
+                                            >
+                                                {{ Number(selectedPsbCustomer.installation_fee || 0) <= 0 || selectedPsbCustomer.psb_payment_status === 'free'
+                                                    ? 'BEBAS BIAYA'
+                                                    : (selectedPsbCustomer.psb_payment_status === 'unpaid' ? 'BELUM LUNAS' : 'LUNAS') }}
+                                            </div>
+                                            <div class="text-[6.5px] font-bold tracking-tight opacity-90">
+                                                {{ formatDateIndo(selectedPsbCustomer.activation_date || new Date()) }}
+                                            </div>
+                                        </div>
+
+                                        <!-- Bottom Dept Text -->
+                                        <div class="text-[6.5px] font-black uppercase tracking-wider leading-none z-10 pb-0.5">
+                                            ★ FINANCE & BILLING ★
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
