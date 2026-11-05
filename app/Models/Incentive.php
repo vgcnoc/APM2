@@ -12,7 +12,8 @@ class Incentive extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'incentive_date' => 'date'
+        'incentive_date' => 'date',
+        'disbursed_at' => 'date',
     ];
 
     public function user()

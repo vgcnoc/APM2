@@ -86,6 +86,7 @@ class IncentiveDeductionController extends Controller
                 'description' => $cleanDescription($item->description),
                 'date' => $item->incentive_date,
                 'status' => $item->status,
+                'disbursed_at' => $item->disbursed_at ? \Carbon\Carbon::parse($item->disbursed_at)->toDateString() : null,
                 'created_at' => $item->created_at,
             ];
         });
@@ -251,7 +252,28 @@ class IncentiveDeductionController extends Controller
             return back()->with('error', 'Hanya data bertipe Insentif yang dapat dicairkan.');
         }
 
-        return DB::transaction(function () use ($realIds, $authUser) {
+        // Tanggal pencairan kas yang dipilih user (default: hari ini)
+        $disburseDateInput = $request->input('disburse_date');
+        $disburseDate = now()->toDateString();
+        if (!empty($disburseDateInput)) {
+            try {
+                $disburseDate = \Carbon\Carbon::parse($disburseDateInput)->toDateString();
+            } catch (\Throwable $e) {
+                $disburseDate = now()->toDateString();
+            }
+        }
+
+        // Cek ketat jika ada data yang sudah dicairkan sebelumnya agar tidak bisa dicairkan ulang
+        $alreadyPaid = Incentive::whereIn('id', $realIds)->where('status', '!=', 'pending')->get();
+        if ($alreadyPaid->isNotEmpty()) {
+            if (count($realIds) === 1) {
+                $paidItem = $alreadyPaid->first();
+                $cairInfo = $paidItem->disbursed_at ? ' pada tanggal ' . \Carbon\Carbon::parse($paidItem->disbursed_at)->format('d/m/Y') : '';
+                return back()->with('error', "Insentif ini sudah dicairkan sebelumnya{$cairInfo} dan tidak dapat dicairkan ulang.");
+            }
+        }
+
+        return DB::transaction(function () use ($realIds, $authUser, $disburseDate) {
             $incentives = Incentive::with('user')
                 ->whereIn('id', $realIds)
                 ->where('status', 'pending')
@@ -259,7 +281,7 @@ class IncentiveDeductionController extends Controller
                 ->get();
 
             if ($incentives->isEmpty()) {
-                return back()->with('error', 'Tidak ada data insentif pending yang dapat dicairkan (mungkin sudah dicairkan sebelumnya).');
+                return back()->with('error', 'Semua data insentif yang dipilih sudah dicairkan sebelumnya atau tidak berstatus pending.');
             }
 
             // Resolve Expense Category (misal 'Operasional Lapangan', 'Insentif', dll)
@@ -279,8 +301,14 @@ class IncentiveDeductionController extends Controller
 
             $totalDisbursed = 0;
             $count = 0;
+            $cairDateStr = \Carbon\Carbon::parse($disburseDate)->format('d/m/Y');
 
             foreach ($incentives as $inc) {
+                // Perlindungan ganda: jika status bukan pending, skip
+                if ($inc->status !== 'pending') {
+                    continue;
+                }
+
                 $user = $inc->user;
                 if ($user && $user->isExemptFromAttendanceAndPayroll()) {
                     continue;
@@ -292,18 +320,19 @@ class IncentiveDeductionController extends Controller
                 $userName = $user?->name ?? 'Staf';
                 $cleanDesc = $inc->description ? " - {$inc->description}" : "";
                 $dateStr = $inc->incentive_date ? \Carbon\Carbon::parse($inc->incentive_date)->format('d/m/Y') : date('d/m/Y');
-                $expenseDesc = "Pencairan Insentif {$userName}{$cleanDesc} (Tgl: {$dateStr})";
+                $expenseDesc = "Pencairan Insentif {$userName}{$cleanDesc} (Periode: {$dateStr}, Dicairkan: {$cairDateStr})";
 
                 $expense = Expense::create([
                     'amount' => $amount,
                     'expense_category_id' => $category?->id,
                     'description' => $expenseDesc,
-                    'expense_date' => now()->toDateString(),
+                    'expense_date' => $disburseDate,
                     'user_id' => $authUser->id,
                 ]);
 
                 $inc->update([
                     'status' => 'paid',
+                    'disbursed_at' => $disburseDate,
                     'reference_id' => $expense ? 'exp_' . $expense->id : $inc->reference_id,
                 ]);
 
@@ -312,11 +341,11 @@ class IncentiveDeductionController extends Controller
             }
 
             if ($count === 0) {
-                return back()->with('error', 'Tidak ada insentif yang berhasil dicairkan.');
+                return back()->with('error', 'Tidak ada insentif yang berhasil dicairkan (mungkin sudah dicairkan sebelumnya).');
             }
 
             $formattedTotal = number_format($totalDisbursed, 0, ',', '.');
-            return back()->with('success', "Berhasil mencairkan {$count} insentif dengan total Rp {$formattedTotal} ke Buku Kas Umum.");
+            return back()->with('success', "Berhasil mencairkan {$count} insentif dengan total Rp {$formattedTotal} ke Buku Kas Umum pada tanggal {$cairDateStr}.");
         });
     }
 }

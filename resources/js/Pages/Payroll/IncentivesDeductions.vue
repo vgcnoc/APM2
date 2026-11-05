@@ -268,7 +268,11 @@
                                     <div class="text-xs text-gray-800 font-semibold leading-relaxed">{{ record.description }}</div>
                                 </td>
                                 <td class="px-5 py-4 whitespace-nowrap text-xs text-gray-500 font-medium">
-                                    {{ formatDate(record.date) }}
+                                    <div class="font-bold text-gray-700">{{ formatDate(record.date) }}</div>
+                                    <div v-if="record.disbursed_at && record.status === 'paid'" class="text-[11px] text-emerald-700 font-semibold mt-0.5 flex items-center gap-1">
+                                        <svg class="w-3 h-3 text-emerald-600 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/></svg>
+                                        <span>Cair: {{ formatDate(record.disbursed_at) }}</span>
+                                    </div>
                                 </td>
                                 <td class="px-5 py-4 whitespace-nowrap text-center text-xs font-medium">
                                     <div v-if="record.status === 'pending'" class="flex items-center justify-center gap-1.5">
@@ -294,10 +298,15 @@
                                             Pending
                                         </span>
                                     </div>
-                                    <span v-else class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                                        <svg class="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                                        Sudah Cair
-                                    </span>
+                                    <div v-else class="flex flex-col items-center justify-center gap-0.5">
+                                        <span class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                                            <svg class="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                            Sudah Cair
+                                        </span>
+                                        <span v-if="record.disbursed_at" class="text-[10px] text-emerald-600 font-bold" :title="'Tanggal Cair: ' + formatDate(record.disbursed_at)">
+                                            {{ formatDate(record.disbursed_at) }}
+                                        </span>
+                                    </div>
                                 </td>
                             </tr>
                             <tr v-if="records.data.length === 0">
@@ -606,18 +615,44 @@ const deleteRecord = (record) => {
 };
 
 const disburseRecord = (record) => {
+    if (record.status !== 'pending') {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Sudah Dicairkan',
+            text: 'Data insentif ini sudah dicairkan sebelumnya dan tidak dapat dicairkan ulang.',
+            confirmButtonColor: '#059669'
+        });
+        return;
+    }
+
+    const todayDate = new Date().toISOString().split('T')[0];
+
     Swal.fire({
         title: 'Cairkan Insentif Sekarang?',
         html: `
-            <div class="text-left text-xs text-slate-600 space-y-2.5 mt-2">
+            <div class="text-left text-xs text-slate-600 space-y-3 mt-2 font-sans">
                 <p>Insentif ini akan langsung dicairkan ke <b>Buku Kas Umum</b> untuk staf:</p>
                 <div class="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl">
                     <div class="font-extrabold text-slate-900 text-sm">${record.user_name}</div>
                     <div class="text-emerald-700 font-mono font-bold text-base mt-1">Rp ${formatCurrency(record.amount)}</div>
                     <div class="text-[11px] text-slate-600 mt-1">${record.description || 'Insentif Manual'}</div>
-                    <div class="text-[10px] text-slate-400 mt-0.5">Tanggal: ${formatDate(record.date)}</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">Tgl Insentif: ${formatDate(record.date)}</div>
                 </div>
-                <p class="text-[11px] text-slate-500 italic">Pengeluaran kas otomatis tercatat hari ini dan status insentif berubah menjadi <b>Sudah Cair</b>.</p>
+                
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <label for="swal-disburse-date" class="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        Tanggal Pencairan Kas:
+                    </label>
+                    <input 
+                        type="date" 
+                        id="swal-disburse-date" 
+                        value="${todayDate}" 
+                        class="w-full text-xs font-bold px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white text-slate-800"
+                        required
+                    />
+                    <p class="text-[10px] text-slate-400 mt-1">Pengeluaran kas otomatis dicatat pada tanggal ini.</p>
+                </div>
             </div>
         `,
         icon: 'question',
@@ -625,11 +660,22 @@ const disburseRecord = (record) => {
         confirmButtonText: '⚡ Ya, Cairkan Sekarang',
         cancelButtonText: 'Batal',
         confirmButtonColor: '#059669',
-        cancelButtonColor: '#64748b'
+        cancelButtonColor: '#64748b',
+        focusConfirm: false,
+        preConfirm: () => {
+            const input = document.getElementById('swal-disburse-date');
+            if (!input || !input.value) {
+                Swal.showValidationMessage('Silakan tentukan tanggal pencairan!');
+                return false;
+            }
+            return input.value;
+        }
     }).then((res) => {
-        if (res.isConfirmed) {
+        if (res.isConfirmed && res.value) {
+            const chosenDate = res.value;
             router.post(route('insentif-potongan.disburse'), {
-                id: record.id
+                id: record.id,
+                disburse_date: chosenDate,
             }, {
                 preserveScroll: true,
                 onSuccess: () => {
@@ -663,18 +709,33 @@ const disburseSelected = () => {
     if (selectedIds.value.length === 0) return;
     const count = selectedIds.value.length;
     const totalFormatted = formatCurrency(selectedTotalAmount.value);
+    const todayDate = new Date().toISOString().split('T')[0];
 
     Swal.fire({
         title: `Cairkan ${count} Insentif Terpilih?`,
         html: `
-            <div class="text-left text-xs text-slate-600 space-y-2.5 mt-2">
+            <div class="text-left text-xs text-slate-600 space-y-3 mt-2 font-sans">
                 <p>Anda akan mencairkan <b>${count} insentif terpilih</b> secara langsung ke <b>Buku Kas Umum</b>:</p>
                 <div class="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl">
                     <div class="text-xs font-bold text-emerald-800">Total Pengeluaran Kas:</div>
                     <div class="text-emerald-700 font-mono font-black text-lg mt-0.5">Rp ${totalFormatted}</div>
                     <div class="text-[11px] text-slate-600 mt-1">Jumlah Item: ${count} Insentif Pending</div>
                 </div>
-                <p class="text-[11px] text-slate-500 italic">Seluruh insentif terpilih akan langsung berstatus <b>Sudah Cair</b> dan tercatat di Buku Kas Umum hari ini.</p>
+
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <label for="swal-disburse-date-bulk" class="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        Tanggal Pencairan Kas:
+                    </label>
+                    <input 
+                        type="date" 
+                        id="swal-disburse-date-bulk" 
+                        value="${todayDate}" 
+                        class="w-full text-xs font-bold px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white text-slate-800"
+                        required
+                    />
+                    <p class="text-[10px] text-slate-400 mt-1">Pengeluaran kas otomatis dicatat pada tanggal ini untuk seluruh insentif terpilih.</p>
+                </div>
             </div>
         `,
         icon: 'question',
@@ -682,11 +743,22 @@ const disburseSelected = () => {
         confirmButtonText: `⚡ Ya, Cairkan Semua (${count} Item)`,
         cancelButtonText: 'Batal',
         confirmButtonColor: '#059669',
-        cancelButtonColor: '#64748b'
+        cancelButtonColor: '#64748b',
+        focusConfirm: false,
+        preConfirm: () => {
+            const input = document.getElementById('swal-disburse-date-bulk');
+            if (!input || !input.value) {
+                Swal.showValidationMessage('Silakan tentukan tanggal pencairan!');
+                return false;
+            }
+            return input.value;
+        }
     }).then((res) => {
-        if (res.isConfirmed) {
+        if (res.isConfirmed && res.value) {
+            const chosenDate = res.value;
             router.post(route('insentif-potongan.disburse'), {
-                ids: selectedIds.value
+                ids: selectedIds.value,
+                disburse_date: chosenDate,
             }, {
                 preserveScroll: true,
                 onSuccess: () => {
