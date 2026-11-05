@@ -1985,10 +1985,23 @@ async function savePppoeSettings() {
 async function generatePppoe() {
     isGeneratingPppoe.value = true;
     try {
-        const res = await axios.get('/onts/generate-pppoe');
+        const res = await axios.get('/onts/generate-pppoe', {
+            params: {
+                prefix: pppoeSettings.value.pppoe_prefix,
+                format: pppoeSettings.value.pppoe_format,
+                length: pppoeSettings.value.pppoe_length,
+                suffix: pppoeSettings.value.pppoe_suffix,
+                case: pppoeSettings.value.pppoe_case,
+                password_type: pppoeSettings.value.pppoe_password_type,
+                password_length: pppoeSettings.value.pppoe_password_length,
+                default_password: pppoeSettings.value.pppoe_default_password,
+            }
+        });
         if (res.data && res.data.success) {
-            form.pppoe_user = res.data.user;
-            form.pppoe_password = res.data.password;
+            const userVal = res.data.pppoe_user || res.data.user || '';
+            const passVal = res.data.pppoe_password || res.data.password || '';
+            form.pppoe_user = String(userVal);
+            form.pppoe_password = String(passVal);
             pppoeCheckStatus.value = 'available';
             pppoeConflictMessage.value = '';
         }
@@ -1999,7 +2012,8 @@ async function generatePppoe() {
         const randomNum = Math.floor(1000 + Math.random() * 9000);
         form.pppoe_user = `${prefix}${randomNum}${suffix}`;
         form.pppoe_password = String(Math.floor(100000 + Math.random() * 900000));
-        pppoeCheckStatus.value = 'idle';
+        pppoeCheckStatus.value = 'available';
+        pppoeConflictMessage.value = '';
     } finally {
         isGeneratingPppoe.value = false;
     }

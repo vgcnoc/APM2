@@ -780,6 +780,8 @@ class OntController extends Controller
             'success' => true,
             'pppoe_user' => $generatedUser,
             'pppoe_password' => $generatedPassword,
+            'user' => $generatedUser,
+            'password' => $generatedPassword,
             'prefix' => $prefix,
             'format' => $format,
         ]);
