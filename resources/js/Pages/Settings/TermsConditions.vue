@@ -313,7 +313,7 @@ const showPreviewModal = ref(false);
 const contentInputRef = ref(null);
 
 const form = useForm({
-    title: props.currentTemplate?.title || 'SURAT PERJANJIAN & SYARAT KETENTUAN BERLANGGANAN LAYANAN INTERNET',
+    title: props.currentTemplate?.title || 'SURAT PERJANJIAN BERLANGGANAN INTERNET PT VIRUZS GLOBAL CONNECTION DENGAN PELANGGAN',
     type: props.currentTemplate?.type || 'general',
     content: props.currentTemplate?.content || '',
     requires_employee_signature: props.currentTemplate?.requires_employee_signature ?? true,
@@ -342,19 +342,20 @@ function insertToken(token) {
 const renderedPreviewContent = computed(() => {
     let raw = form.content || '';
     const sampleData = {
-        '{nama_pelanggan}': 'Budi Santoso',
-        '{nomor_layanan}': 'CUST-00214',
-        '{id_pelanggan}': 'CUST-00214',
-        '{telepon}': '081234567890',
-        '{email}': 'budi.santoso@example.com',
-        '{alamat}': 'Jl. Kenanga No. 12, RT 02/03, Desa Sirnajaya',
-        '{area}': 'Desa Sirnajaya',
-        '{paket}': 'Paket Family 20M',
+        '{nama_pelanggan}': 'Siti Fatimah',
+        '{nomor_layanan}': 'CUS-002568',
+        '{id_pelanggan}': 'CUS-002568',
+        '{nik_ktp}': '3202123456780001',
+        '{telepon}': '085718293547',
+        '{email}': 'siti.fatimah@example.com',
+        '{alamat}': 'Kp. Sukamulya RT 01/02 Kec. Cikembar Sukabumi',
+        '{area}': 'Wilayah BC 1',
+        '{paket}': 'INTERNET HEBAT 20 MBPS',
         '{kecepatan}': '20 Mbps',
-        '{tarif}': 'Rp 150.000',
-        '{biaya_pasang}': 'Rp 100.000',
-        '{tanggal}': '04 November 2026',
-        '{perusahaan}': props.companyName || 'Vizbill ISP',
+        '{tarif}': 'Rp 117.118',
+        '{biaya_pasang}': 'Rp 120.000',
+        '{tanggal}': '05 November 2026',
+        '{perusahaan}': props.companyName || 'PT VIRUZS GLOBAL CONNECTION',
         '{petugas}': 'Super Admin',
     };
 

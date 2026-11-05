@@ -22,13 +22,13 @@ class SubscriptionTermsController extends Controller
 
         if (!$template) {
             $template = SubscriptionTermsTemplate::create([
-                'title' => 'SURAT PERJANJIAN & SYARAT KETENTUAN BERLANGGANAN LAYANAN INTERNET',
+                'title' => 'SURAT PERJANJIAN BERLANGGANAN INTERNET PT VIRUZS GLOBAL CONNECTION DENGAN PELANGGAN',
                 'type' => 'general',
                 'content' => $this->getDefaultContent(),
                 'requires_employee_signature' => true,
                 'requires_customer_signature' => true,
                 'is_active' => true,
-                'notes' => 'Template standar legalitas berlangganan ISP',
+                'notes' => 'Template resmi PT VIRUZS GLOBAL CONNECTION',
                 'created_by' => auth()->id(),
             ]);
         }
@@ -85,7 +85,7 @@ class SubscriptionTermsController extends Controller
         $template = SubscriptionTermsTemplate::first();
         if ($template) {
             $template->update([
-                'title' => 'SURAT PERJANJIAN & SYARAT KETENTUAN BERLANGGANAN LAYANAN INTERNET',
+                'title' => 'SURAT PERJANJIAN BERLANGGANAN INTERNET PT VIRUZS GLOBAL CONNECTION DENGAN PELANGGAN',
                 'content' => $this->getDefaultContent(),
                 'requires_employee_signature' => true,
                 'requires_customer_signature' => true,
@@ -112,13 +112,13 @@ class SubscriptionTermsController extends Controller
 
         if (!$template) {
             $template = SubscriptionTermsTemplate::create([
-                'title' => 'SURAT PERJANJIAN & SYARAT KETENTUAN BERLANGGANAN LAYANAN INTERNET',
+                'title' => 'SURAT PERJANJIAN BERLANGGANAN INTERNET PT VIRUZS GLOBAL CONNECTION DENGAN PELANGGAN',
                 'type' => 'general',
                 'content' => $this->getDefaultContent(),
                 'requires_employee_signature' => true,
                 'requires_customer_signature' => true,
                 'is_active' => true,
-                'notes' => 'Template standar legalitas berlangganan ISP',
+                'notes' => 'Template resmi PT VIRUZS GLOBAL CONNECTION',
             ]);
         }
 
@@ -238,17 +238,27 @@ class SubscriptionTermsController extends Controller
             $agreement = CustomerAgreement::findOrFail($agreement);
         }
 
-        $agreement->loadMissing(['customer.package', 'customer.areaModel', 'customer.sales.employee', 'employee']);
+        $agreement->loadMissing([
+            'customer.package',
+            'customer.areaModel',
+            'customer.surveys.surveyor',
+            'customer.technicianSchedules.technician',
+            'customer.sales.employee',
+            'employee'
+        ]);
+
+        $surveyTechnician = $agreement->customer?->surveys?->last()?->surveyor?->name;
+        $installationTechnician = $agreement->customer?->technicianSchedules?->last()?->technician?->name;
 
         $company = [
-            'name' => Setting::get('company_name', config('app.name', 'Vizbill ISP')),
-            'address' => Setting::get('company_address', 'Layanan Internet Cepat, Stabil & Terpercaya'),
-            'phone' => Setting::get('company_phone', ''),
+            'name' => Setting::get('company_name', 'PT VIRUZS GLOBAL CONNECTION'),
+            'address' => Setting::get('company_address', 'Jl.Perintis Kemerdekaan No.12A Kel.Sukamulya Kec.Cikembar Sukabumi'),
+            'phone' => Setting::get('company_phone', '088976397034'),
             'email' => Setting::get('company_email', ''),
             'logo' => Setting::get('company_logo', null),
         ];
 
-        return view('print.agreement', compact('agreement', 'company'));
+        return view('print.agreement', compact('agreement', 'company', 'surveyTechnician', 'installationTechnician'));
     }
 
     /**
@@ -257,44 +267,82 @@ class SubscriptionTermsController extends Controller
     private function getDefaultContent(): string
     {
         return <<<'EOT'
-<h3>PASAL 1 - KETENTUAN UMUM & DEFINISI</h3>
+<p>Yang bertanda tangan dibawah ini:</p>
+
+<table style="width: 100%; margin-bottom: 8px; border-collapse: collapse;">
+  <tr>
+    <td style="width: 110px; font-weight: 600; vertical-align: top; padding: 2px 0;">Nama</td>
+    <td style="width: 15px; vertical-align: top; padding: 2px 0;">:</td>
+    <td style="vertical-align: top; padding: 2px 0;"><strong>VIRUZS.NET</strong></td>
+  </tr>
+  <tr>
+    <td style="font-weight: 600; vertical-align: top; padding: 2px 0;">Status</td>
+    <td style="vertical-align: top; padding: 2px 0;">:</td>
+    <td style="vertical-align: top; padding: 2px 0;">Penyedia Jasa Internet</td>
+  </tr>
+  <tr>
+    <td style="font-weight: 600; vertical-align: top; padding: 2px 0;">Alamat</td>
+    <td style="vertical-align: top; padding: 2px 0;">:</td>
+    <td style="vertical-align: top; padding: 2px 0;">Jl.Perintis Kemerdekaan No.12A Kel.Sukamulya Kec.Cikembar Sukabumi</td>
+  </tr>
+</table>
+
+<p>Disebut sebagai VIRUZS.NET ( mewakili ) <strong>PIHAK PERTAMA</strong>:</p>
+
+<table style="width: 100%; margin-bottom: 8px; border-collapse: collapse;">
+  <tr>
+    <td style="width: 110px; font-weight: 600; vertical-align: top; padding: 2px 0;">Nama</td>
+    <td style="width: 15px; vertical-align: top; padding: 2px 0;">:</td>
+    <td style="vertical-align: top; padding: 2px 0;"><strong>{nama_pelanggan}</strong></td>
+  </tr>
+  <tr>
+    <td style="font-weight: 600; vertical-align: top; padding: 2px 0;">Alamat</td>
+    <td style="vertical-align: top; padding: 2px 0;">:</td>
+    <td style="vertical-align: top; padding: 2px 0;">{alamat}</td>
+  </tr>
+  <tr>
+    <td style="font-weight: 600; vertical-align: top; padding: 2px 0;">NIK KTP</td>
+    <td style="vertical-align: top; padding: 2px 0;">:</td>
+    <td style="vertical-align: top; padding: 2px 0;">{nik_ktp}</td>
+  </tr>
+</table>
+
+<p>Disebut sebagai PELANGGAN <strong>PIHAK KEDUA</strong>.</p>
+
+<p>Dengan ini menyatakan bahwa kedua belah pihak sepakat untuk bekerja sama dalam penyediaan dan penggunaan layanan internet dengan ketentuan sebagai berikut:</p>
+
+<h3>Kewajiban Pihak Pertama (Penyedia Jasa Internet)</h3>
 <ol>
-  <li><strong>Penyedia Layanan</strong> adalah <strong>{perusahaan}</strong> yang menyediakan layanan sambungan internet dan jaringan komunikasi data resmi.</li>
-  <li><strong>Pelanggan</strong> adalah perorangan, lembaga, atau badan hukum atas nama <strong>{nama_pelanggan}</strong> (ID Pelanggan: <strong>{nomor_layanan}</strong>) yang berdomisili di <strong>{alamat}</strong> yang menyetujui berlangganan layanan internet.</li>
-  <li><strong>Layanan</strong> adalah penyediaan sambungan internet paket <strong>{paket}</strong> dengan kecepatan hingga <strong>{kecepatan}</strong>.</li>
+  <li>
+    <strong>Menyediakan Layanan Internet</strong><br>
+    Pihak Pertama berkomitmen untuk menyediakan layanan internet dengan spesifikasi kecepatan Bandwidth Up To dan menyediakan alat untuk koneksi internet.
+  </li>
+  <li>
+    <strong>Menjaga Kualitas Layanan</strong><br>
+    Pihak Pertama bertanggung jawab untuk menjaga kualitas layanan internet agar sesuai dengan standar yang dijanjikan.
+  </li>
+  <li>
+    <strong>Memberikan Dukungan Teknis</strong><br>
+    Pihak Pertama akan memberikan dukungan teknis jika Pihak Kedua mengalami masalah dalam penggunaan layanan internet. Layanan dukungan ini dapat diakses melalui nomor kontak admin di grup pelanggan.
+  </li>
+  <li>
+    <strong>Pemulihan Gangguan Layanan</strong><br>
+    Pihak Pertama bertanggung jawab untuk segera memperbaiki dan memulihkan layanan internet jika terjadi gangguan teknis, sesuai dengan ketentuan waktu perbaikan yang wajar.
+  </li>
 </ol>
 
-<h3>PASAL 2 - BIAYA LAYANAN & PEMBAYARAN</h3>
+<h3>Syarat dan Ketentuan untuk pelanggan</h3>
 <ol>
-  <li>Biaya registrasi / instalasi awal disepakati sebesar <strong>{biaya_pasang}</strong> dibayarkan sesuai ketentuan pendaftaran.</li>
-  <li>Biaya langganan bulanan paket <strong>{paket}</strong> adalah sebesar <strong>{tarif}</strong> per bulan.</li>
-  <li>Pembayaran tagihan bulanan dilakukan selambat-lambatnya sebelum tanggal jatuh tempo setiap bulannya melalui rekening atau channel resmi Penyedia Layanan.</li>
-  <li>Keterlambatan pembayaran tagihan dapat mengakibatkan penghentian sementara (isolir) layanan internet sampai seluruh tunggakan dilunasi.</li>
+  <li>Melakukan pembayaran registrasi sebesar Rp 120,000,- (Jika tidak ada promo gratis pemasangan), ketika perangkat wifi sudah terpasang dan sudah dilakukan proses aktivasi. (Tidak di perkenankan membayar registrasi ketika booking atau survey).</li>
+  <li>Minimal kontrak berlangganan selama 6 (enam) bulan . Apabila berhenti berlangganan dibawah 6 (enam) bulan maka harus membayar sisa waktunya.</li>
+  <li>Perangkat WIFI seperti router/ONT dipinjamkan selama berlangganan.</li>
+  <li>Pembayaran internet bulanan dapat dilakukan per-tanggal 1 dan jatuh tempo tanggal 15. Pada saat pelanggan tidak membayar melewati jatuh tempo, maka internet akan putus secara otomatis. Begitupun dibulan kedua pembayaran internet bulanan masih juga belum dilunasi , maka tunggakan menjadi 2 bulan dan seterusnya , meskipun internet dibulan ke 2 tidak terkoneksi/putus.</li>
+  <li>Apabila 3 bulan masih menunggak maka alat akan dicabut kembali oleh pihak kami.</li>
+  <li>Pembayaran melalui transfer BANK BRI 410101025028534 a/n Deri Gantinayasa , setelah transfer pelanggan diharuskan konfirmasi dengan mengirim bukti transfer ke No Whatsapp 088976397034, Pelunasan otomatis silahkan login ke Aplikasi Client Area : <a href="https://viruzs.rlradius.com" target="_blank" style="color: #4f46e5; text-decoration: underline;">https://viruzs.rlradius.com</a> , login menggunakan No Whatsapp aktif pertama kali Registrasi. Tagihan otomatis lunas setelah melakukan pembayaran tanpa perlu konfirmasi jika menggunakan QRIS ( OVO , DANA, GOPAY, dll.) , Shopee Pay, Virtual Account ( BRI , MANDIRI, BSI, BNI), Indomart, Alfamart, DLL.</li>
 </ol>
 
-<h3>PASAL 3 - PERANGKAT JARINGAN & PEMELIHARAAN</h3>
-<ol>
-  <li>Perangkat keras jaringan berupa Optical Network Terminal (ONT / Modem), Kabel Fiber Optik Dropcore, dan adaptor listrik yang dipasang di lokasi Pelanggan berstatus <strong>PINJAM PAKAI</strong> milik Penyedia Layanan.</li>
-  <li>Pelanggan berkewajiban merawat dan menjaga perangkat dalam kondisi baik, serta tidak memindahkan, membongkar, atau merubah konfigurasi perangkat tanpa izin resmi teknisi.</li>
-  <li>Kerusakan atau kehilangan perangkat yang diakibatkan oleh kelalaian Pelanggan (seperti terjatuh, terbakar, terkena air, atau hilang) menjadi tanggung jawab Pelanggan dan wajib mengganti biaya perbaikan/penggantian unit sesuai tarif yang berlaku.</li>
-</ol>
-
-<h3>PASAL 4 - HAK DAN KEWAJIBAN</h3>
-<ol>
-  <li>Penyedia Layanan berkewajiban menjaga kestabilan dan ketersediaan layanan internet secara optimal, serta menindaklanjuti laporan gangguan teknis secepatnya sesuai jam operasional.</li>
-  <li>Pelanggan berhak menikmati sambungan internet sesuai spesifikasi paket yang dipilih selama masa berlangganan aktif.</li>
-  <li>Pelanggan DILARANG keras menyalahgunakan layanan internet untuk aktivitas melanggar hukum di wilayah Republik Indonesia (seperti perjudian online, hacking, penipuan digital, pornografi anak, atau penyebaran konten terorisme/SARA).</li>
-  <li>Pelanggan DILARANG memperjualbelikan kembali (reselling / RT-RW Net) kapasitas internet yang diterima kepada pihak ketiga tanpa perjanjian kemitraan resmi tertulis dengan Penyedia Layanan.</li>
-</ol>
-
-<h3>PASAL 5 - PEMUTUSAN BERLANGGANAN & PENGEMBALIAN PERANGKAT</h3>
-<ol>
-  <li>Pelanggan yang bermaksud berhenti berlangganan wajib memberitahukan Penyedia Layanan sekurang-kurangnya 7 (tujuh) hari kerja sebelum periode tagihan berikutnya.</li>
-  <li>Saat pemutusan layanan dilakukan, teknisi resmi berhak mengambil kembali seluruh perangkat pinjam pakai (ONT modem & adaptor) dalam keadaan baik dan lengkap.</li>
-</ol>
-
-<h3>PASAL 6 - PERSETUJUAN & KEKUATAN HUKUM</h3>
-<p>Dengan membubuhkan tanda tangan digital di bawah ini, Pelanggan dan Petugas/Karyawan yang bertugas menyatakan bahwa seluruh data yang tercantum adalah benar serta telah membaca, memahami, dan menyetujui seluruh syarat dan ketentuan yang berlaku tanpa ada paksaan dari pihak manapun.</p>
+<h3>Penutup</h3>
+<p>Dengan ini, kedua belah pihak menyatakan sepakat dengan kewajiban dan syarat ketentuan yang telah disebutkan di atas, dan berjanji untuk mematuhinya selama masa berlakunya layanan.</p>
 EOT;
     }
 }

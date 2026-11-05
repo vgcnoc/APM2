@@ -280,19 +280,25 @@
 
     <!-- Sheet Kontrak -->
     <div class="sheet">
-        <!-- Header Perusahaan -->
-        <div class="header">
-            <div class="company-info">
-                <h1>{{ $company['name'] ?? 'ISP MANAGEMENT' }}</h1>
-                <p>{{ $company['address'] ?? 'Layanan Akses Internet Cepat, Stabil & Terpercaya' }}</p>
-                <p>Kontak: {{ $company['phone'] ?? '-' }} | Email: {{ $company['email'] ?? '-' }}</p>
+        <!-- Header Perusahaan / Kop Surat -->
+        @if(file_exists(public_path('images/kop_viruzs.png')))
+            <div class="kop-banner" style="margin-bottom: 20px; text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 12px;">
+                <img src="{{ asset('images/kop_viruzs.png') }}" alt="PT VIRUZS GLOBAL CONNECTION" style="max-width: 100%; height: auto; max-height: 110px; display: block; margin: 0 auto; object-fit: contain;">
             </div>
-            @if(!empty($company['logo']))
-                <div class="company-logo">
-                    <img src="{{ $company['logo'] }}" alt="Logo Perusahaan">
+        @else
+            <div class="header">
+                <div class="company-info">
+                    <h1>{{ $company['name'] ?? 'PT VIRUZS GLOBAL CONNECTION' }}</h1>
+                    <p>{{ $company['address'] ?? 'Jl.Perintis Kemerdekaan No.12A Kel.Sukamulya Kec.Cikembar Sukabumi' }}</p>
+                    <p>Kontak: {{ $company['phone'] ?? '088976397034' }} | Email: {{ $company['email'] ?? '-' }}</p>
                 </div>
-            @endif
-        </div>
+                @if(!empty($company['logo']))
+                    <div class="company-logo">
+                        <img src="{{ $company['logo'] }}" alt="Logo Perusahaan">
+                    </div>
+                @endif
+            </div>
+        @endif
 
         <!-- Judul Dokumen -->
         <div class="doc-title-box">
@@ -316,22 +322,22 @@
                     <td class="info-label">Nomor WhatsApp/HP</td>
                     <td class="info-sep">:</td>
                     <td class="info-val">{{ $agreement->customer_phone ?: ($agreement->customer?->phone ?? '-') }}</td>
+                    <td class="info-label">NIK / No. KTP</td>
+                    <td class="info-sep">:</td>
+                    <td class="info-val">{{ $agreement->customer?->nik ?? $agreement->customer?->identity_number ?? '-' }}</td>
+                </tr>
+                <tr>
                     <td class="info-label">Paket Langganan</td>
                     <td class="info-sep">:</td>
                     <td class="info-val">{{ $agreement->customer?->package?->name ?? 'Paket Internet' }}</td>
-                </tr>
-                <tr>
-                    <td class="info-label">Alamat Pemasangan</td>
-                    <td class="info-sep">:</td>
-                    <td class="info-val">{{ $agreement->customer?->address ?? '-' }}</td>
                     <td class="info-label">Biaya Bulanan</td>
                     <td class="info-sep">:</td>
                     <td class="info-val">Rp {{ number_format($agreement->customer?->base_amount ?: ($agreement->customer?->package?->price ?? 0), 0, ',', '.') }}</td>
                 </tr>
                 <tr>
-                    <td class="info-label">Wilayah / Area</td>
+                    <td class="info-label">Alamat Pemasangan</td>
                     <td class="info-sep">:</td>
-                    <td class="info-val">{{ $agreement->customer?->areaModel?->name ?? $agreement->customer?->area ?? '-' }}</td>
+                    <td class="info-val">{{ $agreement->customer?->address ?? '-' }}</td>
                     <td class="info-label">Tahapan S&amp;K</td>
                     <td class="info-sep">:</td>
                     <td class="info-val">{{ strtoupper($agreement->stage) }}</td>
@@ -344,12 +350,21 @@
             {!! $agreement->content_snapshot !!}
         </div>
 
-        <!-- Kotak Tanda Tangan Digital -->
+        <!-- Kotak Tanda Tangan Digital & Para Pihak -->
         <div class="signatures">
+            <!-- Lokasi dan Tanggal -->
+            <div style="text-align: right; margin-bottom: 14px; font-weight: 600; font-size: 13px; color: #1e293b;">
+                Sukabumi, {{ $agreement->customer_signed_at ? $agreement->customer_signed_at->translatedFormat('d F Y') : ($agreement->created_at ? $agreement->created_at->translatedFormat('d F Y') : now()->translatedFormat('d F Y')) }}
+            </div>
+
+            <!-- Baris 1: Pihak Pertama & Pihak Kedua -->
             <div class="sig-grid">
-                <!-- TTD Petugas -->
+                <!-- TTD Pihak Pertama -->
                 <div class="sig-box">
-                    <div class="sig-role">Pihak Petugas / Teknisi Lapangan</div>
+                    <div class="sig-role">
+                        PT VIRUZS GLOBAL CONNECTION<br>
+                        <span style="font-size: 10px; font-weight: 500; color: #64748b; text-transform: none;">Pihak Pertama</span>
+                    </div>
                     <div class="sig-img-container">
                         @if($agreement->employee_signature)
                             <img src="{{ $agreement->employee_signature }}" alt="TTD Petugas" class="sig-img">
@@ -357,15 +372,18 @@
                             <span style="color: #94a3b8; font-style: italic; font-size: 11px;">(Belum bertanda tangan)</span>
                         @endif
                     </div>
-                    <div class="sig-name">{{ $agreement->employee_name }}</div>
+                    <div class="sig-name">{{ $agreement->employee_name ?: 'Petugas / Teknisi' }}</div>
                     <div class="sig-time">
                         {{ $agreement->employee_signed_at ? $agreement->employee_signed_at->translatedFormat('d F Y - H:i') . ' WIB' : '-' }}
                     </div>
                 </div>
 
-                <!-- TTD Pelanggan -->
+                <!-- TTD Pihak Kedua -->
                 <div class="sig-box">
-                    <div class="sig-role">Pihak Pelanggan Yang Berlangganan</div>
+                    <div class="sig-role">
+                        PELANGGAN<br>
+                        <span style="font-size: 10px; font-weight: 500; color: #64748b; text-transform: none;">Pihak Kedua</span>
+                    </div>
                     <div class="sig-img-container">
                         @if($agreement->customer_signature)
                             <img src="{{ $agreement->customer_signature }}" alt="TTD Pelanggan" class="sig-img">
@@ -376,6 +394,39 @@
                     <div class="sig-name">{{ $agreement->customer_name }}</div>
                     <div class="sig-time">
                         {{ $agreement->customer_signed_at ? $agreement->customer_signed_at->translatedFormat('d F Y - H:i') . ' WIB' : '-' }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Baris 2: Petugas Lapangan (Survey & Pasang) -->
+            <div class="sig-grid" style="margin-top: 14px;">
+                <!-- Petugas Survey -->
+                <div class="sig-box" style="background-color: #ffffff;">
+                    <div class="sig-role" style="margin-bottom: 6px;">Petugas Survey</div>
+                    <div class="sig-img-container" style="height: 55px;">
+                        @if($agreement->stage === 'survey' && $agreement->employee_signature)
+                            <img src="{{ $agreement->employee_signature }}" alt="TTD Survey" style="max-height: 50px;" class="sig-img">
+                        @else
+                            <span style="color: #cbd5e1; font-size: 10.5px; font-style: italic;">(Tanda Tangan Petugas)</span>
+                        @endif
+                    </div>
+                    <div class="sig-name" style="font-size: 12px;">
+                        {{ $agreement->stage === 'survey' ? $agreement->employee_name : ($surveyTechnician ?? '_______________________') }}
+                    </div>
+                </div>
+
+                <!-- Petugas Pasang -->
+                <div class="sig-box" style="background-color: #ffffff;">
+                    <div class="sig-role" style="margin-bottom: 6px;">Petugas Pasang</div>
+                    <div class="sig-img-container" style="height: 55px;">
+                        @if($agreement->stage === 'installation' && $agreement->employee_signature)
+                            <img src="{{ $agreement->employee_signature }}" alt="TTD Pasang" style="max-height: 50px;" class="sig-img">
+                        @else
+                            <span style="color: #cbd5e1; font-size: 10.5px; font-style: italic;">(Tanda Tangan Petugas)</span>
+                        @endif
+                    </div>
+                    <div class="sig-name" style="font-size: 12px;">
+                        {{ $agreement->stage === 'installation' ? $agreement->employee_name : ($installationTechnician ?? '_______________________') }}
                     </div>
                 </div>
             </div>

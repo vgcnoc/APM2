@@ -659,5 +659,20 @@ watch(() => props.customerId, () => {
     margin-bottom: 0.5rem;
     color: #334155;
 }
+.terms-box :deep(table) {
+    width: 100%;
+    margin-top: 0.25rem;
+    margin-bottom: 0.5rem;
+    border-collapse: collapse;
+}
+.terms-box :deep(td) {
+    padding: 2px 4px 2px 0;
+    vertical-align: top;
+    color: #334155;
+}
+.terms-box :deep(a) {
+    color: #4f46e5;
+    text-decoration: underline;
+}
 </style>
 
