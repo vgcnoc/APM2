@@ -3765,6 +3765,10 @@ class CustomerController extends Controller
                         $hotspotUser = $pppoeUser;
                         $hotspotPassword = $pppoePassword;
                     }
+                    if (!$request->boolean('free_hotspot')) {
+                        $pppoeUser = null;
+                        $pppoePassword = null;
+                    }
                 }
 
                 $customer->ont->update([
@@ -5154,6 +5158,10 @@ class CustomerController extends Controller
                 if (!empty($pppoeUser)) {
                     $hotspotUser = $pppoeUser;
                     $hotspotPassword = $pppoePassword;
+                }
+                if (!$request->boolean('free_hotspot')) {
+                    $pppoeUser = null;
+                    $pppoePassword = null;
                 }
             } else if (strtoupper($accessMode) === 'PPPOE') {
                 if (empty($pppoeUser) && !empty($hotspotUser)) {

@@ -824,12 +824,22 @@
                         <template v-else>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">PPPoE/Member Username</label>
-                                    <input v-model="activationForm.pppoe_user" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" placeholder="user@isp" />
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="block text-sm font-medium text-gray-700">
+                                            {{ activationForm.access_mode === 'HOTSPOT/MEMBER' ? 'Username Hotspot / Member' : 'PPPoE / Member Username' }}
+                                        </label>
+                                        <button type="button" @click="generateActivationPppoe" class="text-[11px] text-purple-600 hover:text-purple-800 font-semibold flex items-center gap-1 cursor-pointer">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                            Generate
+                                        </button>
+                                    </div>
+                                    <input v-model="activationForm.pppoe_user" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all text-sm font-mono" :placeholder="activationForm.access_mode === 'HOTSPOT/MEMBER' ? 'username_member' : 'user@isp'" />
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">PPPoE/Member Password</label>
-                                    <input v-model="activationForm.pppoe_password" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all" placeholder="***" />
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                                        {{ activationForm.access_mode === 'HOTSPOT/MEMBER' ? 'Password Hotspot / Member' : 'PPPoE / Member Password' }}
+                                    </label>
+                                    <input v-model="activationForm.pppoe_password" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all text-sm font-mono" placeholder="***" />
                                 </div>
                             </div>
                         </template>
@@ -2140,8 +2150,18 @@ function openActivationModal(customer) {
     }
     activationForm.access_mode = mode;
 
-    activationForm.pppoe_user = customer.ont?.pppoe_user || customer.ont?.hotspot_user || '';
-    activationForm.pppoe_password = customer.ont?.pppoe_password || customer.ont?.hotspot_password || '';
+    // Untuk mode hotspot, user & password diset baru saat aktivasi, tidak boleh mengambil dari data ONT
+    if (mode === 'HOTSPOT/MEMBER') {
+        activationForm.pppoe_user = '';
+        activationForm.pppoe_password = '';
+        activationForm.hotspot_user = '';
+        activationForm.hotspot_password = '';
+    } else {
+        activationForm.pppoe_user = customer.ont?.pppoe_user || '';
+        activationForm.pppoe_password = customer.ont?.pppoe_password || '';
+        activationForm.hotspot_user = customer.ont?.hotspot_user || '';
+        activationForm.hotspot_password = customer.ont?.hotspot_password || '';
+    }
     activationForm.vlan_mode = customer.ont?.vlan_mode || (customer.ont?.vlan_id ? 'VLAN' : '');
     activationForm.vlan_id = customer.ont?.vlan_id || '';
     activationForm.ip_login = customer.ont?.ip_login || '192.168.1.1';
@@ -2149,8 +2169,6 @@ function openActivationModal(customer) {
     activationForm.login_password = customer.ont?.login_password || 'admin';
     activationForm.notes = '';
     activationForm.free_hotspot = !!customer.ont?.free_hotspot;
-    activationForm.hotspot_user = customer.ont?.hotspot_user || '';
-    activationForm.hotspot_password = customer.ont?.hotspot_password || '';
     activationForm.hotspot_vlan_id = customer.ont?.hotspot_vlan_id || '';
     
     // Default to customer's saved PPN or global tax settings (default 11%)
@@ -2172,6 +2190,26 @@ function openActivationModal(customer) {
     showActivationModal.value = true;
 }
 
+function generateActivationPppoe() {
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let user = '';
+    let pass = '';
+    for (let i = 0; i < 6; i++) user += chars.charAt(Math.floor(Math.random() * chars.length));
+    for (let i = 0; i < 8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    const prefix = activationForm.access_mode === 'HOTSPOT/MEMBER' ? 'hs_' : 'user_';
+    activationForm.pppoe_user = prefix + user;
+    activationForm.pppoe_password = pass;
+}
+
+watch(() => activationForm.access_mode, (newMode, oldMode) => {
+    if (newMode === 'HOTSPOT/MEMBER' && oldMode !== 'HOTSPOT/MEMBER') {
+        if (activationForm.pppoe_user === activeCustomer.value?.ont?.pppoe_user) {
+            activationForm.pppoe_user = '';
+            activationForm.pppoe_password = '';
+        }
+    }
+});
+
 function submitActivation() {
     if (activationForm.access_mode === 'HOTSPOT/MEMBER') {
         activationForm.hotspot_user = activationForm.pppoe_user;
@@ -2181,7 +2219,7 @@ function submitActivation() {
         ...activeCustomer.value,
         activation_date: activationForm.activation_date || new Date().toISOString().slice(0, 10),
         installation_fee: activeCustomer.value?.installation_fee || 0,
-        pppoe_user: activationForm.pppoe_user,
+        pppoe_user: activationForm.access_mode === 'HOTSPOT/MEMBER' ? activationForm.hotspot_user : activationForm.pppoe_user,
         access_mode: activationForm.access_mode
     };
     activationForm.post(`/customers/${activeCustomer.value.id}/activate`, {

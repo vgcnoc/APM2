@@ -857,10 +857,18 @@
                                             <div class="flex justify-between"><span class="text-slate-500">VLAN:</span> <span class="font-semibold">{{ getSelectedOntDetails(assignForm.ont_models[index]).vlan_id || '-' }}</span></div>
                                             <div class="flex justify-between"><span class="text-slate-500">ID ONU:</span> <span class="font-semibold">{{ getSelectedOntDetails(assignForm.ont_models[index]).ont_id || '-' }}</span></div>
                                             
-                                            <template v-if="getSelectedOntDetails(assignForm.ont_models[index]).pppoe_user || getSelectedOntDetails(assignForm.ont_models[index]).access_mode === 'PPPoE' || activeCustomer?.package?.name?.toLowerCase().includes('pppoe')">
+                                            <template v-if="getSelectedOntDetails(assignForm.ont_models[index]).access_mode?.toLowerCase() !== 'hotspot' && (getSelectedOntDetails(assignForm.ont_models[index]).pppoe_user || getSelectedOntDetails(assignForm.ont_models[index]).access_mode === 'PPPoE' || activeCustomer?.package?.name?.toLowerCase().includes('pppoe'))">
                                                 <div class="my-1.5 border-t border-indigo-200/60"></div>
                                                 <div class="flex justify-between"><span class="text-slate-500">Akun PPPoE:</span> <span class="font-semibold">{{ getSelectedOntDetails(assignForm.ont_models[index]).pppoe_user || '-' }}</span></div>
                                                 <div class="flex justify-between"><span class="text-slate-500">Pass PPPoE:</span> <span class="font-semibold">{{ getSelectedOntDetails(assignForm.ont_models[index]).pppoe_password || '-' }}</span></div>
+                                            </template>
+                                            
+                                            <template v-else-if="getSelectedOntDetails(assignForm.ont_models[index]).access_mode?.toLowerCase() === 'hotspot'">
+                                                <div class="my-1.5 border-t border-indigo-200/60"></div>
+                                                <div class="flex justify-between items-center text-[11px] text-purple-700 bg-purple-50/80 p-1.5 rounded border border-purple-100">
+                                                    <span class="font-semibold">Mode Hotspot:</span>
+                                                    <span class="italic text-purple-600">Akun diset saat aktivasi</span>
+                                                </div>
                                             </template>
                                             
                                             <template v-if="getSelectedOntDetails(assignForm.ont_models[index]).free_hotspot || getSelectedOntDetails(assignForm.ont_models[index]).hotspot_user">

@@ -839,10 +839,11 @@
                                 </div>
                             </div>
 
-                            <div class="px-4 pb-4 border-t border-gray-100 pt-4">
+                            <!-- Akun Member / PPPoE (Hanya muncul jika bukan mode Hotspot) -->
+                            <div v-if="String(form.access_mode || '').trim().toLowerCase() !== 'hotspot'" class="px-4 pb-4 border-t border-gray-100 pt-4">
                                 <div class="flex items-center gap-3 mb-2">
                                     <h4 class="text-xs font-bold text-gray-700">Akun Member / PPPoE</h4>
-                                    <button type="button" @click="generatePppoe" class="text-xs font-medium bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md border border-gray-300 flex items-center gap-1">
+                                    <button type="button" @click="generatePppoe" class="text-xs font-medium bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md border border-gray-300 flex items-center gap-1 cursor-pointer">
                                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                                         Generate
                                     </button>
@@ -855,6 +856,18 @@
                                     <div>
                                         <label class="block text-xs text-gray-500 mb-1">Password</label>
                                         <input v-model="form.pppoe_password" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Password PPPoE/Member" />
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Catatan Khusus Mode Hotspot -->
+                            <div v-else class="px-4 pb-4 border-t border-purple-100 pt-4 bg-purple-50/40">
+                                <div class="flex items-start gap-2.5 p-3 bg-white border border-purple-200/80 rounded-xl text-purple-900 shadow-2xs">
+                                    <svg class="w-4 h-4 text-purple-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    <div class="text-xs leading-relaxed">
+                                        <span class="font-bold text-purple-950 block mb-0.5">Mode Akses: Hotspot</span>
+                                        Akun Member / PPPoE tidak diset di data inventaris ONT. Username dan password hotspot diset saat proses <strong>Aktivasi Pelanggan</strong>.
                                     </div>
                                 </div>
                             </div>
@@ -1567,8 +1580,16 @@ function openEditModal(ont) {
     form.ip_login = ont.ip_login || '192.168.1.1';
     form.login_user = ont.login_user || '';
     form.login_password = ont.login_password || '';
-    form.pppoe_user = ont.pppoe_user || '';
-    form.pppoe_password = ont.pppoe_password || '';
+    
+    // Jika mode hotspot, user/pass member tidak disimpan di ONT (diset saat aktivasi)
+    if (String(form.access_mode || '').trim().toLowerCase() === 'hotspot') {
+        form.pppoe_user = '';
+        form.pppoe_password = '';
+    } else {
+        form.pppoe_user = ont.pppoe_user || '';
+        form.pppoe_password = ont.pppoe_password || '';
+    }
+    
     form.free_hotspot = !!ont.free_hotspot;
     form.hotspot_user = ont.hotspot_user || '';
     form.hotspot_password = ont.hotspot_password || '';
@@ -1614,7 +1635,18 @@ function generatePppoe() {
     form.pppoe_password = pass;
 }
 
+watch(() => form.access_mode, (val) => {
+    if (String(val || '').trim().toLowerCase() === 'hotspot') {
+        form.pppoe_user = '';
+        form.pppoe_password = '';
+    }
+});
+
 function submit() {
+    if (String(form.access_mode || '').trim().toLowerCase() === 'hotspot') {
+        form.pppoe_user = '';
+        form.pppoe_password = '';
+    }
     if (isEditing.value && form.id) {
         form.post(`/onts/${form.id}/update`, {
             onSuccess: () => closeModal(),

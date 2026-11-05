@@ -125,3 +125,4 @@ EOT;
         // No down rollback required for content update
     }
 };
+
