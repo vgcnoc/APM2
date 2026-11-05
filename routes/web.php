@@ -676,6 +676,7 @@ Route::middleware(['auth'])->group(function () {
         // Insentif & Potongan List
         Route::get('/insentif-potongan', [\App\Http\Controllers\IncentiveDeductionController::class, 'index'])->name('insentif-potongan.index');
         Route::delete('/insentif-potongan/destroy', [\App\Http\Controllers\IncentiveDeductionController::class, 'destroyRecord'])->name('insentif-potongan.destroy');
+        Route::post('/insentif-potongan/disburse', [\App\Http\Controllers\IncentiveDeductionController::class, 'disburseIncentive'])->name('insentif-potongan.disburse');
 
         // Bonus Target Market
         Route::get('/bonus-target-market', [\App\Http\Controllers\TargetMarketController::class, 'index'])->name('bonus-target-market.index');

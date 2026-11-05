@@ -168,23 +168,79 @@
                 </nav>
             </div>
 
+            <!-- Floating / Sticky Selection Bar for Pending Incentives -->
+            <transition enter-active-class="transition ease-out duration-200" enter-from-class="transform opacity-0 -translate-y-2" enter-to-class="transform opacity-100 translate-y-0" leave-active-class="transition ease-in duration-150" leave-from-class="transform opacity-100 translate-y-0" leave-to-class="transform opacity-0 -translate-y-2">
+                <div v-if="selectedIds.length > 0" class="bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-700 text-white px-5 py-3 rounded-2xl shadow-lg flex flex-wrap items-center justify-between gap-3 border border-emerald-500">
+                    <div class="flex items-center gap-3">
+                        <span class="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-xs font-black">
+                            {{ selectedIds.length }}
+                        </span>
+                        <div>
+                            <span class="text-xs font-bold block sm:inline">
+                                Insentif Terpilih:
+                            </span>
+                            <span class="font-mono font-extrabold text-amber-200 text-sm ml-1">
+                                Rp {{ formatCurrency(selectedTotalAmount) }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button 
+                            @click="disburseSelected" 
+                            type="button"
+                            class="px-4 py-2 bg-white text-emerald-800 hover:bg-emerald-50 active:bg-emerald-100 rounded-xl text-xs font-extrabold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                        >
+                            <svg class="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
+                            <span>Cairkan {{ selectedIds.length }} Insentif Terpilih</span>
+                        </button>
+                        <button 
+                            @click="selectedIds = []" 
+                            type="button"
+                            class="px-3.5 py-2 bg-emerald-800/80 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                        >
+                            Batal
+                        </button>
+                    </div>
+                </div>
+            </transition>
+
             <!-- Table -->
             <div class="bg-white shadow-sm border border-gray-100 rounded-3xl overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-xs min-w-[980px] divide-y divide-gray-100">
                         <thead class="bg-gray-50/80 text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                             <tr>
+                                <th v-if="can('payroll_disburse') || can('payroll_incentives') || can('payroll_manage')" scope="col" class="w-10 px-4 py-4 text-center">
+                                    <input 
+                                        type="checkbox" 
+                                        :checked="isAllSelected" 
+                                        :disabled="pendingIncentivesOnPage.length === 0"
+                                        @change="toggleSelectAll" 
+                                        class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-gray-300 transition cursor-pointer disabled:opacity-40"
+                                        title="Pilih semua insentif pending di halaman ini"
+                                    />
+                                </th>
                                 <th scope="col" class="px-6 py-4">Karyawan &amp; Area</th>
                                 <th scope="col" class="px-5 py-4">Tipe</th>
                                 <th scope="col" class="px-5 py-4">Mode</th>
                                 <th scope="col" class="px-5 py-4">Jumlah</th>
                                 <th scope="col" class="px-6 py-4">Keterangan</th>
                                 <th scope="col" class="px-5 py-4">Tanggal</th>
-                                <th v-if="can('payroll_incentives_delete') || can('payroll_incentives') || can('payroll_manage')" scope="col" class="px-5 py-4 text-center">Aksi</th>
+                                <th v-if="can('payroll_incentives_delete') || can('payroll_incentives') || can('payroll_manage') || can('payroll_disburse')" scope="col" class="px-5 py-4 text-center">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-50 font-medium">
-                            <tr v-for="record in records.data" :key="record.id" class="hover:bg-gray-50/70 transition-colors">
+                            <tr v-for="record in records.data" :key="record.id" :class="[selectedIds.includes(record.id) ? 'bg-emerald-50/50' : 'hover:bg-gray-50/70', 'transition-colors']">
+                                <td v-if="can('payroll_disburse') || can('payroll_incentives') || can('payroll_manage')" class="px-4 py-4 text-center whitespace-nowrap">
+                                    <input 
+                                        v-if="record.record_type === 'Insentif' && record.status === 'pending'"
+                                        type="checkbox" 
+                                        :value="record.id" 
+                                        v-model="selectedIds"
+                                        class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-gray-300 transition cursor-pointer"
+                                    />
+                                    <span v-else class="text-gray-300 text-xs">-</span>
+                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="font-bold text-gray-900 text-sm">{{ record.user_name }}</div>
                                     <div class="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
@@ -214,15 +270,35 @@
                                 <td class="px-5 py-4 whitespace-nowrap text-xs text-gray-500 font-medium">
                                     {{ formatDate(record.date) }}
                                 </td>
-                                <td v-if="can('payroll_incentives_delete') || can('payroll_incentives') || can('payroll_manage')" class="px-5 py-4 whitespace-nowrap text-center text-xs font-medium">
-                                    <button v-if="record.status === 'pending'" @click="deleteRecord(record)" class="text-rose-500 hover:text-rose-700 p-2 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer" title="Hapus Data">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                    </button>
-                                    <span v-else class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">Sudah Cair</span>
+                                <td v-if="can('payroll_incentives_delete') || can('payroll_incentives') || can('payroll_manage') || can('payroll_disburse')" class="px-5 py-4 whitespace-nowrap text-center text-xs font-medium">
+                                    <div v-if="record.status === 'pending'" class="flex items-center justify-center gap-1.5">
+                                        <button 
+                                            v-if="record.record_type === 'Insentif' && (can('payroll_disburse') || can('payroll_incentives') || can('payroll_manage'))" 
+                                            @click="disburseRecord(record)" 
+                                            type="button" 
+                                            class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded-lg text-[11px] shadow-xs transition-all cursor-pointer" 
+                                            title="Cairkan Insentif ke Kas Sekarang"
+                                        >
+                                            <svg class="w-3.5 h-3.5 text-amber-300" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
+                                            <span>Cairkan</span>
+                                        </button>
+                                        <button 
+                                            v-if="can('payroll_incentives_delete') || can('payroll_incentives') || can('payroll_manage')" 
+                                            @click="deleteRecord(record)" 
+                                            class="text-rose-500 hover:text-rose-700 p-1.5 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer" 
+                                            title="Hapus Data"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                        </button>
+                                    </div>
+                                    <span v-else class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                                        <svg class="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                        Sudah Cair
+                                    </span>
                                 </td>
                             </tr>
                             <tr v-if="records.data.length === 0">
-                                <td :colspan="(can('payroll_incentives_delete') || can('payroll_incentives') || can('payroll_manage')) ? 7 : 6" class="px-6 py-12 text-center text-gray-500">
+                                <td :colspan="(can('payroll_incentives_delete') || can('payroll_incentives') || can('payroll_manage') || can('payroll_disburse')) ? 8 : 7" class="px-6 py-12 text-center text-gray-500">
                                     <div class="flex flex-col items-center justify-center">
                                         <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
                                         <span class="text-sm font-bold text-gray-700">Tidak Ada Data Ditemukan</span>
@@ -364,6 +440,29 @@ const filter = reactive({
 });
 
 const showManualModal = ref(false);
+const selectedIds = ref([]);
+
+const pendingIncentivesOnPage = computed(() => {
+    return (props.records?.data || []).filter(r => r.record_type === 'Insentif' && r.status === 'pending');
+});
+
+const isAllSelected = computed(() => {
+    return pendingIncentivesOnPage.value.length > 0 && pendingIncentivesOnPage.value.every(r => selectedIds.value.includes(r.id));
+});
+
+const selectedTotalAmount = computed(() => {
+    return (props.records?.data || [])
+        .filter(r => selectedIds.value.includes(r.id))
+        .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+});
+
+const toggleSelectAll = () => {
+    if (isAllSelected.value) {
+        selectedIds.value = [];
+    } else {
+        selectedIds.value = pendingIncentivesOnPage.value.map(r => r.id);
+    }
+};
 
 const openCreateModal = () => {
     manualForm.reset();
@@ -414,6 +513,7 @@ const resetFilters = () => {
 };
 
 const fetchData = () => {
+    selectedIds.value = [];
     router.get(route('insentif-potongan.index'), filter, {
         preserveState: true,
         preserveScroll: true,
@@ -489,6 +589,117 @@ const deleteRecord = (record) => {
                     Swal.fire({
                         icon: 'error',
                         title: 'Gagal',
+                        text: msg,
+                        confirmButtonColor: '#dc2626'
+                    });
+                }
+            });
+        }
+    });
+};
+
+const disburseRecord = (record) => {
+    Swal.fire({
+        title: 'Cairkan Insentif Sekarang?',
+        html: `
+            <div class="text-left text-xs text-slate-600 space-y-2.5 mt-2">
+                <p>Insentif ini akan langsung dicairkan ke <b>Buku Kas Umum</b> untuk staf:</p>
+                <div class="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl">
+                    <div class="font-extrabold text-slate-900 text-sm">${record.user_name}</div>
+                    <div class="text-emerald-700 font-mono font-bold text-base mt-1">Rp ${formatCurrency(record.amount)}</div>
+                    <div class="text-[11px] text-slate-600 mt-1">${record.description || 'Insentif Manual'}</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">Tanggal: ${formatDate(record.date)}</div>
+                </div>
+                <p class="text-[11px] text-slate-500 italic">Pengeluaran kas otomatis tercatat hari ini dan status insentif berubah menjadi <b>Sudah Cair</b>.</p>
+            </div>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: '⚡ Ya, Cairkan Sekarang',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#059669',
+        cancelButtonColor: '#64748b'
+    }).then((res) => {
+        if (res.isConfirmed) {
+            router.post(route('insentif-potongan.disburse'), {
+                id: record.id
+            }, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    selectedIds.value = selectedIds.value.filter(id => id !== record.id);
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'Insentif Berhasil Dicairkan!',
+                        text: `Insentif untuk ${record.user_name} berhasil dicairkan ke kas.`,
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
+                },
+                onError: (err) => {
+                    const msg = Object.values(err || {})[0] || 'Gagal memproses pencairan insentif.';
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Pencairan Gagal',
+                        text: msg,
+                        confirmButtonColor: '#dc2626'
+                    });
+                }
+            });
+        }
+    });
+};
+
+const disburseSelected = () => {
+    if (selectedIds.value.length === 0) return;
+    const count = selectedIds.value.length;
+    const totalFormatted = formatCurrency(selectedTotalAmount.value);
+
+    Swal.fire({
+        title: `Cairkan ${count} Insentif Terpilih?`,
+        html: `
+            <div class="text-left text-xs text-slate-600 space-y-2.5 mt-2">
+                <p>Anda akan mencairkan <b>${count} insentif terpilih</b> secara langsung ke <b>Buku Kas Umum</b>:</p>
+                <div class="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl">
+                    <div class="text-xs font-bold text-emerald-800">Total Pengeluaran Kas:</div>
+                    <div class="text-emerald-700 font-mono font-black text-lg mt-0.5">Rp ${totalFormatted}</div>
+                    <div class="text-[11px] text-slate-600 mt-1">Jumlah Item: ${count} Insentif Pending</div>
+                </div>
+                <p class="text-[11px] text-slate-500 italic">Seluruh insentif terpilih akan langsung berstatus <b>Sudah Cair</b> dan tercatat di Buku Kas Umum hari ini.</p>
+            </div>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: `⚡ Ya, Cairkan Semua (${count} Item)`,
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#059669',
+        cancelButtonColor: '#64748b'
+    }).then((res) => {
+        if (res.isConfirmed) {
+            router.post(route('insentif-potongan.disburse'), {
+                ids: selectedIds.value
+            }, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    selectedIds.value = [];
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'Pencairan Massal Selesai!',
+                        text: `${count} insentif berhasil dicairkan ke kas.`,
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
+                },
+                onError: (err) => {
+                    const msg = Object.values(err || {})[0] || 'Gagal memproses pencairan massal.';
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Pencairan Gagal',
                         text: msg,
                         confirmButtonColor: '#dc2626'
                     });

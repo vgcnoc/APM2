@@ -7,6 +7,9 @@ use Inertia\Inertia;
 use App\Models\Incentive;
 use App\Models\Deduction;
 use App\Models\User;
+use App\Models\Expense;
+use App\Models\ExpenseCategory;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class IncentiveDeductionController extends Controller
@@ -207,5 +210,109 @@ class IncentiveDeductionController extends Controller
         }
 
         return back()->with('error', 'Gagal menghapus data atau data sudah dicairkan ke payroll.');
+    }
+
+    /**
+     * Pencairan Insentif Manual Langsung ke Kas Operasional (Buku Kas Umum)
+     */
+    public function disburseIncentive(Request $request)
+    {
+        $authUser = auth()->user();
+        $isSuperAdmin = $authUser && ($authUser->is_admin || $authUser->hasRole('admin'));
+        if (!$isSuperAdmin && !$authUser->can('payroll_disburse') && !$authUser->can('payroll_incentives') && !$authUser->can('payroll_manage')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mencairkan insentif.');
+        }
+
+        $ids = $request->input('ids');
+        if (empty($ids)) {
+            $singleId = $request->input('id');
+            if ($singleId) {
+                $ids = [$singleId];
+            }
+        }
+
+        if (empty($ids) || !is_array($ids)) {
+            return back()->with('error', 'Pilih minimal satu data insentif yang akan dicairkan.');
+        }
+
+        $realIds = array_values(array_filter(array_map(function ($id) {
+            if (is_numeric($id)) return (int) $id;
+            if (is_string($id) && str_starts_with($id, 'inc_')) {
+                return (int) str_replace('inc_', '', $id);
+            }
+            return null;
+        }, $ids)));
+
+        if (empty($realIds)) {
+            return back()->with('error', 'Hanya data bertipe Insentif yang dapat dicairkan.');
+        }
+
+        return DB::transaction(function () use ($realIds, $authUser) {
+            $incentives = Incentive::with('user')
+                ->whereIn('id', $realIds)
+                ->where('status', 'pending')
+                ->lockForUpdate()
+                ->get();
+
+            if ($incentives->isEmpty()) {
+                return back()->with('error', 'Tidak ada data insentif pending yang dapat dicairkan (mungkin sudah dicairkan sebelumnya).');
+            }
+
+            // Resolve Expense Category (misal 'Operasional Lapangan', 'Insentif', dll)
+            $category = ExpenseCategory::where('is_active', true)
+                ->where(function($q) {
+                    $q->where('name', 'like', '%insentif%')
+                      ->orWhere('name', 'like', '%operasional%')
+                      ->orWhere('name', 'like', '%transport%')
+                      ->orWhere('name', 'like', '%gaji%');
+                })
+                ->orderByRaw("CASE 
+                    WHEN name LIKE '%insentif%' THEN 1 
+                    WHEN name LIKE '%operasional%' THEN 2 
+                    WHEN name LIKE '%transport%' THEN 3 
+                    ELSE 4 END")
+                ->first();
+
+            $totalDisbursed = 0;
+            $count = 0;
+
+            foreach ($incentives as $inc) {
+                $user = $inc->user;
+                if ($user && $user->isExemptFromAttendanceAndPayroll()) {
+                    continue;
+                }
+
+                $amount = (float) $inc->amount;
+                if ($amount <= 0) continue;
+
+                $userName = $user?->name ?? 'Staf';
+                $cleanDesc = $inc->description ? " - {$inc->description}" : "";
+                $dateStr = $inc->incentive_date ? \Carbon\Carbon::parse($inc->incentive_date)->format('d/m/Y') : date('d/m/Y');
+                $expenseDesc = "Pencairan Insentif {$userName}{$cleanDesc} (Tgl: {$dateStr})";
+
+                $expense = Expense::create([
+                    'amount' => $amount,
+                    'expense_category_id' => $category?->id,
+                    'description' => $expenseDesc,
+                    'expense_date' => now()->toDateString(),
+                    'user_id' => $authUser->id,
+                ]);
+
+                $inc->update([
+                    'status' => 'paid',
+                    'reference_id' => $expense ? 'exp_' . $expense->id : $inc->reference_id,
+                ]);
+
+                $totalDisbursed += $amount;
+                $count++;
+            }
+
+            if ($count === 0) {
+                return back()->with('error', 'Tidak ada insentif yang berhasil dicairkan.');
+            }
+
+            $formattedTotal = number_format($totalDisbursed, 0, ',', '.');
+            return back()->with('success', "Berhasil mencairkan {$count} insentif dengan total Rp {$formattedTotal} ke Buku Kas Umum.");
+        });
     }
 }
