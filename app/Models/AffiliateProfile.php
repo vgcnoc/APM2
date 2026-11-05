@@ -75,4 +75,20 @@ class AffiliateProfile extends Model
     {
         return $this->hasMany(Customer::class, 'sales_id', 'user_id')->where('status', 'active');
     }
+
+    /**
+     * Pelanggan aktif terhitung program afiliasi & marketing (aktivasi mulai Oktober 2026)
+     */
+    public function eligibleCustomers(): HasMany
+    {
+        return $this->hasMany(Customer::class, 'sales_id', 'user_id')
+            ->where('status', 'active')
+            ->where(function ($q) {
+                $q->whereDate('activation_date', '>=', '2026-10-01')
+                  ->orWhere(function ($sub) {
+                      $sub->whereNull('activation_date')
+                          ->whereDate('registration_date', '>=', '2026-10-01');
+                  });
+            });
+    }
 }

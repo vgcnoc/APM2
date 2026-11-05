@@ -447,6 +447,21 @@ class Customer extends Model
 
     // ── Scopes ─────────────────────────────────────────────────
 
+    /**
+     * Scope pelanggan aktif terhitung program afiliasi & marketing (aktivasi mulai Oktober 2026).
+     */
+    public function scopeActiveOct2026($query)
+    {
+        return $query->where('status', 'active')
+            ->where(function ($q) {
+                $q->whereDate('activation_date', '>=', '2026-10-01')
+                  ->orWhere(function ($sub) {
+                      $sub->whereNull('activation_date')
+                          ->whereDate('registration_date', '>=', '2026-10-01');
+                  });
+            });
+    }
+
     public function scopeActive($query)
     {
         return $query->where('status', 'active');

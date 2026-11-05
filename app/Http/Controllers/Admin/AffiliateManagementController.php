@@ -57,7 +57,11 @@ class AffiliateManagementController extends Controller
         $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
 
         // 2. Daftar Agen Afiliasi
-        $affiliatesQuery = AffiliateProfile::with(['user', 'upline']);
+        $affiliatesQuery = AffiliateProfile::with(['user', 'upline'])
+            ->withCount([
+                'eligibleCustomers as eligible_customers_count',
+                'downlinesLevel1 as downlines_count',
+            ]);
         if (!$isGlobal && !empty($accessibleAreas)) {
             $affiliatesQuery->whereHas('user', function ($uq) use ($accessibleAreas) {
                 $uq->whereIn('area_id', $accessibleAreas);
@@ -90,8 +94,8 @@ class AffiliateManagementController extends Controller
                     'balance' => (float) $aff->balance,
                     'total_earned' => (float) $aff->total_earned,
                     'total_withdrawn' => (float) $aff->total_withdrawn,
-                    'total_customers' => $aff->customers()->count(),
-                    'total_downlines' => $aff->downlinesLevel1()->count(),
+                    'total_customers' => (int) ($aff->eligible_customers_count ?? $aff->eligibleCustomers()->count()),
+                    'total_downlines' => (int) ($aff->downlines_count ?? $aff->downlinesLevel1()->count()),
                     'bank_info' => $aff->bank_name ? "{$aff->bank_name} - {$aff->bank_account_number} ({$aff->bank_account_holder})" : '-',
                     'bank_name' => $aff->bank_name,
                     'bank_account_number' => $aff->bank_account_number,
@@ -168,7 +172,10 @@ class AffiliateManagementController extends Controller
             });
 
         // 5. Data Struktur Pohon Jaringan Multi-Tier (Network Tree Diagram)
-        $allProfilesQuery = AffiliateProfile::with(['user:id,name,email,phone,role,is_active,area_id', 'customers:id,sales_id,name,status,is_migrated']);
+        $allProfilesQuery = AffiliateProfile::with([
+            'user:id,name,email,phone,role,is_active,area_id',
+            'eligibleCustomers:id,sales_id,name,status,is_migrated,activation_date'
+        ]);
         if (!$isGlobal && !empty($accessibleAreas)) {
             $allProfilesQuery->whereHas('user', function ($uq) use ($accessibleAreas) {
                 $uq->whereIn('area_id', $accessibleAreas);
@@ -211,7 +218,7 @@ class AffiliateManagementController extends Controller
                             'referral_code' => $l2->referral_code,
                             'status' => $l2->status,
                             'is_employee' => AffiliateService::isInternalEmployee($l2->user),
-                            'total_customers' => $l2->customers->count(),
+                            'total_customers' => $l2->eligibleCustomers ? $l2->eligibleCustomers->count() : $l2->eligibleCustomers()->count(),
                             'total_earned' => (float) $l2->total_earned,
                             'balance' => (float) $l2->balance,
                             'downlines_count' => 0,
@@ -229,7 +236,7 @@ class AffiliateManagementController extends Controller
                         'referral_code' => $l1->referral_code,
                         'status' => $l1->status,
                         'is_employee' => AffiliateService::isInternalEmployee($l1->user),
-                        'total_customers' => $l1->customers->count(),
+                        'total_customers' => $l1->eligibleCustomers ? $l1->eligibleCustomers->count() : $l1->eligibleCustomers()->count(),
                         'total_earned' => (float) $l1->total_earned,
                         'balance' => (float) $l1->balance,
                         'downlines_count' => count($l2List),
@@ -246,7 +253,7 @@ class AffiliateManagementController extends Controller
                     'referral_code' => $uProfile->referral_code,
                     'status' => $uProfile->status,
                     'is_employee' => AffiliateService::isInternalEmployee($uProfile->user),
-                    'total_customers' => $uProfile->customers->count(),
+                    'total_customers' => $uProfile->eligibleCustomers ? $uProfile->eligibleCustomers->count() : $uProfile->eligibleCustomers()->count(),
                     'total_earned' => (float) $uProfile->total_earned,
                     'balance' => (float) $uProfile->balance,
                     'l1_count' => count($l1List),
@@ -304,7 +311,7 @@ class AffiliateManagementController extends Controller
         if (!$isGlobal && !empty($accessibleAreas)) {
             $kpi = [
                 'total_affiliates' => AffiliateProfile::whereHas('user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas))->count(),
-                'total_customers' => Customer::whereNotNull('sales_id')->whereIn('area_id', $accessibleAreas)->count(),
+                'total_customers' => Customer::whereNotNull('sales_id')->whereIn('area_id', $accessibleAreas)->activeOct2026()->count(),
                 'total_commissions_paid' => (float) AffiliateCommission::whereHas('affiliate.user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas))->where('status', 'paid')->sum('amount'),
                 'pending_withdrawals_count' => AffiliateWithdrawal::whereHas('affiliate.user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas))->where('status', 'pending')->count(),
                 'pending_withdrawals_amount' => (float) AffiliateWithdrawal::whereHas('affiliate.user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas))->where('status', 'pending')->sum('amount'),
@@ -312,7 +319,7 @@ class AffiliateManagementController extends Controller
         } else {
             $kpi = [
                 'total_affiliates' => AffiliateProfile::count(),
-                'total_customers' => Customer::whereNotNull('sales_id')->count(),
+                'total_customers' => Customer::whereNotNull('sales_id')->activeOct2026()->count(),
                 'total_commissions_paid' => (float) AffiliateCommission::where('status', 'paid')->sum('amount'),
                 'pending_withdrawals_count' => AffiliateWithdrawal::where('status', 'pending')->count(),
                 'pending_withdrawals_amount' => (float) AffiliateWithdrawal::where('status', 'pending')->sum('amount'),
@@ -812,7 +819,7 @@ class AffiliateManagementController extends Controller
             'Tanggal Bergabung',
         ];
 
-        $query = AffiliateProfile::with(['user', 'upline.affiliateProfile'])->withCount(['customers', 'downlinesLevel1']);
+        $query = AffiliateProfile::with(['user', 'upline.affiliateProfile'])->withCount(['eligibleCustomers as eligible_customers_count', 'downlinesLevel1']);
         if (!$isGlobal && !empty($accessibleAreas)) {
             $query->whereHas('user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas));
         }
@@ -827,7 +834,7 @@ class AffiliateManagementController extends Controller
                 $a->referral_code ?? '-',
                 $a->upline?->name ?? 'Tanpa Upline',
                 $a->upline?->affiliateProfile?->referral_code ?? '-',
-                (int) $a->customers_count,
+                (int) ($a->eligible_customers_count ?? 0),
                 (int) $a->downlines_level1_count,
                 (float) $a->balance,
                 (float) $a->total_earned,
