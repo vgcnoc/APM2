@@ -1561,6 +1561,337 @@ const props = defineProps({
     pppoe_settings: Object
 });
 
+const isModalOpen = ref(false);
+const isEditing = ref(false);
+const isPrintModalOpen = ref(false);
+const selectedOnts = ref([]);
+const selectedReplacementOnt = ref(null);
+
+function openReplacementDetail(ont) {
+    selectedReplacementOnt.value = ont;
+}
+
+function closeReplacementDetail() {
+    selectedReplacementOnt.value = null;
+}
+
+// Smart Filter State
+const filterState = ref({
+    search: props.filters?.search || '',
+    tab: props.filters?.tab || '',
+    status: props.filters?.status || '',
+    installation_status: props.filters?.installation_status || '',
+    area_id: props.filters?.area_id || '',
+    brand: props.filters?.brand || '',
+    access_mode: props.filters?.access_mode || '',
+    vlan_mode: props.filters?.vlan_mode || '',
+    date_from: props.filters?.date_from || '',
+    date_to: props.filters?.date_to || '',
+    per_page: props.filters?.per_page ? Number(props.filters.per_page) : 15,
+});
+
+const showAdvancedFilters = ref(
+    !!(props.filters?.brand || props.filters?.access_mode || props.filters?.vlan_mode || props.filters?.date_from || props.filters?.date_to || (props.filters?.per_page && props.filters?.per_page != 15))
+);
+
+let searchTimeout = null;
+
+function applyFilters() {
+    const query = {};
+    if (filterState.value.search) query.search = filterState.value.search;
+    if (filterState.value.tab) query.tab = filterState.value.tab;
+    if (filterState.value.status) query.status = filterState.value.status;
+    if (filterState.value.installation_status) query.installation_status = filterState.value.installation_status;
+    if (filterState.value.area_id) query.area_id = filterState.value.area_id;
+    if (filterState.value.brand) query.brand = filterState.value.brand;
+    if (filterState.value.access_mode) query.access_mode = filterState.value.access_mode;
+    if (filterState.value.vlan_mode) query.vlan_mode = filterState.value.vlan_mode;
+    if (filterState.value.date_from) query.date_from = filterState.value.date_from;
+    if (filterState.value.date_to) query.date_to = filterState.value.date_to;
+    if (filterState.value.per_page && filterState.value.per_page != 15) query.per_page = filterState.value.per_page;
+
+    router.get('/onts', query, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    });
+}
+
+function onSearchInput() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        applyFilters();
+    }, 350);
+}
+
+function clearSearch() {
+    filterState.value.search = '';
+    applyFilters();
+}
+
+function setQuickFilter(type) {
+    if (type === 'ont_diganti') {
+        filterState.value.tab = filterState.value.tab === 'ont_diganti' ? '' : 'ont_diganti';
+        filterState.value.status = '';
+        filterState.value.installation_status = '';
+        applyFilters();
+        return;
+    }
+    if (type === 'ont_pengganti') {
+        filterState.value.tab = filterState.value.tab === 'ont_pengganti' ? '' : 'ont_pengganti';
+        filterState.value.status = '';
+        filterState.value.installation_status = '';
+        applyFilters();
+        return;
+    }
+    filterState.value.tab = '';
+    if (type === 'all') {
+        filterState.value.status = '';
+        filterState.value.installation_status = '';
+    } else if (type === 'sudah_set') {
+        const isActive = filterState.value.status === 'Sudah Set' && filterState.value.installation_status === 'uninstalled';
+        filterState.value.status = isActive ? '' : 'Sudah Set';
+        filterState.value.installation_status = isActive ? '' : 'uninstalled';
+    } else if (type === 'belum_set') {
+        const isActive = filterState.value.status === 'Belum Set/Baru Input' && filterState.value.installation_status === 'uninstalled';
+        filterState.value.status = isActive ? '' : 'Belum Set/Baru Input';
+        filterState.value.installation_status = isActive ? '' : 'uninstalled';
+    } else if (type === 'installed') {
+        filterState.value.installation_status = filterState.value.installation_status === 'installed' ? '' : 'installed';
+        filterState.value.status = '';
+    } else if (type === 'uninstalled') {
+        filterState.value.installation_status = filterState.value.installation_status === 'uninstalled' ? '' : 'uninstalled';
+        filterState.value.status = '';
+    } else if (type === 'los') {
+        filterState.value.status = filterState.value.status === 'los' ? '' : 'los';
+        filterState.value.installation_status = '';
+    } else if (type === 'rusak') {
+        filterState.value.status = filterState.value.status === 'rusak' ? '' : 'rusak';
+        filterState.value.installation_status = '';
+    }
+    applyFilters();
+}
+
+function resetAllFilters() {
+    filterState.value = {
+        search: '',
+        tab: '',
+        status: '',
+        installation_status: '',
+        area_id: '',
+        brand: '',
+        access_mode: '',
+        vlan_mode: '',
+        date_from: '',
+        date_to: '',
+        per_page: 15,
+    };
+    applyFilters();
+}
+
+function removeFilter(key) {
+    filterState.value[key] = '';
+    applyFilters();
+}
+
+const activeFiltersCount = computed(() => {
+    let count = 0;
+    if (filterState.value.search) count++;
+    if (filterState.value.tab) count++;
+    if (filterState.value.area_id) count++;
+    if (filterState.value.status) count++;
+    if (filterState.value.installation_status) count++;
+    if (filterState.value.brand) count++;
+    if (filterState.value.access_mode) count++;
+    if (filterState.value.vlan_mode) count++;
+    if (filterState.value.date_from || filterState.value.date_to) count++;
+    return count;
+});
+
+const advancedFiltersActiveCount = computed(() => {
+    let count = 0;
+    if (filterState.value.brand) count++;
+    if (filterState.value.access_mode) count++;
+    if (filterState.value.vlan_mode) count++;
+    if (filterState.value.date_from || filterState.value.date_to) count++;
+    if (filterState.value.per_page && filterState.value.per_page != 15) count++;
+    return count;
+});
+
+function getAreaName(areaId) {
+    const a = props.areas?.find(ar => ar.id == areaId);
+    return a ? a.name : areaId;
+}
+
+const copiedSn = ref(null);
+function copySn(sn) {
+    if (!sn) return;
+    navigator.clipboard.writeText(sn);
+    copiedSn.value = sn;
+    setTimeout(() => {
+        if (copiedSn.value === sn) copiedSn.value = null;
+    }, 2000);
+}
+
+const isAllSelected = computed(() => {
+    return (props.onts?.data?.length || 0) > 0 && selectedOnts.value.length === props.onts.data.length;
+});
+
+function toggleSelectAll() {
+    if (isAllSelected.value) {
+        selectedOnts.value = [];
+    } else {
+        selectedOnts.value = (props.onts?.data || []).map(ont => ont.id);
+    }
+}
+
+function getSelectedOntData() {
+    return (props.onts?.data || []).filter(ont => selectedOnts.value.includes(ont.id));
+}
+
+function openPrintModal() {
+    if (selectedOnts.value.length === 0) return;
+    isPrintModalOpen.value = true;
+    document.body.classList.add('is-printing-ont-card');
+}
+
+function closePrintModal() {
+    isPrintModalOpen.value = false;
+    document.body.classList.remove('is-printing-ont-card');
+}
+
+function printCards() {
+    document.body.classList.add('is-printing-ont-card');
+    setTimeout(() => {
+        window.print();
+    }, 150);
+}
+
+watch(isPrintModalOpen, (isOpen) => {
+    if (isOpen) {
+        document.body.classList.add('is-printing-ont-card');
+    } else {
+        document.body.classList.remove('is-printing-ont-card');
+    }
+});
+
+onUnmounted(() => {
+    document.body.classList.remove('is-printing-ont-card');
+});
+
+function getOfficerName(ont) {
+    if (ont.input_officers && ont.input_officers.length > 0) {
+        const first = ont.input_officers[0];
+        return typeof first === 'object' ? (first.name || '-') : first;
+    }
+    return '-';
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    const day = String(d.getDate()).padStart(2, '0');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    return `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+const form = useForm({
+    ont_id: '',
+    area_id: '',
+    brand: '',
+    model: '',
+    serial_number: '',
+    mac_address: '',
+    vlan_mode: 'Non-VLAN',
+    vlan_id: '',
+    access_mode: 'PPPOE',
+    ip_login: '192.168.1.1',
+    login_user: '',
+    login_password: '',
+    pppoe_user: '',
+    pppoe_password: '',
+    free_hotspot: false,
+    hotspot_user: '',
+    hotspot_password: '',
+    hotspot_vlan_id: '',
+    input_officers: [
+        { name: '', date: new Date().toISOString().split('T')[0], note: '' }
+    ],
+    status: 'Belum Set/Baru Input',
+    id: null
+});
+
+function openCreateModal() {
+    isEditing.value = false;
+    form.reset();
+    form.clearErrors();
+    form.id = null;
+    pppoeCheckStatus.value = 'idle';
+    pppoeConflictMessage.value = '';
+    isModalOpen.value = true;
+}
+
+function openEditModal(ont) {
+    isEditing.value = true;
+    form.id = ont.id;
+    form.ont_id = ont.ont_id || '';
+    form.area_id = ont.area_id || '';
+    form.brand = ont.brand || '';
+    form.model = ont.model || '';
+    form.serial_number = ont.serial_number || '';
+    form.mac_address = ont.mac_address || '';
+    form.vlan_mode = ont.vlan_mode || 'Non-VLAN';
+    form.vlan_id = ont.vlan_id || '';
+    form.access_mode = ont.access_mode || 'PPPOE';
+    form.ip_login = ont.ip_login || '192.168.1.1';
+    form.login_user = ont.login_user || '';
+    form.login_password = ont.login_password || '';
+    
+    // Jika mode hotspot, user/pass member tidak disimpan di ONT (diset saat aktivasi)
+    if (String(form.access_mode || '').trim().toLowerCase() === 'hotspot') {
+        form.pppoe_user = '';
+        form.pppoe_password = '';
+    } else {
+        form.pppoe_user = ont.pppoe_user || '';
+        form.pppoe_password = ont.pppoe_password || '';
+    }
+    
+    form.free_hotspot = !!ont.free_hotspot;
+    form.hotspot_user = ont.hotspot_user || '';
+    form.hotspot_password = ont.hotspot_password || '';
+    form.hotspot_vlan_id = ont.hotspot_vlan_id || '';
+    
+    if (ont.input_officers && ont.input_officers.length > 0) {
+        form.input_officers = JSON.parse(JSON.stringify(ont.input_officers));
+    } else {
+        form.input_officers = [{ name: '', date: new Date().toISOString().split('T')[0], note: '' }];
+    }
+    
+    form.status = ont.status || 'Belum Set/Baru Input';
+    
+    form.clearErrors();
+    pppoeCheckStatus.value = 'idle';
+    pppoeConflictMessage.value = '';
+    isModalOpen.value = true;
+}
+
+function closeModal() {
+    isModalOpen.value = false;
+    setTimeout(() => form.reset(), 300);
+}
+
+function addOfficer() {
+    form.input_officers.push({
+        name: '',
+        date: new Date().toISOString().split('T')[0],
+        note: ''
+    });
+}
+
+function removeOfficer(index) {
+    form.input_officers.splice(index, 1);
+}
+
 // ── PPPoE Generator & Duplicate Auto-Reject State ───────────
 const pppoeSettings = ref({
     pppoe_prefix: props.pppoe_settings?.pppoe_prefix ?? 'VGC',
@@ -1648,6 +1979,29 @@ async function savePppoeSettings() {
         });
     } finally {
         isSavingPppoeSettings.value = false;
+    }
+}
+
+async function generatePppoe() {
+    isGeneratingPppoe.value = true;
+    try {
+        const res = await axios.get('/onts/generate-pppoe');
+        if (res.data && res.data.success) {
+            form.pppoe_user = res.data.user;
+            form.pppoe_password = res.data.password;
+            pppoeCheckStatus.value = 'available';
+            pppoeConflictMessage.value = '';
+        }
+    } catch (err) {
+        console.error('Error generating PPPoE:', err);
+        const prefix = pppoeSettings.value.pppoe_prefix || 'VGC';
+        const suffix = pppoeSettings.value.pppoe_suffix || '@vnet.id';
+        const randomNum = Math.floor(1000 + Math.random() * 9000);
+        form.pppoe_user = `${prefix}${randomNum}${suffix}`;
+        form.pppoe_password = String(Math.floor(100000 + Math.random() * 900000));
+        pppoeCheckStatus.value = 'idle';
+    } finally {
+        isGeneratingPppoe.value = false;
     }
 }
 
