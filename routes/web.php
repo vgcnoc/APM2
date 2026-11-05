@@ -542,6 +542,17 @@ Route::middleware(['auth'])->group(function () {
         Route::get('invoices/{invoice}/print-promise', [\App\Http\Controllers\InvoiceController::class, 'printPromise'])->name('invoices.print-promise');
         Route::resource('invoices', \App\Http\Controllers\InvoiceController::class);
     });
+
+    // ── Invoice Proyek & Kerjasama B2B (Khusus HRD, Finance & Admin) ───
+    Route::middleware(['role_or_permission:admin|super admin|hrd|finance|menu_project_invoices'])->group(function () {
+        Route::get('/project-invoices', [\App\Http\Controllers\ProjectInvoiceController::class, 'index'])->name('project-invoices.index');
+        Route::post('/project-invoices', [\App\Http\Controllers\ProjectInvoiceController::class, 'store'])->name('project-invoices.store');
+        Route::put('/project-invoices/{id}', [\App\Http\Controllers\ProjectInvoiceController::class, 'update'])->name('project-invoices.update');
+        Route::delete('/project-invoices/{id}', [\App\Http\Controllers\ProjectInvoiceController::class, 'destroy'])->name('project-invoices.destroy');
+        Route::post('/project-invoices/{id}/payment', [\App\Http\Controllers\ProjectInvoiceController::class, 'recordPayment'])->name('project-invoices.payment');
+        Route::get('/project-invoices/{id}/print', [\App\Http\Controllers\ProjectInvoiceController::class, 'printInvoice'])->name('project-invoices.print');
+        Route::get('/project-invoices/{id}/receipt', [\App\Http\Controllers\ProjectInvoiceController::class, 'printReceipt'])->name('project-invoices.receipt');
+    });
     
     // ── Pantauan Pelanggan (Menunggak, Janji Bayar, Stop Sementara) ──────
     Route::middleware(['permission:menu_monitoring_pelanggan|menu_customers_all'])->group(function () {

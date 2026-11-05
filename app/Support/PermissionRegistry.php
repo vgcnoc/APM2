@@ -286,6 +286,26 @@ class PermissionRegistry
                 ],
             ],
 
+            // ── 6C. INVOICE PROYEK & JASA KERJASAMA (B2B) ───────────
+            [
+                'group' => 'Invoice Proyek & Jasa Kerjasama (B2B)',
+                'category' => 'billing',
+                'icon' => 'briefcase',
+                'menu_parent' => 'menu_project_invoices',
+                'permissions' => [
+                    ['name' => 'menu_project_invoices', 'type' => 'menu', 'label' => 'Akses Menu Invoice Proyek B2B'],
+                    ['name' => 'project_invoices_card_stats', 'type' => 'card', 'label' => 'Card Ringkasan Statistik Nilai Proyek & Piutang'],
+                    ['name' => 'project_invoices_filter', 'type' => 'filter', 'label' => 'Filter Pencarian & Status Invoice Proyek'],
+                    ['name' => 'project_invoices_create', 'type' => 'button', 'label' => 'Tombol Buat Invoice Proyek Baru'],
+                    ['name' => 'project_invoices_edit', 'type' => 'button', 'label' => 'Tombol Edit / Perbarui Invoice Proyek'],
+                    ['name' => 'project_invoices_delete', 'type' => 'button', 'label' => 'Tombol Hapus Invoice Proyek'],
+                    ['name' => 'project_invoices_pay', 'type' => 'button', 'label' => 'Tombol Catat Pembayaran / Pelunasan ke Kas'],
+                    ['name' => 'project_invoices_print', 'type' => 'button', 'label' => 'Tombol Cetak Invoice Proyek & Kwitansi Resmi'],
+                    ['name' => 'project_invoices_whatsapp', 'type' => 'button', 'label' => 'Tombol Kirim Tagihan WhatsApp ke Klien / PIC'],
+                    ['name' => 'project_invoices_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Invoice Proyek'],
+                ],
+            ],
+
             // ── 7. LAPORAN KEUANGAN & PAJAK ──────────────────────────
             [
                 'group' => 'Laporan Keuangan & Pajak',
@@ -1405,6 +1425,7 @@ class PermissionRegistry
                 'menu_customers_booking', 'customers_booking_card_stats', 'customers_booking_create', 'customers_booking_view', 'customers_booking_print', 'customers_booking_view_all',
                 'menu_invoices', 'invoices_card_summary', 'invoices_card_revenue', 'invoices_tab_all', 'invoices_tab_unpaid', 'invoices_tab_paid', 'invoices_tab_isolated', 'invoices_filter_search', 'invoices_filter_status', 'invoices_filter_period', 'invoices_filter_area', 'invoices_create', 'invoices_edit', 'invoices_delete', 'invoices_pay', 'invoices_promise', 'invoices_print', 'invoices_btn_whatsapp', 'invoices_btn_export', 'invoices_rollback', 'invoices_view_all',
                 'menu_customer_billing', 'menu_customer_settlements', 'customer_billing_collect', 'customer_settlements_approve',
+                'menu_project_invoices', 'project_invoices_card_stats', 'project_invoices_filter', 'project_invoices_create', 'project_invoices_edit', 'project_invoices_delete', 'project_invoices_pay', 'project_invoices_print', 'project_invoices_whatsapp', 'project_invoices_view_all',
                 'menu_financial_reports',
                 'menu_payroll', 'menu_incentives_deductions', 'menu_target_market', 'payroll_card_summary', 'payroll_card_bpjs', 'incentives_card_stats', 'target_market_card_stats',
                 'payroll_tab_slip', 'payroll_tab_bpjs', 'payroll_tab_incentives', 'payroll_tab_target', 'target_market_tab_programs', 'target_market_tab_closings',
@@ -1459,6 +1480,7 @@ class PermissionRegistry
                 'menu_dashboard', 'dashboard_card_stats', 'dashboard_filter_area', 'dashboard_btn_refresh',
                 'menu_customers_booking', 'customers_booking_card_stats', 'customers_booking_create', 'customers_booking_view', 'customers_booking_print', 'customers_booking_view_all',
                 'menu_invoices', 'invoices_card_summary', 'invoices_card_revenue', 'invoices_tab_all', 'invoices_tab_unpaid', 'invoices_tab_paid', 'invoices_filter_search', 'invoices_filter_status', 'invoices_filter_period', 'invoices_filter_area', 'invoices_view_all', 'invoices_print',
+                'menu_project_invoices', 'project_invoices_card_stats', 'project_invoices_filter', 'project_invoices_create', 'project_invoices_edit', 'project_invoices_delete', 'project_invoices_pay', 'project_invoices_print', 'project_invoices_whatsapp', 'project_invoices_view_all',
                 'menu_hr_employees', 'hr_card_stats', 'hr_filter_department', 'hr_filter_area', 'hr_filter_status',
                 'hr_employees_create', 'hr_employees_view', 'hr_employees_update', 'hr_employees_edit', 'hr_employees_delete', 'hr_employees_delete_all', 'hr_employees_resign', 'hr_employees_reactivate',
                 'hr_employees_view_all',

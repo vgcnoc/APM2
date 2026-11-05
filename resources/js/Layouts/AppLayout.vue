@@ -990,6 +990,15 @@ const menuItems = [
     { type: 'group', label: 'BILLING & KEUANGAN', theme: 'green' },
     { type: 'link', href: '/invoices', icon: 'document-text', label: 'Invoice Pelanggan', theme: 'green', active: (url) => (url || '').length > 0 && url === '/invoices', permission: 'menu_invoices' },
     {
+        type: 'link',
+        href: '/project-invoices',
+        icon: 'briefcase',
+        label: 'Invoice Proyek & Jasa',
+        theme: 'green',
+        active: (url) => (url || '').startsWith('/project-invoices'),
+        permission: 'menu_project_invoices',
+    },
+    {
         type: 'dropdown',
         icon: 'cash',
         label: 'Penagihan Lapangan',

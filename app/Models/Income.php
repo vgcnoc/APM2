@@ -74,5 +74,10 @@ class Income extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+
+    public function projectInvoice()
+    {
+        return $this->hasOne(ProjectInvoice::class, 'income_id');
+    }
 }
 
