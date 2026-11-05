@@ -569,7 +569,7 @@
                             <span style="color: #94a3b8; font-style: italic; font-size: 11px;">(Belum bertanda tangan)</span>
                         @endif
                     </div>
-                    <div class="sig-name">{{ $agreement->employee_name ?: 'Petugas / Teknisi' }}</div>
+                    <div class="sig-name">{{ $agreement->employee_name ?: ($bookingOfficer ?? 'Petugas / Teknisi') }}</div>
                     <div class="sig-time">
                         {{ $agreement->employee_signed_at ? $agreement->employee_signed_at->translatedFormat('d F Y - H:i') . ' WIB' : '-' }}
                     </div>

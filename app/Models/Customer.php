@@ -178,6 +178,22 @@ class Customer extends Model
     }
 
     /**
+     * Petugas Booking (Sales / Karyawan pendaftar booking)
+     */
+    public function getBookingOfficerAttribute(): ?User
+    {
+        if ($this->relationLoaded('sales') && $this->sales) {
+            return $this->sales;
+        }
+
+        if ($this->sales_id) {
+            return User::find($this->sales_id);
+        }
+
+        return null;
+    }
+
+    /**
      * ONT yang terpasang di pelanggan (1:1 secara logika)
      */
     public function ont(): HasOne

@@ -190,12 +190,26 @@
 
                             <!-- Input Nama Petugas -->
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Nama Petugas</label>
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                        {{ stage === 'booking' ? 'Nama Petugas Booking' : 'Nama Petugas / Teknisi' }}
+                                    </label>
+                                    <span 
+                                        v-if="isBookingOfficerMatched" 
+                                        class="inline-flex items-center gap-1 text-[9px] text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-1.5 py-0.5 rounded-md font-semibold"
+                                        title="Nama otomatis disesuaikan dengan Petugas Booking terdaftar"
+                                    >
+                                        <svg class="w-2.5 h-2.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        Auto: Petugas Booking
+                                    </span>
+                                </div>
                                 <input 
                                     type="text" 
                                     v-model="employeeName" 
                                     class="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                                    placeholder="Nama Karyawan..." 
+                                    :placeholder="stage === 'booking' ? 'Nama Petugas Booking...' : 'Nama Karyawan...'" 
                                     required 
                                 />
                             </div>
@@ -364,10 +378,27 @@ const templateData = ref(null);
 const renderedContent = ref('');
 const existingAgreement = ref(null);
 
-const employeeName = ref(page.props.auth?.user?.name || '');
+const employeeName = ref('');
 const customerName = ref('');
 const agreementNotes = ref('');
 const hasAgreed = ref(false);
+
+function resolveBookingOfficerName(c) {
+    if (!c) return '';
+    return c.booking_officer_name || 
+           c.sales?.name || 
+           c.sales_name || 
+           c.sales?.employee?.name || 
+           '';
+}
+
+const isBookingOfficerMatched = computed(() => {
+    const bookingOfficer = customerData.value?.booking_officer_name || 
+                           customerData.value?.sales_name || 
+                           resolveBookingOfficerName(props.customer);
+    if (!bookingOfficer || !employeeName.value) return false;
+    return employeeName.value.trim().toLowerCase() === bookingOfficer.trim().toLowerCase();
+});
 
 // Canvas References
 const employeeCanvasRef = ref(null);
@@ -429,6 +460,8 @@ function calculatePriceWithTax(c, currentPrice = 0) {
 function applyCustomerProps(c) {
     if (!c) return;
     const current = customerData.value || {};
+    const bookingOfficer = resolveBookingOfficerName(c);
+
     customerData.value = {
         ...current,
         id: c.id ?? current.id,
@@ -442,12 +475,25 @@ function applyCustomerProps(c) {
         package_speed: c.package?.speed_mbps ? (c.package.speed_mbps + ' Mbps') : (c.package?.speed || c.package_speed || current.package_speed || '-'),
         price: c.price_with_ppn || calculatePriceWithTax(c, current.price),
         installation_fee: c.installation_fee ?? current.installation_fee ?? 0,
+        booking_officer_name: bookingOfficer || current.booking_officer_name,
+        sales_name: c.sales?.name || c.sales_name || current.sales_name,
     };
-    if (!customerName.value && c.name) {
+
+    if (c.name) {
         customerName.value = c.name;
     }
-    if (!employeeName.value) {
-        employeeName.value = page.props.auth?.user?.name || 'Petugas Lapangan';
+
+    // Auto-isi Nama Petugas: prioritaskan Petugas Booking terdaftar untuk stage booking
+    if (props.stage === 'booking') {
+        if (bookingOfficer) {
+            employeeName.value = bookingOfficer;
+        } else if (!employeeName.value) {
+            employeeName.value = page.props.auth?.user?.name || 'Petugas Lapangan';
+        }
+    } else {
+        if (!employeeName.value) {
+            employeeName.value = bookingOfficer || page.props.auth?.user?.name || 'Petugas Lapangan';
+        }
     }
 }
 
@@ -467,13 +513,24 @@ async function loadData() {
         renderedContent.value = data.rendered_content || '';
         existingAgreement.value = data.existing_agreement;
 
-        if (data.current_user?.name) {
-            employeeName.value = data.current_user.name;
+        // Auto-isi Nama Petugas secara cerdas:
+        // 1. Jika dokumen sudah ada & BUKAN sedang TTD ulang -> nama yang sudah tersimpan
+        // 2. Jika baru / sedang TTD ulang -> default_employee_name (sesuai Petugas Booking aktual)
+        if (existingAgreement.value?.employee_name && !isReSigning.value) {
+            employeeName.value = existingAgreement.value.employee_name;
+        } else if (data.default_employee_name) {
+            employeeName.value = data.default_employee_name;
+        } else if (data.booking_officer_name) {
+            employeeName.value = data.booking_officer_name;
+        } else if (data.customer?.sales_name) {
+            employeeName.value = data.customer.sales_name;
         } else if (!employeeName.value) {
-            employeeName.value = page.props.auth?.user?.name || 'Petugas Lapangan';
+            employeeName.value = data.current_user?.name || page.props.auth?.user?.name || 'Petugas Lapangan';
         }
 
-        if (data.customer?.name) {
+        if (existingAgreement.value?.customer_name && !isReSigning.value) {
+            customerName.value = existingAgreement.value.customer_name;
+        } else if (data.customer?.name) {
             customerName.value = data.customer.name;
         } else if (props.customer?.name && !customerName.value) {
             customerName.value = props.customer.name;
@@ -494,6 +551,15 @@ async function loadData() {
 function startReSigning() {
     isReSigning.value = true;
     hasAgreed.value = false;
+
+    // Saat TTD ulang pada stage booking, auto-isi kembali ke petugas booking jika ada
+    const bookingOfficer = customerData.value?.booking_officer_name || 
+                           customerData.value?.sales_name || 
+                           resolveBookingOfficerName(props.customer);
+    if (bookingOfficer && props.stage === 'booking') {
+        employeeName.value = bookingOfficer;
+    }
+
     nextTick(() => {
         initCanvases();
     });
@@ -695,25 +761,30 @@ async function submitAgreement() {
     }
 }
 
-onMounted(() => {
+function resetAndInitialize() {
+    employeeHasDrawn.value = false;
+    customerHasDrawn.value = false;
+    hasAgreed.value = false;
+    isReSigning.value = false;
+    employeeName.value = '';
+    customerName.value = '';
     applyCustomerProps(props.customer);
-    if (!employeeName.value) {
-        employeeName.value = page.props.auth?.user?.name || 'Petugas Lapangan';
-    }
     loadData();
+}
+
+onMounted(() => {
+    resetAndInitialize();
 });
 
 watch(() => props.show, (newVal) => {
     if (newVal) {
-        applyCustomerProps(props.customer);
-        loadData();
+        resetAndInitialize();
     }
 }, { immediate: true });
 
 watch(() => [props.customerId, props.customer?.id], ([newId]) => {
     if (newId) {
-        applyCustomerProps(props.customer);
-        loadData();
+        resetAndInitialize();
     }
 });
 

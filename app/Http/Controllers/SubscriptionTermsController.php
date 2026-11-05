@@ -103,7 +103,52 @@ class SubscriptionTermsController extends Controller
     {
         $stage = $request->query('stage', 'booking');
 
-        $customer->loadMissing(['package', 'areaModel']);
+        $customer->loadMissing([
+            'package',
+            'areaModel',
+            'sales.employee',
+            'surveys.surveyor',
+            'technicianSchedules.technician',
+        ]);
+
+        // Resolusi Petugas Booking (Sales / Marketing / Pendaftar booking)
+        $bookingOfficer = $customer->sales;
+        if (!$bookingOfficer && $customer->sales_id) {
+            $bookingOfficer = \App\Models\User::find($customer->sales_id);
+        }
+        if (!$bookingOfficer) {
+            $creatorLog = \App\Models\AuditLog::where('auditable_type', Customer::class)
+                ->where('auditable_id', $customer->id)
+                ->where(function ($q) {
+                    $q->where('action', 'Create Booking')
+                      ->orWhere('action', 'like', '%Booking%')
+                      ->orWhere('action', 'create');
+                })
+                ->with('user')
+                ->latest()
+                ->first();
+            $bookingOfficer = $creatorLog?->user;
+        }
+
+        // Tentukan Petugas / Karyawan penandatangan default berdasarkan stage:
+        // Untuk stage 'booking': WAJIB otomatis memakai Petugas Booking terdaftar
+        $officerUser = null;
+        if ($stage === 'booking') {
+            $officerUser = $bookingOfficer;
+        } elseif ($stage === 'survey') {
+            $officerUser = $customer->surveys?->last()?->surveyor ?? $bookingOfficer;
+        } elseif ($stage === 'installation') {
+            $officerUser = $customer->technicianSchedules?->last()?->technician ?? $bookingOfficer;
+        } else {
+            $officerUser = $bookingOfficer;
+        }
+
+        if (!$officerUser) {
+            $officerUser = auth()->user();
+        }
+
+        $defaultEmployeeName = $officerUser?->name ?? auth()->user()?->name ?? 'Petugas Lapangan';
+        $defaultEmployeeId = $officerUser?->id ?? auth()->id();
 
         // Cari template yang sesuai dengan stage, atau fallback ke general
         $template = SubscriptionTermsTemplate::where('type', $stage)->where('is_active', true)->first()
@@ -122,8 +167,8 @@ class SubscriptionTermsController extends Controller
             ]);
         }
 
-        // Render teks dengan nilai data aktual pelanggan
-        $renderedContent = $template->renderContent($customer, auth()->user());
+        // Render teks dengan nilai data aktual pelanggan & nama petugas yang bersangkutan
+        $renderedContent = $template->renderContent($customer, $officerUser);
 
         // Cek apakah sudah pernah ditandatangani di stage ini
         $existingAgreement = CustomerAgreement::where('customer_id', $customer->id)
@@ -167,6 +212,9 @@ class SubscriptionTermsController extends Controller
                 'price_with_ppn' => $priceWithTax,
                 'tax_ppn' => $taxPpn,
                 'installation_fee' => $customer->installation_fee ?? 0,
+                'sales_id' => $customer->sales_id,
+                'sales_name' => $customer->sales?->name,
+                'booking_officer_name' => $bookingOfficer?->name,
             ],
             'template' => [
                 'id' => $template->id,
@@ -177,6 +225,9 @@ class SubscriptionTermsController extends Controller
             'rendered_content' => $renderedContent,
             'existing_agreement' => $existingAgreement,
             'latest_any_stage' => $latestAnyStage,
+            'default_employee_name' => $defaultEmployeeName,
+            'default_employee_id' => $defaultEmployeeId,
+            'booking_officer_name' => $bookingOfficer?->name,
             'current_user' => [
                 'id' => auth()->id(),
                 'name' => auth()->user()?->name ?? 'Petugas Lapangan',
@@ -206,6 +257,17 @@ class SubscriptionTermsController extends Controller
 
             $agreementNumber = CustomerAgreement::generateAgreementNumber($validated['stage']);
 
+            $customer->loadMissing(['sales']);
+            $employeeId = null;
+            if ($customer->sales_id && $customer->sales && strcasecmp(trim($customer->sales->name), trim($validated['employee_name'])) === 0) {
+                $employeeId = $customer->sales_id;
+            } elseif (!empty($validated['employee_name'])) {
+                $matchedUser = \App\Models\User::where('name', trim($validated['employee_name']))->first();
+                $employeeId = $matchedUser?->id ?? auth()->id();
+            } else {
+                $employeeId = auth()->id();
+            }
+
             $agreement = CustomerAgreement::create([
                 'agreement_number' => $agreementNumber,
                 'customer_id' => $customer->id,
@@ -217,7 +279,7 @@ class SubscriptionTermsController extends Controller
                 'customer_phone' => $customer->phone,
                 'customer_signature' => $validated['customer_signature'],
                 'customer_signed_at' => now(),
-                'employee_id' => auth()->id(),
+                'employee_id' => $employeeId,
                 'employee_name' => $validated['employee_name'],
                 'employee_signature' => $validated['employee_signature'],
                 'employee_signed_at' => now(),
@@ -266,6 +328,7 @@ class SubscriptionTermsController extends Controller
 
         $surveyTechnician = $agreement->customer?->surveys?->last()?->surveyor?->name;
         $installationTechnician = $agreement->customer?->technicianSchedules?->last()?->technician?->name;
+        $bookingOfficer = $agreement->customer?->sales?->name;
 
         $company = [
             'name' => Setting::get('company_name', 'PT VIRUZS GLOBAL CONNECTION'),
@@ -276,7 +339,7 @@ class SubscriptionTermsController extends Controller
             'logo' => Setting::get('company_logo', null),
         ];
 
-        return view('print.agreement', compact('agreement', 'company', 'surveyTechnician', 'installationTechnician'));
+        return view('print.agreement', compact('agreement', 'company', 'surveyTechnician', 'installationTechnician', 'bookingOfficer'));
     }
 
     /**
