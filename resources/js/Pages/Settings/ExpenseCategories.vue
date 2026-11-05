@@ -33,6 +33,31 @@
                 </div>
             </div>
 
+            <!-- Navigation Tabs (Pengeluaran vs Pemasukan) -->
+            <div class="flex items-center gap-2 p-1.5 bg-slate-100 rounded-2xl w-fit">
+                <Link 
+                    :href="route('expense-categories.index')" 
+                    class="px-4 py-2 text-xs font-bold rounded-xl bg-white text-rose-700 shadow-xs transition-all flex items-center gap-1.5"
+                >
+                    <span>🏷️</span>
+                    <span>Kategori Pengeluaran</span>
+                </Link>
+                <Link 
+                    :href="route('income-categories.index')" 
+                    class="px-4 py-2 text-xs font-bold rounded-xl text-slate-600 hover:text-slate-900 transition-all flex items-center gap-1.5"
+                >
+                    <span>💰</span>
+                    <span>Kategori Pemasukan</span>
+                </Link>
+                <Link 
+                    :href="route('financial-reports.index')" 
+                    class="px-4 py-2 text-xs font-bold rounded-xl text-slate-600 hover:text-slate-900 transition-all flex items-center gap-1.5"
+                >
+                    <span>📖</span>
+                    <span>Kembali ke Buku Kas</span>
+                </Link>
+            </div>
+
             <!-- KPI / Stat Cards -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 flex items-center justify-between">

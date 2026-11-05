@@ -6,6 +6,8 @@ use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
+use App\Models\Income;
+use App\Models\IncomeCategory;
 use App\Models\MaterialTransaction;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -41,7 +43,7 @@ class FinancialReportController extends Controller
 
         // 1. Grand Summary Cards (Period Selected)
         
-        // Pemasukan: Hanya pembayaran yang sudah verified (Eager load relations to prevent N+1)
+        // Pemasukan: Pembayaran tagihan terverifikasi + Pemasukan Kas Lainnya
         $paymentsThisMonth = Payment::with(['invoice.customer.areaModel', 'customer.areaModel', 'collector'])
             ->where('status', 'verified')
             ->whereBetween('payment_date', [$startDate, $endDate])
@@ -54,8 +56,14 @@ class FinancialReportController extends Controller
         $omzetReseller = (float) $paymentsThisMonth->filter(function($p) {
             return $p->invoice && $p->invoice->is_reseller_balance;
         })->sum('amount');
+
+        // Pemasukan Lain-lain / Non-Tagihan (Manual Incomes)
+        $incomesThisMonth = Income::with(['creator', 'category', 'areaModel'])
+            ->whereBetween('income_date', [$startDate, $endDate])
+            ->get();
+        $omzetManual = (float) $incomesThisMonth->sum('amount');
         
-        $totalOmzet = $omzetCustomer + $omzetReseller;
+        $totalOmzet = $omzetCustomer + $omzetReseller + $omzetManual;
 
         // Pengeluaran
         $totalPengeluaran = (float) Expense::whereBetween('expense_date', [$startDate, $endDate])->sum('amount');
@@ -128,12 +136,15 @@ class FinancialReportController extends Controller
                 
             $cCust = (float) $pBln->filter(fn($p) => $p->invoice && !$p->invoice->is_reseller_balance)->sum('amount');
             $cRes = (float) $pBln->filter(fn($p) => $p->invoice && $p->invoice->is_reseller_balance)->sum('amount');
+            $cManual = (float) Income::whereBetween('income_date', [$mStart, $mEnd])->sum('amount');
             $cExp = (float) Expense::whereBetween('expense_date', [$mStart, $mEnd])->sum('amount');
             
             $chartData[] = [
                 'month' => $mDate->translatedFormat('M Y'),
                 'customer' => $cCust,
                 'reseller' => $cRes,
+                'manual_income' => $cManual,
+                'total_income' => $cCust + $cRes + $cManual,
                 'expense' => $cExp
             ];
         }
@@ -165,6 +176,36 @@ class FinancialReportController extends Controller
                 'material_order' => null,
                 'area_id' => $custAreaId,
                 'area' => $custArea,
+            ]);
+        }
+
+        foreach ($incomesThisMonth as $inc) {
+            $catName = $inc->category ? $inc->category->name : 'Pemasukan Lainnya';
+            $catCode = $inc->category ? $inc->category->code : 'INC';
+            $catColor = $inc->category ? $inc->category->color : 'emerald';
+            $incArea = $inc->area ?: ($inc->areaModel?->name ?: null);
+
+            $ledger->push([
+                'id' => 'inc_'.$inc->id,
+                'income_id' => $inc->id,
+                'date' => Carbon::parse($inc->income_date)->format('Y-m-d H:i:s'),
+                'type' => 'income',
+                'is_manual' => true,
+                'category' => $inc->income_category_id ? (string)$inc->income_category_id : 'manual_income',
+                'category_id' => $inc->income_category_id,
+                'category_name' => $catName,
+                'category_code' => $catCode,
+                'category_color' => $catColor,
+                'amount' => (float)$inc->amount,
+                'description' => $inc->description,
+                'source' => $inc->source,
+                'payment_method' => $inc->payment_method,
+                'reference_no' => $inc->reference_no,
+                'person' => $inc->source ?: '-',
+                'user' => $inc->creator ? $inc->creator->name : 'Admin',
+                'material_order' => null,
+                'area_id' => $inc->area_id,
+                'area' => $incArea,
             ]);
         }
         
@@ -257,6 +298,8 @@ class FinancialReportController extends Controller
                 $area = strtolower($item['area'] ?? ($item['material_order']['area_name'] ?? ''));
                 $catName = strtolower($item['category_name'] ?? '');
                 $catCode = strtolower($item['category_code'] ?? '');
+                $source = strtolower($item['source'] ?? '');
+                $refNo = strtolower($item['reference_no'] ?? '');
 
                 return str_contains($desc, $searchLower)
                     || str_contains($person, $searchLower)
@@ -264,7 +307,9 @@ class FinancialReportController extends Controller
                     || str_contains($poNum, $searchLower)
                     || str_contains($area, $searchLower)
                     || str_contains($catName, $searchLower)
-                    || str_contains($catCode, $searchLower);
+                    || str_contains($catCode, $searchLower)
+                    || str_contains($source, $searchLower)
+                    || str_contains($refNo, $searchLower);
             });
         }
 
@@ -275,10 +320,13 @@ class FinancialReportController extends Controller
         if ($filterCategory !== 'all' && $filterCategory !== '') {
             $ledger = $ledger->filter(function($item) use ($filterCategory) {
                 if ($filterCategory === 'customer') {
-                    return $item['type'] === 'income' && $item['category'] === 'customer';
+                    return $item['type'] === 'income' && ($item['category'] ?? '') === 'customer';
                 }
                 if ($filterCategory === 'reseller') {
-                    return $item['type'] === 'income' && $item['category'] === 'reseller';
+                    return $item['type'] === 'income' && ($item['category'] ?? '') === 'reseller';
+                }
+                if ($filterCategory === 'manual_income') {
+                    return $item['type'] === 'income' && !empty($item['is_manual']);
                 }
                 if ($filterCategory === 'material') {
                     return !empty($item['material_order']) || ($item['category_code'] ?? '') === 'MAT' || $item['category'] === 'material';
@@ -347,6 +395,7 @@ class FinancialReportController extends Controller
             'summary' => [
                 'omzet_customer' => $omzetCustomer,
                 'omzet_reseller' => $omzetReseller,
+                'omzet_manual' => $omzetManual,
                 'total_omzet' => $totalOmzet,
                 'total_pengeluaran' => $totalPengeluaran,
                 'pengeluaran_material' => $pengeluaranMaterial,
@@ -376,6 +425,7 @@ class FinancialReportController extends Controller
             ],
             'kpi' => $collectorKpi,
             'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
+            'income_categories' => IncomeCategory::active()->orderBy('name')->get(['id', 'code', 'name', 'color']),
             'expense_categories' => ExpenseCategory::active()->orderBy('name')->get(['id', 'code', 'name', 'color']),
         ]);
     }
@@ -413,7 +463,12 @@ class FinancialReportController extends Controller
             
         $omzetCustomer = (float) $paymentsThisMonth->filter(fn($p) => $p->invoice && !$p->invoice->is_reseller_balance)->sum('amount');
         $omzetReseller = (float) $paymentsThisMonth->filter(fn($p) => $p->invoice && $p->invoice->is_reseller_balance)->sum('amount');
-        $totalOmzet = $omzetCustomer + $omzetReseller;
+
+        $incomesThisMonth = Income::with(['creator', 'category', 'areaModel'])
+            ->whereBetween('income_date', [$startDate, $endDate])
+            ->get();
+        $omzetManual = (float) $incomesThisMonth->sum('amount');
+        $totalOmzet = $omzetCustomer + $omzetReseller + $omzetManual;
 
         // Expenses
         $totalPengeluaran = (float) Expense::whereBetween('expense_date', [$startDate, $endDate])->sum('amount');
@@ -480,6 +535,36 @@ class FinancialReportController extends Controller
             ]);
         }
 
+        foreach ($incomesThisMonth as $inc) {
+            $catName = $inc->category ? $inc->category->name : 'Pemasukan Lainnya';
+            $catCode = $inc->category ? $inc->category->code : 'INC';
+            $catColor = $inc->category ? $inc->category->color : 'emerald';
+            $incArea = $inc->area ?: ($inc->areaModel?->name ?: null);
+
+            $ledger->push([
+                'id' => 'inc_'.$inc->id,
+                'income_id' => $inc->id,
+                'date' => Carbon::parse($inc->income_date)->format('Y-m-d H:i:s'),
+                'type' => 'income',
+                'is_manual' => true,
+                'category' => $inc->income_category_id ? (string)$inc->income_category_id : 'manual_income',
+                'category_id' => $inc->income_category_id,
+                'category_name' => $catName,
+                'category_code' => $catCode,
+                'category_color' => $catColor,
+                'amount' => (float)$inc->amount,
+                'description' => $inc->description,
+                'source' => $inc->source,
+                'payment_method' => $inc->payment_method,
+                'reference_no' => $inc->reference_no,
+                'person' => $inc->source ?: '-',
+                'user' => $inc->creator ? $inc->creator->name : 'Admin',
+                'material_order' => null,
+                'area_id' => $inc->area_id,
+                'area' => $incArea,
+            ]);
+        }
+
         $expensesThisMonth = Expense::with(['creator', 'category', 'areaModel', 'materialTransaction'])
             ->whereBetween('expense_date', [$startDate, $endDate])
             ->get();
@@ -534,6 +619,7 @@ class FinancialReportController extends Controller
                     || str_contains(strtolower($item['user'] ?? ''), $searchLower)
                     || str_contains(strtolower($item['po_number'] ?? ''), $searchLower)
                     || str_contains(strtolower($item['area'] ?? ''), $searchLower)
+                    || str_contains(strtolower($item['source'] ?? ''), $searchLower)
                     || str_contains(strtolower($item['category_name'] ?? ''), $searchLower);
             });
         }
@@ -545,10 +631,13 @@ class FinancialReportController extends Controller
         if ($filterCategory !== 'all' && $filterCategory !== '') {
             $ledger = $ledger->filter(function($item) use ($filterCategory) {
                 if ($filterCategory === 'customer') {
-                    return $item['type'] === 'income' && $item['category'] === 'customer';
+                    return $item['type'] === 'income' && ($item['category'] ?? '') === 'customer';
                 }
                 if ($filterCategory === 'reseller') {
-                    return $item['type'] === 'income' && $item['category'] === 'reseller';
+                    return $item['type'] === 'income' && ($item['category'] ?? '') === 'reseller';
+                }
+                if ($filterCategory === 'manual_income') {
+                    return $item['type'] === 'income' && !empty($item['is_manual']);
                 }
                 if ($filterCategory === 'material') {
                     return !empty($item['po_number']) || ($item['category_code'] ?? '') === 'MAT' || $item['category'] === 'material';
@@ -587,6 +676,7 @@ class FinancialReportController extends Controller
                 'total_omzet' => $totalOmzet,
                 'omzet_customer' => $omzetCustomer,
                 'omzet_reseller' => $omzetReseller,
+                'omzet_manual' => $omzetManual,
                 'total_pengeluaran' => $totalPengeluaran,
                 'pengeluaran_material' => $pengeluaranMaterial,
                 'pengeluaran_operasional' => $pengeluaranOperasional,

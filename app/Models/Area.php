@@ -15,6 +15,7 @@ class Area extends Model
                 Customer::where('area_id', $area->id)->update(['area' => $area->name]);
                 MaterialTransaction::where('area_id', $area->id)->update(['area' => $area->name]);
                 Expense::where('area_id', $area->id)->update(['area' => $area->name]);
+                Income::where('area_id', $area->id)->update(['area' => $area->name]);
             }
         });
     }
@@ -22,6 +23,11 @@ class Area extends Model
     public function expenses()
     {
         return $this->hasMany(Expense::class);
+    }
+
+    public function incomes()
+    {
+        return $this->hasMany(Income::class);
     }
 
     public function stocks()

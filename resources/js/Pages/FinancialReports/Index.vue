@@ -56,6 +56,10 @@
                             <span>Reseller Voucher:</span>
                             <span>Rp {{ formatRupiah(summary?.omzet_reseller || 0) }}</span>
                         </div>
+                        <div v-if="summary?.omzet_manual > 0" class="flex flex-wrap justify-between gap-1 text-emerald-200 font-semibold border-t border-indigo-400/20 pt-1">
+                            <span>Pemasukan Lainnya:</span>
+                            <span>Rp {{ formatRupiah(summary?.omzet_manual || 0) }}</span>
+                        </div>
                     </div>
                 </div>
 
@@ -172,6 +176,10 @@
                             <svg class="w-4 h-4 text-gray-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
                             Master Kategori
                         </Link>
+                        <button @click="showIncomeModal = true" class="flex-1 sm:flex-initial justify-center inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl shadow-sm transition-all hover:shadow text-xs font-bold whitespace-nowrap cursor-pointer">
+                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            Catat Pemasukan
+                        </button>
                         <button @click="showExpenseModal = true" class="flex-1 sm:flex-initial justify-center inline-flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl shadow-sm transition-all hover:shadow text-xs font-bold whitespace-nowrap cursor-pointer">
                             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                             Catat Pengeluaran
@@ -241,6 +249,10 @@
                                 <optgroup label="Sumber Pemasukan">
                                     <option value="customer">👤 Pelanggan Reguler</option>
                                     <option value="reseller">🏷️ Reseller Voucher</option>
+                                    <option value="manual_income">💰 Pemasukan Kas Lainnya (Semua)</option>
+                                    <option v-for="cat in income_categories" :key="'inc_'+cat.id" :value="cat.id">
+                                        {{ cat.code ? '[' + cat.code + '] ' : '' }}{{ cat.name }}
+                                    </option>
                                 </optgroup>
                                 <optgroup label="Kategori Pengeluaran">
                                     <option value="material">📦 Belanja Material (Order Toko)</option>
@@ -419,7 +431,8 @@
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span v-if="item.type === 'income'" class="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg text-xs font-bold border border-emerald-200">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
-                                        Pemasukan ({{ item.category === 'reseller' ? 'Reseller' : 'Pelanggan' }})
+                                        <span v-if="item.is_manual">Pemasukan ({{ item.category_name || 'Lainnya' }})</span>
+                                        <span v-else>Pemasukan ({{ item.category === 'reseller' ? 'Reseller' : 'Pelanggan' }})</span>
                                     </span>
                                     <span v-else class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border" :class="item.category_code === 'MAT' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-rose-50 text-rose-700 border-rose-200'">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
@@ -429,6 +442,15 @@
                                 <td class="px-6 py-4">
                                     <div class="flex items-start gap-2 flex-wrap">
                                         <p class="text-sm text-gray-900 font-medium">{{ item.description }}</p>
+                                        <span v-if="item.source" class="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-md">
+                                            Dari: {{ item.source }}
+                                        </span>
+                                        <span v-if="item.payment_method && item.is_manual" class="inline-flex items-center gap-1 text-[10px] font-semibold text-gray-600 bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded uppercase">
+                                            {{ item.payment_method }}
+                                        </span>
+                                        <span v-if="item.reference_no" class="inline-flex items-center gap-1 text-[10px] font-mono font-medium text-gray-600 bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded">
+                                            Ref: {{ item.reference_no }}
+                                        </span>
                                         <button v-if="item.material_order" @click="openMaterialDetail(item.material_order)" type="button" class="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2 py-0.5 rounded-md transition-colors cursor-pointer">
                                             <svg class="w-3 h-3 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                             {{ item.material_order.items_count }} Item Material
@@ -450,6 +472,10 @@
                                         Rincian
                                     </button>
                                     <button v-else-if="item.type === 'expense' && item.expense_id" @click="deleteExpense(item.expense_id, item.description)" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 hover:text-rose-900 border border-rose-200 rounded-xl transition-all shadow-xs cursor-pointer" title="Hapus Catatan Pengeluaran">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                        Hapus
+                                    </button>
+                                    <button v-else-if="item.type === 'income' && item.income_id" @click="deleteIncome(item.income_id, item.description)" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 hover:text-rose-900 border border-rose-200 rounded-xl transition-all shadow-xs cursor-pointer" title="Hapus Catatan Pemasukan">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                                         Hapus
                                     </button>
@@ -505,6 +531,154 @@
 
             </div>
 
+        </div>
+
+        <!-- Modal Form Pemasukan Baru (Manual Income) -->
+        <div v-if="showIncomeModal" class="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="showIncomeModal = false"></div>
+            <div class="relative z-10 bg-white rounded-3xl text-left overflow-hidden shadow-xl transform transition-all sm:max-w-md w-full max-h-[90vh] flex flex-col border border-gray-100">
+                <div class="bg-gray-50/50 px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-100 flex items-center justify-between shrink-0">
+                    <h3 class="text-base sm:text-lg leading-6 font-bold text-gray-900 flex items-center gap-2">
+                        <span class="bg-emerald-100 text-emerald-600 p-1.5 rounded-lg shrink-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        </span>
+                        <span>Catat Pemasukan Baru</span>
+                    </h3>
+                    <button @click="showIncomeModal = false" class="text-gray-400 hover:text-gray-500 shrink-0">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                
+                <form @submit.prevent="submitIncome" class="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                            Tanggal Pemasukan <span class="text-rose-500">*</span>
+                        </label>
+                        <input 
+                            type="date" 
+                            v-model="incomeForm.income_date" 
+                            required 
+                            class="w-full px-3.5 py-2.5 text-sm border-gray-200 bg-gray-50 focus:bg-white rounded-xl focus:ring-emerald-500 focus:border-emerald-500 font-medium" 
+                        />
+                    </div>
+
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                Kategori Pemasukan
+                            </label>
+                            <Link :href="route('income-categories.index')" class="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 hover:underline">
+                                + Kelola Kategori
+                            </Link>
+                        </div>
+                        <select 
+                            v-model="incomeForm.income_category_id" 
+                            class="w-full px-3.5 py-2.5 text-sm border-gray-200 bg-gray-50 focus:bg-white rounded-xl focus:ring-emerald-500 focus:border-emerald-500 font-medium"
+                        >
+                            <option value="">-- Tanpa Kategori (Umum) --</option>
+                            <option v-for="cat in income_categories" :key="cat.id" :value="cat.id">
+                                {{ cat.code ? '[' + cat.code + '] ' : '' }}{{ cat.name }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                            Sumber Dana / Pembayar
+                        </label>
+                        <input 
+                            type="text" 
+                            v-model="incomeForm.source" 
+                            placeholder="Contoh: Bpk. Bambang, CV Sinar Terang, Penjualan Router" 
+                            class="w-full px-3.5 py-2.5 text-sm border-gray-200 bg-gray-50 focus:bg-white rounded-xl focus:ring-emerald-500 focus:border-emerald-500 font-medium placeholder-gray-400" 
+                        />
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                            Area / Wilayah
+                        </label>
+                        <select 
+                            v-model="incomeForm.area_id" 
+                            class="w-full px-3.5 py-2.5 text-sm border-gray-200 bg-gray-50 focus:bg-white rounded-xl focus:ring-emerald-500 focus:border-emerald-500 font-medium"
+                        >
+                            <option value="">-- Kantor Pusat / Semua Wilayah (Umum) --</option>
+                            <option v-for="a in areas" :key="a.id" :value="a.id">
+                                {{ a.name }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                                Metode Pembayaran
+                            </label>
+                            <select 
+                                v-model="incomeForm.payment_method" 
+                                class="w-full px-3 py-2.5 text-sm border-gray-200 bg-gray-50 focus:bg-white rounded-xl focus:ring-emerald-500 focus:border-emerald-500 font-medium"
+                            >
+                                <option value="transfer">Transfer Bank</option>
+                                <option value="cash">Tunai / Cash</option>
+                                <option value="qris">QRIS / E-Wallet</option>
+                                <option value="lainnya">Lainnya</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                                No. Bukti / Ref
+                            </label>
+                            <input 
+                                type="text" 
+                                v-model="incomeForm.reference_no" 
+                                placeholder="TRX-123 / No. Ref" 
+                                class="w-full px-3 py-2.5 text-sm border-gray-200 bg-gray-50 focus:bg-white rounded-xl focus:ring-emerald-500 focus:border-emerald-500 font-medium placeholder-gray-400" 
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                            Nominal (Rp) <span class="text-rose-500">*</span>
+                        </label>
+                        <div class="relative rounded-xl shadow-xs">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                <span class="text-gray-500 font-bold sm:text-sm">Rp</span>
+                            </div>
+                            <input 
+                                type="text" 
+                                v-model="incomeForm.amount" 
+                                placeholder="Contoh: 500000" 
+                                required 
+                                class="w-full pl-11 pr-4 py-2.5 text-sm border-gray-200 bg-gray-50 focus:bg-white rounded-xl focus:ring-emerald-500 focus:border-emerald-500 font-bold text-gray-900" 
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                            Keterangan / Rincian Pemasukan <span class="text-rose-500">*</span>
+                        </label>
+                        <textarea 
+                            v-model="incomeForm.description" 
+                            rows="3" 
+                            required 
+                            placeholder="Contoh: Penjualan 5 router bekas ganti unit pelanggan, jasa setting hotspot cafe, dll" 
+                            class="w-full px-3.5 py-2.5 text-sm border-gray-200 bg-gray-50 focus:bg-white rounded-xl focus:ring-emerald-500 focus:border-emerald-500 font-medium placeholder-gray-400"
+                        ></textarea>
+                    </div>
+                    
+                    <div class="pt-3 flex flex-wrap justify-end gap-2.5">
+                        <button type="button" @click="showIncomeModal = false" class="flex-1 sm:flex-initial bg-white py-2.5 px-5 border border-gray-300 rounded-xl shadow-sm text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all cursor-pointer">
+                            Batal
+                        </button>
+                        <button type="submit" :disabled="incomeForm.processing" class="flex-1 sm:flex-initial inline-flex justify-center items-center gap-1.5 py-2.5 px-5 border border-transparent shadow-sm text-sm font-bold rounded-xl text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-all disabled:opacity-50 whitespace-nowrap cursor-pointer">
+                            <span v-if="incomeForm.processing" class="animate-spin mr-1">⌛</span>
+                            <span>Simpan Pemasukan</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
 
         <!-- Modal Form Pengeluaran -->
@@ -733,6 +907,10 @@ const props = defineProps({
         type: Array,
         default: () => []
     },
+    income_categories: {
+        type: Array,
+        default: () => []
+    },
     expense_categories: {
         type: Array,
         default: () => []
@@ -795,7 +973,10 @@ const hasActiveFilters = computed(() => {
 const getCategoryLabel = (val) => {
     if (val === 'customer') return 'Pelanggan Reguler';
     if (val === 'reseller') return 'Reseller Voucher';
+    if (val === 'manual_income') return 'Pemasukan Kas Lainnya';
     if (val === 'material') return 'Belanja Material';
+    const foundInc = props.income_categories.find(c => String(c.id) === String(val) || String(c.code) === String(val));
+    if (foundInc) return foundInc.name;
     const found = props.expense_categories.find(c => String(c.id) === String(val) || String(c.code) === String(val));
     return found ? found.name : val;
 };
@@ -901,6 +1082,87 @@ const getTodayDate = () => {
     return `${year}-${month}-${day}`;
 };
 
+const showIncomeModal = ref(false);
+const incomeForm = useForm({
+    income_category_id: '',
+    area_id: '',
+    source: '',
+    amount: '',
+    description: '',
+    income_date: getTodayDate(),
+    payment_method: 'transfer',
+    reference_no: '',
+});
+
+const submitIncome = () => {
+    incomeForm.post(route('incomes.store'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showIncomeModal.value = false;
+            incomeForm.reset();
+            incomeForm.income_category_id = '';
+            incomeForm.area_id = '';
+            incomeForm.source = '';
+            incomeForm.amount = '';
+            incomeForm.description = '';
+            incomeForm.payment_method = 'transfer';
+            incomeForm.reference_no = '';
+            incomeForm.income_date = getTodayDate();
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil Dicatat!',
+                text: 'Catatan pemasukan berhasil disimpan ke buku kas.',
+                timer: 1800,
+                showConfirmButton: false
+            });
+        },
+        onError: (errors) => {
+            const firstError = Object.values(errors)[0] || 'Terjadi kesalahan saat menyimpan pemasukan.';
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Menyimpan',
+                text: firstError
+            });
+        }
+    });
+};
+
+const deleteIncome = (id, desc = '') => {
+    Swal.fire({
+        title: 'Hapus Pemasukan?',
+        text: desc ? `Yakin ingin menghapus catatan pemasukan "${desc}"? Buku kas dan laba bersih akan diperbarui secara otomatis.` : 'Apakah Anda yakin ingin menghapus catatan pemasukan ini?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Ya, Hapus!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.delete(route('incomes.destroy', id), {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Terhapus!',
+                        text: 'Catatan pemasukan berhasil dihapus dari buku kas.',
+                        timer: 1600,
+                        showConfirmButton: false
+                    });
+                },
+                onError: (err) => {
+                    const errorMsg = Object.values(err)[0] || 'Gagal menghapus catatan pemasukan.';
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: errorMsg
+                    });
+                }
+            });
+        }
+    });
+};
+
 const showExpenseModal = ref(false);
 const expenseForm = useForm({
     expense_category_id: '',
@@ -994,7 +1256,7 @@ const chartOptions = computed(() => ({
         zoom: { enabled: false },
         parentHeightOffset: 0
     },
-    colors: ['#4f46e5', '#10b981', '#f43f5e'],
+    colors: ['#4f46e5', '#10b981', '#059669', '#f43f5e'],
     dataLabels: { enabled: false },
     stroke: {
         curve: 'smooth',
@@ -1054,6 +1316,10 @@ const chartSeries = computed(() => [
     {
         name: 'Omzet Reseller',
         data: props.chartData ? props.chartData.map(d => d.reseller) : []
+    },
+    {
+        name: 'Pemasukan Lainnya',
+        data: props.chartData ? props.chartData.map(d => d.manual_income || 0) : []
     },
     {
         name: 'Pengeluaran',

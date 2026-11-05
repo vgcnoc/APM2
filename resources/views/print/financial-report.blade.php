@@ -263,6 +263,9 @@
                 <div class="sub">
                     <span>Pelanggan: {{ $rp($summary['omzet_customer']) }}</span>
                     <span>Reseller: {{ $rp($summary['omzet_reseller']) }}</span>
+                    @if(!empty($summary['omzet_manual']))
+                    <span>Lainnya: {{ $rp($summary['omzet_manual']) }}</span>
+                    @endif
                 </div>
             </div>
 
@@ -304,7 +307,7 @@
                 <strong>Filter Aktif:</strong>
                 @if(!empty($filters['search'])) [Cari: "{{ $filters['search'] }}"] @endif
                 @if($filters['type'] && $filters['type'] !== 'all') [Tipe: {{ $filters['type'] === 'income' ? 'Pemasukan Kas' : 'Pengeluaran Kas' }}] @endif
-                @if($filters['category'] && $filters['category'] !== 'all') [Kategori: {{ $filters['category'] === 'material' ? 'Belanja Material (Order Toko)' : ($filters['category'] === 'customer' ? 'Pelanggan Reguler' : ($filters['category'] === 'reseller' ? 'Reseller Voucher' : $filters['category'])) }}] @endif
+                @if($filters['category'] && $filters['category'] !== 'all') [Kategori: {{ $filters['category'] === 'material' ? 'Belanja Material (Order Toko)' : ($filters['category'] === 'customer' ? 'Pelanggan Reguler' : ($filters['category'] === 'reseller' ? 'Reseller Voucher' : ($filters['category'] === 'manual_income' ? 'Pemasukan Kas Lainnya' : $filters['category']))) }}] @endif
                 @if(!empty($filters['area']) && $filters['area'] !== 'all') [Wilayah: {{ $filters['area'] }}] @endif
                 @if(!empty($filters['date_from']) || !empty($filters['date_to'])) [Tgl: {{ $filters['date_from'] ?: '...' }} s/d {{ $filters['date_to'] ?: '...' }}] @endif
             </div>

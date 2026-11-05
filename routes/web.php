@@ -509,10 +509,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/reseller-reports', [\App\Http\Controllers\ResellerReportController::class, 'index'])->name('reseller-reports.index');
     });
 
-    // ── Catat & Hapus Pengeluaran (Buku Kas & Laporan Keuangan) ──
+    // ── Catat & Hapus Pengeluaran & Pemasukan (Buku Kas & Laporan Keuangan) ──
     Route::middleware(['permission:menu_financial_reports|menu_reseller_reports'])->group(function () {
         Route::post('/expenses', [\App\Http\Controllers\ExpenseController::class, 'store'])->name('expenses.store');
         Route::delete('/expenses/{expense}', [\App\Http\Controllers\ExpenseController::class, 'destroy'])->name('expenses.destroy');
+        Route::post('/incomes', [\App\Http\Controllers\IncomeController::class, 'store'])->name('incomes.store');
+        Route::delete('/incomes/{income}', [\App\Http\Controllers\IncomeController::class, 'destroy'])->name('incomes.destroy');
     });
 
 
@@ -728,13 +730,19 @@ Route::middleware(['auth'])->group(function () {
         Route::post('settings/areas/{area}/delete', [\App\Http\Controllers\AreaController::class, 'destroy'])->name('areas.destroy.post');
     });
 
-    // ── Master Kategori Pengeluaran ──────────────────────────────
+    // ── Master Kategori Pengeluaran & Pemasukan ──────────────────
     Route::middleware(['permission:menu_settings_areas|menu_financial_reports|menu_reseller_reports'])->group(function () {
         Route::resource('settings/expense-categories', \App\Http\Controllers\ExpenseCategoryController::class);
         Route::post('settings/expense-categories/{expenseCategory}/update', [\App\Http\Controllers\ExpenseCategoryController::class, 'update'])->name('expense-categories.update.post');
         Route::post('settings/expense-categories/{expenseCategory}/delete', [\App\Http\Controllers\ExpenseCategoryController::class, 'destroy'])->name('expense-categories.destroy.post');
         Route::post('settings/expense-categories/{expenseCategory}/toggle', [\App\Http\Controllers\ExpenseCategoryController::class, 'toggleStatus'])->name('expense-categories.toggle');
         Route::get('api/expense-categories/active', [\App\Http\Controllers\ExpenseCategoryController::class, 'getActiveCategories'])->name('expense-categories.active');
+
+        Route::resource('settings/income-categories', \App\Http\Controllers\IncomeCategoryController::class);
+        Route::post('settings/income-categories/{incomeCategory}/update', [\App\Http\Controllers\IncomeCategoryController::class, 'update'])->name('income-categories.update.post');
+        Route::post('settings/income-categories/{incomeCategory}/delete', [\App\Http\Controllers\IncomeCategoryController::class, 'destroy'])->name('income-categories.destroy.post');
+        Route::post('settings/income-categories/{incomeCategory}/toggle', [\App\Http\Controllers\IncomeCategoryController::class, 'toggleStatus'])->name('income-categories.toggle');
+        Route::get('api/income-categories/active', [\App\Http\Controllers\IncomeCategoryController::class, 'getActiveCategories'])->name('income-categories.active');
     });
     
     // ── Pengaturan Branding, Billing & API ─────────────────────
