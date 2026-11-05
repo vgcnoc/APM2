@@ -7,7 +7,7 @@ const commands = [
   'git clean -fd public/build',
   'git pull origin main',
   'php artisan migrate --force',
-  'php artisan permissions:sync',
+  'php artisan permissions:sync --roles=finance,hrd',
   'php artisan optimize:clear',
   'php artisan config:cache',
   'php artisan route:cache',
