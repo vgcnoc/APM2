@@ -61,7 +61,7 @@ class RouterController extends Controller
         $validated['winbox_port'] = $validated['winbox_port'] ?? 8291;
 
         if (!empty($validated['new_area_name'])) {
-            $newArea = \App\Models\Area::firstOrCreate(['name' => trim($validated['new_area_name'])]);
+            $newArea = \App\Models\Area::findOrCreateFlexible(trim($validated['new_area_name']));
             $validated['area_id'] = $newArea->id;
         } elseif (!empty($validated['area_id']) && $validated['area_id'] !== 'new') {
             $validated['area_id'] = \App\Models\Area::where('id', $validated['area_id'])->value('id');
@@ -102,7 +102,7 @@ class RouterController extends Controller
         $validated['winbox_port'] = $validated['winbox_port'] ?? 8291;
 
         if (!empty($validated['new_area_name'])) {
-            $newArea = \App\Models\Area::firstOrCreate(['name' => trim($validated['new_area_name'])]);
+            $newArea = \App\Models\Area::findOrCreateFlexible(trim($validated['new_area_name']));
             $validated['area_id'] = $newArea->id;
         } elseif (!empty($validated['area_id']) && $validated['area_id'] !== 'new') {
             $validated['area_id'] = \App\Models\Area::where('id', $validated['area_id'])->value('id');

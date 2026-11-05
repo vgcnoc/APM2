@@ -518,12 +518,12 @@ class Customer extends Model
                 }
             } elseif ($customer->isDirty('area') && !empty($customer->area)) {
                 $trimmed = trim($customer->area);
-                $areaModel = \App\Models\Area::firstOrCreate(['name' => $trimmed]);
+                $areaModel = \App\Models\Area::findOrCreateFlexible($trimmed);
                 $customer->area_id = $areaModel->id;
                 $customer->area = $areaModel->name;
             } elseif (empty($customer->area_id) && !empty($customer->area)) {
                 $trimmed = trim($customer->area);
-                $areaModel = \App\Models\Area::firstOrCreate(['name' => $trimmed]);
+                $areaModel = \App\Models\Area::findOrCreateFlexible($trimmed);
                 $customer->area_id = $areaModel->id;
                 $customer->area = $areaModel->name;
             } elseif (!empty($customer->area_id) && empty($customer->area)) {

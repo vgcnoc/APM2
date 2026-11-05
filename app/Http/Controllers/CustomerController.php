@@ -2607,8 +2607,9 @@ class CustomerController extends Controller
 
         // Auto-create new area if not exists in master data
         if (!empty($validated['area'])) {
-            $areaModel = \App\Models\Area::firstOrCreate(['name' => $validated['area']]);
+            $areaModel = \App\Models\Area::findOrCreateFlexible($validated['area']);
             $validated['area_id'] = $areaModel->id;
+            $validated['area'] = $areaModel->name;
         }
 
         $user = auth()->user();
@@ -3038,8 +3039,9 @@ class CustomerController extends Controller
 
         // Auto-create new area if not exists in master data
         if (!empty($validated['area'])) {
-            $areaModel = \App\Models\Area::firstOrCreate(['name' => $validated['area']]);
+            $areaModel = \App\Models\Area::findOrCreateFlexible($validated['area']);
             $validated['area_id'] = $areaModel->id;
+            $validated['area'] = $areaModel->name;
         }
 
         // Jika status berubah ke 'active', set activation_date
