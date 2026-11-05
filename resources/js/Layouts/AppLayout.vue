@@ -916,6 +916,11 @@ const saveScrollPosition = () => {
 
 const hasPermission = (permission) => {
     if (!permission) return true;
+    if (permission === 'menu_attendance_leaves' || (Array.isArray(permission) && permission.includes('menu_attendance_leaves'))) {
+        if (hasRole(['admin', 'hrd', 'finance', 'hrd & finance'])) {
+            return true;
+        }
+    }
     return can(permission);
 };
 

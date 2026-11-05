@@ -353,7 +353,7 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('attendances/{attendance}', [\App\Http\Controllers\AttendanceController::class, 'destroy'])->name('attendances.destroy');
 
     // ── Input Manual Izin, Sakit & Alpha (Khusus HRD & Finance - Bukan Manager) ──
-    Route::middleware(['permission:menu_attendance_leaves'])->group(function () {
+    Route::middleware(['role_or_permission:admin|super admin|hrd|finance|hrd & finance|menu_attendance_leaves'])->group(function () {
         Route::get('attendance-leaves', [\App\Http\Controllers\AttendanceLeaveController::class, 'index'])->name('attendance-leaves.index');
         Route::post('attendance-leaves', [\App\Http\Controllers\AttendanceLeaveController::class, 'store'])->name('attendance-leaves.store');
         Route::post('attendance-leaves/sync-payroll', [\App\Http\Controllers\AttendanceLeaveController::class, 'syncPayroll'])->name('attendance-leaves.sync-payroll');

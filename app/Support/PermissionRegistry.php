@@ -1630,6 +1630,32 @@ class PermissionRegistry
         $presets['staff administrasi'] = $presets['admin cs'];
         $presets['Dispatcher'] = $presets['dispatcher'];
 
+        // Preset gabungan HRD & Finance
+        $presets['hrd & finance'] = array_values(array_unique(array_merge(
+            $presets['hrd'],
+            $presets['finance'],
+            [
+                'menu_attendance_leaves',
+                'attendance_leaves_manage',
+                'attendance_leaves_delete',
+                'menu_project_invoices',
+                'project_invoices_card_stats',
+                'project_invoices_filter',
+                'project_invoices_create',
+                'project_invoices_edit',
+                'project_invoices_delete',
+                'project_invoices_pay',
+                'project_invoices_print',
+                'project_invoices_whatsapp',
+                'project_invoices_view_all',
+            ]
+        )));
+        $presets['HRD & Finance'] = $presets['hrd & finance'];
+        $presets['HRD & FINANCE'] = $presets['hrd & finance'];
+        $presets['hrd & keuangan'] = $presets['hrd & finance'];
+        $presets['Finance'] = $presets['finance'];
+        $presets['HRD'] = $presets['hrd'];
+
         return $presets;
     }
 }

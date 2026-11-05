@@ -24,12 +24,26 @@ export function usePermission() {
         else if (u.roles) roles = Object.values(u.roles);
         if (u.role) roles.push(u.role);
 
-        const normalizedRoles = roles.map(r => String(r).toLowerCase());
+        const expandedRoles = [];
+        roles.forEach(r => {
+            const str = String(r || '').toLowerCase().trim();
+            if (str) {
+                expandedRoles.push(str);
+                if (str.includes('&')) {
+                    str.split('&').forEach(part => expandedRoles.push(part.trim()));
+                }
+                if (str.includes('/')) {
+                    str.split('/').forEach(part => expandedRoles.push(part.trim()));
+                }
+            }
+        });
+
+        const normalizedRoles = Array.from(new Set(expandedRoles));
 
         if (Array.isArray(role)) {
-            return role.some(r => normalizedRoles.includes(String(r).toLowerCase()));
+            return role.some(r => normalizedRoles.includes(String(r).toLowerCase().trim()));
         }
-        return normalizedRoles.includes(String(role).toLowerCase());
+        return normalizedRoles.includes(String(role).toLowerCase().trim());
     };
 
     const can = (permission) => {
