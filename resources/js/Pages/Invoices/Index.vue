@@ -806,6 +806,24 @@
                                 </div>
                             </div>
 
+                            <!-- Tanggal Pembayaran -->
+                            <div>
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider flex items-center gap-1.5">
+                                        <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                        <span>Tanggal Pembayaran</span>
+                                    </label>
+                                    <span class="text-[10px] text-gray-400 font-normal">Default hari ini, bisa disesuaikan</span>
+                                </div>
+                                <input 
+                                    type="date" 
+                                    v-model="paymentForm.payment_date" 
+                                    required
+                                    class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all cursor-pointer"
+                                />
+                                <p v-if="paymentForm.errors.payment_date" class="text-xs text-rose-500 mt-1 font-semibold">{{ paymentForm.errors.payment_date }}</p>
+                            </div>
+
                             <!-- Tab Pilihan: Bayar Lunas vs Bayar Sebagian -->
                             <div>
                                 <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Tipe Pembayaran</label>
@@ -2188,6 +2206,7 @@ const proofFileSize = ref('');
 const paymentMode = ref('full'); // 'full' | 'partial'
 
 const paymentForm = useForm({
+    payment_date: toLocalDateString(new Date()),
     method: 'cash',
     amount: 0,
     notes: '',
@@ -2257,6 +2276,7 @@ function removeProofFile() {
 function openPaymentModal(invoice, mode = 'full') {
     selectedInvoice.value = invoice;
     paymentForm.clearErrors();
+    paymentForm.payment_date = toLocalDateString(new Date());
     paymentForm.method = 'cash';
     paymentForm.amount = 0;
     paymentForm.notes = '';
@@ -2271,6 +2291,7 @@ function closePaymentModal() {
     setTimeout(() => {
         selectedInvoice.value = null;
         paymentForm.reset();
+        paymentForm.payment_date = toLocalDateString(new Date());
         removeProofFile();
     }, 200);
 }

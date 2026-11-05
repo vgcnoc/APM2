@@ -434,6 +434,7 @@ class InvoiceController extends Controller
         $request->validate([
             'amount' => 'required|numeric|min:1',
             'method' => 'required|string',
+            'payment_date' => 'nullable|date',
             'notes' => 'nullable|string',
             'proof_image' => 'nullable|file|mimes:jpeg,png,jpg,webp,pdf|max:10240',
             'internet_action' => 'nullable|in:on,off',
@@ -443,6 +444,10 @@ class InvoiceController extends Controller
         if ($request->hasFile('proof_image')) {
             $proofPath = $request->file('proof_image')->store('payment_proofs', 'public');
         }
+
+        $paymentDate = $request->filled('payment_date')
+            ? \Carbon\Carbon::parse($request->payment_date)->toDateString()
+            : now()->toDateString();
 
         $paymentAmount = (int) round($request->amount);
         $customerId = $invoice->customer_id;
@@ -471,7 +476,7 @@ class InvoiceController extends Controller
 
             $inv->payments()->create([
                 'customer_id' => $customerId,
-                'payment_date' => now(),
+                'payment_date' => $paymentDate,
                 'amount' => $payForThis,
                 'payment_method' => $request->method,
                 'status' => 'verified',
@@ -501,7 +506,7 @@ class InvoiceController extends Controller
         if ($remainingPayment > 0) {
             $invoice->payments()->create([
                 'customer_id' => $customerId,
-                'payment_date' => now(),
+                'payment_date' => $paymentDate,
                 'amount' => $remainingPayment,
                 'payment_method' => $request->method,
                 'status' => 'verified',
