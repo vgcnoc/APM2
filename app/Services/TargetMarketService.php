@@ -277,19 +277,27 @@ class TargetMarketService
                 if ($sum > 0) {
                     $description = "[Bonus Target Market] Periode {$monthName} ({$count} Pelanggan Closing)";
 
-                    $incentive = Incentive::updateOrCreate(
-                        [
-                            'user_id' => $user->id,
-                            'reference_id' => $refId,
-                        ],
-                        [
-                            'description' => $description,
-                            'amount' => $sum,
-                            'type' => 'auto',
-                            'incentive_date' => $date,
-                            'status' => 'pending',
-                        ]
-                    );
+                    $existingInc = Incentive::where('user_id', $user->id)
+                        ->where('reference_id', $refId)
+                        ->first();
+
+                    if ($existingInc && $existingInc->status === 'paid') {
+                        $incentive = $existingInc;
+                    } else {
+                        $incentive = Incentive::updateOrCreate(
+                            [
+                                'user_id' => $user->id,
+                                'reference_id' => $refId,
+                            ],
+                            [
+                                'description' => $description,
+                                'amount' => $sum,
+                                'type' => 'auto',
+                                'incentive_date' => $date,
+                                'status' => 'pending',
+                            ]
+                        );
+                    }
 
                     TargetMarketLog::whereIn('id', $userLogs->pluck('id'))->update([
                         'status' => 'synced_payroll',

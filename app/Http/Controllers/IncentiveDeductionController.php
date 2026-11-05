@@ -333,7 +333,11 @@ class IncentiveDeductionController extends Controller
                 $inc->update([
                     'status' => 'paid',
                     'disbursed_at' => $disburseDate,
-                    'reference_id' => $expense ? 'exp_' . $expense->id : $inc->reference_id,
+                    'reference_id' => $inc->reference_id ?: ($expense ? 'exp_' . $expense->id : null),
+                ]);
+
+                \App\Models\TargetMarketLog::where('incentive_id', $inc->id)->update([
+                    'status' => 'paid',
                 ]);
 
                 $totalDisbursed += $amount;
