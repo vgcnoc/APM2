@@ -2329,10 +2329,11 @@ class CustomerController extends Controller
         $customer->load(['package', 'areaModel', 'ont', 'sales']);
 
         $company = [
-            'name' => Setting::get('company_name', config('app.name', 'ISP Management')),
-            'address' => Setting::get('company_address', 'Layanan Internet Cepat & Stabil'),
-            'phone' => Setting::get('company_phone', ''),
-            'email' => Setting::get('company_email', ''),
+            'name' => Setting::get('company_name', 'PT VIRUZS GLOBAL CONNECTION'),
+            'address' => Setting::get('company_address', 'Jl.Perintis Kemerdekaan No.12A Kel.Sukamulya Kec.Cikembar Sukabumi'),
+            'phone' => Setting::get('company_phone', '088976397034'),
+            'email' => Setting::get('company_email', 'info@viruzs.co.id'),
+            'website' => Setting::get('company_website', 'www.viruzs.co.id'),
             'logo' => Setting::get('company_logo', null),
         ];
 
@@ -2347,10 +2348,11 @@ class CustomerController extends Controller
         $customer->load(['package', 'areaModel', 'sales.employee']);
 
         $company = [
-            'name' => Setting::get('company_name', config('app.name', 'ISP Management')),
-            'address' => Setting::get('company_address', 'Layanan Internet Cepat & Stabil'),
-            'phone' => Setting::get('company_phone', ''),
-            'email' => Setting::get('company_email', ''),
+            'name' => Setting::get('company_name', 'PT VIRUZS GLOBAL CONNECTION'),
+            'address' => Setting::get('company_address', 'Jl.Perintis Kemerdekaan No.12A Kel.Sukamulya Kec.Cikembar Sukabumi'),
+            'phone' => Setting::get('company_phone', '088976397034'),
+            'email' => Setting::get('company_email', 'info@viruzs.co.id'),
+            'website' => Setting::get('company_website', 'www.viruzs.co.id'),
             'logo' => Setting::get('company_logo', null),
         ];
 

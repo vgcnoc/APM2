@@ -41,6 +41,171 @@
             .no-print {
                 display: none !important;
             }
+            .kop-surat {
+                margin-bottom: 20px;
+            }
+            .kop-header-content {
+                gap: 14px;
+                padding-bottom: 10px;
+            }
+            .kop-logo-img {
+                max-height: 68px;
+                max-width: 125px;
+            }
+            .kop-divider-line {
+                background-color: #000000 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .kop-company-title {
+                color: #000000 !important;
+            }
+            .kop-subtitle {
+                color: #1e40af !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .kop-rule-thick {
+                height: 3.5px;
+                background-color: #000000 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .kop-rule-thin {
+                height: 1px;
+                background-color: #000000 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .kop-icon {
+                color: #1e40af !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+        /* Kop Surat Resmi & Elegan */
+        .kop-surat {
+            margin-bottom: 22px;
+        }
+        .kop-header-content {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding-bottom: 12px;
+        }
+        .kop-logo-box {
+            flex-shrink: 0;
+            width: 135px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .kop-logo-img {
+            max-height: 72px;
+            max-width: 130px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            display: block;
+        }
+        .kop-divider-double {
+            display: flex;
+            gap: 3.5px;
+            height: 70px;
+            align-items: stretch;
+            flex-shrink: 0;
+        }
+        .kop-divider-line {
+            width: 1.5px;
+            background-color: #0f172a;
+        }
+        .kop-info-box {
+            flex: 1;
+            min-width: 0;
+        }
+        .kop-company-title {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 20px;
+            font-weight: 900;
+            color: #0f172a;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            margin: 0 0 2px 0;
+            line-height: 1.15;
+        }
+        .kop-subtitle {
+            font-size: 10px;
+            font-weight: 700;
+            color: #2563eb;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        .kop-address {
+            font-size: 11.5px;
+            font-weight: 500;
+            color: #334155;
+            line-height: 1.45;
+            margin-bottom: 6px;
+        }
+        .kop-contacts {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        .kop-contact-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .kop-icon {
+            width: 13px;
+            height: 13px;
+            color: #2563eb;
+            flex-shrink: 0;
+            vertical-align: middle;
+        }
+        .kop-contact-sep {
+            color: #cbd5e1;
+            font-size: 12px;
+        }
+        .kop-rule {
+            margin-top: 6px;
+        }
+        .kop-rule-thick {
+            height: 3.5px;
+            background-color: #0f172a;
+            margin-bottom: 2px;
+        }
+        .kop-rule-thin {
+            height: 1px;
+            background-color: #0f172a;
+        }
+        .doc-title-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .doc-badge-pill {
+            background-color: #e0e7ff;
+            color: #3730a3;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 14px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-block;
+            margin-bottom: 6px;
+        }
+        .doc-meta-row {
+            font-family: Consolas, monospace;
+            font-size: 12px;
+            font-weight: 700;
+            color: #0f172a;
         }
         .action-bar {
             max-width: 820px;
@@ -256,24 +421,89 @@
         </div>
     </div>
 
+    @php
+        $rawLogo = $company['logo'] ?? \App\Models\Setting::get('company_logo', null);
+        $logoUrl = null;
+        if (!empty($rawLogo)) {
+            if (str_starts_with($rawLogo, 'http://') || str_starts_with($rawLogo, 'https://') || str_starts_with($rawLogo, 'data:')) {
+                $logoUrl = $rawLogo;
+            } elseif (str_starts_with($rawLogo, 'storage/') || str_starts_with($rawLogo, '/storage/')) {
+                $logoUrl = asset(ltrim($rawLogo, '/'));
+            } else {
+                $logoUrl = asset('storage/' . ltrim($rawLogo, '/'));
+            }
+        }
+        if (empty($logoUrl)) {
+            $logoUrl = asset('images/company_logo.png');
+        }
+
+        $companyTitle = 'PT VIRUZS GLOBAL CONNECTION';
+        $companyAddress = 'Jl. Perintis Kemerdekaan No. 12A, Kel. Sukamulya, Kec. Cikembar, Kab. Sukabumi, Jawa Barat 43157';
+        $companyPhone = '0266-250 8004 / 0889-7639-7034';
+        $companyEmail = 'info@viruzs.co.id';
+        $companyWeb = 'www.viruzs.co.id';
+    @endphp
+
     <!-- LEMBAR CETAK (PRINT SHEET) -->
     <div class="sheet">
-        <!-- HEADER KOP SURAT -->
-        <div class="header">
-            <div class="company-info">
-                <h1>{{ $company['name'] }}</h1>
-                <p>{{ $company['address'] }}</p>
-                <p>
-                    @if(!empty($company['phone'])) Telp/WA: {{ $company['phone'] }} @endif
-                    @if(!empty($company['email'])) &bull; Email: {{ $company['email'] }} @endif
-                </p>
-            </div>
-            <div class="doc-title">
-                <h2>FORMULIR BOOKING PSB</h2>
-                <div class="doc-num">{{ $customer->customer_code }}</div>
-                <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
-                    Tgl Daftar: {{ \Carbon\Carbon::parse($customer->registration_date ?? $customer->created_at)->translatedFormat('d F Y') }}
+        <!-- HEADER KOP SURAT RESMI -->
+        <div class="kop-surat">
+            <div class="kop-header-content">
+                <div class="kop-logo-box">
+                    <img 
+                        src="{{ $logoUrl }}" 
+                        alt="{{ $companyTitle }}" 
+                        class="kop-logo-img"
+                        onerror="this.onerror=null; this.src='{{ asset('images/company_logo.png') }}';"
+                    >
                 </div>
+                <div class="kop-divider-double">
+                    <div class="kop-divider-line"></div>
+                    <div class="kop-divider-line"></div>
+                </div>
+                <div class="kop-info-box">
+                    <h1 class="kop-company-title">{{ $companyTitle }}</h1>
+                    <div class="kop-subtitle">PENYEDIA JASA INTERNET (ISP) &bull; BUKTI REGISTRASI &amp; FORMULIR PSB</div>
+                    <div class="kop-address">
+                        {{ $companyAddress }}
+                    </div>
+                    <div class="kop-contacts">
+                        <span class="kop-contact-item">
+                            <svg class="kop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                            </svg>
+                            <span>{{ $companyPhone }}</span>
+                        </span>
+                        <span class="kop-contact-sep">&bull;</span>
+                        <span class="kop-contact-item">
+                            <svg class="kop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            <span>{{ $companyEmail }}</span>
+                        </span>
+                        <span class="kop-contact-sep">&bull;</span>
+                        <span class="kop-contact-item">
+                            <svg class="kop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+                            </svg>
+                            <span>{{ $companyWeb }}</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="kop-rule">
+                <div class="kop-rule-thick"></div>
+                <div class="kop-rule-thin"></div>
+            </div>
+        </div>
+
+        <!-- JUDUL FORMULIR -->
+        <div class="doc-title-container">
+            <span class="doc-badge-pill">FORMULIR REGISTRASI &amp; BOOKING PSB</span>
+            <div class="doc-meta-row">
+                <span>KODE: <strong>{{ $customer->customer_code }}</strong></span> &bull; 
+                <span>Tgl Registrasi: {{ \Carbon\Carbon::parse($customer->registration_date ?? $customer->created_at)->translatedFormat('d F Y') }}</span>
             </div>
         </div>
 

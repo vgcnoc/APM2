@@ -271,7 +271,8 @@ class SubscriptionTermsController extends Controller
             'name' => Setting::get('company_name', 'PT VIRUZS GLOBAL CONNECTION'),
             'address' => Setting::get('company_address', 'Jl.Perintis Kemerdekaan No.12A Kel.Sukamulya Kec.Cikembar Sukabumi'),
             'phone' => Setting::get('company_phone', '088976397034'),
-            'email' => Setting::get('company_email', ''),
+            'email' => Setting::get('company_email', 'info@viruzs.co.id'),
+            'website' => Setting::get('company_website', 'www.viruzs.co.id'),
             'logo' => Setting::get('company_logo', null),
         ];
 
