@@ -63,6 +63,11 @@ class TargetMarketService
                 continue;
             }
 
+            // Filter wilayah/area jika program ditargetkan khusus untuk area tertentu
+            if (!empty($program->target_area_id) && (int) $customer->area_id !== (int) $program->target_area_id) {
+                continue;
+            }
+
             self::calculateAndLog($program, $customer, $employee, $month, $year);
         }
 
@@ -244,6 +249,9 @@ class TargetMarketService
                     if ($prog->end_date && $custDateStr > Carbon::parse($prog->end_date)->toDateString()) continue;
                 }
                 if (!empty($prog->target_role) && $prog->target_role !== 'all' && $employee->role !== $prog->target_role) {
+                    continue;
+                }
+                if (!empty($prog->target_area_id) && (int) $cust->area_id !== (int) $prog->target_area_id) {
                     continue;
                 }
 

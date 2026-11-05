@@ -38,7 +38,7 @@ class TargetMarketController extends Controller
                         ->where('period_year', $year);
                 });
             })
-            ->with('creator')
+            ->with(['creator', 'targetArea'])
             ->orderByDesc('id')
             ->get();
 
@@ -124,6 +124,7 @@ class TargetMarketController extends Controller
             'period_year' => 'nullable|integer|min:2020|max:2035',
             'target_quota' => 'required|integer|min:1',
             'target_role' => 'nullable|string',
+            'target_area_id' => 'nullable|exists:areas,id',
             'reward_flat' => 'required|numeric|min:0',
             'reward_bonus_target' => 'nullable|numeric|min:0',
             'rules' => 'nullable|array',
@@ -168,6 +169,7 @@ class TargetMarketController extends Controller
             'period_year' => 'nullable|integer|min:2020|max:2035',
             'target_quota' => 'required|integer|min:1',
             'target_role' => 'nullable|string',
+            'target_area_id' => 'nullable|exists:areas,id',
             'reward_flat' => 'required|numeric|min:0',
             'reward_bonus_target' => 'nullable|numeric|min:0',
             'rules' => 'nullable|array',

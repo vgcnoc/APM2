@@ -19,6 +19,7 @@ class TargetMarketProgram extends Model
         'period_month' => 'integer',
         'period_year' => 'integer',
         'target_quota' => 'integer',
+        'target_area_id' => 'integer',
         'reward_flat' => 'integer',
         'reward_bonus_target' => 'integer',
         'rules' => 'array',
@@ -29,6 +30,11 @@ class TargetMarketProgram extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function targetArea(): BelongsTo
+    {
+        return $this->belongsTo(Area::class, 'target_area_id');
     }
 
     public function logs(): HasMany

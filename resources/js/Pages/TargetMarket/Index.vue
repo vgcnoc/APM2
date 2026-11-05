@@ -342,6 +342,20 @@
                                     <span class="text-gray-500">Target Peserta:</span>
                                     <span class="font-bold text-gray-700 capitalize">{{ prog.target_role || 'Semua Karyawan' }}</span>
                                 </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-500">Cakupan Wilayah:</span>
+                                    <span class="font-bold text-gray-800 text-[11px]">
+                                        {{ prog.target_area?.name || (prog.target_area_id ? getAreaName(prog.target_area_id) : 'Semua Wilayah') }}
+                                    </span>
+                                </div>
+                                <div v-if="prog.rules?.target_areas && prog.rules.target_areas.length > 0" class="pt-1.5 border-t border-gray-200/50">
+                                    <span class="text-[10px] font-bold text-purple-700 block mb-1">Bonus Wilayah Target:</span>
+                                    <div class="flex flex-wrap gap-1">
+                                        <span v-for="(ta, taIdx) in prog.rules.target_areas" :key="taIdx" class="text-[10px] px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded-md border border-purple-200 font-medium">
+                                            📍 {{ getAreaName(ta.area_id) }}: +Rp {{ formatCurrency(ta.bonus) }}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -536,8 +550,8 @@
                         </div>
                     </div>
 
-                    <!-- Target Kuota & Target Role -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <!-- Target Kuota, Peserta Karyawan, & Cakupan Wilayah Target -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
                             <label class="block text-xs font-bold text-gray-700 mb-1">Target Kuota Closing (Pelanggan)</label>
                             <input v-model.number="form.target_quota" type="number" min="1" required
@@ -552,6 +566,17 @@
                                 <option value="teknisi">Khusus Teknisi</option>
                                 <option value="freelance">Khusus Mitra Freelance</option>
                             </select>
+                            <p class="text-[10px] text-gray-400 mt-0.5">Filter divisi karyawan yang berhak</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Wilayah / Area Target</label>
+                            <select v-model="form.target_area_id" class="w-full text-xs font-semibold rounded-xl border-gray-200 py-2.5 px-3 focus:ring-indigo-500 focus:border-indigo-500">
+                                <option :value="null">Semua Wilayah (Seluruh Area)</option>
+                                <option v-for="area in master.areas" :key="area.id" :value="area.id">
+                                    📍 {{ area.name }}
+                                </option>
+                            </select>
+                            <p class="text-[10px] text-gray-400 mt-0.5">Target berlaku umum atau area tertentu</p>
                         </div>
                     </div>
 
@@ -571,7 +596,7 @@
                         </div>
                     </div>
 
-                    <!-- Kustomisasi Aturan Konsep (Tier / Area / Paket) -->
+                    <!-- Kustomisasi Aturan Konsep Tier Closing -->
                     <div v-if="form.concept === 'milestone_volume' || form.concept === 'hybrid'" class="p-3.5 bg-gray-50 rounded-2xl border border-gray-100 space-y-2">
                         <div class="flex items-center justify-between">
                             <span class="text-xs font-bold text-gray-800">📈 Aturan Jenjang Tier Closing</span>
@@ -587,6 +612,42 @@
                                 <input v-model.number="tier.reward" type="number" placeholder="Reward" class="w-24 text-xs rounded-lg border-gray-200 p-1.5 text-right font-bold" />
                                 <button type="button" @click="removeTierRow(tIdx)" class="text-red-400 hover:text-red-600 text-xs">✕</button>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Kustomisasi Aturan Konsep Area (Area Expansion / Hybrid) -->
+                    <div v-if="form.concept === 'area_expansion' || form.concept === 'hybrid'" class="p-3.5 bg-purple-50/50 rounded-2xl border border-purple-100 space-y-2.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-purple-950 flex items-center gap-1.5">
+                                <span>📍</span> Aturan Bonus Wilayah / ODP Target Ekstra
+                            </span>
+                            <button type="button" @click="addAreaRow" class="text-[11px] text-purple-700 font-bold hover:underline cursor-pointer flex items-center gap-1">
+                                <span>+</span> Tambah Area Target
+                            </button>
+                        </div>
+                        <p class="text-[11px] text-purple-800/80">
+                            Berikan bonus ekstra khusus bagi karyawan yang closing pelanggan di wilayah target tertentu.
+                        </p>
+                        <div v-if="form.rules.target_areas && form.rules.target_areas.length > 0" class="space-y-2">
+                            <div v-for="(tArea, aIdx) in form.rules.target_areas" :key="aIdx" class="flex items-center gap-2 flex-wrap sm:flex-nowrap bg-white p-2 rounded-xl border border-purple-200/60 shadow-2xs">
+                                <div class="flex-1 min-w-[160px]">
+                                    <label class="block text-[10px] text-gray-400 font-semibold mb-0.5">Pilih Wilayah</label>
+                                    <select v-model="tArea.area_id" class="w-full text-xs rounded-lg border-gray-200 p-1.5 font-semibold focus:ring-purple-500 focus:border-purple-500">
+                                        <option value="">-- Pilih Wilayah Target --</option>
+                                        <option v-for="area in master.areas" :key="area.id" :value="area.id">
+                                            📍 {{ area.name }}
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="w-full sm:w-36">
+                                    <label class="block text-[10px] text-gray-400 font-semibold mb-0.5">Bonus Ekstra (Rp)</label>
+                                    <input v-model.number="tArea.bonus" type="number" min="0" placeholder="Rp Bonus" class="w-full text-xs rounded-lg border-gray-200 p-1.5 text-right font-bold focus:ring-purple-500 focus:border-purple-500" />
+                                </div>
+                                <button type="button" @click="removeAreaRow(aIdx)" class="text-red-400 hover:text-red-600 p-1.5 text-xs font-bold self-end" title="Hapus Area">✕</button>
+                            </div>
+                        </div>
+                        <div v-else class="text-[11px] text-gray-400 italic bg-white/60 p-2.5 rounded-xl border border-dashed border-purple-200 text-center">
+                            Belum ada area dengan bonus ekstra. Klik "+ Tambah Area Target" untuk menambahkan bonus wilayah.
                         </div>
                     </div>
 
@@ -651,6 +712,7 @@ const form = useForm({
     period_year: props.year,
     target_quota: 15,
     target_role: null,
+    target_area_id: null,
     reward_flat: 25000,
     reward_bonus_target: 500000,
     rules: {
@@ -764,6 +826,7 @@ function openCreateModal() {
     form.reset();
     form.period_month = selectedMonth.value;
     form.period_year = selectedYear.value;
+    form.target_area_id = null;
 
     const m = String(selectedMonth.value).padStart(2, '0');
     const y = selectedYear.value;
@@ -790,6 +853,7 @@ function editProgram(prog) {
     form.concept = prog.concept;
     form.period_month = prog.period_month;
     form.period_year = prog.period_year;
+    form.target_area_id = prog.target_area_id || null;
 
     if (prog.start_date) {
         form.start_date = String(prog.start_date).substring(0, 10);
@@ -813,6 +877,8 @@ function editProgram(prog) {
     form.reward_flat = Number(prog.reward_flat);
     form.reward_bonus_target = Number(prog.reward_bonus_target);
     form.rules = prog.rules || { tiers: [], target_areas: [], target_packages: [] };
+    if (!form.rules.target_areas) form.rules.target_areas = [];
+    if (!form.rules.tiers) form.rules.tiers = [];
     form.description = prog.description || '';
     form.auto_disburse = prog.auto_disburse;
     showModal.value = true;
@@ -894,6 +960,21 @@ function addTierRow() {
 
 function removeTierRow(idx) {
     form.rules.tiers.splice(idx, 1);
+}
+
+function addAreaRow() {
+    if (!form.rules.target_areas) form.rules.target_areas = [];
+    form.rules.target_areas.push({ area_id: '', bonus: 50000 });
+}
+
+function removeAreaRow(idx) {
+    form.rules.target_areas.splice(idx, 1);
+}
+
+function getAreaName(areaId) {
+    if (!areaId) return '-';
+    const found = (props.master?.areas || []).find(a => a.id == areaId);
+    return found ? found.name : `Area #${areaId}`;
 }
 
 function onStartDateChange() {
