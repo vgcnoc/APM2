@@ -213,7 +213,7 @@
                             <h3 class="text-sm font-bold text-gray-900">Performa Pencapaian Target Karyawan</h3>
                             <p class="text-xs text-gray-400">Semua karyawan yang tercatat membawa pelanggan baru</p>
                         </div>
-                        <span class="text-xs text-gray-500 font-medium">Target Bulanan: <strong>{{ kpi.target_quota }} Closing</strong></span>
+                        <span class="text-xs text-gray-500 font-medium">Target per Karyawan: <strong>{{ kpi.target_quota }} Closing</strong></span>
                     </div>
 
                     <div class="overflow-x-auto">
@@ -553,10 +553,10 @@
                     <!-- Target Kuota, Peserta Karyawan, & Cakupan Wilayah Target -->
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 mb-1">Target Kuota Closing (Pelanggan)</label>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Target Kuota Closing per Karyawan (Pelanggan)</label>
                             <input v-model.number="form.target_quota" type="number" min="1" required
                                 class="w-full text-xs font-semibold rounded-xl border-gray-200 py-2.5 px-3 focus:ring-indigo-500 focus:border-indigo-500" />
-                            <p class="text-[10px] text-gray-400 mt-0.5">Jumlah closing untuk mencapai predikat Target Tercapai</p>
+                            <p class="text-[10px] text-gray-400 mt-0.5">Target closing per orang untuk mendapatkan predikat &amp; bonus tembus kuota</p>
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray-700 mb-1">Peserta Karyawan</label>
