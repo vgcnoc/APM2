@@ -71,7 +71,24 @@ class SubscriptionTermsTemplate extends Model
         $packageName = $customer->package?->name ?? 'Paket Internet Standard';
         $packageSpeed = $customer->package?->speed_mbps ? ($customer->package->speed_mbps . ' Mbps') : ($customer->package?->speed ?? '-');
         $packagePrice = 'Rp ' . number_format($customer->base_amount ?: ($customer->package?->price ?? 0), 0, ',', '.');
-        $installFee = 'Rp ' . number_format($customer->installation_fee ?? 0, 0, ',', '.');
+        $rawInstallFee = $customer->installation_fee;
+        if (($rawInstallFee === null || (float)$rawInstallFee == 0) && $customer->package?->installation_fee) {
+            $rawInstallFee = $customer->package->installation_fee;
+        }
+        $installFeeVal = (float)($rawInstallFee ?? 0);
+        $installFeeFormatted = 'Rp ' . number_format($installFeeVal, 0, ',', '.') . ',-';
+
+        $clientAreaUrl = Setting::get('client_area_url');
+        if (empty($clientAreaUrl)) {
+            $host = request()->getHost();
+            if ($host && $host !== 'localhost' && $host !== '127.0.0.1') {
+                $clientAreaUrl = request()->getSchemeAndHttpHost();
+            } else {
+                $clientAreaUrl = config('app.url', 'https://bill.viruzs.my.id');
+            }
+        }
+        $clientAreaUrl = rtrim($clientAreaUrl, '/');
+
         $employeeName = $employee?->name ?? auth()->user()?->name ?? 'Petugas Lapangan';
         $todayFormatted = Carbon::now()->translatedFormat('d F Y');
         $nikKtp = $customer->nik ?? $customer->identity_number ?? '-';
@@ -89,10 +106,20 @@ class SubscriptionTermsTemplate extends Model
             '{paket}' => $packageName,
             '{kecepatan}' => $packageSpeed,
             '{tarif}' => $packagePrice,
-            '{biaya_pasang}' => $installFee,
+            '{biaya_pasang}' => $installFeeFormatted,
+            '{biaya_registrasi}' => $installFeeFormatted,
+            '{client_area_url}' => $clientAreaUrl,
+            '{link_aplikasi}' => $clientAreaUrl,
+            '{url_aplikasi}' => $clientAreaUrl,
+            '{app_url}' => $clientAreaUrl,
             '{tanggal}' => $todayFormatted,
             '{perusahaan}' => $companyName,
             '{petugas}' => $employeeName,
+            // Fallback otomatis jika template tersimpan teks statis:
+            'Rp 120,000,-' => $installFeeFormatted,
+            'Rp 120.000,-' => $installFeeFormatted,
+            'https://viruzs.rlradius.com' => $clientAreaUrl,
+            'http://viruzs.rlradius.com' => $clientAreaUrl,
         ];
 
         return strtr($this->content, $replacements);
@@ -115,7 +142,10 @@ class SubscriptionTermsTemplate extends Model
             ['token' => '{paket}', 'label' => 'Nama Paket Internet', 'example' => 'INTERNET HEBAT 20 MBPS'],
             ['token' => '{kecepatan}', 'label' => 'Kecepatan Paket', 'example' => '20 Mbps'],
             ['token' => '{tarif}', 'label' => 'Biaya Bulanan (Rp)', 'example' => 'Rp 130.000'],
-            ['token' => '{biaya_pasang}', 'label' => 'Biaya Pasang Baru / PSB', 'example' => 'Rp 120.000'],
+            ['token' => '{biaya_pasang}', 'label' => 'Biaya Pasang Baru / Registrasi', 'example' => 'Rp 120.000,-'],
+            ['token' => '{biaya_registrasi}', 'label' => 'Biaya Registrasi / Pasang Baru', 'example' => 'Rp 120.000,-'],
+            ['token' => '{client_area_url}', 'label' => 'Link / URL Aplikasi Client Area', 'example' => 'https://bill.viruzs.my.id'],
+            ['token' => '{link_aplikasi}', 'label' => 'Link Aplikasi Client Area (Alternatif)', 'example' => 'https://bill.viruzs.my.id'],
             ['token' => '{tanggal}', 'label' => 'Tanggal Penandatanganan', 'example' => '05 November 2026'],
             ['token' => '{perusahaan}', 'label' => 'Nama ISP / Perusahaan', 'example' => 'PT VIRUZS GLOBAL CONNECTION'],
             ['token' => '{petugas}', 'label' => 'Nama Petugas yang Bertugas', 'example' => 'Super Admin'],

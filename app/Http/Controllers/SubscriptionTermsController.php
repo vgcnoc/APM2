@@ -333,12 +333,12 @@ class SubscriptionTermsController extends Controller
 
 <h3>Syarat dan Ketentuan untuk pelanggan</h3>
 <ol>
-  <li>Melakukan pembayaran registrasi sebesar Rp 120,000,- (Jika tidak ada promo gratis pemasangan), ketika perangkat wifi sudah terpasang dan sudah dilakukan proses aktivasi. (Tidak di perkenankan membayar registrasi ketika booking atau survey).</li>
+  <li>Melakukan pembayaran registrasi sebesar {biaya_registrasi} (Jika tidak ada promo gratis pemasangan), ketika perangkat wifi sudah terpasang dan sudah dilakukan proses aktivasi. (Tidak di perkenankan membayar registrasi ketika booking atau survey).</li>
   <li>Minimal kontrak berlangganan selama 6 (enam) bulan . Apabila berhenti berlangganan dibawah 6 (enam) bulan maka harus membayar sisa waktunya.</li>
   <li>Perangkat WIFI seperti router/ONT dipinjamkan selama berlangganan.</li>
   <li>Pembayaran internet bulanan dapat dilakukan per-tanggal 1 dan jatuh tempo tanggal 15. Pada saat pelanggan tidak membayar melewati jatuh tempo, maka internet akan putus secara otomatis. Begitupun dibulan kedua pembayaran internet bulanan masih juga belum dilunasi , maka tunggakan menjadi 2 bulan dan seterusnya , meskipun internet dibulan ke 2 tidak terkoneksi/putus.</li>
   <li>Apabila 3 bulan masih menunggak maka alat akan dicabut kembali oleh pihak kami.</li>
-  <li>Pembayaran melalui transfer BANK BRI 410101025028534 a/n Deri Gantinayasa , setelah transfer pelanggan diharuskan konfirmasi dengan mengirim bukti transfer ke No Whatsapp 088976397034, Pelunasan otomatis silahkan login ke Aplikasi Client Area : <a href="https://viruzs.rlradius.com" target="_blank" style="color: #4f46e5; text-decoration: underline;">https://viruzs.rlradius.com</a> , login menggunakan No Whatsapp aktif pertama kali Registrasi. Tagihan otomatis lunas setelah melakukan pembayaran tanpa perlu konfirmasi jika menggunakan QRIS ( OVO , DANA, GOPAY, dll.) , Shopee Pay, Virtual Account ( BRI , MANDIRI, BSI, BNI), Indomart, Alfamart, DLL.</li>
+  <li>Pembayaran melalui transfer BANK BRI 410101025028534 a/n Deri Gantinayasa , setelah transfer pelanggan diharuskan konfirmasi dengan mengirim bukti transfer ke No Whatsapp 088976397034, Pelunasan otomatis silahkan login ke Aplikasi Client Area : <a href="{client_area_url}" target="_blank" style="color: #4f46e5; text-decoration: underline;">{client_area_url}</a> , login menggunakan No Whatsapp aktif pertama kali Registrasi. Tagihan otomatis lunas setelah melakukan pembayaran tanpa perlu konfirmasi jika menggunakan QRIS ( OVO , DANA, GOPAY, dll.) , Shopee Pay, Virtual Account ( BRI , MANDIRI, BSI, BNI), Indomart, Alfamart, DLL.</li>
 </ol>
 
 <h3>Penutup</h3>
