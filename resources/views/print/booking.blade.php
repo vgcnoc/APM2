@@ -42,18 +42,18 @@
                 display: none !important;
             }
             .kop-surat {
-                margin-bottom: 20px;
+                margin-bottom: 16px;
             }
             .kop-header-content {
                 gap: 14px;
-                padding-bottom: 10px;
+                padding-bottom: 8px;
             }
             .kop-logo-img {
-                max-height: 68px;
-                max-width: 125px;
+                max-height: 52px;
+                max-width: 120px;
             }
-            .kop-divider-line {
-                background-color: #000000 !important;
+            .kop-divider-v {
+                background-color: #cbd5e1 !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
@@ -61,63 +61,58 @@
                 color: #000000 !important;
             }
             .kop-subtitle {
-                color: #1e40af !important;
+                color: #2563eb !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
             .kop-rule-thick {
-                height: 3.5px;
+                height: 2px !important;
                 background-color: #000000 !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
             .kop-rule-thin {
-                height: 1px;
-                background-color: #000000 !important;
+                height: 0.75px !important;
+                background-color: #64748b !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
             .kop-icon {
-                color: #1e40af !important;
+                color: #2563eb !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
         }
-        /* Kop Surat Resmi & Elegan */
+        /* Kop Surat Modern, Simpel & Menarik */
         .kop-surat {
-            margin-bottom: 22px;
+            margin-bottom: 18px;
         }
         .kop-header-content {
             display: flex;
             align-items: center;
             gap: 16px;
-            padding-bottom: 12px;
+            padding-bottom: 10px;
         }
         .kop-logo-box {
             flex-shrink: 0;
-            width: 135px;
+            width: 130px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
         .kop-logo-img {
-            max-height: 72px;
-            max-width: 130px;
+            max-height: 54px;
+            max-width: 125px;
             width: auto;
             height: auto;
             object-fit: contain;
             display: block;
         }
-        .kop-divider-double {
-            display: flex;
-            gap: 3.5px;
-            height: 70px;
-            align-items: stretch;
-            flex-shrink: 0;
-        }
-        .kop-divider-line {
+        .kop-divider-v {
             width: 1.5px;
-            background-color: #0f172a;
+            height: 48px;
+            background-color: #cbd5e1;
+            flex-shrink: 0;
         }
         .kop-info-box {
             flex: 1;
@@ -125,65 +120,67 @@
         }
         .kop-company-title {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            font-size: 20px;
-            font-weight: 900;
+            font-size: 18px;
+            font-weight: 800;
             color: #0f172a;
-            letter-spacing: 0.8px;
+            letter-spacing: 0.5px;
             text-transform: uppercase;
             margin: 0 0 2px 0;
-            line-height: 1.15;
+            line-height: 1.2;
         }
         .kop-subtitle {
-            font-size: 10px;
+            font-size: 9.5px;
             font-weight: 700;
             color: #2563eb;
-            letter-spacing: 1px;
+            letter-spacing: 1.2px;
             text-transform: uppercase;
             margin-bottom: 4px;
         }
         .kop-address {
-            font-size: 11.5px;
-            font-weight: 500;
-            color: #334155;
-            line-height: 1.45;
-            margin-bottom: 6px;
+            font-size: 11px;
+            font-weight: 400;
+            color: #475569;
+            line-height: 1.4;
+            margin-bottom: 5px;
         }
         .kop-contacts {
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            gap: 10px;
-            font-size: 11px;
-            font-weight: 600;
-            color: #1e293b;
+            gap: 8px;
+            font-size: 10.5px;
+            font-weight: 500;
+            color: #334155;
         }
         .kop-contact-item {
             display: inline-flex;
             align-items: center;
-            gap: 5px;
+            gap: 4px;
         }
         .kop-icon {
-            width: 13px;
-            height: 13px;
+            width: 12px;
+            height: 12px;
             color: #2563eb;
             flex-shrink: 0;
             vertical-align: middle;
         }
         .kop-contact-sep {
-            color: #cbd5e1;
-            font-size: 12px;
+            color: #94a3b8;
+            font-size: 11px;
+            user-select: none;
         }
         .kop-rule {
-            margin-top: 6px;
+            margin-top: 4px;
         }
         .kop-rule-thick {
-            height: 3.5px;
+            height: 2px;
             background-color: #0f172a;
+            border-radius: 1px;
             margin-bottom: 2px;
         }
         .kop-rule-thin {
-            height: 1px;
-            background-color: #0f172a;
+            height: 0.75px;
+            background-color: #64748b;
         }
         .doc-title-container {
             text-align: center;
@@ -437,16 +434,22 @@
             $logoUrl = asset('images/company_logo.png');
         }
 
-        $companyTitle = 'PT VIRUZS GLOBAL CONNECTION';
-        $companyAddress = 'Jl. Perintis Kemerdekaan No. 12A, Kel. Sukamulya, Kec. Cikembar, Kab. Sukabumi, Jawa Barat 43157';
-        $companyPhone = '0266-250 8004 / 0889-7639-7034';
-        $companyEmail = 'info@viruzs.co.id';
-        $companyWeb = 'www.viruzs.co.id';
+        $companyRawName = trim((string)($company['name'] ?? \App\Models\Setting::get('company_name', '')));
+        if (empty($companyRawName) || strtoupper($companyRawName) === 'VIRUZS') {
+            $companyTitle = 'PT VIRUZS GLOBAL CONNECTION';
+        } else {
+            $companyTitle = $companyRawName;
+        }
+
+        $companyAddress = trim((string)($company['address'] ?? \App\Models\Setting::get('company_address', 'Kp Cilandak RT 02 / RW 02 Desa Sirnajaya Kecamatan Warungkiara, Kab. Sukabumi 43362')));
+        $companyPhone = trim((string)($company['phone'] ?? \App\Models\Setting::get('company_phone', '088976397034')));
+        $companyEmail = trim((string)($company['email'] ?? \App\Models\Setting::get('company_email', 'helpdesk@viruzs.net')));
+        $companyWeb = trim((string)($company['website'] ?? \App\Models\Setting::get('company_website', 'viruzs.co.id')));
     @endphp
 
     <!-- LEMBAR CETAK (PRINT SHEET) -->
     <div class="sheet">
-        <!-- HEADER KOP SURAT RESMI -->
+        <!-- HEADER KOP SURAT SIMPEL & MENARIK -->
         <div class="kop-surat">
             <div class="kop-header-content">
                 <div class="kop-logo-box">
@@ -457,38 +460,46 @@
                         onerror="this.onerror=null; this.src='{{ asset('images/company_logo.png') }}';"
                     >
                 </div>
-                <div class="kop-divider-double">
-                    <div class="kop-divider-line"></div>
-                    <div class="kop-divider-line"></div>
-                </div>
+                <div class="kop-divider-v"></div>
                 <div class="kop-info-box">
                     <h1 class="kop-company-title">{{ $companyTitle }}</h1>
-                    <div class="kop-subtitle">PENYEDIA JASA INTERNET (ISP) &bull; BUKTI REGISTRASI &amp; FORMULIR PSB</div>
-                    <div class="kop-address">
-                        {{ $companyAddress }}
-                    </div>
+                    <div class="kop-subtitle">PENYEDIA JASA INTERNET (ISP)</div>
+                    @if(!empty($companyAddress))
+                        <div class="kop-address">{{ $companyAddress }}</div>
+                    @endif
                     <div class="kop-contacts">
-                        <span class="kop-contact-item">
-                            <svg class="kop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                            </svg>
-                            <span>{{ $companyPhone }}</span>
-                        </span>
-                        <span class="kop-contact-sep">&bull;</span>
-                        <span class="kop-contact-item">
-                            <svg class="kop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                            </svg>
-                            <span>{{ $companyEmail }}</span>
-                        </span>
-                        <span class="kop-contact-sep">&bull;</span>
-                        <span class="kop-contact-item">
-                            <svg class="kop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10" />
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
-                            </svg>
-                            <span>{{ $companyWeb }}</span>
-                        </span>
+                        @php $hasPrev = false; @endphp
+                        @if(!empty($companyPhone))
+                            <span class="kop-contact-item">
+                                <svg class="kop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                </svg>
+                                <span>{{ $companyPhone }}</span>
+                            </span>
+                            @php $hasPrev = true; @endphp
+                        @endif
+
+                        @if(!empty($companyEmail))
+                            @if($hasPrev) <span class="kop-contact-sep">&bull;</span> @endif
+                            <span class="kop-contact-item">
+                                <svg class="kop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                                <span>{{ $companyEmail }}</span>
+                            </span>
+                            @php $hasPrev = true; @endphp
+                        @endif
+
+                        @if(!empty($companyWeb))
+                            @if($hasPrev) <span class="kop-contact-sep">&bull;</span> @endif
+                            <span class="kop-contact-item">
+                                <svg class="kop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+                                </svg>
+                                <span>{{ $companyWeb }}</span>
+                            </span>
+                        @endif
                     </div>
                 </div>
             </div>

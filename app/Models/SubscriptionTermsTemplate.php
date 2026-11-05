@@ -106,6 +106,11 @@ class SubscriptionTermsTemplate extends Model
         $todayFormatted = Carbon::now()->translatedFormat('d F Y');
         $nikKtp = $customer->nik ?? $customer->identity_number ?? '-';
 
+        $companyAddress = Setting::get('company_address', 'Kp Cilandak RT 02 / RW 02 Desa Sirnajaya Kecamatan Warungkiara Kabupaten Sukabumi 43362');
+        $companyPhone = Setting::get('company_phone', '088976397034');
+        $companyEmail = Setting::get('company_email', 'helpdesk@viruzs.net');
+        $companyWebsite = Setting::get('company_website', 'viruzs.co.id');
+
         $replacements = [
             '{nama_pelanggan}' => $customer->name ?? '-',
             '{nomor_layanan}' => $customer->customer_code ?? '-',
@@ -128,7 +133,16 @@ class SubscriptionTermsTemplate extends Model
             '{tanggal}' => $todayFormatted,
             '{perusahaan}' => $companyName,
             '{petugas}' => $employeeName,
+            '{alamat_perusahaan}' => $companyAddress,
+            '{telepon_perusahaan}' => $companyPhone,
+            '{email_perusahaan}' => $companyEmail,
+            '{web_perusahaan}' => $companyWebsite,
+            '{website_perusahaan}' => $companyWebsite,
             // Fallback otomatis jika template tersimpan teks statis:
+            'Jl.Perintis Kemerdekaan No.12A Kel.Sukamulya Kec.Cikembar Sukabumi' => $companyAddress,
+            'Jl. Perintis Kemerdekaan No. 12A, Kel. Sukamulya, Kec. Cikembar, Kab. Sukabumi, Jawa Barat 43157' => $companyAddress,
+            'Jl. Perintis Kemerdekaan No.12A Kel.Sukamulya Kec.Cikembar Sukabumi' => $companyAddress,
+            '0266-250 8004 / 0889-7639-7034' => $companyPhone,
             'Rp 120,000,-' => $installFeeFormatted,
             'Rp 120.000,-' => $installFeeFormatted,
             'https://viruzs.rlradius.com' => $clientAreaUrl,
@@ -162,6 +176,10 @@ class SubscriptionTermsTemplate extends Model
             ['token' => '{tanggal}', 'label' => 'Tanggal Penandatanganan', 'example' => '05 November 2026'],
             ['token' => '{perusahaan}', 'label' => 'Nama ISP / Perusahaan', 'example' => 'PT VIRUZS GLOBAL CONNECTION'],
             ['token' => '{petugas}', 'label' => 'Nama Petugas yang Bertugas', 'example' => 'Super Admin'],
+            ['token' => '{alamat_perusahaan}', 'label' => 'Alamat Perusahaan (Pengaturan)', 'example' => 'Kp Cilandak RT 02 / RW 02 Desa Sirnajaya...'],
+            ['token' => '{telepon_perusahaan}', 'label' => 'No Telepon/WA Perusahaan', 'example' => '088976397034'],
+            ['token' => '{email_perusahaan}', 'label' => 'Email Perusahaan', 'example' => 'helpdesk@viruzs.net'],
+            ['token' => '{website_perusahaan}', 'label' => 'Website Perusahaan', 'example' => 'viruzs.co.id'],
         ];
     }
 }

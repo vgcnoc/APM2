@@ -2330,10 +2330,10 @@ class CustomerController extends Controller
 
         $company = [
             'name' => Setting::get('company_name', 'PT VIRUZS GLOBAL CONNECTION'),
-            'address' => Setting::get('company_address', 'Jl.Perintis Kemerdekaan No.12A Kel.Sukamulya Kec.Cikembar Sukabumi'),
+            'address' => Setting::get('company_address', 'Kp Cilandak RT 02 / RW 02 Desa Sirnajaya Kecamatan Warungkiara Kabupaten Sukabumi 43362'),
             'phone' => Setting::get('company_phone', '088976397034'),
-            'email' => Setting::get('company_email', 'info@viruzs.co.id'),
-            'website' => Setting::get('company_website', 'www.viruzs.co.id'),
+            'email' => Setting::get('company_email', 'helpdesk@viruzs.net'),
+            'website' => Setting::get('company_website', 'viruzs.co.id'),
             'logo' => Setting::get('company_logo', null),
         ];
 
@@ -2349,10 +2349,10 @@ class CustomerController extends Controller
 
         $company = [
             'name' => Setting::get('company_name', 'PT VIRUZS GLOBAL CONNECTION'),
-            'address' => Setting::get('company_address', 'Jl.Perintis Kemerdekaan No.12A Kel.Sukamulya Kec.Cikembar Sukabumi'),
+            'address' => Setting::get('company_address', 'Kp Cilandak RT 02 / RW 02 Desa Sirnajaya Kecamatan Warungkiara Kabupaten Sukabumi 43362'),
             'phone' => Setting::get('company_phone', '088976397034'),
-            'email' => Setting::get('company_email', 'info@viruzs.co.id'),
-            'website' => Setting::get('company_website', 'www.viruzs.co.id'),
+            'email' => Setting::get('company_email', 'helpdesk@viruzs.net'),
+            'website' => Setting::get('company_website', 'viruzs.co.id'),
             'logo' => Setting::get('company_logo', null),
         ];
 
