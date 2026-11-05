@@ -138,7 +138,7 @@ class IncentiveDeductionController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        $excludedRoles = ['customer', 'pelanggan', 'reseller', 'superadmin', 'super admin', 'toko', 'demo'];
+        $excludedRoles = ['customer', 'pelanggan', 'reseller', 'superadmin', 'super admin', 'toko', 'demo', 'affiliate', 'mitra', 'affiliator'];
         $usersQuery = User::with('area')->where('is_active', true)
             ->excludeTokoAndDemo()
             ->whereNotIn('role', $excludedRoles)
@@ -147,6 +147,13 @@ class IncentiveDeductionController extends Controller
             })
             ->whereDoesntHave('customer')
             ->whereDoesntHave('reseller')
+            ->where(function($q) {
+                // Role sales freelance / mitra tanpa gaji dan tanpa profil karyawan tidak masuk penggajian
+                $q->where('role', '!=', 'sales')
+                  ->orWhere('base_salary', '>', 0)
+                  ->orWhereHas('employee')
+                  ->orWhereHas('payrolls');
+            })
             ->orderBy('name');
 
         if (!$isSuperAdmin && !$authUser->can('payroll_view_all')) {

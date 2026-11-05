@@ -131,7 +131,7 @@ class PayrollController extends Controller
         $authUser = auth()->user();
         $isSuperAdmin = $authUser && ($authUser->is_admin || $authUser->hasRole('admin'));
 
-        $excludedRoles = ['customer', 'pelanggan', 'reseller', 'superadmin', 'super admin', 'toko', 'demo'];
+        $excludedRoles = ['customer', 'pelanggan', 'reseller', 'superadmin', 'super admin', 'toko', 'demo', 'affiliate', 'mitra', 'affiliator'];
 
         $usersQuery = User::where('is_active', true)
             ->excludeTokoAndDemo()
@@ -141,6 +141,13 @@ class PayrollController extends Controller
             })
             ->whereDoesntHave('customer')
             ->whereDoesntHave('reseller')
+            ->where(function($q) {
+                // Role sales freelance / mitra tanpa gaji dan tanpa profil karyawan tidak masuk payroll
+                $q->where('role', '!=', 'sales')
+                  ->orWhere('base_salary', '>', 0)
+                  ->orWhereHas('employee')
+                  ->orWhereHas('payrolls');
+            })
             ->where(function($q) {
                 $q->where('role', '!=', 'admin')
                   ->orWhere(function($sub) {
@@ -795,7 +802,7 @@ class PayrollController extends Controller
             \Illuminate\Support\Facades\Log::warning("[Payroll DisburseAll Auto-Sync] " . $e->getMessage());
         }
 
-        $excludedRoles = ['customer', 'pelanggan', 'reseller', 'superadmin', 'super admin', 'toko', 'demo'];
+        $excludedRoles = ['customer', 'pelanggan', 'reseller', 'superadmin', 'super admin', 'toko', 'demo', 'affiliate', 'mitra', 'affiliator'];
 
         $usersQuery = User::where('is_active', true)
             ->excludeTokoAndDemo()
@@ -805,6 +812,13 @@ class PayrollController extends Controller
             })
             ->whereDoesntHave('customer')
             ->whereDoesntHave('reseller')
+            ->where(function($q) {
+                // Role sales freelance / mitra tanpa gaji dan tanpa profil karyawan tidak masuk payroll
+                $q->where('role', '!=', 'sales')
+                  ->orWhere('base_salary', '>', 0)
+                  ->orWhereHas('employee')
+                  ->orWhereHas('payrolls');
+            })
             ->where(function($q) {
                 $q->where('role', '!=', 'admin')
                   ->orWhere(function($sub) {

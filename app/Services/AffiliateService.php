@@ -178,9 +178,9 @@ class AffiliateService
             return false;
         }
 
-        $role = strtolower((string) $user->role);
-        // Role khusus pihak luar
-        if (in_array($role, ['affiliate', 'reseller', 'customer', 'mitra'])) {
+        $role = strtolower(trim((string) $user->role));
+        // Role khusus pihak luar (Mitra Afiliasi, Reseller, Pelanggan, Mitra)
+        if (in_array($role, ['affiliate', 'reseller', 'customer', 'pelanggan', 'mitra', 'affiliator'], true) || $user->hasAnyRole(['affiliate', 'reseller', 'customer', 'pelanggan', 'mitra', 'affiliator'])) {
             return false;
         }
 
@@ -194,9 +194,14 @@ class AffiliateService
             return true;
         }
 
+        // Role sales: hanya dianggap internal jika memiliki gaji pokok atau terdaftar di employee (sudah dicek di atas)
+        if ($role === 'sales' || $user->hasRole('sales')) {
+            return false;
+        }
+
         // Role internal operasional / kantor
-        $internalRoles = ['admin', 'teknisi', 'noc', 'cs', 'admin cs', 'sales', 'dispatcher', 'auditor', 'aktivator', 'staff', 'karyawan', 'superadmin', 'maintenance', 'kepala teknisi', 'manager', 'finance', 'hrd'];
-        if (in_array($role, $internalRoles)) {
+        $internalRoles = ['admin', 'teknisi', 'noc', 'cs', 'admin cs', 'dispatcher', 'auditor', 'aktivator', 'staff', 'karyawan', 'superadmin', 'maintenance', 'kepala teknisi', 'manager', 'finance', 'hrd'];
+        if (in_array($role, $internalRoles, true) || $user->hasAnyRole($internalRoles)) {
             return true;
         }
 
