@@ -14,6 +14,8 @@ class TargetMarketProgram extends Model
     protected $guarded = [];
 
     protected $casts = [
+        'start_date' => 'date:Y-m-d',
+        'end_date' => 'date:Y-m-d',
         'period_month' => 'integer',
         'period_year' => 'integer',
         'target_quota' => 'integer',

@@ -306,6 +306,9 @@
                                     {{ getConceptLabel(prog.concept) }}
                                 </span>
                                 <div class="flex items-center gap-1.5">
+                                    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold" :class="getProgramTimeStatus(prog).class">
+                                        {{ getProgramTimeStatus(prog).label }}
+                                    </span>
                                     <button v-if="can('target_market_program_toggle') || can('target_market_manage')" @click="toggleProgram(prog)"
                                         :class="prog.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-600'"
                                         class="px-2 py-0.5 rounded-md text-[10px] font-bold cursor-pointer">
@@ -319,6 +322,10 @@
 
                             <!-- Program Specs -->
                             <div class="bg-gray-50 rounded-2xl p-3.5 space-y-2 text-xs border border-gray-100">
+                                <div class="flex justify-between items-center py-0.5 border-b border-gray-200/60">
+                                    <span class="text-gray-500 flex items-center gap-1">📅 Periode Berlaku:</span>
+                                    <span class="font-bold text-indigo-700 font-mono text-[11px]">{{ formatProgramDate(prog) }}</span>
+                                </div>
                                 <div class="flex justify-between">
                                     <span class="text-gray-500">Target Kuota:</span>
                                     <span class="font-bold text-gray-900">{{ prog.target_quota }} Pelanggan / Orang</span>
@@ -494,6 +501,41 @@
                         </div>
                     </div>
 
+                    <!-- Periode Tanggal Berlaku Program Target -->
+                    <div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 space-y-2.5">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-xs font-bold text-indigo-950 flex items-center gap-1.5">
+                                <span>📅</span> Tanggal Berlaku Program Target
+                                <span class="text-rose-500">*</span>
+                            </label>
+                            <span v-if="form.start_date && form.end_date" class="text-[11px] text-indigo-700 font-bold bg-white px-2.5 py-0.5 rounded-full border border-indigo-200 shadow-2xs">
+                                {{ getDurationDays(form.start_date, form.end_date) }}
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[11px] font-semibold text-gray-600 mb-1">Mulai Berlaku (Tanggal Awal)</label>
+                                <input v-model="form.start_date" type="date" required @change="onStartDateChange"
+                                    class="w-full text-xs font-semibold rounded-xl border-gray-200 py-2.5 px-3 bg-white focus:ring-indigo-500 focus:border-indigo-500 shadow-2xs cursor-pointer" />
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-gray-600 mb-1">Berakhir (Tanggal Akhir)</label>
+                                <input v-model="form.end_date" type="date" required :min="form.start_date"
+                                    class="w-full text-xs font-semibold rounded-xl border-gray-200 py-2.5 px-3 bg-white focus:ring-indigo-500 focus:border-indigo-500 shadow-2xs cursor-pointer" />
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between flex-wrap gap-2 pt-1 border-t border-indigo-100/60">
+                            <p class="text-[11px] text-indigo-900/70">
+                                Hanya aktivasi pelanggan pada rentang tanggal ini yang berhak dihitung target.
+                            </p>
+                            <div class="flex items-center gap-1 text-[10px]">
+                                <button type="button" @click="setFullMonthPeriod" class="px-2 py-0.5 rounded bg-white hover:bg-indigo-100 text-indigo-700 font-semibold border border-indigo-200 cursor-pointer">1 Bulan Penuh</button>
+                                <button type="button" @click="set14DaysPeriod" class="px-2 py-0.5 rounded bg-white hover:bg-indigo-100 text-indigo-700 font-semibold border border-indigo-200 cursor-pointer">Sprint 14 Hari</button>
+                                <button type="button" @click="set7DaysPeriod" class="px-2 py-0.5 rounded bg-white hover:bg-indigo-100 text-indigo-700 font-semibold border border-indigo-200 cursor-pointer">Sprint 7 Hari</button>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Target Kuota & Target Role -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
@@ -603,6 +645,8 @@ const editingProgramId = ref(null);
 const form = useForm({
     title: '',
     concept: 'hybrid',
+    start_date: '',
+    end_date: '',
     period_month: props.month,
     period_year: props.year,
     target_quota: 15,
@@ -720,6 +764,13 @@ function openCreateModal() {
     form.reset();
     form.period_month = selectedMonth.value;
     form.period_year = selectedYear.value;
+
+    const m = String(selectedMonth.value).padStart(2, '0');
+    const y = selectedYear.value;
+    const lastDay = new Date(y, selectedMonth.value, 0).getDate();
+    form.start_date = `${y}-${m}-01`;
+    form.end_date = `${y}-${m}-${String(lastDay).padStart(2, '0')}`;
+
     form.rules = {
         tiers: [
             { min: 1, max: 5, reward: 25000 },
@@ -739,6 +790,24 @@ function editProgram(prog) {
     form.concept = prog.concept;
     form.period_month = prog.period_month;
     form.period_year = prog.period_year;
+
+    if (prog.start_date) {
+        form.start_date = String(prog.start_date).substring(0, 10);
+    } else {
+        const m = String(prog.period_month).padStart(2, '0');
+        const y = prog.period_year;
+        form.start_date = `${y}-${m}-01`;
+    }
+
+    if (prog.end_date) {
+        form.end_date = String(prog.end_date).substring(0, 10);
+    } else {
+        const m = String(prog.period_month).padStart(2, '0');
+        const y = prog.period_year;
+        const lastDay = new Date(y, prog.period_month, 0).getDate();
+        form.end_date = `${y}-${m}-${String(lastDay).padStart(2, '0')}`;
+    }
+
     form.target_quota = prog.target_quota;
     form.target_role = prog.target_role;
     form.reward_flat = Number(prog.reward_flat);
@@ -827,7 +896,102 @@ function removeTierRow(idx) {
     form.rules.tiers.splice(idx, 1);
 }
 
+function onStartDateChange() {
+    if (form.start_date && form.end_date && form.end_date < form.start_date) {
+        form.end_date = form.start_date;
+    }
+}
+
+function setFullMonthPeriod() {
+    const y = form.start_date ? new Date(form.start_date).getFullYear() : selectedYear.value;
+    const m = form.start_date ? new Date(form.start_date).getMonth() + 1 : selectedMonth.value;
+    const mStr = String(m).padStart(2, '0');
+    const lastDay = new Date(y, m, 0).getDate();
+    form.start_date = `${y}-${mStr}-01`;
+    form.end_date = `${y}-${mStr}-${String(lastDay).padStart(2, '0')}`;
+}
+
+function set14DaysPeriod() {
+    const start = form.start_date ? new Date(form.start_date) : new Date();
+    const end = new Date(start);
+    end.setDate(end.getDate() + 13);
+    form.start_date = start.toISOString().split('T')[0];
+    form.end_date = end.toISOString().split('T')[0];
+}
+
+function set7DaysPeriod() {
+    const start = form.start_date ? new Date(form.start_date) : new Date();
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    form.start_date = start.toISOString().split('T')[0];
+    form.end_date = end.toISOString().split('T')[0];
+}
+
+function getDurationDays(startDate, endDate) {
+    if (!startDate || !endDate) return '';
+    const d1 = new Date(startDate);
+    const d2 = new Date(endDate);
+    const diffTime = d2.getTime() - d1.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 3600 * 24)) + 1;
+    if (diffDays <= 0) return 'Tanggal tidak valid';
+    return `${diffDays} Hari`;
+}
+
+function formatProgramDate(prog) {
+    if (prog.start_date && prog.end_date) {
+        const d1 = new Date(prog.start_date);
+        const d2 = new Date(prog.end_date);
+        const day1 = String(d1.getDate()).padStart(2, '0');
+        const day2 = String(d2.getDate()).padStart(2, '0');
+        const monthsShort = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+        const m1 = monthsShort[d1.getMonth()];
+        const m2 = monthsShort[d2.getMonth()];
+        const y1 = d1.getFullYear();
+        const y2 = d2.getFullYear();
+
+        if (y1 === y2 && m1 === m2) {
+            return `${day1} - ${day2} ${m1} ${y1}`;
+        }
+        if (y1 === y2) {
+            return `${day1} ${m1} - ${day2} ${m2} ${y1}`;
+        }
+        return `${day1} ${m1} ${y1} - ${day2} ${m2} ${y2}`;
+    }
+    const m = months[prog.period_month - 1] || prog.period_month;
+    return `${m} ${prog.period_year}`;
+}
+
+function getProgramTimeStatus(prog) {
+    const today = new Date().toISOString().split('T')[0];
+    const start = prog.start_date ? String(prog.start_date).substring(0, 10) : null;
+    const end = prog.end_date ? String(prog.end_date).substring(0, 10) : null;
+
+    if (start && today < start) {
+        return { label: 'Akan Datang', class: 'bg-blue-50 text-blue-700 border border-blue-200' };
+    }
+    if (end && today > end) {
+        return { label: 'Telah Berakhir', class: 'bg-gray-100 text-gray-500 border border-gray-200' };
+    }
+    return { label: 'Sedang Berjalan', class: 'bg-emerald-50 text-emerald-700 border border-emerald-200' };
+}
+
 function submitProgram() {
+    if (form.start_date) {
+        const d = new Date(form.start_date);
+        if (!isNaN(d.getTime())) {
+            form.period_month = d.getMonth() + 1;
+            form.period_year = d.getFullYear();
+        }
+    }
+    if (form.end_date && form.start_date && form.end_date < form.start_date) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Tanggal Tidak Valid',
+            text: 'Tanggal berakhir target tidak boleh lebih awal dari tanggal mulai berlaku.',
+        });
+        return;
+    }
+
     if (isEditing.value && editingProgramId.value) {
         form.post(`/bonus-target-market/programs/${editingProgramId.value}/update`, {
             onSuccess: () => {

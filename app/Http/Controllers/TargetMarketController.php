@@ -21,9 +21,23 @@ class TargetMarketController extends Controller
         $year = (int) $request->query('year', now()->year);
         $tab = $request->query('tab', 'leaderboard'); // leaderboard, programs, transactions
 
-        // Program untuk periode ini
-        $programs = TargetMarketProgram::where('period_month', $month)
-            ->where('period_year', $year)
+        // Program untuk periode ini (berdasarkan rentang tanggal aktif atau period_month/year)
+        $monthStart = Carbon::create($year, $month, 1)->startOfMonth()->toDateString();
+        $monthEnd = Carbon::create($year, $month, 1)->endOfMonth()->toDateString();
+
+        $programs = TargetMarketProgram::where(function ($q) use ($month, $year, $monthStart, $monthEnd) {
+                $q->where(function ($sub) use ($monthStart, $monthEnd) {
+                    $sub->whereNotNull('start_date')
+                        ->where('start_date', '<=', $monthEnd)
+                        ->where(function ($endSub) use ($monthStart) {
+                            $endSub->whereNull('end_date')
+                                   ->orWhere('end_date', '>=', $monthStart);
+                        });
+                })->orWhere(function ($sub) use ($month, $year) {
+                    $sub->where('period_month', $month)
+                        ->where('period_year', $year);
+                });
+            })
             ->with('creator')
             ->orderByDesc('id')
             ->get();
@@ -104,8 +118,10 @@ class TargetMarketController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'concept' => 'required|in:milestone_volume,area_expansion,package_tier,hybrid',
-            'period_month' => 'required|integer|min:1|max:12',
-            'period_year' => 'required|integer|min:2020|max:2035',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'period_month' => 'nullable|integer|min:1|max:12',
+            'period_year' => 'nullable|integer|min:2020|max:2035',
             'target_quota' => 'required|integer|min:1',
             'target_role' => 'nullable|string',
             'reward_flat' => 'required|numeric|min:0',
@@ -114,6 +130,20 @@ class TargetMarketController extends Controller
             'description' => 'nullable|string',
             'auto_disburse' => 'boolean',
         ]);
+
+        if (!empty($validated['start_date'])) {
+            $startDate = Carbon::parse($validated['start_date']);
+            $validated['period_month'] = $startDate->month;
+            $validated['period_year'] = $startDate->year;
+        } else {
+            $validated['period_month'] = $validated['period_month'] ?? now()->month;
+            $validated['period_year'] = $validated['period_year'] ?? now()->year;
+            $validated['start_date'] = Carbon::create((int) $validated['period_year'], (int) $validated['period_month'], 1)->startOfMonth()->toDateString();
+        }
+
+        if (empty($validated['end_date']) && !empty($validated['start_date'])) {
+            $validated['end_date'] = Carbon::parse($validated['start_date'])->endOfMonth()->toDateString();
+        }
 
         $validated['created_by'] = auth()->id();
         $validated['is_active'] = true;
@@ -132,6 +162,10 @@ class TargetMarketController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'concept' => 'required|in:milestone_volume,area_expansion,package_tier,hybrid',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'period_month' => 'nullable|integer|min:1|max:12',
+            'period_year' => 'nullable|integer|min:2020|max:2035',
             'target_quota' => 'required|integer|min:1',
             'target_role' => 'nullable|string',
             'reward_flat' => 'required|numeric|min:0',
@@ -140,6 +174,12 @@ class TargetMarketController extends Controller
             'description' => 'nullable|string',
             'auto_disburse' => 'boolean',
         ]);
+
+        if (!empty($validated['start_date'])) {
+            $startDate = Carbon::parse($validated['start_date']);
+            $validated['period_month'] = $startDate->month;
+            $validated['period_year'] = $startDate->year;
+        }
 
         $validated['reward_bonus_target'] = $validated['reward_bonus_target'] ?? 0;
         $program->update($validated);

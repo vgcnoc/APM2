@@ -26,13 +26,26 @@ class TargetMarketService
         }
 
         $activationDate = $customer->activation_date ? Carbon::parse($customer->activation_date) : now();
+        $activationDateStr = $activationDate->toDateString();
         $month = $activationDate->month;
         $year = $activationDate->year;
 
-        // Ambil program aktif untuk periode ini
+        // Ambil program aktif untuk periode ini (berdasarkan rentang tanggal aktif atau period_month/year)
         $programs = TargetMarketProgram::where('is_active', true)
-            ->where('period_month', $month)
-            ->where('period_year', $year)
+            ->where(function ($q) use ($activationDateStr, $month, $year) {
+                $q->where(function ($sub) use ($activationDateStr) {
+                    $sub->whereNotNull('start_date')
+                        ->where('start_date', '<=', $activationDateStr)
+                        ->where(function ($endSub) use ($activationDateStr) {
+                            $endSub->whereNull('end_date')
+                                   ->orWhere('end_date', '>=', $activationDateStr);
+                        });
+                })->orWhere(function ($sub) use ($month, $year) {
+                    $sub->whereNull('start_date')
+                        ->where('period_month', $month)
+                        ->where('period_year', $year);
+                });
+            })
             ->get();
 
         if ($programs->isEmpty()) {
@@ -172,9 +185,24 @@ class TargetMarketService
             ->where('status', '!=', 'synced_payroll')
             ->delete();
 
+        $monthStart = Carbon::create($year, $month, 1)->startOfMonth()->toDateString();
+        $monthEnd = Carbon::create($year, $month, 1)->endOfMonth()->toDateString();
+
         $programs = TargetMarketProgram::where('is_active', true)
-            ->where('period_month', $month)
-            ->where('period_year', $year)
+            ->where(function ($q) use ($month, $year, $monthStart, $monthEnd) {
+                $q->where(function ($sub) use ($monthStart, $monthEnd) {
+                    $sub->whereNotNull('start_date')
+                        ->where('start_date', '<=', $monthEnd)
+                        ->where(function ($endSub) use ($monthStart) {
+                            $endSub->whereNull('end_date')
+                                   ->orWhere('end_date', '>=', $monthStart);
+                        });
+                })->orWhere(function ($sub) use ($month, $year) {
+                    $sub->whereNull('start_date')
+                        ->where('period_month', $month)
+                        ->where('period_year', $year);
+                });
+            })
             ->get();
 
         if ($programs->isEmpty()) {
@@ -208,7 +236,13 @@ class TargetMarketService
             $employee = $cust->sales;
             if (!$employee || $employee->isExemptFromAttendanceAndPayroll()) continue;
 
+            $custDateStr = $cust->activation_date ? Carbon::parse($cust->activation_date)->toDateString() : ($cust->created_at ? $cust->created_at->toDateString() : null);
+
             foreach ($programs as $prog) {
+                if ($custDateStr) {
+                    if ($prog->start_date && $custDateStr < Carbon::parse($prog->start_date)->toDateString()) continue;
+                    if ($prog->end_date && $custDateStr > Carbon::parse($prog->end_date)->toDateString()) continue;
+                }
                 if (!empty($prog->target_role) && $prog->target_role !== 'all' && $employee->role !== $prog->target_role) {
                     continue;
                 }
