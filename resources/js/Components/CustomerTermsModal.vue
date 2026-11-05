@@ -34,8 +34,8 @@
                 </button>
             </div>
 
-            <!-- Loading State -->
-            <div v-if="loading" class="py-16 flex flex-col items-center justify-center text-slate-400 gap-3">
+            <!-- Loading State (hanya jika data belum ada sama sekali) -->
+            <div v-if="loading && !customerData" class="py-16 flex flex-col items-center justify-center text-slate-400 gap-3">
                 <svg class="animate-spin h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -144,7 +144,14 @@
                             </div>
                             <span class="text-[10px] font-semibold text-slate-500">Scroll ke bawah untuk membaca</span>
                         </div>
-                        <div class="p-4 sm:p-5 max-h-64 overflow-y-auto text-xs text-slate-700 leading-relaxed terms-box space-y-3 font-sans" v-html="renderedContent"></div>
+                        <div v-if="loading && !renderedContent" class="p-8 flex flex-col items-center justify-center text-slate-400 gap-2">
+                            <svg class="animate-spin h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span class="text-xs text-slate-500">Memuat klausul perjanjian &amp; S&amp;K resmi...</span>
+                        </div>
+                        <div v-else class="p-4 sm:p-5 max-h-64 overflow-y-auto text-xs text-slate-700 leading-relaxed terms-box space-y-3 font-sans" v-html="renderedContent"></div>
                     </div>
 
                     <!-- Checkbox Persetujuan -->
@@ -322,7 +329,10 @@
 
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 import axios from 'axios';
+
+const page = usePage();
 
 const props = defineProps({
     show: {
@@ -331,7 +341,11 @@ const props = defineProps({
     },
     customerId: {
         type: [Number, String],
-        required: true,
+        required: false,
+    },
+    customer: {
+        type: Object,
+        default: () => null,
     },
     stage: {
         type: String,
@@ -350,7 +364,7 @@ const templateData = ref(null);
 const renderedContent = ref('');
 const existingAgreement = ref(null);
 
-const employeeName = ref('');
+const employeeName = ref(page.props.auth?.user?.name || '');
 const customerName = ref('');
 const agreementNotes = ref('');
 const hasAgreed = ref(false);
@@ -392,34 +406,68 @@ function formatDate(dateStr) {
     });
 }
 
+function applyCustomerProps(c) {
+    if (!c) return;
+    const current = customerData.value || {};
+    customerData.value = {
+        ...current,
+        id: c.id ?? current.id,
+        name: c.name ?? current.name,
+        customer_code: c.customer_code ?? current.customer_code,
+        phone: c.phone ?? current.phone,
+        email: c.email ?? current.email,
+        address: c.address ?? current.address,
+        area: c.areaModel?.name || c.area || current.area || '-',
+        package_name: c.package?.name || c.package_name || current.package_name || '-',
+        package_speed: c.package?.speed_mbps ? (c.package.speed_mbps + ' Mbps') : (c.package?.speed || c.package_speed || current.package_speed || '-'),
+        price: c.base_amount || c.package?.price || current.price || 0,
+        installation_fee: c.installation_fee ?? current.installation_fee ?? 0,
+    };
+    if (!customerName.value && c.name) {
+        customerName.value = c.name;
+    }
+    if (!employeeName.value) {
+        employeeName.value = page.props.auth?.user?.name || 'Petugas Lapangan';
+    }
+}
+
 async function loadData() {
-    if (!props.customerId) return;
+    const targetId = props.customerId || props.customer?.id || customerData.value?.id;
+    if (!targetId) return;
     loading.value = true;
     isReSigning.value = false;
     hasAgreed.value = false;
 
     try {
-        const response = await axios.get(`/customers/${props.customerId}/agreements/current?stage=${props.stage}`);
+        const response = await axios.get(`/customers/${targetId}/agreements/current?stage=${props.stage}`);
         const data = response.data;
 
-        customerData.value = data.customer;
+        customerData.value = data.customer || customerData.value;
         templateData.value = data.template;
-        renderedContent.value = data.rendered_content;
+        renderedContent.value = data.rendered_content || '';
         existingAgreement.value = data.existing_agreement;
 
-        employeeName.value = data.current_user?.name || 'Petugas Lapangan';
-        customerName.value = data.customer?.name || '';
+        if (data.current_user?.name) {
+            employeeName.value = data.current_user.name;
+        } else if (!employeeName.value) {
+            employeeName.value = page.props.auth?.user?.name || 'Petugas Lapangan';
+        }
 
-        if (!existingAgreement.value) {
-            nextTick(() => {
-                initCanvases();
-            });
+        if (data.customer?.name) {
+            customerName.value = data.customer.name;
+        } else if (props.customer?.name && !customerName.value) {
+            customerName.value = props.customer.name;
         }
     } catch (e) {
         console.error('Failed to load terms data:', e);
         alert('Gagal memuat data syarat & ketentuan: ' + (e.response?.data?.message || e.message));
     } finally {
         loading.value = false;
+        if (!existingAgreement.value) {
+            nextTick(() => {
+                initCanvases();
+            });
+        }
     }
 }
 
@@ -603,7 +651,13 @@ async function submitAgreement() {
             notes: agreementNotes.value,
         };
 
-        const res = await axios.post(`/customers/${props.customerId}/agreements`, payload);
+        const targetId = props.customerId || props.customer?.id || customerData.value?.id;
+        if (!targetId) {
+            alert('ID Pelanggan tidak valid.');
+            return;
+        }
+
+        const res = await axios.post(`/customers/${targetId}/agreements`, payload);
         
         if (res.data.success) {
             existingAgreement.value = res.data.agreement;
@@ -621,17 +675,33 @@ async function submitAgreement() {
     }
 }
 
+onMounted(() => {
+    applyCustomerProps(props.customer);
+    if (!employeeName.value) {
+        employeeName.value = page.props.auth?.user?.name || 'Petugas Lapangan';
+    }
+    loadData();
+});
+
 watch(() => props.show, (newVal) => {
     if (newVal) {
+        applyCustomerProps(props.customer);
+        loadData();
+    }
+}, { immediate: true });
+
+watch(() => [props.customerId, props.customer?.id], ([newId]) => {
+    if (newId) {
+        applyCustomerProps(props.customer);
         loadData();
     }
 });
 
-watch(() => props.customerId, () => {
-    if (props.show) {
-        loadData();
+watch(() => props.customer, (newCust) => {
+    if (newCust) {
+        applyCustomerProps(newCust);
     }
-});
+}, { deep: true });
 </script>
 
 <style scoped>

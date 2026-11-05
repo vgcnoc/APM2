@@ -787,6 +787,7 @@
             v-if="showTermsModal"
             v-model:show="showTermsModal"
             :customer-id="selectedTermsCustomer?.id"
+            :customer="selectedTermsCustomer"
             stage="booking"
         />
 
@@ -1178,7 +1179,8 @@ function submitCancel() {
 const showTermsModal = ref(false);
 const selectedTermsCustomer = ref(null);
 function openTermsModal(row) {
-    selectedTermsCustomer.value = row;
+    const target = (row && row.id) ? row : (activeDropdownRow.value || row);
+    selectedTermsCustomer.value = target;
     showTermsModal.value = true;
     closeDropdown();
 }

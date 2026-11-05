@@ -147,7 +147,7 @@ class SubscriptionTermsController extends Controller
                 'address' => $customer->address,
                 'area' => $customer->areaModel?->name ?? $customer->area ?? '-',
                 'package_name' => $customer->package?->name ?? '-',
-                'package_speed' => $customer->package?->speed ? ($customer->package->speed . ' Mbps') : '-',
+                'package_speed' => $customer->package?->speed_mbps ? ($customer->package->speed_mbps . ' Mbps') : ($customer->package?->speed ?? '-'),
                 'price' => $customer->base_amount ?: ($customer->package?->price ?? 0),
                 'installation_fee' => $customer->installation_fee ?? 0,
             ],

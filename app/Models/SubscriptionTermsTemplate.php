@@ -69,7 +69,7 @@ class SubscriptionTermsTemplate extends Model
 
         $companyName = Setting::get('company_name', config('app.name', 'PT VIRUZS GLOBAL CONNECTION'));
         $packageName = $customer->package?->name ?? 'Paket Internet Standard';
-        $packageSpeed = $customer->package?->speed ? ($customer->package->speed . ' Mbps') : '-';
+        $packageSpeed = $customer->package?->speed_mbps ? ($customer->package->speed_mbps . ' Mbps') : ($customer->package?->speed ?? '-');
         $packagePrice = 'Rp ' . number_format($customer->base_amount ?: ($customer->package?->price ?? 0), 0, ',', '.');
         $installFee = 'Rp ' . number_format($customer->installation_fee ?? 0, 0, ',', '.');
         $employeeName = $employee?->name ?? auth()->user()?->name ?? 'Petugas Lapangan';
