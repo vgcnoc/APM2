@@ -70,7 +70,20 @@ class SubscriptionTermsTemplate extends Model
         $companyName = Setting::get('company_name', config('app.name', 'PT VIRUZS GLOBAL CONNECTION'));
         $packageName = $customer->package?->name ?? 'Paket Internet Standard';
         $packageSpeed = $customer->package?->speed_mbps ? ($customer->package->speed_mbps . ' Mbps') : ($customer->package?->speed ?? '-');
-        $packagePrice = 'Rp ' . number_format($customer->base_amount ?: ($customer->package?->price ?? 0), 0, ',', '.');
+        $basePrice = (float) ($customer->base_amount ?: ($customer->package?->price ?? 0));
+        $globalTaxPpn = (float) Setting::get('tax_ppn', '0');
+        $taxPpn = (float) ($customer->tax_ppn ?? $globalTaxPpn);
+        $priceWithTax = $basePrice;
+        if ($taxPpn > 0 && !in_array($customer->service_status, ['gratis', 'free_home'], true)) {
+            $raw = $basePrice * (1 + ($taxPpn / 100));
+            $rounded = (int) round($raw);
+            if (abs($rounded - round($rounded / 50) * 50) <= 1) {
+                $priceWithTax = (int) (round($rounded / 50) * 50);
+            } else {
+                $priceWithTax = $rounded;
+            }
+        }
+        $packagePrice = 'Rp ' . number_format($priceWithTax, 0, ',', '.');
         $rawInstallFee = $customer->installation_fee;
         if (($rawInstallFee === null || (float)$rawInstallFee == 0) && $customer->package?->installation_fee) {
             $rawInstallFee = $customer->package->installation_fee;

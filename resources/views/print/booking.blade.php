@@ -356,7 +356,24 @@
                     @if(in_array($customer->service_status, ['gratis', 'free_home']))
                         <span class="badge badge-green">Rp 0 (Bebas Biaya)</span>
                     @else
-                        <strong>Rp {{ number_format($customer->base_amount > 0 ? $customer->base_amount : ($customer->package?->price ?? 0), 0, ',', '.') }}</strong> / bulan
+                        @php
+                            $basePrice = (float) ($customer->base_amount > 0 ? $customer->base_amount : ($customer->package?->price ?? 0));
+                            $taxPpn = (float) ($customer->tax_ppn ?? \App\Models\Setting::get('tax_ppn', '0'));
+                            $priceWithTax = $basePrice;
+                            if ($taxPpn > 0) {
+                                $raw = $basePrice * (1 + ($taxPpn / 100));
+                                $rounded = (int) round($raw);
+                                if (abs($rounded - round($rounded / 50) * 50) <= 1) {
+                                    $priceWithTax = (int) (round($rounded / 50) * 50);
+                                } else {
+                                    $priceWithTax = $rounded;
+                                }
+                            }
+                        @endphp
+                        <strong>Rp {{ number_format($priceWithTax, 0, ',', '.') }}</strong> / bulan
+                        @if($taxPpn > 0 && $priceWithTax > $basePrice)
+                            <span style="font-size: 8pt; color: #64748b; font-weight: normal;">(Termasuk PPN {{ $taxPpn }}%)</span>
+                        @endif
                     @endif
                 </td>
             </tr>

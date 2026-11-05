@@ -332,7 +332,21 @@
                     <td class="info-val">{{ $agreement->customer?->package?->name ?? 'Paket Internet' }}</td>
                     <td class="info-label">Biaya Bulanan</td>
                     <td class="info-sep">:</td>
-                    <td class="info-val">Rp {{ number_format($agreement->customer?->base_amount ?: ($agreement->customer?->package?->price ?? 0), 0, ',', '.') }}</td>
+                    @php
+                        $basePrice = (float) ($agreement->customer?->base_amount ?: ($agreement->customer?->package?->price ?? 0));
+                        $taxPpn = (float) ($agreement->customer?->tax_ppn ?? \App\Models\Setting::get('tax_ppn', '0'));
+                        $priceWithTax = $basePrice;
+                        if ($taxPpn > 0 && !in_array($agreement->customer?->service_status, ['gratis', 'free_home'], true)) {
+                            $raw = $basePrice * (1 + ($taxPpn / 100));
+                            $rounded = (int) round($raw);
+                            if (abs($rounded - round($rounded / 50) * 50) <= 1) {
+                                $priceWithTax = (int) (round($rounded / 50) * 50);
+                            } else {
+                                $priceWithTax = $rounded;
+                            }
+                        }
+                    @endphp
+                    <td class="info-val">Rp {{ number_format($priceWithTax, 0, ',', '.') }}</td>
                 </tr>
                 <tr>
                     <td class="info-label">Alamat Pemasangan</td>

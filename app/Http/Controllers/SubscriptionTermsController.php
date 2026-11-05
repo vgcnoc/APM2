@@ -137,6 +137,20 @@ class SubscriptionTermsController extends Controller
             $latestAnyStage = CustomerAgreement::where('customer_id', $customer->id)->latest()->first();
         }
 
+        $basePrice = (float) ($customer->base_amount ?: ($customer->package?->price ?? 0));
+        $globalTaxPpn = (float) \App\Models\Setting::get('tax_ppn', '0');
+        $taxPpn = (float) ($customer->tax_ppn ?? $globalTaxPpn);
+        $priceWithTax = $basePrice;
+        if ($taxPpn > 0 && !in_array($customer->service_status, ['gratis', 'free_home'], true)) {
+            $raw = $basePrice * (1 + ($taxPpn / 100));
+            $rounded = (int) round($raw);
+            if (abs($rounded - round($rounded / 50) * 50) <= 1) {
+                $priceWithTax = (int) (round($rounded / 50) * 50);
+            } else {
+                $priceWithTax = $rounded;
+            }
+        }
+
         return response()->json([
             'customer' => [
                 'id' => $customer->id,
@@ -148,7 +162,10 @@ class SubscriptionTermsController extends Controller
                 'area' => $customer->areaModel?->name ?? $customer->area ?? '-',
                 'package_name' => $customer->package?->name ?? '-',
                 'package_speed' => $customer->package?->speed_mbps ? ($customer->package->speed_mbps . ' Mbps') : ($customer->package?->speed ?? '-'),
-                'price' => $customer->base_amount ?: ($customer->package?->price ?? 0),
+                'price' => $priceWithTax,
+                'price_before_tax' => $basePrice,
+                'price_with_ppn' => $priceWithTax,
+                'tax_ppn' => $taxPpn,
                 'installation_fee' => $customer->installation_fee ?? 0,
             ],
             'template' => [

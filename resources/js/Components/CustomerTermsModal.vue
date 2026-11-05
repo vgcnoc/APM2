@@ -406,6 +406,26 @@ function formatDate(dateStr) {
     });
 }
 
+function calculatePriceWithTax(c, currentPrice = 0) {
+    if (c?.price_with_ppn !== undefined && Number(c.price_with_ppn) > 0) {
+        return Number(c.price_with_ppn);
+    }
+    const base = Number(c?.base_amount || c?.package?.price || currentPrice || 0);
+    if (c?.service_status === 'gratis' || c?.service_status === 'free_home') {
+        return 0;
+    }
+    const taxPpn = Number(c?.tax_ppn ?? (c?.package?.tax_ppn ?? 11));
+    if (taxPpn > 0 && base > 0) {
+        const raw = base * (1 + taxPpn / 100);
+        const rounded = Math.round(raw);
+        if (Math.abs(rounded - Math.round(rounded / 50) * 50) <= 1) {
+            return Math.round(rounded / 50) * 50;
+        }
+        return rounded;
+    }
+    return base;
+}
+
 function applyCustomerProps(c) {
     if (!c) return;
     const current = customerData.value || {};
@@ -420,7 +440,7 @@ function applyCustomerProps(c) {
         area: c.areaModel?.name || c.area || current.area || '-',
         package_name: c.package?.name || c.package_name || current.package_name || '-',
         package_speed: c.package?.speed_mbps ? (c.package.speed_mbps + ' Mbps') : (c.package?.speed || c.package_speed || current.package_speed || '-'),
-        price: c.base_amount || c.package?.price || current.price || 0,
+        price: c.price_with_ppn || calculatePriceWithTax(c, current.price),
         installation_fee: c.installation_fee ?? current.installation_fee ?? 0,
     };
     if (!customerName.value && c.name) {
