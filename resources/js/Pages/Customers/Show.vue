@@ -287,6 +287,17 @@
                             Konfigurasi Layanan & ONT
                         </h3>
                         <div class="flex items-center gap-2">
+                            <!-- Pelunasan PSB jika belum lunas -->
+                            <button 
+                                v-if="customer.psb_payment_status === 'unpaid'" 
+                                type="button" 
+                                @click="openConfirmPsbModal" 
+                                class="text-xs font-bold px-3 py-2 rounded-lg transition-all bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 shadow-sm flex items-center gap-1.5 cursor-pointer"
+                                title="Konfirmasi Pelunasan Biaya Pasang Baru (PSB)"
+                            >
+                                <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                <span>Pelunasan PSB</span>
+                            </button>
                             <a 
                                 :href="`/customers/${customer.id}/print-psb`" 
                                 target="_blank"
@@ -304,7 +315,7 @@
                     </div>
 
                     <!-- Ringkasan Status Layanan & Tagihan -->
-                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 p-4 mb-5 bg-white rounded-xl border border-indigo-100 shadow-sm">
+                    <div class="grid grid-cols-1 sm:grid-cols-5 gap-4 p-4 mb-5 bg-white rounded-xl border border-indigo-100 shadow-sm">
                         <div>
                             <span class="text-[10px] text-gray-500 uppercase font-bold block mb-1">Tanggal Aktivasi</span>
                             <span class="text-sm font-bold text-gray-900">{{ formatDate(customer.activation_date) }}</span>
@@ -322,6 +333,13 @@
                         <div>
                             <span class="text-[10px] text-gray-500 uppercase font-bold block mb-1">Paket Internet</span>
                             <span class="text-sm font-bold text-gray-900">{{ customer.package?.name || '-' }}</span>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-gray-500 uppercase font-bold block mb-1">Biaya Pasang (PSB)</span>
+                            <span class="text-xs font-bold px-2 py-0.5 rounded-full inline-block"
+                                :class="customer.psb_payment_status === 'unpaid' ? 'bg-rose-100 text-rose-800 border border-rose-200' : (customer.psb_payment_status === 'free' || !customer.installation_fee ? 'bg-slate-100 text-slate-700 border border-slate-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200')">
+                                {{ customer.psb_payment_status === 'unpaid' ? 'Rp ' + Number(customer.installation_fee || 0).toLocaleString('id-ID') + ' (Belum Lunas)' : (customer.psb_payment_status === 'free' || !customer.installation_fee ? 'Bebas Biaya' : 'Rp ' + Number(customer.installation_fee || 0).toLocaleString('id-ID') + ' (Lunas)') }}
+                            </span>
                         </div>
                     </div>
 
@@ -1811,6 +1829,79 @@
                             <button type="button" @click="showTerminateModal = false" class="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-900 bg-white border border-gray-300 rounded-lg">Batal</button>
                             <button type="submit" :disabled="terminateForm.processing" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1.5 shadow-sm">
                                 <span>{{ terminateForm.processing ? 'Menyimpan...' : 'Stop Permanen Sekarang' }}</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- Modal Konfirmasi Pelunasan PSB -->
+        <Teleport to="body">
+            <div v-if="showConfirmPsbModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showConfirmPsbModal = false"></div>
+                <div class="relative bg-white border border-gray-200 rounded-2xl shadow-2xl p-6 max-w-md w-full animate-fade-in-up">
+                    <div class="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-sm">
+                                ✓
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-900">Konfirmasi Pelunasan Biaya PSB</h3>
+                                <p class="text-xs text-gray-500 font-mono">{{ customer.name }} ({{ customer.customer_code }})</p>
+                            </div>
+                        </div>
+                        <button type="button" @click="showConfirmPsbModal = false" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <form @submit.prevent="submitConfirmPsb" class="space-y-4">
+                        <div class="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl flex justify-between items-center text-xs">
+                            <div>
+                                <span class="font-bold text-emerald-950 block">Tagihan Biaya Pasang Baru (PSB)</span>
+                                <span class="text-emerald-700 text-[11px]">Otomatis dibukukan ke Buku Kas Umum [PSB]</span>
+                            </div>
+                            <span class="text-base font-extrabold font-mono text-emerald-800">
+                                Rp {{ Number(customer.installation_fee || 0).toLocaleString('id-ID') }}
+                            </span>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1.5">Metode Penerimaan Uang <span class="text-red-500">*</span></label>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <label :class="['flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition-all', psbPaymentForm.payment_method === 'cash' ? 'border-emerald-600 bg-emerald-50 ring-1 ring-emerald-600 font-bold text-emerald-900' : 'border-gray-200 bg-white text-gray-700']">
+                                    <input type="radio" value="cash" v-model="psbPaymentForm.payment_method" class="sr-only">
+                                    <div :class="['w-4 h-4 rounded-full border flex items-center justify-center shrink-0', psbPaymentForm.payment_method === 'cash' ? 'border-emerald-600 bg-emerald-600' : 'border-gray-300']">
+                                        <div v-if="psbPaymentForm.payment_method === 'cash'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                    </div>
+                                    <span>💵 Tunai (Cash)</span>
+                                </label>
+                                <label :class="['flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition-all', psbPaymentForm.payment_method === 'transfer' ? 'border-emerald-600 bg-emerald-50 ring-1 ring-emerald-600 font-bold text-emerald-900' : 'border-gray-200 bg-white text-gray-700']">
+                                    <input type="radio" value="transfer" v-model="psbPaymentForm.payment_method" class="sr-only">
+                                    <div :class="['w-4 h-4 rounded-full border flex items-center justify-center shrink-0', psbPaymentForm.payment_method === 'transfer' ? 'border-emerald-600 bg-emerald-600' : 'border-gray-300']">
+                                        <div v-if="psbPaymentForm.payment_method === 'transfer'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                    </div>
+                                    <span>🏦 Transfer Bank</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Tanggal Pelunasan <span class="text-red-500">*</span></label>
+                            <input v-model="psbPaymentForm.paid_at" type="date" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:ring-2 focus:ring-emerald-500 shadow-2xs font-medium" required>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Catatan Tambahan (Opsional)</label>
+                            <input v-model="psbPaymentForm.notes" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:ring-2 focus:ring-emerald-500 shadow-2xs" placeholder="Contoh: Diterima oleh teknisi / Bukti transfer BRI">
+                        </div>
+
+                        <div class="pt-2 flex justify-end gap-2.5">
+                            <button type="button" @click="showConfirmPsbModal = false" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold">Batal</button>
+                            <button type="submit" :disabled="psbPaymentForm.processing" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer">
+                                <span v-if="psbPaymentForm.processing">Menyimpan...</span>
+                                <span v-else>✓ Simpan & Bukukan ke Kas</span>
                             </button>
                         </div>
                     </form>
@@ -4406,6 +4497,30 @@ function submitTerminate() {
         preserveScroll: true,
         onSuccess: () => {
             showTerminateModal.value = false;
+        }
+    });
+}
+
+// Pelunasan Biaya Pasang Baru (PSB)
+const showConfirmPsbModal = ref(false);
+const psbPaymentForm = useForm({
+    payment_method: 'cash',
+    paid_at: new Date().toISOString().split('T')[0],
+    notes: '',
+});
+
+function openConfirmPsbModal() {
+    psbPaymentForm.payment_method = 'cash';
+    psbPaymentForm.paid_at = new Date().toISOString().split('T')[0];
+    psbPaymentForm.notes = '';
+    showConfirmPsbModal.value = true;
+}
+
+function submitConfirmPsb() {
+    psbPaymentForm.post(`/customers/${props.customer.id}/confirm-psb-payment`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showConfirmPsbModal.value = false;
         }
     });
 }

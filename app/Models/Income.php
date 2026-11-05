@@ -11,6 +11,7 @@ class Income extends Model
 
     protected $fillable = [
         'amount',
+        'customer_id',
         'income_category_id',
         'area_id',
         'area',
@@ -57,6 +58,11 @@ class Income extends Model
     public function category()
     {
         return $this->belongsTo(IncomeCategory::class, 'income_category_id');
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class, 'customer_id');
     }
 
     public function areaModel()

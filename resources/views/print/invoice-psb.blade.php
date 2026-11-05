@@ -227,10 +227,46 @@
             color: #166534;
             border: 1px solid #bbf7d0;
         }
+        .badge-red {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        .badge-gray {
+            background-color: #f1f5f9;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
         .paid-stamp {
             display: inline-block;
             border: 3px solid #059669;
             color: #059669;
+            font-weight: 900;
+            font-size: 16px;
+            letter-spacing: 2px;
+            padding: 6px 16px;
+            text-transform: uppercase;
+            border-radius: 8px;
+            transform: rotate(-5deg);
+            opacity: 0.9;
+        }
+        .unpaid-stamp {
+            display: inline-block;
+            border: 3px solid #dc2626;
+            color: #dc2626;
+            font-weight: 900;
+            font-size: 16px;
+            letter-spacing: 2px;
+            padding: 6px 16px;
+            text-transform: uppercase;
+            border-radius: 8px;
+            transform: rotate(-5deg);
+            opacity: 0.9;
+        }
+        .free-stamp {
+            display: inline-block;
+            border: 3px solid #64748b;
+            color: #475569;
             font-weight: 900;
             font-size: 16px;
             letter-spacing: 2px;
@@ -307,6 +343,40 @@
         $psbFeeFmt = 'Rp ' . number_format($psbFee, 0, ',', '.');
         $actDateFmt = $customer->activation_date ? \Carbon\Carbon::parse($customer->activation_date)->translatedFormat('d F Y') : \Carbon\Carbon::now()->translatedFormat('d F Y');
         
+        $psbStatus = $customer->psb_payment_status;
+        if (!$psbStatus) {
+            $psbStatus = ($psbFee > 0) ? 'paid' : 'free';
+        }
+        $isPaid = ($psbStatus === 'paid');
+        $isUnpaid = ($psbStatus === 'unpaid');
+        $isFree = ($psbStatus === 'free' || $psbFee <= 0);
+
+        $paidDateFmt = $customer->psb_paid_at ? \Carbon\Carbon::parse($customer->psb_paid_at)->translatedFormat('d F Y') : $actDateFmt;
+        $payMethod = $customer->psb_payment_method ? strtoupper($customer->psb_payment_method) : 'TUNAI / TRANSFER';
+
+        if ($isPaid) {
+            $statusLabel = 'LUNAS';
+            $statusBadgeClass = 'badge-green';
+            $waStatusText = "✅ *Status Pembayaran*: LUNAS (Sudah Diterima via {$payMethod})\n";
+            $waExtra = "_Simpan pesan ini sebagai bukti pembayaran dan registrasi resmi pemasangan baru._\n\n";
+        } elseif ($isUnpaid) {
+            $statusLabel = 'BELUM LUNAS';
+            $statusBadgeClass = 'badge-red';
+            $waStatusText = "⚠️ *Status Pembayaran*: BELUM LUNAS (MENUNGGAK)\n"
+                . "💰 *Total Tagihan PSB*: {$psbFeeFmt}\n\n"
+                . "*Petunjuk Pembayaran Transfer:*\n"
+                . "🏦 *BANK BRI*: 410101025028534\n"
+                . "👤 *A/N*: Deri Gantinayasa\n"
+                . "Atau bayar tunai melalui teknisi resmi kami.\n\n"
+                . "Setelah transfer, kirim bukti bayar ke No. WhatsApp ini.\n";
+            $waExtra = "Aplikasi Pelanggan: https://viruzs.rlradius.com\n\n";
+        } else {
+            $statusLabel = 'BEBAS BIAYA';
+            $statusBadgeClass = 'badge-gray';
+            $waStatusText = "🎁 *Status Pembayaran*: GRATIS (Promo Bebas Biaya Registrasi)\n";
+            $waExtra = "_Layanan aktif dengan promo bebas biaya pasang baru._\n\n";
+        }
+
         $waMessage = "*INVOICE PEMASANGAN BARU (PSB)*\n"
             . "*{$company['name']}*\n"
             . "----------------------------------------\n"
@@ -321,9 +391,9 @@
             . "📦 *Paket Layanan*: " . ($customer->package->name ?? 'Internet Service') . "\n"
             . "📅 *Tanggal Aktivasi*: {$actDateFmt}\n"
             . "💰 *Biaya Pasang Baru (PSB)*: {$psbFeeFmt}\n"
-            . "✅ *Status Pembayaran*: LUNAS (Sudah Diterima)\n"
+            . $waStatusText
             . "----------------------------------------\n"
-            . "_Simpan pesan ini sebagai bukti pembayaran dan registrasi resmi pemasangan baru._\n\n"
+            . $waExtra
             . (!empty($company['phone']) ? "Layanan Bantuan & CS: *{$company['phone']}*\n\n" : "")
             . "Salam,\n*{$company['name']}*";
             
@@ -367,8 +437,9 @@
             <div class="doc-title">
                 <h2>INVOICE PSB & AKTIVASI</h2>
                 <div class="doc-num">{{ $invNumber }}</div>
-                <div style="font-size: 11px; color: #64748b; margin-top: 3px;">
-                    Tgl Aktivasi: <strong>{{ $actDateFmt }}</strong>
+                <div style="font-size: 11px; margin-top: 4px;">
+                    <span class="badge {{ $statusBadgeClass }}">{{ $statusLabel }}</span>
+                    <span style="color: #64748b; margin-left: 4px;">&bull; Aktivasi: <strong>{{ $actDateFmt }}</strong></span>
                 </div>
             </div>
         </div>
@@ -488,18 +559,51 @@
             </tbody>
         </table>
 
-        <!-- STATUS CAP LUNAS -->
+        <!-- STATUS CAP LUNAS / BELUM LUNAS / BEBAS BIAYA -->
+        @if($isPaid)
         <div style="display: flex; justify-content: space-between; align-items: center; margin: 16px 0;">
             <div>
                 <span class="paid-stamp">LUNAS</span>
                 <span style="font-size: 11px; color: #059669; font-weight: 700; margin-left: 10px;">
-                    Pembayaran telah diterima dan diverifikasi
+                    Pembayaran telah diterima dan diverifikasi ({{ $payMethod }})
                 </span>
             </div>
             <div style="text-align: right; font-size: 11px; color: #64748b;">
-                Tanggal Pelunasan: <strong>{{ $actDateFmt }}</strong>
+                Tanggal Pelunasan: <strong>{{ $paidDateFmt }}</strong>
+                @if($customer->psbReceiver) &bull; Penerima: <strong>{{ $customer->psbReceiver->name }}</strong> @endif
             </div>
         </div>
+        @elseif($isUnpaid)
+        <div style="display: flex; justify-content: space-between; align-items: center; margin: 16px 0;">
+            <div>
+                <span class="unpaid-stamp">BELUM LUNAS</span>
+                <span style="font-size: 11px; color: #dc2626; font-weight: 700; margin-left: 10px;">
+                    MENUNGGAK / MENUNGGU PEMBAYARAN PELANGGAN
+                </span>
+            </div>
+            <div style="text-align: right; font-size: 11px; color: #dc2626; font-weight: 700;">
+                Status: PIUTANG PSB
+            </div>
+        </div>
+        <div style="background-color: #fef2f2; border: 1.5px dashed #f87171; border-radius: 8px; padding: 12px 16px; margin: 14px 0;">
+            <strong style="color: #991b1b; font-size: 12px; display: block; margin-bottom: 4px;">Instruksi Pembayaran Biaya Pasang Baru (PSB):</strong>
+            <p style="color: #7f1d1d; margin: 0; font-size: 12px; line-height: 1.6;">
+                Silakan melakukan transfer ke <strong>BANK BRI: 410101025028534 a/n Deri Gantinayasa</strong> atau pembayaran tunai langsung kepada teknisi resmi kami. Setelah melakukan transfer, harap kirimkan foto bukti transfer ke WhatsApp <strong>{{ $company['phone'] ?? '088976397034' }}</strong> atau login ke Aplikasi Client Area di <strong>https://viruzs.rlradius.com</strong>.
+            </p>
+        </div>
+        @else
+        <div style="display: flex; justify-content: space-between; align-items: center; margin: 16px 0;">
+            <div>
+                <span class="free-stamp">BEBAS BIAYA</span>
+                <span style="font-size: 11px; color: #475569; font-weight: 700; margin-left: 10px;">
+                    Program Promo Bebas Biaya Registrasi / Gratis Pasang
+                </span>
+            </div>
+            <div style="text-align: right; font-size: 11px; color: #64748b;">
+                Biaya Tagihan PSB: <strong>Rp 0</strong>
+            </div>
+        </div>
+        @endif
 
         <!-- CATATAN & SYARAT KETENTUAN -->
         <div class="terms">

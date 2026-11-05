@@ -1940,6 +1940,7 @@ class CustomerController extends Controller
                 'surveys.surveyor:id,name,role',
                 'ont.odp.odc.olt',
                 'technicianSchedules.technician:id,name,role,installation_fee,booking_fee',
+                'psbReceiver:id,name',
             ])
             ->when($request->area || $request->area_id, fn($q) => $this->applyAreaFilter($q, $request->area_id ?: $request->area))
             ->when($request->date_from, function ($q, $dateFrom) use ($currentTab) {
@@ -2361,7 +2362,7 @@ class CustomerController extends Controller
      */
     public function printPsb(Customer $customer)
     {
-        $customer->load(['package', 'areaModel', 'sales.employee', 'ont.odp.odc.olt']);
+        $customer->load(['package', 'areaModel', 'sales.employee', 'ont.odp.odc.olt', 'psbReceiver', 'psbIncome']);
 
         $company = [
             'name' => Setting::get('company_name', config('app.name', 'ISP Management')),
@@ -2373,6 +2374,59 @@ class CustomerController extends Controller
         ];
 
         return view('print.invoice-psb', compact('customer', 'company'));
+    }
+
+    /**
+     * Konfirmasi pelunasan biaya pasang baru (PSB) & catat mutasi kas masuk
+     */
+    public function confirmPsbPayment(Request $request, Customer $customer): RedirectResponse
+    {
+        $validated = $request->validate([
+            'payment_method' => 'required|in:cash,transfer',
+            'paid_at' => 'nullable|date',
+            'notes' => 'nullable|string',
+        ]);
+
+        \App\Services\PsbPaymentService::recordPayment($customer, [
+            'paid_at' => $validated['paid_at'] ?? now(),
+            'payment_method' => $validated['payment_method'],
+            'received_by' => auth()->id(),
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        $feeFmt = 'Rp ' . number_format($customer->installation_fee ?? 0, 0, ',', '.');
+        return redirect()->back()->with('success', "Pelunasan PSB {$customer->name} sebesar {$feeFmt} berhasil dikonfirmasi dan dicatat ke Buku Kas Umum.");
+    }
+
+    /**
+     * Ubah status pembayaran PSB (Lunas / Belum Lunas / Bebas Biaya)
+     */
+    public function updatePsbStatus(Request $request, Customer $customer): RedirectResponse
+    {
+        $validated = $request->validate([
+            'psb_payment_status' => 'required|in:paid,unpaid,free',
+            'payment_method' => 'nullable|in:cash,transfer',
+            'paid_at' => 'nullable|date',
+            'notes' => 'nullable|string',
+        ]);
+
+        if ($validated['psb_payment_status'] === 'paid') {
+            \App\Services\PsbPaymentService::recordPayment($customer, [
+                'paid_at' => $validated['paid_at'] ?? now(),
+                'payment_method' => $validated['payment_method'] ?? 'cash',
+                'received_by' => auth()->id(),
+                'notes' => $validated['notes'] ?? null,
+            ]);
+            $msg = "Status PSB {$customer->name} berhasil diubah menjadi LUNAS dan dicatat ke Kas.";
+        } elseif ($validated['psb_payment_status'] === 'unpaid') {
+            \App\Services\PsbPaymentService::markUnpaid($customer, $validated['notes'] ?? null);
+            $msg = "Status PSB {$customer->name} berhasil diubah menjadi BELUM LUNAS (Piutang PSB).";
+        } else {
+            \App\Services\PsbPaymentService::markFree($customer, $validated['notes'] ?? null);
+            $msg = "Status PSB {$customer->name} berhasil diubah menjadi BEBAS BIAYA (Gratis Promo).";
+        }
+
+        return redirect()->back()->with('success', $msg);
     }
 
     /**
@@ -3713,6 +3767,9 @@ class CustomerController extends Controller
             'tax_ppn' => 'nullable|numeric|min:0|max:100',
             'tax_bhp' => 'nullable|numeric|min:0|max:100',
             'tax_uso' => 'nullable|numeric|min:0|max:100',
+            'psb_payment_status' => 'nullable|in:paid,unpaid,free',
+            'psb_payment_method' => 'nullable|in:cash,transfer',
+            'psb_notes' => 'nullable|string',
         ]);
 
         if ($customer->status === 'installing' && $customer->is_audited && $customer->ont) {
@@ -3860,6 +3917,26 @@ class CustomerController extends Controller
                         'billing_type' => $invoiceBillingType,
                         'billing_cycle' => $billingCycle === 'default' ? \App\Models\Setting::get('billing_cycle', 'anniversary') : $billingCycle,
                         'notes' => $invoiceNotes,
+                    ]);
+                }
+
+                // =========================================================================
+                // PENCATATAN STATUS & KAS BIAYA PASANG BARU (PSB)
+                // =========================================================================
+                $psbStatus = $validated['psb_payment_status'] ?? 'paid';
+                $psbMethod = $validated['psb_payment_method'] ?? 'cash';
+                $psbNotes = $validated['psb_notes'] ?? null;
+
+                if ($psbStatus === 'free' || (float)($customer->installation_fee ?? 0) <= 0) {
+                    \App\Services\PsbPaymentService::markFree($customer, $psbNotes);
+                } elseif ($psbStatus === 'unpaid') {
+                    \App\Services\PsbPaymentService::markUnpaid($customer, $psbNotes);
+                } else {
+                    \App\Services\PsbPaymentService::recordPayment($customer, [
+                        'paid_at' => $validated['activation_date'] ?? now(),
+                        'payment_method' => $psbMethod,
+                        'received_by' => auth()->id(),
+                        'notes' => $psbNotes,
                     ]);
                 }
 

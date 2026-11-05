@@ -131,6 +131,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{customer}/print-termination', [CustomerController::class, 'printTermination'])->name('print-termination');
         Route::get('/{customer}/print-booking', [CustomerController::class, 'printBooking'])->name('print-booking');
         Route::get('/{customer}/print-psb', [CustomerController::class, 'printPsb'])->name('print-psb');
+        Route::post('/{customer}/confirm-psb-payment', [CustomerController::class, 'confirmPsbPayment'])->name('confirm-psb-payment');
+        Route::post('/{customer}/update-psb-status', [CustomerController::class, 'updatePsbStatus'])->name('update-psb-status');
 
         // Syarat & Ketentuan Berlangganan & Tanda Tangan Digital
         Route::get('/{customer}/agreements/current', [\App\Http\Controllers\SubscriptionTermsController::class, 'getCustomerAgreementData'])->name('agreements.current');

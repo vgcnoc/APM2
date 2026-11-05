@@ -59,6 +59,12 @@ class Customer extends Model
         'notes',
         'base_amount',
         'installation_fee',
+        'psb_payment_status',
+        'psb_paid_at',
+        'psb_payment_method',
+        'psb_received_by',
+        'psb_income_id',
+        'psb_notes',
         'sales_id',
         'referral_code',
         'is_migrated',
@@ -81,6 +87,7 @@ class Customer extends Model
             'longitude' => 'decimal:8',
             'registration_date' => 'date:Y-m-d',
             'activation_date' => 'date:Y-m-d',
+            'psb_paid_at' => 'datetime',
             'cancel_date' => 'date:Y-m-d',
             'suspend_start' => 'date:Y-m-d',
             'suspend_end' => 'date:Y-m-d',
@@ -197,6 +204,22 @@ class Customer extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * Pencatatan kas masuk PSB di Buku Kas Umum
+     */
+    public function psbIncome(): BelongsTo
+    {
+        return $this->belongsTo(Income::class, 'psb_income_id');
+    }
+
+    /**
+     * Admin/Teknisi penerima pembayaran PSB
+     */
+    public function psbReceiver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'psb_received_by');
     }
 
     /**

@@ -167,6 +167,17 @@
                             <p v-if="row.service_status === 'berbayar' && (row.base_amount || row.package?.price)" class="text-[11px] text-slate-500 font-medium">
                                 {{ formatRupiah(row.base_amount || row.package?.price) }} / bln
                             </p>
+                            <div class="mt-1 flex items-center gap-1">
+                                <span v-if="row.psb_payment_status === 'unpaid'" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                    PSB: {{ formatRupiah(row.installation_fee || 0) }} (Belum Lunas)
+                                </span>
+                                <span v-else-if="row.psb_payment_status === 'free' || !row.installation_fee" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-50 text-slate-500 border border-slate-200">
+                                    PSB: Bebas Biaya
+                                </span>
+                                <span v-else class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    PSB: {{ formatRupiah(row.installation_fee || 0) }} (Lunas)
+                                </span>
+                            </div>
                         </div>
                     </td>
 
@@ -343,6 +354,22 @@
                             <div class="min-w-0 flex-1">
                                 <span class="font-semibold text-xs block text-slate-800 dark:text-slate-100 group-hover:text-emerald-700 dark:group-hover:text-emerald-300">Invoice PSB</span>
                                 <p class="text-[10px] text-slate-400 group-hover:text-emerald-600 font-normal leading-tight">Kirim WA atau cetak invoice PSB</p>
+                            </div>
+                        </button>
+
+                        <!-- 1b. Konfirmasi Pelunasan PSB (Jika status belum lunas) -->
+                        <button 
+                            v-if="activeDropdownRow.psb_payment_status === 'unpaid'"
+                            type="button"
+                            @click="openConfirmPsbModal(activeDropdownRow); closeDropdown()"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:text-emerald-800 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-emerald-100 group-hover:bg-emerald-200 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-bold text-xs block text-emerald-700 dark:text-emerald-300">Pelunasan PSB</span>
+                                <p class="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal leading-tight">Konfirmasi pembayaran & catat kas masuk</p>
                             </div>
                         </button>
 
@@ -959,6 +986,85 @@
                                 <span>Pelanggan ini <strong>bebas pajak</strong> (invoice tidak dikenakan PPN / 0%).</span>
                             </div>
                         </div>
+
+                        <!-- Status Pembayaran Biaya Pasang Baru (PSB) -->
+                        <div class="bg-white border rounded-xl p-4 shadow-sm space-y-3 transition-all"
+                            :class="activationForm.psb_payment_status === 'paid' ? 'border-emerald-200 ring-1 ring-emerald-100 bg-emerald-50/20' : (activationForm.psb_payment_status === 'unpaid' ? 'border-rose-200 ring-1 ring-rose-100 bg-rose-50/20' : 'border-gray-200 bg-gray-50/40')">
+                            
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs"
+                                        :class="activationForm.psb_payment_status === 'paid' ? 'bg-emerald-100 text-emerald-700' : (activationForm.psb_payment_status === 'unpaid' ? 'bg-rose-100 text-rose-700' : 'bg-gray-100 text-gray-600')">
+                                        Rp
+                                    </div>
+                                    <div>
+                                        <span class="text-xs font-bold text-gray-800 uppercase tracking-wider block">
+                                            Status Biaya Pasang Baru (PSB)
+                                        </span>
+                                        <span class="text-[11px] text-gray-500">
+                                            Nominal: <strong class="font-mono text-gray-900">{{ formatRupiah(activeCustomer?.installation_fee || 0) }}</strong>
+                                        </span>
+                                    </div>
+                                </div>
+                                <span 
+                                    class="text-[10px] font-bold px-2.5 py-0.5 rounded-full border transition-all"
+                                    :class="activationForm.psb_payment_status === 'paid' 
+                                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200' 
+                                        : (activationForm.psb_payment_status === 'unpaid' ? 'bg-rose-100 text-rose-800 border-rose-200' : 'bg-gray-100 text-gray-600 border-gray-200')"
+                                >
+                                    {{ activationForm.psb_payment_status === 'paid' ? '✓ Lunas (Masuk Kas)' : (activationForm.psb_payment_status === 'unpaid' ? '⚠️ Belum Lunas (Piutang)' : 'Bebas Biaya') }}
+                                </span>
+                            </div>
+
+                            <!-- Opsi Pilihan Status PSB -->
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                                <label :class="['flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-all', activationForm.psb_payment_status === 'paid' ? 'border-emerald-600 bg-emerald-50/60 ring-1 ring-emerald-600 shadow-2xs' : 'border-gray-200 bg-white hover:border-gray-300']">
+                                    <input type="radio" value="paid" v-model="activationForm.psb_payment_status" class="sr-only">
+                                    <div :class="['w-4 h-4 rounded-full border flex items-center justify-center shrink-0', activationForm.psb_payment_status === 'paid' ? 'border-emerald-600 bg-emerald-600' : 'border-gray-300']">
+                                        <div v-if="activationForm.psb_payment_status === 'paid'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                    </div>
+                                    <div>
+                                        <span class="text-xs font-bold text-gray-900 block">Sudah Lunas</span>
+                                        <span class="text-[10px] text-gray-500">Diterima teknisi/transfer</span>
+                                    </div>
+                                </label>
+
+                                <label :class="['flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-all', activationForm.psb_payment_status === 'unpaid' ? 'border-rose-600 bg-rose-50/60 ring-1 ring-rose-600 shadow-2xs' : 'border-gray-200 bg-white hover:border-gray-300']">
+                                    <input type="radio" value="unpaid" v-model="activationForm.psb_payment_status" class="sr-only">
+                                    <div :class="['w-4 h-4 rounded-full border flex items-center justify-center shrink-0', activationForm.psb_payment_status === 'unpaid' ? 'border-rose-600 bg-rose-600' : 'border-gray-300']">
+                                        <div v-if="activationForm.psb_payment_status === 'unpaid'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                    </div>
+                                    <div>
+                                        <span class="text-xs font-bold text-gray-900 block">Belum Lunas</span>
+                                        <span class="text-[10px] text-rose-600 font-semibold">Tunggakan/Piutang</span>
+                                    </div>
+                                </label>
+
+                                <label :class="['flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-all', activationForm.psb_payment_status === 'free' ? 'border-slate-600 bg-slate-100 ring-1 ring-slate-600 shadow-2xs' : 'border-gray-200 bg-white hover:border-gray-300']">
+                                    <input type="radio" value="free" v-model="activationForm.psb_payment_status" class="sr-only">
+                                    <div :class="['w-4 h-4 rounded-full border flex items-center justify-center shrink-0', activationForm.psb_payment_status === 'free' ? 'border-slate-600 bg-slate-600' : 'border-gray-300']">
+                                        <div v-if="activationForm.psb_payment_status === 'free'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                    </div>
+                                    <div>
+                                        <span class="text-xs font-bold text-gray-900 block">Gratis (Promo)</span>
+                                        <span class="text-[10px] text-gray-500">Bebas biaya pasang</span>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <!-- Pilihan Metode Penerimaan Kas jika Lunas -->
+                            <div v-if="activationForm.psb_payment_status === 'paid'" class="pt-2 border-t border-emerald-100 flex items-center gap-4 text-xs">
+                                <span class="font-semibold text-gray-700">Metode Bayar:</span>
+                                <label class="inline-flex items-center gap-1.5 cursor-pointer">
+                                    <input type="radio" value="cash" v-model="activationForm.psb_payment_method" class="text-emerald-600 focus:ring-emerald-500">
+                                    <span class="font-medium text-gray-800">💵 Tunai / Cash (Teknisi)</span>
+                                </label>
+                                <label class="inline-flex items-center gap-1.5 cursor-pointer">
+                                    <input type="radio" value="transfer" v-model="activationForm.psb_payment_method" class="text-emerald-600 focus:ring-emerald-500">
+                                    <span class="font-medium text-gray-800">🏦 Transfer Bank</span>
+                                </label>
+                            </div>
+                        </div>
                         
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Catatan Tambahan (Opsional)</label>
@@ -1338,13 +1444,38 @@
                                     </p>
                                 </div>
                                 <div class="text-right">
-                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold border border-emerald-200">
+                                    <span v-if="selectedPsbCustomer.psb_payment_status === 'unpaid'" class="inline-flex items-center gap-1 px-2.5 py-0.5 bg-rose-100 text-rose-800 rounded-full text-xs font-bold border border-rose-200">
+                                        ⚠️ BELUM LUNAS
+                                    </span>
+                                    <span v-else-if="selectedPsbCustomer.psb_payment_status === 'free'" class="inline-flex items-center gap-1 px-2.5 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-bold border border-slate-200">
+                                        🎁 BEBAS BIAYA
+                                    </span>
+                                    <span v-else class="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold border border-emerald-200">
                                         ✓ LUNAS
                                     </span>
                                     <p class="text-[10px] text-gray-400 mt-1 font-mono">
                                         {{ formatDateIndo(selectedPsbCustomer.activation_date || new Date()) }}
                                     </p>
                                 </div>
+                            </div>
+
+                            <!-- Alert Banner jika PSB Belum Lunas -->
+                            <div v-if="selectedPsbCustomer.psb_payment_status === 'unpaid'" class="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-between gap-3 text-xs">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-6 h-6 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center font-bold text-xs shrink-0">!</span>
+                                    <div>
+                                        <span class="font-bold text-rose-900 block">Biaya PSB Belum Lunas (Piutang)</span>
+                                        <span class="text-rose-700 text-[11px]">Uang belum diterima dan belum masuk ke Buku Kas Umum.</span>
+                                    </div>
+                                </div>
+                                <button 
+                                    type="button" 
+                                    @click="openConfirmPsbModal(selectedPsbCustomer)"
+                                    class="shrink-0 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs shadow-sm flex items-center gap-1.5 transition-all cursor-pointer"
+                                >
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <span>Pelunasan PSB</span>
+                                </button>
                             </div>
 
                             <!-- Data Pelanggan & Paket Grid -->
@@ -1493,6 +1624,79 @@
                             {{ isDeleting ? 'Menghapus...' : 'Ya, Hapus' }}
                         </button>
                     </div>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- Modal Konfirmasi Pelunasan PSB -->
+        <Teleport to="body">
+            <div v-if="showConfirmPsbModal" class="fixed inset-0 z-[110] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showConfirmPsbModal = false"></div>
+                <div class="relative bg-white border border-gray-200 rounded-2xl shadow-2xl p-6 max-w-md w-full animate-fade-in-up">
+                    <div class="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-sm">
+                                ✓
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-900">Konfirmasi Pelunasan Biaya PSB</h3>
+                                <p class="text-xs text-gray-500 font-mono">{{ confirmPsbCustomer?.name }} ({{ confirmPsbCustomer?.customer_code }})</p>
+                            </div>
+                        </div>
+                        <button type="button" @click="showConfirmPsbModal = false" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <form @submit.prevent="submitConfirmPsb" class="space-y-4">
+                        <div class="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl flex justify-between items-center text-xs">
+                            <div>
+                                <span class="font-bold text-emerald-950 block">Tagihan Biaya Pasang Baru (PSB)</span>
+                                <span class="text-emerald-700 text-[11px]">Otomatis dibukukan ke Buku Kas Umum [PSB]</span>
+                            </div>
+                            <span class="text-base font-extrabold font-mono text-emerald-800">
+                                {{ formatRupiah(confirmPsbCustomer?.installation_fee || 0) }}
+                            </span>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1.5">Metode Penerimaan Uang <span class="text-red-500">*</span></label>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <label :class="['flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition-all', psbPaymentForm.payment_method === 'cash' ? 'border-emerald-600 bg-emerald-50 ring-1 ring-emerald-600 font-bold text-emerald-900' : 'border-gray-200 bg-white text-gray-700']">
+                                    <input type="radio" value="cash" v-model="psbPaymentForm.payment_method" class="sr-only">
+                                    <div :class="['w-4 h-4 rounded-full border flex items-center justify-center shrink-0', psbPaymentForm.payment_method === 'cash' ? 'border-emerald-600 bg-emerald-600' : 'border-gray-300']">
+                                        <div v-if="psbPaymentForm.payment_method === 'cash'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                    </div>
+                                    <span>💵 Tunai (Cash)</span>
+                                </label>
+                                <label :class="['flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition-all', psbPaymentForm.payment_method === 'transfer' ? 'border-emerald-600 bg-emerald-50 ring-1 ring-emerald-600 font-bold text-emerald-900' : 'border-gray-200 bg-white text-gray-700']">
+                                    <input type="radio" value="transfer" v-model="psbPaymentForm.payment_method" class="sr-only">
+                                    <div :class="['w-4 h-4 rounded-full border flex items-center justify-center shrink-0', psbPaymentForm.payment_method === 'transfer' ? 'border-emerald-600 bg-emerald-600' : 'border-gray-300']">
+                                        <div v-if="psbPaymentForm.payment_method === 'transfer'" class="w-1.5 h-1.5 bg-white rounded-full"></div>
+                                    </div>
+                                    <span>🏦 Transfer Bank</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Tanggal Pelunasan <span class="text-red-500">*</span></label>
+                            <input v-model="psbPaymentForm.paid_at" type="date" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:ring-2 focus:ring-emerald-500 shadow-2xs font-medium" required>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">Catatan Tambahan (Opsional)</label>
+                            <input v-model="psbPaymentForm.notes" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 focus:ring-2 focus:ring-emerald-500 shadow-2xs" placeholder="Contoh: Diterima oleh teknisi Dani / Bukti transfer BRI">
+                        </div>
+
+                        <div class="pt-2 flex justify-end gap-2.5">
+                            <button type="button" @click="showConfirmPsbModal = false" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold">Batal</button>
+                            <button type="submit" :disabled="psbPaymentForm.processing" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer">
+                                <span v-if="psbPaymentForm.processing">Menyimpan...</span>
+                                <span v-else>✓ Simpan & Bukukan ke Kas</span>
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </Teleport>
@@ -1865,6 +2069,9 @@ const activationForm = useForm({
     tax_ppn: 11,
     tax_bhp: 0,
     tax_uso: 0,
+    psb_payment_status: 'paid',
+    psb_payment_method: 'cash',
+    psb_notes: '',
 });
 
 watch(() => activationForm.enable_tax, (val) => {
@@ -2134,6 +2341,16 @@ function openActivationModal(customer) {
     activationForm.is_prorata = page.props.billingSettings?.prorata_first_month !== false;
     activationForm.service_status = customer.service_status === 'free_home' ? 'free_home' : (customer.service_status === 'gratis' ? 'gratis' : 'berbayar');
 
+    // Default status PSB
+    const fee = Number(customer.installation_fee || 0);
+    if (fee <= 0) {
+        activationForm.psb_payment_status = 'free';
+    } else {
+        activationForm.psb_payment_status = customer.psb_payment_status || 'paid';
+    }
+    activationForm.psb_payment_method = customer.psb_payment_method || 'cash';
+    activationForm.psb_notes = customer.psb_notes || '';
+
     // Normalisasi Mode Akses
     let mode = (customer.ont?.access_mode || customer.package?.access_mode || 'PPPOE').trim();
     const upperMode = mode.toUpperCase();
@@ -2218,7 +2435,9 @@ function submitActivation() {
     const customerSnapshot = {
         ...activeCustomer.value,
         activation_date: activationForm.activation_date || new Date().toISOString().slice(0, 10),
-        installation_fee: activeCustomer.value?.installation_fee || 0,
+        installation_fee: activationForm.psb_payment_status === 'free' ? 0 : (activeCustomer.value?.installation_fee || 0),
+        psb_payment_status: activationForm.psb_payment_status,
+        psb_payment_method: activationForm.psb_payment_method,
         pppoe_user: activationForm.access_mode === 'HOTSPOT/MEMBER' ? activationForm.hotspot_user : activationForm.pppoe_user,
         access_mode: activationForm.access_mode
     };
@@ -2269,7 +2488,7 @@ function getPsbInvoiceNumber(customer) {
 function generatePsbWhatsAppText(customer) {
     if (!customer) return '';
     const compName = page.props.company_name || 'VIZBILL INTERNET';
-    const compPhone = page.props.company_phone || '';
+    const compPhone = page.props.company_phone || '088976397034';
     const invNum = getPsbInvoiceNumber(customer);
     const custCode = customer.customer_code || '-';
     const custName = customer.name || '-';
@@ -2278,6 +2497,33 @@ function generatePsbWhatsAppText(customer) {
     const pkgName = customer.package?.name || 'Paket Internet';
     const actDate = formatDateIndo(customer.activation_date || new Date().toISOString());
     const psbFee = formatRupiah(customer.installation_fee || 0);
+
+    const feeNum = Number(customer.installation_fee || 0);
+    const isPaid = customer.psb_payment_status === 'paid' || (!customer.psb_payment_status && feeNum > 0);
+    const isUnpaid = customer.psb_payment_status === 'unpaid';
+    const isFree = customer.psb_payment_status === 'free' || feeNum <= 0;
+
+    let statusLine = '';
+    let footerNote = '';
+
+    if (isUnpaid) {
+        statusLine = `⚠️ *Status Pembayaran*: BELUM LUNAS (MENUNGGAK)\n` +
+            `💰 *Total Tagihan PSB*: ${psbFee}\n\n` +
+            `*Petunjuk Pembayaran Transfer:*\n` +
+            `🏦 *BANK BRI*: 410101025028534\n` +
+            `👤 *A/N*: Deri Gantinayasa\n` +
+            `Atau bayar tunai ke petugas teknisi resmi kami.\n\n` +
+            `Setelah transfer, silakan kirimkan bukti pembayaran ke WhatsApp ini.\n` +
+            `Aplikasi Client Area: https://viruzs.rlradius.com\n`;
+        footerNote = `_Harap lakukan pelunasan biaya pasang baru tepat waktu._\n\n`;
+    } else if (isFree) {
+        statusLine = `🎁 *Status Pembayaran*: GRATIS (Promo Bebas Biaya Registrasi)\n`;
+        footerNote = `_Layanan aktif dengan promo bebas biaya pasang baru._\n\n`;
+    } else {
+        const method = customer.psb_payment_method ? customer.psb_payment_method.toUpperCase() : 'TUNAI';
+        statusLine = `✅ *Status Pembayaran*: LUNAS (Sudah Diterima via ${method})\n`;
+        footerNote = `_Simpan pesan ini sebagai bukti pembayaran dan registrasi resmi pemasangan baru._\n\n`;
+    }
 
     return `*INVOICE PEMASANGAN BARU (PSB)*\n` +
         `*${compName.toUpperCase()}*\n` +
@@ -2293,9 +2539,9 @@ function generatePsbWhatsAppText(customer) {
         `📦 *Paket Layanan*: ${pkgName}\n` +
         `📅 *Tanggal Aktivasi*: ${actDate}\n` +
         `💰 *Biaya Pasang Baru (PSB)*: ${psbFee}\n` +
-        `✅ *Status Pembayaran*: LUNAS (Sudah Diterima)\n` +
+        statusLine +
         `----------------------------------------\n` +
-        `_Simpan pesan ini sebagai bukti pembayaran dan registrasi resmi pemasangan baru._\n\n` +
+        footerNote +
         (compPhone ? `Bila ada kendala atau pertanyaan teknis, hubungi kami di *${compPhone}*.\n\n` : '') +
         `Salam,\n*${compName}*`;
 }
@@ -2328,6 +2574,40 @@ function copyPsbText() {
         copySuccess.value = true;
         setTimeout(() => { copySuccess.value = false; }, 2500);
     }
+}
+
+// ================= PELUNASAN PSB MODAL STATE & ACTIONS =================
+const showConfirmPsbModal = ref(false);
+const confirmPsbCustomer = ref(null);
+const psbPaymentForm = useForm({
+    payment_method: 'cash',
+    paid_at: new Date().toISOString().split('T')[0],
+    notes: '',
+});
+
+function openConfirmPsbModal(customer) {
+    if (!customer) return;
+    confirmPsbCustomer.value = customer;
+    psbPaymentForm.payment_method = 'cash';
+    psbPaymentForm.paid_at = new Date().toISOString().split('T')[0];
+    psbPaymentForm.notes = '';
+    showConfirmPsbModal.value = true;
+}
+
+function submitConfirmPsb() {
+    if (!confirmPsbCustomer.value) return;
+    psbPaymentForm.post(`/customers/${confirmPsbCustomer.value.id}/confirm-psb-payment`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            showConfirmPsbModal.value = false;
+            // Jika modal invoice PSB juga sedang terbuka, perbarui datanya real-time
+            if (selectedPsbCustomer.value && selectedPsbCustomer.value.id === confirmPsbCustomer.value.id) {
+                selectedPsbCustomer.value.psb_payment_status = 'paid';
+                selectedPsbCustomer.value.psb_paid_at = psbPaymentForm.paid_at;
+                selectedPsbCustomer.value.psb_payment_method = psbPaymentForm.payment_method;
+            }
+        }
+    });
 }
 
 // Delete Logic
