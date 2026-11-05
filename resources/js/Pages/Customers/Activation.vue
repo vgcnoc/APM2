@@ -115,42 +115,17 @@
                     <!-- Aksi Pelanggan Riwayat (Sebelum Nama Pelanggan) -->
                     <td class="whitespace-nowrap">
                         <div class="flex items-center justify-start gap-1.5 whitespace-nowrap">
+                            <!-- Tombol Titik 3 Menu Aksi -->
                             <button 
-                                type="button"
-                                @click="openPsbInvoiceModal(row)"
-                                class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold transition-all shadow-2xs hover:shadow-xs cursor-pointer"
-                                title="Kirim WhatsApp / Cetak Invoice Pasang Baru (PSB)"
+                                type="button" 
+                                @click.stop="toggleDropdown($event, row)" 
+                                class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 border border-slate-200 hover:border-slate-300 transition-all shadow-2xs hover:shadow-xs cursor-pointer focus:outline-none"
+                                :class="{ 'ring-2 ring-indigo-500 bg-indigo-50 text-indigo-600 border-indigo-300': activeDropdownRow?.id === row.id }"
+                                title="Pilihan Aksi Pelanggan (Titik 3)"
                             >
-                                <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                <span>Invoice PSB</span>
-                            </button>
-
-                            <button 
-                                type="button"
-                                @click="openEditActivationModal(row)"
-                                class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold transition-all shadow-2xs hover:shadow-xs cursor-pointer"
-                                title="Edit Data & Konfigurasi Aktivasi"
-                            >
-                                <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                <span>Edit</span>
-                            </button>
-
-                            <Link 
-                                :href="`/customers/${row.id}`" 
-                                class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-semibold transition-all shadow-2xs hover:shadow-xs cursor-pointer" 
-                                title="Buka Profil Pelanggan"
-                            >
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                                <span>Profil</span>
-                            </Link>
-
-                            <button v-if="canDelete" 
-                                type="button"
-                                @click="confirmDelete(row)" 
-                                class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-semibold transition-all shadow-2xs hover:shadow-xs cursor-pointer" 
-                                title="Hapus Pelanggan">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                                <span>Hapus</span>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+                                </svg>
                             </button>
                         </div>
                     </td>
@@ -269,18 +244,17 @@
                                 <span>Aktivasi</span>
                             </button>
 
-                            <Link :href="`/customers/${row.id}`" class="p-1.5 rounded-lg text-gray-400 hover:bg-white hover:text-blue-500 border border-transparent hover:border-gray-200 transition-all shadow-sm hover:shadow" title="Detail Lengkap">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                                </svg>
-                            </Link>
-
-                            <button v-if="canDelete" 
+                            <!-- Tombol Titik 3 Menu Aksi -->
+                            <button 
                                 type="button" 
-                                @click="confirmDelete(row)" 
-                                class="p-1.5 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 border border-transparent hover:border-red-200 transition-all cursor-pointer" 
-                                title="Hapus Pelanggan">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                @click.stop="toggleDropdown($event, row)" 
+                                class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 border border-slate-200 hover:border-slate-300 transition-all shadow-2xs hover:shadow-xs cursor-pointer focus:outline-none"
+                                :class="{ 'ring-2 ring-indigo-500 bg-indigo-50 text-indigo-600 border-indigo-300': activeDropdownRow?.id === row.id }"
+                                title="Pilihan Aksi Pelanggan (Titik 3)"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+                                </svg>
                             </button>
                         </div>
                     </td>
@@ -329,6 +303,145 @@
             </template>
 
         </DataTable>
+
+        <!-- Action Dropdown Menu Floating (Titik 3 Teleport) -->
+        <Teleport to="body">
+            <div v-if="activeDropdownRow" class="fixed inset-0 z-[120]" @click="closeDropdown" @contextmenu.prevent="closeDropdown">
+                <div 
+                    :style="{ top: `${dropdownPos.top}px`, left: `${dropdownPos.left}px` }"
+                    class="fixed w-64 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-200/80 py-1.5 z-[121] text-xs divide-y divide-slate-100 animate-fade-in-up font-sans"
+                    @click.stop
+                >
+                    <!-- Header Info Pelanggan -->
+                    <div class="px-3.5 py-2.5 bg-slate-50/90 -mt-1.5 rounded-t-2xl border-b border-slate-100 mb-1">
+                        <div class="flex items-center gap-2.5">
+                            <div :class="['w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-2xs', getAvatarColor(activeDropdownRow.name)]">
+                                {{ (activeDropdownRow.name || 'P').charAt(0).toUpperCase() }}
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="font-bold text-slate-900 truncate text-xs">{{ activeDropdownRow.name }}</div>
+                                <div class="flex items-center gap-1.5 text-[10px] text-slate-500 font-mono mt-0.5">
+                                    <span class="font-semibold text-slate-600">{{ activeDropdownRow.customer_code }}</span>
+                                    <span>&bull;</span>
+                                    <span class="truncate text-indigo-600 font-medium">{{ activeDropdownRow.package?.name || (activeDropdownRow.service_status === 'gratis' ? 'Gratis' : (activeDropdownRow.service_status === 'free_home' ? 'Free Home' : '-')) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pilihan Aksi untuk Tab Riwayat Aktivasi -->
+                    <div v-if="currentTab === 'riwayat'" class="py-1">
+                        <!-- 1. Invoice PSB -->
+                        <button 
+                            type="button"
+                            @click="openPsbInvoiceModal(activeDropdownRow); closeDropdown()"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-emerald-50/80 hover:text-emerald-700 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-emerald-50 group-hover:bg-emerald-100/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-slate-800 group-hover:text-emerald-700">Invoice PSB</span>
+                                <p class="text-[10px] text-slate-400 group-hover:text-emerald-600 font-normal leading-tight">Kirim WA atau cetak invoice PSB</p>
+                            </div>
+                        </button>
+
+                        <!-- 2. Edit Aktivasi -->
+                        <button 
+                            type="button"
+                            @click="openEditActivationModal(activeDropdownRow); closeDropdown()"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-slate-100 group-hover:bg-slate-200/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-slate-800 group-hover:text-slate-900">Edit Aktivasi</span>
+                                <p class="text-[10px] text-slate-400 group-hover:text-slate-500 font-normal leading-tight">Edit konfigurasi ont, pppoe & paket</p>
+                            </div>
+                        </button>
+
+                        <!-- 3. Profil Pelanggan -->
+                        <Link 
+                            :href="`/customers/${activeDropdownRow.id}`"
+                            @click="closeDropdown"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-blue-50/80 hover:text-blue-700 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-blue-50 group-hover:bg-blue-100/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-slate-800 group-hover:text-blue-700">Profil Pelanggan</span>
+                                <p class="text-[10px] text-slate-400 group-hover:text-blue-500 font-normal leading-tight">Buka rincian lengkap pelanggan</p>
+                            </div>
+                        </Link>
+
+                        <!-- 4. Hapus Pelanggan -->
+                        <button 
+                            v-if="canDelete"
+                            type="button"
+                            @click="confirmDelete(activeDropdownRow); closeDropdown()"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-rose-700 hover:bg-rose-50/80 hover:text-rose-800 transition-colors font-medium group cursor-pointer border-t border-slate-100"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-rose-50 group-hover:bg-rose-100/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-rose-700">Hapus Pelanggan</span>
+                                <p class="text-[10px] text-rose-400 font-normal leading-tight">Hapus data pelanggan dari sistem</p>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Pilihan Aksi untuk Tab Menunggu Aktivasi -->
+                    <div v-else class="py-1">
+                        <button 
+                            v-if="activeDropdownRow.status === 'installing' && activeDropdownRow.ont && activeDropdownRow.is_audited"
+                            type="button"
+                            @click="openActivationModal(activeDropdownRow); closeDropdown()"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-purple-700 hover:bg-purple-50/80 hover:text-purple-800 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-purple-50 group-hover:bg-purple-100/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-purple-800">Proses Aktivasi</span>
+                                <p class="text-[10px] text-purple-500 font-normal leading-tight">Aktifkan layanan internet pelanggan</p>
+                            </div>
+                        </button>
+
+                        <Link 
+                            :href="`/customers/${activeDropdownRow.id}`"
+                            @click="closeDropdown"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-blue-50/80 hover:text-blue-700 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-blue-50 group-hover:bg-blue-100/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-slate-800 group-hover:text-blue-700">Profil Pelanggan</span>
+                                <p class="text-[10px] text-slate-400 group-hover:text-blue-500 font-normal leading-tight">Buka rincian lengkap pelanggan</p>
+                            </div>
+                        </Link>
+
+                        <button 
+                            v-if="canDelete"
+                            type="button"
+                            @click="confirmDelete(activeDropdownRow); closeDropdown()"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-rose-700 hover:bg-rose-50/80 hover:text-rose-800 transition-colors font-medium group cursor-pointer border-t border-slate-100"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-rose-50 group-hover:bg-rose-100/80 flex items-center justify-center shrink-0 transition-colors">
+                                <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-rose-700">Hapus Pelanggan</span>
+                                <p class="text-[10px] text-rose-400 font-normal leading-tight">Hapus data pelanggan dari sistem</p>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
 
         <!-- Activation Modal -->
         <div v-if="showActivationModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -1378,7 +1491,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { Link, router, useForm , usePage} from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import PipelineGuideCard from '@/Components/Customers/PipelineGuideCard.vue';
@@ -1401,6 +1514,61 @@ const props = defineProps({
         default: () => ({ booking: 35000, survey: 15000, pasang: 35000 })
     },
 });
+
+// State Dropdown Menu Titik 3
+const activeDropdownRow = ref(null);
+const dropdownPos = ref({ top: 0, left: 0 });
+
+function toggleDropdown(event, row) {
+    if (activeDropdownRow.value && activeDropdownRow.value.id === row.id) {
+        activeDropdownRow.value = null;
+        return;
+    }
+    const rect = event.currentTarget.getBoundingClientRect();
+    const dropdownHeight = 260;
+    const dropdownWidth = 256;
+
+    let top = rect.bottom + 6;
+    if (top + dropdownHeight > window.innerHeight) {
+        if (rect.top > dropdownHeight) {
+            top = Math.max(10, rect.top - dropdownHeight - 6);
+        } else {
+            top = Math.max(10, window.innerHeight - dropdownHeight - 10);
+        }
+    }
+
+    let left = rect.left;
+    if (left + dropdownWidth > window.innerWidth - 10) {
+        left = Math.max(10, window.innerWidth - dropdownWidth - 10);
+    }
+    if (left < 10) {
+        left = 10;
+    }
+
+    dropdownPos.value = { top, left };
+    activeDropdownRow.value = row;
+}
+
+function closeDropdown() {
+    activeDropdownRow.value = null;
+}
+
+function handleWindowChange() {
+    if (activeDropdownRow.value) {
+        activeDropdownRow.value = null;
+    }
+}
+
+onMounted(() => {
+    window.addEventListener('scroll', handleWindowChange, { passive: true });
+    window.addEventListener('resize', handleWindowChange);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('scroll', handleWindowChange);
+    window.removeEventListener('resize', handleWindowChange);
+});
+
 
 const currentTab = ref(props.filters?.tab || 'menunggu');
 const filterArea = ref(props.filters?.area || props.filters?.area_id || '');
