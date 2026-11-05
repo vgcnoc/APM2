@@ -304,6 +304,9 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/{workOrder}', [\App\Http\Controllers\InfrastructureWorkOrderController::class, 'destroy'])->name('destroy');
     });
 
+    Route::get('onts/generate-pppoe', [OntController::class, 'generatePppoe'])->name('onts.generate-pppoe');
+    Route::get('onts/check-pppoe-user', [OntController::class, 'checkPppoeUser'])->name('onts.check-pppoe-user');
+    Route::post('onts/update-pppoe-settings', [OntController::class, 'updatePppoeSettings'])->name('onts.update-pppoe-settings');
     Route::post('onts/bulk-destroy', [OntController::class, 'bulkDestroy'])->name('onts.bulk-destroy');
     Route::resource('onts', OntController::class);
     Route::post('onts/{ont}/update', [OntController::class, 'update'])->name('onts.update.post');

@@ -42,6 +42,17 @@
                         <span>Print Card ({{ selectedOnts.length }})</span>
                     </button>
 
+                    <!-- Tombol Pengaturan Format PPPoE -->
+                    <button 
+                        type="button"
+                        @click="openPppoeSettingsModal" 
+                        class="px-3.5 py-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                        title="Pengaturan Format & Prefiks Generate Akun PPPoE"
+                    >
+                        <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3" stroke-width="2"/></svg>
+                        <span>Format PPPoE</span>
+                    </button>
+
                     <!-- Tombol Tambah ONT -->
                     <button 
                         v-can="'network_ont_create'"
@@ -841,21 +852,84 @@
 
                             <!-- Akun Member / PPPoE (Hanya muncul jika bukan mode Hotspot) -->
                             <div v-if="String(form.access_mode || '').trim().toLowerCase() !== 'hotspot'" class="px-4 pb-4 border-t border-gray-100 pt-4">
-                                <div class="flex items-center gap-3 mb-2">
-                                    <h4 class="text-xs font-bold text-gray-700">Akun Member / PPPoE</h4>
-                                    <button type="button" @click="generatePppoe" class="text-xs font-medium bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md border border-gray-300 flex items-center gap-1 cursor-pointer">
-                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                                        Generate
-                                    </button>
+                                <div class="flex items-center justify-between mb-2.5 flex-wrap gap-2">
+                                    <div class="flex items-center gap-2">
+                                        <h4 class="text-xs font-bold text-gray-800">Akun Member / PPPoE</h4>
+                                        <span v-if="pppoeCheckStatus === 'checking'" class="text-[11px] font-medium text-gray-500 flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded-full">
+                                            <svg class="animate-spin w-3 h-3 text-purple-600" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                            Memeriksa...
+                                        </span>
+                                        <span v-else-if="pppoeCheckStatus === 'available'" class="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                            <svg class="w-3 h-3 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                                            Tersedia & Siap Digunakan
+                                        </span>
+                                        <span v-else-if="pppoeCheckStatus === 'duplicate'" class="text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-full flex items-center gap-1 animate-pulse">
+                                            <svg class="w-3 h-3 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            Duplikat Ditolak!
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button 
+                                            type="button" 
+                                            @click="generatePppoe" 
+                                            :disabled="isGeneratingPppoe"
+                                            class="text-xs font-bold bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white px-3 py-1.5 rounded-lg shadow-xs flex items-center gap-1.5 cursor-pointer transition disabled:opacity-50"
+                                            title="Generate otomatis Akun PPPoE unik sesuai format prefiks perusahaan"
+                                        >
+                                            <svg v-if="!isGeneratingPppoe" class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                            <svg v-else class="animate-spin w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                            <span>{{ isGeneratingPppoe ? 'Mengenerate...' : 'Generate' }}</span>
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            @click="openPppoeSettingsModal" 
+                                            class="text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 px-2.5 py-1.5 rounded-lg border border-gray-300 flex items-center gap-1 cursor-pointer transition"
+                                            title="Pengaturan format dan prefiks PPPoE"
+                                        >
+                                            <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3" stroke-width="2"/></svg>
+                                            <span>Format</span>
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
-                                        <label class="block text-xs text-gray-500 mb-1">User</label>
-                                        <input v-model="form.pppoe_user" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="User PPPoE/Member" />
+                                        <label class="block text-xs font-semibold text-gray-600 mb-1">User PPPoE / Member</label>
+                                        <div class="relative">
+                                            <input 
+                                                v-model="form.pppoe_user" 
+                                                @input="onPppoeUserInput"
+                                                type="text" 
+                                                :class="[
+                                                    'w-full px-4 py-2.5 bg-gray-50 border rounded-lg text-sm font-medium transition focus:outline-none',
+                                                    pppoeCheckStatus === 'duplicate' 
+                                                        ? 'border-rose-400 bg-rose-50/40 text-rose-900 focus:ring-2 focus:ring-rose-400' 
+                                                        : pppoeCheckStatus === 'available'
+                                                        ? 'border-emerald-400 bg-emerald-50/20 text-emerald-900 focus:ring-2 focus:ring-emerald-400'
+                                                        : 'border-gray-200 focus:ring-2 focus:ring-blue-500'
+                                                ]" 
+                                                placeholder="User PPPoE/Member (Contoh: VGC0195@vnet.id)" 
+                                            />
+                                            <div v-if="pppoeCheckStatus === 'available'" class="absolute right-3 top-2.5 text-emerald-600 pointer-events-none">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                            </div>
+                                            <div v-else-if="pppoeCheckStatus === 'duplicate'" class="absolute right-3 top-2.5 text-rose-600 pointer-events-none">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                            </div>
+                                        </div>
+
+                                        <!-- Duplicate Warning Alert Box -->
+                                        <div v-if="pppoeCheckStatus === 'duplicate'" class="mt-2 p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs space-y-1">
+                                            <div class="font-bold flex items-center gap-1.5 text-rose-900">
+                                                <span>🚫</span> {{ pppoeConflictMessage || 'Akun PPPoE / Member sudah terdaftar pada perangkat lain!' }}
+                                            </div>
+                                            <p class="text-[11px] text-rose-700 leading-relaxed">
+                                                Sistem otomatis menolak duplikasi akun. Silakan ganti username atau klik tombol <button type="button" @click="generatePppoe" class="font-bold underline text-rose-900 hover:text-black">Generate</button> untuk mendapatkan username unik berikutnya.
+                                            </p>
+                                        </div>
                                     </div>
                                     <div>
-                                        <label class="block text-xs text-gray-500 mb-1">Password</label>
-                                        <input v-model="form.pppoe_password" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Password PPPoE/Member" />
+                                        <label class="block text-xs font-semibold text-gray-600 mb-1">Password PPPoE / Member</label>
+                                        <input v-model="form.pppoe_password" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Password PPPoE/Member" />
                                     </div>
                                 </div>
                             </div>
@@ -1173,6 +1247,195 @@
             </div>
         </Teleport>
 
+        <!-- Modal Pengaturan Format & Prefiks PPPoE -->
+        <Teleport to="body">
+            <div v-if="isPppoeSettingsModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden border border-gray-100 my-auto">
+                    <!-- Modal Header -->
+                    <div class="px-6 py-4 bg-linear-to-r from-purple-700 to-indigo-700 text-white flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center text-white backdrop-blur-xs">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3" stroke-width="2"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-bold text-white">Pengaturan Format & Prefiks PPPoE</h3>
+                                <p class="text-xs text-purple-200">Konfigurasi generator cerdas akun Member / PPPoE ONT</p>
+                            </div>
+                        </div>
+                        <button type="button" @click="closePppoeSettingsModal" class="text-white/80 hover:text-white transition p-1 cursor-pointer">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Modal Body -->
+                    <form @submit.prevent="savePppoeSettings" class="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+                        <!-- Live Preview Card -->
+                        <div class="bg-linear-to-br from-indigo-50 to-purple-50 rounded-2xl p-4 border border-indigo-100 shadow-2xs">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-bold uppercase tracking-wider text-indigo-700 flex items-center gap-1.5">
+                                    <span>👁️</span> Live Preview Hasil Generate
+                                </span>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                    100% Bebas Bentrok
+                                </span>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                                <div class="bg-white p-3 rounded-xl border border-indigo-100 shadow-2xs">
+                                    <span class="text-[11px] font-semibold text-gray-500 block mb-0.5">Username PPPoE:</span>
+                                    <span class="text-sm font-black font-mono text-purple-700 break-all">{{ livePppoePreview.user }}</span>
+                                </div>
+                                <div class="bg-white p-3 rounded-xl border border-indigo-100 shadow-2xs">
+                                    <span class="text-[11px] font-semibold text-gray-500 block mb-0.5">Password:</span>
+                                    <span class="text-sm font-black font-mono text-emerald-700">{{ livePppoePreview.pass }}</span>
+                                </div>
+                            </div>
+                            <p class="text-[11px] text-gray-500 mt-2.5 leading-relaxed">
+                                Karyawan hanya perlu mengklik tombol <strong>Generate</strong>, sistem akan otomatis mengambil urutan nomor berikutnya tanpa risiko bentrok.
+                            </p>
+                        </div>
+
+                        <!-- Setting Fields -->
+                        <div class="space-y-4">
+                            <!-- Prefiks & Suffiks -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 mb-1">
+                                        Prefiks Khusus PPPoE <span class="text-purple-600">*</span>
+                                    </label>
+                                    <input 
+                                        v-model="pppoeSettingsForm.pppoe_prefix" 
+                                        type="text" 
+                                        class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none" 
+                                        placeholder="Misal: VGC atau vz_" 
+                                    />
+                                    <p class="text-[11px] text-gray-400 mt-1">Awalan username (Contoh: VGC, vz_, pppoe_)</p>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 mb-1">
+                                        Suffiks / Domain PPPoE
+                                    </label>
+                                    <input 
+                                        v-model="pppoeSettingsForm.pppoe_suffix" 
+                                        type="text" 
+                                        class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none" 
+                                        placeholder="Misal: @vnet.id (Boleh kosong)" 
+                                    />
+                                    <p class="text-[11px] text-gray-400 mt-1">Domain akhir (kosongkan jika tanpa domain)</p>
+                                </div>
+                            </div>
+
+                            <!-- Format Penomoran & Panjang Digit -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 mb-1">
+                                        Metode Penomoran <span class="text-purple-600">*</span>
+                                    </label>
+                                    <select 
+                                        v-model="pppoeSettingsForm.pppoe_format" 
+                                        class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none cursor-pointer"
+                                    >
+                                        <option value="sequential">Urutan Angka Otomatis (Sequential)</option>
+                                        <option value="random_numeric">Angka Acak (Random Digits)</option>
+                                        <option value="random_alphanumeric">Huruf & Angka Acak (Alphanumeric)</option>
+                                    </select>
+                                    <p class="text-[11px] text-gray-400 mt-1">
+                                        {{ pppoeSettingsForm.pppoe_format === 'sequential' 
+                                            ? 'Auto-increment otomatis mendeteksi nomor tertinggi di DB' 
+                                            : 'Karakter acak dengan verifikasi bebas tabrakan' }}
+                                    </p>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-700 mb-1">
+                                        Panjang Digit Nomor <span class="text-purple-600">*</span>
+                                    </label>
+                                    <input 
+                                        v-model.number="pppoeSettingsForm.pppoe_length" 
+                                        type="number" 
+                                        min="2" 
+                                        max="12" 
+                                        class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none" 
+                                    />
+                                    <p class="text-[11px] text-gray-400 mt-1">Misal: 4 digit = 0001 s/d 9999</p>
+                                </div>
+                            </div>
+
+                            <!-- Format Huruf (Casing) -->
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 mb-1">
+                                    Format Huruf (Casing)
+                                </label>
+                                <select 
+                                    v-model="pppoeSettingsForm.pppoe_case" 
+                                    class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none cursor-pointer"
+                                >
+                                    <option value="standard">Standar (Prefiks & Domain sesuai input teks)</option>
+                                    <option value="upper">SEMUA HURUF BESAR (UPPERCASE)</option>
+                                    <option value="lower">semua huruf kecil (lowercase)</option>
+                                </select>
+                            </div>
+
+                            <!-- Konfigurasi Password -->
+                            <div class="border-t border-gray-100 pt-4 space-y-4">
+                                <h4 class="text-xs font-bold text-gray-700 uppercase tracking-wider">Format Password Akun</h4>
+                                
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-700 mb-1">Tipe Password</label>
+                                        <select 
+                                            v-model="pppoeSettingsForm.pppoe_password_type" 
+                                            class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none cursor-pointer"
+                                        >
+                                            <option value="random_numeric">PIN Angka Acak (Rekomendasi)</option>
+                                            <option value="random_alphanumeric">Huruf & Angka Acak</option>
+                                            <option value="static">Password Default Tetap</option>
+                                        </select>
+                                    </div>
+                                    <div v-if="pppoeSettingsForm.pppoe_password_type !== 'static'">
+                                        <label class="block text-xs font-bold text-gray-700 mb-1">Panjang Password (Karakter)</label>
+                                        <input 
+                                            v-model.number="pppoeSettingsForm.pppoe_password_length" 
+                                            type="number" 
+                                            min="4" 
+                                            max="32" 
+                                            class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none" 
+                                        />
+                                    </div>
+                                    <div v-else>
+                                        <label class="block text-xs font-bold text-gray-700 mb-1">Nilai Password Default</label>
+                                        <input 
+                                            v-model="pppoeSettingsForm.pppoe_default_password" 
+                                            type="text" 
+                                            class="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none" 
+                                            placeholder="Misal: 123456" 
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Modal Actions -->
+                        <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+                            <button 
+                                type="button" 
+                                @click="closePppoeSettingsModal" 
+                                class="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm rounded-xl transition cursor-pointer"
+                            >
+                                Batal
+                            </button>
+                            <button 
+                                type="submit" 
+                                :disabled="isSavingPppoeSettings"
+                                class="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold text-sm rounded-xl transition shadow-md shadow-purple-200 flex items-center gap-2 cursor-pointer"
+                            >
+                                <svg v-if="isSavingPppoeSettings" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                <span>{{ isSavingPppoeSettings ? 'Menyimpan...' : 'Simpan Format' }}</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </Teleport>
+
     </AppLayout>
 </template>
 
@@ -1286,353 +1549,138 @@
 import { ref, computed, watch, nextTick, onUnmounted } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import axios from 'axios';
+import Swal from 'sweetalert2';
 
 const props = defineProps({
     onts: Object,
     areas: Array,
     brands: Array,
     stats: Object,
-    filters: Object
+    filters: Object,
+    pppoe_settings: Object
 });
 
-const isModalOpen = ref(false);
-const isEditing = ref(false);
-const isPrintModalOpen = ref(false);
-const selectedOnts = ref([]);
-const selectedReplacementOnt = ref(null);
-
-function openReplacementDetail(ont) {
-    selectedReplacementOnt.value = ont;
-}
-
-function closeReplacementDetail() {
-    selectedReplacementOnt.value = null;
-}
-
-// Smart Filter State
-const filterState = ref({
-    search: props.filters?.search || '',
-    tab: props.filters?.tab || '',
-    status: props.filters?.status || '',
-    installation_status: props.filters?.installation_status || '',
-    area_id: props.filters?.area_id || '',
-    brand: props.filters?.brand || '',
-    access_mode: props.filters?.access_mode || '',
-    vlan_mode: props.filters?.vlan_mode || '',
-    date_from: props.filters?.date_from || '',
-    date_to: props.filters?.date_to || '',
-    per_page: props.filters?.per_page ? Number(props.filters.per_page) : 15,
+// ── PPPoE Generator & Duplicate Auto-Reject State ───────────
+const pppoeSettings = ref({
+    pppoe_prefix: props.pppoe_settings?.pppoe_prefix ?? 'VGC',
+    pppoe_format: props.pppoe_settings?.pppoe_format ?? 'sequential',
+    pppoe_length: Number(props.pppoe_settings?.pppoe_length ?? 4),
+    pppoe_suffix: props.pppoe_settings?.pppoe_suffix ?? '@vnet.id',
+    pppoe_case: props.pppoe_settings?.pppoe_case ?? 'standard',
+    pppoe_password_type: props.pppoe_settings?.pppoe_password_type ?? 'random_numeric',
+    pppoe_password_length: Number(props.pppoe_settings?.pppoe_password_length ?? 6),
+    pppoe_default_password: props.pppoe_settings?.pppoe_default_password ?? '123456',
 });
 
-const showAdvancedFilters = ref(
-    !!(props.filters?.brand || props.filters?.access_mode || props.filters?.vlan_mode || props.filters?.date_from || props.filters?.date_to || (props.filters?.per_page && props.filters?.per_page != 15))
-);
+const isPppoeSettingsModalOpen = ref(false);
+const isSavingPppoeSettings = ref(false);
+const isGeneratingPppoe = ref(false);
+const pppoeCheckStatus = ref('idle'); // 'idle' | 'checking' | 'available' | 'duplicate'
+const pppoeConflictMessage = ref('');
+let pppoeCheckTimeout = null;
 
-let searchTimeout = null;
+const pppoeSettingsForm = ref({ ...pppoeSettings.value });
 
-function applyFilters() {
-    const query = {};
-    if (filterState.value.search) query.search = filterState.value.search;
-    if (filterState.value.tab) query.tab = filterState.value.tab;
-    if (filterState.value.status) query.status = filterState.value.status;
-    if (filterState.value.installation_status) query.installation_status = filterState.value.installation_status;
-    if (filterState.value.area_id) query.area_id = filterState.value.area_id;
-    if (filterState.value.brand) query.brand = filterState.value.brand;
-    if (filterState.value.access_mode) query.access_mode = filterState.value.access_mode;
-    if (filterState.value.vlan_mode) query.vlan_mode = filterState.value.vlan_mode;
-    if (filterState.value.date_from) query.date_from = filterState.value.date_from;
-    if (filterState.value.date_to) query.date_to = filterState.value.date_to;
-    if (filterState.value.per_page && filterState.value.per_page != 15) query.per_page = filterState.value.per_page;
-
-    router.get('/onts', query, {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
-    });
+function openPppoeSettingsModal() {
+    pppoeSettingsForm.value = { ...pppoeSettings.value };
+    isPppoeSettingsModalOpen.value = true;
 }
 
-function onSearchInput() {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => {
-        applyFilters();
-    }, 350);
+function closePppoeSettingsModal() {
+    isPppoeSettingsModalOpen.value = false;
 }
 
-function clearSearch() {
-    filterState.value.search = '';
-    applyFilters();
-}
-
-function setQuickFilter(type) {
-    if (type === 'ont_diganti') {
-        filterState.value.tab = filterState.value.tab === 'ont_diganti' ? '' : 'ont_diganti';
-        filterState.value.status = '';
-        filterState.value.installation_status = '';
-        applyFilters();
-        return;
-    }
-    if (type === 'ont_pengganti') {
-        filterState.value.tab = filterState.value.tab === 'ont_pengganti' ? '' : 'ont_pengganti';
-        filterState.value.status = '';
-        filterState.value.installation_status = '';
-        applyFilters();
-        return;
-    }
-    filterState.value.tab = '';
-    if (type === 'all') {
-        filterState.value.status = '';
-        filterState.value.installation_status = '';
-    } else if (type === 'sudah_set') {
-        const isActive = filterState.value.status === 'Sudah Set' && filterState.value.installation_status === 'uninstalled';
-        filterState.value.status = isActive ? '' : 'Sudah Set';
-        filterState.value.installation_status = isActive ? '' : 'uninstalled';
-    } else if (type === 'belum_set') {
-        const isActive = filterState.value.status === 'Belum Set/Baru Input' && filterState.value.installation_status === 'uninstalled';
-        filterState.value.status = isActive ? '' : 'Belum Set/Baru Input';
-        filterState.value.installation_status = isActive ? '' : 'uninstalled';
-    } else if (type === 'installed') {
-        filterState.value.installation_status = filterState.value.installation_status === 'installed' ? '' : 'installed';
-        filterState.value.status = '';
-    } else if (type === 'uninstalled') {
-        filterState.value.installation_status = filterState.value.installation_status === 'uninstalled' ? '' : 'uninstalled';
-        filterState.value.status = '';
-    } else if (type === 'los') {
-        filterState.value.status = filterState.value.status === 'los' ? '' : 'los';
-        filterState.value.installation_status = '';
-    } else if (type === 'rusak') {
-        filterState.value.status = filterState.value.status === 'rusak' ? '' : 'rusak';
-        filterState.value.installation_status = '';
-    }
-    applyFilters();
-}
-
-function resetAllFilters() {
-    filterState.value = {
-        search: '',
-        tab: '',
-        status: '',
-        installation_status: '',
-        area_id: '',
-        brand: '',
-        access_mode: '',
-        vlan_mode: '',
-        date_from: '',
-        date_to: '',
-        per_page: 15,
-    };
-    applyFilters();
-}
-
-function removeFilter(key) {
-    filterState.value[key] = '';
-    applyFilters();
-}
-
-const activeFiltersCount = computed(() => {
-    let count = 0;
-    if (filterState.value.search) count++;
-    if (filterState.value.tab) count++;
-    if (filterState.value.area_id) count++;
-    if (filterState.value.status) count++;
-    if (filterState.value.installation_status) count++;
-    if (filterState.value.brand) count++;
-    if (filterState.value.access_mode) count++;
-    if (filterState.value.vlan_mode) count++;
-    if (filterState.value.date_from || filterState.value.date_to) count++;
-    return count;
-});
-
-const advancedFiltersActiveCount = computed(() => {
-    let count = 0;
-    if (filterState.value.brand) count++;
-    if (filterState.value.access_mode) count++;
-    if (filterState.value.vlan_mode) count++;
-    if (filterState.value.date_from || filterState.value.date_to) count++;
-    if (filterState.value.per_page && filterState.value.per_page != 15) count++;
-    return count;
-});
-
-function getAreaName(areaId) {
-    const a = props.areas?.find(ar => ar.id == areaId);
-    return a ? a.name : areaId;
-}
-
-const copiedSn = ref(null);
-function copySn(sn) {
-    if (!sn) return;
-    navigator.clipboard.writeText(sn);
-    copiedSn.value = sn;
-    setTimeout(() => {
-        if (copiedSn.value === sn) copiedSn.value = null;
-    }, 2000);
-}
-
-const isAllSelected = computed(() => {
-    return props.onts.data.length > 0 && selectedOnts.value.length === props.onts.data.length;
-});
-
-function toggleSelectAll() {
-    if (isAllSelected.value) {
-        selectedOnts.value = [];
+const livePppoePreview = computed(() => {
+    const s = pppoeSettingsForm.value;
+    const prefix = s.pppoe_prefix || '';
+    const suffix = s.pppoe_suffix || '';
+    const len = Math.max(2, Math.min(12, Number(s.pppoe_length) || 4));
+    
+    let mid = '';
+    if (s.pppoe_format === 'sequential') {
+        mid = '0'.repeat(Math.max(0, len - 3)) + '195';
+    } else if (s.pppoe_format === 'random_numeric') {
+        mid = '7842'.slice(0, len).padEnd(len, '9');
     } else {
-        selectedOnts.value = props.onts.data.map(ont => ont.id);
-    }
-}
-
-function getSelectedOntData() {
-    return props.onts.data.filter(ont => selectedOnts.value.includes(ont.id));
-}
-
-function openPrintModal() {
-    if (selectedOnts.value.length === 0) return;
-    isPrintModalOpen.value = true;
-    document.body.classList.add('is-printing-ont-card');
-}
-
-function closePrintModal() {
-    isPrintModalOpen.value = false;
-    document.body.classList.remove('is-printing-ont-card');
-}
-
-function printCards() {
-    document.body.classList.add('is-printing-ont-card');
-    setTimeout(() => {
-        window.print();
-    }, 150);
-}
-
-watch(isPrintModalOpen, (isOpen) => {
-    if (isOpen) {
-        document.body.classList.add('is-printing-ont-card');
-    } else {
-        document.body.classList.remove('is-printing-ont-card');
-    }
-});
-
-onUnmounted(() => {
-    document.body.classList.remove('is-printing-ont-card');
-});
-
-
-
-function getOfficerName(ont) {
-    if (ont.input_officers && ont.input_officers.length > 0) {
-        const first = ont.input_officers[0];
-        return typeof first === 'object' ? (first.name || '-') : first;
-    }
-    return '-';
-}
-
-function formatDate(dateStr) {
-    if (!dateStr) return '-';
-    const d = new Date(dateStr);
-    const day = String(d.getDate()).padStart(2, '0');
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-    return `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
-}
-
-const form = useForm({
-    ont_id: '',
-    area_id: '',
-    brand: '',
-    model: '',
-    serial_number: '',
-    mac_address: '',
-    vlan_mode: 'Non-VLAN',
-    vlan_id: '',
-    access_mode: 'PPPOE',
-    ip_login: '192.168.1.1',
-    login_user: '',
-    login_password: '',
-    pppoe_user: '',
-    pppoe_password: '',
-    free_hotspot: false,
-    hotspot_user: '',
-    hotspot_password: '',
-    hotspot_vlan_id: '',
-    input_officers: [
-        { name: '', date: new Date().toISOString().split('T')[0], note: '' }
-    ],
-    status: 'Belum Set/Baru Input',
-    id: null
-});
-
-function openCreateModal() {
-    isEditing.value = false;
-    form.reset();
-    form.clearErrors();
-    form.id = null;
-    isModalOpen.value = true;
-}
-
-function openEditModal(ont) {
-    isEditing.value = true;
-    form.id = ont.id;
-    form.ont_id = ont.ont_id || '';
-    form.area_id = ont.area_id || '';
-    form.brand = ont.brand || '';
-    form.model = ont.model || '';
-    form.serial_number = ont.serial_number || '';
-    form.mac_address = ont.mac_address || '';
-    form.vlan_mode = ont.vlan_mode || 'Non-VLAN';
-    form.vlan_id = ont.vlan_id || '';
-    form.access_mode = ont.access_mode || 'PPPOE';
-    form.ip_login = ont.ip_login || '192.168.1.1';
-    form.login_user = ont.login_user || '';
-    form.login_password = ont.login_password || '';
-    
-    // Jika mode hotspot, user/pass member tidak disimpan di ONT (diset saat aktivasi)
-    if (String(form.access_mode || '').trim().toLowerCase() === 'hotspot') {
-        form.pppoe_user = '';
-        form.pppoe_password = '';
-    } else {
-        form.pppoe_user = ont.pppoe_user || '';
-        form.pppoe_password = ont.pppoe_password || '';
+        mid = '7x9k'.slice(0, len).padEnd(len, 'a');
     }
     
-    form.free_hotspot = !!ont.free_hotspot;
-    form.hotspot_user = ont.hotspot_user || '';
-    form.hotspot_password = ont.hotspot_password || '';
-    form.hotspot_vlan_id = ont.hotspot_vlan_id || '';
+    let user = `${prefix}${mid}${suffix}`;
+    if (s.pppoe_case === 'upper') user = user.toUpperCase();
+    else if (s.pppoe_case === 'lower') user = user.toLowerCase();
     
-    if (ont.input_officers && ont.input_officers.length > 0) {
-        form.input_officers = JSON.parse(JSON.stringify(ont.input_officers));
-    } else {
-        form.input_officers = [{ name: '', date: new Date().toISOString().split('T')[0], note: '' }];
-    }
-    
-    form.status = ont.status || 'Belum Set/Baru Input';
-    
-    form.clearErrors();
-    isModalOpen.value = true;
-}
-
-function closeModal() {
-    isModalOpen.value = false;
-    setTimeout(() => form.reset(), 300);
-}
-
-function addOfficer() {
-    form.input_officers.push({
-        name: '',
-        date: new Date().toISOString().split('T')[0],
-        note: ''
-    });
-}
-
-function removeOfficer(index) {
-    form.input_officers.splice(index, 1);
-}
-
-function generatePppoe() {
-    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    let user = '';
     let pass = '';
-    for(let i = 0; i < 6; i++) user += chars.charAt(Math.floor(Math.random() * chars.length));
-    for(let i = 0; i < 8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    const pwLen = Math.max(4, Math.min(32, Number(s.pppoe_password_length) || 6));
+    if (s.pppoe_password_type === 'static') {
+        pass = s.pppoe_default_password || '123456';
+    } else if (s.pppoe_password_type === 'random_alphanumeric') {
+        pass = '8k3m9p2w'.slice(0, pwLen).padEnd(pwLen, 'x');
+    } else {
+        pass = '681942'.slice(0, pwLen).padEnd(pwLen, '5');
+    }
     
-    form.pppoe_user = 'user_' + user;
-    form.pppoe_password = pass;
+    return { user, pass };
+});
+
+async function savePppoeSettings() {
+    isSavingPppoeSettings.value = true;
+    try {
+        const res = await axios.post('/onts/update-pppoe-settings', pppoeSettingsForm.value);
+        if (res.data && res.data.success) {
+            pppoeSettings.value = { ...res.data.settings };
+            isPppoeSettingsModalOpen.value = false;
+            Swal.fire({
+                icon: 'success',
+                title: 'Pengaturan Disimpan',
+                text: 'Format generate PPPoE berhasil disimpan.',
+                timer: 1800,
+                showConfirmButton: false,
+            });
+        }
+    } catch (err) {
+        console.error('Failed to save PPPoE settings:', err);
+        Swal.fire({
+            icon: 'error',
+            title: 'Gagal Menyimpan',
+            text: err.response?.data?.message || 'Terjadi kesalahan saat menyimpan pengaturan PPPoE.',
+            confirmButtonColor: '#e11d48',
+        });
+    } finally {
+        isSavingPppoeSettings.value = false;
+    }
+}
+
+function onPppoeUserInput() {
+    clearTimeout(pppoeCheckTimeout);
+    const val = String(form.pppoe_user || '').trim();
+    if (!val) {
+        pppoeCheckStatus.value = 'idle';
+        pppoeConflictMessage.value = '';
+        return;
+    }
+
+    pppoeCheckStatus.value = 'checking';
+    pppoeCheckTimeout = setTimeout(async () => {
+        try {
+            const res = await axios.get('/onts/check-pppoe-user', {
+                params: {
+                    user: val,
+                    ignore_ont_id: isEditing.value && form.id ? form.id : null,
+                }
+            });
+            if (res.data && res.data.available) {
+                pppoeCheckStatus.value = 'available';
+                pppoeConflictMessage.value = '';
+            } else if (res.data) {
+                pppoeCheckStatus.value = 'duplicate';
+                pppoeConflictMessage.value = res.data.message || 'Akun PPPoE sudah digunakan oleh perangkat lain!';
+            }
+        } catch (err) {
+            console.error('Error checking PPPoE username:', err);
+            pppoeCheckStatus.value = 'idle';
+        }
+    }, 350);
 }
 
 watch(() => form.access_mode, (val) => {
@@ -1642,11 +1690,35 @@ watch(() => form.access_mode, (val) => {
     }
 });
 
-function submit() {
+async function submit() {
     if (String(form.access_mode || '').trim().toLowerCase() === 'hotspot') {
         form.pppoe_user = '';
         form.pppoe_password = '';
+    } else if (form.pppoe_user && form.pppoe_user.trim() !== '') {
+        try {
+            const checkRes = await axios.get('/onts/check-pppoe-user', {
+                params: {
+                    user: form.pppoe_user.trim(),
+                    ignore_ont_id: isEditing.value && form.id ? form.id : null
+                }
+            });
+            if (checkRes.data && !checkRes.data.available) {
+                pppoeCheckStatus.value = 'duplicate';
+                pppoeConflictMessage.value = checkRes.data.message;
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Akun PPPoE Duplikat Ditolak!',
+                    html: `<p class="text-sm text-gray-700">${checkRes.data.message}</p><p class="mt-2 text-xs font-semibold text-rose-600">Sistem otomatis menolak duplikasi akun. Silakan ubah atau klik tombol <strong>Generate</strong> untuk membuat akun unik.</p>`,
+                    confirmButtonText: 'Saya Mengerti',
+                    confirmButtonColor: '#e11d48',
+                });
+                return;
+            }
+        } catch (e) {
+            console.error('Error validating PPPoE username:', e);
+        }
     }
+
     if (isEditing.value && form.id) {
         form.post(`/onts/${form.id}/update`, {
             onSuccess: () => closeModal(),

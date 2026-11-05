@@ -3832,6 +3832,16 @@ class CustomerController extends Controller
                     }
                 }
 
+                if (!empty($pppoeUser)) {
+                    $dup = \App\Http\Controllers\OntController::findPppoeDuplicate($pppoeUser, $customer->ont->id);
+                    if ($dup) {
+                        $detail = $dup->customer ? " (digunakan pelanggan {$dup->customer->name} / {$dup->customer->customer_code})" : " (digunakan ONT SN: {$dup->serial_number})";
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'pppoe_user' => "Akun Member / PPPoE '{$pppoeUser}' sudah digunakan{$detail}. Sistem otomatis menolak duplikasi akun!"
+                        ]);
+                    }
+                }
+
                 $customer->ont->update([
                     'pppoe_user' => $pppoeUser,
                     'pppoe_password' => $pppoePassword,
@@ -5248,6 +5258,16 @@ class CustomerController extends Controller
                 if (empty($pppoeUser) && !empty($hotspotUser)) {
                     $pppoeUser = $hotspotUser;
                     $pppoePassword = $hotspotPassword;
+                }
+            }
+
+            if (!empty($pppoeUser)) {
+                $dup = \App\Http\Controllers\OntController::findPppoeDuplicate($pppoeUser, $ont->id);
+                if ($dup) {
+                    $detail = $dup->customer ? " (digunakan pelanggan {$dup->customer->name} / {$dup->customer->customer_code})" : " (digunakan ONT SN: {$dup->serial_number})";
+                    return back()->withErrors([
+                        'pppoe_user' => "Akun Member / PPPoE '{$pppoeUser}' sudah digunakan{$detail}. Sistem otomatis menolak duplikasi akun!"
+                    ])->withInput();
                 }
             }
 
