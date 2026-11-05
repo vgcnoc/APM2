@@ -219,8 +219,12 @@ class IncentiveDeductionController extends Controller
     {
         $authUser = auth()->user();
         $isSuperAdmin = $authUser && ($authUser->is_admin || $authUser->hasRole('admin'));
-        if (!$isSuperAdmin && !$authUser->can('payroll_disburse') && !$authUser->can('payroll_incentives') && !$authUser->can('payroll_manage')) {
-            abort(403, 'Anda tidak memiliki hak akses untuk mencairkan insentif.');
+        $userRole = strtolower(trim($authUser->role ?? ''));
+        $hasAllowedRole = in_array($userRole, ['admin', 'superadmin', 'super admin', 'hrd', 'finance']) 
+            || ($authUser->hasAnyRole(['admin', 'superadmin', 'hrd', 'finance']));
+
+        if (!$isSuperAdmin && !$hasAllowedRole && !$authUser->can('payroll_incentives_disburse')) {
+            abort(403, 'Akses ditolak. Fitur pencairan insentif hanya dapat diakses oleh akun HRD dan Finance.');
         }
 
         $ids = $request->input('ids');
