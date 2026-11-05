@@ -113,14 +113,14 @@
                 <!-- ================= RIWAYAT AKTIVASI ROWS ================= -->
                 <template v-if="currentTab === 'riwayat'">
                     <!-- Aksi Pelanggan Riwayat (Sebelum Nama Pelanggan) -->
-                    <td class="whitespace-nowrap">
-                        <div class="flex items-center justify-start gap-1.5 whitespace-nowrap">
+                    <td class="w-14 text-center whitespace-nowrap px-2">
+                        <div class="flex items-center justify-center">
                             <!-- Tombol Titik 3 Menu Aksi -->
                             <button 
                                 type="button" 
                                 @click.stop="toggleDropdown($event, row)" 
-                                class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 border border-slate-200 hover:border-slate-300 transition-all shadow-2xs hover:shadow-xs cursor-pointer focus:outline-none"
-                                :class="{ 'ring-2 ring-indigo-500 bg-indigo-50 text-indigo-600 border-indigo-300': activeDropdownRow?.id === row.id }"
+                                class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 transition-all shadow-2xs hover:shadow-xs cursor-pointer focus:outline-none"
+                                :class="{ 'ring-2 ring-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border-indigo-300 dark:border-indigo-600': activeDropdownRow?.id === row.id }"
                                 title="Pilihan Aksi Pelanggan (Titik 3)"
                             >
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -233,7 +233,7 @@
                 <!-- ================= MENUNGGU AKTIVASI ROWS ================= -->
                 <template v-else>
                     <!-- Aksi Pelanggan Menunggu (Sebelum Nama Pelanggan) -->
-                    <td class="whitespace-nowrap">
+                    <td class="w-32 whitespace-nowrap px-2">
                         <div class="flex items-center justify-start gap-1.5 whitespace-nowrap">
                             <button v-if="row.status === 'installing' && row.ont && row.is_audited" 
                                 v-can="'customers_activation_activate'" 
@@ -248,8 +248,8 @@
                             <button 
                                 type="button" 
                                 @click.stop="toggleDropdown($event, row)" 
-                                class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 border border-slate-200 hover:border-slate-300 transition-all shadow-2xs hover:shadow-xs cursor-pointer focus:outline-none"
-                                :class="{ 'ring-2 ring-indigo-500 bg-indigo-50 text-indigo-600 border-indigo-300': activeDropdownRow?.id === row.id }"
+                                class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-300 transition-all shadow-2xs hover:shadow-xs cursor-pointer focus:outline-none"
+                                :class="{ 'ring-2 ring-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border-indigo-300 dark:border-indigo-600': activeDropdownRow?.id === row.id }"
                                 title="Pilihan Aksi Pelanggan (Titik 3)"
                             >
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -309,19 +309,19 @@
             <div v-if="activeDropdownRow" class="fixed inset-0 z-[120]" @click="closeDropdown" @contextmenu.prevent="closeDropdown">
                 <div 
                     :style="{ top: `${dropdownPos.top}px`, left: `${dropdownPos.left}px` }"
-                    class="fixed w-64 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-200/80 py-1.5 z-[121] text-xs divide-y divide-slate-100 animate-fade-in-up font-sans"
+                    class="fixed w-64 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-200/80 dark:border-slate-800 py-1.5 z-[121] text-xs divide-y divide-slate-100 dark:divide-slate-800 animate-fade-in-up font-sans"
                     @click.stop
                 >
                     <!-- Header Info Pelanggan -->
-                    <div class="px-3.5 py-2.5 bg-slate-50/90 -mt-1.5 rounded-t-2xl border-b border-slate-100 mb-1">
+                    <div class="px-3.5 py-2.5 bg-slate-50/90 dark:bg-slate-800/90 -mt-1.5 rounded-t-2xl border-b border-slate-100 dark:border-slate-800 mb-1">
                         <div class="flex items-center gap-2.5">
                             <div :class="['w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 shadow-2xs', getAvatarColor(activeDropdownRow.name)]">
                                 {{ (activeDropdownRow.name || 'P').charAt(0).toUpperCase() }}
                             </div>
                             <div class="min-w-0 flex-1">
-                                <div class="font-bold text-slate-900 truncate text-xs">{{ activeDropdownRow.name }}</div>
-                                <div class="flex items-center gap-1.5 text-[10px] text-slate-500 font-mono mt-0.5">
-                                    <span class="font-semibold text-slate-600">{{ activeDropdownRow.customer_code }}</span>
+                                <div class="font-bold text-slate-900 dark:text-white truncate text-xs">{{ activeDropdownRow.name }}</div>
+                                <div class="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+                                    <span class="font-semibold text-slate-600 dark:text-slate-300">{{ activeDropdownRow.customer_code }}</span>
                                     <span>&bull;</span>
                                     <span class="truncate text-indigo-600 font-medium">{{ activeDropdownRow.package?.name || (activeDropdownRow.service_status === 'gratis' ? 'Gratis' : (activeDropdownRow.service_status === 'free_home' ? 'Free Home' : '-')) }}</span>
                                 </div>
@@ -335,13 +335,13 @@
                         <button 
                             type="button"
                             @click="openPsbInvoiceModal(activeDropdownRow); closeDropdown()"
-                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-emerald-50/80 hover:text-emerald-700 transition-colors font-medium group cursor-pointer"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 dark:text-slate-200 hover:bg-emerald-50/80 dark:hover:bg-emerald-950/40 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors font-medium group cursor-pointer"
                         >
                             <div class="w-6 h-6 rounded-lg bg-emerald-50 group-hover:bg-emerald-100/80 flex items-center justify-center shrink-0 transition-colors">
                                 <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                             </div>
                             <div class="min-w-0 flex-1">
-                                <span class="font-semibold text-xs block text-slate-800 group-hover:text-emerald-700">Invoice PSB</span>
+                                <span class="font-semibold text-xs block text-slate-800 dark:text-slate-100 group-hover:text-emerald-700 dark:group-hover:text-emerald-300">Invoice PSB</span>
                                 <p class="text-[10px] text-slate-400 group-hover:text-emerald-600 font-normal leading-tight">Kirim WA atau cetak invoice PSB</p>
                             </div>
                         </button>
@@ -350,13 +350,13 @@
                         <button 
                             type="button"
                             @click="openEditActivationModal(activeDropdownRow); closeDropdown()"
-                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors font-medium group cursor-pointer"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-white transition-colors font-medium group cursor-pointer"
                         >
                             <div class="w-6 h-6 rounded-lg bg-slate-100 group-hover:bg-slate-200/80 flex items-center justify-center shrink-0 transition-colors">
                                 <svg class="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                             </div>
                             <div class="min-w-0 flex-1">
-                                <span class="font-semibold text-xs block text-slate-800 group-hover:text-slate-900">Edit Aktivasi</span>
+                                <span class="font-semibold text-xs block text-slate-800 dark:text-slate-100 group-hover:text-slate-900 dark:group-hover:text-white">Edit Aktivasi</span>
                                 <p class="text-[10px] text-slate-400 group-hover:text-slate-500 font-normal leading-tight">Edit konfigurasi ont, pppoe & paket</p>
                             </div>
                         </button>
@@ -365,13 +365,13 @@
                         <Link 
                             :href="`/customers/${activeDropdownRow.id}`"
                             @click="closeDropdown"
-                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-blue-50/80 hover:text-blue-700 transition-colors font-medium group cursor-pointer"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 dark:text-slate-200 hover:bg-blue-50/80 dark:hover:bg-blue-950/40 hover:text-blue-700 dark:hover:text-blue-300 transition-colors font-medium group cursor-pointer"
                         >
                             <div class="w-6 h-6 rounded-lg bg-blue-50 group-hover:bg-blue-100/80 flex items-center justify-center shrink-0 transition-colors">
                                 <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                             </div>
                             <div class="min-w-0 flex-1">
-                                <span class="font-semibold text-xs block text-slate-800 group-hover:text-blue-700">Profil Pelanggan</span>
+                                <span class="font-semibold text-xs block text-slate-800 dark:text-slate-100 group-hover:text-blue-700 dark:group-hover:text-blue-300">Profil Pelanggan</span>
                                 <p class="text-[10px] text-slate-400 group-hover:text-blue-500 font-normal leading-tight">Buka rincian lengkap pelanggan</p>
                             </div>
                         </Link>
@@ -381,7 +381,7 @@
                             v-if="canDelete"
                             type="button"
                             @click="confirmDelete(activeDropdownRow); closeDropdown()"
-                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-rose-700 hover:bg-rose-50/80 hover:text-rose-800 transition-colors font-medium group cursor-pointer border-t border-slate-100"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-rose-700 dark:text-rose-400 hover:bg-rose-50/80 dark:hover:bg-rose-950/40 hover:text-rose-800 dark:hover:text-rose-300 transition-colors font-medium group cursor-pointer border-t border-slate-100 dark:border-slate-800"
                         >
                             <div class="w-6 h-6 rounded-lg bg-rose-50 group-hover:bg-rose-100/80 flex items-center justify-center shrink-0 transition-colors">
                                 <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
@@ -1658,23 +1658,23 @@ function bulkDelete() {
 const columns = computed(() => {
     if (currentTab.value === 'riwayat') {
         return [
-            { key: 'actions', label: 'Aksi', class: 'whitespace-nowrap min-w-[280px]' },
-            { key: 'name', label: 'Pelanggan' },
-            { key: 'package', label: 'Paket & Tagihan' },
-            { key: 'activation_date', label: 'Tgl Aktivasi' },
-            { key: 'account', label: 'Akun / Mode' },
-            { key: 'status', label: 'Status' },
-            { key: 'topology', label: 'Topologi' },
+            { key: 'actions', label: 'Aksi', class: 'w-14 text-center whitespace-nowrap' },
+            { key: 'name', label: 'Pelanggan', class: 'min-w-[190px]' },
+            { key: 'package', label: 'Paket & Tagihan', class: 'whitespace-nowrap' },
+            { key: 'activation_date', label: 'Tgl Aktivasi', class: 'whitespace-nowrap' },
+            { key: 'account', label: 'Akun / Mode', class: 'whitespace-nowrap' },
+            { key: 'status', label: 'Status', class: 'text-center whitespace-nowrap' },
+            { key: 'topology', label: 'Topologi', class: 'min-w-[140px]' },
         ];
     }
     return [
-        { key: 'actions', label: 'Aksi', class: 'whitespace-nowrap min-w-[170px]' },
-        { key: 'name', label: 'Pelanggan' },
-        { key: 'package', label: 'Paket' },
-        { key: 'status', label: 'Status' },
-        { key: 'ont', label: 'ONT S/N' },
-        { key: 'topology', label: 'Topologi' },
-        { key: 'signal', label: 'Redaman' },
+        { key: 'actions', label: 'Aksi', class: 'w-32 text-center whitespace-nowrap' },
+        { key: 'name', label: 'Pelanggan', class: 'min-w-[190px]' },
+        { key: 'package', label: 'Paket', class: 'whitespace-nowrap' },
+        { key: 'status', label: 'Status', class: 'text-center whitespace-nowrap' },
+        { key: 'ont', label: 'ONT S/N', class: 'whitespace-nowrap' },
+        { key: 'topology', label: 'Topologi', class: 'min-w-[140px]' },
+        { key: 'signal', label: 'Redaman', class: 'text-center whitespace-nowrap' },
     ];
 });
 

@@ -132,7 +132,7 @@ const props = defineProps({
 
 // State Collapse dengan LocalStorage Persistence agar user experience nyaman
 const storageKey = `apm2_guide_collapsed_${props.stage}`;
-const isCollapsed = ref(false);
+const isCollapsed = ref(true);
 
 onMounted(() => {
     const saved = localStorage.getItem(storageKey);
