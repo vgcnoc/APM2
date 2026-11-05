@@ -1237,8 +1237,15 @@
                                     </td>
                                     <td class="px-4 py-3 font-semibold text-slate-800">{{ a.total_customers }} Pelanggan</td>
                                     <td class="px-4 py-3 font-semibold text-purple-600">{{ a.total_downlines }} Mitra</td>
-                                    <td v-can="'affiliate_field_balance'" class="px-4 py-3 font-extrabold text-emerald-600">{{ formatRupiah(a.balance) }}</td>
-                                    <td v-can="'affiliate_field_balance'" class="px-4 py-3 font-medium text-slate-700">{{ formatRupiah(a.total_earned) }}</td>
+                                    <td v-can="'affiliate_field_balance'" class="px-4 py-3 font-extrabold text-emerald-600">
+                                        <div class="flex items-center gap-1.5">
+                                            <span>{{ formatRupiah(a.balance) }}</span>
+                                            <span v-if="a.is_employee" class="text-[9px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded tracking-wide uppercase" title="Karyawan: Komisi dicairkan terpadu melalui Slip Gaji (Payroll)">
+                                                Payroll
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td v-can="'affiliate_field_balance'" class="px-4 py-3 font-bold text-slate-800">{{ formatRupiah(a.total_earned) }}</td>
                                     <td class="px-4 py-3">
                                         <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase" :class="a.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'">
                                             {{ a.status }}

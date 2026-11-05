@@ -245,14 +245,6 @@ class AffiliateService
             return null;
         }
 
-        // Jika karyawan, cek juga apakah sudah ada di tabel incentives
-        if ($isEmployee) {
-            $alreadyInIncentive = \App\Models\Incentive::where('reference_id', 'booking_cust_' . $customer->id)->exists();
-            if ($alreadyInIncentive) {
-                return null;
-            }
-        }
-
         $settings = self::getSettings();
         $amount = (float) $settings['affiliate_commission_booking'];
 
@@ -280,18 +272,21 @@ class AffiliateService
                 : '';
 
             if ($isEmployee) {
-                // ── KARYAWAN: Masuk ke Insentif Payroll (Status Pending) ──
-                \App\Models\Incentive::create([
-                    'user_id' => $user->id,
-                    'amount' => $amount,
-                    'type' => 'auto',
-                    'description' => "Fee Booking Pelanggan: {$customer->name}{$codeLabel}",
-                    'reference_id' => 'booking_cust_' . $customer->id,
-                    'incentive_date' => now(),
-                    'status' => 'pending',
-                ]);
+                // ── KARYAWAN: Masuk ke Insentif Payroll (Status Pending jika belum ada) ──
+                $alreadyInIncentive = \App\Models\Incentive::where('reference_id', 'booking_cust_' . $customer->id)->exists();
+                if (!$alreadyInIncentive) {
+                    \App\Models\Incentive::create([
+                        'user_id' => $user->id,
+                        'amount' => $amount,
+                        'type' => 'auto',
+                        'description' => "Fee Booking Pelanggan: {$customer->name}{$codeLabel}",
+                        'reference_id' => 'booking_cust_' . $customer->id,
+                        'incentive_date' => now(),
+                        'status' => 'pending',
+                    ]);
+                }
 
-                // Catat di AffiliateCommission untuk riwayat audit log (status 'payroll', dompet TIDAK ditambah)
+                // Catat di AffiliateCommission untuk riwayat audit log & perhitungan total komisi (status 'payroll', dompet saldo aktif tidak ditambah)
                 $commission = AffiliateCommission::create([
                     'affiliate_id' => $user->id,
                     'customer_id' => $customer->id,
@@ -303,6 +298,8 @@ class AffiliateService
                     'status' => 'payroll',
                     'paid_at' => null,
                 ]);
+
+                $affiliate->increment('total_earned', $amount);
 
                 return $commission;
             } else {
@@ -649,6 +646,8 @@ class AffiliateService
                         'status' => 'payroll',
                         'paid_at' => null,
                     ]);
+
+                    $directAffiliate->increment('total_earned', $directAmount);
                 } else {
                     $commDirect = AffiliateCommission::create([
                         'affiliate_id' => $directAffiliate->user_id,
@@ -703,6 +702,8 @@ class AffiliateService
                                 'status' => 'payroll',
                                 'paid_at' => null,
                             ]);
+
+                            $upline1->increment('total_earned', $upline1Amount);
                         } else {
                             $commUpline1 = AffiliateCommission::create([
                                 'affiliate_id' => $upline1->user_id,
@@ -756,6 +757,8 @@ class AffiliateService
                                             'status' => 'payroll',
                                             'paid_at' => null,
                                         ]);
+
+                                        $upline2->increment('total_earned', $upline2Amount);
                                     } else {
                                         $commUpline2 = AffiliateCommission::create([
                                             'affiliate_id' => $upline2->user_id,
