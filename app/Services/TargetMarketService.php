@@ -17,15 +17,18 @@ class TargetMarketService
      */
     public static function processCustomerActivation(Customer $customer): void
     {
-        if (Customer::$isMigrating || $customer->is_migrated) {
+        if (Customer::$isMigrating) {
+            return;
+        }
+
+        $activationDate = $customer->activation_date ? Carbon::parse($customer->activation_date) : ($customer->registration_date ? Carbon::parse($customer->registration_date) : now());
+        if ($customer->is_migrated && $activationDate->copy()->startOfDay()->lt(Carbon::parse('2026-10-01')->startOfDay())) {
             return;
         }
 
         if (!$customer->sales_id) {
             return;
         }
-
-        $activationDate = $customer->activation_date ? Carbon::parse($customer->activation_date) : now();
         $activationDateStr = $activationDate->toDateString();
         $month = $activationDate->month;
         $year = $activationDate->year;
@@ -216,7 +219,13 @@ class TargetMarketService
 
         // Cari pelanggan aktif di periode ini yang memiliki sales_id
         $customers = Customer::where('status', 'active')
-            ->when(\Illuminate\Support\Facades\Schema::hasColumn('customers', 'is_migrated'), fn($q) => $q->where('is_migrated', false))
+            ->where(function ($q) {
+                $q->where('is_migrated', false)
+                  ->orWhere(function ($sub) {
+                      $sub->where('is_migrated', true)
+                          ->whereDate('activation_date', '>=', '2026-10-01');
+                  });
+            })
             ->whereNotNull('sales_id')
             ->where(function ($q) use ($month, $year) {
                 $q->where(function ($sub) use ($month, $year) {

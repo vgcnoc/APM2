@@ -38,15 +38,26 @@ class AffiliateService
 
     private static function isEligibleFrom(Customer $customer, string $startDate): bool
     {
-        if ($customer->is_migrated) {
+        $date = $customer->activation_date ?: ($customer->registration_date ?: $customer->created_at);
+        if (!$date) {
             return false;
         }
 
-        $bookingDate = $customer->registration_date ?: $customer->created_at;
+        $dateCarbon = Carbon::parse($date)->startOfDay();
+        $startCarbon = Carbon::parse($startDate)->startOfDay();
 
-        return $bookingDate && Carbon::parse($bookingDate)->startOfDay()->greaterThanOrEqualTo(
-            Carbon::parse($startDate)->startOfDay()
-        );
+        // Pelanggan sebelum rentang program tidak berhak atas komisi
+        if ($dateCarbon->lessThan($startCarbon)) {
+            return false;
+        }
+
+        // Jika pelanggan migrasi lama (aktivasi sebelum 1 Oktober 2026), selalu dikecualikan.
+        // Pelanggan yang aktivasi mulai 1 Oktober 2026 (termasuk hasil migrasi / impor CSV) tetap BERHAK atas komisi.
+        if ($customer->is_migrated && $dateCarbon->lessThan(Carbon::parse('2026-10-01')->startOfDay())) {
+            return false;
+        }
+
+        return true;
     }
 
     public static function canAccessPortal(?User $user): bool

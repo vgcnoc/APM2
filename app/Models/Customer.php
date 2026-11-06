@@ -611,7 +611,10 @@ class Customer extends Model
             }
 
             // 1b. Sinkronisasi Otomatis Bonus Target Market jika status berubah ke active atau tanggal aktivasi/sales berubah
-            if ($customer->status === 'active' && !static::$isMigrating && !$customer->is_migrated && ($customer->wasChanged('status') || $customer->wasChanged('activation_date') || $customer->wasChanged('sales_id') || $customer->wasChanged('area_id'))) {
+            $dateVal = $customer->activation_date ?: ($customer->registration_date ?: $customer->created_at);
+            $isOct2026Eligible = !$customer->is_migrated || ($dateVal && \Carbon\Carbon::parse($dateVal)->startOfDay()->gte(\Carbon\Carbon::parse('2026-10-01')->startOfDay()));
+
+            if ($customer->status === 'active' && !static::$isMigrating && $isOct2026Eligible && ($customer->wasChanged('status') || $customer->wasChanged('activation_date') || $customer->wasChanged('sales_id') || $customer->wasChanged('area_id'))) {
                 try {
                     \App\Services\TargetMarketService::processCustomerActivation($customer);
                 } catch (\Throwable $e) {
