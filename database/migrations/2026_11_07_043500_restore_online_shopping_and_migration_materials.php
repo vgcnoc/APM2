@@ -3,7 +3,6 @@
 use App\Models\Material;
 use App\Models\MaterialStock;
 use App\Models\MaterialTransactionItem;
-use App\Models\CustomerInstalledMaterial;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
@@ -213,23 +212,19 @@ return new class extends Migration
                 ]);
             }
 
-            // 3. Kembalikan relasi material instalasi pelanggan (CustomerInstalledMaterial)
-            $installedMappings = [
-                3847 => 320,
-                3930 => 320,
-                3842 => 318,
-                3860 => 318,
-                3800 => 319,
-                3908 => 329,
-                3916 => 329,
-                3922 => 329,
-                3920 => 321,
-                3935 => 321,
-                3840 => 316,
+            // 3. Kembalikan relasi material instalasi pelanggan (CustomerInstalledMaterial) jika ada
+            $custMatMappings = [
+                'Kabel Frecon 100m-NAY' => 320,
+                'Kabel Frecon 150m-A12' => 318,
+                'Kabel Frecon 150m-Nay' => 319,
+                'Kabel Frecon 150m-By' => 329,
+                'Kabel Frecon 200m-Yud' => 321,
+                'kabel pc 50' => 316,
+                'Kabel Frecon 100m (migrasi)' => 330,
             ];
 
-            foreach ($installedMappings as $itemId => $matId) {
-                DB::table('customer_installed_materials')->where('material_transaction_item_id', $itemId)->update([
+            foreach ($custMatMappings as $name => $matId) {
+                DB::table('customer_installed_materials')->where('item_name', 'like', "%{$name}%")->update([
                     'material_id' => $matId,
                 ]);
             }
