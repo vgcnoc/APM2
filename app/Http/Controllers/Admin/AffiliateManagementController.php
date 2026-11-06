@@ -92,10 +92,7 @@ class AffiliateManagementController extends Controller
                     'upline_id' => $aff->upline_id,
                     'upline_name' => $aff->upline?->name ?? '-',
                     'balance' => (float) $aff->balance,
-                    'total_earned' => (float) max(
-                        (float) $aff->total_earned,
-                        (float) $aff->commissions()->whereIn('status', ['approved', 'paid', 'payroll'])->sum('amount')
-                    ),
+                    'total_earned' => (float) $aff->commissions()->whereIn('status', ['approved', 'paid', 'payroll'])->sum('amount'),
                     'total_withdrawn' => (float) $aff->total_withdrawn,
                     'total_customers' => (int) ($aff->eligible_customers_count ?? $aff->eligibleCustomers()->count()),
                     'total_downlines' => (int) ($aff->downlines_count ?? $aff->downlinesLevel1()->count()),

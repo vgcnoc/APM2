@@ -81,3 +81,4 @@ return new class extends Migration
         // Safe to leave untouched to prevent accidental loss of commission records
     }
 };
+

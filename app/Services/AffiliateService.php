@@ -20,8 +20,8 @@ class AffiliateService
     private const OPERATIONAL_FEE_START_DATE = '2026-10-01';
 
     /**
-     * Komisi bulanan dan upline/downline berlaku bagi booking baru sejak
-     * 28 September 2026. Pelanggan impor/migrasi selalu dikecualikan.
+     * Komisi bulanan dan upline/downline (5.000, 2.000, 1.000) berlaku bagi booking baru sejak
+     * 28 September 2026, SERTA pelanggan migrasi yang aktivasi mulai 1 Oktober 2026.
      */
     public static function isMonthlyCommissionEligible(Customer $customer): bool
     {
@@ -29,11 +29,21 @@ class AffiliateService
     }
 
     /**
-     * Fee booking, survey, dan pemasangan berlaku mulai 1 Oktober 2026.
+     * Fee booking (Rp 35.000), survey, dan pemasangan HANYA berlaku bagi pelanggan baru
+     * (bukan migrasi) yang terdaftar/aktif mulai 1 Oktober 2026.
+     * Pelanggan hasil migrasi/impor TIDAK mendapatkan fee booking 35.000.
      */
     public static function isOperationalFeeEligible(Customer $customer): bool
     {
-        return self::isEligibleFrom($customer, self::OPERATIONAL_FEE_START_DATE);
+        if ($customer->is_migrated) {
+            return false;
+        }
+
+        $bookingDate = $customer->registration_date ?: $customer->created_at;
+
+        return $bookingDate && Carbon::parse($bookingDate)->startOfDay()->greaterThanOrEqualTo(
+            Carbon::parse(self::OPERATIONAL_FEE_START_DATE)->startOfDay()
+        );
     }
 
     private static function isEligibleFrom(Customer $customer, string $startDate): bool
