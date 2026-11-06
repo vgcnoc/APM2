@@ -281,7 +281,10 @@ class MaterialHandoverService
             if ($transaction->old_ont_id) {
                 $oldOnt = Ont::find($transaction->old_ont_id);
                 if ($oldOnt) {
-                    $hasDamaged = collect($verifiedItems)->contains(fn($i) => in_array($i['condition'] ?? '', ['Rusak', 'Tidak Layak']));
+                    $hasDamaged = collect($verifiedItems)->contains(function ($i) {
+                        $c = strtolower(trim($i['condition'] ?? ''));
+                        return str_contains($c, 'rusak') || str_contains($c, 'tidak') || str_contains($c, 'lab') || str_contains($c, 'scrap');
+                    });
                     if (!$hasDamaged) {
                         $oldOnt->update([
                             'customer_id' => null,

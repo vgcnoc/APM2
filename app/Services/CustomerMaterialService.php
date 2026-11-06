@@ -185,6 +185,60 @@ class CustomerMaterialService
             $condition = $replacementData['condition'] ?? 'rusak_scrap'; // 'rusak_scrap', 'normal_reusable', 'perlu_cek'
             $damageReason = $replacementData['damage_reason'] ?? 'Kerusakan / kendala di lapangan';
 
+            // 0. Cegah duplikasi serah terima bongkaran untuk tiket dan material yang sama (Idempotency)
+            $existingDismantle = CustomerMaterialDismantle::where('ticket_type', $ticketType)
+                ->where('ticket_id', $ticketId)
+                ->where(function ($q) use ($materialId, $itemName, $installedMatId) {
+                    if ($installedMatId) {
+                        $q->where('customer_installed_material_id', $installedMatId);
+                    } elseif ($materialId) {
+                        $q->where('material_id', $materialId);
+                    } else {
+                        $q->where('item_name', $itemName);
+                    }
+                })
+                ->first();
+
+            if ($existingDismantle) {
+                // Jika sudah diverifikasi Ka. Teknisi / Gudang, kembalikan record tanpa membuat duplikat
+                if (in_array($existingDismantle->handover_status, ['received_lead', 'received_warehouse'], true)) {
+                    return $existingDismantle;
+                }
+
+                $conditionLabel = match ($condition) {
+                    'rusak_scrap' => 'Rusak / Afkir',
+                    'normal_reusable' => 'Layak Pakai',
+                    default => 'Perlu Pengecekan Lab',
+                };
+
+                $existingDismantle->update([
+                    'quantity' => $dismantledQty,
+                    'unit' => $unit,
+                    'condition' => $condition,
+                    'damage_reason' => $damageReason,
+                    'replacement_type' => $replacementType,
+                ]);
+
+                if ($existingDismantle->material_transaction_id) {
+                    $existingTrans = MaterialTransaction::find($existingDismantle->material_transaction_id);
+                    if ($existingTrans && $existingTrans->handover_status !== 'received' && $existingTrans->status !== 'approved') {
+                        $existingTrans->update([
+                            'notes' => "Pergantian {$replacementType} material terpasang. Kondisi bekas: {$conditionLabel}. Alasan: {$damageReason}",
+                        ]);
+                        $existingItem = MaterialTransactionItem::where('material_transaction_id', $existingTrans->id)->first();
+                        if ($existingItem) {
+                            $existingItem->update([
+                                'quantity' => $dismantledQty,
+                                'unit' => $unit,
+                                'condition' => $conditionLabel,
+                            ]);
+                        }
+                    }
+                }
+
+                return $existingDismantle;
+            }
+
             // 1. Update status pada CustomerInstalledMaterial
             if ($installedMat) {
                 if ($replacementType === 'full' || $dismantledQty >= (float) $installedMat->quantity) {
@@ -202,7 +256,35 @@ class CustomerMaterialService
                 }
             }
 
-            // 2. Buat Transaksi Serah Terima (MaterialTransaction pending_handover)
+            // 2. Hubungkan perangkat ONT lama jika material yang dibongkar adalah ONT
+            $oldOnt = null;
+            if (!empty($replacementData['ont_id'])) {
+                $oldOnt = \App\Models\Ont::find($replacementData['ont_id']);
+            }
+            if (!$oldOnt && ($materialId || $itemName)) {
+                $checkMat = $materialId ? Material::find($materialId) : null;
+                $isOntItem = ($checkMat && stripos($checkMat->category ?? '', 'ont') !== false)
+                    || stripos($itemName, 'ont') !== false
+                    || stripos($itemName, 'modem') !== false;
+                if ($isOntItem) {
+                    if ($ticketType === 'pgk') {
+                        $pgkObj = \App\Models\PgkTicket::find($ticketId);
+                        if ($pgkObj?->old_ont_id) {
+                            $oldOnt = \App\Models\Ont::find($pgkObj->old_ont_id);
+                        }
+                    } elseif ($ticketType === 'pgs') {
+                        $pgsObj = \App\Models\PgsTicket::find($ticketId);
+                        if ($pgsObj?->old_ont_id) {
+                            $oldOnt = \App\Models\Ont::find($pgsObj->old_ont_id);
+                        }
+                    }
+                    if (!$oldOnt) {
+                        $oldOnt = \App\Models\Ont::where('customer_id', $customer->id)->latest('id')->first();
+                    }
+                }
+            }
+
+            // 3. Buat Transaksi Serah Terima (MaterialTransaction pending_handover)
             $transNumber = MaterialService::generateTransactionNumber('RET-DISM-' . strtoupper(substr($ticketType, 0, 3)));
             $areaId = $customer->area_id;
 
@@ -228,6 +310,7 @@ class CustomerMaterialService
                 'area_id' => $areaId,
                 'user_id' => $technician->id,
                 'customer_id' => $customer->id,
+                'old_ont_id' => $oldOnt?->id,
                 'notes' => "Pergantian {$replacementType} material terpasang. Kondisi bekas: {$conditionLabel}. Alasan: {$damageReason}",
                 'total_cost' => 0,
             ]);
@@ -240,7 +323,7 @@ class CustomerMaterialService
                     : null;
                 $currentStock = $matStock ? (float) $matStock->stock : ($material ? (float) $material->stock : 0);
                 
-                MaterialTransactionItem::create([
+                $createdTrxItem = MaterialTransactionItem::create([
                     'material_transaction_id' => $trans->id,
                     'material_id' => $materialId,
                     'quantity' => $dismantledQty,
@@ -251,6 +334,10 @@ class CustomerMaterialService
                     'stock_after' => $currentStock, // Belum bertambah sebelum disetujui gudang
                     'condition' => $conditionLabel,
                 ]);
+
+                if ($oldOnt && $createdTrxItem) {
+                    $oldOnt->update(['material_transaction_item_id' => $createdTrxItem->id]);
+                }
             }
 
             // 3. Catat di tabel customer_material_dismantles

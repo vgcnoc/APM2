@@ -368,31 +368,61 @@ class OntController extends Controller
                         ]);
                     } else {
                         // Berubah dari rusak ke bagus (diperbaiki) -> kembalikan ke stok layak pakai area
-                        $stockRes = \App\Services\MaterialService::restoreOperationalStock($mat, 1, $lockedOnt->area_id, $targetUnit);
+                        // Cegah penambahan stok ganda jika ONT ini sudah di-restock ke gudang sebelumnya
+                        $alreadyStocked = false;
 
-                        $tx = \App\Models\MaterialTransaction::create([
-                            'transaction_number' => \App\Services\MaterialService::generateTransactionNumber('IN-REPAIR'),
-                            'type' => 'in',
-                            'status' => 'approved',
-                            'date' => now(),
-                            'technician_name' => auth()->user() ? auth()->user()->name : 'System',
-                            'purpose' => 'ONT Selesai Diperbaiki / Layak Pakai',
-                            'user_id' => auth()->id(),
-                            'area_id' => $lockedOnt->area_id,
-                            'notes' => "Unit ONT {$brandName} (SN: {$lockedOnt->serial_number}) kembali Layak Pakai",
-                        ]);
+                        if ($lockedOnt->material_transaction_item_id) {
+                            $trxItem = \App\Models\MaterialTransactionItem::find($lockedOnt->material_transaction_item_id);
+                            if ($trxItem && $trxItem->condition === 'Layak Pakai' && $trxItem->transaction?->handover_status === 'received') {
+                                $alreadyStocked = true;
+                            }
+                        }
 
-                        \App\Models\MaterialTransactionItem::create([
-                            'material_transaction_id' => $tx->id,
-                            'material_id' => $mat->id,
-                            'quantity' => 1,
-                            'unit' => $targetUnit,
-                            'price_per_unit' => $ppu,
-                            'total_price' => $ppu,
-                            'stock_before' => $stockRes['stock_before'],
-                            'stock_after' => $stockRes['stock_after'],
-                            'condition' => 'Layak Pakai',
-                        ]);
+                        if (!$alreadyStocked && $lockedOnt->serial_number) {
+                            $latestTx = \App\Models\MaterialTransaction::where(function ($tq) use ($lockedOnt) {
+                                    $tq->where('old_ont_id', $lockedOnt->id)
+                                       ->orWhere('notes', 'like', "%{$lockedOnt->serial_number}%")
+                                       ->orWhere('purpose', 'like', "%{$lockedOnt->serial_number}%");
+                                })
+                                ->whereIn('type', ['in', 'out'])
+                                ->latest('id')
+                                ->first();
+
+                            if ($latestTx && $latestTx->type === 'in' && in_array($latestTx->handover_status, ['received', 'none'], true)) {
+                                $alreadyStocked = true;
+                            }
+                        }
+
+                        if ($alreadyStocked) {
+                            \Illuminate\Support\Facades\Log::info("[OntController] ONT SN: {$lockedOnt->serial_number} sudah memiliki stok aktif di gudang. Melewati penambahan stok ganda.");
+                        } else {
+                            $stockRes = \App\Services\MaterialService::restoreOperationalStock($mat, 1, $lockedOnt->area_id, $targetUnit);
+
+                            $tx = \App\Models\MaterialTransaction::create([
+                                'transaction_number' => \App\Services\MaterialService::generateTransactionNumber('IN-REPAIR'),
+                                'type' => 'in',
+                                'status' => 'approved',
+                                'date' => now(),
+                                'technician_name' => auth()->user() ? auth()->user()->name : 'System',
+                                'purpose' => 'ONT Selesai Diperbaiki / Layak Pakai',
+                                'user_id' => auth()->id(),
+                                'area_id' => $lockedOnt->area_id,
+                                'old_ont_id' => $lockedOnt->id,
+                                'notes' => "Unit ONT {$brandName} (SN: {$lockedOnt->serial_number}) kembali Layak Pakai",
+                            ]);
+
+                            \App\Models\MaterialTransactionItem::create([
+                                'material_transaction_id' => $tx->id,
+                                'material_id' => $mat->id,
+                                'quantity' => 1,
+                                'unit' => $targetUnit,
+                                'price_per_unit' => $ppu,
+                                'total_price' => $ppu,
+                                'stock_before' => $stockRes['stock_before'],
+                                'stock_after' => $stockRes['stock_after'],
+                                'condition' => 'Layak Pakai',
+                            ]);
+                        }
                     }
                 }
             }

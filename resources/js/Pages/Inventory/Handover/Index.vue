@@ -664,6 +664,14 @@ const receiveForm = useForm({
     notes: '',
 });
 
+const mapInitialCondition = (cond) => {
+    if (!cond) return 'Layak Pakai';
+    const lower = cond.toLowerCase();
+    if (lower.includes('rusak') || lower.includes('scrap') || lower.includes('afkir')) return 'Rusak';
+    if (lower.includes('tidak') || lower.includes('lab') || lower.includes('cek')) return 'Tidak Layak';
+    return 'Layak Pakai';
+};
+
 const openReceiveModal = (trx) => {
     activeTrx.value = trx;
     receiveForm.notes = '';
@@ -672,7 +680,7 @@ const openReceiveModal = (trx) => {
         material_name: it.material?.name || it.material_name || 'Item',
         quantity: it.quantity,
         unit: it.unit || it.material?.unit || 'pcs',
-        condition: it.condition || 'Layak Pakai',
+        condition: mapInitialCondition(it.condition),
     }));
     showReceiveModal.value = true;
 };

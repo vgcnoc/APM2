@@ -1252,8 +1252,8 @@ class PgsController extends Controller
                 $portNum = $oldOnt?->port_number;
                 $odpPortId = $oldOnt?->odp_port_id;
 
-                // Lepas ONT lama pelanggan dan tandai rusak/ditarik
-                if ($oldOnt) {
+                // Lepas ONT lama pelanggan dan tandai rusak/ditarik (hanya jika belum diproses sebelumnya)
+                if ($oldOnt && $pgs->ont_replacement_status !== 'installed') {
                     $oldOnt->update([
                         'customer_id' => null,
                         'odp_id' => null,
@@ -1371,8 +1371,12 @@ class PgsController extends Controller
         // 4. Handle Pergantian Material Terpasang di Pelanggan (Seluruhnya vs Sebagian)
         $replacementCount = 0;
         if (!empty($request->material_replacements) && is_array($request->material_replacements)) {
+            $replacedOntId = $oldOnt?->id ?: $pgs->old_ont_id;
             foreach ($request->material_replacements as $rep) {
                 if (!empty($rep['item_name']) && (float) ($rep['quantity'] ?? 0) > 0) {
+                    if ($replacedOntId && empty($rep['ont_id']) && (stripos($rep['item_name'], 'ont') !== false || stripos($rep['item_name'], 'modem') !== false)) {
+                        $rep['ont_id'] = $replacedOntId;
+                    }
                     \App\Services\CustomerMaterialService::processMaterialReplacement(
                         ticketType: 'pgs',
                         ticketId: $pgs->id,
