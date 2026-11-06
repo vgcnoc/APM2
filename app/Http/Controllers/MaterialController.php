@@ -277,11 +277,17 @@ class MaterialController extends Controller
         $validated['is_catalog'] = false; // Material operasional fisik area (bukan master produk katalog toko)
         $validated['is_active'] = true;
 
+        // Normalisasi nama ke bentuk kanonikal (mencegah suffix teknisi atau catatan ad-hoc di nama)
+        $canonicalName = \App\Services\MaterialService::normalizeMaterialName($validated['name']);
+        if ($canonicalName !== '') {
+            $validated['name'] = $canonicalName;
+        }
+
         // Cek jika sudah ada material dengan nama yang sama, lakukan penambahan stok / penggabungan
         $existing = \App\Services\MaterialService::findByName($validated['name']);
         if ($existing) {
             \App\Services\MaterialService::addStockToExistingMaterial($existing, $validated, $areaId);
-            return redirect()->route('materials.index')->with('success', 'Data material dengan nama tersebut sudah ada. Stok berhasil digabungkan ke material tersebut.');
+            return redirect()->route('materials.index')->with('success', "Data material sudah ada ({$existing->name}). Stok berhasil digabungkan ke material tersebut.");
         }
 
         \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $areaId) {
@@ -363,6 +369,12 @@ class MaterialController extends Controller
 
         if (array_key_exists('stock', $validated) && is_null($validated['stock'])) {
             unset($validated['stock']);
+        }
+
+        // Normalisasi nama ke bentuk kanonikal
+        $canonicalName = \App\Services\MaterialService::normalizeMaterialName($validated['name']);
+        if ($canonicalName !== '') {
+            $validated['name'] = $canonicalName;
         }
 
         // Cek jika nama diubah menimpa material lain yang sudah ada sebelumnya

@@ -23,7 +23,41 @@ use Illuminate\Support\Facades\Schema;
 class MaterialService
 {
     /**
-     * Cari material berdasarkan nama (case-insensitive & trimmed).
+     * Normalisasi nama material ke bentuk standar/kanonikal.
+     * Mencegah teknisi / staf menambahkan suffix personil (-NAY, -By, -Yud, -A12)
+     * atau catatan manual seperti "(migrasi)" ke dalam nama material di sistem.
+     */
+    public static function normalizeMaterialName(string $name): string
+    {
+        $clean = trim($name);
+        if ($clean === '') {
+            return '';
+        }
+
+        // 1. Deteksi dropcore / frecon cable
+        // Contoh variasi: "Kabel Frecon 100m (migrasi)", "Kabel Frecon 100m-NAY", "kabel pc 50", "Frecon 150m-A12", "Frecon 150m-By"
+        if (preg_match('/^(?:kabel\s+)?(?:frecon|pc|dropcore)\s*(\d+)\s*(?:m|meter)?(?:\s*-\s*[a-zA-Z0-9_]+|\s*\([^)]*\))?$/i', $clean, $m)) {
+            $length = (int) $m[1];
+            return "Frecon {$length}m";
+        }
+
+        // 2. Normalisasi spasi kabel bekas: "kabel fo 1c -50m (Bekas Layak Pakai)" -> "Kabel Fo 1c - 50m (Bekas Layak Pakai)"
+        if (preg_match('/^kabel\s+fo\s+1c\s*-\s*(\d+)m\s*\(([^)]+)\)$/i', $clean, $m)) {
+            $length = (int) $m[1];
+            $tag = trim($m[2]);
+            return "Kabel Fo 1c - {$length}m ({$tag})";
+        }
+
+        // 3. Bersihkan suffix person code atau migrasi jika ada pola "-[A-Z0-9]+" atau "(migrasi)" di akhir nama
+        $stripped = preg_replace('/\s*-\s*[a-zA-Z0-9_]+$/i', '', $clean);
+        $stripped = preg_replace('/\s*\((?:migrasi|bekas|baru)\)$/i', '', $stripped);
+        $stripped = trim($stripped);
+
+        return $stripped ?: $clean;
+    }
+
+    /**
+     * Cari material berdasarkan nama (case-insensitive & trimmed), dengan pencarian kanonikal otomatis.
      */
     public static function findByName(string $name, ?int $excludeId = null): ?Material
     {
@@ -32,6 +66,7 @@ class MaterialService
             return null;
         }
 
+        // 1. Exact match (case-insensitive & trimmed)
         $query = Material::whereRaw('LOWER(TRIM(name)) = ?', [$cleanName]);
 
         if ($excludeId) {
@@ -39,7 +74,38 @@ class MaterialService
         }
 
         // Prioritaskan yang aktif, kemudian ID terkecil (canonical/awal)
-        return $query->orderByDesc('is_active')->orderBy('id', 'asc')->first();
+        $exact = $query->orderByDesc('is_active')->orderBy('id', 'asc')->first();
+        if ($exact) {
+            return $exact;
+        }
+
+        // 2. Canonical normalized match (e.g. "Kabel Frecon 100m (migrasi)", "Kabel Frecon 100m-NAY" -> "Frecon 100m")
+        $canonical = self::normalizeMaterialName($name);
+        if ($canonical !== '' && strtolower($canonical) !== $cleanName) {
+            $queryCanon = Material::whereRaw('LOWER(TRIM(name)) = ?', [strtolower($canonical)]);
+            if ($excludeId) {
+                $queryCanon->where('id', '!=', $excludeId);
+            }
+            $existingCanon = $queryCanon->orderByDesc('is_active')->orderBy('id', 'asc')->first();
+            if ($existingCanon) {
+                return $existingCanon;
+            }
+        }
+
+        // 3. Hyphen and whitespace insensitive match
+        $simplified = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $cleanName));
+        if ($simplified !== '') {
+            $querySimp = Material::whereRaw("LOWER(REPLACE(REPLACE(REPLACE(name, ' ', ''), '-', ''), '_', '')) = ?", [$simplified]);
+            if ($excludeId) {
+                $querySimp->where('id', '!=', $excludeId);
+            }
+            $existingSimp = $querySimp->orderByDesc('is_active')->orderBy('id', 'asc')->first();
+            if ($existingSimp) {
+                return $existingSimp;
+            }
+        }
+
+        return null;
     }
 
     /**

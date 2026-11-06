@@ -278,26 +278,22 @@ class WarehouseStockController extends Controller
 
                 $itemIds = \App\Models\MaterialTransactionItem::where('material_id', $id)->pluck('id');
                 if ($itemIds->isNotEmpty()) {
-                    // Cari apakah ada material aktif lain dengan nama serupa (misal duplikat / prefix TEST)
-                    $normalizedName = trim(preg_replace('/^test\s+/i', '', trim($material->name)));
-                    $replacement = Material::where('id', '!=', $material->id)
-                        ->where('id', '>', 260)
-                        ->where(function ($q) {
-                            $q->where('is_active', true)->orWhereNull('is_active');
-                        })
-                        ->whereRaw('LOWER(TRIM(name)) = ?', [strtolower($normalizedName)])
-                        ->first();
+                    // Cari apakah ada material aktif standar lain dengan nama serupa / kanonikal
+                    $replacement = \App\Services\MaterialService::findByName($material->name, $material->id);
+                    if (!$replacement) {
+                        $normalizedName = trim(preg_replace('/^test\s+/i', '', trim($material->name)));
+                        $replacement = Material::where('id', '!=', $material->id)
+                            ->where('id', '>', 260)
+                            ->where(function ($q) {
+                                $q->where('is_active', true)->orWhereNull('is_active');
+                            })
+                            ->whereRaw('LOWER(TRIM(name)) = ?', [strtolower($normalizedName)])
+                            ->first();
+                    }
 
                     if ($replacement) {
-                        // Alihkan seluruh histori transaksi ke material pengganti agar histori pemakaian TIDAK HILANG
-                        \App\Models\MaterialTransactionItem::whereIn('id', $itemIds)->update([
-                            'material_id' => $replacement->id,
-                        ]);
-                        \App\Models\Ont::where('material_id', $material->id)->update([
-                            'material_id' => $replacement->id,
-                        ]);
-                        $material->stocks()->delete();
-                        $material->delete();
+                        // Gabungkan secara menyeluruh ke material pengganti (foreign keys, stok area, ledger transaksi)
+                        \App\Services\MaterialService::mergeMaterials($replacement, $material);
                     } else {
                         // JANGAN hapus MaterialTransactionItem agar riwayat pemakaian instalasi pelanggan tidak hilang!
                         // Cukup nonaktifkan dan kosongkan stok.
