@@ -57,7 +57,7 @@ class AffiliateManagementController extends Controller
         $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
 
         // 2. Daftar Agen Afiliasi
-        $affiliatesQuery = AffiliateProfile::with(['user', 'upline'])
+        $affiliatesQuery = AffiliateProfile::with(['user', 'upline', 'eligibleCustomers.invoices'])
             ->withCount([
                 'eligibleCustomers as eligible_customers_count',
                 'downlinesLevel1 as downlines_count',
@@ -82,6 +82,24 @@ class AffiliateManagementController extends Controller
             ->paginate($perPage, ['*'], 'affiliates_page')
             ->withQueryString()
             ->through(function ($aff) {
+                $isEmployee = AffiliateService::isInternalEmployee($aff->user);
+
+                $eligible = $aff->eligibleCustomers ?? collect();
+                $paidCount = 0;
+                $unpaidCount = 0;
+                foreach ($eligible as $c) {
+                    if ($c->invoices->where('status', 'paid')->isNotEmpty()) {
+                        $paidCount++;
+                    } else {
+                        $unpaidCount++;
+                    }
+                }
+
+                $commBooking = (float) $aff->commissions()->where('type', 'booking')->whereIn('status', ['approved', 'paid', 'payroll'])->sum('amount');
+                $commMonthly = (float) $aff->commissions()->where('type', 'monthly_direct')->whereIn('status', ['approved', 'paid', 'payroll'])->sum('amount');
+                $commUpline = (float) $aff->commissions()->whereIn('type', ['upline_tier_1', 'upline_tier_2'])->whereIn('status', ['approved', 'paid', 'payroll'])->sum('amount');
+                $payrollPending = (float) $aff->commissions()->where('status', 'payroll')->sum('amount');
+
                 return [
                     'id' => $aff->id,
                     'user_id' => $aff->user_id,
@@ -94,14 +112,20 @@ class AffiliateManagementController extends Controller
                     'balance' => (float) $aff->balance,
                     'total_earned' => (float) $aff->commissions()->whereIn('status', ['approved', 'paid', 'payroll'])->sum('amount'),
                     'total_withdrawn' => (float) $aff->total_withdrawn,
-                    'total_customers' => (int) ($aff->eligible_customers_count ?? $aff->eligibleCustomers()->count()),
+                    'total_customers' => (int) ($aff->eligible_customers_count ?? $eligible->count()),
+                    'paid_customers_count' => $paidCount,
+                    'unpaid_customers_count' => $unpaidCount,
+                    'comm_booking' => $commBooking,
+                    'comm_monthly' => $commMonthly,
+                    'comm_upline' => $commUpline,
+                    'payroll_pending' => $payrollPending,
                     'total_downlines' => (int) ($aff->downlines_count ?? $aff->downlinesLevel1()->count()),
                     'bank_info' => $aff->bank_name ? "{$aff->bank_name} - {$aff->bank_account_number} ({$aff->bank_account_holder})" : '-',
                     'bank_name' => $aff->bank_name,
                     'bank_account_number' => $aff->bank_account_number,
                     'bank_account_holder' => $aff->bank_account_holder,
                     'status' => $aff->status,
-                    'is_employee' => AffiliateService::isInternalEmployee($aff->user),
+                    'is_employee' => $isEmployee,
                     'joined_at' => $aff->created_at->format('d M Y'),
                 ];
             });

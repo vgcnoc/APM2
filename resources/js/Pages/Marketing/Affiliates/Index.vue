@@ -1235,17 +1235,58 @@
                                             </button>
                                         </div>
                                     </td>
-                                    <td class="px-4 py-3 font-semibold text-slate-800">{{ a.total_customers }} Pelanggan</td>
-                                    <td class="px-4 py-3 font-semibold text-purple-600">{{ a.total_downlines }} Mitra</td>
-                                    <td v-can="'affiliate_field_balance'" class="px-4 py-3 font-extrabold text-emerald-600">
-                                        <div class="flex items-center gap-1.5">
-                                            <span>{{ formatRupiah(a.balance) }}</span>
-                                            <span v-if="a.is_employee" class="text-[9px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded tracking-wide uppercase" title="Karyawan: Komisi dicairkan terpadu melalui Slip Gaji (Payroll)">
-                                                Payroll
+                                    <!-- Kolom Pelanggan Hasil Referral -->
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <div class="font-bold text-slate-900 text-xs">
+                                            {{ a.total_customers }} Pelanggan
+                                        </div>
+                                        <div v-if="a.total_customers > 0" class="text-[10px] mt-0.5 flex items-center gap-1 font-medium">
+                                            <span v-if="a.paid_customers_count > 0" class="text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100">
+                                                ✓ {{ a.paid_customers_count }} Lunas
+                                            </span>
+                                            <span v-if="a.unpaid_customers_count > 0" class="text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100">
+                                                {{ a.unpaid_customers_count }} Blm Lunas
                                             </span>
                                         </div>
                                     </td>
-                                    <td v-can="'affiliate_field_balance'" class="px-4 py-3 font-bold text-slate-800">{{ formatRupiah(a.total_earned) }}</td>
+
+                                    <!-- Kolom Jaringan Tim -->
+                                    <td class="px-4 py-3 font-semibold text-purple-600 whitespace-nowrap">{{ a.total_downlines }} Mitra</td>
+
+                                    <!-- Kolom Saldo Aktif (Dompet vs Payroll) -->
+                                    <td v-can="'affiliate_field_balance'" class="px-4 py-3 whitespace-nowrap">
+                                        <div v-if="a.is_employee">
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="text-xs font-semibold text-slate-400">Rp 0</span>
+                                                <span class="text-[9px] font-extrabold text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded tracking-wide uppercase" title="Karyawan: Komisi dicairkan terpadu melalui Slip Gaji (Payroll)">
+                                                    Payroll
+                                                </span>
+                                            </div>
+                                            <div v-if="a.payroll_pending > 0" class="text-[10px] font-bold text-indigo-600 mt-0.5" title="Nominal komisi yang dialokasikan ke Slip Gaji">
+                                                Slip Gaji: {{ formatRupiah(a.payroll_pending) }}
+                                            </div>
+                                        </div>
+                                        <div v-else>
+                                            <div class="text-xs font-extrabold text-emerald-600">
+                                                {{ formatRupiah(a.balance) }}
+                                            </div>
+                                            <div class="text-[10px] text-slate-400 font-medium">
+                                                Dompet Siap Tarik
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    <!-- Kolom Total Komisi (Akumulasi Dihasilkan) -->
+                                    <td v-can="'affiliate_field_balance'" class="px-4 py-3 whitespace-nowrap">
+                                        <div class="font-extrabold text-xs text-slate-900">{{ formatRupiah(a.total_earned) }}</div>
+                                        <div v-if="a.total_earned > 0" class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1 flex-wrap">
+                                            <span v-if="a.comm_booking > 0" class="text-slate-600">Book: <strong>{{ formatRupiah(a.comm_booking) }}</strong></span>
+                                            <span v-if="a.comm_booking > 0 && a.comm_monthly > 0">•</span>
+                                            <span v-if="a.comm_monthly > 0" class="text-emerald-700">Pasif: <strong>{{ formatRupiah(a.comm_monthly) }}</strong></span>
+                                            <span v-if="(a.comm_booking > 0 || a.comm_monthly > 0) && a.comm_upline > 0">•</span>
+                                            <span v-if="a.comm_upline > 0" class="text-purple-700">Upline: <strong>{{ formatRupiah(a.comm_upline) }}</strong></span>
+                                        </div>
+                                    </td>
                                     <td class="px-4 py-3">
                                         <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase" :class="a.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'">
                                             {{ a.status }}
