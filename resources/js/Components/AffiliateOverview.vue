@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import { ArrowRightIcon, ArrowUpRightIcon, BanknotesIcon, ClipboardDocumentIcon, PlusIcon, ShareIcon, UserGroupIcon, UsersIcon, WalletIcon } from '@heroicons/vue/24/outline';
 
-const props = defineProps({ profile: Object, kpi: Object, settings: Object, customers: Array, isEmployee: Boolean, pendingPayroll: Number, customerShareUrl: String, affiliateShareUrl: String });
+const props = defineProps({ profile: Object, kpi: Object, settings: Object, customers: Array, isEmployee: Boolean, pendingPayroll: Number, customerShareUrl: String, affiliateShareUrl: String, payoutInfo: Object });
 defineEmits(['copy', 'withdraw']);
 const currency = value => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value || 0);
 const stats = computed(() => [
@@ -43,8 +43,22 @@ const latestCustomers = computed(() => (props.customers || []).slice(0, 5));
                 <p>{{ isEmployee ? 'Estimasi insentif yang akan disalurkan melalui slip gaji.' : 'Saldo komisi tersedia. Pencairan mengikuti jadwal dan ketentuan.' }}</p>
                 <div class="balance-divider"></div>
                 <div class="balance-secondary"><span>{{ isEmployee ? 'Penyaluran insentif' : 'Total sudah dicairkan' }}</span><strong>{{ isEmployee ? 'Slip gaji / payroll' : currency(profile.total_withdrawn) }}</strong></div>
+                <div v-if="!isEmployee && payoutInfo?.has_unpaid_customers" class="mb-3 px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-[10px] font-bold flex items-center justify-between">
+                    <span>🔒 Pencairan Terkunci</span>
+                    <span>{{ payoutInfo.unpaid_customers_count }} tagihan belum bayar</span>
+                </div>
                 <Link v-if="isEmployee" href="/affiliate/dashboard?tab=commissions" class="sales-primary-action">Lihat histori insentif <ArrowRightIcon /></Link>
-                <button v-else type="button" class="sales-primary-action" @click="$emit('withdraw')">Ajukan pencairan <ArrowUpRightIcon /></button>
+                <button v-else type="button" class="sales-primary-action" :class="{ 'opacity-85': payoutInfo?.has_unpaid_customers }" @click="$emit('withdraw')">
+                    <template v-if="payoutInfo?.has_unpaid_customers">
+                        <span>Terkunci (Ada Tagihan) 🔒</span>
+                    </template>
+                    <template v-else-if="!payoutInfo?.is_payout_open">
+                        <span>Buka Tgl {{ payoutInfo?.payout_day || 15 }} 📅</span>
+                    </template>
+                    <template v-else>
+                        <span>Ajukan pencairan</span> <ArrowUpRightIcon />
+                    </template>
+                </button>
             </section>
         </div>
 
@@ -99,7 +113,7 @@ const latestCustomers = computed(() => (props.customers || []).slice(0, 5));
 .balance-amount { font-size: clamp(22px, 2.1vw, 30px); letter-spacing: -.04em; font-weight: 650; margin: 19px 0 10px; line-height: 1.2; color: var(--sales-text); overflow-wrap: anywhere; }
 .sales-balance-card > p { color: var(--sales-muted); font-size: 11px; line-height: 1.8; max-width: 270px; }
 .balance-divider { height: 1px; background: var(--sales-line); margin: 21px 0 15px; }
-.balance-secondary { display: flex; justify-content: space-between; gap: 12px; align-items: center; font-size: 9px; margin-bottom: 22px; color: var(--sales-muted); }
+.balance-secondary { display: flex; justify-content: space-between; gap: 12px; align-items: center; font-size: 9px; margin-bottom: 12px; color: var(--sales-muted); }
 .balance-secondary strong { font-weight: 550; color: var(--sales-text); }
 .sales-balance-card > .sales-primary-action { margin-top: auto; width: 100%; }
 .sales-stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
@@ -148,32 +162,4 @@ html.dark .state-pending { color: #dbc393; }
 .sales-share-rewards strong { color: var(--sales-text); font-weight: 550; margin-left: 5px; }
 .sales-share-actions { display: grid; gap: 7px; margin-top: 4px; }
 .sales-share-actions :is(a, button) { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 12px; border: 1px solid var(--sales-line); border-radius: 8px; color: var(--sales-text); font-size: 10px; text-align: left; }
-.sales-share-actions :is(a, button):hover { background: var(--sales-subtle); }
-.sales-share-actions svg { width: 13px; height: 13px; color: var(--sales-muted); }
-.sales-team-link { display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--sales-accent); font-size: 10px; margin-top: 18px; padding: 6px; }
-.sales-team-link svg { width: 13px; height: 13px; }
-@media (max-width: 1250px) { .sales-welcome-grid, .sales-overview-lower { grid-template-columns: 1.2fr 1fr; } .sales-metric-card { padding: 17px; } }
-@media (max-width: 1150px) and (min-width: 1024px), (max-width: 760px) {
-    .sales-welcome-grid, .sales-overview-lower { grid-template-columns: 1fr; }
-    .sales-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .balance-amount { font-size: 30px; }
-}
-@media (max-width: 600px) {
-    .sales-overview { gap: 20px; }
-    .sales-intro { align-items: flex-start; flex-direction: column; gap: 14px; }
-    .sales-intro h1 { font-size: 23px; }
-    .sales-intro div > p:last-child { font-size: 11px; }
-    .sales-referral-hero { padding: 24px; }
-    .sales-referral-hero h2 { font-size: 26px; }
-    .sales-referral-code { gap: 10px; }
-    .sales-referral-code code { font-size: 15px; }
-    .sales-balance-card, .sales-section-card { padding: 22px; }
-    .sales-stats-grid { gap: 12px; }
-    .sales-metric-card { padding: 16px 14px; }
-    .metric-heading { font-size: 9px; gap: 8px; }
-    .metric-heading svg { width: 15px; height: 15px; }
-    .sales-metric-card > strong { font-size: 19px; }
-    .sales-metric-card > p { font-size: 8px; }
-    .sales-commission-breakdown strong { font-size: 12px; }
-}
 </style>

@@ -352,13 +352,21 @@ class AffiliateService
      */
     public static function handleEarlyTerminationPenalty(Customer $customer, ?string $cancelDate = null): ?array
     {
-        if (!self::isOperationalFeeEligible($customer)) {
+        $hasBookingOrSurveyComm = AffiliateCommission::where('customer_id', $customer->id)
+            ->whereIn('type', ['booking', 'survey'])
+            ->exists();
+
+        if (!self::isOperationalFeeEligible($customer) && !$hasBookingOrSurveyComm) {
             return null;
         }
         // 1. Hitung masa aktif pelanggan
         $startDate = $customer->activation_date 
             ? \Carbon\Carbon::parse($customer->activation_date) 
-            : ($customer->registration_date ? \Carbon\Carbon::parse($customer->registration_date) : $customer->created_at);
+            : ($customer->registration_date ? \Carbon\Carbon::parse($customer->registration_date) : ($customer->created_at ? \Carbon\Carbon::parse($customer->created_at) : null));
+
+        if (!$startDate) {
+            return null;
+        }
 
         $endDate = $cancelDate ? \Carbon\Carbon::parse($cancelDate) : now();
 

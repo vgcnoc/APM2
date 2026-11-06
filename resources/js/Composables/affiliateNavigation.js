@@ -3,9 +3,11 @@ export const affiliateSections = [
     { id: 'booking', label: 'Booking Baru', group: 'workspace', icon: 'booking' },
     { id: 'customers', label: 'Pelanggan Saya', group: 'workspace', icon: 'customers' },
     { id: 'downlines', label: 'Afiliasi & Downline', group: 'workspace', icon: 'downlines' },
+    { id: 'clawback', label: 'Pelanggan Berhenti (< 4 Bln)', group: 'workspace', icon: 'clawback' },
     { id: 'commissions', label: 'Riwayat Komisi', group: 'finance', icon: 'commissions' },
     { id: 'withdrawals', label: 'Pencairan Dana', group: 'finance', icon: 'withdrawals' },
     { id: 'bank', label: 'Rekening & E-Wallet', group: 'finance', icon: 'bank' },
+    { id: 'guide', label: 'Panduan & Ketentuan', group: 'info', icon: 'guide' },
 ];
 
 export function affiliateHref(section) {

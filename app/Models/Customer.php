@@ -736,6 +736,17 @@ class Customer extends Model
                     \Illuminate\Support\Facades\Log::warning('[Customer::updated] Radius sync error: ' . $e->getMessage());
                 }
             }
+
+            // 6. Otomatis Pinalti Stop Dini (< 4 Bulan) jika status menjadi terminated / canceled atau service_status berhenti
+            if (($customer->wasChanged('status') && in_array($customer->status, ['terminated', 'canceled'])) ||
+                ($customer->wasChanged('service_status') && $customer->service_status === 'berhenti')) {
+                try {
+                    $cancelDate = $customer->cancel_date ? $customer->cancel_date->toDateString() : now()->toDateString();
+                    \App\Services\AffiliateService::handleEarlyTerminationPenalty($customer, $cancelDate);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[Customer::updated] Early termination penalty error: ' . $e->getMessage());
+                }
+            }
         });
 
         static::deleting(function (Customer $customer) {

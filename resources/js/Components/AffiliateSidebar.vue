@@ -1,7 +1,20 @@
 <script setup>
 import { computed } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
-import { ArrowRightOnRectangleIcon, BanknotesIcon, BuildingLibraryIcon, ChartBarSquareIcon, ChevronRightIcon, ClipboardDocumentListIcon, PlusCircleIcon, ShieldCheckIcon, UserGroupIcon, UsersIcon } from '@heroicons/vue/24/outline';
+import { 
+    ArrowRightOnRectangleIcon, 
+    BanknotesIcon, 
+    BookOpenIcon,
+    BuildingLibraryIcon, 
+    ChartBarSquareIcon, 
+    ChevronRightIcon, 
+    ClipboardDocumentListIcon, 
+    ExclamationTriangleIcon,
+    PlusCircleIcon, 
+    ShieldCheckIcon, 
+    UserGroupIcon, 
+    UsersIcon 
+} from '@heroicons/vue/24/outline';
 import AppLogo from '@/Components/AppLogo.vue';
 import { useTheme } from '@/Composables/useTheme';
 import { affiliateSections, affiliateHref } from '@/Composables/affiliateNavigation';
@@ -12,7 +25,17 @@ const page = usePage();
 const { isDarkMode } = useTheme();
 const user = computed(() => page.props.auth?.user || {});
 const initials = computed(() => (user.value.name || 'Sales').trim().split(/\s+/).slice(0, 2).map(name => name[0]).join('').toUpperCase());
-const icons = { overview: ChartBarSquareIcon, booking: PlusCircleIcon, customers: UsersIcon, downlines: UserGroupIcon, commissions: ClipboardDocumentListIcon, withdrawals: BanknotesIcon, bank: BuildingLibraryIcon };
+const icons = { 
+    overview: ChartBarSquareIcon, 
+    booking: PlusCircleIcon, 
+    customers: UsersIcon, 
+    downlines: UserGroupIcon, 
+    clawback: ExclamationTriangleIcon,
+    commissions: ClipboardDocumentListIcon, 
+    withdrawals: BanknotesIcon, 
+    bank: BuildingLibraryIcon,
+    guide: BookOpenIcon,
+};
 </script>
 
 <template>
@@ -20,7 +43,11 @@ const icons = { overview: ChartBarSquareIcon, booking: PlusCircleIcon, customers
         <div class="sales-brand"><AppLogo context="navbar" :white="isDarkMode" /><span>SALES &amp; AFFILIATE</span></div>
         <div class="sales-workspace-label"><span class="workspace-dot"></span> Ruang kerja pribadi</div>
         <nav aria-label="Menu Sales Afiliasi" class="sales-navigation">
-            <div v-for="group in [{ id: 'workspace', label: 'WORKSPACE' }, { id: 'finance', label: 'KEUANGAN' }]" :key="group.id" class="sales-nav-group">
+            <div v-for="group in [
+                { id: 'workspace', label: 'WORKSPACE' }, 
+                { id: 'finance', label: 'KEUANGAN' },
+                { id: 'info', label: 'PANDUAN & SOP' }
+            ]" :key="group.id" class="sales-nav-group">
                 <p>{{ group.label }}</p>
                 <Link v-for="item in affiliateSections.filter(item => item.group === group.id)" :key="item.id"
                     :href="affiliateHref(item.id)" :aria-current="section === item.id ? 'page' : undefined"

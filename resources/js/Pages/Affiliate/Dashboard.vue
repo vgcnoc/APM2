@@ -3,9 +3,14 @@
         <div class="sales-dashboard">
             <p v-if="copyMessage" role="status" class="sales-copy-message">{{ copyMessage }}</p>
             <AffiliateOverview v-if="activeTab === 'overview'" :profile="profile" :kpi="kpi" :settings="settings" :customers="customers"
-                :is-employee="is_employee" :pending-payroll="pending_payroll_incentives" :customer-share-url="generateWaCustomerShareUrl()" :affiliate-share-url="generateWaAffiliateShareUrl()"
+                :is-employee="is_employee" :pending-payroll="pending_payroll_incentives" :payout-info="payout_info"
+                :customer-share-url="generateWaCustomerShareUrl()" :affiliate-share-url="generateWaAffiliateShareUrl()"
                 @copy="copyToClipboard" @withdraw="openWithdrawModal" />
-            <div v-else class="sales-detail-intro"><p>RUANG KERJA PRIBADI</p><h1>{{ currentSection.label }}</h1><span>{{ sectionDescriptions[activeTab] }}</span></div>
+            <div v-else class="sales-detail-intro">
+                <p>RUANG KERJA PRIBADI</p>
+                <h1>{{ currentSection.label }}</h1>
+                <span>{{ sectionDescriptions[activeTab] }}</span>
+            </div>
 
             <!-- Notice & Alert: Jadwal Pencairan per Tanggal 15 & Pelanggan Belum Bayar (Khusus Mitra Luar) -->
             <div v-if="!is_employee && ['overview', 'withdrawals'].includes(activeTab)" class="mb-8 space-y-4">
@@ -101,9 +106,11 @@
 
             <div v-if="activeTab !== 'overview'" class="sales-detail bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden mb-8">
 
-                <!-- Tab Content: Pelanggan Saya -->
+                <!-- ═══════════════════════════════════════════════════════════ -->
+                <!-- Tab Content: Pelanggan Saya (Dengan Sub-Tab Pemisah)      -->
+                <!-- ═══════════════════════════════════════════════════════════ -->
                 <div v-if="activeTab === 'customers'" class="p-6">
-                    <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
                         <div>
                             <h4 class="text-xs font-bold uppercase tracking-wider text-slate-800">Daftar Pelanggan Internet Binaan Anda</h4>
                             <p class="text-xs text-slate-500">Pelanggan yang Anda daftarkan langsung secara resmi.</p>
@@ -117,39 +124,153 @@
                         </a>
                     </div>
 
-                    <div v-if="customers.length > 0" class="overflow-x-auto">
+                    <!-- Sub-tabs Pemisah: Semua Pelanggan | Sudah Bayar | Belum Bayar -->
+                    <div class="flex items-center gap-2 mb-5 p-1.5 bg-slate-100 rounded-2xl w-fit">
+                        <button
+                            type="button"
+                            @click="customerSubTab = 'all'"
+                            class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2"
+                            :class="customerSubTab === 'all' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
+                        >
+                            <span>Semua Pelanggan</span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold" :class="customerSubTab === 'all' ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-200 text-slate-700'">
+                                {{ customers.length }}
+                            </span>
+                        </button>
+
+                        <button
+                            type="button"
+                            @click="customerSubTab = 'paid'"
+                            class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2"
+                            :class="customerSubTab === 'paid' ? 'bg-white text-emerald-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
+                        >
+                            <span>✓ Sudah Bayar (Lunas)</span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold" :class="customerSubTab === 'paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'">
+                                {{ paidCustomers.length }}
+                            </span>
+                        </button>
+
+                        <button
+                            type="button"
+                            @click="customerSubTab = 'unpaid'"
+                            class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2"
+                            :class="customerSubTab === 'unpaid' ? 'bg-white text-rose-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
+                        >
+                            <span>⚠️ Belum Bayar (Menunggak)</span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold" :class="customerSubTab === 'unpaid' ? 'bg-rose-100 text-rose-800' : 'bg-rose-100/70 text-rose-700'">
+                                {{ unpaidCustomers.length }}
+                            </span>
+                        </button>
+                    </div>
+
+                    <!-- Peringatan jika memilih Sub-tab Belum Bayar -->
+                    <div v-if="customerSubTab === 'unpaid' && unpaidCustomers.length > 0" class="p-4 bg-rose-50 border border-rose-200 rounded-2xl mb-4 text-xs text-rose-900 space-y-1 leading-relaxed">
+                        <div class="flex items-center gap-1.5 font-bold text-rose-900">
+                            <span>🔒</span>
+                            <span>Pencairan Dana Ditangguhkan Sementara</span>
+                        </div>
+                        <p>
+                            Pelanggan di bawah ini belum melunasi tagihannya. Sesuai kebijakan SOP Kemitraan, pencairan saldo komisi terkunci hingga tagihan di bawah ini lunas.
+                            Gunakan tombol <strong>"Bantu Tagih via WA"</strong> untuk mengingatkan pelanggan secara sopan agar fee komisi Anda dapat segera dicairkan.
+                        </p>
+                    </div>
+
+                    <!-- State jika tidak ada pelanggan belum bayar -->
+                    <div v-if="customerSubTab === 'unpaid' && unpaidCustomers.length === 0" class="p-8 text-center bg-emerald-50/60 rounded-2xl border border-emerald-100 my-4 space-y-2">
+                        <span class="text-3xl block">🎉</span>
+                        <h4 class="text-sm font-bold text-emerald-950">Seluruh Pelanggan Telah Lunas!</h4>
+                        <p class="text-xs text-emerald-800 max-w-md mx-auto">
+                            Luar biasa! Tidak ada pelanggan binaan Anda yang menunggak tagihan saat ini. Seluruh hak pencairan komisi Anda terbuka tanpa halangan.
+                        </p>
+                    </div>
+
+                    <!-- State jika tidak ada pelanggan di subtab paid -->
+                    <div v-else-if="customerSubTab === 'paid' && paidCustomers.length === 0" class="p-8 text-center bg-slate-50 rounded-2xl border border-slate-100 my-4 space-y-2">
+                        <span class="text-3xl block">⏳</span>
+                        <h4 class="text-sm font-bold text-slate-800">Belum Ada Pelanggan Lunas</h4>
+                        <p class="text-xs text-slate-500 max-w-md mx-auto">
+                            Pelanggan aktif yang telah melunasi invoice akan otomatis tercantum pada daftar ini.
+                        </p>
+                    </div>
+
+                    <!-- Tabel Pelanggan Sesuai Filter Sub-tab -->
+                    <div v-else-if="filteredCustomers.length > 0" class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-slate-100 text-xs">
                             <thead class="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider text-left">
                                 <tr>
                                     <th class="px-4 py-3">ID Pelanggan</th>
                                     <th class="px-4 py-3">Nama Pelanggan</th>
                                     <th class="px-4 py-3">Paket Layanan</th>
-                                    <th class="px-4 py-3">Tanggal Daftar</th>
-                                    <th class="px-4 py-3">Status</th>
-                                    <th class="px-4 py-3 text-right">Total Komisi Dihasilkan</th>
+                                    <th v-if="customerSubTab === 'unpaid'" class="px-4 py-3">Periode Tagihan</th>
+                                    <th v-else class="px-4 py-3">Tanggal Daftar</th>
+                                    <th class="px-4 py-3">Status Tagihan</th>
+                                    <th class="px-4 py-3 text-right">
+                                        {{ customerSubTab === 'unpaid' ? 'Tagihan Tertunggak' : 'Total Komisi' }}
+                                    </th>
+                                    <th v-if="customerSubTab === 'unpaid'" class="px-4 py-3 text-center">Tindakan</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100">
-                                <tr v-for="c in customers" :key="c.id" class="hover:bg-slate-50/60 transition-colors">
+                                <tr v-for="c in filteredCustomers" :key="c.id" class="hover:bg-slate-50/60 transition-colors">
                                     <td class="px-4 py-3 font-mono font-bold text-indigo-600">{{ c.customer_code }}</td>
-                                    <td class="px-4 py-3 font-semibold text-slate-800">{{ c.name }}</td>
+                                    <td class="px-4 py-3">
+                                        <div class="font-semibold text-slate-800">{{ c.name }}</div>
+                                        <div class="text-[10px] text-slate-500">{{ c.phone }}</div>
+                                    </td>
                                     <td class="px-4 py-3 text-slate-600">{{ c.package_name }}</td>
-                                    <td class="px-4 py-3 text-slate-500">{{ c.registration_date }}</td>
+                                    <td v-if="customerSubTab === 'unpaid'" class="px-4 py-3">
+                                        <div class="font-bold text-slate-800">{{ c.unpaid_period }}</div>
+                                        <div class="text-[10px] text-rose-600 font-medium">Jatuh Tempo: {{ c.unpaid_due_date }}</div>
+                                    </td>
+                                    <td v-else class="px-4 py-3 text-slate-500">{{ c.registration_date }}</td>
                                     <td class="px-4 py-3">
                                         <div class="flex items-center gap-1.5 flex-wrap">
-                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold capitalize" :class="c.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'">
+                                            <!-- Status Tagihan -->
+                                            <span
+                                                v-if="c.has_unpaid_invoice"
+                                                class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-200"
+                                            >
+                                                ⚠️ Belum Bayar
+                                            </span>
+                                            <span
+                                                v-else-if="c.status === 'active'"
+                                                class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800"
+                                            >
+                                                ✓ Lunas
+                                            </span>
+                                            <span
+                                                v-else
+                                                class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 capitalize"
+                                            >
                                                 {{ c.status }}
                                             </span>
+
                                             <span v-if="c.is_migrated" class="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[9px] font-semibold border border-indigo-200">
                                                 Migrasi
                                             </span>
                                         </div>
                                     </td>
                                     <td class="px-4 py-3 text-right">
-                                        <div class="font-bold text-emerald-600">{{ formatRupiah(c.total_commission) }}</div>
-                                        <div v-if="c.status === 'active'" class="text-[10px] text-slate-400 font-medium">
-                                            +{{ formatRupiah(settings.affiliate_commission_monthly) }}/bln
+                                        <div v-if="customerSubTab === 'unpaid'" class="font-extrabold text-rose-600 text-sm">
+                                            {{ formatRupiah(c.unpaid_amount) }}
                                         </div>
+                                        <div v-else>
+                                            <div class="font-bold text-emerald-600">{{ formatRupiah(c.total_commission) }}</div>
+                                            <div v-if="c.status === 'active' && !c.has_unpaid_invoice" class="text-[10px] text-slate-400 font-medium">
+                                                +{{ formatRupiah(settings.affiliate_commission_monthly) }}/bln
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td v-if="customerSubTab === 'unpaid'" class="px-4 py-3 text-center">
+                                        <a
+                                            v-if="c.wa_reminder_url"
+                                            :href="c.wa_reminder_url"
+                                            target="_blank"
+                                            class="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
+                                        >
+                                            <span>💬 Bantu Tagih</span>
+                                        </a>
+                                        <span v-else class="text-slate-400 text-xs">-</span>
                                     </td>
                                 </tr>
                             </tbody>
@@ -173,7 +294,9 @@
                     </div>
                 </div>
 
-                <!-- Tab Content: Jaringan & Tim Downline -->
+                <!-- ═══════════════════════════════════════════════════════════ -->
+                <!-- Tab Content: Jaringan & Tim Downline                      -->
+                <!-- ═══════════════════════════════════════════════════════════ -->
                 <div v-if="activeTab === 'downlines'" class="p-6 space-y-6">
                     <div class="p-4 rounded-2xl border border-indigo-100 bg-indigo-50 flex flex-wrap items-center justify-between gap-3">
                         <div>
@@ -184,6 +307,7 @@
                         <button type="button" @click="copyToClipboard(profile.referral_code)" class="px-3 py-2 bg-white border border-indigo-200 rounded-xl text-xs font-semibold text-indigo-700">Salin Nomor</button>
                         <p class="w-full text-xs text-slate-600">Daftar ini hanya menampilkan afiliasi Anda serta downline tingkat 1 dan 2 yang terhubung dengan Anda.</p>
                     </div>
+
                     <!-- Visual Multi-Tier Diagram Banner -->
                     <div class="bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 p-6 rounded-3xl text-white shadow-md relative overflow-hidden border border-indigo-500/20">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
@@ -395,7 +519,122 @@
                     </div>
                 </div>
 
-                <!-- Tab Content: Riwayat Komisi -->
+                <!-- ═══════════════════════════════════════════════════════════ -->
+                <!-- Tab Content: Pelanggan Berhenti < 4 Bulan (Clawback)       -->
+                <!-- ═══════════════════════════════════════════════════════════ -->
+                <div v-if="activeTab === 'clawback'" class="p-6 space-y-6">
+                    <!-- Policy Warning Banner -->
+                    <div class="p-5 sm:p-6 bg-rose-50/90 border-2 border-rose-200 rounded-3xl space-y-3">
+                        <div class="flex items-start gap-3.5">
+                            <div class="w-10 h-10 rounded-2xl bg-rose-100 border border-rose-200 text-rose-600 flex items-center justify-center text-lg shrink-0 mt-0.5">
+                                ✂️
+                            </div>
+                            <div class="space-y-1">
+                                <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-900 text-[10px] font-extrabold uppercase tracking-wider border border-rose-200">
+                                    <span>Ketentuan SOP Kemitraan</span>
+                                    <span>&bull;</span>
+                                    <span>Kontrak Minimal 4 Bulan</span>
+                                </div>
+                                <h3 class="text-sm sm:text-base font-black text-rose-950">
+                                    Penarikan Kembali Komisi (Pelanggan Berhenti Sebelum Masa Aktif 4 Bulan)
+                                </h3>
+                                <p class="text-xs text-rose-800 leading-relaxed">
+                                    Setiap pelanggan baru memiliki batas komitmen berlangganan minimal <strong>4 bulan</strong>. Apabila pelanggan yang Anda daftarkan berhenti berlangganan (status <em>terminated</em> atau <em>dibatalkan</em>) sebelum genap 4 bulan, maka komisi booking (Rp 35.000) dan fee survey (Rp 15.000) yang sebelumnya telah dialokasikan <strong>ditarik kembali seutuhnya oleh perusahaan</strong>.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- 3 Stat Cards Summary -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                            <div class="bg-white/90 p-4 rounded-2xl border border-rose-200">
+                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Pelanggan Berhenti &lt; 4 Bln</span>
+                                <span class="text-xl font-black text-rose-700 block mt-1">
+                                    {{ total_clawback_count || clawbacks.length }} Pelanggan
+                                </span>
+                            </div>
+                            <div class="bg-white/90 p-4 rounded-2xl border border-rose-200">
+                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Total Komisi Ditarik Kembali</span>
+                                <span class="text-xl font-black text-rose-700 block mt-1">
+                                    -{{ formatRupiah(total_clawback_amount || 0) }}
+                                </span>
+                            </div>
+                            <div class="bg-white/90 p-4 rounded-2xl border border-rose-200">
+                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Saluran Penarikan</span>
+                                <span class="text-xs font-bold text-slate-800 block mt-1">
+                                    {{ is_employee ? 'Slip Gaji (Potongan Payroll)' : 'Saldo Dompet Afiliasi' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabel Pelanggan Berhenti < 4 Bulan -->
+                    <div v-if="clawbacks && clawbacks.length > 0" class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-slate-100 text-xs">
+                            <thead class="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider text-left">
+                                <tr>
+                                    <th class="px-4 py-3">ID & Nama Pelanggan</th>
+                                    <th class="px-4 py-3">Paket</th>
+                                    <th class="px-4 py-3">Aktivasi & Berhenti</th>
+                                    <th class="px-4 py-3">Masa Aktif</th>
+                                    <th class="px-4 py-3">Alasan Berhenti</th>
+                                    <th class="px-4 py-3 text-right">Komisi Ditarik</th>
+                                    <th class="px-4 py-3 text-center">Saluran Potong</th>
+                                    <th class="px-4 py-3 text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr v-for="c in clawbacks" :key="c.id" class="hover:bg-rose-50/20 transition-colors">
+                                    <td class="px-4 py-3">
+                                        <div class="font-extrabold text-slate-900">{{ c.name }}</div>
+                                        <div class="text-[10px] font-mono text-indigo-600">{{ c.customer_code }}</div>
+                                    </td>
+                                    <td class="px-4 py-3 text-slate-600">{{ c.package_name }}</td>
+                                    <td class="px-4 py-3 text-slate-600">
+                                        <div><span class="text-slate-400">Aktif:</span> {{ c.activation_date }}</div>
+                                        <div class="text-rose-600 font-medium"><span class="text-slate-400">Stop:</span> {{ c.cancel_date }}</div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-200">
+                                            ⏱️ {{ c.active_duration }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-slate-600 max-w-xs truncate" :title="c.cancel_reason">
+                                        {{ c.cancel_reason }}
+                                    </td>
+                                    <td class="px-4 py-3 text-right font-black text-rose-600 text-sm whitespace-nowrap">
+                                        -{{ formatRupiah(c.clawback_amount) }}
+                                    </td>
+                                    <td class="px-4 py-3 text-center">
+                                        <span
+                                            class="text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap"
+                                            :class="is_employee ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-rose-50 text-rose-700 border-rose-200'"
+                                        >
+                                            {{ c.channel }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-center">
+                                        <span class="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200 uppercase tracking-wider">
+                                            {{ c.status }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div v-else class="text-center py-14 bg-emerald-50/50 rounded-3xl border border-emerald-100 space-y-3">
+                        <span class="text-5xl block">🎉</span>
+                        <div>
+                            <h4 class="text-base font-bold text-emerald-950">Bagus Sekali! Belum Ada Pelanggan Berhenti Sebelum 4 Bulan</h4>
+                            <p class="text-xs text-emerald-800 mt-1 max-w-lg mx-auto">
+                                Semua pelanggan yang Anda daftarkan tetap aktif berlangganan atau telah melewati batas minimum kontrak 4 bulan. Seluruh komisi booking Anda aman seutuhnya!
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ═══════════════════════════════════════════════════════════ -->
+                <!-- Tab Content: Riwayat Komisi                                -->
+                <!-- ═══════════════════════════════════════════════════════════ -->
                 <div v-if="activeTab === 'commissions'" class="p-6">
                     <div v-if="commissions.data && commissions.data.length > 0" class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-slate-100 text-xs">
@@ -466,19 +705,46 @@
                     </div>
                 </div>
 
-                <!-- Tab Content: Pencairan Dana (Withdrawals) -->
+                <!-- ═══════════════════════════════════════════════════════════ -->
+                <!-- Tab Content: Pencairan Dana (Withdrawals)                  -->
+                <!-- ═══════════════════════════════════════════════════════════ -->
                 <div v-if="activeTab === 'withdrawals'" class="p-6">
-                    <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
                         <div>
                             <h4 class="text-xs font-bold uppercase tracking-wider text-slate-800">Riwayat Penarikan Dana</h4>
                             <p class="text-xs text-slate-500">Pencairan diproses langsung ke rekening bank / e-wallet Anda.</p>
                         </div>
-                        <button v-if="!is_employee"
+                        <div v-if="!is_employee">
+                            <button
+                                type="button"
+                                @click="openWithdrawModal"
+                                :disabled="payout_info?.has_unpaid_customers || !payout_info?.is_payout_open || profile.balance < settings.affiliate_min_withdraw"
+                                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                            >
+                                <span v-if="payout_info?.has_unpaid_customers">🔒 Pencairan Terkunci</span>
+                                <span v-else-if="!payout_info?.is_payout_open">📅 Buka Tgl {{ payout_info?.payout_day || 15 }}</span>
+                                <span v-else>+ Ajukan Penarikan Baru</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Notice Lock Jika Ada Pelanggan Belum Bayar -->
+                    <div v-if="!is_employee && payout_info?.has_unpaid_customers" class="p-4 bg-rose-50 border border-rose-200 rounded-2xl mb-4 text-xs text-rose-900 flex items-start justify-between gap-3 flex-wrap">
+                        <div class="space-y-0.5">
+                            <strong class="font-bold text-rose-950 flex items-center gap-1.5">
+                                <span>🔒</span> Fitur Penarikan Saldo Terkunci
+                            </strong>
+                            <p class="text-rose-800">
+                                Anda memiliki <b>{{ payout_info.unpaid_customers_count }} pelanggan booking</b> yang belum melunasi tagihannya (Total: {{ formatRupiah(payout_info.total_unpaid_amount) }}).
+                                Pelanggan wajib lunas terlebih dahulu sebelum pencairan dana dibuka.
+                            </p>
+                        </div>
+                        <button
                             type="button"
-                            @click="openWithdrawModal"
-                            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
+                            @click="customerSubTab = 'unpaid'; $inertia.visit('/affiliate/dashboard?tab=customers')"
+                            class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl transition-colors shrink-0"
                         >
-                            + Ajukan Penarikan Baru
+                            Bantu Tagih Pelanggan &rarr;
                         </button>
                     </div>
 
@@ -525,11 +791,13 @@
                     <div v-else class="text-center py-12 text-slate-400">
                         <span class="text-4xl block mb-2">💸</span>
                         <p class="font-medium text-slate-700">Belum Ada Pengajuan Penarikan</p>
-                            <p class="text-xs text-slate-400 mt-1">{{ is_employee ? 'Insentif karyawan disalurkan melalui slip gaji.' : 'Pengajuan mengikuti jadwal pencairan dan ketentuan saldo minimum.' }}</p>
+                        <p class="text-xs text-slate-400 mt-1">{{ is_employee ? 'Insentif karyawan disalurkan melalui slip gaji.' : 'Pengajuan mengikuti jadwal pencairan dan ketentuan saldo minimum.' }}</p>
                     </div>
                 </div>
 
-                <!-- Tab Content: Rekening Bank / E-Wallet -->
+                <!-- ═══════════════════════════════════════════════════════════ -->
+                <!-- Tab Content: Rekening Bank / E-Wallet                     -->
+                <!-- ═══════════════════════════════════════════════════════════ -->
                 <div v-if="activeTab === 'bank'" class="p-6 max-w-lg">
                     <div v-if="Object.keys(bankForm.errors).length" role="alert" class="sales-form-errors"><p v-for="(error, key) in bankForm.errors" :key="key">{{ error }}</p></div>
                     <form @submit.prevent="submitBankUpdate" class="space-y-4">
@@ -596,6 +864,157 @@
                         </div>
                     </form>
                 </div>
+
+                <!-- ═══════════════════════════════════════════════════════════ -->
+                <!-- Tab Content: Panduan Lengkap & Ketentuan Resmi             -->
+                <!-- ═══════════════════════════════════════════════════════════ -->
+                <div v-if="activeTab === 'guide'" class="p-6 space-y-6">
+                    <!-- Header Banner -->
+                    <div class="bg-gradient-to-br from-indigo-950 via-slate-900 to-blue-950 p-6 sm:p-7 rounded-3xl text-white shadow-md border border-indigo-500/20">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="px-2.5 py-0.5 rounded-full bg-indigo-500/30 text-indigo-200 text-[10px] font-extrabold uppercase tracking-wider border border-indigo-400/30">
+                                📖 Panduan Resmi Kemitraan
+                            </span>
+                        </div>
+                        <h2 class="text-xl sm:text-2xl font-black text-white">
+                            Panduan Lengkap Sales & Afiliasi ISP
+                        </h2>
+                        <p class="text-xs sm:text-sm text-indigo-200/90 mt-1 max-w-2xl leading-relaxed">
+                            Pelajari seluruh alur kemitraan dari input booking calon pelanggan, syarat perolehan komisi, ketentuan wajib lunas tagihan, pinalti stop dini &lt; 4 bulan, hingga tata cara pencairan dana ke rekening Anda.
+                        </p>
+                    </div>
+
+                    <!-- Step Cards Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Step 1: Struktur Komisi -->
+                        <div class="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-3">
+                            <div class="flex items-center gap-2 text-indigo-700 font-bold text-xs uppercase tracking-wider">
+                                <span class="w-6 h-6 rounded-lg bg-indigo-100 flex items-center justify-center text-xs">1</span>
+                                <span>Struktur Komisi &amp; Tarif Resmi</span>
+                            </div>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                Setiap transaksi pelanggan baru maupun perpanjangan tagihan bulanan memberikan hak komisi bagi Anda:
+                            </p>
+                            <ul class="text-xs space-y-2 text-slate-700">
+                                <li class="flex items-start gap-2">
+                                    <span class="text-emerald-600 font-bold">🎯</span>
+                                    <div>
+                                        <strong>Fee Booking: {{ formatRupiah(settings.affiliate_commission_booking) }}</strong>
+                                        <p class="text-[11px] text-slate-500">Diberikan 1x untuk setiap pelanggan baru yang berhasil aktif (Aktivasi mulai Oktober 2026).</p>
+                                    </div>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span class="text-blue-600 font-bold">💰</span>
+                                    <div>
+                                        <strong>Pasif Bulanan Direct: {{ formatRupiah(settings.affiliate_commission_monthly) }} / bln</strong>
+                                        <p class="text-[11px] text-slate-500">Mengalir setiap bulan selama pelanggan Anda tetap aktif dan melunasi invoice tagihan.</p>
+                                    </div>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span class="text-purple-600 font-bold">🚀</span>
+                                    <div>
+                                        <strong>Pasif Downline L1: {{ formatRupiah(settings.affiliate_commission_upline_1) }} / bln</strong>
+                                        <p class="text-[11px] text-slate-500">Dari setiap pelanggan aktif milik mitra binaan langsung yang Anda sponsori.</p>
+                                    </div>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <span class="text-amber-600 font-bold">🌟</span>
+                                    <div>
+                                        <strong>Pasif Downline L2: {{ formatRupiah(settings.affiliate_commission_upline_2) }} / bln</strong>
+                                        <p class="text-[11px] text-slate-500">Dari setiap pelanggan aktif milik mitra tingkat kedua.</p>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- Step 2: Alur Booking Sampai Aktivasi -->
+                        <div class="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-3">
+                            <div class="flex items-center gap-2 text-indigo-700 font-bold text-xs uppercase tracking-wider">
+                                <span class="w-6 h-6 rounded-lg bg-indigo-100 flex items-center justify-center text-xs">2</span>
+                                <span>Alur Booking Sampai Aktivasi</span>
+                            </div>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                Proses pendaftaran pelanggan baru sangat mudah dan transparan:
+                            </p>
+                            <div class="space-y-2 text-xs">
+                                <div class="p-2.5 bg-white rounded-xl border border-slate-200/80">
+                                    <strong class="text-slate-800">Langkah A &bull; Input Booking</strong>
+                                    <p class="text-[11px] text-slate-500 mt-0.5">Buka menu <em>Booking Baru</em> atau bagikan Link Referral Anda ke calon pelanggan.</p>
+                                </div>
+                                <div class="p-2.5 bg-white rounded-xl border border-slate-200/80">
+                                    <strong class="text-slate-800">Langkah B &bull; Survey &amp; Instalasi</strong>
+                                    <p class="text-[11px] text-slate-500 mt-0.5">Tim teknisi melakukan pengecekan tiang ODP dan pemasangan kabel &amp; ONT WiFi di rumah pelanggan.</p>
+                                </div>
+                                <div class="p-2.5 bg-white rounded-xl border border-slate-200/80">
+                                    <strong class="text-slate-800">Langkah C &bull; Layanan Aktif</strong>
+                                    <p class="text-[11px] text-slate-500 mt-0.5">Setelah koneksi internet aktif, komisi booking Rp 35.000 otomatis tercatat ke saldo akun Anda.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: Syarat Wajib Lunas Invoice -->
+                        <div class="p-5 rounded-2xl border-2 border-rose-200 bg-rose-50/40 space-y-3">
+                            <div class="flex items-center gap-2 text-rose-800 font-bold text-xs uppercase tracking-wider">
+                                <span class="w-6 h-6 rounded-lg bg-rose-100 flex items-center justify-center text-xs">3</span>
+                                <span>Syarat Mutlak: Wajib Lunas Invoice</span>
+                            </div>
+                            <h4 class="text-sm font-black text-rose-950">
+                                Pencairan Saldo Terkunci Apabila Ada Pelanggan Menunggak
+                            </h4>
+                            <p class="text-xs text-rose-800 leading-relaxed">
+                                Perusahaan memberlakukan kebijakan zero-tolerance terhadap tunggakan:
+                            </p>
+                            <ul class="text-xs space-y-1.5 text-rose-900 list-disc list-inside leading-relaxed">
+                                <li>Komisi bulanan hanya diberikan jika pelanggan membayar tagihannya.</li>
+                                <li><strong>Apabila terdapat pelanggan binaan Anda yang belum bayar, penarikan dana (withdraw) otomatis TERKUNCI seutuhnya.</strong></li>
+                                <li>Mitra dapat membuka tab <strong>"Pelanggan Belum Bayar"</strong> untuk melihat rincian tunggakan dan menekan tombol <strong>"💬 Bantu Tagih via WA"</strong>.</li>
+                            </ul>
+                        </div>
+
+                        <!-- Step 4: Ketentuan Kontrak Minimal 4 Bulan -->
+                        <div class="p-5 rounded-2xl border-2 border-amber-200 bg-amber-50/40 space-y-3">
+                            <div class="flex items-center gap-2 text-amber-900 font-bold text-xs uppercase tracking-wider">
+                                <span class="w-6 h-6 rounded-lg bg-amber-100 flex items-center justify-center text-xs">4</span>
+                                <span>Pinalti Berhenti &lt; 4 Bulan (Clawback)</span>
+                            </div>
+                            <h4 class="text-sm font-black text-amber-950">
+                                Komisi Ditarik Kembali Seutuhnya oleh Perusahaan
+                            </h4>
+                            <p class="text-xs text-amber-900 leading-relaxed">
+                                Pelanggan internet baru terikat komitmen minimal berlangganan 4 bulan penuh:
+                            </p>
+                            <ul class="text-xs space-y-1.5 text-amber-900 list-disc list-inside leading-relaxed">
+                                <li>Jika pelanggan berhenti berlangganan sebelum genap 4 bulan, fee booking (Rp 35.000) dan fee survey (Rp 15.000) <strong>ditarik kembali seutuhnya</strong>.</li>
+                                <li><strong>Karyawan Internal:</strong> Otomatis dipotong dari Slip Gaji Payroll bulan berikutnya.</li>
+                                <li><strong>Mitra Luar:</strong> Otomatis didebet langsung dari Saldo Dompet Afiliasi Anda.</li>
+                                <li>Riwayat pemotongan dapat dicek pada tab <strong>"Pelanggan Berhenti (&lt; 4 Bln)"</strong>.</li>
+                            </ul>
+                        </div>
+
+                        <!-- Step 5: Tata Cara Pencairan Dana -->
+                        <div class="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-3 md:col-span-2">
+                            <div class="flex items-center gap-2 text-indigo-700 font-bold text-xs uppercase tracking-wider">
+                                <span class="w-6 h-6 rounded-lg bg-indigo-100 flex items-center justify-center text-xs">5</span>
+                                <span>Tata Cara &amp; Jadwal Pencairan Dana (Withdrawals)</span>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                                <div class="p-3 bg-white rounded-xl border border-slate-200">
+                                    <strong class="text-slate-800 block mb-1">📅 Jadwal Pencairan</strong>
+                                    <p class="text-slate-500">Khusus Mitra Luar dicairkan per tanggal <strong>15 setiap bulannya</strong>. Karyawan internal otomatis masuk slip gaji payroll.</p>
+                                </div>
+                                <div class="p-3 bg-white rounded-xl border border-slate-200">
+                                    <strong class="text-slate-800 block mb-1">💵 Minimal Penarikan</strong>
+                                    <p class="text-slate-500">Saldo minimal pencairan adalah <strong>Rp 50.000</strong>. Anda dapat mengakumulasikan saldo komisi sesuai kebutuhan.</p>
+                                </div>
+                                <div class="p-3 bg-white rounded-xl border border-slate-200">
+                                    <strong class="text-slate-800 block mb-1">⚡ Transfer Otomatis</strong>
+                                    <p class="text-slate-500">Pencairan diproses langsung via payment gateway <strong>Flip for Business</strong> ke rekening bank / e-wallet (DANA, GoPay, OVO, ShopeePay).</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
 
@@ -726,6 +1145,9 @@ const props = defineProps({
     downlines_l2_summary: Object,
     commissions: Object,
     withdrawals: Array,
+    clawbacks: Array,
+    total_clawback_amount: Number,
+    total_clawback_count: Number,
     settings: Object,
     is_employee: Boolean,
     pending_payroll_incentives: Number,
@@ -735,15 +1157,28 @@ const props = defineProps({
 
 const activeTab = computed(() => affiliateSection('/affiliate/dashboard', props.tab));
 const currentSection = computed(() => affiliateSections.find(item => item.id === activeTab.value));
+
 const sectionDescriptions = {
-    customers: 'Daftar booking dan pelanggan yang Anda daftarkan langsung.',
+    customers: 'Daftar booking dan pelanggan yang Anda daftarkan langsung, dipisahkan berdasarkan status pembayaran tagihan.',
     downlines: 'Nomor afiliasi Anda dan jaringan downline tingkat 1 dan 2.',
+    clawback: 'Daftar pelanggan berhenti sebelum masa aktif 4 bulan dengan penarikan komisi seutuhnya.',
     commissions: 'Rincian komisi booking, bulanan, dan jaringan afiliasi Anda.',
     withdrawals: 'Pantau pengajuan dan status pencairan saldo komisi.',
     bank: 'Kelola rekening tujuan pencairan dan nomor konfirmasi Anda.',
+    guide: 'Panduan lengkap alur kerja sales & afiliasi, struktur komisi, SOP penagihan, hingga tata cara pencairan.',
 };
+
 const copyMessage = ref('');
 const showWithdrawModal = ref(false);
+const customerSubTab = ref('all'); // 'all', 'paid', 'unpaid'
+
+const paidCustomers = computed(() => (props.customers || []).filter(c => !c.has_unpaid_invoice && c.status === 'active'));
+const unpaidCustomers = computed(() => (props.customers || []).filter(c => c.has_unpaid_invoice));
+const filteredCustomers = computed(() => {
+    if (customerSubTab.value === 'paid') return paidCustomers.value;
+    if (customerSubTab.value === 'unpaid') return unpaidCustomers.value;
+    return props.customers || [];
+});
 
 const bankOptions = [
     'BCA',

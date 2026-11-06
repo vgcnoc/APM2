@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\AffiliateCommission;
 use App\Models\AffiliateProfile;
 use App\Models\AffiliateWithdrawal;
+use App\Models\Customer;
+use App\Models\Invoice;
 use App\Services\AffiliateService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -71,7 +73,7 @@ class AffiliatePortalController extends Controller
         };
 
         // Pelanggan yang diajak (terhitung dari aktivasi bulan Oktober 2026)
-        $customers = $profile->customers()
+        $rawCustomers = $profile->customers()
             ->where(function ($q) {
                 $q->where('is_migrated', false)
                   ->orWhere(function ($sub) {
@@ -84,37 +86,70 @@ class AffiliatePortalController extends Controller
             })
             ->with(['package', 'areaModel'])
             ->latest('registration_date')
-            ->get()
-            ->map(function ($cust) use ($customerCommissions, $directMonthlyRate) {
-                $totalCommissions = $customerCommissions->get($cust->id, 0);
+            ->get();
 
-                $isActiveAndEligible = false;
-                if ($cust->status === 'active') {
-                    if (!$cust->is_migrated) {
+        $customerIds = $rawCustomers->pluck('id')->toArray();
+        $unpaidInvoicesByCust = Invoice::whereIn('customer_id', $customerIds)
+            ->whereIn('status', ['unpaid', 'partial'])
+            ->orderBy('due_date', 'asc')
+            ->get()
+            ->groupBy('customer_id');
+
+        $customers = $rawCustomers->map(function ($cust) use ($customerCommissions, $directMonthlyRate, $unpaidInvoicesByCust, $user) {
+            $totalCommissions = $customerCommissions->get($cust->id, 0);
+
+            $isActiveAndEligible = false;
+            if ($cust->status === 'active') {
+                if (!$cust->is_migrated) {
+                    $isActiveAndEligible = true;
+                } else {
+                    $actDate = $cust->activation_date ? $cust->activation_date->format('Y-m-d') : ($cust->registration_date ? $cust->registration_date->format('Y-m-d') : null);
+                    if ($actDate && $actDate >= '2026-10-01') {
                         $isActiveAndEligible = true;
-                    } else {
-                        $actDate = $cust->activation_date ? $cust->activation_date->format('Y-m-d') : ($cust->registration_date ? $cust->registration_date->format('Y-m-d') : null);
-                        if ($actDate && $actDate >= '2026-10-01') {
-                            $isActiveAndEligible = true;
-                        }
                     }
                 }
+            }
 
-                return [
-                    'id' => $cust->id,
-                    'customer_code' => $cust->customer_code,
-                    'name' => $cust->name,
-                    'phone' => $cust->phone,
-                    'package_name' => $cust->package?->name ?? 'Internet Rumah',
-                    'status' => $cust->status,
-                    'is_migrated' => (bool) $cust->is_migrated,
-                    'is_eligible_commission' => $isActiveAndEligible,
-                    'monthly_commission_rate' => $isActiveAndEligible ? $directMonthlyRate : 0,
-                    'registration_date' => $cust->registration_date ? $cust->registration_date->format('d M Y') : '-',
-                    'activation_date' => $cust->activation_date ? $cust->activation_date->format('d M Y') : '-',
-                    'total_commission' => (float) $totalCommissions,
-                ];
+            $custUnpaidInvoices = $unpaidInvoicesByCust->get($cust->id, collect());
+            $hasUnpaid = $custUnpaidInvoices->isNotEmpty();
+            $totalUnpaid = (float) $custUnpaidInvoices->sum(function ($inv) {
+                return $inv->remaining ?: $inv->amount;
             });
+            $earliestInv = $custUnpaidInvoices->first();
+
+            $custPhone = preg_replace('/[^0-9]/', '', (string) ($cust->phone ?? ''));
+            if (str_starts_with($custPhone, '0')) {
+                $custPhone = '62' . substr($custPhone, 1);
+            }
+            $periodLabel = $earliestInv?->period_label ?: ($earliestInv?->month ? "Bulan {$earliestInv->month}/{$earliestInv->year}" : '-');
+            $dueDateLabel = $earliestInv?->due_date ? $earliestInv->due_date->format('d M Y') : '-';
+
+            $waMsg = "Halo Kak {$cust->name}, saya {$user->name} dari tim layanan internet WiFi. "
+                . "Sekadar menginfokan bahwa tagihan internet periode {$periodLabel} sebesar Rp " . number_format($totalUnpaid, 0, ',', '.') . " saat ini belum terbayar (Jatuh tempo: {$dueDateLabel}). "
+                . "Mohon dibantu pelunasannya ya Kak agar koneksi internet tetap aktif dan lancar. Terima kasih banyak 🙏";
+            $waUrl = $custPhone ? "https://wa.me/{$custPhone}?text=" . urlencode($waMsg) : null;
+
+            return [
+                'id' => $cust->id,
+                'customer_code' => $cust->customer_code,
+                'name' => $cust->name,
+                'phone' => $cust->phone,
+                'package_name' => $cust->package?->name ?? 'Internet Rumah',
+                'status' => $cust->status,
+                'is_migrated' => (bool) $cust->is_migrated,
+                'is_eligible_commission' => $isActiveAndEligible,
+                'monthly_commission_rate' => $isActiveAndEligible ? $directMonthlyRate : 0,
+                'registration_date' => $cust->registration_date ? $cust->registration_date->format('d M Y') : '-',
+                'activation_date' => $cust->activation_date ? $cust->activation_date->format('d M Y') : '-',
+                'total_commission' => (float) $totalCommissions,
+                'has_unpaid_invoice' => $hasUnpaid,
+                'unpaid_invoices_count' => $custUnpaidInvoices->count(),
+                'unpaid_amount' => $totalUnpaid,
+                'period_label' => $periodLabel,
+                'due_date' => $dueDateLabel,
+                'wa_reminder_url' => $waUrl,
+            ];
+        });
 
         // Downlines Level 1 (Diajak Langsung)
         $downlinesL1 = AffiliateProfile::where('upline_id', $user->id)
@@ -260,10 +295,102 @@ class AffiliatePortalController extends Controller
             'can_withdraw' => !$isEmployee && $isPayoutOpen && $unpaidCustomers->isEmpty() && ((float) $profile->balance >= (float) $settings['affiliate_min_withdraw']),
         ];
 
+        // ── Data Pelanggan Berhenti < 4 Bulan (Clawback) ──
+        $clawbackCommissions = AffiliateCommission::where('affiliate_id', $user->id)
+            ->whereIn('type', ['clawback_booking', 'clawback_survey'])
+            ->with(['customer.package'])
+            ->latest('id')
+            ->get();
+
+        $stoppedCustomers = Customer::where('sales_id', $user->id)
+            ->whereIn('status', ['terminated', 'canceled'])
+            ->with(['package', 'areaModel'])
+            ->latest('cancel_date')
+            ->get();
+
+        $minContractMonths = (int) ($settings['affiliate_contract_min_months'] ?? 4);
+        $clawbackList = collect();
+        $commByCust = $clawbackCommissions->groupBy('customer_id');
+
+        foreach ($stoppedCustomers as $cust) {
+            $startDate = $cust->activation_date 
+                ? \Carbon\Carbon::parse($cust->activation_date) 
+                : ($cust->registration_date ? \Carbon\Carbon::parse($cust->registration_date) : ($cust->created_at ? \Carbon\Carbon::parse($cust->created_at) : null));
+            $endDate = $cust->cancel_date ? \Carbon\Carbon::parse($cust->cancel_date) : $cust->updated_at;
+            
+            $diffInMonths = $startDate ? (int) $startDate->diffInMonths($endDate) : 0;
+            $diffInDays = $startDate ? (int) $startDate->diffInDays($endDate) : 0;
+            $remainingDays = $diffInDays % 30;
+            $durationStr = $diffInMonths > 0 
+                ? "{$diffInMonths} bulan {$remainingDays} hari" 
+                : "{$diffInDays} hari";
+
+            if ($diffInMonths < $minContractMonths) {
+                $relatedComms = $commByCust->get($cust->id, collect());
+                $bookingClawback = $relatedComms->firstWhere('type', 'clawback_booking');
+                $surveyClawback = $relatedComms->firstWhere('type', 'clawback_survey');
+
+                $clawbackAmount = 0;
+                if ($bookingClawback) {
+                    $clawbackAmount += abs((float) $bookingClawback->amount);
+                } else {
+                    $clawbackAmount += (float) ($settings['affiliate_commission_booking'] ?? 35000);
+                }
+                if ($surveyClawback) {
+                    $clawbackAmount += abs((float) $surveyClawback->amount);
+                }
+
+                $clawbackList->push([
+                    'id' => 'cust_' . $cust->id,
+                    'customer_id' => $cust->id,
+                    'customer_code' => $cust->customer_code,
+                    'name' => $cust->name,
+                    'phone' => $cust->phone,
+                    'package_name' => $cust->package?->name ?? 'Internet Rumah',
+                    'activation_date' => $cust->activation_date ? $cust->activation_date->format('d M Y') : ($cust->registration_date ? $cust->registration_date->format('d M Y') : '-'),
+                    'cancel_date' => $cust->cancel_date ? $cust->cancel_date->format('d M Y') : ($cust->updated_at ? $cust->updated_at->format('d M Y') : '-'),
+                    'active_duration' => $durationStr,
+                    'diff_months' => $diffInMonths,
+                    'cancel_reason' => $cust->cancel_reason ?: 'Berhenti berlangganan sebelum masa aktif 4 bulan',
+                    'clawback_amount' => $clawbackAmount,
+                    'is_employee' => $isEmployee,
+                    'channel' => $isEmployee ? 'Slip Gaji (Potongan Payroll)' : 'Saldo Dompet Afiliasi',
+                    'status' => 'Ditarik Kembali',
+                    'has_commission_record' => $relatedComms->isNotEmpty(),
+                    'notes' => "Pelanggan berhenti pada masa aktif {$durationStr} (Kurang dari batas minimal {$minContractMonths} bulan)",
+                ]);
+            }
+        }
+
+        foreach ($clawbackCommissions as $comm) {
+            if (!$clawbackList->contains('customer_id', $comm->customer_id)) {
+                $cust = $comm->customer;
+                $clawbackList->push([
+                    'id' => 'comm_' . $comm->id,
+                    'customer_id' => $comm->customer_id,
+                    'customer_code' => $cust?->customer_code ?? '-',
+                    'name' => $cust?->name ?? ($comm->description ?: 'Pelanggan'),
+                    'phone' => $cust?->phone ?? '-',
+                    'package_name' => $cust?->package?->name ?? '-',
+                    'activation_date' => $cust?->activation_date ? $cust->activation_date->format('d M Y') : '-',
+                    'cancel_date' => $cust?->cancel_date ? $cust->cancel_date->format('d M Y') : $comm->created_at->format('d M Y'),
+                    'active_duration' => '< 4 bulan',
+                    'diff_months' => 0,
+                    'cancel_reason' => $comm->description,
+                    'clawback_amount' => abs((float) $comm->amount),
+                    'is_employee' => $isEmployee,
+                    'channel' => $comm->status === 'payroll' ? 'Slip Gaji (Potongan Payroll)' : 'Saldo Dompet Afiliasi',
+                    'status' => 'Ditarik Kembali',
+                    'has_commission_record' => true,
+                    'notes' => $comm->description,
+                ]);
+            }
+        }
+
         $appUrl = config('app.url', url('/'));
 
         return Inertia::render('Affiliate/Dashboard', [
-            'tab' => in_array($request->query('tab'), ['overview', 'customers', 'downlines', 'commissions', 'withdrawals', 'bank'], true)
+            'tab' => in_array($request->query('tab'), ['overview', 'customers', 'downlines', 'clawback', 'commissions', 'withdrawals', 'bank', 'guide'], true)
                 ? $request->query('tab') : 'overview',
             'is_employee' => $isEmployee,
             'pending_payroll_incentives' => $pendingPayrollIncentives,
@@ -323,6 +450,9 @@ class AffiliatePortalController extends Controller
             'downlinesL2' => $downlinesL2,
             'commissions' => $commissions,
             'withdrawals' => $withdrawals,
+            'clawbacks' => $clawbackList->values(),
+            'total_clawback_amount' => (float) $clawbackList->sum('clawback_amount'),
+            'total_clawback_count' => $clawbackList->count(),
             'settings' => $settings,
         ]);
     }
