@@ -1538,28 +1538,93 @@
                 </div>
 
                 <form @submit.prevent="submitApprove" class="space-y-4">
-                    <div>
-                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
-                            No. Referensi / Bukti Mutasi Bank (Opsional)
-                        </label>
-                        <input
-                            v-model="approveForm.reference_no"
-                            type="text"
-                            placeholder="Contoh: TRF-20261014-9982"
-                            class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        />
+                    <!-- Pilihan Metode Pencairan (Flip vs Manual) -->
+                    <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5">
+                        <div class="text-xs font-bold text-slate-800 flex items-center justify-between">
+                            <span>Metode Transfer Pencairan:</span>
+                            <span v-if="flip_config?.has_secret_key" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                Flip for Business Siap
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <!-- Opsi 1: Flip for Business -->
+                            <label
+                                class="flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all"
+                                :class="approveForm.use_flip ? 'border-indigo-500 bg-indigo-50/50 ring-1 ring-indigo-500' : 'border-slate-200 hover:bg-white'"
+                            >
+                                <input
+                                    type="radio"
+                                    :value="true"
+                                    v-model="approveForm.use_flip"
+                                    :disabled="!flip_config?.has_secret_key"
+                                    class="mt-0.5 text-indigo-600 focus:ring-indigo-500"
+                                />
+                                <div>
+                                    <div class="font-bold text-xs text-slate-900 flex items-center gap-1">
+                                        <span>⚡ Auto Flip</span>
+                                    </div>
+                                    <p class="text-[10px] text-slate-500 mt-0.5 leading-snug">
+                                        Transfer otomatis instan via BigFlip API
+                                    </p>
+                                </div>
+                            </label>
+
+                            <!-- Opsi 2: Manual Transfer -->
+                            <label
+                                class="flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all"
+                                :class="!approveForm.use_flip ? 'border-emerald-500 bg-emerald-50/50 ring-1 ring-emerald-500' : 'border-slate-200 hover:bg-white'"
+                            >
+                                <input
+                                    type="radio"
+                                    :value="false"
+                                    v-model="approveForm.use_flip"
+                                    class="mt-0.5 text-emerald-600 focus:ring-emerald-500"
+                                />
+                                <div>
+                                    <div class="font-bold text-xs text-slate-900">
+                                        🏦 Transfer Manual
+                                    </div>
+                                    <p class="text-[10px] text-slate-500 mt-0.5 leading-snug">
+                                        Transfer m-Banking & upload bukti
+                                    </p>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div v-if="!flip_config?.has_secret_key" class="text-[11px] text-amber-700 bg-amber-50 p-2.5 rounded-xl border border-amber-200 flex items-start gap-1.5 leading-relaxed">
+                            <span>💡</span>
+                            <span>
+                                <strong>Flip API Key belum dihubungkan:</strong> Masukkan Secret Key Flip di menu <strong>Pengaturan Payroll -> Auto Transfer (Flip)</strong> untuk mengaktifkan transfer instan otomatis.
+                            </span>
+                        </div>
                     </div>
 
-                    <div>
-                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
-                            Upload Screenshot Bukti Transfer (Opsional)
-                        </label>
-                        <input
-                            type="file"
-                            accept="image/*"
-                            @change="e => approveForm.receipt = e.target.files[0]"
-                            class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
-                        />
+                    <!-- Input Tambahan jika Transfer Manual -->
+                    <div v-if="!approveForm.use_flip" class="space-y-3 pt-1">
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                                No. Referensi / Bukti Mutasi Bank (Opsional)
+                            </label>
+                            <input
+                                v-model="approveForm.reference_no"
+                                type="text"
+                                placeholder="Contoh: TRF-20261014-9982"
+                                class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            />
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1">
+                                Upload Screenshot Bukti Transfer (Opsional)
+                            </label>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                @change="e => approveForm.receipt = e.target.files[0]"
+                                class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+                            />
+                        </div>
                     </div>
 
                     <div class="pt-2 flex justify-end gap-2">
@@ -1569,9 +1634,11 @@
                         <button
                             type="submit"
                             :disabled="approveForm.processing"
-                            class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm transition-colors"
+                            class="px-5 py-2 font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 text-white"
+                            :class="approveForm.use_flip ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-emerald-600 hover:bg-emerald-700'"
                         >
-                            {{ approveForm.processing ? 'Menyimpan...' : 'Tandai Berhasil Ditransfer' }}
+                            <span v-if="approveForm.processing" class="inline-block animate-spin">⏳</span>
+                            <span>{{ approveForm.processing ? 'Memproses...' : (approveForm.use_flip ? '⚡ Eksekusi Auto Transfer Flip' : 'Tandai Berhasil Ditransfer') }}</span>
                         </button>
                     </div>
                 </form>
@@ -2319,6 +2386,7 @@ const props = defineProps({
     kpi: Object,
     tree_data: Array,
     tree_kpi: Object,
+    flip_config: Object,
     filters: Object,
 });
 
@@ -2480,6 +2548,8 @@ const showRejectModal = ref(false);
 const approveForm = useForm({
     reference_no: '',
     receipt: null,
+    use_flip: false,
+    force_approve: false,
 });
 
 const rejectForm = useForm({
@@ -2613,6 +2683,8 @@ const openApproveModal = (w) => {
     selectedWithdrawal.value = w;
     approveForm.reference_no = w.reference_no || '';
     approveForm.receipt = null;
+    approveForm.use_flip = !!(props.flip_config?.has_secret_key);
+    approveForm.force_approve = false;
     showApproveModal.value = true;
 };
 

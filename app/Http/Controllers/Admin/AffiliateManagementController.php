@@ -356,6 +356,7 @@ class AffiliateManagementController extends Controller
             'kpi' => $kpi,
             'tree_data' => $networkTrees,
             'tree_kpi' => $treeKpi,
+            'flip_config' => (new \App\Services\FlipDisbursementService())->getConfig(),
             'filters' => $request->only(['tab', 'search', 'per_page']),
         ]);
     }
@@ -395,7 +396,31 @@ class AffiliateManagementController extends Controller
         $validated = $request->validate([
             'reference_no' => 'nullable|string|max:100',
             'receipt' => 'nullable|file|image|max:3072',
+            'force_approve' => 'nullable|boolean',
+            'use_flip' => 'nullable|boolean',
         ]);
+
+        $flipService = new \App\Services\FlipDisbursementService();
+        $useFlip = $request->boolean('use_flip') && $flipService->isEnabled();
+
+        if ($useFlip) {
+            $flipResult = $flipService->disburseWithdrawal($withdrawal);
+            if ($flipResult['status'] === 'error') {
+                return back()->with('error', "Gagal Auto Transfer Flip: " . $flipResult['message']);
+            }
+
+            try {
+                AffiliateService::approveWithdrawal(
+                    $withdrawal,
+                    Auth::user(),
+                    null,
+                    $flipResult['disbursement_id'] ?? $withdrawal->reference_no
+                );
+                return back()->with('success', "Penarikan dana Rp " . number_format($withdrawal->amount, 0, ',', '.') . " BERHASIL ditransfer otomatis via Flip for Business! (Ref ID: {$flipResult['disbursement_id']})");
+            } catch (\Exception $e) {
+                return back()->with('error', $e->getMessage());
+            }
+        }
 
         $receiptPath = null;
         if ($request->hasFile('receipt')) {

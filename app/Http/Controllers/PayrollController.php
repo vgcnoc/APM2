@@ -1075,6 +1075,15 @@ class PayrollController extends Controller
                     'disbursement_error' => in_array($mappedStatus, ['FAILED', 'CANCELLED']) ? ($data['error'] ?? 'Transfer dibatalkan / gagal di Flip') : null,
                     'disbursement_payload' => json_encode($data),
                 ]);
+            } else {
+                $wd = \App\Models\AffiliateWithdrawal::where('disbursement_id', (string) $id)->first();
+                if ($wd) {
+                    $wd->update([
+                        'disbursement_status' => $mappedStatus,
+                        'disbursement_error' => in_array($mappedStatus, ['FAILED', 'CANCELLED']) ? ($data['error'] ?? 'Transfer dibatalkan / gagal di Flip') : null,
+                        'disbursement_payload' => json_encode($data),
+                    ]);
+                }
             }
         }
 

@@ -311,6 +311,134 @@ class FlipDisbursementService
     }
 
     /**
+     * Eksekusi transfer otomatis (Disbursement) ke rekening bank mitra luar via Flip for Business API.
+     */
+    public function disburseWithdrawal(\App\Models\AffiliateWithdrawal $withdrawal): array
+    {
+        $key = $this->getSecretKey();
+        if (empty($key)) {
+            return [
+                'status' => 'error',
+                'message' => 'Flip for Business Secret API Key belum dikonfigurasi di Pengaturan Sistem.',
+            ];
+        }
+
+        if (empty($withdrawal->bank_account_number)) {
+            return [
+                'status' => 'error',
+                'message' => 'Nomor rekening tujuan penarikan dana kosong.',
+            ];
+        }
+
+        $cleanAccount = preg_replace('/[^0-9]/', '', $withdrawal->bank_account_number);
+        if (empty($cleanAccount)) {
+            return [
+                'status' => 'error',
+                'message' => "Format nomor rekening '{$withdrawal->bank_account_number}' tidak valid.",
+            ];
+        }
+
+        $bankCode = self::normalizeBankCode($withdrawal->bank_name);
+        $cleanAmount = (int) round($withdrawal->net_amount ?: $withdrawal->amount);
+
+        if ($cleanAmount <= 0) {
+            return [
+                'status' => 'error',
+                'message' => 'Nominal penarikan komisi harus lebih dari 0.',
+            ];
+        }
+
+        // Idempotency Key unik
+        $externalId = "FLIP-WD-{$withdrawal->id}-" . time();
+        $safeRemark = !empty($withdrawal->reference_no) ? substr($withdrawal->reference_no, 0, 18) : "Komisi WD-{$withdrawal->id}";
+
+        $payload = [
+            'account_number' => $cleanAccount,
+            'bank_code' => $bankCode,
+            'amount' => $cleanAmount,
+            'remark' => substr($safeRemark, 0, 18),
+        ];
+
+        $baseUrl = $this->getBaseUrl();
+
+        try {
+            Log::info("[FlipDisbursement] Mengirim transfer Komisi Afiliasi WD #{$withdrawal->id} ke {$bankCode} {$cleanAccount} Sebesar: Rp {$cleanAmount} (URL: {$baseUrl})");
+
+            $response = Http::asForm()
+                ->withBasicAuth(trim($key), '')
+                ->withHeaders([
+                    'idempotency-key' => $externalId,
+                    'Accept' => 'application/json',
+                ])
+                ->timeout(30)
+                ->post("{$baseUrl}/v2/disbursement", $payload);
+
+            $data = $response->json();
+
+            if ($response->successful()) {
+                $disbId = (string) ($data['id'] ?? '');
+                $rawStatus = strtoupper($data['status'] ?? 'PENDING');
+                $mappedStatus = ($rawStatus === 'DONE') ? 'COMPLETED' : $rawStatus;
+
+                $withdrawal->update([
+                    'disbursement_channel' => 'flip',
+                    'disbursement_id' => $disbId,
+                    'disbursement_reference' => $externalId,
+                    'disbursement_status' => $mappedStatus,
+                    'disbursement_payload' => json_encode($data),
+                ]);
+
+                Log::info("[FlipDisbursement] Sukses transfer WD #{$withdrawal->id}: Disb ID: {$disbId}, Status: {$mappedStatus}");
+
+                return [
+                    'status' => 'success',
+                    'disbursement_id' => $disbId,
+                    'disbursement_status' => $mappedStatus,
+                    'message' => "Auto transfer via Flip berhasil dikirim (Status: {$mappedStatus}). Flip ID: {$disbId}",
+                    'data' => $data,
+                ];
+            }
+
+            // Gagal dari Flip
+            $errorMessage = $data['message'] ?? $data['error'] ?? 'Gagal melakukan disbursement ke Flip.';
+            if (is_array($errorMessage)) {
+                $errorMessage = json_encode($errorMessage);
+            }
+
+            $friendlyMsg = $this->translateError($errorMessage);
+
+            $withdrawal->update([
+                'disbursement_channel' => 'flip',
+                'disbursement_reference' => $externalId,
+                'disbursement_status' => 'FAILED',
+                'disbursement_error' => $friendlyMsg,
+                'disbursement_payload' => json_encode($data),
+            ]);
+
+            Log::warning("[FlipDisbursement] Gagal transfer WD #{$withdrawal->id}: {$errorMessage}");
+
+            return [
+                'status' => 'error',
+                'message' => "Flip Gagal: {$friendlyMsg}",
+                'data' => $data,
+            ];
+        } catch (\Exception $e) {
+            Log::error("[FlipDisbursement] Exception transfer WD #{$withdrawal->id}: " . $e->getMessage());
+
+            $withdrawal->update([
+                'disbursement_channel' => 'flip',
+                'disbursement_status' => 'FAILED',
+                'disbursement_error' => $e->getMessage(),
+            ]);
+
+            return [
+                'status' => 'error',
+                'message' => 'Terjadi kesalahan sistem saat menghubungi Flip: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
      * Terjemahkan pesan error Flip ke bahasa yang mudah dipahami admin.
      */
     protected function translateError(string $message): string
