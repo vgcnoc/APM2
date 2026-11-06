@@ -1435,6 +1435,7 @@ class PermissionRegistry
                 'payroll_btn_print_slip', 'payroll_btn_auto_transfer', 'payroll_btn_settings_bpjs', 'payroll_btn_update_bpjs_bank',
                 'payroll_view_all', 'payroll_field_salary_edit', 'payroll_field_bank_view',
                 'menu_resellers', 'menu_reseller_billing', 'menu_reseller_requests', 'menu_reseller_settlements', 'menu_reseller_reports',
+                'menu_marketing_affiliates', 'menu_affiliate_withdrawals', 'affiliate_tab_withdrawals', 'marketing_affiliates_withdraw_approve', 'marketing_affiliates_withdraw_reject', 'affiliate_tab_affiliates', 'affiliate_tab_commissions',
                 'menu_settings_billing', 'menu_settings_payroll',
                 'menu_customers_all', 'customers_card_summary', 'customers_all_view_all', 'customers_tab_invoices',
                 'menu_customers_gratis', 'menu_customers_free_home', 'menu_customers_terminated',
