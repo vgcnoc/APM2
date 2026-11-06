@@ -389,6 +389,108 @@ class AffiliateManagementController extends Controller
     }
 
     /**
+     * Setujui dan cairkan beberapa permohonan penarikan dana sekaligus (Batch / Bulk Disburse).
+     */
+    public function batchApproveWithdrawals(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:affiliate_withdrawals,id',
+            'force_approve' => 'nullable|boolean',
+            'use_flip' => 'nullable|boolean',
+        ]);
+
+        $withdrawals = AffiliateWithdrawal::whereIn('id', $validated['ids'])
+            ->where('status', 'pending')
+            ->with(['affiliate'])
+            ->get();
+
+        if ($withdrawals->isEmpty()) {
+            return back()->with('error', 'Tidak ada permohonan penarikan berstatus pending yang dapat diproses.');
+        }
+
+        $flipService = new \App\Services\FlipDisbursementService();
+        $useFlip = $request->boolean('use_flip', true);
+
+        if ($useFlip && !$flipService->isEnabled()) {
+            return back()->with('error', 'Auto Transfer Flip for Business belum diaktifkan atau API Key belum disetting.');
+        }
+
+        $successCount = 0;
+        $failCount = 0;
+        $totalDisbursed = 0;
+        $errors = [];
+
+        foreach ($withdrawals as $withdrawal) {
+            $affUser = \App\Models\User::find($withdrawal->affiliate_id);
+            if ($affUser && !$request->boolean('force_approve')) {
+                $unpaid = AffiliateService::getUnpaidCustomersForAffiliate($affUser);
+                if ($unpaid->isNotEmpty()) {
+                    $failCount++;
+                    $errors[] = "{$withdrawal->reference_no} ({$affUser->name}): Ada {$unpaid->count()} pelanggan booking belum bayar.";
+                    continue;
+                }
+            }
+
+            if ($useFlip) {
+                $flipResult = $flipService->disburseWithdrawal($withdrawal);
+                if ($flipResult['status'] === 'error') {
+                    $failCount++;
+                    $affName = $withdrawal->affiliate?->name ?? $withdrawal->bank_account_holder ?? 'Mitra';
+                    $errors[] = "{$withdrawal->reference_no} ({$affName}): {$flipResult['message']}";
+                    continue;
+                }
+
+                try {
+                    AffiliateService::approveWithdrawal(
+                        $withdrawal,
+                        Auth::user(),
+                        null,
+                        $flipResult['disbursement_id'] ?? $withdrawal->reference_no
+                    );
+                    $successCount++;
+                    $totalDisbursed += (float) $withdrawal->amount;
+                } catch (\Exception $e) {
+                    $failCount++;
+                    $errors[] = "{$withdrawal->reference_no}: " . $e->getMessage();
+                }
+            } else {
+                try {
+                    AffiliateService::approveWithdrawal(
+                        $withdrawal,
+                        Auth::user(),
+                        null,
+                        'BATCH-' . date('YmdHis') . '-' . $withdrawal->id
+                    );
+                    $successCount++;
+                    $totalDisbursed += (float) $withdrawal->amount;
+                } catch (\Exception $e) {
+                    $failCount++;
+                    $errors[] = "{$withdrawal->reference_no}: " . $e->getMessage();
+                }
+            }
+        }
+
+        $formattedTotal = 'Rp ' . number_format($totalDisbursed, 0, ',', '.');
+
+        if ($failCount === 0) {
+            $methodText = $useFlip ? 'via Flip for Business' : 'secara manual';
+            return back()->with('success', "⚡ Berhasil mencairkan {$successCount} permintaan penarikan {$methodText}! Total ditransfer: {$formattedTotal}.");
+        }
+
+        if ($successCount > 0) {
+            $errSnippet = implode('; ', array_slice($errors, 0, 3));
+            if (count($errors) > 3) {
+                $errSnippet .= ' (dan ' . (count($errors) - 3) . ' lainnya)';
+            }
+            return back()->with('warning', "Pencairan massal selesai: {$successCount} berhasil ({$formattedTotal}), {$failCount} tertunda/gagal. Detail: {$errSnippet}");
+        }
+
+        $errSnippet = implode('; ', array_slice($errors, 0, 3));
+        return back()->with('error', "Gagal memproses pencairan massal: {$errSnippet}");
+    }
+
+    /**
      * Setujui pencairan dana komisi.
      */
     public function approveWithdrawal(Request $request, AffiliateWithdrawal $withdrawal)

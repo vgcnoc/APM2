@@ -1402,10 +1402,23 @@
                 <!-- ════ TAB 4: PERMINTAAN PENARIKAN (WITHDRAWALS) ════ -->
                 <div v-if="currentTab === 'withdrawals'" v-can="['menu_affiliate_withdrawals', 'affiliate_tab_withdrawals']" class="p-6">
                     <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
-                        <div class="text-xs text-slate-500">
-                            Daftar pengajuan pencairan saldo komisi oleh mitra afiliasi.
+                        <div class="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
+                            <span>Daftar pengajuan pencairan saldo komisi oleh mitra afiliasi.</span>
+                            <span v-if="pendingWithdrawalsList.length > 0" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800">
+                                ⏳ {{ pendingWithdrawalsList.length }} Menunggu Persetujuan
+                            </span>
                         </div>
-                        <div class="flex items-center gap-2 self-end sm:self-auto">
+                        <div class="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+                            <button
+                                v-if="pendingWithdrawalsList.length > 0 && selectedWithdrawalIds.length === 0"
+                                v-can="'marketing_affiliates_withdraw_approve'"
+                                type="button"
+                                @click="toggleSelectAllPending"
+                                class="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+                            >
+                                <span>☑️</span>
+                                <span>Pilih Semua Pending ({{ pendingWithdrawalsList.length }})</span>
+                            </button>
                             <button
                                 v-can="'affiliate_btn_export'"
                                 type="button"
@@ -1422,6 +1435,15 @@
                         <table class="min-w-full divide-y divide-slate-100 text-xs">
                             <thead class="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider text-left">
                                 <tr>
+                                    <th v-can="'marketing_affiliates_withdraw_approve'" class="px-3 py-3 w-10 text-center">
+                                        <input
+                                            type="checkbox"
+                                            :checked="isAllPendingSelected"
+                                            @change="toggleSelectAllPending"
+                                            title="Pilih Semua yang Pending"
+                                            class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                        />
+                                    </th>
                                     <th class="px-4 py-3">No. Referensi</th>
                                     <th class="px-4 py-3">Nama Mitra</th>
                                     <th v-can="'affiliate_field_bank'" class="px-4 py-3">Rekening Pencairan</th>
@@ -1432,7 +1454,22 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100">
-                                <tr v-for="w in withdrawals.data" :key="w.id" class="hover:bg-slate-50/60">
+                                <tr
+                                    v-for="w in withdrawals.data"
+                                    :key="w.id"
+                                    class="hover:bg-slate-50/60 transition-colors"
+                                    :class="{ 'bg-indigo-50/40': selectedWithdrawalIds.includes(w.id) }"
+                                >
+                                    <td v-can="'marketing_affiliates_withdraw_approve'" class="px-3 py-3 text-center">
+                                        <input
+                                            v-if="w.status === 'pending'"
+                                            type="checkbox"
+                                            :value="w.id"
+                                            v-model="selectedWithdrawalIds"
+                                            class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                        />
+                                        <span v-else class="text-slate-300 text-xs">-</span>
+                                    </td>
                                     <td class="px-4 py-3 font-mono font-bold text-indigo-700">{{ w.reference_no }}</td>
                                     <td class="px-4 py-3">
                                         <div class="font-bold text-slate-900">{{ w.affiliate_name }}</div>
@@ -1491,7 +1528,214 @@
                     <div v-else class="text-center py-12 text-slate-400">
                         Tidak ada permintaan penarikan dana komisi.
                     </div>
+
+                    <!-- Sticky Batch Action Floating Bar -->
+                    <transition
+                        enter-active-class="transition duration-200 ease-out"
+                        enter-from-class="transform translate-y-6 opacity-0"
+                        enter-to-class="transform translate-y-0 opacity-100"
+                        leave-active-class="transition duration-150 ease-in"
+                        leave-from-class="transform translate-y-0 opacity-100"
+                        leave-to-class="transform translate-y-6 opacity-0"
+                    >
+                        <div
+                            v-if="selectedWithdrawalIds.length > 0"
+                            class="sticky bottom-4 z-30 mt-4 bg-slate-900/95 text-white p-3.5 sm:px-5 sm:py-3 rounded-2xl shadow-2xl backdrop-blur-md border border-slate-700/60 flex flex-col sm:flex-row items-center justify-between gap-3"
+                        >
+                            <div class="flex items-center gap-3">
+                                <span class="flex h-3 w-3 relative">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                                </span>
+                                <div>
+                                    <span class="font-bold text-xs sm:text-sm text-white">
+                                        {{ selectedWithdrawalIds.length }} Pengajuan Dipilih
+                                    </span>
+                                    <span class="mx-2 text-slate-500">•</span>
+                                    <span class="text-xs text-slate-300">
+                                        Total: <strong class="text-emerald-400 font-extrabold">{{ formatRupiah(selectedTotalAmount) }}</strong>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                                <button
+                                    type="button"
+                                    @click="clearBatchSelection"
+                                    class="px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl transition"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    v-can="'marketing_affiliates_withdraw_approve'"
+                                    type="button"
+                                    @click="openBatchApproveModal"
+                                    class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-lg transition flex items-center gap-1.5"
+                                >
+                                    <span>⚡</span>
+                                    <span>Cairkan Sekaligus ({{ selectedWithdrawalIds.length }})</span>
+                                </button>
+                            </div>
+                        </div>
+                    </transition>
                 </div>
+            </div>
+        </div>
+
+        <!-- ── Modal Batch Approve (Pencairan Massal) ── -->
+        <div
+            v-if="showBatchApproveModal"
+            class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+            @click.self="showBatchApproveModal = false"
+        >
+            <div class="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-100 p-6 sm:p-7">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                    <div class="flex items-center gap-2">
+                        <span class="p-2 rounded-xl bg-indigo-50 text-indigo-600 text-lg">⚡</span>
+                        <div>
+                            <h3 class="text-base font-bold text-slate-900">
+                                Pencairan Massal (Batch Disburse)
+                            </h3>
+                            <p class="text-[11px] text-slate-500">
+                                Transfer komisi ke beberapa mitra affiliate sekaligus dalam 1 klik
+                            </p>
+                        </div>
+                    </div>
+                    <button type="button" @click="showBatchApproveModal = false" class="text-slate-400 hover:text-slate-600">✕</button>
+                </div>
+
+                <!-- Summary Card -->
+                <div class="p-4 bg-gradient-to-br from-indigo-50 to-emerald-50/40 border border-indigo-100 rounded-2xl mb-4 text-xs space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-600 font-medium">Jumlah Permintaan:</span>
+                        <span class="font-extrabold text-slate-900 text-sm">{{ selectedWithdrawalIds.length }} Pengajuan Mitra</span>
+                    </div>
+                    <div class="flex justify-between items-center pt-2 border-t border-indigo-100/60 text-slate-900">
+                        <span class="font-bold text-slate-700">Total Dana Ditransfer:</span>
+                        <span class="font-extrabold text-indigo-700 text-base">{{ formatRupiah(selectedTotalAmount) }}</span>
+                    </div>
+                </div>
+
+                <!-- Preview Daftar Mitra yang Dicairkan -->
+                <div class="mb-4">
+                    <label class="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider">
+                        Rincian Mitra Penerima ({{ selectedWithdrawalsList.length }}):
+                    </label>
+                    <div class="max-h-40 overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100 text-xs bg-slate-50/50">
+                        <div v-for="sw in selectedWithdrawalsList" :key="sw.id" class="p-2.5 flex items-center justify-between gap-2 hover:bg-white">
+                            <div class="min-w-0 flex-1">
+                                <div class="font-bold text-slate-900 truncate">{{ sw.affiliate_name }}</div>
+                                <div class="text-[10px] text-slate-500 truncate">{{ sw.bank_name }} - {{ sw.bank_account_number }} (a.n {{ sw.bank_account_holder }})</div>
+                                <div v-if="sw.unpaid_customers_count > 0" class="text-[10px] font-bold text-rose-600">
+                                    ⚠️ {{ sw.unpaid_customers_count }} Pelanggan Menunggak
+                                </div>
+                            </div>
+                            <div class="font-extrabold text-emerald-700 whitespace-nowrap text-right pl-2">
+                                {{ formatRupiah(sw.amount) }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Peringatan jika ada pelanggan tertunggak -->
+                <div v-if="hasAnyUnpaidInBatch" class="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl mb-4 text-xs text-amber-900 space-y-2">
+                    <div class="font-bold flex items-center gap-1.5 text-amber-800">
+                        <span>⚠️ Perhatian: Terdapat Pelanggan Belum Lunas</span>
+                    </div>
+                    <p class="text-[11px] text-amber-700 leading-relaxed">
+                        Satu atau lebih mitra yang dipilih memiliki pelanggan bookingan yang belum melunasi tagihannya.
+                    </p>
+                    <label class="flex items-center gap-2 cursor-pointer font-bold text-amber-900 pt-1.5 border-t border-amber-200">
+                        <input
+                            type="checkbox"
+                            v-model="batchApproveForm.force_approve"
+                            class="rounded border-amber-300 text-amber-600 focus:ring-amber-500 w-4 h-4"
+                        />
+                        <span>Tetap cairkan semua mitra terpilih (Abaikan peringatan tunggakan)</span>
+                    </label>
+                </div>
+
+                <form @submit.prevent="submitBatchApprove" class="space-y-4">
+                    <!-- Pilihan Gateway -->
+                    <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5">
+                        <div class="text-xs font-bold text-slate-800 flex items-center justify-between">
+                            <span>Metode Transfer Massal:</span>
+                            <span v-if="flip_config?.has_secret_key" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                Flip for Business Siap
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <!-- Opsi 1: Flip API -->
+                            <label
+                                class="flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all"
+                                :class="batchApproveForm.use_flip ? 'border-indigo-500 bg-indigo-50/50 ring-1 ring-indigo-500' : 'border-slate-200 hover:bg-white'"
+                            >
+                                <input
+                                    type="radio"
+                                    :value="true"
+                                    v-model="batchApproveForm.use_flip"
+                                    :disabled="!flip_config?.has_secret_key"
+                                    class="mt-0.5 text-indigo-600 focus:ring-indigo-500"
+                                />
+                                <div>
+                                    <div class="font-bold text-xs text-slate-900 flex items-center gap-1">
+                                        <span>⚡ Auto Flip</span>
+                                    </div>
+                                    <p class="text-[10px] text-slate-500 mt-0.5 leading-snug">
+                                        Transfer serentak otomatis via BigFlip API
+                                    </p>
+                                </div>
+                            </label>
+
+                            <!-- Opsi 2: Manual Batch -->
+                            <label
+                                class="flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all"
+                                :class="!batchApproveForm.use_flip ? 'border-emerald-500 bg-emerald-50/50 ring-1 ring-emerald-500' : 'border-slate-200 hover:bg-white'"
+                            >
+                                <input
+                                    type="radio"
+                                    :value="false"
+                                    v-model="batchApproveForm.use_flip"
+                                    class="mt-0.5 text-emerald-600 focus:ring-emerald-500"
+                                />
+                                <div>
+                                    <div class="font-bold text-xs text-slate-900">
+                                        🏦 Setujui Manual
+                                    </div>
+                                    <p class="text-[10px] text-slate-500 mt-0.5 leading-snug">
+                                        Transfer via Payroll Bank / m-Banking
+                                    </p>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div v-if="!flip_config?.has_secret_key" class="text-[11px] text-amber-700 bg-amber-50 p-2.5 rounded-xl border border-amber-200 flex items-start gap-1.5 leading-relaxed">
+                            <span>💡</span>
+                            <span>
+                                <strong>Flip API Key belum diisi:</strong> Silakan isi Secret Key di <strong>Pengaturan Payroll -> Auto Transfer</strong> untuk mengaktifkan transfer instan Flip.
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 flex justify-end gap-2">
+                        <button
+                            type="button"
+                            @click="showBatchApproveModal = false"
+                            class="px-4 py-2 border border-slate-300 rounded-xl text-slate-700 text-xs font-semibold hover:bg-slate-50 transition"
+                        >
+                            Batal
+                        </button>
+                        <button
+                            type="submit"
+                            :disabled="batchApproveForm.processing"
+                            class="px-5 py-2 font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 text-white"
+                            :class="batchApproveForm.use_flip ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-emerald-600 hover:bg-emerald-700'"
+                        >
+                            <span v-if="batchApproveForm.processing" class="inline-block animate-spin">⏳</span>
+                            <span>{{ batchApproveForm.processing ? 'Memproses Transfer Massal...' : (batchApproveForm.use_flip ? `⚡ Eksekusi Transfer Massal Flip (${selectedWithdrawalIds.length})` : `Setujui ${selectedWithdrawalIds.length} Pengajuan`) }}</span>
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
 
@@ -2544,6 +2788,73 @@ const simTotalPassiveYearly = computed(() => simTotalPassiveMonthly.value * 12);
 const selectedWithdrawal = ref(null);
 const showApproveModal = ref(false);
 const showRejectModal = ref(false);
+
+// ── Batch Disbursement (Pencairan Massal) State & Computed ──
+const selectedWithdrawalIds = ref([]);
+const showBatchApproveModal = ref(false);
+
+const batchApproveForm = useForm({
+    ids: [],
+    use_flip: true,
+    force_approve: false,
+});
+
+const pendingWithdrawalsList = computed(() => {
+    return (props.withdrawals?.data || []).filter(w => w.status === 'pending');
+});
+
+const isAllPendingSelected = computed(() => {
+    const list = pendingWithdrawalsList.value;
+    if (list.length === 0) return false;
+    return list.every(w => selectedWithdrawalIds.value.includes(w.id));
+});
+
+const selectedWithdrawalsList = computed(() => {
+    return (props.withdrawals?.data || []).filter(w => selectedWithdrawalIds.value.includes(w.id));
+});
+
+const selectedTotalAmount = computed(() => {
+    return selectedWithdrawalsList.value.reduce((sum, w) => sum + Number(w.amount || 0), 0);
+});
+
+const hasAnyUnpaidInBatch = computed(() => {
+    return selectedWithdrawalsList.value.some(w => Number(w.unpaid_customers_count || 0) > 0);
+});
+
+const toggleSelectAllPending = () => {
+    const list = pendingWithdrawalsList.value;
+    if (isAllPendingSelected.value) {
+        const pendingIds = list.map(w => w.id);
+        selectedWithdrawalIds.value = selectedWithdrawalIds.value.filter(id => !pendingIds.includes(id));
+    } else {
+        const newIds = new Set([...selectedWithdrawalIds.value, ...list.map(w => w.id)]);
+        selectedWithdrawalIds.value = Array.from(newIds);
+    }
+};
+
+const clearBatchSelection = () => {
+    selectedWithdrawalIds.value = [];
+};
+
+const openBatchApproveModal = () => {
+    if (selectedWithdrawalIds.value.length === 0) return;
+    batchApproveForm.ids = [...selectedWithdrawalIds.value];
+    batchApproveForm.use_flip = !!(props.flip_config?.has_secret_key);
+    batchApproveForm.force_approve = false;
+    showBatchApproveModal.value = true;
+};
+
+const submitBatchApprove = () => {
+    batchApproveForm.ids = [...selectedWithdrawalIds.value];
+    batchApproveForm.post(route('admin.affiliates.withdrawals.batch-approve'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showBatchApproveModal.value = false;
+            selectedWithdrawalIds.value = [];
+            batchApproveForm.reset();
+        },
+    });
+};
 
 const approveForm = useForm({
     reference_no: '',
