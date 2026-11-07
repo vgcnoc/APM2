@@ -1665,6 +1665,30 @@
                                     </p>
                                 </div>
 
+                                <!-- Royalti Override Pasif Khusus Master Biller -->
+                                <div v-if="editUserForm.tier === 'master'" class="p-3.5 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-1.5 animate-fade-in">
+                                    <div class="flex items-center justify-between">
+                                        <label for="edit_reseller_override_fee" class="block text-xs font-black text-amber-950 uppercase tracking-wider flex items-center gap-1.5">
+                                            <span>👑 Royalti Override Pasif per Tagihan (Rp)</span>
+                                        </label>
+                                        <span class="text-[10px] font-bold text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded-full border border-amber-200">
+                                            Default: Rp 500
+                                        </span>
+                                    </div>
+                                    <input
+                                        id="edit_reseller_override_fee"
+                                        v-model="editUserForm.override_fee"
+                                        type="number"
+                                        min="0"
+                                        step="100"
+                                        placeholder="Biarkan kosong untuk default sistem (Rp 500)"
+                                        class="w-full px-3.5 py-2.5 text-xs bg-white border border-amber-300 rounded-xl font-mono font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                    />
+                                    <p class="text-[11px] text-amber-900/80 leading-relaxed">
+                                        Bonus royalti pasif yang diterima Master Biller ini setiap kali sub-reseller binaannya melunasi tagihan internet bulanan. Jika dikosongkan, otomatis menggunakan tarif default sistem (Rp 500/tagihan).
+                                    </p>
+                                </div>
+
                                 <div>
                                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                                         Layanan Kemitraan yang Diizinkan
@@ -1876,6 +1900,30 @@
                                 />
                                 <p class="text-[11px] text-slate-500">
                                     Nominal terbaca: <strong class="text-emerald-700">Rp {{ formatRupiah(createResellerForm.balance) }}</strong>. Saldo ini langsung tersedia di dompet reseller.
+                                </p>
+                            </div>
+
+                            <!-- Royalti Override Pasif Khusus Master Biller -->
+                            <div v-if="createResellerForm.tier === 'master'" class="p-3.5 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-1.5 animate-fade-in">
+                                <div class="flex items-center justify-between">
+                                    <label for="create_reseller_override_fee" class="block text-xs font-black text-amber-950 uppercase tracking-wider flex items-center gap-1.5">
+                                        <span>👑 Royalti Override Pasif per Tagihan (Rp)</span>
+                                    </label>
+                                    <span class="text-[10px] font-bold text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded-full border border-amber-200">
+                                        Default: Rp 500
+                                    </span>
+                                </div>
+                                <input
+                                    id="create_reseller_override_fee"
+                                    v-model="createResellerForm.override_fee"
+                                    type="number"
+                                    min="0"
+                                    step="100"
+                                    placeholder="Biarkan kosong untuk default sistem (Rp 500)"
+                                    class="w-full px-3.5 py-2.5 text-xs bg-white border border-amber-300 rounded-xl font-mono font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                />
+                                <p class="text-[11px] text-amber-900/80 leading-relaxed">
+                                    Bonus royalti pasif yang diterima Master Biller ini setiap kali sub-reseller binaannya melunasi tagihan internet bulanan. Jika dikosongkan, otomatis menggunakan tarif default sistem (Rp 500/tagihan).
                                 </p>
                             </div>
 
@@ -2335,6 +2383,7 @@ const editUserForm = useForm({
     has_reseller: false,
     tier: 'regular',
     balance: 0,
+    override_fee: '',
     can_sell_vouchers: false,
     can_pay_bills: true,
     reseller_status: 'active',
@@ -2357,6 +2406,7 @@ const openEditModal = (user) => {
     editUserForm.has_reseller = Boolean(r);
     editUserForm.tier = r?.tier || 'regular';
     editUserForm.balance = r ? Number(r.balance) : 0;
+    editUserForm.override_fee = (r && r.override_fee !== null && r.override_fee !== undefined) ? r.override_fee : '';
     editUserForm.can_sell_vouchers = Boolean(r ? r.can_sell_vouchers : false);
     editUserForm.can_pay_bills = Boolean(r ? r.can_pay_bills : true);
     editUserForm.reseller_status = r?.status || 'active';
@@ -2477,6 +2527,7 @@ const createResellerForm = useForm({
     password: '',
     tier: 'regular',
     balance: 20000,
+    override_fee: '',
     area_id: '',
     can_sell_vouchers: false,
     can_pay_bills: true,
@@ -2499,6 +2550,7 @@ const openCreateResellerModal = () => {
     createResellerForm.password = 'reseller123';
     createResellerForm.tier = 'regular';
     createResellerForm.balance = props.settings?.reseller_min_deposit || 20000;
+    createResellerForm.override_fee = '';
     createResellerForm.area_id = '';
     createResellerForm.can_sell_vouchers = Boolean(props.settings?.reseller_feature_vouchers_enabled ?? false);
     createResellerForm.can_pay_bills = Boolean(props.settings?.reseller_feature_billing_enabled ?? true);

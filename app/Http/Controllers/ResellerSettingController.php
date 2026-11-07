@@ -374,6 +374,7 @@ class ResellerSettingController extends Controller
             'phone' => 'nullable|string|max:30',
             'password' => 'required|string|min:6',
             'tier' => 'required|in:regular,master',
+            'override_fee' => 'nullable|numeric|min:0',
             'can_sell_vouchers' => 'nullable|boolean',
             'can_pay_bills' => 'nullable|boolean',
             'balance' => 'nullable|numeric|min:0',
@@ -436,6 +437,7 @@ class ResellerSettingController extends Controller
                 'balance' => $initialBalance,
                 'is_active' => true,
                 'tier' => $validated['tier'],
+                'override_fee' => (isset($validated['override_fee']) && $validated['override_fee'] !== '') ? (float) $validated['override_fee'] : null,
                 'can_sell_vouchers' => $canSellVouchers,
                 'can_pay_bills' => $canPayBills,
                 'referral_code' => $validated['tier'] === 'master' ? Reseller::generateReferralCode() : null,
@@ -486,6 +488,7 @@ class ResellerSettingController extends Controller
             'role' => 'required|string|max:50',
             'is_active' => 'boolean',
             'tier' => 'nullable|in:regular,master',
+            'override_fee' => 'nullable|numeric|min:0',
             'can_sell_vouchers' => 'nullable|boolean',
             'can_pay_bills' => 'nullable|boolean',
             'balance' => 'nullable|numeric|min:0',
@@ -530,6 +533,9 @@ class ResellerSettingController extends Controller
                 $reseller->balance = $newBalance;
                 $reseller->status = $validated['reseller_status'] ?? ($reseller->status ?: 'active');
                 $reseller->is_active = $user->is_active;
+                if ($request->has('override_fee')) {
+                    $reseller->override_fee = ($validated['override_fee'] !== null && $validated['override_fee'] !== '') ? (float) $validated['override_fee'] : null;
+                }
                 if ($request->has('can_sell_vouchers')) {
                     $reseller->can_sell_vouchers = $request->boolean('can_sell_vouchers');
                 }
@@ -556,6 +562,7 @@ class ResellerSettingController extends Controller
                     'user_id' => $user->id,
                     'customer_id' => $user->customer?->id,
                     'tier' => $tier,
+                    'override_fee' => (isset($validated['override_fee']) && $validated['override_fee'] !== '') ? (float) $validated['override_fee'] : null,
                     'balance' => $balance,
                     'is_active' => $user->is_active,
                     'status' => $validated['reseller_status'] ?? 'active',
