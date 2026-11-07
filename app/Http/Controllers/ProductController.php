@@ -242,6 +242,7 @@ class ProductController extends Controller
                     } else {
                         $product->update([
                             'is_active' => false,
+                            'is_catalog' => false,
                             'stock' => 0,
                             'total_rolls' => 0,
                             'total_packs' => 0,
