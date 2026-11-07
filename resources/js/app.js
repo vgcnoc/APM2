@@ -1,5 +1,5 @@
 import { createApp, h } from 'vue';
-import { createInertiaApp, router } from '@inertiajs/vue3';
+import { createInertiaApp, router, Link } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import '../css/app.css';
 import '../css/dark.css';
@@ -120,6 +120,7 @@ createInertiaApp({
         // Register Global Directive & Component
         app.directive('can', canDirective);
         app.component('Can', Can);
+        app.component('Link', Link);
 
         // RBAC Global Helpers
         app.config.globalProperties.$can = (permission, arg) => {

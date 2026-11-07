@@ -392,29 +392,37 @@
                     </div>
                     
                     <!-- Pagination (if applicable) -->
-                    <div v-if="materials.links && materials.links.length > 3" class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
-                        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                            <div>
-                                <p class="text-sm text-gray-700">
-                                    Menampilkan <span class="font-bold">{{ materials.from }}</span> - <span class="font-bold">{{ materials.to }}</span> dari <span class="font-bold">{{ materials.total }}</span> hasil
-                                </p>
-                            </div>
-                            <div>
-                                <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                                    <template v-for="(link, i) in materials.links" :key="i">
-                                        <Component
-                                            :is="link.url ? 'Link' : 'span'"
-                                            :href="link.url"
-                                            v-html="link.label"
-                                            class="relative inline-flex items-center px-4 py-2 border text-sm font-medium"
-                                            :class="[
-                                                link.active ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50',
-                                                { 'rounded-l-md': i === 0, 'rounded-r-md': i === materials.links.length - 1 }
-                                            ]"
-                                        />
-                                    </template>
-                                </nav>
-                            </div>
+                    <div v-if="materials.links && materials.links.length > 3" class="px-6 py-4 border-t border-gray-100 bg-gray-50/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div>
+                            <p class="text-sm text-gray-700">
+                                Menampilkan <span class="font-bold text-gray-900">{{ materials.from || 0 }}</span> - <span class="font-bold text-gray-900">{{ materials.to || 0 }}</span> dari <span class="font-bold text-gray-900">{{ materials.total || 0 }}</span> hasil
+                            </p>
+                        </div>
+                        <div>
+                            <nav class="relative z-0 inline-flex rounded-xl shadow-xs -space-x-px" aria-label="Pagination">
+                                <template v-for="(link, i) in materials.links" :key="i">
+                                    <Link
+                                        v-if="link.url"
+                                        :href="link.url"
+                                        preserve-scroll
+                                        preserve-state
+                                        v-html="link.label"
+                                        class="relative inline-flex items-center px-3.5 py-2 border text-sm font-bold transition-all duration-150 select-none cursor-pointer"
+                                        :class="[
+                                            link.active 
+                                                ? 'z-10 bg-indigo-600 border-indigo-600 text-white shadow-xs' 
+                                                : 'bg-white border-gray-300 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300',
+                                            { 'rounded-l-xl': i === 0, 'rounded-r-xl': i === materials.links.length - 1 }
+                                        ]"
+                                    />
+                                    <span
+                                        v-else
+                                        v-html="link.label"
+                                        class="relative inline-flex items-center px-3.5 py-2 border text-sm font-medium bg-gray-100/70 border-gray-200 text-gray-400 cursor-not-allowed select-none"
+                                        :class="{ 'rounded-l-xl': i === 0, 'rounded-r-xl': i === materials.links.length - 1 }"
+                                    />
+                                </template>
+                            </nav>
                         </div>
                     </div>
                 </div>
