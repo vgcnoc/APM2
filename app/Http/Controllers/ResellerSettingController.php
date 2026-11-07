@@ -10,6 +10,9 @@ use App\Models\AuditLog;
 use App\Models\ResellerTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
+use Spatie\Permission\Models\Role;
 use Inertia\Inertia;
 
 class ResellerSettingController extends Controller
@@ -33,7 +36,13 @@ class ResellerSettingController extends Controller
         $search = trim($request->input('search', ''));
         $tab = $request->input('tab', 'settings'); // 'settings', 'pending', 'vouchers'
 
-        $query = User::with(['voucherProfiles', 'reseller.customer', 'customer']);
+        $query = User::with([
+            'voucherProfiles',
+            'reseller.customer.areaModel',
+            'customer.areaModel',
+            'customer.package',
+            'roles'
+        ]);
 
         // Filter berdasarkan peran pengguna
         if ($roleFilter === 'reseller') {
@@ -317,5 +326,178 @@ class ResellerSettingController extends Controller
             : "Akses profil voucher {$user->name} berhasil dibatasi ke " . count($profileIds) . " profil terpilih.";
 
         return redirect()->back()->with('success', $msg);
+    }
+
+    /**
+     * Update data profil pengguna dan kemitraan reseller.
+     */
+    public function updateUser(Request $request, User $user)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+            'phone' => 'nullable|string|max:30',
+            'password' => 'nullable|string|min:6',
+            'role' => 'required|string|max:50',
+            'is_active' => 'boolean',
+            'tier' => 'nullable|in:regular,master',
+            'balance' => 'nullable|numeric|min:0',
+            'reseller_status' => 'nullable|in:active,pending,suspended',
+        ]);
+
+        DB::transaction(function () use ($user, $validated, $request) {
+            $user->name = trim($validated['name']);
+            $user->email = strtolower(trim($validated['email']));
+            if (array_key_exists('phone', $validated)) {
+                $user->phone = $validated['phone'];
+            }
+            $user->role = strtolower(trim($validated['role']));
+            $user->is_active = $request->boolean('is_active', true);
+
+            if (!empty($validated['password'])) {
+                $user->password = Hash::make($validated['password']);
+            }
+
+            $user->save();
+
+            // Sync Spatie Role
+            try {
+                Role::firstOrCreate(['name' => $user->role, 'guard_name' => 'web']);
+                $user->syncRoles([$user->role]);
+            } catch (\Throwable $e) {}
+
+            // Handle Reseller Record
+            $reseller = $user->reseller ?: ($user->customer?->reseller);
+
+            if ($reseller) {
+                $oldBalance = (float) $reseller->balance;
+                $newBalance = isset($validated['balance']) ? (float) $validated['balance'] : $oldBalance;
+                $diff = $newBalance - $oldBalance;
+
+                $tier = $validated['tier'] ?? $reseller->tier;
+                if ($tier === 'master' && empty($reseller->referral_code)) {
+                    $reseller->referral_code = Reseller::generateReferralCode();
+                }
+
+                $reseller->tier = $tier;
+                $reseller->balance = $newBalance;
+                $reseller->status = $validated['reseller_status'] ?? ($reseller->status ?: 'active');
+                $reseller->is_active = $user->is_active;
+                $reseller->save();
+
+                if (abs($diff) > 0) {
+                    ResellerTransaction::create([
+                        'reseller_id' => $reseller->id,
+                        'type' => $diff > 0 ? 'credit' : 'debit',
+                        'amount' => abs($diff),
+                        'description' => 'Penyesuaian Saldo via Pengaturan Reseller (' . ($diff > 0 ? '+' : '-') . 'Rp ' . number_format(abs($diff), 0, ',', '.') . ')',
+                        'reference_id' => 'ADJ-' . time(),
+                    ]);
+                }
+            } elseif ($user->role === 'reseller' || $request->boolean('create_reseller')) {
+                // Buat data kemitraan reseller jika role diset ke reseller
+                $tier = $validated['tier'] ?? 'regular';
+                $balance = isset($validated['balance']) ? (float) $validated['balance'] : 0;
+
+                $newReseller = Reseller::create([
+                    'user_id' => $user->id,
+                    'customer_id' => $user->customer?->id,
+                    'tier' => $tier,
+                    'balance' => $balance,
+                    'is_active' => $user->is_active,
+                    'status' => $validated['reseller_status'] ?? 'active',
+                    'referral_code' => $tier === 'master' ? Reseller::generateReferralCode() : null,
+                ]);
+
+                if ($balance > 0) {
+                    ResellerTransaction::create([
+                        'reseller_id' => $newReseller->id,
+                        'type' => 'credit',
+                        'amount' => $balance,
+                        'description' => 'Saldo Awal Mitra Reseller',
+                        'reference_id' => 'INIT-' . time(),
+                    ]);
+                }
+            }
+
+            // Sync Customer name & phone jika akun terhubung ke data pelanggan
+            if ($user->customer) {
+                $user->customer->name = $user->name;
+                $user->customer->email = $user->email;
+                if (!empty($user->phone)) {
+                    $user->customer->phone = $user->phone;
+                }
+                $user->customer->save();
+            }
+
+            // Audit Log
+            try {
+                AuditLog::createLog(
+                    'Update User / Reseller Account',
+                    $user,
+                    null,
+                    'updated',
+                    "Admin memperbarui data pengguna: {$user->name} ({$user->email}, Role: {$user->role})"
+                );
+            } catch (\Throwable $e) {}
+        });
+
+        return redirect()->back()->with('success', "Data pengguna dan kemitraan '{$user->name}' berhasil diperbarui.");
+    }
+
+    /**
+     * Hapus akun pengguna dan data kemitraan terkait secara bersih.
+     */
+    public function destroyUser(User $user)
+    {
+        // 1. Guard akun sendiri
+        if (auth()->id() === $user->id) {
+            return redirect()->back()->with('error', 'Anda tidak dapat menghapus akun Anda sendiri.');
+        }
+
+        // 2. Guard akun super admin utama sistem
+        if ($user->id === 1 || $user->email === 'admin@isp.local') {
+            return redirect()->back()->with('error', 'Akun Super Administrator utama sistem dilindungi dan tidak boleh dihapus.');
+        }
+
+        $userName = $user->name;
+        $userEmail = $user->email;
+
+        DB::transaction(function () use ($user, $userName, $userEmail) {
+            // Hapus data reseller jika ada
+            if ($user->reseller) {
+                $user->reseller->purgeConnectedData();
+                $user->reseller->delete();
+            }
+
+            if ($user->customer && $user->customer->reseller) {
+                $user->customer->reseller->purgeConnectedData();
+                $user->customer->reseller->delete();
+            }
+
+            // Detach voucher profiles
+            $user->voucherProfiles()->detach();
+
+            // Unlink customer agar pelanggan internet tidak terhapus
+            if ($user->customer) {
+                $user->customer->user_id = null;
+                $user->customer->save();
+            }
+
+            // Audit log
+            try {
+                AuditLog::createLog(
+                    'Delete User / Reseller Account',
+                    null,
+                    null,
+                    'deleted',
+                    "Admin menghapus akun pengguna {$userName} (ID: {$user->id}, Email: {$userEmail})"
+                );
+            } catch (\Throwable $e) {}
+
+            $user->delete();
+        });
+
+        return redirect()->back()->with('success', "Akun '{$userName}' dan seluruh data kemitraan terkait berhasil dihapus bersih.");
     }
 }

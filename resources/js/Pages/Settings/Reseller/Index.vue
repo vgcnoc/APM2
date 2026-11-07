@@ -655,13 +655,49 @@
 
                                     <!-- Kolom Aksi -->
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-xs font-bold">
-                                        <button 
-                                            @click="openSettingModal(user)" 
-                                            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-extrabold bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white border border-indigo-200 hover:border-transparent transition-all shadow-xs cursor-pointer active:scale-95"
-                                        >
-                                            <span>⚙️</span>
-                                            <span>Atur Akses</span>
-                                        </button>
+                                        <div class="flex items-center justify-end gap-1.5">
+                                            <!-- View Detail Button -->
+                                            <button 
+                                                type="button"
+                                                @click="openViewModal(user)" 
+                                                class="p-2 rounded-xl text-sky-600 bg-sky-50 hover:bg-sky-600 hover:text-white border border-sky-200 transition-all shadow-2xs cursor-pointer active:scale-95"
+                                                title="Lihat Detail Lengkap Akun & Kemitraan"
+                                            >
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                            </button>
+
+                                            <!-- Edit Button -->
+                                            <button 
+                                                type="button"
+                                                @click="openEditModal(user)" 
+                                                class="p-2 rounded-xl text-amber-600 bg-amber-50 hover:bg-amber-600 hover:text-white border border-amber-200 transition-all shadow-2xs cursor-pointer active:scale-95"
+                                                title="Edit Data Pengguna & Kemitraan"
+                                            >
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                            </button>
+
+                                            <!-- Atur Akses Voucher Button -->
+                                            <button 
+                                                type="button"
+                                                @click="openSettingModal(user)" 
+                                                class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-extrabold bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white border border-indigo-200 hover:border-transparent transition-all shadow-2xs cursor-pointer active:scale-95"
+                                                title="Atur Pembatasan Akses Profil Voucher Hotspot"
+                                            >
+                                                <span>⚙️</span>
+                                                <span>Atur Akses</span>
+                                            </button>
+
+                                            <!-- Delete Button -->
+                                            <button 
+                                                type="button"
+                                                v-if="user.id !== 1 && user.email !== 'admin@isp.local'"
+                                                @click="confirmDeleteUser(user)" 
+                                                class="p-2 rounded-xl text-rose-600 bg-rose-50 hover:bg-rose-600 hover:text-white border border-rose-200 transition-all shadow-2xs cursor-pointer active:scale-95"
+                                                title="Hapus Akun Pengguna & Kemitraan"
+                                            >
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
 
@@ -969,6 +1005,421 @@
                 </div>
             </div>
 
+            <!-- ========================================================================= -->
+            <!-- MODAL 4: LIHAT DETAIL PENGGUNA & KEMITRAAN (VIEW)                         -->
+            <!-- ========================================================================= -->
+            <div v-if="showViewModal && selectedUserForView" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
+                <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh] border border-slate-100">
+                    <!-- Header -->
+                    <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/80">
+                        <div class="flex items-center gap-2.5">
+                            <span class="p-2 bg-sky-50 text-sky-600 rounded-xl text-lg">👁️</span>
+                            <div>
+                                <h2 class="text-base font-black text-slate-900">Detail Akun &amp; Kemitraan</h2>
+                                <p class="text-[11px] text-slate-500">Informasi profil pengguna, status kemitraan, dan hak akses voucher</p>
+                            </div>
+                        </div>
+                        <button @click="showViewModal = false" class="text-slate-400 hover:text-slate-600 text-lg font-bold p-1 rounded-lg hover:bg-slate-100 cursor-pointer">
+                            ✕
+                        </button>
+                    </div>
+
+                    <!-- Body -->
+                    <div class="p-6 overflow-y-auto flex-1 space-y-5 text-xs text-slate-700">
+                        <!-- Profil Singkat Banner -->
+                        <div class="p-4 rounded-2xl bg-gradient-to-r from-slate-50 to-indigo-50/40 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div class="flex items-center gap-3.5">
+                                <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-black shadow-sm shrink-0" :class="getUserAvatarClass(selectedUserForView.role)">
+                                    {{ getUserInitial(selectedUserForView.name) }}
+                                </div>
+                                <div>
+                                    <h3 class="text-base font-extrabold text-slate-900 flex items-center gap-2 flex-wrap">
+                                        <span>{{ selectedUserForView.name }}</span>
+                                        <span v-if="selectedUserForView.reseller" class="px-2 py-0.5 rounded-full text-[10px] font-extrabold" :class="selectedUserForView.reseller.tier === 'master' ? 'bg-purple-100 text-purple-800 border border-purple-300' : 'bg-emerald-100 text-emerald-800 border border-emerald-300'">
+                                            {{ selectedUserForView.reseller.tier === 'master' ? '👑 Master Biller' : '🏪 Mitra Reseller' }}
+                                        </span>
+                                    </h3>
+                                    <p class="text-slate-500 mt-0.5">{{ selectedUserForView.email }}</p>
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border shadow-2xs" :class="getRoleBadgeClass(selectedUserForView.role)">
+                                            Role: {{ selectedUserForView.role }}
+                                        </span>
+                                        <span class="px-2 py-0.5 rounded-md text-[10px] font-bold" :class="selectedUserForView.is_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'">
+                                            {{ selectedUserForView.is_active ? '● Akun Aktif' : '○ Nonaktif' }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Action Button Hubungi WA jika ada phone -->
+                            <div v-if="selectedUserForView.phone" class="sm:self-center shrink-0">
+                                <a 
+                                    :href="getWhatsAppLink(selectedUserForView.phone, selectedUserForView.name)" 
+                                    target="_blank" 
+                                    class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition"
+                                >
+                                    <span>💬</span>
+                                    <span>Chat WhatsApp</span>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Grid 2 Kolom: Detail Akun & Kemitraan -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Info Kontak & Akun -->
+                            <div class="p-4 rounded-2xl bg-white border border-slate-200 space-y-2.5">
+                                <h4 class="font-extrabold text-slate-900 text-xs flex items-center gap-1.5 border-b border-slate-100 pb-2">
+                                    <span>👤</span>
+                                    <span>Data Kontak &amp; Login</span>
+                                </h4>
+                                <div class="space-y-1.5">
+                                    <div class="flex justify-between py-1 border-b border-slate-50">
+                                        <span class="text-slate-400">ID Pengguna:</span>
+                                        <span class="font-mono font-bold text-slate-800">#{{ selectedUserForView.id }}</span>
+                                    </div>
+                                    <div class="flex justify-between py-1 border-b border-slate-50">
+                                        <span class="text-slate-400">Email:</span>
+                                        <span class="font-bold text-slate-800 select-all">{{ selectedUserForView.email }}</span>
+                                    </div>
+                                    <div class="flex justify-between py-1 border-b border-slate-50">
+                                        <span class="text-slate-400">No. WhatsApp / HP:</span>
+                                        <span class="font-bold text-slate-800">{{ selectedUserForView.phone || '-' }}</span>
+                                    </div>
+                                    <div class="flex justify-between py-1 border-b border-slate-50">
+                                        <span class="text-slate-400">Terdaftar Sejak:</span>
+                                        <span class="font-bold text-slate-800">{{ formatDate(selectedUserForView.created_at) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Info Kemitraan Reseller -->
+                            <div class="p-4 rounded-2xl bg-white border border-slate-200 space-y-2.5">
+                                <h4 class="font-extrabold text-slate-900 text-xs flex items-center gap-1.5 border-b border-slate-100 pb-2">
+                                    <span>🏪</span>
+                                    <span>Status Kemitraan Loket/Biller</span>
+                                </h4>
+                                <div v-if="selectedUserForView.reseller || selectedUserForView.customer?.reseller" class="space-y-1.5">
+                                    <div class="flex justify-between py-1 border-b border-slate-50">
+                                        <span class="text-slate-400">Tipe Kemitraan:</span>
+                                        <span class="font-black" :class="(selectedUserForView.reseller?.tier || selectedUserForView.customer?.reseller?.tier) === 'master' ? 'text-purple-700' : 'text-emerald-700'">
+                                            {{ (selectedUserForView.reseller?.tier || selectedUserForView.customer?.reseller?.tier) === 'master' ? '👑 Master Biller' : '🏪 Mitra Reseller Biasa' }}
+                                        </span>
+                                    </div>
+                                    <div class="flex justify-between py-1 border-b border-slate-50">
+                                        <span class="text-slate-400">Saldo Modal Deposit:</span>
+                                        <span class="font-black font-mono text-emerald-700 text-sm">
+                                            Rp {{ formatRupiah((selectedUserForView.reseller || selectedUserForView.customer?.reseller)?.balance) }}
+                                        </span>
+                                    </div>
+                                    <div v-if="(selectedUserForView.reseller || selectedUserForView.customer?.reseller)?.referral_code" class="flex justify-between py-1 border-b border-slate-50">
+                                        <span class="text-slate-400">Kode Referral:</span>
+                                        <span class="font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
+                                            {{ (selectedUserForView.reseller || selectedUserForView.customer?.reseller)?.referral_code }}
+                                        </span>
+                                    </div>
+                                    <div class="flex justify-between py-1 border-b border-slate-50">
+                                        <span class="text-slate-400">Status Mitra:</span>
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase" :class="(selectedUserForView.reseller || selectedUserForView.customer?.reseller)?.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'">
+                                            {{ (selectedUserForView.reseller || selectedUserForView.customer?.reseller)?.status || 'Aktif' }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div v-else class="py-4 text-center text-slate-400">
+                                    <span class="text-2xl block mb-1">ℹ️</span>
+                                    <span>User ini belum memiliki data kemitraan reseller resmi.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Info Pelanggan Terkait (Jika ada) -->
+                        <div v-if="selectedUserForView.customer" class="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100 space-y-2">
+                            <h4 class="font-extrabold text-indigo-950 text-xs flex items-center gap-1.5">
+                                <span>🏠</span>
+                                <span>Pelanggan Internet Rumah Terhubung</span>
+                            </h4>
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] pt-1">
+                                <div>
+                                    <span class="text-slate-400 block">Kode Pelanggan:</span>
+                                    <strong class="text-slate-900 font-mono">{{ selectedUserForView.customer.customer_code }}</strong>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 block">Wilayah / Area:</span>
+                                    <strong class="text-slate-900">{{ selectedUserForView.customer.areaModel?.name || selectedUserForView.customer.area || '-' }}</strong>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 block">Paket Langganan:</span>
+                                    <strong class="text-slate-900">{{ selectedUserForView.customer.package?.name || '-' }}</strong>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 block">Status Layanan:</span>
+                                    <strong class="text-emerald-700 uppercase">{{ selectedUserForView.customer.status || 'Active' }}</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Akses Profil Voucher -->
+                        <div class="p-4 rounded-2xl bg-white border border-slate-200 space-y-2.5">
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                                <h4 class="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
+                                    <span>🏷️</span>
+                                    <span>Hak Akses Profil Voucher Hotspot</span>
+                                </h4>
+                                <button 
+                                    type="button" 
+                                    @click="showViewModal = false; openSettingModal(selectedUserForView)"
+                                    class="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer"
+                                >
+                                    Ubah Akses &rarr;
+                                </button>
+                            </div>
+                            <div v-if="!selectedUserForView.voucher_profiles || selectedUserForView.voucher_profiles.length === 0" class="flex items-center gap-2 text-xs font-bold text-sky-700 bg-sky-50 p-2.5 rounded-xl border border-sky-200">
+                                <span>🌐</span>
+                                <span>Semua Profil (Bebas / Default) — Dapat menjual seluruh paket voucher aktif tanpa batasan.</span>
+                            </div>
+                            <div v-else class="space-y-1.5">
+                                <div class="text-[11px] text-slate-500">Dibatasi hanya boleh menjual paket berikut:</div>
+                                <div class="flex flex-wrap gap-1.5">
+                                    <span 
+                                        v-for="vp in selectedUserForView.voucher_profiles" 
+                                        :key="vp.id" 
+                                        class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200 flex items-center gap-1"
+                                    >
+                                        <span>🎫</span>
+                                        <span>{{ vp.name }}</span>
+                                        <span v-if="vp.price" class="text-emerald-700 font-mono">({{ formatRupiah(vp.price) }})</span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between gap-3">
+                        <button
+                            type="button"
+                            @click="showViewModal = false"
+                            class="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                        >
+                            Tutup
+                        </button>
+                        <div class="flex items-center gap-2">
+                            <button
+                                type="button"
+                                @click="showViewModal = false; openEditModal(selectedUserForView)"
+                                class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                            >
+                                <span>✏️</span>
+                                <span>Edit Akun Ini</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================================================= -->
+            <!-- MODAL 5: EDIT DATA PENGGUNA & KEMITRAAN RESELLER (EDIT)                   -->
+            <!-- ========================================================================= -->
+            <div v-if="showEditModal && selectedUserForEdit" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
+                <div class="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[92vh] border border-slate-100">
+                    <!-- Header -->
+                    <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/80">
+                        <div class="flex items-center gap-2.5">
+                            <span class="p-2 bg-amber-50 text-amber-600 rounded-xl text-lg">✏️</span>
+                            <div>
+                                <h2 class="text-base font-black text-slate-900">Edit Akun &amp; Kemitraan</h2>
+                                <p class="text-[11px] text-slate-500">Perbarui data login, role, saldo modal, dan status kemitraan</p>
+                            </div>
+                        </div>
+                        <button @click="showEditModal = false" class="text-slate-400 hover:text-slate-600 text-lg font-bold p-1 rounded-lg hover:bg-slate-100 cursor-pointer">
+                            ✕
+                        </button>
+                    </div>
+
+                    <form @submit.prevent="submitEditUser" class="flex flex-col flex-1 overflow-hidden">
+                        <!-- Body -->
+                        <div class="p-6 overflow-y-auto flex-1 space-y-4">
+                            <!-- Bagian 1: Data Pengguna -->
+                            <div class="space-y-3">
+                                <h4 class="text-xs font-black uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-1">
+                                    Informasi Login &amp; Kontak
+                                </h4>
+
+                                <div>
+                                    <label for="edit_user_name" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                                        Nama Lengkap <span class="text-rose-500">*</span>
+                                    </label>
+                                    <input
+                                        id="edit_user_name"
+                                        v-model="editUserForm.name"
+                                        type="text"
+                                        required
+                                        placeholder="Nama Lengkap"
+                                        class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                    />
+                                    <p v-if="editUserForm.errors.name" class="text-rose-500 text-[11px] mt-1">{{ editUserForm.errors.name }}</p>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label for="edit_user_email" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                                            Email <span class="text-rose-500">*</span>
+                                        </label>
+                                        <input
+                                            id="edit_user_email"
+                                            v-model="editUserForm.email"
+                                            type="email"
+                                            required
+                                            placeholder="email@contoh.com"
+                                            class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                        />
+                                        <p v-if="editUserForm.errors.email" class="text-rose-500 text-[11px] mt-1">{{ editUserForm.errors.email }}</p>
+                                    </div>
+
+                                    <div>
+                                        <label for="edit_user_phone" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                                            No. WhatsApp / HP
+                                        </label>
+                                        <input
+                                            id="edit_user_phone"
+                                            v-model="editUserForm.phone"
+                                            type="text"
+                                            placeholder="08xxxxxxxxxx"
+                                            class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label for="edit_user_role" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                                            Role Akses Sistem <span class="text-rose-500">*</span>
+                                        </label>
+                                        <select
+                                            id="edit_user_role"
+                                            v-model="editUserForm.role"
+                                            class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                        >
+                                            <option value="reseller">Reseller (Mitra)</option>
+                                            <option value="customer">Customer (Pelanggan)</option>
+                                            <option value="admin">Admin</option>
+                                            <option value="teknisi">Teknisi</option>
+                                            <option value="cs">Customer Service (CS)</option>
+                                            <option value="finance">Finance</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label for="edit_user_password" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                                            Ganti Password (Opsional)
+                                        </label>
+                                        <input
+                                            id="edit_user_password"
+                                            v-model="editUserForm.password"
+                                            type="password"
+                                            placeholder="Kosongkan jika tidak diubah"
+                                            class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-3 pt-1">
+                                    <label class="inline-flex items-center gap-2 cursor-pointer select-none text-xs font-bold text-slate-800">
+                                        <input
+                                            type="checkbox"
+                                            v-model="editUserForm.is_active"
+                                            class="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 border-slate-300"
+                                        />
+                                        <span>Status Akun Aktif (Dapat Login)</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Bagian 2: Data Kemitraan Reseller / Biller -->
+                            <div class="space-y-3 pt-3 border-t border-slate-100">
+                                <div class="flex items-center justify-between">
+                                    <h4 class="text-xs font-black uppercase tracking-wider text-slate-500">
+                                        Konfigurasi Kemitraan Reseller
+                                    </h4>
+                                    <span v-if="editUserForm.has_reseller" class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                        Mitra Terdaftar
+                                    </span>
+                                    <span v-else class="text-[10px] font-bold text-slate-400">
+                                        Belum Ada Kemitraan
+                                    </span>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label for="edit_reseller_tier" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                                            Tipe Kemitraan
+                                        </label>
+                                        <select
+                                            id="edit_reseller_tier"
+                                            v-model="editUserForm.tier"
+                                            class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                        >
+                                            <option value="regular">🏪 Mitra Reseller (Voucher &amp; Eceran)</option>
+                                            <option value="master">👑 Master Biller (Loket Resmi)</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label for="edit_reseller_status" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                                            Status Kemitraan
+                                        </label>
+                                        <select
+                                            id="edit_reseller_status"
+                                            v-model="editUserForm.reseller_status"
+                                            class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                        >
+                                            <option value="active">Active (Aktif)</option>
+                                            <option value="pending">Pending (Menunggu)</option>
+                                            <option value="suspended">Suspended (Ditangguhkan)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label for="edit_reseller_balance" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                                        Saldo Deposit Modal (Rp)
+                                    </label>
+                                    <input
+                                        id="edit_reseller_balance"
+                                        v-model.number="editUserForm.balance"
+                                        type="number"
+                                        min="0"
+                                        step="1000"
+                                        class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                    />
+                                    <p class="text-[11px] text-slate-500 mt-1">
+                                        Format nominal: <strong class="text-emerald-700">Rp {{ formatRupiah(editUserForm.balance) }}</strong>. Setiap perubahan saldo akan dicatat otomatis di mutasi saldo kemitraan.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-end gap-2">
+                            <button
+                                type="button"
+                                @click="showEditModal = false"
+                                class="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="submit"
+                                :disabled="editUserForm.processing"
+                                class="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs rounded-xl shadow-md shadow-amber-500/20 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                            >
+                                <svg v-if="editUserForm.processing" class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                <span>{{ editUserForm.processing ? 'Menyimpan...' : '✓ Simpan Perubahan' }}</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
         </div>
     </AppLayout>
 </template>
@@ -1262,5 +1713,148 @@ const getRoleBadgeClass = (role) => {
     if (r === 'teknisi') return 'bg-cyan-50 text-cyan-800 border-cyan-300';
     if (r === 'cs') return 'bg-blue-50 text-blue-800 border-blue-300';
     return 'bg-slate-50 text-slate-700 border-slate-300';
+};
+
+// =========================================================================
+// Aksi Tambahan: View, Edit, Hapus User / Reseller
+// =========================================================================
+const showViewModal = ref(false);
+const selectedUserForView = ref(null);
+const showEditModal = ref(false);
+const selectedUserForEdit = ref(null);
+
+const editUserForm = useForm({
+    name: '',
+    email: '',
+    phone: '',
+    password: '',
+    role: 'reseller',
+    is_active: true,
+    has_reseller: false,
+    tier: 'regular',
+    balance: 0,
+    reseller_status: 'active',
+});
+
+const openViewModal = (user) => {
+    selectedUserForView.value = user;
+    showViewModal.value = true;
+};
+
+const openEditModal = (user) => {
+    selectedUserForEdit.value = user;
+    const r = user.reseller || (user.customer?.reseller);
+    editUserForm.name = user.name || '';
+    editUserForm.email = user.email || '';
+    editUserForm.phone = user.phone || '';
+    editUserForm.password = '';
+    editUserForm.role = user.role || 'reseller';
+    editUserForm.is_active = Boolean(user.is_active ?? true);
+    editUserForm.has_reseller = Boolean(r);
+    editUserForm.tier = r?.tier || 'regular';
+    editUserForm.balance = r ? Number(r.balance) : 0;
+    editUserForm.reseller_status = r?.status || 'active';
+    editUserForm.clearErrors();
+    showEditModal.value = true;
+};
+
+const submitEditUser = () => {
+    if (!selectedUserForEdit.value) return;
+
+    editUserForm.post(route('settings.resellers.user.update', selectedUserForEdit.value.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showEditModal.value = false;
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Data Diperbarui!',
+                text: `Data pengguna ${editUserForm.name} berhasil disimpan.`,
+                timer: 3000,
+                showConfirmButton: false,
+                timerProgressBar: true
+            });
+        },
+        onError: (err) => {
+            const firstErr = Object.values(err || {})[0] || 'Gagal menyimpan perubahan pengguna.';
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Menyimpan',
+                text: firstErr,
+                confirmButtonColor: '#4f46e5'
+            });
+        }
+    });
+};
+
+const confirmDeleteUser = (user) => {
+    if (user.id === 1 || user.email === 'admin@isp.local') {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Akun Terproteksi',
+            text: 'Akun Super Administrator utama sistem dilindungi dan tidak boleh dihapus.',
+            confirmButtonColor: '#4f46e5'
+        });
+        return;
+    }
+
+    Swal.fire({
+        title: 'Hapus Akun & Kemitraan?',
+        html: `Apakah Anda yakin ingin menghapus akun <b>${user.name}</b> (${user.email})?<br><br>` +
+              `<div class="text-xs text-left p-3 bg-rose-50 text-rose-800 rounded-xl border border-rose-200 leading-relaxed">` +
+              `⚠️ <b>Perhatian:</b> Hak akses login, profil voucher, dan seluruh data kemitraan reseller terkait akan dibersihkan secara aman dari database.` +
+              `</div>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Hapus Sekarang',
+        cancelButtonText: 'Batal',
+        reverseButtons: true,
+    }).then((result) => {
+        if (result.isConfirmed) {
+            router.delete(route('settings.resellers.user.destroy', user.id), {
+                preserveScroll: true,
+                onSuccess: () => {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'Akun Dihapus',
+                        text: `Akun ${user.name} berhasil dihapus dari sistem.`,
+                        timer: 3000,
+                        showConfirmButton: false,
+                        timerProgressBar: true
+                    });
+                },
+                onError: (errors) => {
+                    const msg = Object.values(errors || {})[0] || 'Gagal menghapus pengguna.';
+                    Swal.fire({ icon: 'error', title: 'Gagal Menghapus', text: msg });
+                }
+            });
+        }
+    });
+};
+
+const getWhatsAppLink = (phone, name) => {
+    if (!phone) return '#';
+    let clean = String(phone).replace(/[^0-9]/g, '');
+    if (clean.startsWith('0')) clean = '62' + clean.slice(1);
+    else if (clean.startsWith('8')) clean = '62' + clean;
+    return `https://wa.me/${clean}?text=Halo%20Kak%20${encodeURIComponent(name || '')},%20terkait%20akun%20kemitraan%20Anda%20di%20sistem%20kami...`;
+};
+
+const formatDate = (dateStr) => {
+    if (!dateStr) return '-';
+    try {
+        return new Date(dateStr).toLocaleDateString('id-ID', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        });
+    } catch (e) {
+        return dateStr;
+    }
 };
 </script>
