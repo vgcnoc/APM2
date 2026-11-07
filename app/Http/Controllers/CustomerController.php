@@ -5265,6 +5265,9 @@ class CustomerController extends Controller
                 $ont->update(['customer_id' => $customer->id]);
             }
         }
+        if ($ont && empty($customer->ont_id)) {
+            $customer->update(['ont_id' => $ont->id]);
+        }
 
         if ($ont) {
             $accessMode = $validated['access_mode'] ?? 'PPPOE';

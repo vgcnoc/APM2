@@ -1091,7 +1091,14 @@
                             <span class="text-2xl">⚡</span>
                             <div>
                                 <h3 class="text-lg font-bold text-purple-900 leading-tight">Edit Konfigurasi Aktivasi</h3>
-                                <p class="text-xs text-purple-700 font-medium">{{ editCustomer.name }} ({{ editCustomer.customer_code }})</p>
+                                <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+                                    <p class="text-xs text-purple-700 font-medium">{{ editCustomer.name }} ({{ editCustomer.customer_code }})</p>
+                                    <span v-if="editCustomer.ont?.brand" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-200/80 text-purple-900 border border-purple-300 flex items-center gap-1">
+                                        <span>📟</span>
+                                        <span>{{ editCustomer.ont.brand }} {{ editCustomer.ont.model || '' }}</span>
+                                        <span class="font-mono text-purple-800 font-medium">({{ editCustomer.ont.serial_number || '-' }})</span>
+                                    </span>
+                                </div>
                             </div>
                         </div>
                         <button @click="showEditModal = false" class="text-gray-500 hover:text-gray-900">
@@ -1103,22 +1110,34 @@
                         <div class="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
                             <!-- Detail Data ONT & Pelanggan -->
                             <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Detail Data ONT & Pelanggan</h4>
+                                <div class="flex items-center justify-between mb-3">
+                                    <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Detail Data ONT & Pelanggan</h4>
+                                    <span v-if="editCustomer.ont?.brand" class="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200">
+                                        {{ editCustomer.ont.ont_id ? (editCustomer.ont.ont_id + ' • ') : '' }}{{ editCustomer.ont.brand }} {{ editCustomer.ont.model || '' }}
+                                    </span>
+                                </div>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-4 text-sm">
                                     <div>
                                         <span class="text-gray-500 block text-[10px] uppercase font-semibold">Nama Pelanggan</span>
                                         <span class="font-bold text-gray-900">{{ editCustomer.name }}</span>
                                     </div>
                                     <div>
-                                        <span class="text-gray-500 block text-[10px] uppercase font-semibold">Area/Wilayah</span>
+                                        <span class="text-gray-500 block text-[10px] uppercase font-semibold">Area / Wilayah</span>
                                         <span class="font-bold text-gray-900">{{ editCustomer.area || '-' }}</span>
                                     </div>
-                                    <div class="col-span-2 sm:col-span-1">
-                                        <span class="text-gray-500 block text-[10px] uppercase font-semibold">Serial Number ONT</span>
+                                    <div>
+                                        <span class="text-gray-500 block text-[10px] uppercase font-semibold">Nama / Tipe Perangkat ONT</span>
+                                        <span class="font-bold text-purple-950 flex items-center gap-1.5 mt-0.5">
+                                            <span>📟</span>
+                                            <span>{{ editCustomer.ont?.brand || '-' }} {{ editCustomer.ont?.model || '' }}</span>
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span class="text-gray-500 block text-[10px] uppercase font-semibold">Serial Number & Kode ONT</span>
                                         <div class="flex items-center gap-1.5 flex-wrap mt-0.5">
-                                            <span class="font-bold text-gray-900 font-mono">{{ editCustomer.ont?.serial_number || editCustomer.ont?.sn || '-' }}</span>
-                                            <span v-if="editCustomer.ont?.brand" class="text-[10px] bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded font-medium">
-                                                {{ editCustomer.ont.brand }} {{ editCustomer.ont.model || '' }}
+                                            <span class="font-bold text-gray-900 font-mono text-xs">{{ editCustomer.ont?.serial_number || editCustomer.ont?.sn || '-' }}</span>
+                                            <span v-if="editCustomer.ont?.ont_id" class="text-[10px] bg-purple-100 text-purple-800 border border-purple-200 px-1.5 py-0.5 rounded font-mono font-bold">
+                                                {{ editCustomer.ont.ont_id }}
                                             </span>
                                             <span v-if="editCustomer.ont?.description && editCustomer.ont.description.includes('Menggantikan SN')" class="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded font-bold">
                                                 ONT Pengganti
@@ -1128,6 +1147,12 @@
                                     <div v-if="editCustomer.ont?.odp">
                                         <span class="text-gray-500 block text-[10px] uppercase font-semibold">ODP & Port</span>
                                         <span class="font-bold text-gray-900">{{ editCustomer.ont?.odp?.name || '-' }} (Port {{ editCustomer.ont?.port_number || '-' }})</span>
+                                    </div>
+                                    <div v-if="editCustomer.ont?.rx_power">
+                                        <span class="text-gray-500 block text-[10px] uppercase font-semibold">Redaman Optik (RX Power)</span>
+                                        <span class="font-bold font-mono text-xs" :class="Number(editCustomer.ont.rx_power) >= -27 ? 'text-emerald-700' : 'text-rose-600'">
+                                            {{ editCustomer.ont.rx_power }} dBm
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -1285,6 +1310,30 @@
 
                             <!-- PPPoE / Member Username & Password (Hanya jika bukan Free Home) -->
                             <template v-else>
+                                <!-- Info Target Perangkat ONT yang Dikonfigurasi -->
+                                <div class="p-3.5 bg-gradient-to-r from-purple-50 via-indigo-50 to-white border border-purple-200 rounded-xl flex items-center justify-between gap-3 text-xs shadow-2xs">
+                                    <div class="flex items-center gap-2.5">
+                                        <span class="p-1.5 bg-purple-100 text-purple-700 rounded-lg text-sm">📟</span>
+                                        <div>
+                                            <div class="text-[10px] text-purple-700 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                                <span>Target Perangkat ONT</span>
+                                                <span v-if="editCustomer.ont?.ont_id" class="bg-purple-200/80 text-purple-900 px-1.5 py-0.2 rounded font-mono text-[9px] font-bold">
+                                                    {{ editCustomer.ont.ont_id }}
+                                                </span>
+                                            </div>
+                                            <div class="font-black text-purple-950 flex items-center gap-1.5 flex-wrap mt-0.5">
+                                                <span>{{ editCustomer.ont?.brand || 'Modem ONT' }} {{ editCustomer.ont?.model || '' }}</span>
+                                                <span class="font-mono text-purple-700 font-semibold text-[11px]">({{ editCustomer.ont?.serial_number || 'Tanpa SN' }})</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-right shrink-0">
+                                        <span class="text-[10px] font-bold text-emerald-800 bg-emerald-100/80 border border-emerald-300 px-2.5 py-1 rounded-full inline-flex items-center gap-1 shadow-2xs">
+                                            <span>✓</span> Auto-Sync ke Data ONT
+                                        </span>
+                                    </div>
+                                </div>
+
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
                                         <div class="flex items-center justify-between mb-1">
