@@ -77,7 +77,9 @@ const waUrl = computed(() => {
             
             <!-- Logo & Brand Header -->
             <div class="text-center flex flex-col items-center">
-                <AppLogo context="login" />
+                <Link :href="route('login', { portal: 'reseller' })" class="group inline-flex items-center justify-center p-3 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all duration-200" title="Klik untuk kembali ke halaman login">
+                    <AppLogo context="register" :force-light="true" align="center" />
+                </Link>
             </div>
 
             <!-- Success / Pending Approval Card -->

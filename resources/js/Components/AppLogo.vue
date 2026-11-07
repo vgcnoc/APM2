@@ -1,9 +1,9 @@
 <template>
-    <div class="flex items-center" :class="[context === 'login' ? 'justify-start' : 'justify-center']">
+    <div class="flex items-center" :class="[justifyClass]">
         <!-- Logo from Settings (mengikuti Logo Perusahaan atau Logo Aplikasi) -->
         <img v-if="logoSrc && !imageError" 
              :src="logoSrc" 
-             class="object-contain w-auto transition-all duration-300 dark:brightness-0 dark:invert dark:drop-shadow-[0_2px_12px_rgba(255,255,255,0.35)]" 
+             class="object-contain w-auto transition-all duration-300" 
              :class="[
                  sizeClasses,
                  isWhiteLogo ? 'brightness-0 invert drop-shadow-[0_2px_12px_rgba(255,255,255,0.35)]' : ''
@@ -20,8 +20,8 @@
                 <!-- Lightning Icon -->
                 <path d="M22 14V7L13 18H20V25L29 14H22Z" fill="white" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                 <!-- Text: Dynamic App/Company Name -->
-                <text class="apm-brand-name dark:fill-white transition-colors" x="52" y="24" :fill="isWhiteLogo ? '#FFFFFF' : '#111827'" font-family="system-ui, sans-serif" font-size="17" font-weight="800">{{ displayName }}</text>
-                <text v-if="displayName !== ''" class="dark:fill-slate-200 transition-colors" x="52" y="38" :fill="isWhiteLogo ? '#E2E8F0' : 'currentColor'" font-family="system-ui, sans-serif" font-size="10" font-weight="700" letter-spacing="0.1em">OFFICIAL PORTAL</text>
+                <text class="apm-brand-name transition-colors" :class="isWhiteLogo ? 'dark:fill-white' : ''" x="52" y="24" :fill="isWhiteLogo ? '#FFFFFF' : '#0F172A'" font-family="system-ui, sans-serif" font-size="17" font-weight="800">{{ displayName }}</text>
+                <text v-if="displayName !== ''" class="transition-colors" :class="isWhiteLogo ? 'dark:fill-slate-200' : ''" x="52" y="38" :fill="isWhiteLogo ? '#E2E8F0' : '#475569'" font-family="system-ui, sans-serif" font-size="10" font-weight="700" letter-spacing="0.1em">OFFICIAL PORTAL</text>
             </svg>
             
             <!-- Icon-only SVG for collapsed sidebar -->
@@ -43,10 +43,10 @@ const props = defineProps({
         type: Boolean,
         default: false
     },
-    // Used to adjust size in different contexts (sidebar vs header vs mobile vs navbar vs login)
+    // Used to adjust size in different contexts (sidebar vs header vs mobile vs navbar vs login vs register)
     context: {
         type: String,
-        default: 'desktop' // desktop, mobile, tablet, login, navbar
+        default: 'desktop' // desktop, mobile, tablet, login, navbar, register
     },
     preferCompanyLogo: {
         type: Boolean,
@@ -55,13 +55,31 @@ const props = defineProps({
     white: {
         type: Boolean,
         default: false
+    },
+    forceLight: {
+        type: Boolean,
+        default: false
+    },
+    align: {
+        type: String,
+        default: null // 'center', 'start', 'end'
     }
 });
 
 const { isDarkMode } = useTheme();
 
+const justifyClass = computed(() => {
+    if (props.align === 'center') return 'justify-center';
+    if (props.align === 'start') return 'justify-start';
+    if (props.align === 'end') return 'justify-end';
+    if (props.context === 'register') return 'justify-center';
+    return props.context === 'login' ? 'justify-start' : 'justify-center';
+});
+
 const isWhiteLogo = computed(() => {
-    return props.white || props.context === 'login' || isDarkMode.value;
+    if (props.forceLight) return false;
+    if (props.white) return true;
+    return isDarkMode.value;
 });
 
 const page = usePage();
@@ -105,6 +123,7 @@ const sizeClasses = computed(() => {
         case 'navbar':
             return 'h-[34px] sm:h-[40px] max-w-[180px] w-auto';
         case 'login':
+        case 'register':
             return 'h-[44px] sm:h-[56px] max-w-[260px] w-auto';
         default:
             return 'h-[38px] sm:h-[44px] max-w-[180px] w-auto';
@@ -114,26 +133,38 @@ const sizeClasses = computed(() => {
 // Fallback sizes
 const iconSizeClasses = computed(() => {
     switch (props.context) {
-        case 'login': return 'w-12 h-12 sm:w-14 sm:h-14';
-        default: return 'w-9 h-9 sm:w-10 sm:h-10';
+        case 'login':
+        case 'register':
+            return 'w-12 h-12 sm:w-14 sm:h-14';
+        default:
+            return 'w-9 h-9 sm:w-10 sm:h-10';
     }
 });
 const svgSizeClasses = computed(() => {
     switch (props.context) {
-        case 'login': return 'w-7 h-7 sm:w-8 sm:h-8';
-        default: return 'w-5 h-5 sm:w-6 sm:h-6';
+        case 'login':
+        case 'register':
+            return 'w-7 h-7 sm:w-8 sm:h-8';
+        default:
+            return 'w-5 h-5 sm:w-6 sm:h-6';
     }
 });
 const titleSizeClasses = computed(() => {
     switch (props.context) {
-        case 'login': return 'text-xl sm:text-2xl';
-        default: return 'text-base sm:text-lg';
+        case 'login':
+        case 'register':
+            return 'text-xl sm:text-2xl';
+        default:
+            return 'text-base sm:text-lg';
     }
 });
 const subtitleSizeClasses = computed(() => {
     switch (props.context) {
-        case 'login': return 'text-xs sm:text-sm';
-        default: return 'text-[10px] sm:text-[11px]';
+        case 'login':
+        case 'register':
+            return 'text-xs sm:text-sm';
+        default:
+            return 'text-[10px] sm:text-[11px]';
     }
 });
 </script>

@@ -105,11 +105,13 @@ const submit = () => {
             
             <!-- Logo & Brand Header -->
             <div class="text-center flex flex-col items-center">
-                <AppLogo context="login" />
-                <div class="mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100/80 border border-emerald-300 text-emerald-800 text-xs font-black uppercase tracking-wider shadow-xs">
+                <Link :href="route('login', { portal: 'reseller' })" class="group inline-flex items-center justify-center p-3 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all duration-200" title="Klik untuk kembali ke halaman login">
+                    <AppLogo context="register" :force-light="true" align="center" />
+                </Link>
+                <div class="mt-4 inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-100/90 border border-emerald-300 text-emerald-800 text-xs font-black uppercase tracking-wider shadow-xs">
                     <span>🏪</span> Program Kemitraan Loket &amp; Biller Resmi
                 </div>
-                <h1 class="mt-2 text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
+                <h1 class="mt-2.5 text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
                     Pendaftaran Mitra Reseller &amp; Master Biller
                 </h1>
                 <p class="mt-1.5 text-xs sm:text-sm text-gray-600 max-w-xl">
