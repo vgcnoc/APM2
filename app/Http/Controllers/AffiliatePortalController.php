@@ -148,9 +148,10 @@ class AffiliatePortalController extends Controller
             $issuedDateLabel = $earliestInv?->issued_date ? $earliestInv->issued_date->format('d M Y') : '1 ' . now()->format('M Y');
             $dueDateLabel = $earliestInv?->due_date ? $earliestInv->due_date->format('d M Y') : '12 ' . now()->format('M Y');
 
-            // Pesan WA Bantu Tagih untuk semua pelanggan dengan tagihan belum lunas
+            // Pesan WA Bantu Tagih HANYA jika tagihan sudah resmi terbit (isIssued)
             $waUrl = null;
-            if ($hasUnpaid && !empty($custPhone)) {
+            $canBantuTagih = $hasUnpaid && $isIssued && !empty($custPhone);
+            if ($canBantuTagih) {
                 if ($hasOverdue) {
                     $waMsg = "Halo Kak {$cust->name}, saya {$user->name} dari tim layanan internet WiFi. "
                         . "Sekadar menginfokan bahwa tagihan internet periode {$periodLabel} sebesar Rp " . number_format($totalUnpaid, 0, ',', '.') . " saat ini telah melewati batas jatuh tempo ({$dueDateLabel}). "
@@ -182,7 +183,7 @@ class AffiliatePortalController extends Controller
                 'is_prorata' => $isProrata,
                 'is_issued' => $isIssued,
                 'is_before_issue_date' => $isBeforeIssueDate,
-                'can_bantu_tagih' => $hasUnpaid && !empty($custPhone),
+                'can_bantu_tagih' => $canBantuTagih,
                 'unpaid_invoices_count' => $custUnpaidInvoices->count(),
                 'unpaid_amount' => $totalUnpaid,
                 'period_label' => $periodLabel,

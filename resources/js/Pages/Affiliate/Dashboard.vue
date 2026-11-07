@@ -237,7 +237,7 @@
                             <span>Aturan Sistem: Tagihan Prorata Pascabayar (Terbit Tgl {{ payout_info?.invoice_issue_day || settings.invoice_issue_date || 1 }}, Jatuh Tempo Tgl {{ payout_info?.isolate_day || settings.isolate_day || 12 }})</span>
                         </div>
                         <p>
-                            Pelanggan di bawah ini adalah pelanggan baru pascabayar dalam masa perhitungan pemakaian prorata berjalan. Tagihan perdana terbit pada <strong>tanggal {{ payout_info?.invoice_issue_day || settings.invoice_issue_date || 1 }}</strong> dan jatuh tempo pada <strong>tanggal {{ payout_info?.isolate_day || settings.isolate_day || 12 }}</strong>. Anda dapat membantu penagihan (Bantu Tagih) sebelum jatuh tempo. Selama belum melewati batas jatuh tempo, tagihan prorata <strong>TIDAK MENGUNCI PENCAIRAN SALDO KOMISI</strong> Anda.
+                            Pelanggan di bawah ini adalah pelanggan baru pascabayar dalam masa perhitungan pemakaian prorata berjalan. Sesuai aturan sistem, tagihan perdana baru akan resmi terbit dan masa pembayaran pertama dimulai pada <strong>tanggal {{ payout_info?.invoice_issue_day || settings.invoice_issue_date || 1 }} bulan berikutnya</strong>, dengan batas jatuh tempo pada <strong>tanggal {{ payout_info?.isolate_day || settings.isolate_day || 12 }}</strong>. Sebelum tanggal terbit invoice (pembayaran pertama dimulai 1 Desember), <strong>tagihan BELUM TERBIT dan JANGAN DIBANTU TAGIH</strong>. Tagihan masa prorata ini sama sekali <strong>TIDAK MENGUNCI PENCAIRAN SALDO KOMISI</strong> Anda.
                         </p>
                     </div>
 
@@ -335,16 +335,28 @@
                                                     ⚠️ Lewat Jatuh Tempo
                                                 </span>
                                                 <span
-                                                    v-else-if="c.is_prorata && c.is_not_due_yet"
+                                                    v-else-if="c.is_prorata && (!c.is_issued || c.is_before_issue_date)"
                                                     class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-800 border border-purple-200"
                                                 >
-                                                    ⚡ Prorata (Terbit Tgl {{ payout_info?.invoice_issue_day || settings.invoice_issue_date || 1 }})
+                                                    ⚡ Prorata (Terbit {{ c.issued_date }})
                                                 </span>
                                                 <span
-                                                    v-else-if="c.has_unpaid_invoice"
+                                                    v-else-if="c.is_prorata && c.is_issued"
+                                                    class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-800 border border-purple-200"
+                                                >
+                                                    ⚡ Prorata Aktif
+                                                </span>
+                                                <span
+                                                    v-else-if="c.has_unpaid_invoice && c.is_issued"
                                                     class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200"
                                                 >
                                                     ⏳ Belum Bayar
+                                                </span>
+                                                <span
+                                                    v-else-if="c.has_unpaid_invoice && (!c.is_issued || c.is_before_issue_date)"
+                                                    class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-slate-100 text-slate-700 border border-slate-200"
+                                                >
+                                                    ⏳ Belum Terbit (Terbit {{ c.issued_date }})
                                                 </span>
                                                 <span
                                                     v-else-if="c.status === 'active'"
@@ -363,8 +375,13 @@
                                                     Migrasi
                                                 </span>
                                             </div>
-                                            <div v-if="c.has_unpaid_invoice && c.unpaid_due_date" class="text-[10px] text-slate-500 font-medium">
-                                                Jatuh Tempo: <span :class="c.has_overdue_invoice ? 'text-rose-600 font-bold' : 'text-slate-700 font-semibold'">{{ c.unpaid_due_date }}</span>
+                                            <div v-if="c.has_unpaid_invoice" class="text-[10px] text-slate-500 font-medium space-y-0.5">
+                                                <div v-if="!c.is_issued && c.issued_date" class="text-purple-700 font-semibold">
+                                                    Terbit: {{ c.issued_date }}
+                                                </div>
+                                                <div v-if="c.unpaid_due_date">
+                                                    Jatuh Tempo: <span :class="c.has_overdue_invoice ? 'text-rose-600 font-bold' : 'text-slate-700 font-semibold'">{{ c.unpaid_due_date }}</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </td>
@@ -397,6 +414,12 @@
                                         >
                                             <span>💬 Bantu Tagih</span>
                                         </a>
+                                        <span
+                                            v-else-if="c.has_unpaid_invoice && (!c.is_issued || c.is_before_issue_date)"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 text-purple-700 font-bold text-[10px] rounded-lg border border-purple-200 whitespace-nowrap"
+                                        >
+                                            ⏳ Bayar Mulai {{ c.issued_date || '1 Dec' }}
+                                        </span>
                                         <span
                                             v-else-if="c.status === 'active' && !c.has_unpaid_invoice"
                                             class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold text-[11px] rounded-lg border border-emerald-200"

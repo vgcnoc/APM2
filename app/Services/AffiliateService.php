@@ -877,9 +877,10 @@ class AffiliateService
                     $custPhone = '62' . $custPhone;
                 }
 
-                // Pesan WA Bantu Tagih untuk semua tagihan belum lunas
+                // Pesan WA Bantu Tagih HANYA jika tagihan sudah resmi terbit (isIssued)
                 $waUrl = null;
-                if ($unpaidInvoices->isNotEmpty() && !empty($custPhone)) {
+                $canBantuTagih = $unpaidInvoices->isNotEmpty() && $isIssued && !empty($custPhone);
+                if ($canBantuTagih) {
                     $dueDateStr = $earliestInvoice?->due_date ? $earliestInvoice->due_date->format('d M Y') : '12 ' . now()->format('M Y');
                     if ($isOverdue) {
                         $msg = "Halo Kak {$cust->name}, saya {$user->name} dari tim layanan internet WiFi. "
@@ -910,7 +911,7 @@ class AffiliateService
                     'is_issued' => $isIssued,
                     'is_before_issue_date' => $isBeforeIssueDate,
                     'is_not_due_yet' => !$isOverdue,
-                    'can_bantu_tagih' => $unpaidInvoices->isNotEmpty() && !empty($custPhone),
+                    'can_bantu_tagih' => $canBantuTagih,
                     'wa_reminder_url' => $waUrl,
                 ];
             });
