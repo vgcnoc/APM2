@@ -5861,12 +5861,12 @@ class CustomerController extends Controller
                 ->with('success', $message);
         } else {
             $customer->update([
-                'status' => 'terminated',
+                'status' => 'canceled',
                 'cancel_stage' => 'survey',
                 'cancel_reason' => 'Hasil Survey: Tidak Layak (' . ($validated['notes'] ?? 'Jaringan/port tidak mencukupi') . ')',
                 'cancel_date' => now()->toDateString(),
             ]);
-            \App\Models\AuditLog::createLog('Laporan Survey', $customer, 'survey', 'terminated', 'Mengisi laporan survey (not feasible)');
+            \App\Models\AuditLog::createLog('Laporan Survey', $customer, 'survey', 'canceled', 'Mengisi laporan survey (not feasible)');
             return redirect()->route('customers.survey')
                 ->with('success', 'Hasil survey (not feasible) berhasil disimpan. Pelanggan dipindahkan ke menu Dibatalkan.');
         }
@@ -5942,8 +5942,13 @@ class CustomerController extends Controller
             $customer->refresh();
             \App\Models\AuditLog::createLog('Laporan Survey', $customer, $customer->status, $customer->status, 'Mengubah laporan survey (feasible) dan menyinkronkan ODP/port ONT');
         } else {
-            $customer->update(['status' => 'terminated']);
-            \App\Models\AuditLog::createLog('Laporan Survey', $customer, 'survey', 'terminated', 'Mengubah laporan survey (not feasible)');
+            $customer->update([
+                'status' => 'canceled',
+                'cancel_stage' => 'survey',
+                'cancel_reason' => 'Hasil Survey: Tidak Layak (' . ($validated['notes'] ?? 'Jaringan/port tidak mencukupi') . ')',
+                'cancel_date' => $customer->cancel_date ?: now()->toDateString(),
+            ]);
+            \App\Models\AuditLog::createLog('Laporan Survey', $customer, 'survey', 'canceled', 'Mengubah laporan survey (not feasible)');
         }
 
         return redirect()->route('customers.survey')->with('success', $validated['feasibility'] === 'feasible'

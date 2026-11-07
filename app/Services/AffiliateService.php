@@ -356,6 +356,11 @@ class AffiliateService
             ->whereIn('type', ['booking', 'survey'])
             ->exists();
 
+        // Pelanggan yang belum pernah aktif (tidak memiliki activation_date) dan belum pernah dibentuk komisinya tidak dikenakan pinalti
+        if (!$customer->activation_date && !$hasBookingOrSurveyComm) {
+            return null;
+        }
+
         if (!self::isOperationalFeeEligible($customer) && !$hasBookingOrSurveyComm) {
             return null;
         }
