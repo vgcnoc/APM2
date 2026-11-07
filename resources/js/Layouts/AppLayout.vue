@@ -925,9 +925,11 @@ const hasPermission = (permission) => {
 };
 
 const menuItems = [
-    // 1. DASHBOARD
+    // 1. DASHBOARD & MENU UTAMA
     { type: 'link', href: '/', icon: 'dashboard', label: 'Dashboard', active: (url) => (url || '').length > 0 && url === '/', permission: 'menu_dashboard' },
     { type: 'link', href: '/dashboard/realtime', icon: 'zap', label: 'Dashboard Realtime', active: (url) => (url || '').startsWith('/dashboard/realtime'), permission: 'menu_dashboard_realtime' },
+    { type: 'link', href: '/absen-terbaik', icon: 'trophy', label: 'Absen Terbaik', active: (url) => (url || '').startsWith('/absen-terbaik'), permission: ['attendance_tab_best', 'menu_attendances'] },
+    { type: 'link', href: '/bonus-target-market', icon: 'target', label: 'Target Market', active: (url) => (url || '').startsWith('/bonus-target-market'), permission: ['menu_target_market', 'payroll_tab_target'] },
     
     // 2. PELANGGAN & LAYANAN
     { type: 'group', label: 'PELANGGAN & LAYANAN', theme: 'blue' },
@@ -1290,13 +1292,12 @@ const menuItems = [
         icon: 'badge-check',
         label: 'Sistem Presensi & Absensi',
         theme: 'slate',
-        active: (url) => ['/attendances', '/attendance-leaves', '/absen-terbaik', '/absen-khusus', '/absen-tugas-luar', '/settings/attendance', '/employee-locations', '/attendance-reports'].some(path => (url || '').startsWith(path)),
-        permission: ['menu_attendances', 'attendance_tab_reguler', 'menu_attendance_leaves', 'attendance_tab_best', 'attendance_tab_special', 'attendance_tab_field', 'menu_settings_attendance', 'menu_hr_employees', 'menu_attendance_reports', 'menu_employee_locations'],
+        active: (url) => ['/attendances', '/attendance-leaves', '/absen-khusus', '/absen-tugas-luar', '/settings/attendance', '/employee-locations', '/attendance-reports'].some(path => (url || '').startsWith(path)),
+        permission: ['menu_attendances', 'attendance_tab_reguler', 'menu_attendance_leaves', 'attendance_tab_special', 'attendance_tab_field', 'menu_settings_attendance', 'menu_hr_employees', 'menu_attendance_reports', 'menu_employee_locations'],
         children: [
             { href: '/employee-locations', label: 'Pantauan Lokasi (Live GPS)', active: (url) => (url || '').startsWith('/employee-locations'), permission: 'menu_employee_locations' },
             { href: '/attendances', label: 'Absensi Reguler', active: (url) => (url || '').startsWith('/attendances'), permission: 'attendance_tab_reguler' },
             { href: '/attendance-leaves', label: 'Izin, Sakit & Alpha', active: (url) => (url || '').startsWith('/attendance-leaves'), permission: 'menu_attendance_leaves' },
-            { href: '/absen-terbaik', label: 'Absen Terbaik', active: (url) => (url || '').startsWith('/absen-terbaik'), permission: 'attendance_tab_best' },
             { href: '/absen-khusus', label: 'Absen Tim Khusus', active: (url) => (url || '').startsWith('/absen-khusus'), permission: 'attendance_tab_special' },
             { href: '/absen-tugas-luar', label: 'Absen Tugas Luar', active: (url) => (url || '').startsWith('/absen-tugas-luar'), permission: 'attendance_tab_field' },
             { href: '/attendance-reports', label: 'Laporan Absen', active: (url) => (url || '').startsWith('/attendance-reports'), permission: ['menu_attendance_reports', 'menu_hr_employees'] },
@@ -1308,11 +1309,10 @@ const menuItems = [
         icon: 'calculator',
         label: 'Penggajian & Insentif',
         theme: 'slate',
-        active: (url) => ['/payroll', '/bonus-target-market', '/insentif-potongan'].some(path => (url || '').startsWith(path)),
-        permission: ['menu_payroll', 'payroll_view_own', 'payroll_tab_slip', 'payroll_tab_incentives', 'menu_target_market', 'menu_incentives_deductions'],
+        active: (url) => ['/payroll', '/insentif-potongan'].some(path => (url || '').startsWith(path)),
+        permission: ['menu_payroll', 'payroll_view_own', 'payroll_tab_slip', 'payroll_tab_incentives', 'menu_incentives_deductions'],
         children: [
             { href: '/payroll', label: 'Gaji & Payroll', active: (url) => (url || '').length > 0 && url === '/payroll', permission: ['menu_payroll', 'payroll_view_own', 'payroll_tab_slip'] },
-            { href: '/bonus-target-market', label: 'Bonus Target Market', active: (url) => (url || '').startsWith('/bonus-target-market'), permission: 'menu_target_market' },
             { href: '/insentif-potongan', label: 'Histori Insentif', active: (url) => (url || '').startsWith('/insentif-potongan'), permission: ['menu_incentives_deductions', 'menu_payroll', 'payroll_tab_incentives', 'payroll_view_own'] },
         ]
     },
@@ -1565,6 +1565,8 @@ onBeforeUnmount(() => {
 const iconPaths = {
     search: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
     'x-circle': 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z',
+    trophy: 'M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.45 1-1 1H8c-.55 0-1 .45-1 1v1h10v-1c0-.55-.45-1-1-1h-1c-.55 0-1-.45-1-1v-2.34M6 4h12v7a6 6 0 0 1-12 0V4z',
+    target: 'M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 4a6 6 0 1 0 6 6 6 6 0 0 0-6-6zm0 4a2 2 0 1 0 2 2 2 2 0 0 0-2-2z',
     dashboard: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
     globe: 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
     users: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
