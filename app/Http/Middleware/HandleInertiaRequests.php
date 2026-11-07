@@ -125,6 +125,7 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
                 'isolated_customer' => fn () => $request->session()->get('isolated_customer'),
+                'client_account_created' => fn () => $request->session()->get('client_account_created'),
             ],
             'billingSettings' => fn () => [
                 'billing_cycle' => \App\Models\Setting::get('billing_cycle', 'anniversary'),

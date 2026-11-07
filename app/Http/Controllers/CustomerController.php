@@ -2843,10 +2843,12 @@ class CustomerController extends Controller
         $validated = $request->validate([
             'email' => 'required|email',
             'password' => 'required|string|min:6',
+            'send_wa' => 'nullable|boolean',
         ]);
 
         $email = trim(strtolower($validated['email']));
         $password = $validated['password'];
+        $sendWa = $request->boolean('send_wa', true);
 
         // Cek apakah email sudah terdaftar di tabel users
         $existingUser = User::where('email', $email)->first();
@@ -2881,30 +2883,191 @@ class CustomerController extends Controller
                     'email' => $email
                 ]);
             });
+        } else {
+            // Jika user belum ada, buat user baru
+            DB::transaction(function () use ($customer, $email, $password) {
+                $user = User::create([
+                    'name' => $customer->name,
+                    'email' => $email,
+                    'password' => bcrypt($password),
+                    'role' => 'customer',
+                    'is_active' => true,
+                ]);
 
-            return back()->with('success', 'Akun pengguna yang sudah ada berhasil ditautkan ke pelanggan ini.');
+                $role = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'customer']);
+                $user->assignRole($role);
+
+                $customer->update([
+                    'user_id' => $user->id,
+                    'email' => $email
+                ]);
+            });
         }
 
-        // Jika user belum ada, buat user baru
-        DB::transaction(function () use ($customer, $email, $password) {
-            $user = User::create([
-                'name' => $customer->name,
+        $customer->refresh();
+        $customer->loadMissing(['package', 'ont', 'onts']);
+
+        // Deteksi Fasilitas Hotspot Gratis Pelanggan (jika ada)
+        $hotspotUser = null;
+        $hotspotPassword = null;
+        $hasFreeHotspot = false;
+
+        $ont = $customer->ont 
+            ?? ($customer->ont_id ? \App\Models\Ont::find($customer->ont_id) : null)
+            ?? $customer->onts()->latest('id')->first();
+
+        if ($ont && $ont->free_hotspot && !empty($ont->hotspot_user)) {
+            $hasFreeHotspot = true;
+            $hotspotUser = $ont->hotspot_user;
+            $hotspotPassword = $ont->hotspot_password;
+        }
+
+        if (!$hasFreeHotspot) {
+            $freeVoucher = \App\Models\Voucher::where('customer_id', $customer->id)
+                ->where(function ($q) {
+                    $q->where('is_free', true)
+                        ->orWhereHas('profile', fn($p) => $p->where('is_customer_free', true));
+                })
+                ->latest('id')
+                ->first();
+
+            if ($freeVoucher && !empty($freeVoucher->username)) {
+                $hasFreeHotspot = true;
+                $hotspotUser = $freeVoucher->username;
+                $hotspotPassword = $freeVoucher->password;
+            }
+        }
+
+        // Generate URL Portal dan Pesan WhatsApp
+        $loginUrl = url('/login?portal=customer');
+        $waMessage = $this->formatClientAreaAccountWaMessage(
+            $customer,
+            $email,
+            $password,
+            $hotspotUser,
+            $hotspotPassword
+        );
+
+        // Format nomor HP WhatsApp pelanggan
+        $rawPhone = $customer->phone ?? '';
+        $cleanPhone = preg_replace('/[^0-9]/', '', (string)$rawPhone);
+        if (str_starts_with($cleanPhone, '0')) {
+            $cleanPhone = '62' . substr($cleanPhone, 1);
+        } elseif (str_starts_with($cleanPhone, '8')) {
+            $cleanPhone = '62' . $cleanPhone;
+        }
+
+        $waSent = false;
+        $waStatusMessage = '';
+
+        if (!empty($cleanPhone)) {
+            if ($sendWa) {
+                try {
+                    $waService = app(\App\Services\WhatsAppGatewayService::class);
+                    $res = $waService->sendMessage($cleanPhone, $waMessage);
+                    if (!empty($res['success'])) {
+                        $waSent = true;
+                        $waStatusMessage = "Pesan WhatsApp berhasil terkirim otomatis ke {$cleanPhone}.";
+                    } else {
+                        $waStatusMessage = $res['message'] ?? 'Gateway WhatsApp tidak merespons atau sedang offline.';
+                        \Log::warning("[createAccount] WA Gateway returned error for {$cleanPhone}: " . json_encode($res));
+                    }
+                } catch (\Throwable $e) {
+                    \Log::warning("[createAccount] WA exception for {$cleanPhone}: " . $e->getMessage());
+                    $waStatusMessage = 'Layanan WA Gateway offline: ' . $e->getMessage();
+                }
+            } else {
+                $waStatusMessage = 'Pengiriman otomatis via gateway dinonaktifkan.';
+            }
+        } else {
+            $waStatusMessage = 'Nomor WhatsApp pelanggan belum tercatat di data profil.';
+        }
+
+        try {
+            \App\Models\AuditLog::createLog('Buat Akun Portal', $customer, $customer->status, $customer->status, "Membuat/menautkan akun Client Area ({$email})" . ($hasFreeHotspot ? " dengan Hotspot Gratis ({$hotspotUser})" : ""));
+        } catch (\Throwable $e) {
+            \Log::warning('[createAccount] AuditLog Error: ' . $e->getMessage());
+        }
+
+        $successMsg = "Akun login Client Area untuk {$customer->name} berhasil dibuat.";
+        if ($waSent) {
+            $successMsg .= " 💬 Notifikasi WhatsApp otomatis terkirim ke {$cleanPhone}.";
+        }
+
+        return back()
+            ->with('success', $successMsg)
+            ->with('client_account_created', [
+                'customer_id' => $customer->id,
+                'customer_name' => $customer->name,
+                'customer_code' => $customer->customer_code,
+                'phone' => $cleanPhone,
                 'email' => $email,
-                'password' => bcrypt($password),
-                'role' => 'customer',
-                'is_active' => true,
+                'password' => $password,
+                'login_url' => $loginUrl,
+                'has_free_hotspot' => $hasFreeHotspot,
+                'hotspot_user' => $hotspotUser,
+                'hotspot_password' => $hotspotPassword,
+                'wa_message' => $waMessage,
+                'wa_sent' => $waSent,
+                'wa_status_message' => $waStatusMessage,
             ]);
+    }
 
-            $role = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'customer']);
-            $user->assignRole($role);
+    /**
+     * Format template pesan WhatsApp notifikasi pembuatan akun Client Area & Hotspot Gratis (jika ada)
+     */
+    public function formatClientAreaAccountWaMessage(
+        Customer $customer,
+        string $email,
+        string $password,
+        ?string $hotspotUser = null,
+        ?string $hotspotPassword = null
+    ): string {
+        $companyName = Setting::get('company_name', config('app.name', 'PT VIRUZS GLOBAL CONNECTION'));
+        $companyPhone = Setting::get('company_phone', '088976397034');
+        $loginUrl = url('/login?portal=customer');
+        $packageName = $customer->package?->name ?? 'Internet Broadband';
 
-            $customer->update([
-                'user_id' => $user->id,
-                'email' => $email
-            ]);
-        });
+        $msg = "🌐 *INFORMASI AKUN CLIENT AREA & LAYANAN INTERNET*\n";
+        $msg .= "🏢 *{$companyName}*\n";
+        $msg .= "━━━━━━━━━━━━━━━━━━━━\n";
+        $msg .= "Halo Bapak/Ibu *{$customer->name}*,\n";
+        $msg .= "Terima kasih telah berlangganan layanan internet bersama *{$companyName}*.\n\n";
 
-        return back()->with('success', 'Akun login pelanggan berhasil dibuat.');
+        $msg .= "Akun login Anda untuk mengakses *Client Area (Portal Pelanggan)* telah aktif:\n\n";
+        $msg .= "👤 *DETAIL LOGIN CLIENT AREA:*\n";
+        $msg .= "• Link Portal: {$loginUrl}\n";
+        $msg .= "• Username (Email): `{$email}`\n";
+        $msg .= "• Password: `{$password}`\n";
+        $msg .= "• ID Pelanggan: `{$customer->customer_code}`\n";
+        $msg .= "• Paket Layanan: *{$packageName}*\n\n";
+
+        $msg .= "📱 *Fasilitas di Client Area Pelanggan:*\n";
+        $msg .= "✓ Cek status & rincian paket internet Anda\n";
+        $msg .= "✓ Cek tagihan bulanan & riwayat pembayaran\n";
+        $msg .= "✓ Lapor gangguan / kirim tiket kendala teknis mandiri\n";
+
+        if (!empty($hotspotUser)) {
+            $hotspotPassText = !empty($hotspotPassword) ? "`{$hotspotPassword}`" : "_Tanpa Password_";
+            $msg .= "\n━━━━━━━━━━━━━━━━━━━━\n";
+            $msg .= "🎁 *FASILITAS HOTSPOT GRATIS:*\n";
+            $msg .= "Sebagai nilai tambah pelanggan kami, Anda mendapatkan akses WiFi Hotspot gratis:\n";
+            $msg .= "• Username Hotspot: `{$hotspotUser}`\n";
+            $msg .= "• Password Hotspot: {$hotspotPassText}\n";
+            $msg .= "_(Dapat digunakan untuk login di jaringan WiFi Hotspot {$companyName})_\n";
+        }
+
+        $msg .= "\n━━━━━━━━━━━━━━━━━━━━\n";
+        $msg .= "🔒 *Tips Keamanan Akun:*\n";
+        $msg .= "Simpan informasi akun ini dengan baik. Demi keamanan, Anda disarankan untuk segera mengganti password setelah berhasil login pertama kali.\n";
+
+        if (!empty($companyPhone)) {
+            $msg .= "\n📞 Kontak Layanan / CS: *{$companyPhone}*\n";
+        }
+
+        $msg .= "\nSalam hangat,\n*{$companyName}*";
+
+        return $msg;
     }
 
     /**
