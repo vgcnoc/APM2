@@ -50,7 +50,8 @@ class PaymentGatewayController extends Controller
     public function topUpReseller(Request $request)
     {
         $user = auth()->user();
-        $reseller = Reseller::where('user_id', $user->id)->first();
+        $reseller = Reseller::where('user_id', $user->id)->first()
+            ?: ($user->customer?->reseller);
 
         if (!$reseller) {
             return back()->with('error', 'Akun Anda tidak terdaftar sebagai reseller.');

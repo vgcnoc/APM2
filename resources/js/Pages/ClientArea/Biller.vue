@@ -51,7 +51,7 @@
                             <span class="text-sm font-bold text-gray-400">Rp</span>
                             <span class="text-2xl font-black text-gray-900 tracking-tight">{{ Number(reseller.balance || 0).toLocaleString('id-ID') }}</span>
                         </div>
-                        <button @click="showTopUpModal = true" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-bold shadow-xs transition cursor-pointer flex items-center gap-1">
+                        <button @click="openTopUpModal()" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-bold shadow-xs transition cursor-pointer flex items-center gap-1">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
                             Isi Saldo
                         </button>
@@ -540,17 +540,17 @@
 
         <!-- Modal Top Up Saldo Mandiri Reseller -->
         <Teleport to="body">
-            <div v-if="showTopUpModal" class="fixed inset-0 z-[130] flex items-center justify-center p-4">
-                <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" @click="showTopUpModal = false"></div>
-                <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up">
-                    <div class="p-6 border-b border-gray-100 bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-white flex items-center justify-between">
+            <div v-if="showTopUpModal" class="fixed inset-0 z-[130] flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" @click="showTopUpModal = false"></div>
+                <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[92vh] flex flex-col overflow-hidden animate-fade-in-up my-auto z-10 border border-gray-100">
+                    <div class="p-5 sm:p-6 border-b border-gray-100 bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-white flex items-center justify-between shrink-0">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                             </div>
                             <div>
                                 <h3 class="text-base font-black text-gray-900">Isi Saldo Dompet Modal</h3>
-                                <p class="text-xs text-gray-500">Top up instan otomatis via QRIS & Virtual Account</p>
+                                <p class="text-xs text-gray-500">Top up instan otomatis via QRIS &amp; Virtual Account</p>
                             </div>
                         </div>
                         <button @click="showTopUpModal = false" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer">
@@ -558,78 +558,200 @@
                         </button>
                     </div>
 
-                    <form @submit.prevent="submitTopUp" class="p-6 space-y-5">
-                        <div class="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center justify-between">
-                            <span class="text-xs font-semibold text-gray-500">Saldo Dompet Saat Ini</span>
-                            <span class="text-sm font-black text-gray-900 font-mono">Rp {{ Number(reseller.balance || 0).toLocaleString('id-ID') }}</span>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Pilih Nominal Cepat</label>
-                            <div class="grid grid-cols-3 gap-2">
-                                <button 
-                                    v-for="amt in presetAmounts" 
-                                    :key="amt"
-                                    type="button"
-                                    @click="topUpForm.amount = amt"
-                                    :class="topUpForm.amount == amt ? 'bg-blue-600 text-white border-blue-600 ring-2 ring-blue-500/30' : 'bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'"
-                                    class="py-2.5 px-3 rounded-xl border text-xs font-black transition cursor-pointer text-center"
-                                >
-                                    {{ formatPresetLabel(amt) }}
-                                </button>
+                    <form @submit.prevent="submitTopUp" class="flex flex-col flex-1 overflow-hidden min-h-0">
+                        <!-- Scrollable Body Content -->
+                        <div class="p-5 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto flex-1">
+                            <!-- Saldo Saat Ini -->
+                            <div class="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl flex items-center justify-between">
+                                <span class="text-xs font-semibold text-gray-500">Saldo Dompet Saat Ini</span>
+                                <span class="text-sm font-black text-gray-900 font-mono">Rp {{ Number(reseller.balance || 0).toLocaleString('id-ID') }}</span>
                             </div>
-                        </div>
 
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">Atau Masukkan Nominal Sendiri</label>
-                            <div class="relative rounded-2xl">
-                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500 font-bold text-sm">
-                                    Rp
+                            <!-- Pilihan Nominal Cepat -->
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Pilih Nominal Cepat</label>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <button 
+                                        v-for="amt in presetAmounts" 
+                                        :key="amt"
+                                        type="button"
+                                        @click="topUpForm.amount = amt"
+                                        :class="topUpForm.amount == amt ? 'bg-blue-600 text-white border-blue-600 ring-2 ring-blue-500/30' : 'bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'"
+                                        class="py-2.5 px-3 rounded-xl border text-xs font-black transition cursor-pointer text-center"
+                                    >
+                                        {{ formatPresetLabel(amt) }}
+                                    </button>
                                 </div>
-                                <input 
-                                    v-model.number="topUpForm.amount" 
-                                    type="number" 
-                                    :min="effectiveMinDeposit" 
-                                    :max="effectiveMaxDeposit" 
-                                    step="5000"
-                                    required
-                                    class="w-full bg-gray-50/70 border border-gray-300 text-gray-900 text-base font-extrabold rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white block pl-11 pr-4 py-3 shadow-xs transition" 
-                                    placeholder="20000"
-                                />
                             </div>
-                            <span class="text-[11px] text-gray-500 mt-1 block">Minimal pengisian saldo ({{ is_master ? 'Master Biller' : 'Mitra Loket' }}): <strong>Rp {{ Number(effectiveMinDeposit).toLocaleString('id-ID') }}</strong></span>
-                        </div>
 
-                        <div>
-                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Metode Pembayaran</label>
-                            <div class="grid grid-cols-2 gap-2">
-                                <label 
-                                    v-for="ch in paymentChannels" 
-                                    :key="ch.id"
-                                    :class="topUpForm.channel === ch.id ? 'border-blue-600 bg-blue-50/60 ring-2 ring-blue-500/30' : 'border-gray-200 bg-white hover:border-gray-300'"
-                                    class="p-3 rounded-xl border flex items-center gap-2.5 cursor-pointer transition"
-                                >
-                                    <input 
-                                        type="radio" 
-                                        v-model="topUpForm.channel" 
-                                        :value="ch.id" 
-                                        class="text-blue-600 focus:ring-blue-500 h-4 w-4 border-gray-300"
-                                    />
-                                    <div>
-                                        <div class="text-xs font-bold text-gray-900">{{ ch.name }}</div>
-                                        <div class="text-[10px] text-gray-500">{{ ch.desc }}</div>
+                            <!-- Atau Masukkan Nominal Sendiri (Dengan Proteksi Tolak di Bawah 2.000.000) -->
+                            <div>
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-gray-700">Atau Masukkan Nominal Sendiri</label>
+                                    <span class="text-[11px] font-bold" :class="isAmountBelowMin ? 'text-rose-600 font-extrabold' : 'text-gray-400'">
+                                        Min: Rp {{ Number(effectiveMinDeposit).toLocaleString('id-ID') }}
+                                    </span>
+                                </div>
+                                <div class="relative rounded-2xl">
+                                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 font-black text-sm" :class="isAmountBelowMin ? 'text-rose-600' : 'text-gray-500'">
+                                        Rp
                                     </div>
-                                </label>
+                                    <input 
+                                        v-model.number="topUpForm.amount" 
+                                        type="number" 
+                                        :min="effectiveMinDeposit" 
+                                        :max="effectiveMaxDeposit" 
+                                        step="5000"
+                                        required
+                                        :placeholder="effectiveMinDeposit.toString()"
+                                        class="w-full text-base font-extrabold rounded-2xl block pl-11 pr-4 py-3 shadow-xs transition" 
+                                        :class="isAmountBelowMin 
+                                            ? 'bg-rose-50/60 border-2 border-rose-500 text-rose-950 ring-2 ring-rose-400/30 focus:border-rose-600 focus:ring-rose-500' 
+                                            : 'bg-gray-50/70 border border-gray-300 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white'"
+                                    />
+                                </div>
+
+                                <!-- Pesan Peringatan Nyata Tolak Nominal di Bawah Batas Minimum -->
+                                <div v-if="isAmountBelowMin" class="mt-2.5 p-3.5 bg-rose-50 border border-rose-200/90 rounded-2xl flex items-start gap-3 text-xs text-rose-900 animate-fade-in shadow-2xs">
+                                    <div class="w-6 h-6 rounded-lg bg-rose-600 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-xs">
+                                        ✕
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="flex items-center justify-between flex-wrap gap-1">
+                                            <strong class="font-black text-rose-950">Nominal Ditolak (Kurang dari Rp {{ Number(effectiveMinDeposit).toLocaleString('id-ID') }})</strong>
+                                            <button 
+                                                type="button" 
+                                                @click="topUpForm.amount = effectiveMinDeposit" 
+                                                class="px-2 py-0.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-black text-[10px] shadow-2xs cursor-pointer transition active:scale-95"
+                                            >
+                                                Pasang Rp {{ Number(effectiveMinDeposit).toLocaleString('id-ID') }}
+                                            </button>
+                                        </div>
+                                        <p class="text-[11px] text-rose-800 mt-1 leading-snug">
+                                            Sistem menolak pengisian di bawah batas minimum. Syarat minimal pengisian saldo modal untuk <strong>{{ is_master ? 'Master Biller & Distributor' : 'Mitra Loket' }}</strong> adalah <strong>Rp {{ Number(effectiveMinDeposit).toLocaleString('id-ID') }}</strong>.
+                                        </p>
+                                    </div>
+                                </div>
+                                <span v-else class="text-[11px] text-gray-500 mt-1 block">
+                                    Minimal pengisian saldo ({{ is_master ? 'Master Biller' : 'Mitra Loket' }}): <strong class="text-gray-800">Rp {{ Number(effectiveMinDeposit).toLocaleString('id-ID') }}</strong>
+                                </span>
+                            </div>
+
+                            <!-- Metode Pembayaran -->
+                            <div>
+                                <label class="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Metode Pembayaran</label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <label 
+                                        v-for="ch in paymentChannels" 
+                                        :key="ch.id"
+                                        :class="topUpForm.channel === ch.id ? 'border-blue-600 bg-blue-50/60 ring-2 ring-blue-500/30' : 'border-gray-200 bg-white hover:border-gray-300'"
+                                        class="p-3 rounded-xl border flex items-center gap-2.5 cursor-pointer transition"
+                                    >
+                                        <input 
+                                            type="radio" 
+                                            v-model="topUpForm.channel" 
+                                            :value="ch.id" 
+                                            class="text-blue-600 focus:ring-blue-500 h-4 w-4 border-gray-300"
+                                        />
+                                        <div>
+                                            <div class="text-xs font-bold text-gray-900">{{ ch.name }}</div>
+                                            <div class="text-[10px] text-gray-500">{{ ch.desc }}</div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- PANDUAN PENGISIAN, SYARAT & KETENTUAN LENGKAP -->
+                            <div class="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/70 via-sky-50/40 to-blue-50/50 overflow-hidden shadow-2xs">
+                                <button
+                                    type="button"
+                                    @click="showGuideAccordion = !showGuideAccordion"
+                                    class="w-full px-4 py-3 flex items-center justify-between text-left text-xs font-black text-indigo-950 hover:bg-indigo-100/40 transition cursor-pointer"
+                                >
+                                    <span class="flex items-center gap-2">
+                                        <span class="p-1 rounded-lg bg-indigo-600 text-white text-[10px]">📘</span>
+                                        <span>Panduan Pengisian, Syarat &amp; Ketentuan Lengkap</span>
+                                    </span>
+                                    <span class="flex items-center gap-1 text-[11px] text-indigo-600 font-bold">
+                                        <span>{{ showGuideAccordion ? 'Tutup' : 'Lihat S&amp;K' }}</span>
+                                        <svg class="w-3.5 h-3.5 transition-transform duration-200" :class="showGuideAccordion ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </span>
+                                </button>
+
+                                <div v-show="showGuideAccordion" class="px-4 pb-4 pt-1 text-xs text-slate-700 space-y-3.5 border-t border-indigo-100/80 animate-fade-in">
+                                    <!-- 1. Ketentuan Minimal Saldo Modal -->
+                                    <div class="space-y-1">
+                                        <div class="font-extrabold text-indigo-950 flex items-center gap-1.5 text-xs">
+                                            <span>1.</span>
+                                            <span>Ketentuan Minimal Saldo Modal:</span>
+                                        </div>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11px]">
+                                            <div class="p-2.5 rounded-xl bg-white border border-indigo-100 shadow-2xs">
+                                                <div class="font-bold text-amber-900 flex items-center gap-1">
+                                                    <span>👑</span>
+                                                    <span>Master Biller &amp; Loket Resmi</span>
+                                                </div>
+                                                <div class="font-black text-indigo-700 font-mono mt-0.5">Min: Rp 2.000.000</div>
+                                                <p class="text-[10px] text-slate-500 mt-0.5">Wajib minimal Rp 2.000.000 karena Master Biller memiliki hak menyalurkan modal instan ke loket binaan (P2P) dan melayani transaksi warga volume tinggi.</p>
+                                            </div>
+                                            <div class="p-2.5 rounded-xl bg-white border border-indigo-100 shadow-2xs">
+                                                <div class="font-bold text-emerald-900 flex items-center gap-1">
+                                                    <span>🏪</span>
+                                                    <span>Mitra Loket Biasa / Reseller</span>
+                                                </div>
+                                                <div class="font-black text-emerald-700 font-mono mt-0.5">Min: Rp 20.000</div>
+                                                <p class="text-[10px] text-slate-500 mt-0.5">Minimal pengisian ringan untuk melayani transaksi loket warga setempat.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- 2. Alur Pembayaran & Konfirmasi Otomatis -->
+                                    <div class="space-y-1">
+                                        <div class="font-extrabold text-indigo-950 flex items-center gap-1.5 text-xs">
+                                            <span>2.</span>
+                                            <span>Langkah Pengisian Saldo Instan (4 Langkah):</span>
+                                        </div>
+                                        <ol class="list-decimal list-inside space-y-1 text-[11px] text-slate-600 pl-1 leading-relaxed">
+                                            <li>Pilih tombol nominal cepat atau ketik nominal sendiri (<strong>wajib &ge; Rp {{ Number(effectiveMinDeposit).toLocaleString('id-ID') }}</strong>).</li>
+                                            <li>Pilih metode pembayaran (<strong>QRIS</strong> untuk semua e-wallet/m-banking atau <strong>Virtual Account</strong> BCA, BRI, BNI, Mandiri).</li>
+                                            <li>Klik <strong>Lanjut ke Pembayaran</strong> untuk membuka invoice resmi dengan QRIS / No. VA unik.</li>
+                                            <li>Lakukan transfer tepat sesuai tagihan invoice. Saldo otomatis masuk ke akun Anda secara <strong>100% instan realtime (5-30 detik)</strong> tanpa perlu konfirmasi manual ke admin.</li>
+                                        </ol>
+                                    </div>
+
+                                    <!-- 3. Syarat & Kebijakan Transaksi -->
+                                    <div class="space-y-1">
+                                        <div class="font-extrabold text-indigo-950 flex items-center gap-1.5 text-xs">
+                                            <span>3.</span>
+                                            <span>Syarat &amp; Kebijakan Transaksi:</span>
+                                        </div>
+                                        <ul class="list-disc list-inside space-y-0.5 text-[11px] text-slate-600 pl-1 leading-relaxed">
+                                            <li><strong>Saldo Tanpa Kadaluarsa:</strong> Saldo modal aktif selamanya tanpa ada masa hangus.</li>
+                                            <li><strong>Bebas Potongan Bulanan:</strong> Bebas dari biaya administrasi bulanan akun kemitraan.</li>
+                                            <li><strong>Batas Waktu Invoice:</strong> Invoice pembayaran berlaku selama 30 menit. Jangan mentransfer jika invoice telah kedaluwarsa.</li>
+                                            <li><strong>Bantuan 24/7:</strong> Jika saldo belum bertambah dalam 3 menit setelah pembayaran sukses, hubungi Admin ISP dengan menyertakan Nomor Invoice pembayaran.</li>
+                                        </ul>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="flex items-center justify-end gap-3 pt-2">
+                        <!-- Modal Footer -->
+                        <div class="p-5 sm:p-6 border-t border-gray-100 bg-gray-50/70 flex items-center justify-end gap-3 shrink-0">
                             <button type="button" @click="showTopUpModal = false" class="px-4 py-2.5 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 transition cursor-pointer">
                                 Batal
                             </button>
-                            <button type="submit" :disabled="topUpForm.processing || !topUpForm.amount || topUpForm.amount < effectiveMinDeposit" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-2 disabled:opacity-50 cursor-pointer">
+                            <button 
+                                type="submit" 
+                                :disabled="topUpForm.processing || !topUpForm.amount || isAmountBelowMin" 
+                                class="px-6 py-2.5 rounded-xl text-xs font-black transition shadow-sm flex items-center gap-2 cursor-pointer"
+                                :class="(!topUpForm.amount || isAmountBelowMin) 
+                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60' 
+                                    : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white shadow-blue-500/25'"
+                            >
                                 <svg v-if="topUpForm.processing" class="animate-spin -ml-1 mr-1 h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                 <span>{{ topUpForm.processing ? 'Memproses...' : 'Lanjut ke Pembayaran' }}</span>
+                                <svg v-if="!topUpForm.processing" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                             </button>
                         </div>
                     </form>
@@ -796,7 +918,7 @@ const confirmPayInvoice = (customer, invoice) => {
             cancelButtonText: 'Tutup'
         }).then((result) => {
             if (result.isConfirmed) {
-                showTopUpModal.value = true;
+                openTopUpModal();
             }
         });
         return;
@@ -927,6 +1049,7 @@ _Terima kasih atas pembayaran Anda. Simpan bukti ini sebagai tanda terima sah._`
 
 // Top Up Modal State
 const showTopUpModal = ref(false);
+const showGuideAccordion = ref(false);
 const topUpForm = useForm({
     amount: props.is_master ? Math.max(2000000, Number(props.min_deposit || 2000000)) : Math.max(20000, Number(props.min_deposit || 20000)),
     channel: 'QRIS',
@@ -937,6 +1060,21 @@ const effectiveMinDeposit = computed(() => {
 });
 
 const effectiveMaxDeposit = computed(() => props.is_master ? 50000000 : 10000000);
+
+const isAmountBelowMin = computed(() => {
+    return topUpForm.amount !== null && topUpForm.amount !== '' && Number(topUpForm.amount) < effectiveMinDeposit.value;
+});
+
+const isAmountAboveMax = computed(() => {
+    return topUpForm.amount !== null && topUpForm.amount !== '' && Number(topUpForm.amount) > effectiveMaxDeposit.value;
+});
+
+const openTopUpModal = () => {
+    if (!topUpForm.amount || Number(topUpForm.amount) < effectiveMinDeposit.value) {
+        topUpForm.amount = effectiveMinDeposit.value;
+    }
+    showTopUpModal.value = true;
+};
 
 const presetAmounts = computed(() => {
     return props.is_master
@@ -959,6 +1097,32 @@ const paymentChannels = [
 ];
 
 const submitTopUp = () => {
+    if (!topUpForm.amount || Number(topUpForm.amount) < effectiveMinDeposit.value) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Nominal Ditolak',
+            html: `<div class="text-sm">Nominal pengisian saldo Anda <b>Rp ${(Number(topUpForm.amount) || 0).toLocaleString('id-ID')}</b> berada di bawah batas minimum.<br><br>Batas minimum pengisian saldo modal untuk <b>${props.is_master ? 'Master Biller' : 'Mitra Loket'}</b> adalah <b>Rp ${effectiveMinDeposit.value.toLocaleString('id-ID')}</b>.</div>`,
+            confirmButtonText: `Pasang Rp ${effectiveMinDeposit.value.toLocaleString('id-ID')}`,
+            showCancelButton: true,
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#2563eb',
+        }).then((res) => {
+            if (res.isConfirmed) {
+                topUpForm.amount = effectiveMinDeposit.value;
+            }
+        });
+        return;
+    }
+
+    if (Number(topUpForm.amount) > effectiveMaxDeposit.value) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Nominal Melebihi Batas',
+            text: `Nominal pengisian saldo maksimal adalah Rp ${effectiveMaxDeposit.value.toLocaleString('id-ID')}.`,
+        });
+        return;
+    }
+
     topUpForm.post(route('client-area.top-up-balance'), {
         preserveScroll: true,
         onError: (errors) => {
