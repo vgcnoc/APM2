@@ -142,6 +142,8 @@ class RegisterResellerController extends Controller
                 'phone' => $validated['phone'],
                 'password' => Hash::make($validated['password']),
                 'role' => 'reseller',
+                'area_id' => $validated['area_id'] ?? null,
+                'address' => $validated['address'],
                 'is_active' => !$requireApproval, // Jika require_approval true, user nonaktif hingga disetujui admin
             ]);
 
@@ -151,38 +153,9 @@ class RegisterResellerController extends Controller
                 $user->assignRole($resellerRole);
             } catch (\Exception $e) {}
 
-            // 2. Ambil Nama Area
-            $areaName = null;
-            if (!empty($validated['area_id'])) {
-                $area = Area::find($validated['area_id']);
-                $areaName = $area?->name;
-            }
-
-            // 3. Buat Customer record khusus Mitra Murni (Bebas Tagihan / Non-PSB)
-            $customer = Customer::create([
-                'user_id' => $user->id,
-                'name' => $displayName,
-                'email' => strtolower(trim($validated['email'])),
-                'phone' => $validated['phone'],
-                'address' => $validated['address'],
-                'area_id' => $validated['area_id'] ?? null,
-                'area' => $areaName,
-                'status' => $requireApproval ? 'booking' : 'active',
-                'service_status' => 'gratis',
-                'package_id' => null,
-                'base_amount' => 0,
-                'is_reseller' => true,
-                'registration_date' => now()->toDateString(),
-                'activation_date' => $requireApproval ? null : now()->toDateString(),
-                'billing_type' => Setting::get('billing_type', 'prabayar'),
-                'notes' => $requireApproval 
-                    ? ($validated['tier'] === 'master' ? 'Pendaftaran Mandiri Master Biller (Menunggu Approve Admin)' : 'Pendaftaran Mandiri Mitra Reseller (Menunggu Approve Admin)')
-                    : ($validated['tier'] === 'master' ? 'Pendaftaran Mandiri Master Biller & Distributor Wilayah' : 'Pendaftaran Mandiri Mitra Reseller Voucher & Loket'),
-            ]);
-
-            // 4. Buat Dompet Saldo Reseller (dengan Tier dan Referral)
+            // 2. Buat Dompet Saldo Reseller (Murni Mitra, Tanpa Record Pelanggan / Customer)
             $reseller = Reseller::create([
-                'customer_id' => $customer->id,
+                'customer_id' => null, // Bebas dari tabel customers agar tidak masuk siklus booking s/d aktivasi
                 'user_id' => $user->id,
                 'balance' => 0,
                 'is_active' => !$requireApproval,

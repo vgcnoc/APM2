@@ -66,6 +66,11 @@ class CustomerController extends Controller
         }
         $baseQuery = Customer::query()
             ->where('status', '!=', 'terminated')
+            ->where(function ($q) {
+                $q->where('is_reseller', false)
+                  ->orWhereNull('is_reseller')
+                  ->orWhereNotNull('package_id');
+            })
             ->when($isolirOnly, fn ($q) => $q->where('status', 'suspended'))
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function($q) {
                 if (auth()->user()->can('customers_all_view_area')) {
@@ -1064,6 +1069,11 @@ class CustomerController extends Controller
         $baseQuery = Customer::query()
             ->where('service_status', 'gratis')
             ->where('status', '!=', 'terminated')
+            ->where(function ($q) {
+                $q->where('is_reseller', false)
+                  ->orWhereNull('is_reseller')
+                  ->orWhereNotNull('package_id');
+            })
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function($q) {
                 if (auth()->user()->can('customers_all_view_area')) {
                     $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
@@ -1908,14 +1918,24 @@ class CustomerController extends Controller
         };
 
         // 1. Antrean Menunggu Aktivasi (status installing & sudah diaudit)
-        $waitingQuery = Customer::query()->where('status', 'installing')->where('is_audited', true);
+        $waitingQuery = Customer::query()->where('status', 'installing')->where('is_audited', true)
+            ->where(function ($q) {
+                $q->where('is_reseller', false)
+                  ->orWhereNull('is_reseller')
+                  ->orWhereNotNull('package_id');
+            });
         $applyAreaScope($waitingQuery);
 
         // 2. Riwayat Aktivasi (pelanggan yang sudah diaktivasi dan bukan berhenti/dibatalkan)
         $historyQuery = Customer::query()->where(function($q) {
             $q->whereNotNull('activation_date')
               ->orWhere('status', 'active');
-        })->whereNotIn('status', ['installing', 'terminated', 'canceled']);
+        })->whereNotIn('status', ['installing', 'terminated', 'canceled'])
+          ->where(function ($q) {
+              $q->where('is_reseller', false)
+                ->orWhereNull('is_reseller')
+                ->orWhereNotNull('package_id');
+          });
         $applyAreaScope($historyQuery);
 
         $statsWaiting = clone $waitingQuery;

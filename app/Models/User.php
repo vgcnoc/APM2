@@ -19,6 +19,7 @@ class User extends Authenticatable
         'password',
         'role',
         'phone',
+        'address',
         'area_id',
         'accessible_areas',
         'is_active',

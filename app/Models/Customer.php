@@ -469,7 +469,12 @@ class Customer extends Model
 
     public function scopeBooking($query)
     {
-        return $query->whereIn('status', ['booking', 'survey', 'installing', 'active']);
+        return $query->whereIn('status', ['booking', 'survey', 'installing', 'active'])
+            ->where(function ($q) {
+                $q->where('is_reseller', false)
+                  ->orWhereNull('is_reseller')
+                  ->orWhereNotNull('package_id');
+            });
     }
 
     public function scopeSurvey($query)
@@ -481,12 +486,21 @@ class Customer extends Model
                       ->where('cancel_stage', 'survey')
                       ->whereHas('surveys', fn($sq) => $sq->where('feasibility', 'not_feasible'));
               });
+        })->where(function ($q) {
+            $q->where('is_reseller', false)
+              ->orWhereNull('is_reseller')
+              ->orWhereNotNull('package_id');
         });
     }
 
     public function scopeInstalled($query)
     {
-        return $query->where('status', 'installing');
+        return $query->where('status', 'installing')
+            ->where(function ($q) {
+                $q->where('is_reseller', false)
+                  ->orWhereNull('is_reseller')
+                  ->orWhereNotNull('package_id');
+            });
     }
 
     public function scopeSearch($query, ?string $search)

@@ -96,7 +96,7 @@ class ResellerSettingController extends Controller
         $fullAccessCount = max(0, $totalResellers - $customAccessCount);
 
         // Ambil data calon mitra yang mendaftar mandiri & berstatus pending approval
-        $pendingResellers = Reseller::with(['customer.areaModel', 'user'])
+        $pendingResellers = Reseller::with(['customer.areaModel', 'user.area'])
             ->where(function ($q) {
                 $q->where('status', 'pending')
                   ->orWhere('is_active', false);
@@ -127,8 +127,8 @@ class ResellerSettingController extends Controller
                     'email' => $r->customer?->email ?: $r->user?->email ?: '-',
                     'phone' => $phone,
                     'clean_phone' => $cleanPhone,
-                    'area' => $r->customer?->area ?: $r->customer?->areaModel?->name ?: '-',
-                    'address' => $r->customer?->address ?: '-',
+                    'area' => $r->customer?->area ?: $r->customer?->areaModel?->name ?: $r->user?->area?->name ?: '-',
+                    'address' => $r->customer?->address ?: $r->user?->address ?: '-',
                     'created_at' => $r->created_at ? $r->created_at->format('d M Y H:i') : '-',
                     'status' => $r->status,
                     'is_active' => (bool) $r->is_active,
@@ -388,13 +388,15 @@ class ResellerSettingController extends Controller
         $area = $areaId ? Area::find($areaId) : null;
 
         DB::transaction(function () use ($validated, $initialBalance, $area, $areaId) {
-            // 1. Buat User Login
+            // 1. Buat User Login Reseller
             $user = User::create([
                 'name' => trim($validated['name']),
                 'email' => strtolower(trim($validated['email'])),
                 'phone' => $validated['phone'] ?? null,
                 'password' => Hash::make($validated['password']),
                 'role' => 'reseller',
+                'area_id' => $areaId,
+                'address' => 'Loket / Konter Mitra',
                 'is_active' => true,
             ]);
 
@@ -403,27 +405,7 @@ class ResellerSettingController extends Controller
                 $user->syncRoles([$role]);
             } catch (\Throwable $e) {}
 
-            // 2. Buat Customer record untuk Reseller (Bebas Tagihan)
-            $customer = Customer::create([
-                'user_id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'address' => 'Loket / Konter Mitra',
-                'area_id' => $areaId,
-                'area' => $area?->name,
-                'status' => 'active',
-                'service_status' => 'gratis',
-                'package_id' => null,
-                'base_amount' => 0,
-                'is_reseller' => true,
-                'registration_date' => now()->toDateString(),
-                'activation_date' => now()->toDateString(),
-                'billing_type' => Setting::get('billing_type', 'prabayar'),
-                'notes' => $validated['tier'] === 'master' ? 'Akun Master Biller dibuat via Pengaturan Reseller' : 'Akun Mitra Reseller dibuat via Pengaturan Reseller',
-            ]);
-
-            // 3. Buat Entitas Reseller
+            // 2. Buat Entitas Reseller (Murni Reseller, Tanpa Record Customer)
             $canSellVouchers = array_key_exists('can_sell_vouchers', $validated)
                 ? (bool) $validated['can_sell_vouchers']
                 : (bool) ((int) Setting::get('reseller_feature_vouchers_enabled', '0'));
@@ -432,7 +414,7 @@ class ResellerSettingController extends Controller
                 : (bool) ((int) Setting::get('reseller_feature_billing_enabled', '1'));
 
             $reseller = Reseller::create([
-                'customer_id' => $customer->id,
+                'customer_id' => null, // Bebas dari tabel customers agar tidak masuk ke semua data pelanggan
                 'user_id' => $user->id,
                 'balance' => $initialBalance,
                 'is_active' => true,

@@ -538,6 +538,123 @@
             </div>
         </Teleport>
 
+        <!-- Modal Notifikasi WhatsApp Akun Client Area -->
+        <Teleport to="body">
+            <div v-if="showAccountCreatedModal && accountCreatedData" class="fixed inset-0 z-[120] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="showAccountCreatedModal = false"></div>
+                <div class="relative bg-white border border-gray-200 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up">
+                    <!-- Header -->
+                    <div class="p-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-emerald-500/10 via-blue-500/10 to-indigo-500/10">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                                💬
+                            </div>
+                            <div>
+                                <h3 class="text-base font-bold text-gray-900 leading-tight">
+                                    Akun Client Area Berhasil Dibuat!
+                                </h3>
+                                <p class="text-xs text-gray-500">
+                                    {{ accountCreatedData.customer_name }} • <span class="font-mono text-gray-600 font-semibold">{{ accountCreatedData.customer_code }}</span>
+                                </p>
+                            </div>
+                        </div>
+                        <button @click="showAccountCreatedModal = false" class="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+                        <!-- Status Notifikasi Gateway -->
+                        <div v-if="accountCreatedData.wa_sent" class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3">
+                            <span class="text-emerald-600 text-lg">✅</span>
+                            <div class="text-xs">
+                                <span class="font-bold text-emerald-900 block">WhatsApp Otomatis Terkirim!</span>
+                                <span class="text-emerald-700">Pesan notifikasi akun berhasil dikirim ke nomor <b>{{ accountCreatedData.phone }}</b> melalui WhatsApp Gateway.</span>
+                            </div>
+                        </div>
+                        <div v-else class="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+                            <span class="text-amber-600 text-lg">⚠️</span>
+                            <div class="text-xs">
+                                <span class="font-bold text-amber-900 block">Status Pengiriman WhatsApp</span>
+                                <span class="text-amber-700">{{ accountCreatedData.wa_status_message || 'Pesan belum terkirim otomatis. Anda dapat langsung mengirim pesan via tombol WhatsApp di bawah.' }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Card Kredensial Login Portal -->
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
+                            <div class="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
+                                <span>🔑</span> Detail Login Client Area
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+                                    <span class="text-[10px] text-gray-500 uppercase font-semibold block">Username / Email</span>
+                                    <span class="font-mono font-bold text-slate-900 select-all">{{ accountCreatedData.email }}</span>
+                                </div>
+                                <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+                                    <span class="text-[10px] text-gray-500 uppercase font-semibold block">Password</span>
+                                    <span class="font-mono font-bold text-slate-900 select-all">{{ accountCreatedData.password }}</span>
+                                </div>
+                            </div>
+                            <div class="bg-white p-2.5 rounded-lg border border-slate-200 text-xs">
+                                <span class="text-[10px] text-gray-500 uppercase font-semibold block">Link Portal Pelanggan</span>
+                                <a :href="accountCreatedData.login_url" target="_blank" class="text-blue-600 font-medium hover:underline break-all block mt-0.5">
+                                    {{ accountCreatedData.login_url }}
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Card Fasilitas Hotspot Gratis (APABILA MEMANG ADA) -->
+                        <div v-if="accountCreatedData.has_free_hotspot" class="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-yellow-500/10 border border-amber-300 rounded-xl p-3.5 space-y-2">
+                            <div class="text-xs font-bold text-amber-900 flex items-center gap-1.5 uppercase tracking-wider">
+                                <span>🎁</span> Fasilitas Hotspot Gratis Pelanggan
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div class="bg-white/90 p-2.5 rounded-lg border border-amber-200">
+                                    <span class="text-[10px] text-gray-500 uppercase font-semibold block">User Hotspot</span>
+                                    <span class="font-mono font-bold text-amber-900 select-all">{{ accountCreatedData.hotspot_user }}</span>
+                                </div>
+                                <div class="bg-white/90 p-2.5 rounded-lg border border-amber-200">
+                                    <span class="text-[10px] text-gray-500 uppercase font-semibold block">Password Hotspot</span>
+                                    <span class="font-mono font-bold text-amber-900 select-all">{{ accountCreatedData.hotspot_password || '(Tanpa Password)' }}</span>
+                                </div>
+                            </div>
+                            <p class="text-[11px] text-amber-800 italic">
+                                *Akun hotspot ini dapat digunakan oleh pelanggan untuk menikmati akses WiFi Hotspot gratis.
+                            </p>
+                        </div>
+
+                        <!-- Teks Pesan WhatsApp Preview & Copy -->
+                        <div class="space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <label class="text-xs font-bold text-gray-700">Format Pesan WhatsApp</label>
+                                <button type="button" @click="copyAccountWaMessage" class="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                                    <span>{{ copiedWa ? '✓ Tersalin!' : '📋 Salin Pesan' }}</span>
+                                </button>
+                            </div>
+                            <textarea readonly :value="accountCreatedData.wa_message" rows="6" class="w-full text-xs font-mono bg-gray-50 border border-gray-200 rounded-xl p-3 text-gray-700 focus:outline-none select-all leading-relaxed"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Footer Actions -->
+                    <div class="p-4 bg-gray-50 border-t border-gray-200 flex flex-wrap items-center justify-between gap-2 rounded-b-2xl">
+                        <button type="button" @click="showAccountCreatedModal = false" class="px-4 py-2 text-xs font-bold text-gray-600 hover:text-gray-900 bg-white border border-gray-300 rounded-xl hover:bg-gray-100 transition-colors">
+                            Tutup
+                        </button>
+                        <div class="flex items-center gap-2">
+                            <button type="button" @click="copyAccountWaMessage" class="px-4 py-2 text-xs font-bold text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-100 transition-colors flex items-center gap-1.5">
+                                <span>📋</span>
+                                <span>{{ copiedWa ? 'Tersalin!' : 'Salin Pesan' }}</span>
+                            </button>
+                            <a :href="getWaSendUrl(accountCreatedData.phone, accountCreatedData.wa_message)" target="_blank" class="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-1.5">
+                                <span>💬</span>
+                                <span>Buka / Kirim WhatsApp</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
+
         <!-- Delete Confirmation Modal -->
         <Teleport to="body">
             <div v-if="showDeleteModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -565,6 +682,123 @@
                             </svg>
                             Hapus Permanen
                         </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- Modal Notifikasi WhatsApp Akun Client Area -->
+        <Teleport to="body">
+            <div v-if="showAccountCreatedModal && accountCreatedData" class="fixed inset-0 z-[120] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="showAccountCreatedModal = false"></div>
+                <div class="relative bg-white border border-gray-200 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up">
+                    <!-- Header -->
+                    <div class="p-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-emerald-500/10 via-blue-500/10 to-indigo-500/10">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                                💬
+                            </div>
+                            <div>
+                                <h3 class="text-base font-bold text-gray-900 leading-tight">
+                                    Akun Client Area Berhasil Dibuat!
+                                </h3>
+                                <p class="text-xs text-gray-500">
+                                    {{ accountCreatedData.customer_name }} • <span class="font-mono text-gray-600 font-semibold">{{ accountCreatedData.customer_code }}</span>
+                                </p>
+                            </div>
+                        </div>
+                        <button @click="showAccountCreatedModal = false" class="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+                        <!-- Status Notifikasi Gateway -->
+                        <div v-if="accountCreatedData.wa_sent" class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3">
+                            <span class="text-emerald-600 text-lg">✅</span>
+                            <div class="text-xs">
+                                <span class="font-bold text-emerald-900 block">WhatsApp Otomatis Terkirim!</span>
+                                <span class="text-emerald-700">Pesan notifikasi akun berhasil dikirim ke nomor <b>{{ accountCreatedData.phone }}</b> melalui WhatsApp Gateway.</span>
+                            </div>
+                        </div>
+                        <div v-else class="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+                            <span class="text-amber-600 text-lg">⚠️</span>
+                            <div class="text-xs">
+                                <span class="font-bold text-amber-900 block">Status Pengiriman WhatsApp</span>
+                                <span class="text-amber-700">{{ accountCreatedData.wa_status_message || 'Pesan belum terkirim otomatis. Anda dapat langsung mengirim pesan via tombol WhatsApp di bawah.' }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Card Kredensial Login Portal -->
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
+                            <div class="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
+                                <span>🔑</span> Detail Login Client Area
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+                                    <span class="text-[10px] text-gray-500 uppercase font-semibold block">Username / Email</span>
+                                    <span class="font-mono font-bold text-slate-900 select-all">{{ accountCreatedData.email }}</span>
+                                </div>
+                                <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+                                    <span class="text-[10px] text-gray-500 uppercase font-semibold block">Password</span>
+                                    <span class="font-mono font-bold text-slate-900 select-all">{{ accountCreatedData.password }}</span>
+                                </div>
+                            </div>
+                            <div class="bg-white p-2.5 rounded-lg border border-slate-200 text-xs">
+                                <span class="text-[10px] text-gray-500 uppercase font-semibold block">Link Portal Pelanggan</span>
+                                <a :href="accountCreatedData.login_url" target="_blank" class="text-blue-600 font-medium hover:underline break-all block mt-0.5">
+                                    {{ accountCreatedData.login_url }}
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Card Fasilitas Hotspot Gratis (APABILA MEMANG ADA) -->
+                        <div v-if="accountCreatedData.has_free_hotspot" class="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-yellow-500/10 border border-amber-300 rounded-xl p-3.5 space-y-2">
+                            <div class="text-xs font-bold text-amber-900 flex items-center gap-1.5 uppercase tracking-wider">
+                                <span>🎁</span> Fasilitas Hotspot Gratis Pelanggan
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div class="bg-white/90 p-2.5 rounded-lg border border-amber-200">
+                                    <span class="text-[10px] text-gray-500 uppercase font-semibold block">User Hotspot</span>
+                                    <span class="font-mono font-bold text-amber-900 select-all">{{ accountCreatedData.hotspot_user }}</span>
+                                </div>
+                                <div class="bg-white/90 p-2.5 rounded-lg border border-amber-200">
+                                    <span class="text-[10px] text-gray-500 uppercase font-semibold block">Password Hotspot</span>
+                                    <span class="font-mono font-bold text-amber-900 select-all">{{ accountCreatedData.hotspot_password || '(Tanpa Password)' }}</span>
+                                </div>
+                            </div>
+                            <p class="text-[11px] text-amber-800 italic">
+                                *Akun hotspot ini dapat digunakan oleh pelanggan untuk menikmati akses WiFi Hotspot gratis.
+                            </p>
+                        </div>
+
+                        <!-- Teks Pesan WhatsApp Preview & Copy -->
+                        <div class="space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <label class="text-xs font-bold text-gray-700">Format Pesan WhatsApp</label>
+                                <button type="button" @click="copyAccountWaMessage" class="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                                    <span>{{ copiedWa ? '✓ Tersalin!' : '📋 Salin Pesan' }}</span>
+                                </button>
+                            </div>
+                            <textarea readonly :value="accountCreatedData.wa_message" rows="6" class="w-full text-xs font-mono bg-gray-50 border border-gray-200 rounded-xl p-3 text-gray-700 focus:outline-none select-all leading-relaxed"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Footer Actions -->
+                    <div class="p-4 bg-gray-50 border-t border-gray-200 flex flex-wrap items-center justify-between gap-2 rounded-b-2xl">
+                        <button type="button" @click="showAccountCreatedModal = false" class="px-4 py-2 text-xs font-bold text-gray-600 hover:text-gray-900 bg-white border border-gray-300 rounded-xl hover:bg-gray-100 transition-colors">
+                            Tutup
+                        </button>
+                        <div class="flex items-center gap-2">
+                            <button type="button" @click="copyAccountWaMessage" class="px-4 py-2 text-xs font-bold text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-100 transition-colors flex items-center gap-1.5">
+                                <span>📋</span>
+                                <span>{{ copiedWa ? 'Tersalin!' : 'Salin Pesan' }}</span>
+                            </button>
+                            <a :href="getWaSendUrl(accountCreatedData.phone, accountCreatedData.wa_message)" target="_blank" class="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-1.5">
+                                <span>💬</span>
+                                <span>Buka / Kirim WhatsApp</span>
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -794,6 +1028,123 @@
             </div>
         </Teleport>
 
+        <!-- Modal Notifikasi WhatsApp Akun Client Area -->
+        <Teleport to="body">
+            <div v-if="showAccountCreatedModal && accountCreatedData" class="fixed inset-0 z-[120] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="showAccountCreatedModal = false"></div>
+                <div class="relative bg-white border border-gray-200 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up">
+                    <!-- Header -->
+                    <div class="p-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-emerald-500/10 via-blue-500/10 to-indigo-500/10">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                                💬
+                            </div>
+                            <div>
+                                <h3 class="text-base font-bold text-gray-900 leading-tight">
+                                    Akun Client Area Berhasil Dibuat!
+                                </h3>
+                                <p class="text-xs text-gray-500">
+                                    {{ accountCreatedData.customer_name }} • <span class="font-mono text-gray-600 font-semibold">{{ accountCreatedData.customer_code }}</span>
+                                </p>
+                            </div>
+                        </div>
+                        <button @click="showAccountCreatedModal = false" class="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+                        <!-- Status Notifikasi Gateway -->
+                        <div v-if="accountCreatedData.wa_sent" class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3">
+                            <span class="text-emerald-600 text-lg">✅</span>
+                            <div class="text-xs">
+                                <span class="font-bold text-emerald-900 block">WhatsApp Otomatis Terkirim!</span>
+                                <span class="text-emerald-700">Pesan notifikasi akun berhasil dikirim ke nomor <b>{{ accountCreatedData.phone }}</b> melalui WhatsApp Gateway.</span>
+                            </div>
+                        </div>
+                        <div v-else class="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+                            <span class="text-amber-600 text-lg">⚠️</span>
+                            <div class="text-xs">
+                                <span class="font-bold text-amber-900 block">Status Pengiriman WhatsApp</span>
+                                <span class="text-amber-700">{{ accountCreatedData.wa_status_message || 'Pesan belum terkirim otomatis. Anda dapat langsung mengirim pesan via tombol WhatsApp di bawah.' }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Card Kredensial Login Portal -->
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
+                            <div class="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
+                                <span>🔑</span> Detail Login Client Area
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+                                    <span class="text-[10px] text-gray-500 uppercase font-semibold block">Username / Email</span>
+                                    <span class="font-mono font-bold text-slate-900 select-all">{{ accountCreatedData.email }}</span>
+                                </div>
+                                <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+                                    <span class="text-[10px] text-gray-500 uppercase font-semibold block">Password</span>
+                                    <span class="font-mono font-bold text-slate-900 select-all">{{ accountCreatedData.password }}</span>
+                                </div>
+                            </div>
+                            <div class="bg-white p-2.5 rounded-lg border border-slate-200 text-xs">
+                                <span class="text-[10px] text-gray-500 uppercase font-semibold block">Link Portal Pelanggan</span>
+                                <a :href="accountCreatedData.login_url" target="_blank" class="text-blue-600 font-medium hover:underline break-all block mt-0.5">
+                                    {{ accountCreatedData.login_url }}
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Card Fasilitas Hotspot Gratis (APABILA MEMANG ADA) -->
+                        <div v-if="accountCreatedData.has_free_hotspot" class="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-yellow-500/10 border border-amber-300 rounded-xl p-3.5 space-y-2">
+                            <div class="text-xs font-bold text-amber-900 flex items-center gap-1.5 uppercase tracking-wider">
+                                <span>🎁</span> Fasilitas Hotspot Gratis Pelanggan
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div class="bg-white/90 p-2.5 rounded-lg border border-amber-200">
+                                    <span class="text-[10px] text-gray-500 uppercase font-semibold block">User Hotspot</span>
+                                    <span class="font-mono font-bold text-amber-900 select-all">{{ accountCreatedData.hotspot_user }}</span>
+                                </div>
+                                <div class="bg-white/90 p-2.5 rounded-lg border border-amber-200">
+                                    <span class="text-[10px] text-gray-500 uppercase font-semibold block">Password Hotspot</span>
+                                    <span class="font-mono font-bold text-amber-900 select-all">{{ accountCreatedData.hotspot_password || '(Tanpa Password)' }}</span>
+                                </div>
+                            </div>
+                            <p class="text-[11px] text-amber-800 italic">
+                                *Akun hotspot ini dapat digunakan oleh pelanggan untuk menikmati akses WiFi Hotspot gratis.
+                            </p>
+                        </div>
+
+                        <!-- Teks Pesan WhatsApp Preview & Copy -->
+                        <div class="space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <label class="text-xs font-bold text-gray-700">Format Pesan WhatsApp</label>
+                                <button type="button" @click="copyAccountWaMessage" class="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                                    <span>{{ copiedWa ? '✓ Tersalin!' : '📋 Salin Pesan' }}</span>
+                                </button>
+                            </div>
+                            <textarea readonly :value="accountCreatedData.wa_message" rows="6" class="w-full text-xs font-mono bg-gray-50 border border-gray-200 rounded-xl p-3 text-gray-700 focus:outline-none select-all leading-relaxed"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Footer Actions -->
+                    <div class="p-4 bg-gray-50 border-t border-gray-200 flex flex-wrap items-center justify-between gap-2 rounded-b-2xl">
+                        <button type="button" @click="showAccountCreatedModal = false" class="px-4 py-2 text-xs font-bold text-gray-600 hover:text-gray-900 bg-white border border-gray-300 rounded-xl hover:bg-gray-100 transition-colors">
+                            Tutup
+                        </button>
+                        <div class="flex items-center gap-2">
+                            <button type="button" @click="copyAccountWaMessage" class="px-4 py-2 text-xs font-bold text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-100 transition-colors flex items-center gap-1.5">
+                                <span>📋</span>
+                                <span>{{ copiedWa ? 'Tersalin!' : 'Salin Pesan' }}</span>
+                            </button>
+                            <a :href="getWaSendUrl(accountCreatedData.phone, accountCreatedData.wa_message)" target="_blank" class="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-1.5">
+                                <span>💬</span>
+                                <span>Buka / Kirim WhatsApp</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
+
         <!-- Stop Permanen Modal -->
         <Teleport to="body">
             <div v-if="showTerminateModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -879,6 +1230,123 @@
                             </button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- Modal Notifikasi WhatsApp Akun Client Area -->
+        <Teleport to="body">
+            <div v-if="showAccountCreatedModal && accountCreatedData" class="fixed inset-0 z-[120] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="showAccountCreatedModal = false"></div>
+                <div class="relative bg-white border border-gray-200 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up">
+                    <!-- Header -->
+                    <div class="p-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-emerald-500/10 via-blue-500/10 to-indigo-500/10">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                                💬
+                            </div>
+                            <div>
+                                <h3 class="text-base font-bold text-gray-900 leading-tight">
+                                    Akun Client Area Berhasil Dibuat!
+                                </h3>
+                                <p class="text-xs text-gray-500">
+                                    {{ accountCreatedData.customer_name }} • <span class="font-mono text-gray-600 font-semibold">{{ accountCreatedData.customer_code }}</span>
+                                </p>
+                            </div>
+                        </div>
+                        <button @click="showAccountCreatedModal = false" class="text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+                        <!-- Status Notifikasi Gateway -->
+                        <div v-if="accountCreatedData.wa_sent" class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3">
+                            <span class="text-emerald-600 text-lg">✅</span>
+                            <div class="text-xs">
+                                <span class="font-bold text-emerald-900 block">WhatsApp Otomatis Terkirim!</span>
+                                <span class="text-emerald-700">Pesan notifikasi akun berhasil dikirim ke nomor <b>{{ accountCreatedData.phone }}</b> melalui WhatsApp Gateway.</span>
+                            </div>
+                        </div>
+                        <div v-else class="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+                            <span class="text-amber-600 text-lg">⚠️</span>
+                            <div class="text-xs">
+                                <span class="font-bold text-amber-900 block">Status Pengiriman WhatsApp</span>
+                                <span class="text-amber-700">{{ accountCreatedData.wa_status_message || 'Pesan belum terkirim otomatis. Anda dapat langsung mengirim pesan via tombol WhatsApp di bawah.' }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Card Kredensial Login Portal -->
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
+                            <div class="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
+                                <span>🔑</span> Detail Login Client Area
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+                                    <span class="text-[10px] text-gray-500 uppercase font-semibold block">Username / Email</span>
+                                    <span class="font-mono font-bold text-slate-900 select-all">{{ accountCreatedData.email }}</span>
+                                </div>
+                                <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+                                    <span class="text-[10px] text-gray-500 uppercase font-semibold block">Password</span>
+                                    <span class="font-mono font-bold text-slate-900 select-all">{{ accountCreatedData.password }}</span>
+                                </div>
+                            </div>
+                            <div class="bg-white p-2.5 rounded-lg border border-slate-200 text-xs">
+                                <span class="text-[10px] text-gray-500 uppercase font-semibold block">Link Portal Pelanggan</span>
+                                <a :href="accountCreatedData.login_url" target="_blank" class="text-blue-600 font-medium hover:underline break-all block mt-0.5">
+                                    {{ accountCreatedData.login_url }}
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Card Fasilitas Hotspot Gratis (APABILA MEMANG ADA) -->
+                        <div v-if="accountCreatedData.has_free_hotspot" class="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-yellow-500/10 border border-amber-300 rounded-xl p-3.5 space-y-2">
+                            <div class="text-xs font-bold text-amber-900 flex items-center gap-1.5 uppercase tracking-wider">
+                                <span>🎁</span> Fasilitas Hotspot Gratis Pelanggan
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div class="bg-white/90 p-2.5 rounded-lg border border-amber-200">
+                                    <span class="text-[10px] text-gray-500 uppercase font-semibold block">User Hotspot</span>
+                                    <span class="font-mono font-bold text-amber-900 select-all">{{ accountCreatedData.hotspot_user }}</span>
+                                </div>
+                                <div class="bg-white/90 p-2.5 rounded-lg border border-amber-200">
+                                    <span class="text-[10px] text-gray-500 uppercase font-semibold block">Password Hotspot</span>
+                                    <span class="font-mono font-bold text-amber-900 select-all">{{ accountCreatedData.hotspot_password || '(Tanpa Password)' }}</span>
+                                </div>
+                            </div>
+                            <p class="text-[11px] text-amber-800 italic">
+                                *Akun hotspot ini dapat digunakan oleh pelanggan untuk menikmati akses WiFi Hotspot gratis.
+                            </p>
+                        </div>
+
+                        <!-- Teks Pesan WhatsApp Preview & Copy -->
+                        <div class="space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <label class="text-xs font-bold text-gray-700">Format Pesan WhatsApp</label>
+                                <button type="button" @click="copyAccountWaMessage" class="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                                    <span>{{ copiedWa ? '✓ Tersalin!' : '📋 Salin Pesan' }}</span>
+                                </button>
+                            </div>
+                            <textarea readonly :value="accountCreatedData.wa_message" rows="6" class="w-full text-xs font-mono bg-gray-50 border border-gray-200 rounded-xl p-3 text-gray-700 focus:outline-none select-all leading-relaxed"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Footer Actions -->
+                    <div class="p-4 bg-gray-50 border-t border-gray-200 flex flex-wrap items-center justify-between gap-2 rounded-b-2xl">
+                        <button type="button" @click="showAccountCreatedModal = false" class="px-4 py-2 text-xs font-bold text-gray-600 hover:text-gray-900 bg-white border border-gray-300 rounded-xl hover:bg-gray-100 transition-colors">
+                            Tutup
+                        </button>
+                        <div class="flex items-center gap-2">
+                            <button type="button" @click="copyAccountWaMessage" class="px-4 py-2 text-xs font-bold text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-100 transition-colors flex items-center gap-1.5">
+                                <span>📋</span>
+                                <span>{{ copiedWa ? 'Tersalin!' : 'Salin Pesan' }}</span>
+                            </button>
+                            <a :href="getWaSendUrl(accountCreatedData.phone, accountCreatedData.wa_message)" target="_blank" class="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-1.5">
+                                <span>💬</span>
+                                <span>Buka / Kirim WhatsApp</span>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </Teleport>
