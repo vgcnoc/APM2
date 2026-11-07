@@ -53,6 +53,7 @@
 
                         <!-- 2. Loket Bayar -->
                         <Link 
+                            v-if="canPayBills"
                             href="/client-area/biller" 
                             class="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-all duration-200"
                             :class="$page.url.startsWith('/client-area/biller') 
@@ -66,7 +67,7 @@
                         </Link>
 
                         <!-- 3. Kelola Voucher (Dropdown Elegan) -->
-                        <div class="relative" ref="voucherDropdownRef">
+                        <div v-if="canSellVouchers" class="relative" ref="voucherDropdownRef">
                             <button 
                                 type="button"
                                 @click="toggleVoucherDropdown"
@@ -267,6 +268,7 @@
 
                     <!-- Loket Bayar -->
                     <Link 
+                        v-if="canPayBills"
                         href="/client-area/biller" 
                         @click="showMobileMenu = false"
                         class="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-colors" 
@@ -281,7 +283,7 @@
                     </Link>
 
                     <!-- Voucher Accordion Section -->
-                    <div class="pt-2 pb-1">
+                    <div v-if="canSellVouchers" class="pt-2 pb-1">
                         <button 
                             type="button" 
                             @click="mobileVoucherOpen = !mobileVoucherOpen"
@@ -383,6 +385,16 @@ import PatternPicker from '@/Components/PatternPicker.vue';
 import { initTheme } from '@/Composables/useTheme';
 
 const page = usePage();
+
+const canSellVouchers = computed(() => {
+    if (page.props.can_sell_vouchers !== undefined) return Boolean(page.props.can_sell_vouchers);
+    return Boolean(page.props.auth?.user?.reseller_features?.can_sell_vouchers ?? false);
+});
+
+const canPayBills = computed(() => {
+    if (page.props.can_pay_bills !== undefined) return Boolean(page.props.can_pay_bills);
+    return Boolean(page.props.auth?.user?.reseller_features?.can_pay_bills ?? true);
+});
 
 const showUserMenu = ref(false);
 const showMobileMenu = ref(false);

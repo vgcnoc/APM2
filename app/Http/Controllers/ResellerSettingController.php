@@ -143,6 +143,8 @@ class ResellerSettingController extends Controller
         $settings = [
             'reseller_registration_enabled' => (bool) ((int) Setting::get('reseller_registration_enabled', '1')),
             'biller_registration_enabled' => (bool) ((int) Setting::get('biller_registration_enabled', '1')),
+            'reseller_feature_vouchers_enabled' => (bool) ((int) Setting::get('reseller_feature_vouchers_enabled', '0')),
+            'reseller_feature_billing_enabled' => (bool) ((int) Setting::get('reseller_feature_billing_enabled', '1')),
             'reseller_min_deposit' => $resellerMinDeposit,
             'biller_min_deposit' => $billerMinDeposit,
             'reseller_registration_require_approval' => (bool) ((int) Setting::get('reseller_registration_require_approval', '1')),
@@ -181,6 +183,8 @@ class ResellerSettingController extends Controller
         $validated = $request->validate([
             'reseller_registration_enabled' => 'required|boolean',
             'biller_registration_enabled' => 'required|boolean',
+            'reseller_feature_vouchers_enabled' => 'nullable|boolean',
+            'reseller_feature_billing_enabled' => 'nullable|boolean',
             'reseller_min_deposit' => 'required|numeric|min:0',
             'biller_min_deposit' => 'required|numeric|min:0',
             'reseller_registration_require_approval' => 'required|boolean',
@@ -189,6 +193,8 @@ class ResellerSettingController extends Controller
 
         Setting::set('reseller_registration_enabled', $validated['reseller_registration_enabled'] ? '1' : '0');
         Setting::set('biller_registration_enabled', $validated['biller_registration_enabled'] ? '1' : '0');
+        Setting::set('reseller_feature_vouchers_enabled', $request->boolean('reseller_feature_vouchers_enabled', false) ? '1' : '0');
+        Setting::set('reseller_feature_billing_enabled', $request->boolean('reseller_feature_billing_enabled', true) ? '1' : '0');
         Setting::set('reseller_min_deposit', (string) ((int) $validated['reseller_min_deposit']));
         Setting::set('biller_min_deposit', (string) ((int) $validated['biller_min_deposit']));
         Setting::set('master_reseller_min_deposit', (string) ((int) $validated['biller_min_deposit'])); // sinkronkan master biller
@@ -317,16 +323,42 @@ class ResellerSettingController extends Controller
     public function update(Request $request, User $user)
     {
         $validated = $request->validate([
+            'can_sell_vouchers' => 'nullable|boolean',
+            'can_pay_bills' => 'nullable|boolean',
             'voucher_profile_ids' => 'nullable|array',
             'voucher_profile_ids.*' => 'exists:voucher_profiles,id'
         ]);
 
+        $reseller = $user->reseller ?: ($user->customer?->reseller);
+        if ($reseller) {
+            $canSellVouchers = $request->has('can_sell_vouchers') ? $request->boolean('can_sell_vouchers') : $reseller->can_sell_vouchers;
+            $canPayBills = $request->has('can_pay_bills') ? $request->boolean('can_pay_bills') : $reseller->can_pay_bills;
+            $reseller->update([
+                'can_sell_vouchers' => $canSellVouchers,
+                'can_pay_bills' => $canPayBills,
+            ]);
+        }
+
         $profileIds = $validated['voucher_profile_ids'] ?? [];
         $user->voucherProfiles()->sync($profileIds);
 
+        $msgServices = [];
+        if ($reseller) {
+            if ($reseller->can_sell_vouchers && $reseller->can_pay_bills) {
+                $msgServices[] = "Bisa Jual Voucher & Bayar Tagihan";
+            } elseif ($reseller->can_pay_bills) {
+                $msgServices[] = "Hanya Pembayaran Tagihan Internet";
+            } elseif ($reseller->can_sell_vouchers) {
+                $msgServices[] = "Hanya Jual Voucher";
+            } else {
+                $msgServices[] = "Layanan Ditutup Sementara";
+            }
+        }
+        $serviceText = !empty($msgServices) ? " [" . implode(', ', $msgServices) . "]" : "";
+
         $msg = empty($profileIds)
-            ? "Akses profil voucher {$user->name} diset ke Semua Profil (Default)."
-            : "Akses profil voucher {$user->name} berhasil dibatasi ke " . count($profileIds) . " profil terpilih.";
+            ? "Akses kemitraan {$user->name}{$serviceText} diset ke Semua Profil Voucher (Default)."
+            : "Akses kemitraan {$user->name}{$serviceText} berhasil diperbarui dengan " . count($profileIds) . " profil voucher terpilih.";
 
         return redirect()->back()->with('success', $msg);
     }
@@ -342,6 +374,8 @@ class ResellerSettingController extends Controller
             'phone' => 'nullable|string|max:30',
             'password' => 'required|string|min:6',
             'tier' => 'required|in:regular,master',
+            'can_sell_vouchers' => 'nullable|boolean',
+            'can_pay_bills' => 'nullable|boolean',
             'balance' => 'nullable|numeric|min:0',
             'area_id' => 'nullable|exists:areas,id',
             'voucher_profile_ids' => 'nullable|array',
@@ -389,12 +423,21 @@ class ResellerSettingController extends Controller
             ]);
 
             // 3. Buat Entitas Reseller
+            $canSellVouchers = array_key_exists('can_sell_vouchers', $validated)
+                ? (bool) $validated['can_sell_vouchers']
+                : (bool) ((int) Setting::get('reseller_feature_vouchers_enabled', '0'));
+            $canPayBills = array_key_exists('can_pay_bills', $validated)
+                ? (bool) $validated['can_pay_bills']
+                : (bool) ((int) Setting::get('reseller_feature_billing_enabled', '1'));
+
             $reseller = Reseller::create([
                 'customer_id' => $customer->id,
                 'user_id' => $user->id,
                 'balance' => $initialBalance,
                 'is_active' => true,
                 'tier' => $validated['tier'],
+                'can_sell_vouchers' => $canSellVouchers,
+                'can_pay_bills' => $canPayBills,
                 'referral_code' => $validated['tier'] === 'master' ? Reseller::generateReferralCode() : null,
                 'status' => 'active',
             ]);
@@ -443,6 +486,8 @@ class ResellerSettingController extends Controller
             'role' => 'required|string|max:50',
             'is_active' => 'boolean',
             'tier' => 'nullable|in:regular,master',
+            'can_sell_vouchers' => 'nullable|boolean',
+            'can_pay_bills' => 'nullable|boolean',
             'balance' => 'nullable|numeric|min:0',
             'reseller_status' => 'nullable|in:active,pending,suspended',
         ]);
@@ -485,6 +530,12 @@ class ResellerSettingController extends Controller
                 $reseller->balance = $newBalance;
                 $reseller->status = $validated['reseller_status'] ?? ($reseller->status ?: 'active');
                 $reseller->is_active = $user->is_active;
+                if ($request->has('can_sell_vouchers')) {
+                    $reseller->can_sell_vouchers = $request->boolean('can_sell_vouchers');
+                }
+                if ($request->has('can_pay_bills')) {
+                    $reseller->can_pay_bills = $request->boolean('can_pay_bills');
+                }
                 $reseller->save();
 
                 if (abs($diff) > 0) {

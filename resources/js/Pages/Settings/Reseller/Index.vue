@@ -143,6 +143,96 @@
                 </div>
 
                 <form @submit.prevent="saveRegistrationSettings" class="space-y-6">
+                    <!-- Section 0: Status Fitur Layanan Kemitraan ISP (Global) -->
+                    <div class="bg-white rounded-3xl p-6 sm:p-7 shadow-sm border border-slate-200/80 space-y-5">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
+                            <div>
+                                <h3 class="text-base font-black text-slate-900 flex items-center gap-2">
+                                    <span>🌐</span>
+                                    <span>Status Fitur Layanan Kemitraan (Global)</span>
+                                </h3>
+                                <p class="text-xs text-slate-500 mt-0.5">Kontrol ketersediaan fitur pembayaran tagihan internet dan penjualan voucher hotspot</p>
+                            </div>
+                            
+                            <!-- Preset Cepat Layanan -->
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="text-[11px] font-bold text-slate-400 mr-1">Preset:</span>
+                                <button
+                                    type="button"
+                                    @click="setFeaturePreset('billing_only')"
+                                    class="px-2.5 py-1 rounded-xl text-[11px] font-bold border transition cursor-pointer"
+                                    :class="settingsForm.reseller_feature_billing_enabled && !settingsForm.reseller_feature_vouchers_enabled ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'"
+                                >
+                                    💳 Hanya Tagihan (Default)
+                                </button>
+                                <button
+                                    type="button"
+                                    @click="setFeaturePreset('both')"
+                                    class="px-2.5 py-1 rounded-xl text-[11px] font-bold border transition cursor-pointer"
+                                    :class="settingsForm.reseller_feature_billing_enabled && settingsForm.reseller_feature_vouchers_enabled ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'"
+                                >
+                                    🌟 Buka Keduanya
+                                </button>
+                                <button
+                                    type="button"
+                                    @click="setFeaturePreset('vouchers_only')"
+                                    class="px-2.5 py-1 rounded-xl text-[11px] font-bold border transition cursor-pointer"
+                                    :class="!settingsForm.reseller_feature_billing_enabled && settingsForm.reseller_feature_vouchers_enabled ? 'bg-amber-600 text-white border-amber-600 shadow-2xs' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'"
+                                >
+                                    🎫 Hanya Voucher
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Fitur 1: Pembayaran Tagihan Internet Bulanan -->
+                            <label 
+                                class="p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3.5"
+                                :class="settingsForm.reseller_feature_billing_enabled ? 'border-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-200' : 'border-slate-200 bg-slate-50/50'"
+                            >
+                                <input
+                                    type="checkbox"
+                                    v-model="settingsForm.reseller_feature_billing_enabled"
+                                    class="w-5 h-5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 mt-0.5 cursor-pointer"
+                                />
+                                <div class="flex-1">
+                                    <div class="flex items-center justify-between">
+                                        <strong class="text-sm font-extrabold text-slate-900">Pembayaran Tagihan Internet (Loket Biller)</strong>
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase" :class="settingsForm.reseller_feature_billing_enabled ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'">
+                                            {{ settingsForm.reseller_feature_billing_enabled ? 'Aktif' : 'Nonaktif' }}
+                                        </span>
+                                    </div>
+                                    <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+                                        Mitra diizinkan mengecek dan melunasi invoice tagihan bulanan pelanggan internet dari saldo modalnya.
+                                    </p>
+                                </div>
+                            </label>
+
+                            <!-- Fitur 2: Penjualan Voucher Hotspot -->
+                            <label 
+                                class="p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3.5"
+                                :class="settingsForm.reseller_feature_vouchers_enabled ? 'border-indigo-600 bg-indigo-50/40 ring-1 ring-indigo-200' : 'border-slate-200 bg-slate-50/50'"
+                            >
+                                <input
+                                    type="checkbox"
+                                    v-model="settingsForm.reseller_feature_vouchers_enabled"
+                                    class="w-5 h-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 mt-0.5 cursor-pointer"
+                                />
+                                <div class="flex-1">
+                                    <div class="flex items-center justify-between">
+                                        <strong class="text-sm font-extrabold text-slate-900">Penjualan Voucher Hotspot (Generate &amp; Print)</strong>
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase" :class="settingsForm.reseller_feature_vouchers_enabled ? 'bg-indigo-100 text-indigo-800' : 'bg-amber-100 text-amber-800'">
+                                            {{ settingsForm.reseller_feature_vouchers_enabled ? 'Dibuka' : 'Sementara Ditutup' }}
+                                        </span>
+                                    </div>
+                                    <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+                                        Buka atau tutup fitur jualan voucher hotspot di seluruh portal reseller. Fleksibel dan dapat diatur spesifik per mitra.
+                                    </p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
                     <!-- Section 1: Ketersediaan Pendaftaran (Reseller & Biller) -->
                     <div class="bg-white rounded-3xl p-6 sm:p-7 shadow-sm border border-slate-200/80 space-y-5">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
@@ -643,32 +733,54 @@
                                         </span>
                                     </td>
 
-                                    <!-- Kolom Hak Akses Profil -->
+                                    <!-- Kolom Hak Akses Profil & Layanan -->
                                     <td class="px-6 py-4">
-                                        <!-- Mode Akses Penuh (Default) -->
-                                        <div v-if="!user.voucher_profiles || user.voucher_profiles.length === 0">
-                                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200">
-                                                <span class="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
-                                                <span>🌐 Semua Profil (Bebas / Default)</span>
-                                            </span>
-                                            <p class="text-[11px] text-slate-400 mt-1 italic">Dapat menjual seluruh paket voucher aktif</p>
-                                        </div>
+                                        <div class="space-y-1.5">
+                                            <!-- Status Layanan Badges -->
+                                            <div class="flex items-center gap-1.5 flex-wrap">
+                                                <span 
+                                                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold"
+                                                    :class="user.reseller?.can_pay_bills !== false ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-500 border border-slate-200 line-through'"
+                                                >
+                                                    <span>💳</span>
+                                                    <span>Tagihan {{ user.reseller?.can_pay_bills !== false ? 'Aktif' : 'Off' }}</span>
+                                                </span>
 
-                                        <!-- Mode Dibatasi ke Profil Tertentu -->
-                                        <div v-else class="space-y-1.5">
-                                            <div class="flex items-center gap-1.5">
-                                                <span class="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                                    🔒 Dibatasi ({{ user.voucher_profiles.length }} Profil)
+                                                <span 
+                                                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold"
+                                                    :class="user.reseller?.can_sell_vouchers ? 'bg-indigo-50 text-indigo-800 border border-indigo-200' : 'bg-amber-50 text-amber-800 border border-amber-200'"
+                                                >
+                                                    <span>🎫</span>
+                                                    <span>Voucher: {{ user.reseller?.can_sell_vouchers ? 'Aktif' : 'Tutup' }}</span>
                                                 </span>
                                             </div>
-                                            <div class="flex flex-wrap gap-1 max-w-lg">
-                                                <span 
-                                                    v-for="profile in user.voucher_profiles" 
-                                                    :key="profile.id" 
-                                                    class="px-2 py-0.5 text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg border border-slate-200 transition-colors"
-                                                >
-                                                    {{ profile.name }}
-                                                </span>
+
+                                            <!-- Rincian Profil Voucher Jika Jual Voucher Aktif -->
+                                            <div v-if="user.reseller?.can_sell_vouchers">
+                                                <div v-if="!user.voucher_profiles || user.voucher_profiles.length === 0">
+                                                    <span class="inline-flex items-center gap-1.5 text-xs font-bold text-sky-700">
+                                                        <span class="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
+                                                        <span>🌐 Semua Profil (Bebas / Default)</span>
+                                                    </span>
+                                                    <p class="text-[11px] text-slate-400 mt-0.5 italic">Dapat menjual seluruh paket voucher aktif</p>
+                                                </div>
+                                                <div v-else class="space-y-1">
+                                                    <span class="px-1.5 py-0.2 rounded text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                                        🔒 Dibatasi ({{ user.voucher_profiles.length }} Profil)
+                                                    </span>
+                                                    <div class="flex flex-wrap gap-1 max-w-lg mt-0.5">
+                                                        <span 
+                                                            v-for="profile in user.voucher_profiles" 
+                                                            :key="profile.id" 
+                                                            class="px-2 py-0.5 text-[10px] font-bold bg-slate-100 text-slate-800 rounded border border-slate-200"
+                                                        >
+                                                            {{ profile.name }}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div v-else class="text-[11px] text-slate-400 italic">
+                                                Khusus loket bayar tagihan bulanan (voucher ditutup).
                                             </div>
                                         </div>
                                     </td>
@@ -759,16 +871,16 @@
             </div>
 
             <!-- ========================================================================= -->
-            <!-- MODAL 1: ATUR AKSES PROFIL VOUCHER (EXISTING)                             -->
+            <!-- MODAL 1: ATUR HAK AKSES LAYANAN & PROFIL VOUCHER                          -->
             <!-- ========================================================================= -->
             <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
-                <div class="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh] border border-slate-100">
+                <div class="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[92vh] border border-slate-100">
                     <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/80">
                         <div class="flex items-center gap-2.5">
                             <span class="p-2 bg-indigo-50 text-indigo-600 rounded-xl text-lg">🔑</span>
                             <div>
-                                <h2 class="text-base font-black text-slate-900">Atur Akses Profil Voucher</h2>
-                                <p class="text-[11px] text-slate-500">Tentukan profil voucher yang diizinkan untuk akun ini</p>
+                                <h2 class="text-base font-black text-slate-900">Atur Hak Akses &amp; Layanan Mitra</h2>
+                                <p class="text-[11px] text-slate-500">Tentukan izin layanan (Bayar Tagihan / Jual Voucher) dan profil voucher untuk akun ini</p>
                             </div>
                         </div>
                         <button @click="showModal = false" class="text-slate-400 hover:text-slate-600 text-lg font-bold p-1 rounded-lg hover:bg-slate-100 cursor-pointer">
@@ -786,77 +898,189 @@
                         </span>
                     </div>
 
-                    <div class="p-6 overflow-y-auto flex-1 space-y-4">
-                        <div class="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
-                            <div class="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                                Pilihan Profil Voucher:
+                    <div class="p-6 overflow-y-auto flex-1 space-y-5">
+                        <!-- Bagian A: Pilihan Mode Layanan Cepat (Preset) -->
+                        <div class="space-y-2.5">
+                            <div class="flex items-center justify-between">
+                                <label class="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                                    <span>⚙️</span>
+                                    <span>Layanan yang Diizinkan:</span>
+                                </label>
+                                <span class="text-[10px] font-bold text-slate-400">Pilih Preset Cepat:</span>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <button 
-                                    type="button" 
-                                    @click="selectAllProfiles" 
-                                    class="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline cursor-pointer"
+
+                            <div class="grid grid-cols-3 gap-2">
+                                <button
+                                    type="button"
+                                    @click="setAccessServicePreset('biller_only')"
+                                    class="py-2.5 px-2 rounded-xl text-[11px] font-extrabold border transition-all text-center flex flex-col items-center justify-center gap-0.5 cursor-pointer"
+                                    :class="form.can_pay_bills && !form.can_sell_vouchers ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'"
                                 >
-                                    Pilih Semua
+                                    <span class="text-base">💳</span>
+                                    <span>Hanya Tagihan</span>
+                                    <span class="text-[9px] font-medium opacity-85">(Voucher Tutup)</span>
                                 </button>
-                                <span class="text-slate-300">•</span>
-                                <button 
-                                    type="button" 
-                                    @click="clearAllProfiles" 
-                                    class="text-xs font-bold text-rose-600 hover:text-rose-800 underline cursor-pointer"
+                                <button
+                                    type="button"
+                                    @click="setAccessServicePreset('both')"
+                                    class="py-2.5 px-2 rounded-xl text-[11px] font-extrabold border transition-all text-center flex flex-col items-center justify-center gap-0.5 cursor-pointer"
+                                    :class="form.can_pay_bills && form.can_sell_vouchers ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'"
                                 >
-                                    Bebaskan (Semua Profil)
+                                    <span class="text-base">🌟</span>
+                                    <span>Buka Keduanya</span>
+                                    <span class="text-[9px] font-medium opacity-85">(Tagihan + Voucher)</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    @click="setAccessServicePreset('voucher_only')"
+                                    class="py-2.5 px-2 rounded-xl text-[11px] font-extrabold border transition-all text-center flex flex-col items-center justify-center gap-0.5 cursor-pointer"
+                                    :class="!form.can_pay_bills && form.can_sell_vouchers ? 'bg-amber-600 text-white border-amber-600 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'"
+                                >
+                                    <span class="text-base">🎫</span>
+                                    <span>Hanya Voucher</span>
+                                    <span class="text-[9px] font-medium opacity-85">(Tagihan Tutup)</span>
                                 </button>
                             </div>
-                        </div>
 
-                        <div v-if="form.voucher_profile_ids.length === 0" class="p-3.5 rounded-2xl bg-sky-50 border border-sky-200 text-xs text-sky-900 leading-relaxed">
-                            <strong class="font-extrabold text-sky-950 block mb-0.5">🌐 Mode Akses Penuh (Default)</strong>
-                            Tidak ada profil yang dibatasi. Reseller ini diizinkan menjual <strong>seluruh profil voucher hotspot aktif</strong>. Centang profil di bawah jika ingin membatasi akses.
-                        </div>
-                        <div v-else class="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 leading-relaxed">
-                            <strong class="font-extrabold text-amber-950 block mb-0.5">🔒 Mode Akses Dibatasi</strong>
-                            Reseller ini <strong>hanya diizinkan</strong> menjual <strong>{{ form.voucher_profile_ids.length }}</strong> profil voucher yang Anda centang di bawah.
-                        </div>
-
-                        <div class="space-y-2.5 pt-1">
-                            <label 
-                                v-for="profile in sellableProfiles" 
-                                :key="profile.id" 
-                                class="flex items-start p-3.5 border-2 rounded-2xl cursor-pointer transition-all"
-                                :class="form.voucher_profile_ids.includes(profile.id) ? 'border-indigo-600 bg-indigo-50/40 shadow-xs' : 'border-slate-200 hover:border-slate-300 bg-white'"
-                            >
-                                <div class="flex items-center h-5 mt-0.5">
+                            <!-- Checkbox Detail Kontrol Layanan -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                                <label 
+                                    class="p-3 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3"
+                                    :class="form.can_pay_bills ? 'border-emerald-500 bg-emerald-50/40' : 'border-slate-200 bg-slate-50/60 opacity-60'"
+                                >
                                     <input 
                                         type="checkbox" 
-                                        :value="profile.id" 
-                                        v-model="form.voucher_profile_ids" 
-                                        class="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer"
+                                        v-model="form.can_pay_bills" 
+                                        class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500 mt-0.5 cursor-pointer"
                                     >
-                                </div>
-                                <div class="ml-3.5 flex-1">
-                                    <div class="flex items-center justify-between">
-                                        <span class="block text-sm font-extrabold text-slate-900">{{ profile.name }}</span>
-                                        <span class="text-xs font-black text-indigo-700 font-mono">Rp {{ formatRupiah(profile.price) }}</span>
+                                    <div>
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="text-xs font-black text-slate-900">Bayar Tagihan Internet</span>
+                                            <span class="text-[9px] font-black px-1.5 py-0.2 rounded" :class="form.can_pay_bills ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'">
+                                                {{ form.can_pay_bills ? 'Aktif' : 'Off' }}
+                                            </span>
+                                        </div>
+                                        <p class="text-[10px] text-slate-500 mt-0.5 leading-snug">Terima bayar tagihan bulanan pelanggan ISP dari portal mitra.</p>
                                     </div>
-                                    <div class="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
-                                        <span v-if="profile.duration">Durasi: <strong>{{ profile.duration }}</strong></span>
-                                        <span v-if="profile.limit_rate">• Speed: <strong>{{ profile.limit_rate }}</strong></span>
-                                        <span v-if="profile.fee_reseller" class="text-emerald-700 font-bold">• Komisi Reseller: Rp {{ formatRupiah(profile.fee_reseller) }}</span>
-                                    </div>
-                                </div>
-                            </label>
+                                </label>
 
-                            <div v-if="sellableProfiles.length === 0" class="text-center py-6 text-xs text-slate-400 italic">
-                                Belum ada profil voucher yang tersedia di sistem.
+                                <label 
+                                    class="p-3 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3"
+                                    :class="form.can_sell_vouchers ? 'border-indigo-600 bg-indigo-50/40' : 'border-slate-200 bg-slate-50/60 opacity-60'"
+                                >
+                                    <input 
+                                        type="checkbox" 
+                                        v-model="form.can_sell_vouchers" 
+                                        class="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 mt-0.5 cursor-pointer"
+                                    >
+                                    <div>
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="text-xs font-black text-slate-900">Jual Voucher Hotspot</span>
+                                            <span class="text-[9px] font-black px-1.5 py-0.2 rounded" :class="form.can_sell_vouchers ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-200 text-slate-600'">
+                                                {{ form.can_sell_vouchers ? 'Aktif' : 'Off' }}
+                                            </span>
+                                        </div>
+                                        <p class="text-[10px] text-slate-500 mt-0.5 leading-snug">Generate &amp; cetak voucher hotspot dari saldo modal.</p>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Bagian B: Konfigurasi Profil Voucher (Kondisional) -->
+                        <div v-if="!form.can_sell_vouchers" class="p-4 rounded-2xl bg-amber-50/80 border border-amber-200/90 text-xs text-amber-900 space-y-1.5 animate-fade-in">
+                            <div class="flex items-center gap-2 font-black text-amber-950">
+                                <span class="text-base">🔒</span>
+                                <span>Layanan Penjualan Voucher Sedang Ditutup untuk Akun Ini</span>
+                            </div>
+                            <p class="leading-relaxed text-[11px] text-amber-800">
+                                Reseller ini hanya difokuskan untuk melayani <strong>pembayaran tagihan internet bulanan</strong>. Seluruh menu dan generator cetak voucher di portal mitra dinonaktifkan.
+                            </p>
+                            <p class="text-[10px] text-amber-700/80 italic pt-1 border-t border-amber-200/60">
+                                💡 Aktifkan opsi "Jual Voucher Hotspot" di atas jika nanti Anda ingin membuka kembali penjualan voucher untuk mitra ini.
+                            </p>
+                        </div>
+
+                        <div v-else class="space-y-3.5 pt-2 border-t border-slate-100 animate-fade-in">
+                            <div class="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                                <div class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                    <span>🎫</span>
+                                    <span>Pilihan Profil Voucher yang Boleh Dijual:</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button 
+                                        type="button" 
+                                        @click="selectAllProfiles" 
+                                        class="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline cursor-pointer"
+                                    >
+                                        Pilih Semua
+                                    </button>
+                                    <span class="text-slate-300">•</span>
+                                    <button 
+                                        type="button" 
+                                        @click="clearAllProfiles" 
+                                        class="text-xs font-bold text-rose-600 hover:text-rose-800 underline cursor-pointer"
+                                    >
+                                        Bebaskan (Semua Profil)
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div v-if="form.voucher_profile_ids.length === 0" class="p-3.5 rounded-2xl bg-sky-50 border border-sky-200 text-xs text-sky-900 leading-relaxed">
+                                <strong class="font-extrabold text-sky-950 block mb-0.5">🌐 Mode Akses Penuh (Default)</strong>
+                                Tidak ada profil yang dibatasi. Reseller ini diizinkan menjual <strong>seluruh profil voucher hotspot aktif</strong>. Centang profil di bawah jika ingin membatasi akses.
+                            </div>
+                            <div v-else class="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 leading-relaxed">
+                                <strong class="font-extrabold text-amber-950 block mb-0.5">🔒 Mode Akses Dibatasi</strong>
+                                Reseller ini <strong>hanya diizinkan</strong> menjual <strong>{{ form.voucher_profile_ids.length }}</strong> profil voucher yang Anda centang di bawah.
+                            </div>
+
+                            <div class="space-y-2.5 pt-1 max-h-60 overflow-y-auto pr-1">
+                                <label 
+                                    v-for="profile in sellableProfiles" 
+                                    :key="profile.id" 
+                                    class="flex items-start p-3.5 border-2 rounded-2xl cursor-pointer transition-all"
+                                    :class="form.voucher_profile_ids.includes(profile.id) ? 'border-indigo-600 bg-indigo-50/40 shadow-xs' : 'border-slate-200 hover:border-slate-300 bg-white'"
+                                >
+                                    <div class="flex items-center h-5 mt-0.5">
+                                        <input 
+                                            type="checkbox" 
+                                            :value="profile.id" 
+                                            v-model="form.voucher_profile_ids" 
+                                            class="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer"
+                                        >
+                                    </div>
+                                    <div class="ml-3.5 flex-1">
+                                        <div class="flex items-center justify-between">
+                                            <span class="block text-sm font-extrabold text-slate-900">{{ profile.name }}</span>
+                                            <span class="text-xs font-black text-indigo-700 font-mono">Rp {{ formatRupiah(profile.price) }}</span>
+                                        </div>
+                                        <div class="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                                            <span v-if="profile.duration">Durasi: <strong>{{ profile.duration }}</strong></span>
+                                            <span v-if="profile.limit_rate">• Speed: <strong>{{ profile.limit_rate }}</strong></span>
+                                            <span v-if="profile.fee_reseller" class="text-emerald-700 font-bold">• Komisi Reseller: Rp {{ formatRupiah(profile.fee_reseller) }}</span>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                <div v-if="sellableProfiles.length === 0" class="text-center py-6 text-xs text-slate-400 italic">
+                                    Belum ada profil voucher yang tersedia di sistem.
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between gap-3">
-                        <span class="text-xs font-semibold text-slate-500">
-                            {{ form.voucher_profile_ids.length > 0 ? form.voucher_profile_ids.length + ' profil dipilih' : 'Semua profil diizinkan' }}
-                        </span>
+                        <div class="flex items-center gap-2 text-xs font-bold">
+                            <span v-if="form.can_pay_bills" class="text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
+                                💳 Tagihan: Aktif
+                            </span>
+                            <span v-if="form.can_sell_vouchers" class="text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-md border border-indigo-200">
+                                🎫 Voucher: {{ form.voucher_profile_ids.length > 0 ? form.voucher_profile_ids.length + ' Profil' : 'Semua Profil' }}
+                            </span>
+                            <span v-else class="text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-md border border-amber-200">
+                                🎫 Voucher: Tutup
+                            </span>
+                        </div>
 
                         <div class="flex items-center gap-2">
                             <button 
@@ -1177,12 +1401,12 @@
                             </div>
                         </div>
 
-                        <!-- Akses Profil Voucher -->
+                        <!-- Layanan & Akses Kemitraan -->
                         <div class="p-4 rounded-2xl bg-white border border-slate-200 space-y-2.5">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                                 <h4 class="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
-                                    <span>🏷️</span>
-                                    <span>Hak Akses Profil Voucher Hotspot</span>
+                                    <span>⚙️</span>
+                                    <span>Layanan &amp; Hak Akses Mitra</span>
                                 </h4>
                                 <button 
                                     type="button" 
@@ -1192,23 +1416,48 @@
                                     Ubah Akses &rarr;
                                 </button>
                             </div>
-                            <div v-if="!selectedUserForView.voucher_profiles || selectedUserForView.voucher_profiles.length === 0" class="flex items-center gap-2 text-xs font-bold text-sky-700 bg-sky-50 p-2.5 rounded-xl border border-sky-200">
-                                <span>🌐</span>
-                                <span>Semua Profil (Bebas / Default) — Dapat menjual seluruh paket voucher aktif tanpa batasan.</span>
-                            </div>
-                            <div v-else class="space-y-1.5">
-                                <div class="text-[11px] text-slate-500">Dibatasi hanya boleh menjual paket berikut:</div>
-                                <div class="flex flex-wrap gap-1.5">
-                                    <span 
-                                        v-for="vp in selectedUserForView.voucher_profiles" 
-                                        :key="vp.id" 
-                                        class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200 flex items-center gap-1"
-                                    >
-                                        <span>🎫</span>
-                                        <span>{{ vp.name }}</span>
-                                        <span v-if="vp.price" class="text-emerald-700 font-mono">({{ formatRupiah(vp.price) }})</span>
-                                    </span>
+
+                            <!-- Badges Layanan -->
+                            <div class="grid grid-cols-2 gap-2">
+                                <div class="p-2.5 rounded-xl border flex items-center gap-2" :class="((selectedUserForView.reseller || selectedUserForView.customer?.reseller)?.can_pay_bills !== false) ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900' : 'bg-slate-50 border-slate-200 text-slate-500'">
+                                    <span class="text-base">💳</span>
+                                    <div>
+                                        <div class="text-xs font-black">Bayar Tagihan</div>
+                                        <div class="text-[10px] font-bold">{{ ((selectedUserForView.reseller || selectedUserForView.customer?.reseller)?.can_pay_bills !== false) ? 'Diizinkan (Aktif)' : 'Ditutup (Off)' }}</div>
+                                    </div>
                                 </div>
+                                <div class="p-2.5 rounded-xl border flex items-center gap-2" :class="(selectedUserForView.reseller || selectedUserForView.customer?.reseller)?.can_sell_vouchers ? 'bg-indigo-50/70 border-indigo-200 text-indigo-900' : 'bg-amber-50/70 border-amber-200 text-amber-900'">
+                                    <span class="text-base">🎫</span>
+                                    <div>
+                                        <div class="text-xs font-black">Jual Voucher</div>
+                                        <div class="text-[10px] font-bold">{{ (selectedUserForView.reseller || selectedUserForView.customer?.reseller)?.can_sell_vouchers ? 'Diizinkan (Aktif)' : 'Ditutup (Off)' }}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Rincian Profil Jika Jual Voucher Aktif -->
+                            <div v-if="(selectedUserForView.reseller || selectedUserForView.customer?.reseller)?.can_sell_vouchers">
+                                <div v-if="!selectedUserForView.voucher_profiles || selectedUserForView.voucher_profiles.length === 0" class="flex items-center gap-2 text-xs font-bold text-sky-700 bg-sky-50 p-2.5 rounded-xl border border-sky-200">
+                                    <span>🌐</span>
+                                    <span>Semua Profil (Bebas / Default) — Dapat menjual seluruh paket voucher aktif tanpa batasan.</span>
+                                </div>
+                                <div v-else class="space-y-1.5">
+                                    <div class="text-[11px] text-slate-500">Dibatasi hanya boleh menjual paket berikut:</div>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        <span 
+                                            v-for="vp in selectedUserForView.voucher_profiles" 
+                                            :key="vp.id" 
+                                            class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200 flex items-center gap-1"
+                                        >
+                                            <span>🎫</span>
+                                            <span>{{ vp.name }}</span>
+                                            <span v-if="vp.price" class="text-emerald-700 font-mono">({{ formatRupiah(vp.price) }})</span>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-else class="text-[11px] text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200 italic">
+                                Penjualan voucher hotspot untuk akun ini ditutup. Akun fokus melayani loket pembayaran internet bulanan warga.
                             </div>
                         </div>
                     </div>
@@ -1415,6 +1664,28 @@
                                         Format nominal: <strong class="text-emerald-700">Rp {{ formatRupiah(editUserForm.balance) }}</strong>. Setiap perubahan saldo akan dicatat otomatis di mutasi saldo kemitraan.
                                     </p>
                                 </div>
+
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                                        Layanan Kemitraan yang Diizinkan
+                                    </label>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                        <label class="p-3 border-2 rounded-xl flex items-center gap-2.5 cursor-pointer transition-all" :class="editUserForm.can_pay_bills ? 'border-emerald-500 bg-emerald-50/40' : 'border-slate-200 bg-slate-50/50 opacity-60'">
+                                            <input type="checkbox" v-model="editUserForm.can_pay_bills" class="w-4 h-4 rounded text-emerald-600 border-slate-300 focus:ring-emerald-500">
+                                            <div>
+                                                <span class="text-xs font-bold text-slate-900 block">💳 Bayar Tagihan Internet</span>
+                                                <span class="text-[10px] text-slate-500">Loket bayar bulanan warga</span>
+                                            </div>
+                                        </label>
+                                        <label class="p-3 border-2 rounded-xl flex items-center gap-2.5 cursor-pointer transition-all" :class="editUserForm.can_sell_vouchers ? 'border-indigo-500 bg-indigo-50/40' : 'border-slate-200 bg-slate-50/50 opacity-60'">
+                                            <input type="checkbox" v-model="editUserForm.can_sell_vouchers" class="w-4 h-4 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500">
+                                            <div>
+                                                <span class="text-xs font-bold text-slate-900 block">🎫 Jual Voucher Hotspot</span>
+                                                <span class="text-[10px] text-slate-500">Cetak & generate voucher</span>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -1608,8 +1879,31 @@
                                 </p>
                             </div>
 
-                            <!-- Hak Akses Profil Voucher -->
+                            <!-- Layanan yang Diaktifkan -->
                             <div class="space-y-2 pt-2 border-t border-slate-100">
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                    Layanan Kemitraan yang Diaktifkan
+                                </label>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                    <label class="p-3 border-2 rounded-xl flex items-center gap-2.5 cursor-pointer transition-all" :class="createResellerForm.can_pay_bills ? 'border-emerald-500 bg-emerald-50/40' : 'border-slate-200 bg-slate-50/50 opacity-60'">
+                                        <input type="checkbox" v-model="createResellerForm.can_pay_bills" class="w-4 h-4 rounded text-emerald-600 border-slate-300 focus:ring-emerald-500">
+                                        <div>
+                                            <span class="text-xs font-bold text-slate-900 block">💳 Bayar Tagihan Internet</span>
+                                            <span class="text-[10px] text-slate-500">Loket bayar bulanan warga</span>
+                                        </div>
+                                    </label>
+                                    <label class="p-3 border-2 rounded-xl flex items-center gap-2.5 cursor-pointer transition-all" :class="createResellerForm.can_sell_vouchers ? 'border-indigo-500 bg-indigo-50/40' : 'border-slate-200 bg-slate-50/50 opacity-60'">
+                                        <input type="checkbox" v-model="createResellerForm.can_sell_vouchers" class="w-4 h-4 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500">
+                                        <div>
+                                            <span class="text-xs font-bold text-slate-900 block">🎫 Jual Voucher Hotspot</span>
+                                            <span class="text-[10px] text-slate-500">Cetak & generate voucher</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Hak Akses Profil Voucher -->
+                            <div v-if="createResellerForm.can_sell_vouchers" class="space-y-2 pt-2 border-t border-slate-100">
                                 <div class="flex items-center justify-between">
                                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
                                         Hak Akses Paket Voucher
@@ -1656,6 +1950,13 @@
                                             </div>
                                         </label>
                                     </div>
+                                </div>
+                            </div>
+
+                            <div v-else class="p-3.5 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
+                                <span class="text-base">ℹ️</span>
+                                <div class="leading-relaxed text-[11px]">
+                                    <strong>Penjualan voucher dinonaktifkan:</strong> Akun ini dibuat khusus untuk loket pembayaran tagihan bulanan. Fitur penjualan voucher hotspot dapat diaktifkan kapan saja melalui menu <em>Atur Akses</em>.
                                 </div>
                             </div>
                         </div>
@@ -1714,6 +2015,8 @@ const props = defineProps({
     settings: {
         type: Object,
         default: () => ({
+            reseller_feature_vouchers_enabled: false,
+            reseller_feature_billing_enabled: true,
             reseller_registration_enabled: true,
             biller_registration_enabled: true,
             reseller_min_deposit: 20000,
@@ -1742,6 +2045,8 @@ const activeTab = ref(props.filters?.tab || (props.pendingResellers?.length > 0 
 
 // Form Pengaturan Pendaftaran Mandiri
 const settingsForm = useForm({
+    reseller_feature_vouchers_enabled: Boolean(props.settings?.reseller_feature_vouchers_enabled ?? false),
+    reseller_feature_billing_enabled: Boolean(props.settings?.reseller_feature_billing_enabled ?? true),
     reseller_registration_enabled: props.settings?.reseller_registration_enabled ?? true,
     biller_registration_enabled: props.settings?.biller_registration_enabled ?? true,
     reseller_min_deposit: props.settings?.reseller_min_deposit ?? 20000,
@@ -1749,6 +2054,19 @@ const settingsForm = useForm({
     reseller_registration_require_approval: props.settings?.reseller_registration_require_approval ?? true,
     reseller_registration_terms: props.settings?.reseller_registration_terms || defaultTermsText,
 });
+
+const setFeaturePreset = (mode) => {
+    if (mode === 'billing_only') {
+        settingsForm.reseller_feature_billing_enabled = true;
+        settingsForm.reseller_feature_vouchers_enabled = false;
+    } else if (mode === 'both') {
+        settingsForm.reseller_feature_billing_enabled = true;
+        settingsForm.reseller_feature_vouchers_enabled = true;
+    } else if (mode === 'vouchers_only') {
+        settingsForm.reseller_feature_billing_enabled = false;
+        settingsForm.reseller_feature_vouchers_enabled = true;
+    }
+};
 
 const setRegistrationPreset = (mode) => {
     if (mode === 'all') {
@@ -1886,8 +2204,23 @@ const showModal = ref(false);
 const selectedUser = ref(null);
 
 const form = useForm({
-    voucher_profile_ids: []
+    voucher_profile_ids: [],
+    can_sell_vouchers: false,
+    can_pay_bills: true,
 });
+
+const setAccessServicePreset = (mode) => {
+    if (mode === 'biller_only') {
+        form.can_pay_bills = true;
+        form.can_sell_vouchers = false;
+    } else if (mode === 'both') {
+        form.can_pay_bills = true;
+        form.can_sell_vouchers = true;
+    } else if (mode === 'voucher_only') {
+        form.can_pay_bills = false;
+        form.can_sell_vouchers = true;
+    }
+};
 
 const onSearch = debounce(() => {
     applyFilters();
@@ -1913,7 +2246,10 @@ const applyFilters = () => {
 
 const openSettingModal = (user) => {
     selectedUser.value = user;
+    const r = user.reseller || (user.customer?.reseller);
     form.voucher_profile_ids = user.voucher_profiles ? user.voucher_profiles.map(p => p.id) : [];
+    form.can_sell_vouchers = Boolean(r ? r.can_sell_vouchers : false);
+    form.can_pay_bills = Boolean(r ? r.can_pay_bills : true);
     showModal.value = true;
 };
 
@@ -1999,6 +2335,8 @@ const editUserForm = useForm({
     has_reseller: false,
     tier: 'regular',
     balance: 0,
+    can_sell_vouchers: false,
+    can_pay_bills: true,
     reseller_status: 'active',
 });
 
@@ -2019,6 +2357,8 @@ const openEditModal = (user) => {
     editUserForm.has_reseller = Boolean(r);
     editUserForm.tier = r?.tier || 'regular';
     editUserForm.balance = r ? Number(r.balance) : 0;
+    editUserForm.can_sell_vouchers = Boolean(r ? r.can_sell_vouchers : false);
+    editUserForm.can_pay_bills = Boolean(r ? r.can_pay_bills : true);
     editUserForm.reseller_status = r?.status || 'active';
     editUserForm.clearErrors();
     showEditModal.value = true;
@@ -2138,6 +2478,8 @@ const createResellerForm = useForm({
     tier: 'regular',
     balance: 20000,
     area_id: '',
+    can_sell_vouchers: false,
+    can_pay_bills: true,
     voucher_profile_ids: [],
 });
 
@@ -2158,6 +2500,8 @@ const openCreateResellerModal = () => {
     createResellerForm.tier = 'regular';
     createResellerForm.balance = props.settings?.reseller_min_deposit || 20000;
     createResellerForm.area_id = '';
+    createResellerForm.can_sell_vouchers = Boolean(props.settings?.reseller_feature_vouchers_enabled ?? false);
+    createResellerForm.can_pay_bills = Boolean(props.settings?.reseller_feature_billing_enabled ?? true);
     createResellerForm.voucher_profile_ids = [];
     createResellerForm.clearErrors();
     limitVouchers.value = false;

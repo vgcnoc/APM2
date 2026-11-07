@@ -1116,6 +1116,12 @@ class VoucherController extends Controller
         // Reseller atau biller tidak boleh membuat voucher gratis sama sekali
         if ($isResellerUser) {
             $isFree = false;
+            $reseller = $user->reseller ?: ($user->customer?->reseller);
+            if ($reseller && !$reseller->canSellVouchers()) {
+                return redirect()->back()->withErrors([
+                    'voucher_profile_id' => 'Layanan penjualan voucher hotspot belum dibuka untuk akun Anda.'
+                ])->withInput();
+            }
         }
 
         if ($isFree && $user && !$user->isAdmin() && !$user->can('vouchers_free_create') && !$user->can('vouchers_create')) {

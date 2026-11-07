@@ -303,8 +303,8 @@
                     </p>
                 </div>
 
-                <!-- Stok Voucher -->
-                <div class="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-all duration-200 group">
+                <!-- Stok Voucher (Jika Jual Voucher Aktif) -->
+                <div v-if="canSellVouchers" class="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-all duration-200 group">
                     <div class="flex items-center justify-between mb-3">
                         <span class="text-xs font-bold uppercase tracking-wider text-gray-500">Stok Voucher</span>
                         <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100 group-hover:scale-105 transition-transform">
@@ -321,8 +321,26 @@
                     </p>
                 </div>
 
-                <!-- Keuntungan Bersih Voucher (Laba) -->
-                <div class="bg-gradient-to-br from-emerald-50/50 via-white to-white rounded-2xl border border-emerald-200/80 p-5 shadow-sm hover:shadow-md transition-all duration-200 group">
+                <!-- Alternatif Card 3: Status Layanan Loket Bayar (Jika Voucher Belum Dibuka) -->
+                <div v-else class="bg-white rounded-2xl border border-emerald-200/80 p-5 shadow-sm hover:shadow-md transition-all duration-200 group">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-bold uppercase tracking-wider text-emerald-800">Status Loket Bayar</span>
+                        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 group-hover:scale-105 transition-transform">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-xl font-black text-emerald-700 tracking-tight">{{ canPayBills ? 'AKTIF' : 'NONAKTIF' }}</span>
+                        <span class="text-xs font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-200">Resmi</span>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Terima bayar tagihan pelanggan ISP
+                    </p>
+                </div>
+
+                <!-- Keuntungan Bersih Voucher (Laba) (Jika Jual Voucher Aktif) -->
+                <div v-if="canSellVouchers" class="bg-gradient-to-br from-emerald-50/50 via-white to-white rounded-2xl border border-emerald-200/80 p-5 shadow-sm hover:shadow-md transition-all duration-200 group">
                     <div class="flex items-center justify-between mb-3">
                         <span class="text-xs font-bold uppercase tracking-wider text-emerald-800">Keuntungan Bersih Voucher</span>
                         <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center border border-emerald-200 group-hover:scale-105 transition-transform shadow-xs">
@@ -338,9 +356,86 @@
                         <span class="font-bold text-gray-800 font-mono">Rp {{ Number(income || 0).toLocaleString('id-ID') }}</span>
                     </div>
                 </div>
+
+                <!-- Alternatif Card 4: Fitur Penjualan Voucher (Jika Belum Dibuka) -->
+                <div v-else class="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm hover:shadow-md transition-all duration-200 group">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-500">Jual Voucher Hotspot</span>
+                        <div class="w-10 h-10 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center border border-slate-200 group-hover:scale-105 transition-transform">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                    </div>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-lg font-extrabold text-amber-700 tracking-tight">Belum Dibuka</span>
+                        <span class="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">Off</span>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">
+                        Hubungi admin ISP jika ingin jualan voucher
+                    </p>
+                </div>
             </div>
 
-            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <!-- HUB LOKET PEMBAYARAN TAGIHAN BULANAN (Tampil ketika Penjualan Voucher Belum Dibuka atau sebagai Layanan Utama) -->
+            <div v-if="!canSellVouchers" class="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 rounded-3xl p-6 sm:p-8 text-white shadow-xl border border-indigo-900/50 animate-fade-in">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 pb-6 border-b border-white/10">
+                    <div class="flex items-start gap-4">
+                        <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 flex items-center justify-center text-3xl font-black shadow-lg shadow-emerald-500/20 shrink-0">
+                            💳
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="px-3 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
+                                    Layanan Utama: Loket Bayar Resmi
+                                </span>
+                                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                                    🎫 Penjualan Voucher Hotspot Belum Dibuka
+                                </span>
+                            </div>
+                            <h2 class="text-xl sm:text-2xl font-black tracking-tight text-white mt-1.5">
+                                Loket Pembayaran Tagihan Internet Warga
+                            </h2>
+                            <p class="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl leading-relaxed">
+                                Saat ini akun Anda difokuskan untuk melayani pembayaran tagihan bulanan pelanggan internet ISP. Anda dapat memeriksa tagihan dan melunasi invoice pelanggan secara instan menggunakan sisa saldo modal Anda.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 shrink-0">
+                        <Link 
+                            href="/client-area/biller"
+                            class="px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 rounded-2xl text-xs font-black shadow-lg shadow-emerald-500/25 transition-all flex items-center gap-2 cursor-pointer"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                            <span>Buka Loket Pembayaran Sekarang &rarr;</span>
+                        </Link>
+                    </div>
+                </div>
+
+                <!-- Quick Search Input / Shortcut into Biller -->
+                <div class="mt-6 bg-white/5 backdrop-blur-sm p-4 sm:p-5 rounded-2xl border border-white/10 flex flex-col sm:flex-row items-center gap-3">
+                    <div class="relative flex-1 w-full">
+                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        </div>
+                        <input 
+                            v-model="billerQuickQuery"
+                            @keyup.enter="goToBillerWithQuery"
+                            type="text" 
+                            placeholder="Cari ID Pelanggan, Nama, No. HP, atau No. Invoice..."
+                            class="w-full pl-10 pr-4 py-2.5 bg-white/10 border border-white/15 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:bg-white/15"
+                        />
+                    </div>
+                    <button 
+                        type="button"
+                        @click="goToBillerWithQuery"
+                        class="w-full sm:w-auto px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-2 shrink-0 shadow-md"
+                    >
+                        <span>🔍 Cek Tagihan</span>
+                    </button>
+                </div>
+            </div>
+
+            <div v-if="canSellVouchers" class="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <!-- Generate Voucher Card (Modern Dual-Tab) -->
                 <div class="xl:col-span-1">
                     <div class="bg-[#111327] rounded-2xl p-5 sm:p-6 shadow-xl border border-indigo-950 flex flex-col h-full text-gray-200">
@@ -1733,15 +1828,25 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { Head, useForm, Link } from '@inertiajs/vue3';
+import { Head, useForm, Link, router, usePage } from '@inertiajs/vue3';
 import ClientAreaLayout from '@/Layouts/ClientAreaLayout.vue';
 import Swal from 'sweetalert2';
+
+const page = usePage();
 
 const props = defineProps({
     reseller: Object,
     is_master: {
         type: Boolean,
         default: false
+    },
+    can_sell_vouchers: {
+        type: Boolean,
+        default: false
+    },
+    can_pay_bills: {
+        type: Boolean,
+        default: true
     },
     downlines: {
         type: Array,
@@ -1781,6 +1886,25 @@ const props = defineProps({
         default: () => []
     }
 });
+
+const canSellVouchers = computed(() => {
+    if (props.can_sell_vouchers !== undefined) return Boolean(props.can_sell_vouchers);
+    return Boolean(page.props.auth?.user?.reseller_features?.can_sell_vouchers ?? false);
+});
+
+const canPayBills = computed(() => {
+    if (props.can_pay_bills !== undefined) return Boolean(props.can_pay_bills);
+    return Boolean(page.props.auth?.user?.reseller_features?.can_pay_bills ?? true);
+});
+
+const billerQuickQuery = ref('');
+const goToBillerWithQuery = () => {
+    if (billerQuickQuery.value && billerQuickQuery.value.trim()) {
+        router.visit('/client-area/biller?search=' + encodeURIComponent(billerQuickQuery.value.trim()));
+    } else {
+        router.visit('/client-area/biller');
+    }
+};
 
 const showKasbonModal = ref(false);
 const showTopUpModal = ref(false);

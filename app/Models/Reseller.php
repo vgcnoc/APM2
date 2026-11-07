@@ -17,10 +17,20 @@ class Reseller extends Model
         'balance',
         'is_active',
         'tier',
+        'can_sell_vouchers',
+        'can_pay_bills',
         'parent_id',
         'referral_code',
         'override_fee',
         'status',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+        'can_sell_vouchers' => 'boolean',
+        'can_pay_bills' => 'boolean',
+        'balance' => 'decimal:2',
+        'override_fee' => 'decimal:2',
     ];
 
     protected static function booted()
@@ -48,6 +58,30 @@ class Reseller extends Model
     public function isMaster(): bool
     {
         return $this->tier === 'master';
+    }
+
+    /**
+     * Cek apakah mitra diizinkan menjual voucher hotspot.
+     * Mengutamakan pengaturan personal mitra; jika null, mengikuti pengaturan global ISP.
+     */
+    public function canSellVouchers(): bool
+    {
+        if (!is_null($this->can_sell_vouchers)) {
+            return (bool) $this->can_sell_vouchers;
+        }
+        return (bool) ((int) Setting::get('reseller_feature_vouchers_enabled', '0'));
+    }
+
+    /**
+     * Cek apakah mitra diizinkan menerima / melayani pembayaran tagihan internet bulanan.
+     * Mengutamakan pengaturan personal mitra; jika null, mengikuti pengaturan global ISP.
+     */
+    public function canPayBills(): bool
+    {
+        if (!is_null($this->can_pay_bills)) {
+            return (bool) $this->can_pay_bills;
+        }
+        return (bool) ((int) Setting::get('reseller_feature_billing_enabled', '1'));
     }
 
     public function master()

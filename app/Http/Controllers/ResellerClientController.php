@@ -196,6 +196,8 @@ class ResellerClientController extends Controller
         return Inertia::render('ClientArea/Dashboard', [
             'reseller' => $reseller->load(['customer', 'master.customer', 'master.user']),
             'is_master' => $reseller->isMaster(),
+            'can_sell_vouchers' => $reseller->canSellVouchers(),
+            'can_pay_bills' => $reseller->canPayBills(),
             'downlines' => $this->getDownlinesData($reseller),
             'total_downlines_balance' => $reseller->isMaster() ? (float) $reseller->downlines()->sum('balance') : 0,
             'total_override_royalty' => $reseller->isMaster() ? (float) ResellerTransaction::where('reseller_id', $reseller->id)->where('reference_id', 'like', 'OVR-%')->sum('amount') : 0,
@@ -275,6 +277,8 @@ class ResellerClientController extends Controller
         return Inertia::render('ClientArea/Billing', [
             'reseller' => $reseller->load(['customer', 'master.customer', 'master.user']),
             'is_master' => $reseller->isMaster(),
+            'can_sell_vouchers' => $reseller->canSellVouchers(),
+            'can_pay_bills' => $reseller->canPayBills(),
             'downlines' => $this->getDownlinesData($reseller),
             'total_downlines_balance' => $reseller->isMaster() ? (float) $reseller->downlines()->sum('balance') : 0,
             'total_override_royalty' => $reseller->isMaster() ? (float) ResellerTransaction::where('reseller_id', $reseller->id)->where('reference_id', 'like', 'OVR-%')->sum('amount') : 0,
@@ -297,6 +301,10 @@ class ResellerClientController extends Controller
         
         if (!$reseller) {
             return redirect()->back()->with('error', 'Akun Anda tidak memiliki hak akses sebagai reseller.');
+        }
+
+        if (!$reseller->canSellVouchers()) {
+            return redirect()->back()->with('error', 'Layanan penjualan voucher hotspot belum dibuka untuk akun Anda.');
         }
 
         $validated = $request->validate([
@@ -451,6 +459,10 @@ class ResellerClientController extends Controller
             return redirect()->route('dashboard')->with('error', 'Akun Anda tidak memiliki hak akses sebagai reseller.');
         }
 
+        if (!$reseller->canPayBills()) {
+            return redirect()->route('client-area.dashboard')->with('error', 'Layanan loket pembayaran tagihan internet belum dibuka untuk akun Anda.');
+        }
+
         // Ambil riwayat pembayaran internet pelanggan yang diproses oleh reseller ini
         $recentPayments = \App\Models\Payment::with(['customer.package', 'customer.areaModel', 'invoice'])
             ->where('payment_method', 'reseller_balance')
@@ -482,6 +494,8 @@ class ResellerClientController extends Controller
         return Inertia::render('ClientArea/Biller', [
             'reseller' => $reseller->load(['customer', 'master.customer', 'master.user']),
             'is_master' => $reseller->isMaster(),
+            'can_sell_vouchers' => $reseller->canSellVouchers(),
+            'can_pay_bills' => $reseller->canPayBills(),
             'downlines' => $this->getDownlinesData($reseller),
             'total_downlines_balance' => $reseller->isMaster() ? (float) $reseller->downlines()->sum('balance') : 0,
             'total_override_royalty' => $reseller->isMaster() ? (float) ResellerTransaction::where('reseller_id', $reseller->id)->where('reference_id', 'like', 'OVR-%')->sum('amount') : 0,
@@ -588,6 +602,10 @@ class ResellerClientController extends Controller
         $reseller = $this->getOrCreateReseller($user);
         if (!$reseller) {
             return back()->with('error', 'Akun Anda tidak memiliki hak akses sebagai reseller.');
+        }
+
+        if (!$reseller->canPayBills()) {
+            return back()->with('error', 'Layanan loket pembayaran tagihan internet belum dibuka untuk akun Anda.');
         }
 
         // Invoice harus berupa invoice internet pelanggan (bukan invoice reseller sendiri)

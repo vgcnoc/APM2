@@ -62,6 +62,22 @@ class HandleInertiaRequests extends Middleware
                         }
                     }
 
+                    $resellerFeatures = null;
+                    $resellerObj = \App\Models\Reseller::where('user_id', $user->id)->first();
+                    if (!$resellerObj && $user->role === 'customer') {
+                        $cust = \App\Models\Customer::where('user_id', $user->id)->first();
+                        if ($cust) {
+                            $resellerObj = \App\Models\Reseller::where('customer_id', $cust->id)->first();
+                        }
+                    }
+                    if ($resellerObj) {
+                        $resellerFeatures = [
+                            'can_sell_vouchers' => (bool) $resellerObj->canSellVouchers(),
+                            'can_pay_bills' => (bool) $resellerObj->canPayBills(),
+                            'tier' => $resellerObj->tier,
+                        ];
+                    }
+
                     return [
                         'roles' => $user->getRoleNames()->values()->toArray(),
                         'permissions' => $user->getAllPermissions()->pluck('name')->values()->toArray(),
@@ -72,6 +88,7 @@ class HandleInertiaRequests extends Middleware
                             || \App\Models\AffiliateProfile::where('user_id', $user->id)->exists()
                         ),
                         'customer' => $customerData,
+                        'reseller_features' => $resellerFeatures,
                     ];
                 });
 
@@ -90,6 +107,7 @@ class HandleInertiaRequests extends Middleware
                         'is_on_duty' => (bool) $user->is_on_duty,
                         'is_affiliate' => $cachedMeta['is_affiliate'],
                         'customer' => $cachedMeta['customer'],
+                        'reseller_features' => $cachedMeta['reseller_features'],
                         'is_gps_enabled' => (bool) $user->is_gps_enabled,
                         'last_location_name' => $user->last_location_name,
                         'last_location_accuracy' => $user->last_location_accuracy,
