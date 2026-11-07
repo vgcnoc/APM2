@@ -795,6 +795,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/settings/resellers/{reseller}/approve', [\App\Http\Controllers\ResellerSettingController::class, 'approveReseller'])->name('settings.resellers.approve');
         Route::post('/settings/resellers/{reseller}/reject', [\App\Http\Controllers\ResellerSettingController::class, 'rejectReseller'])->name('settings.resellers.reject');
         Route::post('/settings/resellers/{user}/update', [\App\Http\Controllers\ResellerSettingController::class, 'update'])->name('settings.resellers.update.post');
+        Route::post('/settings/resellers/users/store', [\App\Http\Controllers\ResellerSettingController::class, 'storeUser'])->name('settings.resellers.user.store');
         Route::post('/settings/resellers/users/{user}/update', [\App\Http\Controllers\ResellerSettingController::class, 'updateUser'])->name('settings.resellers.user.update');
         Route::delete('/settings/resellers/users/{user}', [\App\Http\Controllers\ResellerSettingController::class, 'destroyUser'])->name('settings.resellers.user.destroy');
 

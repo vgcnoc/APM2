@@ -22,6 +22,16 @@
                         Atur ketentuan pendaftaran mandiri dari login, persetujuan admin, minimal saldo awal, dan hak akses profil voucher
                     </p>
                 </div>
+                <div>
+                    <button
+                        type="button"
+                        @click="openCreateResellerModal"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm rounded-2xl shadow-md shadow-emerald-600/20 transition-all cursor-pointer active:scale-95 whitespace-nowrap"
+                    >
+                        <span>➕</span>
+                        <span>Buat Akun Reseller Baru</span>
+                    </button>
+                </div>
             </div>
 
             <!-- Stat Cards -->
@@ -549,22 +559,32 @@
                             </button>
                         </div>
 
-                        <!-- Search Input -->
-                        <div class="relative w-full lg:w-80">
-                            <input 
-                                v-model="search" 
-                                @input="onSearch"
-                                type="text" 
-                                placeholder="Cari nama, email, no HP..." 
-                                class="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all font-medium text-slate-800"
-                            >
-                            <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        <!-- Search & Quick Add Button -->
+                        <div class="flex items-center gap-2 w-full lg:w-auto">
+                            <div class="relative w-full lg:w-72">
+                                <input 
+                                    v-model="search" 
+                                    @input="onSearch"
+                                    type="text" 
+                                    placeholder="Cari nama, email, no HP..." 
+                                    class="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all font-medium text-slate-800"
+                                >
+                                <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                <button 
+                                    v-if="search" 
+                                    @click="clearSearch" 
+                                    class="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                                >
+                                    ✕
+                                </button>
+                            </div>
                             <button 
-                                v-if="search" 
-                                @click="clearSearch" 
-                                class="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                                type="button" 
+                                @click="openCreateResellerModal" 
+                                class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 whitespace-nowrap shrink-0"
                             >
-                                ✕
+                                <span>➕</span>
+                                <span>Tambah Reseller</span>
                             </button>
                         </div>
                     </div>
@@ -1420,6 +1440,248 @@
                 </div>
             </div>
 
+            <!-- ========================================================================= -->
+            <!-- MODAL 6: BUAT AKUN MITRA RESELLER BARU                                    -->
+            <!-- ========================================================================= -->
+            <div v-if="showCreateResellerModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
+                <div class="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[92vh] border border-slate-100">
+                    <!-- Header -->
+                    <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/80">
+                        <div class="flex items-center gap-2.5">
+                            <span class="p-2 bg-emerald-50 text-emerald-600 rounded-xl text-lg">🏪</span>
+                            <div>
+                                <h2 class="text-base font-black text-slate-900">Buat Akun Reseller Baru</h2>
+                                <p class="text-[11px] text-slate-500">Daftarkan akun login mitra loket pembayaran / reseller voucher secara instan</p>
+                            </div>
+                        </div>
+                        <button @click="showCreateResellerModal = false" class="text-slate-400 hover:text-slate-600 text-lg font-bold p-1 rounded-lg hover:bg-slate-100 cursor-pointer">
+                            ✕
+                        </button>
+                    </div>
+
+                    <form @submit.prevent="submitCreateReseller" class="flex flex-col flex-1 overflow-hidden">
+                        <!-- Body -->
+                        <div class="p-6 overflow-y-auto flex-1 space-y-4">
+                            <!-- Pilihan Tipe Kemitraan -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                                    Pilih Tipe Kemitraan <span class="text-rose-500">*</span>
+                                </label>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <label 
+                                        class="p-3.5 border-2 rounded-2xl cursor-pointer transition-all flex flex-col items-center text-center select-none"
+                                        :class="createResellerForm.tier === 'regular' ? 'border-emerald-500 bg-emerald-50/40 shadow-xs' : 'border-slate-200 hover:border-slate-300'"
+                                    >
+                                        <input type="radio" v-model="createResellerForm.tier" value="regular" class="sr-only" />
+                                        <span class="text-2xl mb-1">🏪</span>
+                                        <span class="text-xs font-black text-slate-900">Mitra Reseller</span>
+                                        <span class="text-[10px] text-slate-500 mt-0.5">Penjualan Voucher Hotspot &amp; Eceran</span>
+                                    </label>
+
+                                    <label 
+                                        class="p-3.5 border-2 rounded-2xl cursor-pointer transition-all flex flex-col items-center text-center select-none"
+                                        :class="createResellerForm.tier === 'master' ? 'border-purple-500 bg-purple-50/40 shadow-xs' : 'border-slate-200 hover:border-slate-300'"
+                                    >
+                                        <input type="radio" v-model="createResellerForm.tier" value="master" class="sr-only" />
+                                        <span class="text-2xl mb-1">👑</span>
+                                        <span class="text-xs font-black text-slate-900">Master Biller</span>
+                                        <span class="text-[10px] text-slate-500 mt-0.5">Loket Resmi Pembayaran &amp; Downline</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Informasi Akun -->
+                            <div class="space-y-3 pt-2 border-t border-slate-100">
+                                <h4 class="text-xs font-black uppercase tracking-wider text-slate-500">
+                                    Data Login &amp; Kontak Mitra
+                                </h4>
+
+                                <div>
+                                    <label for="create_reseller_name" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                                        Nama Lengkap / Nama Konter <span class="text-rose-500">*</span>
+                                    </label>
+                                    <input
+                                        id="create_reseller_name"
+                                        v-model="createResellerForm.name"
+                                        type="text"
+                                        required
+                                        placeholder="Contoh: Konter Berkah Cell / Budi Santoso"
+                                        class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium"
+                                    />
+                                    <p v-if="createResellerForm.errors.name" class="text-rose-500 text-[11px] mt-1">{{ createResellerForm.errors.name }}</p>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label for="create_reseller_email" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                                            Email Login <span class="text-rose-500">*</span>
+                                        </label>
+                                        <input
+                                            id="create_reseller_email"
+                                            v-model="createResellerForm.email"
+                                            type="email"
+                                            required
+                                            placeholder="reseller@contoh.com"
+                                            class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium"
+                                        />
+                                        <p v-if="createResellerForm.errors.email" class="text-rose-500 text-[11px] mt-1">{{ createResellerForm.errors.email }}</p>
+                                    </div>
+
+                                    <div>
+                                        <label for="create_reseller_phone" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                                            No. WhatsApp / HP
+                                        </label>
+                                        <input
+                                            id="create_reseller_phone"
+                                            v-model="createResellerForm.phone"
+                                            type="text"
+                                            placeholder="08xxxxxxxxxx"
+                                            class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <div class="flex items-center justify-between mb-1">
+                                            <label for="create_reseller_password" class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                                Password Login <span class="text-rose-500">*</span>
+                                            </label>
+                                            <button
+                                                type="button"
+                                                @click="generateRandomPassword"
+                                                class="text-[10px] text-emerald-600 hover:text-emerald-800 font-bold hover:underline cursor-pointer"
+                                            >
+                                                🎲 Acak
+                                            </button>
+                                        </div>
+                                        <input
+                                            id="create_reseller_password"
+                                            v-model="createResellerForm.password"
+                                            type="text"
+                                            required
+                                            placeholder="Minimal 6 karakter"
+                                            class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono font-medium"
+                                        />
+                                        <p v-if="createResellerForm.errors.password" class="text-rose-500 text-[11px] mt-1">{{ createResellerForm.errors.password }}</p>
+                                    </div>
+
+                                    <div>
+                                        <label for="create_reseller_area" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                                            Wilayah / Area Usaha
+                                        </label>
+                                        <select
+                                            id="create_reseller_area"
+                                            v-model="createResellerForm.area_id"
+                                            class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                        >
+                                            <option value="">Semua Wilayah (Pusat)</option>
+                                            <option v-for="area in areas" :key="area.id" :value="area.id">
+                                                {{ area.name }}
+                                            </option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Saldo Modal Awal -->
+                            <div class="space-y-2 pt-2 border-t border-slate-100">
+                                <div class="flex items-center justify-between">
+                                    <label for="create_reseller_balance" class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                        Saldo Modal Awal (Rp)
+                                    </label>
+                                    <span class="text-[11px] text-slate-400">
+                                        Min rekomendasi: {{ createResellerForm.tier === 'master' ? 'Rp 2.000.000' : 'Rp 20.000' }}
+                                    </span>
+                                </div>
+                                <input
+                                    id="create_reseller_balance"
+                                    v-model.number="createResellerForm.balance"
+                                    type="number"
+                                    min="0"
+                                    step="1000"
+                                    placeholder="0"
+                                    class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                />
+                                <p class="text-[11px] text-slate-500">
+                                    Nominal terbaca: <strong class="text-emerald-700">Rp {{ formatRupiah(createResellerForm.balance) }}</strong>. Saldo ini langsung tersedia di dompet reseller.
+                                </p>
+                            </div>
+
+                            <!-- Hak Akses Profil Voucher -->
+                            <div class="space-y-2 pt-2 border-t border-slate-100">
+                                <div class="flex items-center justify-between">
+                                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                        Hak Akses Paket Voucher
+                                    </label>
+                                    <button
+                                        type="button"
+                                        @click="toggleLimitVouchers"
+                                        class="text-[11px] text-indigo-600 font-bold hover:underline cursor-pointer"
+                                    >
+                                        {{ limitVouchers ? '← Izinkan Semua Paket' : '🔒 Batasi Paket Tertentu' }}
+                                    </button>
+                                </div>
+
+                                <div v-if="!limitVouchers" class="p-3 bg-sky-50 text-sky-800 rounded-xl text-xs border border-sky-200 flex items-center gap-2">
+                                    <span>🌐</span>
+                                    <span><strong>Bebas Semua Profil:</strong> Mitra dapat menjual seluruh paket voucher hotspot aktif tanpa pembatasan.</span>
+                                </div>
+
+                                <div v-else class="space-y-2">
+                                    <div class="flex items-center justify-between text-[11px] text-slate-500">
+                                        <span>Centang paket yang boleh dijual:</span>
+                                        <div class="space-x-2">
+                                            <button type="button" @click="createResellerForm.voucher_profile_ids = sellableProfiles.map(p => p.id)" class="text-indigo-600 font-bold hover:underline cursor-pointer">Pilih Semua</button>
+                                            <span>•</span>
+                                            <button type="button" @click="createResellerForm.voucher_profile_ids = []" class="text-rose-600 font-bold hover:underline cursor-pointer">Hapus Semua</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-200">
+                                        <label 
+                                            v-for="profile in sellableProfiles" 
+                                            :key="profile.id"
+                                            class="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200 cursor-pointer text-xs select-none hover:bg-slate-50"
+                                        >
+                                            <input 
+                                                type="checkbox" 
+                                                :value="profile.id" 
+                                                v-model="createResellerForm.voucher_profile_ids"
+                                                class="rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                                            />
+                                            <div class="truncate">
+                                                <div class="font-bold text-slate-800 truncate">{{ profile.name }}</div>
+                                                <div class="text-[10px] text-emerald-600 font-mono">Rp {{ formatRupiah(profile.price) }}</div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-end gap-2">
+                            <button
+                                type="button"
+                                @click="showCreateResellerModal = false"
+                                class="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="submit"
+                                :disabled="createResellerForm.processing"
+                                class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md shadow-emerald-500/20 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                            >
+                                <svg v-if="createResellerForm.processing" class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                <span>{{ createResellerForm.processing ? 'Memproses...' : '✓ Buat &amp; Aktifkan Akun' }}</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
         </div>
     </AppLayout>
 </template>
@@ -1459,6 +1721,10 @@ const props = defineProps({
             reseller_registration_require_approval: true,
             reseller_registration_terms: '',
         }),
+    },
+    areas: {
+        type: Array,
+        default: () => [],
     },
     stats: Object,
     filters: Object,
@@ -1856,5 +2122,82 @@ const formatDate = (dateStr) => {
     } catch (e) {
         return dateStr;
     }
+};
+
+// =========================================================================
+// Buat Akun Mitra Reseller Baru Langsung oleh Admin
+// =========================================================================
+const showCreateResellerModal = ref(false);
+const limitVouchers = ref(false);
+
+const createResellerForm = useForm({
+    name: '',
+    email: '',
+    phone: '',
+    password: '',
+    tier: 'regular',
+    balance: 20000,
+    area_id: '',
+    voucher_profile_ids: [],
+});
+
+const generateRandomPassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    let res = '';
+    for (let i = 0; i < 8; i++) {
+        res += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    createResellerForm.password = res;
+};
+
+const openCreateResellerModal = () => {
+    createResellerForm.name = '';
+    createResellerForm.email = '';
+    createResellerForm.phone = '';
+    createResellerForm.password = 'reseller123';
+    createResellerForm.tier = 'regular';
+    createResellerForm.balance = props.settings?.reseller_min_deposit || 20000;
+    createResellerForm.area_id = '';
+    createResellerForm.voucher_profile_ids = [];
+    createResellerForm.clearErrors();
+    limitVouchers.value = false;
+    showCreateResellerModal.value = true;
+};
+
+const toggleLimitVouchers = () => {
+    limitVouchers.value = !limitVouchers.value;
+    if (!limitVouchers.value) {
+        createResellerForm.voucher_profile_ids = [];
+    } else if (createResellerForm.voucher_profile_ids.length === 0) {
+        createResellerForm.voucher_profile_ids = sellableProfiles.value.map(p => p.id);
+    }
+};
+
+const submitCreateReseller = () => {
+    createResellerForm.post(route('settings.resellers.user.store'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showCreateResellerModal.value = false;
+            Swal.fire({
+                icon: 'success',
+                title: 'Akun Reseller Berhasil Dibuat!',
+                html: `Akun mitra <b>${createResellerForm.name}</b> telah aktif.<br>` +
+                      `Email: <b>${createResellerForm.email}</b><br>` +
+                      `Password: <b>${createResellerForm.password}</b><br><br>` +
+                      `<span class="text-xs text-slate-500">Mitra dapat langsung login ke portal kemitraan loket/reseller.</span>`,
+                confirmButtonColor: '#059669',
+                confirmButtonText: 'Selesai'
+            });
+        },
+        onError: (err) => {
+            const firstErr = Object.values(err || {})[0] || 'Gagal membuat akun reseller.';
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Membuat Akun',
+                text: firstErr,
+                confirmButtonColor: '#4f46e5'
+            });
+        }
+    });
 };
 </script>

@@ -8,6 +8,8 @@ use App\Models\Reseller;
 use App\Models\Setting;
 use App\Models\AuditLog;
 use App\Models\ResellerTransaction;
+use App\Models\Area;
+use App\Models\Customer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -153,6 +155,7 @@ class ResellerSettingController extends Controller
             'voucherProfiles' => $voucherProfiles,
             'pendingResellers' => $pendingResellers,
             'settings' => $settings,
+            'areas' => Area::orderBy('name')->get(['id', 'name']),
             'stats' => [
                 'total_resellers' => $totalResellers,
                 'full_access_count' => $fullAccessCount,
@@ -326,6 +329,105 @@ class ResellerSettingController extends Controller
             : "Akses profil voucher {$user->name} berhasil dibatasi ke " . count($profileIds) . " profil terpilih.";
 
         return redirect()->back()->with('success', $msg);
+    }
+
+    /**
+     * Buat akun Mitra Reseller baru secara langsung oleh Admin.
+     */
+    public function storeUser(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email',
+            'phone' => 'nullable|string|max:30',
+            'password' => 'required|string|min:6',
+            'tier' => 'required|in:regular,master',
+            'balance' => 'nullable|numeric|min:0',
+            'area_id' => 'nullable|exists:areas,id',
+            'voucher_profile_ids' => 'nullable|array',
+            'voucher_profile_ids.*' => 'exists:voucher_profiles,id',
+        ]);
+
+        $initialBalance = (float) ($validated['balance'] ?? 0);
+        $areaId = $validated['area_id'] ?? null;
+        $area = $areaId ? Area::find($areaId) : null;
+
+        DB::transaction(function () use ($validated, $initialBalance, $area, $areaId) {
+            // 1. Buat User Login
+            $user = User::create([
+                'name' => trim($validated['name']),
+                'email' => strtolower(trim($validated['email'])),
+                'phone' => $validated['phone'] ?? null,
+                'password' => Hash::make($validated['password']),
+                'role' => 'reseller',
+                'is_active' => true,
+            ]);
+
+            try {
+                $role = Role::firstOrCreate(['name' => 'reseller', 'guard_name' => 'web']);
+                $user->syncRoles([$role]);
+            } catch (\Throwable $e) {}
+
+            // 2. Buat Customer record untuk Reseller (Bebas Tagihan)
+            $customer = Customer::create([
+                'user_id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'address' => 'Loket / Konter Mitra',
+                'area_id' => $areaId,
+                'area' => $area?->name,
+                'status' => 'active',
+                'service_status' => 'gratis',
+                'package_id' => null,
+                'base_amount' => 0,
+                'is_reseller' => true,
+                'registration_date' => now()->toDateString(),
+                'activation_date' => now()->toDateString(),
+                'billing_type' => Setting::get('billing_type', 'prabayar'),
+                'notes' => $validated['tier'] === 'master' ? 'Akun Master Biller dibuat via Pengaturan Reseller' : 'Akun Mitra Reseller dibuat via Pengaturan Reseller',
+            ]);
+
+            // 3. Buat Entitas Reseller
+            $reseller = Reseller::create([
+                'customer_id' => $customer->id,
+                'user_id' => $user->id,
+                'balance' => $initialBalance,
+                'is_active' => true,
+                'tier' => $validated['tier'],
+                'referral_code' => $validated['tier'] === 'master' ? Reseller::generateReferralCode() : null,
+                'status' => 'active',
+            ]);
+
+            // 4. Catat Transaksi Saldo Awal jika ada
+            if ($initialBalance > 0) {
+                ResellerTransaction::create([
+                    'reseller_id' => $reseller->id,
+                    'type' => 'credit',
+                    'amount' => $initialBalance,
+                    'description' => 'Saldo Modal Awal Registrasi Kemitraan',
+                    'reference_id' => 'INIT-' . time(),
+                ]);
+            }
+
+            // 5. Hubungkan Profil Voucher jika dipilih
+            if (!empty($validated['voucher_profile_ids'])) {
+                $user->voucherProfiles()->sync($validated['voucher_profile_ids']);
+            }
+
+            // 6. Audit Log
+            try {
+                AuditLog::createLog(
+                    'Create Reseller Account',
+                    $reseller,
+                    null,
+                    'active',
+                    "Admin membuat akun mitra (" . strtoupper($validated['tier']) . "): {$user->name} ({$user->email})" . ($initialBalance > 0 ? " dengan saldo awal Rp " . number_format($initialBalance, 0, ',', '.') : '')
+                );
+            } catch (\Throwable $e) {}
+        });
+
+        return redirect()->back()->with('success', "Akun mitra Reseller '{$validated['name']}' berhasil dibuat dan langsung aktif.");
     }
 
     /**
