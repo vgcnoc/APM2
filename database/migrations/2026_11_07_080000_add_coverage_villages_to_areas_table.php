@@ -29,7 +29,9 @@ return new class extends Migration
         foreach ($defaults as $areaName => $villages) {
             DB::table('areas')
                 ->where('name', $areaName)
-                ->whereNull('coverage_villages')
+                ->where(function ($q) {
+                    $q->whereNull('coverage_villages')->orWhere('coverage_villages', '');
+                })
                 ->update(['coverage_villages' => $villages]);
         }
     }

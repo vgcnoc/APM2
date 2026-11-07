@@ -9,8 +9,38 @@ use Illuminate\Http\Request;
 
 class AreaController extends Controller
 {
+    /**
+     * Pastikan pengaturan Master Area hanya dapat diakses oleh Administrasi dan HRD & Finance.
+     */
+    protected function authorizeAreaSettings(): void
+    {
+        $user = auth()->user();
+        if (!$user) {
+            abort(403, 'Akses tidak diizinkan.');
+        }
+
+        $userRole = strtolower($user->role ?? '');
+        $allowedRoles = ['admin', 'super admin', 'superadmin', 'hrd', 'finance'];
+
+        $hasAllowedRole = in_array($userRole, $allowedRoles, true);
+        if (!$hasAllowedRole && method_exists($user, 'hasRole')) {
+            foreach ($allowedRoles as $role) {
+                if ($user->hasRole($role)) {
+                    $hasAllowedRole = true;
+                    break;
+                }
+            }
+        }
+
+        if (!$hasAllowedRole) {
+            abort(403, 'Pengaturan Master Area & Wilayah Desa hanya dapat diakses oleh akun Administrasi dan HRD & Finance.');
+        }
+    }
+
     public function index(Request $request)
     {
+        $this->authorizeAreaSettings();
+
         $search = trim($request->input('search', ''));
         $query = Area::withCount(['customers', 'odps']);
 
@@ -61,6 +91,7 @@ class AreaController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorizeAreaSettings();
         $this->sanitizeCoordinates($request);
 
         $validated = $request->validate([
@@ -86,6 +117,7 @@ class AreaController extends Controller
 
     public function update(Request $request, Area $area)
     {
+        $this->authorizeAreaSettings();
         $this->sanitizeCoordinates($request);
 
         $validated = $request->validate([
@@ -111,6 +143,7 @@ class AreaController extends Controller
 
     public function destroy(Area $area)
     {
+        $this->authorizeAreaSettings();
         $customersCount = $area->customers()->count();
         $odpsCount = $area->odps()->count();
         $usersCount = $area->users()->count();
