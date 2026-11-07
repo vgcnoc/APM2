@@ -45,12 +45,16 @@ const latestCustomers = computed(() => (props.customers || []).slice(0, 5));
                 <div class="balance-secondary"><span>{{ isEmployee ? 'Penyaluran insentif' : 'Total sudah dicairkan' }}</span><strong>{{ isEmployee ? 'Slip gaji / payroll' : currency(profile.total_withdrawn) }}</strong></div>
                 <div v-if="!isEmployee && payoutInfo?.has_unpaid_customers" class="mb-3 px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-[10px] font-bold flex items-center justify-between">
                     <span>🔒 Pencairan Terkunci</span>
-                    <span>{{ payoutInfo.unpaid_customers_count }} tagihan belum bayar</span>
+                    <span>{{ payoutInfo.unpaid_customers_count }} tagihan menunggak</span>
+                </div>
+                <div v-else-if="!isEmployee && payoutInfo?.prorata_customers_count > 0" class="mb-3 px-3 py-1.5 rounded-xl bg-purple-50 border border-purple-200 text-purple-800 text-[10px] font-bold flex items-center justify-between">
+                    <span>⚡ Pelanggan Prorata</span>
+                    <span>{{ payoutInfo.prorata_customers_count }} belum jatuh tempo (Aman)</span>
                 </div>
                 <Link v-if="isEmployee" href="/affiliate/dashboard?tab=commissions" class="sales-primary-action">Lihat histori insentif <ArrowRightIcon /></Link>
                 <button v-else type="button" class="sales-primary-action" :class="{ 'opacity-85': payoutInfo?.has_unpaid_customers }" @click="$emit('withdraw')">
                     <template v-if="payoutInfo?.has_unpaid_customers">
-                        <span>Terkunci (Ada Tagihan) 🔒</span>
+                        <span>Terkunci (Ada Tunggakan) 🔒</span>
                     </template>
                     <template v-else-if="!payoutInfo?.is_payout_open">
                         <span>Buka Tgl {{ payoutInfo?.payout_day || 15 }} 📅</span>

@@ -14,7 +14,7 @@
 
             <!-- Notice & Alert: Jadwal Pencairan per Tanggal 15 & Pelanggan Belum Bayar (Khusus Mitra Luar) -->
             <div v-if="!is_employee && ['overview', 'withdrawals'].includes(activeTab)" class="mb-8 space-y-4">
-                <!-- Alert 1: Ada Pelanggan Belum Bayar (Fee Tidak Dapat Dicairkan) -->
+                <!-- Alert 1: Ada Pelanggan Menunggak Lewat Jatuh Tempo (Fee Tidak Dapat Dicairkan) -->
                 <div
                     v-if="payout_info?.has_unpaid_customers"
                     class="bg-rose-50/90 border-2 border-rose-300 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4"
@@ -28,13 +28,13 @@
                                 <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[10px] font-extrabold uppercase tracking-wider border border-rose-200 mb-1">
                                     <span>Pencairan Fee Terkunci</span>
                                     <span>&bull;</span>
-                                    <span>Tagihan Belum Lunas</span>
+                                    <span>Ada Tagihan Menunggak</span>
                                 </div>
                                 <h3 class="text-sm sm:text-base font-black text-rose-950">
-                                    Fee Komisi Belum Dapat Dicairkan ({{ payout_info.unpaid_customers_count }} Pelanggan Booking Belum Bayar)
+                                    Fee Komisi Belum Dapat Dicairkan ({{ payout_info.unpaid_customers_count }} Pelanggan Menunggak Lewat Jatuh Tempo)
                                 </h3>
                                 <p class="text-xs text-rose-800 mt-1 leading-relaxed">
-                                    Khusus akun affiliate, komisi dicairkan per tanggal <b>{{ payout_info.payout_day }}</b>. Namun karena masih ada pelanggan hasil bookingan Anda yang belum melunasi tagihannya, <strong>tolong dibantu melakukan penagihan ke pelanggan di bawah ini</strong> agar fee komisi Anda dapat segera dicairkan.
+                                    Khusus akun affiliate, komisi dicairkan per tanggal <b>{{ payout_info.payout_day }}</b>. Terdapat pelanggan hasil bookingan Anda yang <strong>telah melewati tanggal jatuh tempo pembayaran</strong>. Tolong dibantu melakukan penagihan ke pelanggan di bawah ini agar fee komisi Anda dapat segera dicairkan. <em>(Catatan: Pelanggan masa prorata yang belum jatuh tempo tidak dimasukkan ke dalam daftar tunggakan ini).</em>
                                 </p>
                             </div>
                         </div>
@@ -89,9 +89,41 @@
                     </div>
                 </div>
 
+                <!-- Info Ramah: Pelanggan Prorata Berjalan (Belum Waktunya Bayar) -->
+                <div
+                    v-if="payout_info?.prorata_customers_count > 0 && ['overview'].includes(activeTab)"
+                    class="bg-gradient-to-r from-purple-50 via-indigo-50/60 to-white border border-purple-200/90 rounded-3xl p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                >
+                    <div class="flex items-start gap-3.5">
+                        <div class="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center text-lg font-bold shrink-0 mt-0.5">
+                            ⚡
+                        </div>
+                        <div>
+                            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[10px] font-extrabold uppercase tracking-wider border border-purple-200 mb-1">
+                                <span>{{ payout_info.prorata_customers_count }} Pelanggan Prorata</span>
+                                <span>&bull;</span>
+                                <span>Belum Waktunya Bayar</span>
+                            </div>
+                            <h4 class="text-xs sm:text-sm font-black text-purple-950">
+                                Pelanggan Masa Prorata Berjalan (Jangan Dibantu Tagih)
+                            </h4>
+                            <p class="text-xs text-purple-900 mt-0.5 leading-relaxed">
+                                Pelanggan baru dalam masa prorata belum jatuh tempo sehingga <strong>tidak perlu ditagih</strong> dan <strong>tidak menahan pencairan komisi Anda</strong>.
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        @click="activeTab = 'customers'; customerSubTab = 'prorata'"
+                        class="px-4 py-2 bg-white hover:bg-purple-100/70 border border-purple-200 text-purple-800 text-xs font-extrabold rounded-xl transition shadow-2xs whitespace-nowrap cursor-pointer self-start sm:self-auto"
+                    >
+                        Lihat Data Prorata &rarr;
+                    </button>
+                </div>
+
                 <!-- Alert 2: Jadwal Tanggal Pencairan (Jika sebelum tanggal 15) -->
                 <div
-                    v-else-if="!payout_info?.is_payout_open"
+                    v-else-if="!payout_info?.is_payout_open && !payout_info?.has_unpaid_customers"
                     class="bg-blue-50/80 border border-blue-200 rounded-2xl p-4 flex items-start gap-3 shadow-2xs"
                 >
                     <div class="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-bold shrink-0">
@@ -99,7 +131,7 @@
                     </div>
                     <div class="text-xs text-blue-900 leading-relaxed">
                         <strong class="font-bold text-blue-950">Jadwal Pencairan Fee Mitra Luar:</strong>
-                        Khusus fee affiliate orang luar dicairkan per tanggal <b>{{ payout_info?.payout_day || 15 }}</b> setiap bulannya (Pencairan berikutnya: <b>{{ payout_info?.next_payout_date }}</b>). Seluruh pelanggan bookingan Anda saat ini telah lunas, penarikan saldo dapat diajukan saat memasuki tanggal {{ payout_info?.payout_day || 15 }}.
+                        Khusus fee affiliate orang luar dicairkan per tanggal <b>{{ payout_info?.payout_day || 15 }}</b> setiap bulannya (Pencairan berikutnya: <b>{{ payout_info?.next_payout_date }}</b>). Seluruh pelanggan bookingan Anda tidak ada yang menunggak lewat jatuh tempo, penarikan saldo dapat diajukan saat memasuki tanggal {{ payout_info?.payout_day || 15 }}.
                     </div>
                 </div>
             </div>
@@ -125,23 +157,23 @@
                     </div>
 
                     <!-- Sub-tabs Pemisah: Semua Pelanggan | Sudah Bayar | Belum Bayar -->
-                    <div class="flex items-center gap-2 mb-5 p-1.5 bg-slate-100 rounded-2xl w-fit">
+                    <div class="flex items-center gap-2 mb-5 p-1.5 bg-slate-100 rounded-2xl w-fit flex-wrap">
                         <button
                             type="button"
                             @click="customerSubTab = 'all'"
-                            class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2"
+                            class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap"
                             :class="customerSubTab === 'all' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
                         >
                             <span>Semua Pelanggan</span>
                             <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold" :class="customerSubTab === 'all' ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-200 text-slate-700'">
-                                {{ customers.length }}
+                                {{ (customers || []).length }}
                             </span>
                         </button>
 
                         <button
                             type="button"
                             @click="customerSubTab = 'paid'"
-                            class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2"
+                            class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap"
                             :class="customerSubTab === 'paid' ? 'bg-white text-emerald-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
                         >
                             <span>✓ Sudah Bayar (Lunas)</span>
@@ -152,35 +184,67 @@
 
                         <button
                             type="button"
+                            @click="customerSubTab = 'prorata'"
+                            class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap"
+                            :class="customerSubTab === 'prorata' ? 'bg-white text-purple-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
+                        >
+                            <span>⚡ Pelanggan Prorata</span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold" :class="customerSubTab === 'prorata' ? 'bg-purple-100 text-purple-800' : 'bg-purple-100/70 text-purple-700'">
+                                {{ prorataCustomers.length }}
+                            </span>
+                        </button>
+
+                        <button
+                            type="button"
                             @click="customerSubTab = 'unpaid'"
-                            class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2"
+                            class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap"
                             :class="customerSubTab === 'unpaid' ? 'bg-white text-rose-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'"
                         >
-                            <span>⚠️ Belum Bayar (Menunggak)</span>
+                            <span>⚠️ Menunggak (Lewat Jatuh Tempo)</span>
                             <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold" :class="customerSubTab === 'unpaid' ? 'bg-rose-100 text-rose-800' : 'bg-rose-100/70 text-rose-700'">
-                                {{ unpaidCustomers.length }}
+                                {{ overdueCustomers.length }}
                             </span>
                         </button>
                     </div>
 
-                    <!-- Peringatan jika memilih Sub-tab Belum Bayar -->
-                    <div v-if="customerSubTab === 'unpaid' && unpaidCustomers.length > 0" class="p-4 bg-rose-50 border border-rose-200 rounded-2xl mb-4 text-xs text-rose-900 space-y-1 leading-relaxed">
-                        <div class="flex items-center gap-1.5 font-bold text-rose-900">
-                            <span>🔒</span>
-                            <span>Pencairan Dana Ditangguhkan Sementara</span>
+                    <!-- Banner jika memilih Sub-tab Prorata -->
+                    <div v-if="customerSubTab === 'prorata' && prorataCustomers.length > 0" class="p-4 bg-purple-50 border border-purple-200 rounded-2xl mb-4 text-xs text-purple-950 space-y-1.5 leading-relaxed">
+                        <div class="flex items-center gap-1.5 font-bold text-purple-900">
+                            <span>⚡</span>
+                            <span>Pelanggan Masa Prorata Berjalan (Belum Waktunya Bayar)</span>
                         </div>
                         <p>
-                            Pelanggan di bawah ini belum melunasi tagihannya. Sesuai kebijakan SOP Kemitraan, pencairan saldo komisi terkunci hingga tagihan di bawah ini lunas.
-                            Gunakan tombol <strong>"Bantu Tagih via WA"</strong> untuk mengingatkan pelanggan secara sopan agar fee komisi Anda dapat segera dicairkan.
+                            Pelanggan di bawah ini adalah pelanggan baru pascabayar dalam masa perhitungan pemakaian prorata berjalan. Tagihan perdana mereka <strong>belum jatuh tempo</strong> (jatuh tempo tanggal 12 bulan berikutnya), sehingga <strong>TIDAK PERLU DIBANTU TAGIH</strong> dan <strong>TIDAK MENGUNCI PENCAIRAN SALDO KOMISI</strong> Anda.
                         </p>
                     </div>
 
-                    <!-- State jika tidak ada pelanggan belum bayar -->
-                    <div v-if="customerSubTab === 'unpaid' && unpaidCustomers.length === 0" class="p-8 text-center bg-emerald-50/60 rounded-2xl border border-emerald-100 my-4 space-y-2">
+                    <!-- Peringatan jika memilih Sub-tab Menunggak -->
+                    <div v-if="customerSubTab === 'unpaid' && overdueCustomers.length > 0" class="p-4 bg-rose-50 border border-rose-200 rounded-2xl mb-4 text-xs text-rose-900 space-y-1 leading-relaxed">
+                        <div class="flex items-center gap-1.5 font-bold text-rose-900">
+                            <span>🔒</span>
+                            <span>Pencairan Dana Ditangguhkan Sementara (Ada Tagihan Lewat Jatuh Tempo)</span>
+                        </div>
+                        <p>
+                            Pelanggan di bawah ini telah melewati tanggal jatuh tempo pembayaran dan belum melunasi tagihannya. Sesuai kebijakan SOP Kemitraan, pencairan saldo komisi terkunci hingga tagihan di bawah ini lunas.
+                            Gunakan tombol <strong>"💬 Bantu Tagih"</strong> untuk mengingatkan pelanggan secara sopan agar fee komisi Anda dapat segera dicairkan.
+                        </p>
+                    </div>
+
+                    <!-- State jika tidak ada pelanggan belum bayar / menunggak -->
+                    <div v-if="customerSubTab === 'unpaid' && overdueCustomers.length === 0" class="p-8 text-center bg-emerald-50/60 rounded-2xl border border-emerald-100 my-4 space-y-2">
                         <span class="text-3xl block">🎉</span>
-                        <h4 class="text-sm font-bold text-emerald-950">Seluruh Pelanggan Telah Lunas!</h4>
+                        <h4 class="text-sm font-bold text-emerald-950">Seluruh Pelanggan Aman & Tidak Ada Menunggak!</h4>
                         <p class="text-xs text-emerald-800 max-w-md mx-auto">
-                            Luar biasa! Tidak ada pelanggan binaan Anda yang menunggak tagihan saat ini. Seluruh hak pencairan komisi Anda terbuka tanpa halangan.
+                            Luar biasa! Tidak ada pelanggan binaan Anda yang menunggak lewat batas jatuh tempo saat ini. Seluruh hak pencairan komisi Anda terbuka tanpa halangan.
+                        </p>
+                    </div>
+
+                    <!-- State jika tidak ada pelanggan prorata -->
+                    <div v-else-if="customerSubTab === 'prorata' && prorataCustomers.length === 0" class="p-8 text-center bg-purple-50/60 rounded-2xl border border-purple-100 my-4 space-y-2">
+                        <span class="text-3xl block">⚡</span>
+                        <h4 class="text-sm font-bold text-purple-950">Tidak Ada Pelanggan Prorata Berjalan</h4>
+                        <p class="text-xs text-purple-800 max-w-md mx-auto">
+                            Saat ini belum ada pelanggan baru dalam masa perhitungan prorata berjalan.
                         </p>
                     </div>
 
@@ -201,13 +265,13 @@
                                     <th class="px-4 py-3">ID Pelanggan</th>
                                     <th class="px-4 py-3">Nama Pelanggan</th>
                                     <th class="px-4 py-3">Paket Layanan</th>
-                                    <th v-if="customerSubTab === 'unpaid'" class="px-4 py-3">Periode Tagihan</th>
+                                    <th v-if="customerSubTab === 'unpaid' || customerSubTab === 'prorata'" class="px-4 py-3">Periode & Jatuh Tempo</th>
                                     <th v-else class="px-4 py-3">Tanggal Daftar</th>
                                     <th class="px-4 py-3">Status Tagihan</th>
                                     <th class="px-4 py-3 text-right">
-                                        {{ customerSubTab === 'unpaid' ? 'Tagihan Tertunggak' : 'Total Komisi' }}
+                                        {{ customerSubTab === 'unpaid' ? 'Tagihan Tertunggak' : (customerSubTab === 'prorata' ? 'Estimasi Tagihan Prorata' : 'Total Komisi') }}
                                     </th>
-                                    <th v-if="customerSubTab === 'unpaid'" class="px-4 py-3 text-center">Tindakan</th>
+                                    <th v-if="customerSubTab === 'unpaid' || customerSubTab === 'prorata'" class="px-4 py-3 text-center">Tindakan / Status</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100">
@@ -218,19 +282,36 @@
                                         <div class="text-[10px] text-slate-500">{{ c.phone }}</div>
                                     </td>
                                     <td class="px-4 py-3 text-slate-600">{{ c.package_name }}</td>
-                                    <td v-if="customerSubTab === 'unpaid'" class="px-4 py-3">
-                                        <div class="font-bold text-slate-800">{{ c.unpaid_period }}</div>
-                                        <div class="text-[10px] text-rose-600 font-medium">Jatuh Tempo: {{ c.unpaid_due_date }}</div>
+                                    <td v-if="customerSubTab === 'unpaid' || customerSubTab === 'prorata'" class="px-4 py-3">
+                                        <div class="font-bold text-slate-800">{{ c.unpaid_period || c.period_label || '-' }}</div>
+                                        <div
+                                            class="text-[10px] font-medium"
+                                            :class="c.has_overdue_invoice ? 'text-rose-600 font-bold' : 'text-purple-700 font-semibold'"
+                                        >
+                                            Jatuh Tempo: {{ c.unpaid_due_date || c.due_date || '-' }}
+                                        </div>
                                     </td>
                                     <td v-else class="px-4 py-3 text-slate-500">{{ c.registration_date }}</td>
                                     <td class="px-4 py-3">
                                         <div class="flex items-center gap-1.5 flex-wrap">
                                             <!-- Status Tagihan -->
                                             <span
-                                                v-if="c.has_unpaid_invoice"
+                                                v-if="c.is_prorata && c.is_not_due_yet"
+                                                class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-800 border border-purple-200"
+                                            >
+                                                ⚡ Prorata Berjalan
+                                            </span>
+                                            <span
+                                                v-else-if="c.has_overdue_invoice"
                                                 class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-200"
                                             >
-                                                ⚠️ Belum Bayar
+                                                ⚠️ Lewat Jatuh Tempo
+                                            </span>
+                                            <span
+                                                v-else-if="c.has_unpaid_invoice"
+                                                class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200"
+                                            >
+                                                ⏳ Belum Jatuh Tempo
                                             </span>
                                             <span
                                                 v-else-if="c.status === 'active'"
@@ -254,6 +335,10 @@
                                         <div v-if="customerSubTab === 'unpaid'" class="font-extrabold text-rose-600 text-sm">
                                             {{ formatRupiah(c.unpaid_amount) }}
                                         </div>
+                                        <div v-else-if="customerSubTab === 'prorata'">
+                                            <div class="font-extrabold text-purple-700 text-sm">{{ formatRupiah(c.unpaid_amount) }}</div>
+                                            <div class="text-[10px] text-purple-600 font-medium">Jatuh tempo: {{ c.due_date || c.unpaid_due_date }}</div>
+                                        </div>
                                         <div v-else>
                                             <div class="font-bold text-emerald-600">{{ formatRupiah(c.total_commission) }}</div>
                                             <div v-if="c.status === 'active' && !c.has_unpaid_invoice" class="text-[10px] text-slate-400 font-medium">
@@ -261,15 +346,21 @@
                                             </div>
                                         </div>
                                     </td>
-                                    <td v-if="customerSubTab === 'unpaid'" class="px-4 py-3 text-center">
+                                    <td v-if="customerSubTab === 'unpaid' || customerSubTab === 'prorata'" class="px-4 py-3 text-center">
                                         <a
-                                            v-if="c.wa_reminder_url"
+                                            v-if="c.can_bantu_tagih && c.wa_reminder_url"
                                             :href="c.wa_reminder_url"
                                             target="_blank"
                                             class="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
                                         >
                                             <span>💬 Bantu Tagih</span>
                                         </a>
+                                        <span
+                                            v-else-if="c.is_prorata || c.is_not_due_yet"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 text-purple-700 font-bold text-[10px] rounded-lg border border-purple-200 whitespace-nowrap"
+                                        >
+                                            ⏳ Belum Waktunya Bayar
+                                        </span>
                                         <span v-else class="text-slate-400 text-xs">-</span>
                                     </td>
                                 </tr>
@@ -1208,13 +1299,16 @@ const sectionDescriptions = {
 
 const copyMessage = ref('');
 const showWithdrawModal = ref(false);
-const customerSubTab = ref('all'); // 'all', 'paid', 'unpaid'
+const customerSubTab = ref('all'); // 'all', 'paid', 'prorata', 'unpaid'
 
 const paidCustomers = computed(() => (props.customers || []).filter(c => !c.has_unpaid_invoice && c.status === 'active'));
-const unpaidCustomers = computed(() => (props.customers || []).filter(c => c.has_unpaid_invoice));
+const prorataCustomers = computed(() => (props.customers || []).filter(c => c.is_prorata));
+const overdueCustomers = computed(() => (props.customers || []).filter(c => c.has_overdue_invoice));
+const unpaidCustomers = overdueCustomers; // Backward compat for unpaid count / overdue
 const filteredCustomers = computed(() => {
     if (customerSubTab.value === 'paid') return paidCustomers.value;
-    if (customerSubTab.value === 'unpaid') return unpaidCustomers.value;
+    if (customerSubTab.value === 'prorata') return prorataCustomers.value;
+    if (customerSubTab.value === 'unpaid') return overdueCustomers.value;
     return props.customers || [];
 });
 

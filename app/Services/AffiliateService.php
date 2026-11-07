@@ -824,19 +824,31 @@ class AffiliateService
     }
 
     /**
-     * Ambil daftar pelanggan yang dibooking oleh akun affiliate ini yang belum melunasi tagihan (status unpaid / partial).
+     * Ambil daftar pelanggan yang dibooking oleh akun affiliate ini.
+     * Jika $overdueOnly = true (default untuk validasi pencairan & alert penagihan),
+     * HANYA mengambil pelanggan yang tagihannya SUDAH LEWAT JATUH TEMPO (due_date <= now()).
+     * Tagihan prorata atau tagihan berjalan yang belum waktunya bayar (due_date > now()) TIDAK dianggap sebagai tunggakan.
      */
-    public static function getUnpaidCustomersForAffiliate(User $user)
+    public static function getUnpaidCustomersForAffiliate(User $user, bool $overdueOnly = true)
     {
+        $todayEnd = now()->endOfDay();
+
         return Customer::where('sales_id', $user->id)
-            ->whereHas('invoices', function ($q) {
+            ->whereHas('invoices', function ($q) use ($overdueOnly, $todayEnd) {
                 $q->whereIn('status', ['unpaid', 'partial']);
+                if ($overdueOnly) {
+                    $q->whereNotNull('due_date')->where('due_date', '<=', $todayEnd);
+                }
             })
-            ->with(['package', 'invoices' => function ($q) {
-                $q->whereIn('status', ['unpaid', 'partial'])->orderBy('due_date', 'asc');
+            ->with(['package', 'invoices' => function ($q) use ($overdueOnly, $todayEnd) {
+                $q->whereIn('status', ['unpaid', 'partial']);
+                if ($overdueOnly) {
+                    $q->whereNotNull('due_date')->where('due_date', '<=', $todayEnd);
+                }
+                $q->orderBy('due_date', 'asc');
             }])
             ->get()
-            ->map(function ($cust) use ($user) {
+            ->map(function ($cust) use ($user, $todayEnd) {
                 $unpaidInvoices = $cust->invoices;
                 $totalUnpaid = (float) $unpaidInvoices->sum(function ($inv) {
                     return $inv->remaining ?: $inv->amount;
@@ -844,15 +856,26 @@ class AffiliateService
                 $earliestInvoice = $unpaidInvoices->first();
                 $periodLabel = $earliestInvoice ? $earliestInvoice->period_label : '-';
 
+                $isOverdue = $earliestInvoice && $earliestInvoice->due_date && $earliestInvoice->due_date->endOfDay()->isPast();
+                $isProrata = $unpaidInvoices->contains(function ($inv) {
+                    return (bool) $inv->is_prorata 
+                        || strtolower($inv->billing_type ?? '') === 'prorata' 
+                        || str_contains(strtolower($inv->notes ?? ''), 'prorata');
+                }) || strtolower($cust->billing_type ?? '') === 'prorata';
+
                 $custPhone = preg_replace('/[^0-9]/', '', (string) ($cust->phone ?? ''));
                 if (str_starts_with($custPhone, '0')) {
                     $custPhone = '62' . substr($custPhone, 1);
                 }
 
-                $msg = "Halo Kak {$cust->name}, saya {$user->name} dari tim layanan internet WiFi. "
-                    . "Sekadar menginfokan bahwa tagihan internet periode {$periodLabel} sebesar Rp " . number_format($totalUnpaid, 0, ',', '.') . " saat ini belum terbayar. "
-                    . "Mohon dibantu pelunasannya ya Kak agar koneksi internet tetap aktif dan lancar. Terima kasih banyak 🙏";
-                $waUrl = $custPhone ? "https://wa.me/{$custPhone}?text=" . urlencode($msg) : null;
+                // Pesan WA Bantu Tagih HANYA jika sudah lewat jatuh tempo
+                $waUrl = null;
+                if ($isOverdue) {
+                    $msg = "Halo Kak {$cust->name}, saya {$user->name} dari tim layanan internet WiFi. "
+                        . "Sekadar menginfokan bahwa tagihan internet periode {$periodLabel} sebesar Rp " . number_format($totalUnpaid, 0, ',', '.') . " saat ini telah melewati batas jatuh tempo ({$earliestInvoice?->due_date?->format('d M Y')}). "
+                        . "Mohon dibantu pelunasannya ya Kak agar koneksi internet tetap aktif dan lancar. Terima kasih banyak 🙏";
+                    $waUrl = $custPhone ? "https://wa.me/{$custPhone}?text=" . urlencode($msg) : null;
+                }
 
                 return [
                     'id' => $cust->id,
@@ -865,6 +888,9 @@ class AffiliateService
                     'total_unpaid_amount' => (float) $totalUnpaid,
                     'period_label' => $periodLabel,
                     'due_date' => $earliestInvoice?->due_date?->format('d M Y') ?? '-',
+                    'is_overdue' => $isOverdue,
+                    'is_prorata' => $isProrata,
+                    'is_not_due_yet' => !$isOverdue,
                     'wa_reminder_url' => $waUrl,
                 ];
             });
@@ -873,7 +899,7 @@ class AffiliateService
     /**
      * Ajukan penarikan saldo komisi afiliasi.
      * Khusus fee affiliate orang luar dicairkan per tanggal 15.
-     * Jika pelanggan yang dibooking belum bayar, fee tidak dapat dicairkan.
+     * Jika pelanggan yang dibooking belum bayar (melewati tanggal jatuh tempo), fee tidak dapat dicairkan.
      */
     public static function requestWithdrawal(User $user, float $amount, ?string $notes = null): AffiliateWithdrawal
     {
@@ -893,15 +919,15 @@ class AffiliateService
             throw new \Exception("Khusus fee affiliate orang luar dicairkan per tanggal {$payoutDay} setiap bulannya. Pencairan dana berikutnya dibuka pada tanggal {$nextDate}.");
         }
 
-        // 2. Validasi Pelanggan Belum Bayar (Unpaid Invoices)
-        $unpaidCustomers = self::getUnpaidCustomersForAffiliate($user);
-        if ($unpaidCustomers->isNotEmpty()) {
-            $count = $unpaidCustomers->count();
-            $names = $unpaidCustomers->take(3)->pluck('name')->implode(', ');
+        // 2. Validasi Pelanggan Lewat Jatuh Tempo (HANYA overdue yang menahan pencairan!)
+        $overdueCustomers = self::getUnpaidCustomersForAffiliate($user, true);
+        if ($overdueCustomers->isNotEmpty()) {
+            $count = $overdueCustomers->count();
+            $names = $overdueCustomers->take(3)->pluck('name')->implode(', ');
             if ($count > 3) {
                 $names .= ' dan ' . ($count - 3) . ' pelanggan lainnya';
             }
-            throw new \Exception("Fee komisi tidak dapat dicairkan karena terdapat {$count} pelanggan yang Anda booking belum membayar tagihan ({$names}). Tolong dibantu melakukan penagihan ke pelanggan yang di-booking akun affiliate terlebih dahulu agar komisi Anda dapat dicairkan.");
+            throw new \Exception("Fee komisi tidak dapat dicairkan karena terdapat {$count} pelanggan yang Anda booking telah melewati batas jatuh tempo dan belum membayar tagihan ({$names}). Tolong dibantu melakukan penagihan ke pelanggan tersebut terlebih dahulu agar komisi Anda dapat dicairkan.");
         }
 
         if ($amount < $minWithdraw) {
@@ -946,14 +972,14 @@ class AffiliateService
             throw new \Exception("Permintaan penarikan ini sudah diproses sebelumnya.");
         }
 
-        // Cek apakah mitra memiliki pelanggan bookingan yang belum bayar
+        // Cek apakah mitra memiliki pelanggan bookingan yang belum bayar & sudah jatuh tempo
         $affiliateUser = User::find($withdrawal->affiliate_id);
         if ($affiliateUser) {
-            $unpaid = self::getUnpaidCustomersForAffiliate($affiliateUser);
-            if ($unpaid->isNotEmpty() && !request()->boolean('force_approve')) {
-                $count = $unpaid->count();
-                $names = $unpaid->take(2)->pluck('name')->implode(', ');
-                throw new \Exception("Pencairan dana tertahan karena terdapat {$count} pelanggan bookingan mitra ini yang belum melunasi tagihan ({$names}). Mitra diminta membantu penagihan ke pelanggan terlebih dahulu.");
+            $overdue = self::getUnpaidCustomersForAffiliate($affiliateUser, true);
+            if ($overdue->isNotEmpty() && !request()->boolean('force_approve')) {
+                $count = $overdue->count();
+                $names = $overdue->take(2)->pluck('name')->implode(', ');
+                throw new \Exception("Pencairan dana tertahan karena terdapat {$count} pelanggan bookingan mitra ini yang telah melewati batas jatuh tempo dan belum melunasi tagihan ({$names}). Mitra diminta membantu penagihan ke pelanggan terlebih dahulu.");
             }
         }
 
