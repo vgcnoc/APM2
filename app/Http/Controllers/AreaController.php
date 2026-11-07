@@ -18,7 +18,8 @@ class AreaController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('description', 'like', "%{$search}%")
-                  ->orWhere('address', 'like', "%{$search}%");
+                  ->orWhere('address', 'like', "%{$search}%")
+                  ->orWhere('coverage_villages', 'like', "%{$search}%");
             });
         }
 
@@ -66,6 +67,7 @@ class AreaController extends Controller
             'name' => 'required|string|max:255|unique:areas,name',
             'description' => 'nullable|string',
             'address' => 'nullable|string',
+            'coverage_villages' => 'nullable|string',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
             'radius_meters' => 'nullable|numeric|min:0',
@@ -90,6 +92,7 @@ class AreaController extends Controller
             'name' => 'required|string|max:255|unique:areas,name,' . $area->id,
             'description' => 'nullable|string',
             'address' => 'nullable|string',
+            'coverage_villages' => 'nullable|string',
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
             'radius_meters' => 'nullable|numeric|min:0',

@@ -86,7 +86,18 @@
                             </h4>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 <div>
-                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Area / Wilayah <span class="text-red-500">*</span></label>
+                                    <div class="flex items-center justify-between mb-2">
+                                        <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider">Area / Wilayah <span class="text-red-500">*</span></label>
+                                        <button 
+                                            type="button" 
+                                            @click="showAreaGuideModal = true"
+                                            class="inline-flex items-center gap-1.5 text-[11px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg border border-indigo-200 transition-all cursor-pointer shadow-2xs"
+                                            title="Lihat panduan cakupan desa per area"
+                                        >
+                                            <span>🧭</span>
+                                            <span>Panduan Wilayah BC</span>
+                                        </button>
+                                    </div>
                                     <select v-if="!isNewArea" v-model="form.area" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" @change="checkNewArea" required>
                                         <option value="">-- Pilih Area --</option>
                                         <option v-for="area in areas" :key="area" :value="area">{{ area }}</option>
@@ -97,6 +108,61 @@
                                         <button v-if="areas.length > 0" type="button" @click="cancelNewArea" class="px-3 py-2.5 bg-gray-100 border border-gray-300 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors">
                                             Batal
                                         </button>
+                                    </div>
+
+                                    <!-- Panduan Interaktif Cakupan Desa Sesuai Area yang Dipilih -->
+                                    <div v-if="selectedAreaVillages.length > 0" class="mt-2.5 p-3 bg-gradient-to-br from-indigo-50/90 via-blue-50/60 to-slate-50 border border-indigo-200/90 rounded-xl shadow-2xs">
+                                        <div class="flex items-center justify-between text-xs font-bold text-indigo-950 mb-1.5">
+                                            <span class="flex items-center gap-1.5">
+                                                <span class="text-indigo-600">📍</span>
+                                                <span>Cakupan Desa {{ form.area }}:</span>
+                                            </span>
+                                            <span class="text-[10px] font-bold text-indigo-600 bg-white px-2 py-0.5 rounded-full border border-indigo-200 shadow-2xs">
+                                                {{ selectedAreaVillages.length }} Desa
+                                            </span>
+                                        </div>
+                                        <div class="flex flex-wrap gap-1.5 mt-1.5">
+                                            <button
+                                                type="button"
+                                                v-for="v in selectedAreaVillages"
+                                                :key="v"
+                                                @click="applyVillageSuggestion(v)"
+                                                :class="[
+                                                    'px-2.5 py-1 text-xs font-medium rounded-lg border transition-all flex items-center gap-1 cursor-pointer active:scale-95',
+                                                    form.village && form.village.toLowerCase() === v.toLowerCase()
+                                                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs font-bold'
+                                                        : 'bg-white hover:bg-indigo-50 text-indigo-700 border-indigo-200 hover:border-indigo-300'
+                                                ]"
+                                                :title="`Klik untuk memilih ${v}`"
+                                            >
+                                                <span>✓</span>
+                                                <span>{{ v }}</span>
+                                            </button>
+                                        </div>
+                                        <p class="text-[10px] text-slate-500 mt-2 flex items-center gap-1">
+                                            <span>💡</span> Klik salah satu desa di atas untuk mengisi kolom Desa otomatis.
+                                        </p>
+                                    </div>
+
+                                    <!-- Peringatan Deteksi Cerdas Salah Pilih Area -->
+                                    <div v-if="mismatchedAreaWarning" class="mt-2.5 p-3 bg-amber-50 border border-amber-300 rounded-xl text-amber-900 text-xs shadow-xs animate-shake">
+                                        <div class="flex items-start gap-2">
+                                            <span class="text-base leading-none">⚠️</span>
+                                            <div class="flex-1">
+                                                <div class="font-bold">Potensi Salah Pilih Area!</div>
+                                                <p class="mt-0.5 leading-relaxed text-[11px] text-amber-800">
+                                                    Desa <strong>{{ mismatchedAreaWarning.village }}</strong> tercatat dalam cakupan wilayah <strong>{{ mismatchedAreaWarning.correctArea }}</strong>, sedangkan area yang Anda pilih saat ini adalah <strong>{{ form.area }}</strong>.
+                                                </p>
+                                                <button
+                                                    type="button"
+                                                    @click="switchArea(mismatchedAreaWarning.correctArea)"
+                                                    class="mt-2 inline-flex items-center gap-1 px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold rounded-lg shadow-2xs transition-colors cursor-pointer"
+                                                >
+                                                    <span>🔄</span>
+                                                    <span>Ganti ke Area {{ mismatchedAreaWarning.correctArea }}</span>
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                                 <div>
@@ -509,6 +575,64 @@
                     <p class="mt-4 text-white font-medium text-lg">Foto KTP</p>
                 </div>
             </div>
+
+            <!-- Modal Panduan Cakupan Wilayah BC -->
+            <div v-if="showAreaGuideModal" class="fixed inset-0 z-[120] overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+                <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 max-h-[90vh] flex flex-col animate-scale-in">
+                    <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-lg">
+                                🧭
+                            </div>
+                            <div>
+                                <h3 class="text-base font-extrabold text-slate-900">Panduan Cakupan Wilayah &amp; Desa</h3>
+                                <p class="text-xs text-slate-500">Panduan resmi agar karyawan &amp; mitra affiliate tidak salah memilih area saat booking.</p>
+                            </div>
+                        </div>
+                        <button type="button" @click="showAreaGuideModal = false" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+
+                    <div class="overflow-y-auto py-4 space-y-3.5 flex-1 pr-1">
+                        <div v-for="item in guideAreaCoverageList" :key="item.name" class="p-4 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-indigo-50/30 hover:border-indigo-200 transition-all">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
+                                    <h4 class="text-sm font-extrabold text-slate-900">{{ item.name }}</h4>
+                                    <span v-if="item.description" class="text-xs text-slate-500 font-medium">({{ item.description }})</span>
+                                </div>
+                                <button 
+                                    v-if="form.area !== item.name"
+                                    type="button" 
+                                    @click="selectAreaFromGuide(item.name)" 
+                                    class="px-3 py-1 text-xs font-bold text-indigo-600 hover:text-white bg-indigo-50 hover:bg-indigo-600 rounded-lg border border-indigo-200 transition-all cursor-pointer shadow-2xs active:scale-95"
+                                >
+                                    Pilih Area Ini
+                                </button>
+                                <span v-else class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 flex items-center gap-1 shadow-2xs">
+                                    <span>✓</span> Terpilih
+                                </span>
+                            </div>
+                            <div class="mt-2.5">
+                                <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Cakupan Desa / Kelurahan:</div>
+                                <div v-if="item.villages && item.villages.length > 0" class="flex flex-wrap gap-1.5">
+                                    <span v-for="v in item.villages" :key="v" class="px-2.5 py-1 bg-white text-slate-800 text-xs font-medium rounded-lg border border-slate-200 shadow-2xs">
+                                        🏘️ {{ v }}
+                                    </span>
+                                </div>
+                                <span v-else class="text-xs text-slate-400 italic">Belum diatur</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-100 flex justify-end">
+                        <button type="button" @click="showAreaGuideModal = false" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer">
+                            Tutup Panduan
+                        </button>
+                    </div>
+                </div>
+            </div>
         </Teleport>
     </component>
 </template>
@@ -525,6 +649,10 @@ const props = defineProps({
     sales: Array,
     areas: Array,
     affiliatePortal: Boolean,
+    area_coverage: {
+        type: Array,
+        default: () => ([]),
+    },
     area_villages: {
         type: Object,
         default: () => ({}),
@@ -540,6 +668,7 @@ const props = defineProps({
 });
 
 const isNewArea = ref(false);
+const showAreaGuideModal = ref(false);
 const page = usePage();
 const isAdmin = computed(() => {
     const user = page.props.auth?.user;
@@ -586,13 +715,101 @@ const isSalesPortal = computed(() => Boolean(props.affiliatePortal));
 
 const registration_type = ref('customer');
 
-// Rekomendasi desa yang pernah di-input di area yang dipilih
-const suggestedVillages = computed(() => {
-    if (form.area && props.area_villages && props.area_villages[form.area]) {
+// Daftar area & cakupan desa untuk modal panduan
+const guideAreaCoverageList = computed(() => {
+    if (props.area_coverage && props.area_coverage.length > 0) {
+        return props.area_coverage;
+    }
+    return (props.areas || []).map(a => ({
+        name: a,
+        description: '',
+        villages: (props.area_villages && props.area_villages[a]) || [],
+    }));
+});
+
+// Rekomendasi desa sesuai area yang dipilih (Prioritaskan desa resmi)
+const selectedAreaVillages = computed(() => {
+    if (!form.area) return [];
+    const clean = form.area.toLowerCase().trim();
+
+    // 1. Cek dari data coverage resmi
+    const found = (props.area_coverage || []).find(a => (a.name || '').toLowerCase().trim() === clean);
+    if (found) {
+        const vOfficial = found.villages || found.coverage_villages_list || [];
+        if (Array.isArray(vOfficial) && vOfficial.length > 0) {
+            // Gabungkan dengan saran desa dari riwayat jika ada
+            const historyList = (props.area_villages && props.area_villages[form.area]) || [];
+            const merged = [...vOfficial];
+            for (const h of historyList) {
+                if (!merged.some(m => m.toLowerCase().trim() === h.toLowerCase().trim())) {
+                    merged.push(h);
+                }
+            }
+            return merged;
+        }
+    }
+
+    // 2. Fallback ke area_villages map
+    if (props.area_villages && props.area_villages[form.area]) {
         return props.area_villages[form.area];
     }
     return [];
 });
+
+const suggestedVillages = computed(() => {
+    return selectedAreaVillages.value;
+});
+
+// Deteksi cerdas jika desa/alamat yang diketik termasuk dalam cakupan BC lain
+const mismatchedAreaWarning = computed(() => {
+    if (!form.area) return null;
+    const vInput = (form.village || '').toLowerCase().trim();
+    const addrInput = (form.address_detail || '').toLowerCase().trim();
+    if (!vInput && !addrInput) return null;
+
+    const currentAreaClean = form.area.toLowerCase().trim();
+
+    for (const ac of guideAreaCoverageList.value) {
+        const otherAreaClean = (ac.name || '').toLowerCase().trim();
+        if (otherAreaClean === currentAreaClean) continue;
+
+        const villages = ac.villages || ac.coverage_villages_list || [];
+        for (const v of villages) {
+            const vClean = v.toLowerCase().trim();
+            if (vClean.length < 3) continue;
+
+            const matchesVillage = vInput && (vInput.includes(vClean) || vClean.includes(vInput));
+            const matchesAddr = addrInput && addrInput.includes(vClean);
+
+            if (matchesVillage || matchesAddr) {
+                return {
+                    village: v,
+                    correctArea: ac.name,
+                };
+            }
+        }
+    }
+    return null;
+});
+
+function applyVillageSuggestion(villageName) {
+    form.village = villageName;
+}
+
+function switchArea(areaName) {
+    form.area = areaName;
+    if (typeof checkNewArea === 'function') {
+        checkNewArea();
+    }
+}
+
+function selectAreaFromGuide(areaName) {
+    form.area = areaName;
+    if (typeof checkNewArea === 'function') {
+        checkNewArea();
+    }
+    showAreaGuideModal.value = false;
+}
 
 onMounted(() => {
     if (!props.affiliatePortal && (!props.areas || props.areas.length === 0)) {

@@ -1224,6 +1224,7 @@ class PermissionRegistry
                 'menu_operational_progress', 'menu_network_maintenance', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'operational_progress_send_wa', 'network_maintenance_create', 'network_maintenance_update', 'operational_progress_view_area',
                 'menu_vouchers_free', 'voucher_free_card_stats', 'voucher_free_tab_generated', 'voucher_free_tab_customers', 'vouchers_free_create', 'vouchers_free_print', 'vouchers_free_delete', 'vouchers_free_toggle', 'vouchers_free_sync_customer', 'voucher_free_filter_connection', 'voucher_free_color_indicator',
                 'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
+                'menu_settings_areas', 'settings_areas_create', 'settings_areas_edit',
             ],
             'teknisi' => [
                 'menu_dashboard', 'dashboard_card_realtime', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_infra', 'dashboard_filter_area', 'dashboard_btn_refresh',
@@ -1255,6 +1256,7 @@ class PermissionRegistry
                 'menu_operational_progress', 'menu_network_maintenance', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'network_maintenance_create', 'network_maintenance_update', 'operational_progress_view_area',
                 'menu_vouchers_free', 'voucher_free_card_stats', 'voucher_free_tab_customers', 'vouchers_free_sync_customer', 'voucher_free_filter_connection', 'voucher_free_color_indicator',
                 'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
+                'menu_settings_areas', 'settings_areas_create', 'settings_areas_edit',
             ],
             'maintenance' => [
                 'menu_dashboard', 'menu_dashboard_realtime', 'dashboard_card_realtime', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_infra', 'dashboard_filter_area', 'dashboard_btn_refresh',
@@ -1287,6 +1289,7 @@ class PermissionRegistry
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_area', 'monitoring_teknisi_view_own',
                 'menu_operational_progress', 'menu_network_maintenance', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'network_maintenance_create', 'network_maintenance_update', 'operational_progress_view_area',
                 'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
+                'menu_settings_areas', 'settings_areas_create', 'settings_areas_edit',
             ],
             'kepala teknisi' => [
                 'menu_dashboard', 'menu_dashboard_realtime', 'dashboard_card_realtime', 'dashboard_card_tickets', 'dashboard_card_infra', 'dashboard_card_stats', 'dashboard_filter_area', 'dashboard_btn_refresh',
@@ -1319,6 +1322,7 @@ class PermissionRegistry
                 'menu_operational_progress', 'menu_network_maintenance', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'operational_progress_send_wa', 'network_maintenance_create', 'network_maintenance_update', 'operational_progress_view_area',
                 'menu_vouchers_free', 'voucher_free_card_stats', 'voucher_free_tab_customers', 'vouchers_free_sync_customer', 'voucher_free_filter_connection', 'voucher_free_color_indicator',
                 'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
+                'menu_settings_areas', 'settings_areas_create', 'settings_areas_edit',
             ],
             'dispatcher' => [
                 'menu_dashboard', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_filter_area', 'dashboard_btn_refresh',
@@ -1497,6 +1501,7 @@ class PermissionRegistry
                 'target_market_manage', 'target_market_program_create', 'target_market_program_toggle', 'target_market_program_delete', 'target_market_recalculate', 'target_market_sync_payroll',
                 'payroll_categories_manage', 'master_fees_manage',
                 'payroll_view_all', 'payroll_field_salary_edit', 'payroll_field_bank_view',
+                'menu_settings_areas', 'settings_areas_create', 'settings_areas_edit',
             ],
             'marketing' => [
                 'menu_dashboard', 'dashboard_card_stats', 'dashboard_filter_area',

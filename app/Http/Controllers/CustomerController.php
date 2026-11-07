@@ -1464,6 +1464,14 @@ class CustomerController extends Controller
         return Inertia::render('Customers/Booking', [
             'customers' => $customers,
             'areas' => fn () => \App\Models\Area::orderBy('name')->pluck('name')->all(),
+            'area_coverage' => fn () => \App\Models\Area::orderBy('name')->get(['id', 'name', 'description', 'address', 'coverage_villages'])->map(fn($a) => [
+                'id' => $a->id,
+                'name' => $a->name,
+                'description' => $a->description,
+                'address' => $a->address,
+                'coverage_villages' => $a->coverage_villages,
+                'villages' => $a->coverage_villages_list,
+            ]),
             'stats' => $stats,
             'technicians' => fn () => $resolveCsOfficers(),
             'cs_officers' => fn () => $resolveCsOfficers(),
@@ -2461,10 +2469,22 @@ class CustomerController extends Controller
                 ];
             });
 
-        // Kumpulkan desa yang pernah di-input saat booking per area untuk saran autocomplete
+        // Kumpulkan daftar area dan cakupan desa per area
+        $areaModels = \App\Models\Area::whereIn('name', $areas)->orderBy('name')->get();
+        $areaCoverageList = $areaModels->map(function ($a) {
+            return [
+                'id' => $a->id,
+                'name' => $a->name,
+                'description' => $a->description,
+                'address' => $a->address,
+                'coverage_villages' => $a->coverage_villages,
+                'villages' => $a->coverage_villages_list,
+            ];
+        })->all();
+
         $areaVillagesMap = [];
-        foreach (\App\Models\Area::whereIn('name', $areas)->when($isAffiliatePortal, fn ($query) => $query->whereRaw('1 = 0'))->get() as $a) {
-            $vList = collect();
+        foreach ($areaModels as $a) {
+            $vList = collect($a->coverage_villages_list);
             $custAddrs = Customer::where(function($q) use ($a) {
                 $q->where('area_id', $a->id)->orWhere('area', $a->name);
             })->whereNotNull('address')->pluck('address');
@@ -2501,6 +2521,7 @@ class CustomerController extends Controller
             'sales' => $sales,
             'areas' => $areas,
             'area_villages' => $areaVillagesMap,
+            'area_coverage' => $areaCoverageList,
             'isAffiliate' => $isAffiliate,
             'affiliatePortal' => $isAffiliatePortal,
             'taxSettings' => [

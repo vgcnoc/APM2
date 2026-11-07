@@ -6,7 +6,24 @@ use Illuminate\Database\Eloquent\Model;
 
 class Area extends Model
 {
-    protected $fillable = ['name', 'description', 'address', 'latitude', 'longitude', 'radius_meters'];
+    protected $fillable = ['name', 'description', 'address', 'latitude', 'longitude', 'radius_meters', 'coverage_villages'];
+    protected $appends = ['coverage_villages_list'];
+
+    public function getCoverageVillagesListAttribute(): array
+    {
+        if (empty($this->coverage_villages)) {
+            return [];
+        }
+        $items = explode(',', $this->coverage_villages);
+        $result = [];
+        foreach ($items as $item) {
+            $t = trim($item);
+            if ($t !== '' && !in_array($t, $result, true)) {
+                $result[] = $t;
+            }
+        }
+        return $result;
+    }
 
     public static function findByNameFlexible(?string $name): ?self
     {

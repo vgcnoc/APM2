@@ -94,6 +94,15 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                         Hapus Terpilih ({{ selectedIds.length }})
                     </button>
+                    <button 
+                        type="button" 
+                        @click="showAreaGuideModal = true" 
+                        class="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-sm rounded-xl border border-indigo-200 shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                        title="Lihat panduan cakupan desa per area BC"
+                    >
+                        <span>🧭</span>
+                        <span>Panduan Wilayah BC</span>
+                    </button>
                     <Link v-can="'customers_booking_create'" href="/customers/create" class="btn-primary">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -798,6 +807,56 @@
             @close="showQuickDetailModal = false"
             @updated="onQuickDetailUpdated"
         />
+
+        <!-- Modal Panduan Cakupan Wilayah BC -->
+        <Teleport to="body">
+            <div v-if="showAreaGuideModal" class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+                <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 max-h-[90vh] flex flex-col animate-scale-in">
+                    <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-lg">
+                                🧭
+                            </div>
+                            <div>
+                                <h3 class="text-base font-extrabold text-slate-900">Panduan Cakupan Wilayah &amp; Desa BC</h3>
+                                <p class="text-xs text-slate-500">Panduan wilayah agar pendaftaran pelanggan tidak salah pilih area.</p>
+                            </div>
+                        </div>
+                        <button type="button" @click="showAreaGuideModal = false" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+
+                    <div class="overflow-y-auto py-4 space-y-3.5 flex-1 pr-1">
+                        <div v-for="item in (props.area_coverage || [])" :key="item.name" class="p-4 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-indigo-50/30 hover:border-indigo-200 transition-all">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
+                                    <h4 class="text-sm font-extrabold text-slate-900">{{ item.name }}</h4>
+                                    <span v-if="item.description" class="text-xs text-slate-500 font-medium">({{ item.description }})</span>
+                                </div>
+                                <span class="text-xs text-slate-500 font-medium">{{ item.address || '-' }}</span>
+                            </div>
+                            <div class="mt-2.5">
+                                <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Cakupan Desa / Kelurahan:</div>
+                                <div v-if="item.villages && item.villages.length > 0" class="flex flex-wrap gap-1.5">
+                                    <span v-for="v in item.villages" :key="v" class="px-2.5 py-1 bg-white text-slate-800 text-xs font-medium rounded-lg border border-slate-200 shadow-2xs">
+                                        🏘️ {{ v }}
+                                    </span>
+                                </div>
+                                <span v-else class="text-xs text-slate-400 italic">Belum diatur</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-slate-100 flex justify-end">
+                        <button type="button" @click="showAreaGuideModal = false" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer">
+                            Tutup Panduan
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
     </AppLayout>
 </template>
 
@@ -810,7 +869,20 @@ import DataTable from '@/Components/DataTable.vue';
 import CustomerQuickDetailModal from '@/Components/CustomerQuickDetailModal.vue';
 import CustomerTermsModal from '@/Components/CustomerTermsModal.vue';
 
-const props = defineProps({ customers: Object, filters: Object, areas: Array, stats: Object, technicians: Array, cs_officers: Array });
+const props = defineProps({ 
+    customers: Object, 
+    filters: Object, 
+    areas: Array, 
+    area_coverage: {
+        type: Array,
+        default: () => ([]),
+    },
+    stats: Object, 
+    technicians: Array, 
+    cs_officers: Array 
+});
+
+const showAreaGuideModal = ref(false);
 
 // ── Customer Quick Detail & Edit Modal (GPS, KTP, Rumah, HP) ──
 const showQuickDetailModal = ref(false);

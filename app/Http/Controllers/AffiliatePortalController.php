@@ -454,6 +454,14 @@ class AffiliatePortalController extends Controller
             'total_clawback_amount' => (float) $clawbackList->sum('clawback_amount'),
             'total_clawback_count' => $clawbackList->count(),
             'settings' => $settings,
+            'area_coverage' => \App\Models\Area::orderBy('name')->get(['id', 'name', 'description', 'address', 'coverage_villages'])->map(fn($a) => [
+                'id' => $a->id,
+                'name' => $a->name,
+                'description' => $a->description,
+                'address' => $a->address,
+                'coverage_villages' => $a->coverage_villages,
+                'villages' => $a->coverage_villages_list,
+            ]),
         ]);
     }
 

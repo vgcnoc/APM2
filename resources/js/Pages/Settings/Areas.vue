@@ -95,6 +95,7 @@
                             <tr>
                                 <th scope="col" class="px-6 py-4 text-left text-[11px] font-extrabold text-slate-500 uppercase tracking-wider w-16">No</th>
                                 <th scope="col" class="px-6 py-4 text-left text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Nama Area / Wilayah</th>
+                                <th scope="col" class="px-6 py-4 text-left text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Cakupan Desa / Wilayah (Panduan)</th>
                                 <th scope="col" class="px-6 py-4 text-left text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Alamat &amp; Koordinat</th>
                                 <th scope="col" class="px-6 py-4 text-left text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Sebaran Pelanggan &amp; ODP</th>
                                 <th scope="col" class="px-6 py-4 text-left text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Deskripsi</th>
@@ -121,6 +122,17 @@
                                             </div>
                                         </div>
                                     </div>
+                                </td>
+
+                                <!-- Cakupan Desa / Wilayah -->
+                                <td class="px-6 py-4">
+                                    <div v-if="area.coverage_villages_list && area.coverage_villages_list.length > 0" class="flex flex-wrap gap-1 max-w-xs">
+                                        <span v-for="v in area.coverage_villages_list" :key="v" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                            <span>🏘️</span>
+                                            <span>{{ v }}</span>
+                                        </span>
+                                    </div>
+                                    <span v-else class="text-xs text-slate-400 italic">Belum diatur</span>
                                 </td>
 
                                 <!-- Alamat & Koordinat -->
@@ -242,6 +254,22 @@
                                 required 
                             />
                             <p v-if="form.errors.name" class="text-rose-500 text-xs mt-1 font-semibold">{{ form.errors.name }}</p>
+                        </div>
+
+                        <!-- Cakupan Desa / Wilayah (Panduan Booking) -->
+                        <div>
+                            <label class="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                                <span>Cakupan Desa / Wilayah (Panduan Booking)</span>
+                                <span class="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200">Panduan Booking</span>
+                            </label>
+                            <textarea 
+                                v-model="form.coverage_villages" 
+                                rows="2" 
+                                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 focus:bg-white transition-all" 
+                                placeholder="Contoh: Desa Sirnajaya, Desa Bantarkalong, Hegarmanah (pisahkan dengan koma)"
+                            ></textarea>
+                            <p class="text-[11px] text-slate-400 mt-1">Daftar desa/kelurahan yang dilayani oleh area ini (pisahkan dengan koma). Panduan ini otomatis tampil di form data booking karyawan &amp; affiliate luar agar tidak salah pilih area.</p>
+                            <p v-if="form.errors.coverage_villages" class="text-rose-500 text-xs mt-1 font-semibold">{{ form.errors.coverage_villages }}</p>
                         </div>
 
                         <!-- Deskripsi -->
@@ -405,6 +433,7 @@ const form = useForm({
     name: '',
     description: '',
     address: '',
+    coverage_villages: '',
     latitude: '',
     longitude: '',
     radius_meters: 500,
@@ -414,6 +443,7 @@ function openCreateModal() {
     isEditing.value = false;
     editId.value = null;
     form.reset();
+    form.coverage_villages = '';
     form.radius_meters = 500;
     form.clearErrors();
     isModalOpen.value = true;
@@ -425,6 +455,7 @@ function openEditModal(area) {
     form.name = area.name;
     form.description = area.description || '';
     form.address = area.address || '';
+    form.coverage_villages = area.coverage_villages || '';
     form.latitude = area.latitude || '';
     form.longitude = area.longitude || '';
     form.radius_meters = area.radius_meters || 500;

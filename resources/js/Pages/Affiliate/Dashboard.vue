@@ -927,6 +927,43 @@
                             </ul>
                         </div>
 
+                        <!-- Panduan Cakupan Wilayah & Desa BC -->
+                        <div class="p-5 rounded-2xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50/70 via-blue-50/50 to-white space-y-3">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2 text-indigo-800 font-bold text-xs uppercase tracking-wider">
+                                    <span class="w-6 h-6 rounded-lg bg-indigo-100 flex items-center justify-center text-xs">🧭</span>
+                                    <span>Panduan Area &amp; Wilayah Cakupan Desa</span>
+                                </div>
+                                <span class="text-[10px] font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full">
+                                    Penting Saat Booking
+                                </span>
+                            </div>
+                            <h4 class="text-sm font-black text-slate-900">
+                                Jangan Salah Pilih Area / BC Saat Menginput Pelanggan
+                            </h4>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                Agar penugasan teknisi dan survey berjalan lancar, pastikan memilih Area/BC yang sesuai dengan lokasi desa pelanggan:
+                            </p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                                <div v-for="item in (props.area_coverage || [])" :key="item.name" class="p-3 bg-white rounded-xl border border-indigo-100 shadow-2xs">
+                                    <div class="flex items-center gap-2 font-extrabold text-xs text-slate-900">
+                                        <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
+                                        <span>{{ item.name }}</span>
+                                        <span v-if="item.description" class="text-[11px] text-slate-400 font-normal">({{ item.description }})</span>
+                                    </div>
+                                    <div class="mt-2">
+                                        <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Cakupan Desa:</div>
+                                        <div v-if="item.villages && item.villages.length > 0" class="flex flex-wrap gap-1">
+                                            <span v-for="v in item.villages" :key="v" class="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[11px] font-semibold rounded-md border border-indigo-100">
+                                                🏘️ {{ v }}
+                                            </span>
+                                        </div>
+                                        <span v-else class="text-[11px] text-slate-400 italic">Belum diatur</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Step 2: Alur Booking Sampai Aktivasi -->
                         <div class="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-3">
                             <div class="flex items-center gap-2 text-indigo-700 font-bold text-xs uppercase tracking-wider">
@@ -1152,6 +1189,7 @@ const props = defineProps({
     is_employee: Boolean,
     pending_payroll_incentives: Number,
     payout_info: Object,
+    area_coverage: Array,
     tab: String,
 });
 
