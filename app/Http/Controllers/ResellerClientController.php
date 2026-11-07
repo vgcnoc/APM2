@@ -25,14 +25,19 @@ class ResellerClientController extends Controller
         if (!$user) return null;
 
         $reseller = \App\Models\Reseller::where('user_id', $user->id)->first();
+        if (!$reseller && $user->customer) {
+            $reseller = \App\Models\Reseller::where('customer_id', $user->customer->id)->first();
+        }
         if (!$reseller) {
             $userRole = strtolower(trim((string) $user->role));
-            if (in_array($userRole, ['admin', 'superadmin', 'super admin', 'super-admin', 'reseller']) || (method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super admin') || $user->hasRole('reseller')))) {
+            $isAdmin = in_array($userRole, ['admin', 'superadmin', 'super admin', 'super-admin']) || (method_exists($user, 'hasRole') && ($user->hasRole('admin') || $user->hasRole('super admin')));
+            if ($isAdmin || $userRole === 'reseller' || (method_exists($user, 'hasRole') && $user->hasRole('reseller'))) {
                 $reseller = \App\Models\Reseller::firstOrCreate(
                     ['user_id' => $user->id],
                     [
                         'customer_id' => $user->customer?->id ?? null,
-                        'balance' => in_array($userRole, ['admin', 'superadmin', 'super admin', 'super-admin']) ? 5000000 : 0,
+                        'balance' => $isAdmin ? 5000000 : 0,
+                        'tier' => $isAdmin ? 'master' : 'regular',
                         'is_active' => true,
                     ]
                 );
@@ -42,6 +47,75 @@ class ResellerClientController extends Controller
             $reseller->update(['referral_code' => Reseller::generateReferralCode()]);
         }
         return $reseller;
+    }
+
+    /**
+     * Dapatkan daftar downline aktif milik Master Biller (bebas akun admin / staff).
+     */
+    private function getDownlinesData(Reseller $reseller): array
+    {
+        if (!$reseller->isMaster()) {
+            return [];
+        }
+
+        return $reseller->downlines()
+            ->with(['customer', 'user'])
+            ->where('is_active', true)
+            ->whereHas('user', function ($u) {
+                $u->where('is_active', true)
+                  ->whereNotIn('email', ['admin@isp.local'])
+                  ->whereNotIn('role', ['admin', 'superadmin', 'super admin', 'super-admin', 'noc', 'teknisi', 'cs', 'finance', 'manager']);
+            })
+            ->get()
+            ->map(function ($d) {
+                return [
+                    'id' => $d->id,
+                    'name' => $d->customer?->name ?: $d->user?->name,
+                    'phone' => $d->customer?->phone ?: $d->user?->phone,
+                    'address' => $d->customer?->address ?: '-',
+                    'balance' => (float) $d->balance,
+                    'created_at' => $d->created_at ? $d->created_at->translatedFormat('d M Y') : '-',
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Dapatkan daftar seluruh sub-reseller yang berhak menerima transfer saldo modal dari Master Biller.
+     * Secara ketat mengecualikan akun Super Admin, Admin, dan Staf.
+     */
+    private function getAllResellersForTransfer(Reseller $reseller): array
+    {
+        if (!$reseller->isMaster()) {
+            return [];
+        }
+
+        return Reseller::with(['customer', 'user'])
+            ->where('id', '!=', $reseller->id)
+            ->where('is_active', true)
+            ->where('tier', '!=', 'master')
+            ->whereHas('user', function ($u) {
+                $u->where('is_active', true)
+                  ->whereNotIn('email', ['admin@isp.local'])
+                  ->whereNotIn('role', ['admin', 'superadmin', 'super admin', 'super-admin', 'noc', 'teknisi', 'cs', 'finance', 'manager']);
+            })
+            ->where(function ($q) use ($reseller) {
+                $q->where('parent_id', $reseller->id)->orWhereNull('parent_id');
+            })
+            ->get()
+            ->map(function ($r) use ($reseller) {
+                return [
+                    'id' => $r->id,
+                    'name' => $r->customer?->name ?: $r->user?->name,
+                    'phone' => $r->customer?->phone ?: $r->user?->phone,
+                    'balance' => (float) $r->balance,
+                    'parent_id' => $r->parent_id,
+                    'is_downline' => $r->parent_id === $reseller->id,
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     /**
@@ -122,29 +196,12 @@ class ResellerClientController extends Controller
         return Inertia::render('ClientArea/Dashboard', [
             'reseller' => $reseller->load(['customer', 'master.customer', 'master.user']),
             'is_master' => $reseller->isMaster(),
-            'downlines' => $reseller->isMaster() ? $reseller->downlines()->with(['customer', 'user'])->get()->map(function ($d) {
-                return [
-                    'id' => $d->id,
-                    'name' => $d->customer?->name ?: $d->user?->name,
-                    'phone' => $d->customer?->phone ?: $d->user?->phone,
-                    'address' => $d->customer?->address ?: '-',
-                    'balance' => (float) $d->balance,
-                    'created_at' => $d->created_at ? $d->created_at->translatedFormat('d M Y') : '-',
-                ];
-            })->values()->all() : [],
+            'downlines' => $this->getDownlinesData($reseller),
             'total_downlines_balance' => $reseller->isMaster() ? (float) $reseller->downlines()->sum('balance') : 0,
             'total_override_royalty' => $reseller->isMaster() ? (float) ResellerTransaction::where('reseller_id', $reseller->id)->where('reference_id', 'like', 'OVR-%')->sum('amount') : 0,
             'min_deposit' => $reseller->isMaster() ? (int) Setting::get('biller_min_deposit', Setting::get('master_reseller_min_deposit', 2000000)) : (int) Setting::get('reseller_min_deposit', 20000),
             'override_fee_amount' => (float) ($reseller->override_fee ?: Setting::get('master_reseller_override_fee', 500)),
-            'all_resellers_for_transfer' => $reseller->isMaster() ? Reseller::with(['customer', 'user'])->where('id', '!=', $reseller->id)->where('is_active', true)->where('tier', '!=', 'master')->where(function ($q) use ($reseller) { $q->where('parent_id', $reseller->id)->orWhereNull('parent_id'); })->get()->map(function ($r) use ($reseller) {
-                return [
-                    'id' => $r->id,
-                    'name' => $r->customer?->name ?: $r->user?->name,
-                    'phone' => $r->customer?->phone ?: $r->user?->phone,
-                    'balance' => (float) $r->balance,
-                    'is_downline' => $r->parent_id === $reseller->id,
-                ];
-            })->values()->all() : [],
+            'all_resellers_for_transfer' => $this->getAllResellersForTransfer($reseller),
             'vouchers' => $vouchers,
             'profiles' => $profiles,
             'income' => $income,
@@ -218,29 +275,12 @@ class ResellerClientController extends Controller
         return Inertia::render('ClientArea/Billing', [
             'reseller' => $reseller->load(['customer', 'master.customer', 'master.user']),
             'is_master' => $reseller->isMaster(),
-            'downlines' => $reseller->isMaster() ? $reseller->downlines()->with(['customer', 'user'])->get()->map(function ($d) {
-                return [
-                    'id' => $d->id,
-                    'name' => $d->customer?->name ?: $d->user?->name,
-                    'phone' => $d->customer?->phone ?: $d->user?->phone,
-                    'address' => $d->customer?->address ?: '-',
-                    'balance' => (float) $d->balance,
-                    'created_at' => $d->created_at ? $d->created_at->translatedFormat('d M Y') : '-',
-                ];
-            })->values()->all() : [],
+            'downlines' => $this->getDownlinesData($reseller),
             'total_downlines_balance' => $reseller->isMaster() ? (float) $reseller->downlines()->sum('balance') : 0,
             'total_override_royalty' => $reseller->isMaster() ? (float) ResellerTransaction::where('reseller_id', $reseller->id)->where('reference_id', 'like', 'OVR-%')->sum('amount') : 0,
             'min_deposit' => $reseller->isMaster() ? (int) Setting::get('biller_min_deposit', Setting::get('master_reseller_min_deposit', 2000000)) : (int) Setting::get('reseller_min_deposit', 20000),
             'override_fee_amount' => (float) ($reseller->override_fee ?: Setting::get('master_reseller_override_fee', 500)),
-            'all_resellers_for_transfer' => $reseller->isMaster() ? Reseller::with(['customer', 'user'])->where('id', '!=', $reseller->id)->where('is_active', true)->where('tier', '!=', 'master')->where(function ($q) use ($reseller) { $q->where('parent_id', $reseller->id)->orWhereNull('parent_id'); })->get()->map(function ($r) use ($reseller) {
-                return [
-                    'id' => $r->id,
-                    'name' => $r->customer?->name ?: $r->user?->name,
-                    'phone' => $r->customer?->phone ?: $r->user?->phone,
-                    'balance' => (float) $r->balance,
-                    'is_downline' => $r->parent_id === $reseller->id,
-                ];
-            })->values()->all() : [],
+            'all_resellers_for_transfer' => $this->getAllResellersForTransfer($reseller),
             'invoices' => $invoices,
             'total_unpaid_kasbon' => $totalUnpaidKasbon,
             'filters' => $request->only(['type', 'status']),
@@ -442,29 +482,12 @@ class ResellerClientController extends Controller
         return Inertia::render('ClientArea/Biller', [
             'reseller' => $reseller->load(['customer', 'master.customer', 'master.user']),
             'is_master' => $reseller->isMaster(),
-            'downlines' => $reseller->isMaster() ? $reseller->downlines()->with(['customer', 'user'])->get()->map(function ($d) {
-                return [
-                    'id' => $d->id,
-                    'name' => $d->customer?->name ?: $d->user?->name,
-                    'phone' => $d->customer?->phone ?: $d->user?->phone,
-                    'address' => $d->customer?->address ?: '-',
-                    'balance' => (float) $d->balance,
-                    'created_at' => $d->created_at ? $d->created_at->translatedFormat('d M Y') : '-',
-                ];
-            })->values()->all() : [],
+            'downlines' => $this->getDownlinesData($reseller),
             'total_downlines_balance' => $reseller->isMaster() ? (float) $reseller->downlines()->sum('balance') : 0,
             'total_override_royalty' => $reseller->isMaster() ? (float) ResellerTransaction::where('reseller_id', $reseller->id)->where('reference_id', 'like', 'OVR-%')->sum('amount') : 0,
             'min_deposit' => $reseller->isMaster() ? (int) Setting::get('biller_min_deposit', Setting::get('master_reseller_min_deposit', 2000000)) : (int) Setting::get('reseller_min_deposit', 20000),
             'override_fee_amount' => (float) ($reseller->override_fee ?: Setting::get('master_reseller_override_fee', 500)),
-            'all_resellers_for_transfer' => $reseller->isMaster() ? Reseller::with(['customer', 'user'])->where('id', '!=', $reseller->id)->where('is_active', true)->where('tier', '!=', 'master')->where(function ($q) use ($reseller) { $q->where('parent_id', $reseller->id)->orWhereNull('parent_id'); })->get()->map(function ($r) use ($reseller) {
-                return [
-                    'id' => $r->id,
-                    'name' => $r->customer?->name ?: $r->user?->name,
-                    'phone' => $r->customer?->phone ?: $r->user?->phone,
-                    'balance' => (float) $r->balance,
-                    'is_downline' => $r->parent_id === $reseller->id,
-                ];
-            })->values()->all() : [],
+            'all_resellers_for_transfer' => $this->getAllResellersForTransfer($reseller),
             'recentPayments' => $recentPayments,
             'totalTransactionsAmount' => $totalTransactionsAmount,
             'totalTransactionsCount' => $totalTransactionsCount,
@@ -744,6 +767,12 @@ class ResellerClientController extends Controller
 
         if ($target->isMaster()) {
             return back()->with('error', 'Tidak dapat mentransfer saldo P2P ke sesama Master Biller.');
+        }
+
+        $targetUser = $target->user;
+        $targetUserRole = strtolower(trim((string) ($targetUser?->role ?? '')));
+        if (in_array($targetUserRole, ['admin', 'superadmin', 'super admin', 'super-admin', 'noc', 'teknisi', 'cs', 'finance', 'manager']) || $targetUser?->email === 'admin@isp.local') {
+            return back()->with('error', 'Tidak dapat mentransfer saldo ke akun Administrator atau Staf.');
         }
 
         if ($target->parent_id && $target->parent_id !== $reseller->id) {

@@ -965,18 +965,32 @@
                                     class="w-full rounded-xl border-gray-300 text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 py-2.5"
                                 >
                                     <option value="" disabled>-- Pilih Loket Tujuan Transfer --</option>
+                                    <option v-if="(all_resellers_for_transfer || []).length === 0" value="" disabled>
+                                        (Belum ada loket sub-reseller binaan yang terdaftar)
+                                    </option>
                                     <optgroup v-if="myDownlineOptions.length > 0" label="── Loket Binaan Saya ──">
                                         <option v-for="r in myDownlineOptions" :key="r.id" :value="r.id">
-                                            🏪 {{ r.name }} ({{ r.phone || '-' }}) • Saldo: Rp {{ Number(r.balance || 0).toLocaleString('id-ID') }}
+                                            🏪 {{ r.name }} {{ r.phone ? `(${r.phone})` : '' }} • Saldo: Rp {{ Number(r.balance || 0).toLocaleString('id-ID') }}
                                         </option>
                                     </optgroup>
                                     <optgroup v-if="freeResellerOptions.length > 0" label="── Loket Mandiri (Otomatis Jadi Binaan) ──">
                                         <option v-for="r in freeResellerOptions" :key="r.id" :value="r.id">
-                                            ➕ {{ r.name }} ({{ r.phone || '-' }}) • Saldo: Rp {{ Number(r.balance || 0).toLocaleString('id-ID') }}
+                                            ➕ {{ r.name }} {{ r.phone ? `(${r.phone})` : '' }} • Saldo: Rp {{ Number(r.balance || 0).toLocaleString('id-ID') }}
                                         </option>
                                     </optgroup>
                                 </select>
                                 <div v-if="transferForm.errors.target_reseller_id" class="text-xs text-rose-600 mt-1">{{ transferForm.errors.target_reseller_id }}</div>
+
+                                <!-- Notifikasi jika belum ada sub-reseller -->
+                                <div v-if="(all_resellers_for_transfer || []).length === 0" class="mt-2.5 p-3.5 bg-amber-50/90 border border-amber-200 rounded-2xl text-xs text-amber-900 space-y-1.5">
+                                    <div class="font-bold flex items-center gap-1.5 text-amber-950">
+                                        <span>ℹ️</span>
+                                        <span>Belum Ada Loket Sub-Reseller Tersedia</span>
+                                    </div>
+                                    <p class="text-[11px] text-amber-800 leading-relaxed">
+                                        Saat ini belum ada mitra loket / sub-reseller yang terdaftar. Bagikan kode referral Master Anda (<strong class="font-mono text-amber-950 font-black">{{ reseller?.referral_code || 'MSTR-...' }}</strong>) kepada calon mitra loket agar otomatis terdaftar di bawah binaan Anda.
+                                    </p>
+                                </div>
                             </div>
 
                             <!-- Pilihan Nominal Cepat Transfer -->
