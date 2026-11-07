@@ -198,7 +198,11 @@ class Customer extends Model
      */
     public function ont(): HasOne
     {
-        return $this->hasOne(Ont::class)->latest('id');
+        return $this->hasOne(Ont::class)
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', '!=', 'rusak');
+            })
+            ->latest('id');
     }
 
     public function onts(): HasMany

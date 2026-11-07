@@ -194,6 +194,33 @@
                         </div>
                     </td>
 
+                    <!-- Perangkat ONT (Riwayat Aktivasi) -->
+                    <td>
+                        <div v-if="row.ont" class="space-y-1">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="font-bold text-xs text-slate-900 flex items-center gap-1">
+                                    <span>📟</span>
+                                    <span>{{ row.ont.brand || 'ONT' }} {{ row.ont.model || '' }}</span>
+                                </span>
+                                <span v-if="row.ont.ont_id" class="text-[10px] bg-purple-50 text-purple-700 border border-purple-200 px-1 py-0.2 rounded font-mono font-bold">
+                                    {{ row.ont.ont_id }}
+                                </span>
+                            </div>
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="font-mono text-xs text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 font-medium">
+                                    {{ row.ont.serial_number || '-' }}
+                                </span>
+                                <span v-if="(row.ont.description && row.ont.description.includes('Menggantikan SN')) || row.ont.last_rx_ticket_ref" class="text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-300 px-1.5 py-0.2 rounded inline-flex items-center gap-0.5" title="ONT hasil pergantian tiket PGS/PGK">
+                                    <span>🔄</span> Ganti ONT
+                                </span>
+                            </div>
+                            <div v-if="row.ont.rx_power" class="text-[10px] text-slate-500 font-mono">
+                                Redaman: <span :class="Number(row.ont.rx_power) >= -27 ? 'text-emerald-700 font-bold' : 'text-rose-600 font-bold'">{{ row.ont.rx_power }} dBm</span>
+                            </div>
+                        </div>
+                        <span v-else class="text-xs text-slate-400 italic">Tanpa ONT</span>
+                    </td>
+
                     <!-- Akun / Mode Akses -->
                     <td>
                         <div class="space-y-1">
@@ -1093,10 +1120,13 @@
                                 <h3 class="text-lg font-bold text-purple-900 leading-tight">Edit Konfigurasi Aktivasi</h3>
                                 <div class="flex items-center gap-2 mt-0.5 flex-wrap">
                                     <p class="text-xs text-purple-700 font-medium">{{ editCustomer.name }} ({{ editCustomer.customer_code }})</p>
-                                    <span v-if="editCustomer.ont?.brand" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-200/80 text-purple-900 border border-purple-300 flex items-center gap-1">
+                                    <span v-if="editCustomer.ont" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-200/80 text-purple-900 border border-purple-300 flex items-center gap-1">
                                         <span>📟</span>
-                                        <span>{{ editCustomer.ont.brand }} {{ editCustomer.ont.model || '' }}</span>
+                                        <span>{{ editCustomer.ont.brand || 'ONT' }} {{ editCustomer.ont.model || '' }}</span>
                                         <span class="font-mono text-purple-800 font-medium">({{ editCustomer.ont.serial_number || '-' }})</span>
+                                        <span v-if="(editCustomer.ont.description && editCustomer.ont.description.includes('Menggantikan SN')) || editCustomer.ont.last_rx_ticket_ref" class="ml-1 px-1.5 py-0.2 bg-amber-400 text-amber-950 rounded text-[9px] font-bold inline-flex items-center gap-0.5">
+                                            <span>🔄</span> Ganti ONT
+                                        </span>
                                     </span>
                                 </div>
                             </div>
@@ -1112,9 +1142,28 @@
                             <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
                                 <div class="flex items-center justify-between mb-3">
                                     <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">Detail Data ONT & Pelanggan</h4>
-                                    <span v-if="editCustomer.ont?.brand" class="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200">
-                                        {{ editCustomer.ont.ont_id ? (editCustomer.ont.ont_id + ' • ') : '' }}{{ editCustomer.ont.brand }} {{ editCustomer.ont.model || '' }}
+                                    <span v-if="editCustomer.ont" class="text-[10px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200 flex items-center gap-1">
+                                        {{ editCustomer.ont.ont_id ? (editCustomer.ont.ont_id + ' • ') : '' }}{{ editCustomer.ont.brand || 'ONT' }} {{ editCustomer.ont.model || '' }}
+                                        <span v-if="(editCustomer.ont.description && editCustomer.ont.description.includes('Menggantikan SN')) || editCustomer.ont.last_rx_ticket_ref" class="ml-1 px-1 bg-amber-400 text-amber-950 rounded text-[9px] font-bold">
+                                            🔄 Pengganti
+                                        </span>
                                     </span>
+                                </div>
+
+                                <!-- Banner Info Jika ONT Merupakan Unit Pengganti Tiket PGS/PGK -->
+                                <div v-if="(editCustomer.ont?.description && editCustomer.ont.description.includes('Menggantikan SN')) || editCustomer.ont?.last_rx_ticket_ref" class="mb-3 p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-start gap-2.5 text-xs text-amber-900 shadow-2xs">
+                                    <span class="text-base leading-none">🔄</span>
+                                    <div class="space-y-0.5">
+                                        <div class="font-extrabold flex items-center gap-1.5 text-amber-950">
+                                            <span>Perangkat ONT Hasil Pergantian Tiket</span>
+                                            <span v-if="editCustomer.ont?.last_rx_ticket_ref" class="px-1.5 py-0.2 bg-amber-200 text-amber-900 rounded font-mono font-bold text-[10px]">
+                                                #{{ editCustomer.ont.last_rx_ticket_ref }}
+                                            </span>
+                                        </div>
+                                        <p class="text-[11px] text-amber-800">
+                                            {{ editCustomer.ont?.description || 'Unit baru ini telah dipasang dan disinkronkan otomatis dari penyelesaian tiket pergantian perangkat.' }}
+                                        </p>
+                                    </div>
                                 </div>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-4 text-sm">
                                     <div>
@@ -1955,6 +2004,7 @@ const columns = computed(() => {
             { key: 'name', label: 'Pelanggan', class: 'min-w-[190px]' },
             { key: 'package', label: 'Paket & Tagihan', class: 'whitespace-nowrap' },
             { key: 'activation_date', label: 'Tgl Aktivasi', class: 'whitespace-nowrap' },
+            { key: 'ont', label: 'Perangkat ONT', class: 'min-w-[160px] whitespace-nowrap' },
             { key: 'account', label: 'Akun / Mode', class: 'whitespace-nowrap' },
             { key: 'status', label: 'Status', class: 'text-center whitespace-nowrap' },
             { key: 'topology', label: 'Topologi', class: 'min-w-[140px]' },

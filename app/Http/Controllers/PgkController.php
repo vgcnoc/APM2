@@ -1271,19 +1271,34 @@ class PgkController extends Controller
                 $portNum = $oldOnt?->port_number;
                 $odpPortId = $oldOnt?->odp_port_id;
 
-                // Lepas ONT lama pelanggan dan tandai rusak/ditarik (hanya jika belum diproses sebelumnya)
-                if ($oldOnt && $pgk->ont_replacement_status !== 'installed') {
-                    $oldOnt->update([
+                // 1. Lepas SEMUA ONT lama pelanggan dan tandai rusak/ditarik
+                Ont::where('customer_id', $pgk->customer_id)
+                    ->where('id', '!=', $preparedOnt->id)
+                    ->update([
                         'customer_id' => null,
                         'odp_id' => null,
                         'port_number' => null,
                         'odp_port_id' => null,
                         'status' => 'rusak',
+                    ]);
+
+                if ($oldOnt && $pgk->ont_replacement_status !== 'installed') {
+                    $oldOnt->update([
                         'description' => trim(($oldOnt->description ? $oldOnt->description . ' | ' : '') . 'Diganti dengan SN ' . $preparedOnt->serial_number . ' pada tiket PGK ' . $pgk->ticket_number . ' (' . now()->format('Y-m-d H:i') . ')'),
                     ]);
                 }
 
-                // Pasangkan ONT baru ke pelanggan & sinkronkan data konfigurasi aktivasi
+                // 2. Parse redaman baru & petugas teknisi
+                $cleanRx = !empty($request->optical_power_after) ? preg_replace('/[^0-9.\-]/', '', (string)$request->optical_power_after) : null;
+                $rxVal = is_numeric($cleanRx) ? (float)$cleanRx : $preparedOnt->rx_power;
+
+                $officers = is_array($preparedOnt->input_officers) ? $preparedOnt->input_officers : [];
+                $techName = auth()->user()?->name;
+                if ($techName && !in_array($techName, $officers)) {
+                    $officers[] = $techName;
+                }
+
+                // 3. Pasangkan ONT baru ke pelanggan & sinkronkan data konfigurasi aktivasi
                 $preparedOnt->update([
                     'customer_id' => $pgk->customer_id,
                     'area_id' => $customer?->area_id ?? $preparedOnt->area_id,
@@ -1291,22 +1306,68 @@ class PgkController extends Controller
                     'port_number' => $portNum ?? $preparedOnt->port_number,
                     'odp_port_id' => $odpPortId ?? $preparedOnt->odp_port_id,
                     'status' => 'active',
-                    'pppoe_user' => $preparedOnt->pppoe_user ?: $oldOnt?->pppoe_user,
-                    'pppoe_password' => $preparedOnt->pppoe_password ?: $oldOnt?->pppoe_password,
-                    'access_mode' => $preparedOnt->access_mode ?: ($oldOnt?->access_mode ?? 'PPPOE'),
-                    'vlan_id' => $preparedOnt->vlan_id ?: $oldOnt?->vlan_id,
-                    'vlan_mode' => $preparedOnt->vlan_mode ?: $oldOnt?->vlan_mode,
+                    'pppoe_user' => $oldOnt?->pppoe_user ?: $preparedOnt->pppoe_user,
+                    'pppoe_password' => $oldOnt?->pppoe_password ?: $preparedOnt->pppoe_password,
+                    'access_mode' => $oldOnt?->access_mode ?: ($preparedOnt->access_mode ?? 'PPPOE'),
+                    'vlan_id' => $oldOnt?->vlan_id ?: $preparedOnt->vlan_id,
+                    'vlan_mode' => $oldOnt?->vlan_mode ?: $preparedOnt->vlan_mode,
                     'ip_login' => $preparedOnt->ip_login ?: ($oldOnt?->ip_login ?? '192.168.1.1'),
                     'login_user' => $preparedOnt->login_user ?: ($oldOnt?->login_user ?? 'admin'),
                     'login_password' => $preparedOnt->login_password ?: ($oldOnt?->login_password ?? 'admin'),
-                    'free_hotspot' => $preparedOnt->free_hotspot ?? ($oldOnt?->free_hotspot ?? false),
-                    'hotspot_user' => $preparedOnt->hotspot_user ?: $oldOnt?->hotspot_user,
-                    'hotspot_password' => $preparedOnt->hotspot_password ?: $oldOnt?->hotspot_password,
-                    'hotspot_vlan_id' => $preparedOnt->hotspot_vlan_id ?: $oldOnt?->hotspot_vlan_id,
+                    'free_hotspot' => $oldOnt?->free_hotspot ?? ($preparedOnt->free_hotspot ?? false),
+                    'hotspot_user' => $oldOnt?->hotspot_user ?: $preparedOnt->hotspot_user,
+                    'hotspot_password' => $oldOnt?->hotspot_password ?: $preparedOnt->hotspot_password,
+                    'hotspot_vlan_id' => $oldOnt?->hotspot_vlan_id ?: $preparedOnt->hotspot_vlan_id,
+                    'rx_power' => $rxVal,
+                    'initial_rx_power' => $preparedOnt->initial_rx_power ?: $rxVal,
+                    'last_rx_updated_at' => now(),
+                    'last_rx_ticket_ref' => $pgk->ticket_number,
+                    'last_rx_notes' => 'Diukur saat pergantian ONT tiket PGK ' . $pgk->ticket_number,
+                    'input_officers' => $officers,
                     'description' => trim(($preparedOnt->description ? $preparedOnt->description . ' | ' : '') . 'Menggantikan SN ' . ($oldOnt?->serial_number ?? '-') . ' pada tiket PGK ' . $pgk->ticket_number),
                 ]);
 
-                // Sinkronkan akun pelanggan ke RADIUS Mikrotik jika aktif
+                // 4. Update riwayat material terpasang pelanggan (CustomerInstalledMaterial) & Log Aktivasi
+                if ($customer) {
+                    \App\Models\CustomerInstalledMaterial::where('customer_id', $customer->id)
+                        ->where(function($q) use ($oldOnt) {
+                            $q->where('item_name', 'like', '%ont%')
+                              ->orWhere('item_name', 'like', '%modem%');
+                            if ($oldOnt && $oldOnt->serial_number) {
+                                $q->orWhere('serial_number', $oldOnt->serial_number);
+                            }
+                        })
+                        ->where('status', 'installed')
+                        ->update([
+                            'status' => 'fully_replaced',
+                            'notes' => 'Diganti seluruhnya dengan SN ' . $preparedOnt->serial_number . ' pada tiket PGK #' . $pgk->ticket_number,
+                        ]);
+
+                    $ontMat = \App\Services\MaterialService::resolveOntMaterial($preparedOnt);
+                    \App\Models\CustomerInstalledMaterial::create([
+                        'customer_id' => $customer->id,
+                        'material_id' => $ontMat?->id,
+                        'item_name' => $preparedOnt->brand ?: ($ontMat?->name ?? 'ONT Baru'),
+                        'quantity' => 1,
+                        'unit' => 'unit',
+                        'serial_number' => $preparedOnt->serial_number,
+                        'installed_at' => now(),
+                        'installation_source' => 'pgk_replacement',
+                        'status' => 'installed',
+                        'notes' => 'Unit ONT baru hasil pergantian tiket PGK #' . $pgk->ticket_number,
+                    ]);
+
+                    $customer->touch();
+                    \App\Models\AuditLog::createLog(
+                        'Pergantian ONT PGK',
+                        $customer,
+                        $customer->status,
+                        $customer->status,
+                        "Pergantian unit ONT berhasil dipasang melalui tiket PGK {$pgk->ticket_number}. ONT baru: {$preparedOnt->brand} {$preparedOnt->model} (SN: {$preparedOnt->serial_number}) menggantikan ONT lama (SN: " . ($oldOnt?->serial_number ?? '-') . ")."
+                    );
+                }
+
+                // 5. Sinkronkan akun pelanggan ke RADIUS Mikrotik jika aktif
                 try {
                     if ($customer) {
                         app(\App\Services\RadiusService::class)->syncCustomer($customer);

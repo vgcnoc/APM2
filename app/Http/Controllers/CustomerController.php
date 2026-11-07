@@ -5441,14 +5441,22 @@ class CustomerController extends Controller
         }
         $customer->update($custUpdates);
 
-        $ont = $customer->ont ?: \App\Models\Ont::where('customer_id', $customer->id)->first();
+        $ont = $customer->ont ?: \App\Models\Ont::where('customer_id', $customer->id)
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', '!=', 'rusak');
+            })
+            ->latest('id')
+            ->first();
         if (!$ont && !empty($customer->ont_id)) {
-            $ont = \App\Models\Ont::find($customer->ont_id);
-            if ($ont) {
-                $ont->update(['customer_id' => $customer->id]);
+            $candidateOnt = \App\Models\Ont::find($customer->ont_id);
+            if ($candidateOnt && $candidateOnt->status !== 'rusak') {
+                $ont = $candidateOnt;
+                if (!$ont->customer_id) {
+                    $ont->update(['customer_id' => $customer->id]);
+                }
             }
         }
-        if ($ont && empty($customer->ont_id)) {
+        if ($ont && $customer->ont_id !== $ont->id) {
             $customer->update(['ont_id' => $ont->id]);
         }
 
