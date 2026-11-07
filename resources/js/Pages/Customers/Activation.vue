@@ -2259,7 +2259,7 @@ const invoiceSimulation = computed(() => {
         const actMonth = actDate.getMonth();
         const actDay = actDate.getDate();
 
-        if (actDay >= issueDateSetting) {
+        if (actDay > issueDateSetting) {
             nextCutOffDate = new Date(actYear, actMonth + 1, issueDateSetting);
         } else {
             nextCutOffDate = new Date(actYear, actMonth, issueDateSetting);

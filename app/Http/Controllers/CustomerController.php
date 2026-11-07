@@ -3895,15 +3895,19 @@ class CustomerController extends Controller
                 if ($billingType === 'pascabayar') {
                     // Pascabayar: Hitung tanggal cut-off / terbit berikutnya
                     $nextBillingDate = $activationDate->copy();
-                    if ($activationDate->day >= $issueDateSetting) {
+                    if ($activationDate->day > $issueDateSetting) {
                         $nextBillingDate->startOfMonth()->addMonthNoOverflow()->day($issueDateSetting);
                     } else {
                         $nextBillingDate->day($issueDateSetting);
                     }
 
-                    if ($isProrataFirstMonth) {
+                    $endOfMonth = $activationDate->copy()->endOfMonth();
+                    $totalDaysInMonth = $endOfMonth->day;
+                    $daysUsed = max(1, $totalDaysInMonth - $activationDate->day + 1);
+
+                    // Hanya prorata jika pemakaian kurang dari 1 bulan penuh (misal aktivasi lewat dari tanggal terbit)
+                    if ($isProrataFirstMonth && $daysUsed < $totalDaysInMonth) {
                         // Tagihan pertama dihitung prorata sampai akhir bulan berjalan
-                        $endOfMonth = $activationDate->copy()->endOfMonth();
                         $amount = ProrataCalculator::firstMonthAmount($amount, $activationDate, $prorataFormula);
 
                         $isProrata = true;
@@ -3911,19 +3915,24 @@ class CustomerController extends Controller
                         $invoiceNotes = 'Tagihan Pertama (Prorata s/d Akhir Bulan: ' . $activationDate->format('d M') . ' - ' . $endOfMonth->format('d M Y') . ')';
                     } else {
                         // Pascabayar normal 1 bulan penuh
+                        $isProrata = false;
                         $invoiceBillingType = 'pascabayar';
                         $invoiceNotes = 'Tagihan Pertama (Pascabayar)';
                     }
                 } else {
                     // Prabayar
-                    if ($isProrataFirstMonth) {
-                        $endOfMonth = $activationDate->copy()->endOfMonth();
+                    $endOfMonth = $activationDate->copy()->endOfMonth();
+                    $totalDaysInMonth = $endOfMonth->day;
+                    $daysUsed = max(1, $totalDaysInMonth - $activationDate->day + 1);
+
+                    if ($isProrataFirstMonth && $daysUsed < $totalDaysInMonth) {
                         $amount = ProrataCalculator::firstMonthAmount($amount, $activationDate, $prorataFormula);
 
                         $isProrata = true;
                         $invoiceBillingType = 'prorata';
                         $invoiceNotes = 'Tagihan Pertama (Prorata s/d Akhir Bulan: ' . $activationDate->format('d M') . ' - ' . $endOfMonth->format('d M Y') . ')';
                     } else {
+                        $isProrata = false;
                         $invoiceBillingType = 'prabayar';
                         $invoiceNotes = 'Tagihan Pertama (Prabayar)';
                     }

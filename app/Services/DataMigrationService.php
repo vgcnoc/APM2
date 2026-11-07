@@ -2969,7 +2969,7 @@ class DataMigrationService
 
                         $issueDateSetting = (int) Setting::get('invoice_issue_date', '1');
                         $nextBillingDate = $actDate->copy();
-                        if ($actDate->day >= $issueDateSetting) {
+                        if ($actDate->day > $issueDateSetting) {
                             $nextBillingDate->startOfMonth()->addMonthNoOverflow()->day($issueDateSetting);
                         } else {
                             $nextBillingDate->day($issueDateSetting);

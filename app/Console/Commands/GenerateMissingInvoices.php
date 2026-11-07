@@ -96,7 +96,7 @@ class GenerateMissingInvoices extends Command
                 
                 $issueDateSetting = (int) \App\Models\Setting::get('invoice_issue_date', '1');
                 $nextBillingDate = $activationDate->copy();
-                if ($activationDate->day >= $issueDateSetting) {
+                if ($activationDate->day > $issueDateSetting) {
                     $nextBillingDate->startOfMonth()->addMonthNoOverflow()->day($issueDateSetting);
                 } else {
                     $nextBillingDate->day($issueDateSetting);

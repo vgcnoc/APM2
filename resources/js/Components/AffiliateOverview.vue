@@ -49,7 +49,7 @@ const latestCustomers = computed(() => (props.customers || []).slice(0, 5));
                 </div>
                 <div v-else-if="!isEmployee && payoutInfo?.prorata_customers_count > 0" class="mb-3 px-3 py-1.5 rounded-xl bg-purple-50 border border-purple-200 text-purple-800 text-[10px] font-bold flex items-center justify-between">
                     <span>⚡ Pelanggan Prorata</span>
-                    <span>{{ payoutInfo.prorata_customers_count }} belum jatuh tempo (Aman)</span>
+                    <span>{{ payoutInfo.prorata_customers_count }} terbit Tgl {{ payoutInfo.invoice_issue_day || 1 }} (Aman)</span>
                 </div>
                 <Link v-if="isEmployee" href="/affiliate/dashboard?tab=commissions" class="sales-primary-action">Lihat histori insentif <ArrowRightIcon /></Link>
                 <button v-else type="button" class="sales-primary-action" :class="{ 'opacity-85': payoutInfo?.has_unpaid_customers }" @click="$emit('withdraw')">

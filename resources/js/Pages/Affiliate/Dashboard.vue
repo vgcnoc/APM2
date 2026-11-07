@@ -102,13 +102,13 @@
                             <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[10px] font-extrabold uppercase tracking-wider border border-purple-200 mb-1">
                                 <span>{{ payout_info.prorata_customers_count }} Pelanggan Prorata</span>
                                 <span>&bull;</span>
-                                <span>Belum Waktunya Bayar</span>
+                                <span>Aturan Terbit Tgl {{ payout_info.invoice_issue_day || settings.invoice_issue_date || 1 }}</span>
                             </div>
                             <h4 class="text-xs sm:text-sm font-black text-purple-950">
-                                Pelanggan Masa Prorata Berjalan (Jangan Dibantu Tagih)
+                                Pelanggan Masa Prorata Berjalan (Belum Waktunya Bayar &amp; Jangan Dibantu Tagih)
                             </h4>
                             <p class="text-xs text-purple-900 mt-0.5 leading-relaxed">
-                                Pelanggan baru dalam masa prorata belum jatuh tempo sehingga <strong>tidak perlu ditagih</strong> dan <strong>tidak menahan pencairan komisi Anda</strong>.
+                                Sesuai aturan yang dipilih di sistem (invoice terbit tanggal <strong>{{ payout_info.invoice_issue_day || settings.invoice_issue_date || 1 }}</strong>), tagihan prorata pascabayar baru akan diterbitkan pada tanggal tersebut dan jatuh tempo tanggal <strong>{{ payout_info.isolate_day || settings.isolate_day || 12 }}</strong>. Sebelum tanggal terbit dan jatuh tempo, tagihan <strong>belum waktunya dibayar</strong>, <strong>jangan dibantu tagih</strong>, dan <strong>tidak menahan pencairan komisi Anda</strong>.
                             </p>
                         </div>
                     </div>
@@ -211,10 +211,10 @@
                     <div v-if="customerSubTab === 'prorata' && prorataCustomers.length > 0" class="p-4 bg-purple-50 border border-purple-200 rounded-2xl mb-4 text-xs text-purple-950 space-y-1.5 leading-relaxed">
                         <div class="flex items-center gap-1.5 font-bold text-purple-900">
                             <span>⚡</span>
-                            <span>Pelanggan Masa Prorata Berjalan (Belum Waktunya Bayar)</span>
+                            <span>Aturan Sistem: Invoice Terbit Tanggal {{ payout_info?.invoice_issue_day || settings.invoice_issue_date || 1 }} (Belum Waktunya Bayar)</span>
                         </div>
                         <p>
-                            Pelanggan di bawah ini adalah pelanggan baru pascabayar dalam masa perhitungan pemakaian prorata berjalan. Tagihan perdana mereka <strong>belum jatuh tempo</strong> (jatuh tempo tanggal 12 bulan berikutnya), sehingga <strong>TIDAK PERLU DIBANTU TAGIH</strong> dan <strong>TIDAK MENGUNCI PENCAIRAN SALDO KOMISI</strong> Anda.
+                            Pelanggan di bawah ini adalah pelanggan baru pascabayar dalam masa perhitungan pemakaian prorata berjalan. Sesuai aturan yang dipilih, tagihan perdana mereka baru akan resmi terbit pada <strong>tanggal {{ payout_info?.invoice_issue_day || settings.invoice_issue_date || 1 }}</strong> bulan berikutnya dan batas jatuh tempo pada <strong>tanggal {{ payout_info?.isolate_day || settings.isolate_day || 12 }}</strong>. Selama belum mencapai tanggal terbit dan jatuh tempo, tagihan <strong>BELUM WAKTUNYA BAYAR</strong>, <strong>JANGAN DIBANTU TAGIH</strong>, dan sama sekali <strong>TIDAK MENGUNCI PENCAIRAN SALDO KOMISI</strong> Anda.
                         </p>
                     </div>
 
@@ -265,7 +265,8 @@
                                     <th class="px-4 py-3">ID Pelanggan</th>
                                     <th class="px-4 py-3">Nama Pelanggan</th>
                                     <th class="px-4 py-3">Paket Layanan</th>
-                                    <th v-if="customerSubTab === 'unpaid' || customerSubTab === 'prorata'" class="px-4 py-3">Periode & Jatuh Tempo</th>
+                                    <th v-if="customerSubTab === 'unpaid'" class="px-4 py-3">Periode & Jatuh Tempo</th>
+                                    <th v-else-if="customerSubTab === 'prorata'" class="px-4 py-3">Jadwal Terbit & Jatuh Tempo</th>
                                     <th v-else class="px-4 py-3">Tanggal Daftar</th>
                                     <th class="px-4 py-3">Status Tagihan</th>
                                     <th class="px-4 py-3 text-right">
@@ -282,13 +283,19 @@
                                         <div class="text-[10px] text-slate-500">{{ c.phone }}</div>
                                     </td>
                                     <td class="px-4 py-3 text-slate-600">{{ c.package_name }}</td>
-                                    <td v-if="customerSubTab === 'unpaid' || customerSubTab === 'prorata'" class="px-4 py-3">
+                                    <td v-if="customerSubTab === 'unpaid'" class="px-4 py-3">
                                         <div class="font-bold text-slate-800">{{ c.unpaid_period || c.period_label || '-' }}</div>
-                                        <div
-                                            class="text-[10px] font-medium"
-                                            :class="c.has_overdue_invoice ? 'text-rose-600 font-bold' : 'text-purple-700 font-semibold'"
-                                        >
+                                        <div class="text-[10px] font-bold text-rose-600">
                                             Jatuh Tempo: {{ c.unpaid_due_date || c.due_date || '-' }}
+                                        </div>
+                                    </td>
+                                    <td v-else-if="customerSubTab === 'prorata'" class="px-4 py-3">
+                                        <div class="font-bold text-slate-800">{{ c.unpaid_period || c.period_label || '-' }}</div>
+                                        <div class="text-[10px] text-indigo-700 font-bold">
+                                            Terbit: {{ c.issued_date || '-' }} (Tgl {{ payout_info?.invoice_issue_day || settings.invoice_issue_date || 1 }})
+                                        </div>
+                                        <div class="text-[10px] text-purple-700 font-medium">
+                                            Jatuh Tempo: {{ c.unpaid_due_date || c.due_date || '-' }} (Tgl {{ payout_info?.isolate_day || settings.isolate_day || 12 }})
                                         </div>
                                     </td>
                                     <td v-else class="px-4 py-3 text-slate-500">{{ c.registration_date }}</td>
@@ -299,7 +306,7 @@
                                                 v-if="c.is_prorata && c.is_not_due_yet"
                                                 class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-800 border border-purple-200"
                                             >
-                                                ⚡ Prorata Berjalan
+                                                ⚡ Prorata (Terbit Tgl {{ payout_info?.invoice_issue_day || settings.invoice_issue_date || 1 }})
                                             </span>
                                             <span
                                                 v-else-if="c.has_overdue_invoice"
@@ -356,10 +363,16 @@
                                             <span>💬 Bantu Tagih</span>
                                         </a>
                                         <span
-                                            v-else-if="c.is_prorata || c.is_not_due_yet"
+                                            v-else-if="c.is_before_issue_date || (c.is_prorata && c.is_not_due_yet)"
                                             class="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-50 text-purple-700 font-bold text-[10px] rounded-lg border border-purple-200 whitespace-nowrap"
                                         >
-                                            ⏳ Belum Waktunya Bayar
+                                            ⏳ Belum Terbit (Tgl {{ payout_info?.invoice_issue_day || settings.invoice_issue_date || 1 }})
+                                        </span>
+                                        <span
+                                            v-else-if="c.is_not_due_yet"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-700 font-bold text-[10px] rounded-lg border border-amber-200 whitespace-nowrap"
+                                        >
+                                            ⏳ Belum Jatuh Tempo
                                         </span>
                                         <span v-else class="text-slate-400 text-xs">-</span>
                                     </td>

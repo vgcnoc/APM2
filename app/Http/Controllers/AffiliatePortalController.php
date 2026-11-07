@@ -95,9 +95,10 @@ class AffiliatePortalController extends Controller
             ->get()
             ->groupBy('customer_id');
 
+        $today = now();
         $todayEnd = now()->endOfDay();
 
-        $customers = $rawCustomers->map(function ($cust) use ($customerCommissions, $directMonthlyRate, $unpaidInvoicesByCust, $user, $todayEnd) {
+        $customers = $rawCustomers->map(function ($cust) use ($customerCommissions, $directMonthlyRate, $unpaidInvoicesByCust, $user, $today, $todayEnd) {
             $totalCommissions = $customerCommissions->get($cust->id, 0);
 
             $isActiveAndEligible = false;
@@ -127,7 +128,10 @@ class AffiliatePortalController extends Controller
             });
             $isProrata = $hasProrataInvoice || strtolower($cust->billing_type ?? '') === 'prorata';
 
-            // Evaluasi apakah tagihan sudah melewati batas jatuh tempo (Overdue)
+            // Evaluasi apakah tagihan sudah terbit dan apakah sudah melewati batas jatuh tempo (Overdue)
+            $isIssued = $earliestInv && $earliestInv->issued_date && $earliestInv->issued_date->startOfDay()->lte($today);
+            $isBeforeIssueDate = $earliestInv && $earliestInv->issued_date && $earliestInv->issued_date->startOfDay()->isFuture();
+
             $overdueInvoices = $custUnpaidInvoices->filter(function ($inv) use ($todayEnd) {
                 return $inv->due_date && $inv->due_date->endOfDay()->isPast();
             });
@@ -139,11 +143,12 @@ class AffiliatePortalController extends Controller
                 $custPhone = '62' . substr($custPhone, 1);
             }
             $periodLabel = $earliestInv?->period_label ?: ($earliestInv?->month ? "Bulan {$earliestInv->month}/{$earliestInv->year}" : '-');
+            $issuedDateLabel = $earliestInv?->issued_date ? $earliestInv->issued_date->format('d M Y') : '-';
             $dueDateLabel = $earliestInv?->due_date ? $earliestInv->due_date->format('d M Y') : '-';
 
-            // Pesan WA Bantu Tagih HANYA jika tagihan sudah lewat jatuh tempo
+            // Pesan WA Bantu Tagih HANYA jika tagihan sudah terbit dan lewat jatuh tempo
             $waUrl = null;
-            if ($hasOverdue) {
+            if ($hasOverdue && $isIssued) {
                 $waMsg = "Halo Kak {$cust->name}, saya {$user->name} dari tim layanan internet WiFi. "
                     . "Sekadar menginfokan bahwa tagihan internet periode {$periodLabel} sebesar Rp " . number_format($totalUnpaid, 0, ',', '.') . " saat ini telah melewati batas jatuh tempo ({$dueDateLabel}). "
                     . "Mohon dibantu pelunasannya ya Kak agar koneksi internet tetap aktif dan lancar. Terima kasih banyak 🙏";
@@ -167,11 +172,14 @@ class AffiliatePortalController extends Controller
                 'has_overdue_invoice' => $hasOverdue,
                 'is_not_due_yet' => $isNotDueYet,
                 'is_prorata' => $isProrata,
-                'can_bantu_tagih' => $hasOverdue,
+                'is_issued' => $isIssued,
+                'is_before_issue_date' => $isBeforeIssueDate,
+                'can_bantu_tagih' => $hasOverdue && $isIssued,
                 'unpaid_invoices_count' => $custUnpaidInvoices->count(),
                 'unpaid_amount' => $totalUnpaid,
                 'period_label' => $periodLabel,
                 'unpaid_period' => $periodLabel,
+                'issued_date' => $issuedDateLabel,
                 'unpaid_due_date' => $dueDateLabel,
                 'due_date' => $dueDateLabel,
                 'wa_reminder_url' => $waUrl,
@@ -304,6 +312,8 @@ class AffiliatePortalController extends Controller
 
         // Pelanggan yang tagihannya sudah benar-benar melewati batas jatuh tempo (Overdue)
         $overdueCustomers = AffiliateService::getUnpaidCustomersForAffiliate($user, true);
+        $issueDay = (int) ($settings['invoice_issue_date'] ?? 1);
+        $isolateDay = (int) ($settings['isolate_day'] ?? 12);
         $payoutDay = (int) ($settings['affiliate_payout_day'] ?? 15);
         $currentDay = (int) now()->format('j');
         $isPayoutOpen = $currentDay >= $payoutDay;
@@ -316,6 +326,8 @@ class AffiliatePortalController extends Controller
 
         $payoutInfo = [
             'payout_day' => $payoutDay,
+            'invoice_issue_day' => $issueDay,
+            'isolate_day' => $isolateDay,
             'is_payout_open' => $isPayoutOpen,
             'current_day' => $currentDay,
             'next_payout_date' => $nextPayoutDate,

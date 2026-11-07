@@ -106,6 +106,10 @@ class AffiliateService
             'affiliate_auto_approve' => Setting::get('affiliate_auto_approve', '1') === '1',
             'affiliate_contract_min_months' => (int) Setting::get('affiliate_contract_min_months', 4),
             'affiliate_payout_day' => (int) Setting::get('affiliate_payout_day', 15),
+            'invoice_issue_date' => (int) Setting::get('invoice_issue_date', 1),
+            'isolate_day' => (int) Setting::get('isolate_day', 12),
+            'billing_cycle' => Setting::get('billing_cycle', 'calendar'),
+            'billing_type' => Setting::get('billing_type', 'pascabayar'),
         ];
     }
 
@@ -856,6 +860,9 @@ class AffiliateService
                 $earliestInvoice = $unpaidInvoices->first();
                 $periodLabel = $earliestInvoice ? $earliestInvoice->period_label : '-';
 
+                $today = now();
+                $isIssued = $earliestInvoice && $earliestInvoice->issued_date && $earliestInvoice->issued_date->startOfDay()->lte($today);
+                $isBeforeIssueDate = $earliestInvoice && $earliestInvoice->issued_date && $earliestInvoice->issued_date->startOfDay()->isFuture();
                 $isOverdue = $earliestInvoice && $earliestInvoice->due_date && $earliestInvoice->due_date->endOfDay()->isPast();
                 $isProrata = $unpaidInvoices->contains(function ($inv) {
                     return (bool) $inv->is_prorata 
@@ -868,9 +875,9 @@ class AffiliateService
                     $custPhone = '62' . substr($custPhone, 1);
                 }
 
-                // Pesan WA Bantu Tagih HANYA jika sudah lewat jatuh tempo
+                // Pesan WA Bantu Tagih HANYA jika tagihan sudah terbit dan lewat jatuh tempo
                 $waUrl = null;
-                if ($isOverdue) {
+                if ($isOverdue && $isIssued) {
                     $msg = "Halo Kak {$cust->name}, saya {$user->name} dari tim layanan internet WiFi. "
                         . "Sekadar menginfokan bahwa tagihan internet periode {$periodLabel} sebesar Rp " . number_format($totalUnpaid, 0, ',', '.') . " saat ini telah melewati batas jatuh tempo ({$earliestInvoice?->due_date?->format('d M Y')}). "
                         . "Mohon dibantu pelunasannya ya Kak agar koneksi internet tetap aktif dan lancar. Terima kasih banyak 🙏";
@@ -887,9 +894,12 @@ class AffiliateService
                     'unpaid_invoices_count' => $unpaidInvoices->count(),
                     'total_unpaid_amount' => (float) $totalUnpaid,
                     'period_label' => $periodLabel,
+                    'issued_date' => $earliestInvoice?->issued_date?->format('d M Y') ?? '-',
                     'due_date' => $earliestInvoice?->due_date?->format('d M Y') ?? '-',
                     'is_overdue' => $isOverdue,
                     'is_prorata' => $isProrata,
+                    'is_issued' => $isIssued,
+                    'is_before_issue_date' => $isBeforeIssueDate,
                     'is_not_due_yet' => !$isOverdue,
                     'wa_reminder_url' => $waUrl,
                 ];
