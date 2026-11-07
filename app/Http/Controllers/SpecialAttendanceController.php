@@ -339,7 +339,7 @@ class SpecialAttendanceController extends Controller
             }
             $avgClockIn = !empty($clockInSecs) ? (array_sum($clockInSecs) / count($clockInSecs)) : 86400;
             $avgClockInFormatted = !empty($clockInSecs)
-                ? sprintf("%02d:%02d WIB", floor($avgClockIn / 3600), floor(($avgClockIn % 3600) / 60))
+                ? sprintf("%02d:%02d WIB", (int) floor($avgClockIn / 3600), (int) floor(((int) $avgClockIn % 3600) / 60))
                 : '-';
 
             $score = ($presents > 0) ? max(0, ($presents * 100) - ($lateMinutes * 2)) : 0;
@@ -411,7 +411,7 @@ class SpecialAttendanceController extends Controller
             }
             $avgClockIn = !empty($clockInSecs) ? (array_sum($clockInSecs) / count($clockInSecs)) : 86400;
             $avgClockInFormatted = !empty($clockInSecs)
-                ? sprintf("%02d:%02d WIB", floor($avgClockIn / 3600), floor(($avgClockIn % 3600) / 60))
+                ? sprintf("%02d:%02d WIB", (int) floor($avgClockIn / 3600), (int) floor(((int) $avgClockIn % 3600) / 60))
                 : '-';
 
             // Poin dasar per kehadiran = 100, penalti menit telat = 2 pts, penalti tanpa pulang = 50 pts
