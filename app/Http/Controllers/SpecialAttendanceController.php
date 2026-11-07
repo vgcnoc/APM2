@@ -437,7 +437,7 @@ class SpecialAttendanceController extends Controller
 
         $leaderboard = collect($competingMatrix)
             ->filter(function ($item) {
-                return $item['presents'] > 0 && $item['score'] > 0;
+                return $item['presents'] > 0;
             })
             ->sort(function ($a, $b) {
                 if ($b['score'] !== $a['score']) {
