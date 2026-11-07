@@ -134,7 +134,7 @@ class ResellerClientController extends Controller
             })->values()->all() : [],
             'total_downlines_balance' => $reseller->isMaster() ? (float) $reseller->downlines()->sum('balance') : 0,
             'total_override_royalty' => $reseller->isMaster() ? (float) ResellerTransaction::where('reseller_id', $reseller->id)->where('reference_id', 'like', 'OVR-%')->sum('amount') : 0,
-            'min_deposit' => $reseller->isMaster() ? (int) Setting::get('master_reseller_min_deposit', 2000000) : (int) Setting::get('reseller_min_deposit', 50000),
+            'min_deposit' => $reseller->isMaster() ? (int) Setting::get('biller_min_deposit', Setting::get('master_reseller_min_deposit', 2000000)) : (int) Setting::get('reseller_min_deposit', 20000),
             'override_fee_amount' => (float) ($reseller->override_fee ?: Setting::get('master_reseller_override_fee', 500)),
             'all_resellers_for_transfer' => $reseller->isMaster() ? Reseller::with(['customer', 'user'])->where('id', '!=', $reseller->id)->where('is_active', true)->where('tier', '!=', 'master')->where(function ($q) use ($reseller) { $q->where('parent_id', $reseller->id)->orWhereNull('parent_id'); })->get()->map(function ($r) use ($reseller) {
                 return [
@@ -230,7 +230,7 @@ class ResellerClientController extends Controller
             })->values()->all() : [],
             'total_downlines_balance' => $reseller->isMaster() ? (float) $reseller->downlines()->sum('balance') : 0,
             'total_override_royalty' => $reseller->isMaster() ? (float) ResellerTransaction::where('reseller_id', $reseller->id)->where('reference_id', 'like', 'OVR-%')->sum('amount') : 0,
-            'min_deposit' => $reseller->isMaster() ? (int) Setting::get('master_reseller_min_deposit', 2000000) : (int) Setting::get('reseller_min_deposit', 50000),
+            'min_deposit' => $reseller->isMaster() ? (int) Setting::get('biller_min_deposit', Setting::get('master_reseller_min_deposit', 2000000)) : (int) Setting::get('reseller_min_deposit', 20000),
             'override_fee_amount' => (float) ($reseller->override_fee ?: Setting::get('master_reseller_override_fee', 500)),
             'all_resellers_for_transfer' => $reseller->isMaster() ? Reseller::with(['customer', 'user'])->where('id', '!=', $reseller->id)->where('is_active', true)->where('tier', '!=', 'master')->where(function ($q) use ($reseller) { $q->where('parent_id', $reseller->id)->orWhereNull('parent_id'); })->get()->map(function ($r) use ($reseller) {
                 return [
@@ -454,7 +454,7 @@ class ResellerClientController extends Controller
             })->values()->all() : [],
             'total_downlines_balance' => $reseller->isMaster() ? (float) $reseller->downlines()->sum('balance') : 0,
             'total_override_royalty' => $reseller->isMaster() ? (float) ResellerTransaction::where('reseller_id', $reseller->id)->where('reference_id', 'like', 'OVR-%')->sum('amount') : 0,
-            'min_deposit' => $reseller->isMaster() ? (int) Setting::get('master_reseller_min_deposit', 2000000) : (int) Setting::get('reseller_min_deposit', 50000),
+            'min_deposit' => $reseller->isMaster() ? (int) Setting::get('biller_min_deposit', Setting::get('master_reseller_min_deposit', 2000000)) : (int) Setting::get('reseller_min_deposit', 20000),
             'override_fee_amount' => (float) ($reseller->override_fee ?: Setting::get('master_reseller_override_fee', 500)),
             'all_resellers_for_transfer' => $reseller->isMaster() ? Reseller::with(['customer', 'user'])->where('id', '!=', $reseller->id)->where('is_active', true)->where('tier', '!=', 'master')->where(function ($q) use ($reseller) { $q->where('parent_id', $reseller->id)->orWhereNull('parent_id'); })->get()->map(function ($r) use ($reseller) {
                 return [

@@ -11,10 +11,18 @@ import axios from 'axios';
 import AppLogo from '@/Components/AppLogo.vue';
 import CustomerIsolatedBanner from '@/Components/CustomerIsolatedBanner.vue';
 
-const props = defineProps({ status: String, portal: String, isolatedCustomer: Object });
+const props = defineProps({
+    status: String,
+    portal: String,
+    isolatedCustomer: Object,
+    allowResellerRegistration: {
+        type: Boolean,
+        default: true,
+    },
+});
 const page = usePage();
 const brandName = computed(() => page.props.company_name || page.props.app_name || 'ISP Manager');
-const portals = [
+const portals = computed(() => [
     {
         id: 'staff', label: 'Staf & Tim', icon: BuildingOffice2Icon, tone: 'sky',
         description: 'Operasional, billing, dan manajemen jaringan.',
@@ -24,7 +32,7 @@ const portals = [
         id: 'reseller', label: 'Mitra Biller & Master', icon: CreditCardIcon, tone: 'mint',
         description: 'Loket pembayaran, voucher hotspot, & distribusi saldo Master.',
         hint: 'Masuk menggunakan akun mitra atau reseller yang telah diverifikasi.',
-        registration: '/register-reseller',
+        registration: props.allowResellerRegistration !== false ? '/register-reseller' : null,
     },
     {
         id: 'affiliate', label: 'Afiliasi & Sales', icon: UserGroupIcon, tone: 'amber',
@@ -37,8 +45,8 @@ const portals = [
         description: 'Paket internet, tagihan, dan layanan Anda.',
         hint: 'Gunakan email yang terdaftar pada akun langganan Anda.',
     },
-];
-const selectedPortal = ref(portals.find(portal => portal.id === props.portal) || portals[0]);
+]);
+const selectedPortal = ref(portals.value.find(portal => portal.id === props.portal) || portals.value[0]);
 const activeDialog = ref(null);
 const emailInput = ref(null);
 const billInput = ref(null);

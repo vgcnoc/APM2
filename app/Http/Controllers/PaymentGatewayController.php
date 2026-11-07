@@ -57,8 +57,8 @@ class PaymentGatewayController extends Controller
         }
 
         $minDeposit = $reseller->isMaster()
-            ? (int) \App\Models\Setting::get('master_reseller_min_deposit', 2000000)
-            : (int) \App\Models\Setting::get('reseller_min_deposit', 50000);
+            ? (int) \App\Models\Setting::get('biller_min_deposit', \App\Models\Setting::get('master_reseller_min_deposit', 2000000))
+            : (int) \App\Models\Setting::get('reseller_min_deposit', 20000);
         $maxDeposit = $reseller->isMaster() ? 50000000 : 10000000;
 
         $validated = $request->validate([

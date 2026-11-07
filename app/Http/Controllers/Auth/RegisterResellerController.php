@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\ResellerSettingController;
 use App\Models\User;
 use App\Models\Customer;
 use App\Models\Reseller;
@@ -13,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
 
@@ -35,11 +37,24 @@ class RegisterResellerController extends Controller
         $areas = Area::orderBy('name')->get(['id', 'name']);
         $refCode = $request->query('ref', $request->query('sponsor', ''));
 
+        $resellerEnabled = (bool) ((int) Setting::get('reseller_registration_enabled', '1'));
+        $billerEnabled = (bool) ((int) Setting::get('biller_registration_enabled', '1'));
+        $minDepositRegular = (int) Setting::get('reseller_min_deposit', 20000);
+        $minDepositMaster = (int) Setting::get('biller_min_deposit', Setting::get('master_reseller_min_deposit', 2000000));
+        $requireApproval = (bool) ((int) Setting::get('reseller_registration_require_approval', '1'));
+        $termsText = Setting::get('reseller_registration_terms', null) ?: ResellerSettingController::getDefaultTerms();
+        $companyPhone = Setting::get('company_phone', '088976397034');
+
         return Inertia::render('Auth/RegisterReseller', [
             'areas' => $areas,
             'defaultRefCode' => trim((string)$refCode),
-            'minDepositRegular' => (int) Setting::get('reseller_min_deposit', 50000),
-            'minDepositMaster' => (int) Setting::get('master_reseller_min_deposit', 2000000),
+            'resellerRegistrationEnabled' => $resellerEnabled,
+            'billerRegistrationEnabled' => $billerEnabled,
+            'minDepositRegular' => $minDepositRegular,
+            'minDepositMaster' => $minDepositMaster,
+            'requireApproval' => $requireApproval,
+            'termsText' => $termsText,
+            'companyPhone' => $companyPhone,
         ]);
     }
 
@@ -48,6 +63,16 @@ class RegisterResellerController extends Controller
      */
     public function store(Request $request)
     {
+        $resellerEnabled = (bool) ((int) Setting::get('reseller_registration_enabled', '1'));
+        $billerEnabled = (bool) ((int) Setting::get('biller_registration_enabled', '1'));
+
+        // Cek jika seluruh pendaftaran dinonaktifkan
+        if (!$resellerEnabled && !$billerEnabled) {
+            throw ValidationException::withMessages([
+                'tier' => 'Pendaftaran mandiri Mitra Reseller & Biller saat ini sedang ditutup sementara oleh pihak manajemen.'
+            ]);
+        }
+
         $validated = $request->validate([
             'tier' => 'required|in:regular,master',
             'master_referral_code' => 'nullable|string|max:30',
@@ -58,8 +83,9 @@ class RegisterResellerController extends Controller
             'password' => 'required|string|min:6|confirmed',
             'address' => 'required|string|max:500',
             'area_id' => 'nullable|exists:areas,id',
+            'terms' => 'accepted',
         ], [
-            'tier.required' => 'Pilih jenis kemitraan (Mitra Loket Biasa atau Master Biller).',
+            'tier.required' => 'Pilih jenis kemitraan (Mitra Reseller atau Master Biller).',
             'name.required' => 'Nama lengkap wajib diisi.',
             'phone.required' => 'Nomor WhatsApp aktif wajib diisi.',
             'email.required' => 'Email wajib diisi.',
@@ -69,7 +95,23 @@ class RegisterResellerController extends Controller
             'password.min' => 'Password minimal terdiri dari 6 karakter.',
             'password.confirmed' => 'Konfirmasi password tidak cocok.',
             'address.required' => 'Alamat atau lokasi usaha/konter wajib diisi.',
+            'terms.accepted' => 'Anda wajib menyetujui syarat & ketentuan kemitraan untuk melanjutkan pendaftaran.',
         ]);
+
+        // Validasi tier aktif
+        if ($validated['tier'] === 'regular' && !$resellerEnabled) {
+            throw ValidationException::withMessages([
+                'tier' => 'Pendaftaran mandiri Mitra Reseller (Voucher & Eceran) saat ini sedang dinonaktifkan oleh Admin.'
+            ]);
+        }
+
+        if ($validated['tier'] === 'master' && !$billerEnabled) {
+            throw ValidationException::withMessages([
+                'tier' => 'Pendaftaran mandiri Master Biller & Loket Pembayaran saat ini sedang dinonaktifkan oleh Admin.'
+            ]);
+        }
+
+        $requireApproval = (bool) ((int) Setting::get('reseller_registration_require_approval', '1'));
 
         // Cek Master Referral Code jika diisi
         $parentId = null;
@@ -88,7 +130,7 @@ class RegisterResellerController extends Controller
         $user = null;
         $reseller = null;
 
-        DB::transaction(function () use ($validated, $parentId, &$user, &$reseller) {
+        DB::transaction(function () use ($validated, $parentId, $requireApproval, &$user, &$reseller) {
             $displayName = !empty($validated['store_name']) 
                 ? "{$validated['name']} ({$validated['store_name']})" 
                 : $validated['name'];
@@ -100,15 +142,14 @@ class RegisterResellerController extends Controller
                 'phone' => $validated['phone'],
                 'password' => Hash::make($validated['password']),
                 'role' => 'reseller',
+                'is_active' => !$requireApproval, // Jika require_approval true, user nonaktif hingga disetujui admin
             ]);
 
             // Assign Spatie Role jika ada
             try {
                 $resellerRole = Role::firstOrCreate(['name' => 'reseller', 'guard_name' => 'web']);
                 $user->assignRole($resellerRole);
-            } catch (\Exception $e) {
-                // Role handling fallback
-            }
+            } catch (\Exception $e) {}
 
             // 2. Ambil Nama Area
             $areaName = null;
@@ -126,17 +167,17 @@ class RegisterResellerController extends Controller
                 'address' => $validated['address'],
                 'area_id' => $validated['area_id'] ?? null,
                 'area' => $areaName,
-                'status' => 'active',
+                'status' => $requireApproval ? 'booking' : 'active',
                 'service_status' => 'gratis',
                 'package_id' => null,
                 'base_amount' => 0,
                 'is_reseller' => true,
                 'registration_date' => now()->toDateString(),
-                'activation_date' => now()->toDateString(),
+                'activation_date' => $requireApproval ? null : now()->toDateString(),
                 'billing_type' => Setting::get('billing_type', 'prabayar'),
-                'notes' => $validated['tier'] === 'master' 
-                    ? 'Pendaftaran Mandiri Master Biller & Distributor Wilayah' 
-                    : 'Pendaftaran Mandiri Mitra Reseller Voucher & Loket Pembayaran (Biller)',
+                'notes' => $requireApproval 
+                    ? ($validated['tier'] === 'master' ? 'Pendaftaran Mandiri Master Biller (Menunggu Approve Admin)' : 'Pendaftaran Mandiri Mitra Reseller (Menunggu Approve Admin)')
+                    : ($validated['tier'] === 'master' ? 'Pendaftaran Mandiri Master Biller & Distributor Wilayah' : 'Pendaftaran Mandiri Mitra Reseller Voucher & Loket'),
             ]);
 
             // 4. Buat Dompet Saldo Reseller (dengan Tier dan Referral)
@@ -144,11 +185,11 @@ class RegisterResellerController extends Controller
                 'customer_id' => $customer->id,
                 'user_id' => $user->id,
                 'balance' => 0,
-                'is_active' => true,
+                'is_active' => !$requireApproval,
                 'tier' => $validated['tier'],
                 'parent_id' => $parentId,
                 'referral_code' => $validated['tier'] === 'master' ? Reseller::generateReferralCode() : null,
-                'status' => 'active',
+                'status' => $requireApproval ? 'pending' : 'active',
             ]);
 
             // 5. Catat Audit Log
@@ -157,22 +198,79 @@ class RegisterResellerController extends Controller
                     'Register Reseller Self',
                     $reseller,
                     null,
-                    'active',
-                    "Pendaftaran mandiri Mitra (" . strtoupper($validated['tier']) . "): {$displayName} ({$user->email})" . ($parentId ? " [Downline Master ID #{$parentId}]" : "")
+                    $requireApproval ? 'pending' : 'active',
+                    "Pendaftaran mandiri Mitra (" . strtoupper($validated['tier']) . "): {$displayName} ({$user->email})" 
+                        . ($requireApproval ? " [Status: Menunggu Approve Admin]" : " [Status: Aktif]")
+                        . ($parentId ? " [Downline Master ID #{$parentId}]" : "")
                 );
             } catch (\Exception $e) {}
         });
 
-        // 6. Auto-login dan arahkan langsung ke Portal Reseller
+        // 6. Alur respon berdasarkan kebijakan Persetujuan Admin
+        if ($requireApproval) {
+            $minDeposit = $validated['tier'] === 'master'
+                ? (int) Setting::get('biller_min_deposit', Setting::get('master_reseller_min_deposit', 2000000))
+                : (int) Setting::get('reseller_min_deposit', 20000);
+
+            $cleanAdminPhone = preg_replace('/[^0-9]/', '', (string) Setting::get('company_phone', '088976397034'));
+            if (str_starts_with($cleanAdminPhone, '0')) {
+                $cleanAdminPhone = '62' . substr($cleanAdminPhone, 1);
+            } elseif (str_starts_with($cleanAdminPhone, '8')) {
+                $cleanAdminPhone = '62' . $cleanAdminPhone;
+            }
+
+            $displayName = !empty($validated['store_name']) 
+                ? "{$validated['name']} ({$validated['store_name']})" 
+                : $validated['name'];
+
+            session()->flash('registered_mitra', [
+                'name' => $validated['name'],
+                'store_name' => $validated['store_name'] ?? '',
+                'display_name' => $displayName,
+                'email' => $validated['email'],
+                'phone' => $validated['phone'],
+                'tier' => $validated['tier'],
+                'tier_label' => $validated['tier'] === 'master' ? 'Master Biller & Loket Pembayaran' : 'Mitra Reseller (Voucher & Eceran)',
+                'min_deposit' => $minDeposit,
+                'admin_phone' => $cleanAdminPhone,
+            ]);
+
+            return redirect()->route('register-reseller.success');
+        }
+
+        // Jika approval dinonaktifkan, langsung login otomatis
         Auth::login($user);
         $request->session()->regenerate();
 
         if ($reseller && $reseller->tier === 'master') {
-            $msg = "Selamat bergabung sebagai Master Biller & Distributor Wilayah! Kode Referral Anda: {$reseller->referral_code}. Bagikan kode ini ke calon loket binaan Anda.";
+            $msg = "Selamat bergabung sebagai Master Biller & Distributor Wilayah! Kode Referral Anda: {$reseller->referral_code}. Silakan isi saldo modal (min. Rp 2.000.000) untuk mulai mendistribusikan saldo dan melayani loket.";
         } else {
-            $msg = "Selamat bergabung sebagai Mitra Reseller Voucher & Loket Biller! Silakan isi saldo dompet untuk mulai melayani transaksi pelanggan.";
+            $msg = "Selamat bergabung sebagai Mitra Reseller Voucher & Loket Biller! Silakan isi saldo modal (min. Rp 20.000) untuk mulai melayani transaksi.";
         }
 
         return redirect()->route('client-area.dashboard')->with('success', $msg);
+    }
+
+    /**
+     * Halaman status sukses pendaftaran mandiri (menunggu approval admin)
+     */
+    public function success(Request $request)
+    {
+        $data = session('registered_mitra');
+
+        $cleanAdminPhone = preg_replace('/[^0-9]/', '', (string) Setting::get('company_phone', '088976397034'));
+        if (str_starts_with($cleanAdminPhone, '0')) {
+            $cleanAdminPhone = '62' . substr($cleanAdminPhone, 1);
+        } elseif (str_starts_with($cleanAdminPhone, '8')) {
+            $cleanAdminPhone = '62' . $cleanAdminPhone;
+        }
+
+        return Inertia::render('Auth/RegisterResellerSuccess', [
+            'registeredMitra' => $data,
+            'companyPhone' => Setting::get('company_phone', '088976397034'),
+            'adminWhatsapp' => $cleanAdminPhone,
+            'resellerMinDeposit' => (int) Setting::get('reseller_min_deposit', 20000),
+            'billerMinDeposit' => (int) Setting::get('biller_min_deposit', Setting::get('master_reseller_min_deposit', 2000000)),
+        ]);
     }
 }

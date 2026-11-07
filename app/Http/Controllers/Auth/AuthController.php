@@ -15,10 +15,14 @@ class AuthController extends Controller
      */
     public function create()
     {
+        $resellerEnabled = (bool) ((int) \App\Models\Setting::get('reseller_registration_enabled', '1'));
+        $billerEnabled = (bool) ((int) \App\Models\Setting::get('biller_registration_enabled', '1'));
+
         return Inertia::render('Auth/Login', [
             'status' => session('status'),
             'portal' => request()->query('portal', 'staff'),
             'isolatedCustomer' => session('isolated_customer'),
+            'allowResellerRegistration' => $resellerEnabled || $billerEnabled,
         ]);
     }
 
@@ -75,6 +79,17 @@ class AuthController extends Controller
                     $request->session()->regenerateToken();
 
                     return back()->withErrors(['email' => 'Akun tidak memiliki hak akses sebagai Mitra Biller / Reseller. Silakan daftar atau gunakan akun mitra yang valid.'])->onlyInput('email');
+                }
+
+                $resellerRecord = \App\Models\Reseller::where('user_id', $user->id)->first();
+                if ($resellerRecord && ($resellerRecord->status === 'pending' || !$resellerRecord->is_active)) {
+                    Auth::logout();
+                    $request->session()->invalidate();
+                    $request->session()->regenerateToken();
+
+                    return back()->withErrors([
+                        'email' => 'Pendaftaran akun kemitraan Anda masih berstatus Menunggu Persetujuan (Approve) Admin. Silakan penuhi syarat pengisian saldo awal atau hubungi Admin untuk verifikasi aktivasi akun.'
+                    ])->onlyInput('email');
                 }
 
                 $request->session()->put('login_portal', 'reseller');

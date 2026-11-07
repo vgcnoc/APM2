@@ -10,6 +10,7 @@ Route::middleware('guest')->group(function () {
     // Pendaftaran Mandiri Mitra Reseller & Biller (Public)
     Route::get('/register-reseller', [\App\Http\Controllers\Auth\RegisterResellerController::class, 'create'])->name('register-reseller');
     Route::post('/register-reseller', [\App\Http\Controllers\Auth\RegisterResellerController::class, 'store'])->name('register-reseller.store');
+    Route::get('/register-reseller/success', [\App\Http\Controllers\Auth\RegisterResellerController::class, 'success'])->name('register-reseller.success');
 
     // Pendaftaran Mandiri Mitra Marketing & Afiliasi (Public)
     Route::get('/register-affiliate', [\App\Http\Controllers\Auth\RegisterAffiliateController::class, 'create'])->name('register-affiliate');

@@ -1,7 +1,7 @@
 <script setup>
 import { Head, useForm, Link } from '@inertiajs/vue3';
 import AppLogo from '@/Components/AppLogo.vue';
-import { onMounted, onUnmounted } from 'vue';
+import { onMounted, onUnmounted, computed } from 'vue';
 
 const props = defineProps({
     areas: {
@@ -12,18 +12,49 @@ const props = defineProps({
         type: String,
         default: '',
     },
+    resellerRegistrationEnabled: {
+        type: Boolean,
+        default: true,
+    },
+    billerRegistrationEnabled: {
+        type: Boolean,
+        default: true,
+    },
     minDepositRegular: {
         type: Number,
-        default: 50000,
+        default: 20000,
     },
     minDepositMaster: {
         type: Number,
         default: 2000000,
     },
+    requireApproval: {
+        type: Boolean,
+        default: true,
+    },
+    termsText: {
+        type: String,
+        default: '',
+    },
+    companyPhone: {
+        type: String,
+        default: '',
+    },
+});
+
+// Tentukan default tier berdasarkan status aktif di pengaturan
+const initialTier = computed(() => {
+    if (props.resellerRegistrationEnabled) return 'regular';
+    if (props.billerRegistrationEnabled) return 'master';
+    return 'regular';
+});
+
+const isAnyRegistrationEnabled = computed(() => {
+    return props.resellerRegistrationEnabled || props.billerRegistrationEnabled;
 });
 
 const form = useForm({
-    tier: 'regular',
+    tier: initialTier.value,
     master_referral_code: props.defaultRefCode || '',
     name: '',
     store_name: '',
@@ -33,6 +64,7 @@ const form = useForm({
     password_confirmation: '',
     address: '',
     area_id: '',
+    terms: false,
 });
 
 onMounted(() => {
@@ -85,329 +117,384 @@ const submit = () => {
                 </p>
             </div>
 
-            <!-- 4 Keuntungan Kemitraan (Cards) -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div class="bg-white/80 backdrop-blur-md p-3.5 rounded-2xl border border-emerald-100 shadow-sm text-center">
-                    <div class="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center mx-auto text-sm shadow-sm mb-2">
-                        💳
-                    </div>
-                    <h2 class="text-xs font-bold text-gray-900">Loket Biller</h2>
-                    <p class="text-[10px] text-gray-500 mt-0.5">Terima bayar tagihan warga &amp; dapatkan fee</p>
+            <!-- Jika seluruh pendaftaran mandiri dinonaktifkan di pengaturan -->
+            <div v-if="!isAnyRegistrationEnabled" class="bg-white/95 backdrop-blur-xl shadow-2xl rounded-3xl border border-white/60 p-8 text-center space-y-4">
+                <div class="w-16 h-16 rounded-3xl bg-amber-100 text-amber-700 flex items-center justify-center text-3xl mx-auto">
+                    🔒
                 </div>
-                <div class="bg-white/80 backdrop-blur-md p-3.5 rounded-2xl border border-teal-100 shadow-sm text-center">
-                    <div class="w-8 h-8 rounded-xl bg-teal-500 text-white flex items-center justify-center mx-auto text-sm shadow-sm mb-2">
-                        👑
-                    </div>
-                    <h2 class="text-xs font-bold text-gray-900">Master Biller</h2>
-                    <p class="text-[10px] text-gray-500 mt-0.5">Bina downline &amp; nikmati royalti pasif</p>
-                </div>
-                <div class="bg-white/80 backdrop-blur-md p-3.5 rounded-2xl border border-cyan-100 shadow-sm text-center">
-                    <div class="w-8 h-8 rounded-xl bg-cyan-500 text-white flex items-center justify-center mx-auto text-sm shadow-sm mb-2">
-                        ⚡
-                    </div>
-                    <h2 class="text-xs font-bold text-gray-900">Top Up Instan</h2>
-                    <p class="text-[10px] text-gray-500 mt-0.5">Isi saldo otomatis via QRIS &amp; Virtual Account</p>
-                </div>
-                <div class="bg-white/80 backdrop-blur-md p-3.5 rounded-2xl border border-indigo-100 shadow-sm text-center">
-                    <div class="w-8 h-8 rounded-xl bg-indigo-500 text-white flex items-center justify-center mx-auto text-sm shadow-sm mb-2">
-                        🎟️
-                    </div>
-                    <h2 class="text-xs font-bold text-gray-900">Jual Voucher</h2>
-                    <p class="text-[10px] text-gray-500 mt-0.5">Cetak &amp; jual voucher hotspot langsung dari HP</p>
+                <h2 class="text-xl font-black text-gray-900">Pendaftaran Mandiri Sedang Ditutup</h2>
+                <p class="text-xs sm:text-sm text-gray-600 max-w-md mx-auto leading-relaxed">
+                    Mohon maaf, saat ini pendaftaran mandiri untuk Mitra Reseller dan Master Biller sedang ditutup sementara oleh pihak manajemen. Silakan hubungi Admin / CS perusahaan untuk informasi kemitraan.
+                </p>
+                <div class="pt-2">
+                    <Link :href="route('login', { portal: 'reseller' })" class="inline-flex items-center gap-1.5 px-5 py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-md hover:bg-emerald-700 transition">
+                        <span>Kembali ke Halaman Login</span>
+                        <span>&rarr;</span>
+                    </Link>
                 </div>
             </div>
 
-            <!-- Registration Card -->
-            <div class="bg-white/95 backdrop-blur-xl shadow-2xl rounded-3xl border border-white/60 overflow-hidden">
-                <div class="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 px-6 py-5 text-white flex items-center justify-between">
-                    <div>
-                        <h2 class="text-base sm:text-lg font-bold flex items-center gap-2">
-                            <span>📝</span> Formulir Pendaftaran Mitra
-                        </h2>
-                        <p class="text-xs text-emerald-100 mt-0.5">Lengkapi data di bawah ini untuk mengaktifkan akun loket kemitraan Anda</p>
+            <!-- Formulir Pendaftaran Jika Aktif -->
+            <template v-else>
+                <!-- 4 Keuntungan Kemitraan (Cards) -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div class="bg-white/80 backdrop-blur-md p-3.5 rounded-2xl border border-emerald-100 shadow-sm text-center">
+                        <div class="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center mx-auto text-sm shadow-sm mb-2">
+                            💳
+                        </div>
+                        <h2 class="text-xs font-bold text-gray-900">Loket Biller</h2>
+                        <p class="text-[10px] text-gray-500 mt-0.5">Terima bayar tagihan warga &amp; dapatkan fee</p>
                     </div>
-                    <span class="text-[11px] font-extrabold bg-white/20 px-3 py-1 rounded-full uppercase tracking-wider border border-white/20 hidden sm:inline-block">
-                        100% Bebas Iuran
-                    </span>
+                    <div class="bg-white/80 backdrop-blur-md p-3.5 rounded-2xl border border-teal-100 shadow-sm text-center">
+                        <div class="w-8 h-8 rounded-xl bg-teal-500 text-white flex items-center justify-center mx-auto text-sm shadow-sm mb-2">
+                            👑
+                        </div>
+                        <h2 class="text-xs font-bold text-gray-900">Master Biller</h2>
+                        <p class="text-[10px] text-gray-500 mt-0.5">Bina downline &amp; nikmati royalti pasif</p>
+                    </div>
+                    <div class="bg-white/80 backdrop-blur-md p-3.5 rounded-2xl border border-cyan-100 shadow-sm text-center">
+                        <div class="w-8 h-8 rounded-xl bg-cyan-500 text-white flex items-center justify-center mx-auto text-sm shadow-sm mb-2">
+                            ⚡
+                        </div>
+                        <h2 class="text-xs font-bold text-gray-900">Top Up Instan</h2>
+                        <p class="text-[10px] text-gray-500 mt-0.5">Isi saldo otomatis via QRIS &amp; Virtual Account</p>
+                    </div>
+                    <div class="bg-white/80 backdrop-blur-md p-3.5 rounded-2xl border border-indigo-100 shadow-sm text-center">
+                        <div class="w-8 h-8 rounded-xl bg-indigo-500 text-white flex items-center justify-center mx-auto text-sm shadow-sm mb-2">
+                            🎟️
+                        </div>
+                        <h2 class="text-xs font-bold text-gray-900">Jual Voucher</h2>
+                        <p class="text-[10px] text-gray-500 mt-0.5">Cetak &amp; jual voucher hotspot langsung dari HP</p>
+                    </div>
                 </div>
 
-                <form @submit.prevent="submit" class="p-6 sm:p-8 space-y-6">
-                    
-                    <!-- Pilihan Tipe Kemitraan (Tier Selection) -->
-                    <div>
-                        <label class="block text-xs font-extrabold uppercase tracking-wider text-gray-700 mb-2">
-                            Pilih Tipe Kemitraan <span class="text-rose-500">*</span>
-                        </label>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                            <!-- Option 1: Mitra Loket Biasa -->
-                            <div 
-                                @click="form.tier = 'regular'" 
-                                :class="[
-                                    'p-4 rounded-2xl border-2 cursor-pointer transition-all relative flex flex-col justify-between',
-                                    form.tier === 'regular' 
-                                        ? 'border-emerald-500 bg-emerald-50/50 ring-2 ring-emerald-200' 
-                                        : 'border-gray-200 bg-white hover:border-gray-300'
-                                ]"
-                            >
-                                <div class="flex items-start justify-between mb-2">
-                                    <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg font-bold">
-                                        🏪
-                                    </div>
-                                    <span v-if="form.tier === 'regular'" class="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs">
-                                        ✓
-                                    </span>
-                                </div>
-                                <div>
-                                    <h3 class="text-sm font-bold text-gray-900">Mitra Loket Biasa (Reseller)</h3>
-                                    <p class="text-[11px] text-gray-500 mt-1 leading-relaxed">
-                                        Fokus melayani pembayaran tagihan warga sekitar &amp; penjualan voucher WiFi eceran.
-                                    </p>
-                                </div>
-                                <div class="mt-3 pt-2.5 border-t border-emerald-100/70 flex items-center justify-between text-[11px]">
-                                    <span class="text-gray-500">Min. Deposit:</span>
-                                    <strong class="text-emerald-700 font-bold font-mono">{{ formatRupiah(minDepositRegular) }}</strong>
-                                </div>
-                            </div>
-
-                            <!-- Option 2: Master Biller / Distributor -->
-                            <div 
-                                @click="form.tier = 'master'" 
-                                :class="[
-                                    'p-4 rounded-2xl border-2 cursor-pointer transition-all relative flex flex-col justify-between',
-                                    form.tier === 'master' 
-                                        ? 'border-purple-600 bg-purple-50/50 ring-2 ring-purple-200' 
-                                        : 'border-gray-200 bg-white hover:border-gray-300'
-                                ]"
-                            >
-                                <div class="flex items-start justify-between mb-2">
-                                    <div class="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center text-lg font-bold">
-                                        👑
-                                    </div>
-                                    <span v-if="form.tier === 'master'" class="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs">
-                                        ✓
-                                    </span>
-                                </div>
-                                <div>
-                                    <div class="flex items-center gap-1.5">
-                                        <h3 class="text-sm font-bold text-purple-950">Master Biller / Distributor</h3>
-                                        <span class="px-1.5 py-0.5 bg-purple-200 text-purple-900 rounded text-[9px] font-black uppercase">Pusat</span>
-                                    </div>
-                                    <p class="text-[11px] text-purple-900/80 mt-1 leading-relaxed">
-                                        Bina loket-loket warung binaan, transfer saldo downline, &amp; terima pasif royalti tiap transaksi.
-                                    </p>
-                                </div>
-                                <div class="mt-3 pt-2.5 border-t border-purple-200/70 flex items-center justify-between text-[11px]">
-                                    <span class="text-purple-700">Min. Deposit Modal:</span>
-                                    <strong class="text-purple-900 font-bold font-mono">{{ formatRupiah(minDepositMaster) }}</strong>
-                                </div>
-                            </div>
+                <!-- Registration Card -->
+                <div class="bg-white/95 backdrop-blur-xl shadow-2xl rounded-3xl border border-white/60 overflow-hidden">
+                    <div class="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 px-6 py-5 text-white flex items-center justify-between">
+                        <div>
+                            <h2 class="text-base sm:text-lg font-bold flex items-center gap-2">
+                                <span>📝</span> Formulir Pendaftaran Mitra
+                            </h2>
+                            <p class="text-xs text-emerald-100 mt-0.5">Lengkapi data di bawah ini untuk mengajukan akun kemitraan loket Anda</p>
                         </div>
+                        <span v-if="requireApproval" class="text-[11px] font-extrabold bg-amber-400 text-amber-950 px-3 py-1 rounded-full uppercase tracking-wider shadow-xs hidden sm:inline-block">
+                            Verifikasi Admin
+                        </span>
+                        <span v-else class="text-[11px] font-extrabold bg-white/20 px-3 py-1 rounded-full uppercase tracking-wider border border-white/20 hidden sm:inline-block">
+                            Aktivasi Cepat
+                        </span>
                     </div>
 
-                    <!-- Kode Sponsor / Master Referral (Hanya jika memilih Mitra Loket Biasa) -->
-                    <div v-if="form.tier === 'regular'" class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl animate-fade-in">
-                        <label for="master_referral_code" class="block text-xs font-semibold text-gray-700 mb-1 flex items-center justify-between">
-                            <span class="flex items-center gap-1">
-                                <span>🔗</span> Kode Master / Sponsor
-                            </span>
-                            <span class="text-[10px] text-gray-400 font-normal">Opsional (Jika Diajak Master Reseller)</span>
-                        </label>
-                        <input
-                            id="master_referral_code"
-                            v-model="form.master_referral_code"
-                            type="text"
-                            placeholder="Contoh: MSTR-A1B2C"
-                            class="w-full text-xs sm:text-sm rounded-xl border-gray-300 bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 px-3.5 py-2 uppercase font-mono transition"
-                        />
-                        <p class="text-[10.5px] text-gray-500 mt-1">
-                            Masukkan kode ini jika Anda diajak bergabung oleh Master Biller wilayah Anda.
-                        </p>
-                    </div>
-
-                    <!-- Section 1: Profil Agen & Toko -->
-                    <div>
-                        <h2 class="text-xs font-extrabold uppercase tracking-wider text-emerald-800 mb-3 flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                            Informasi Pemilik &amp; Usaha
-                        </h2>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label for="name" class="block text-xs font-semibold text-gray-700 mb-1">
-                                    Nama Lengkap Pemilik <span class="text-rose-500">*</span>
-                                </label>
-                                <input
-                                    id="name"
-                                    v-model="form.name"
-                                    type="text"
-                                    required
-                                    placeholder="Contoh: Ahmad Fauzi"
-                                    class="w-full text-xs sm:text-sm rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 px-3.5 py-2.5 transition"
-                                />
-                                <p v-if="form.errors.name" class="text-xs text-rose-500 mt-1 font-medium">{{ form.errors.name }}</p>
-                            </div>
-
-                            <div>
-                                <label for="store_name" class="block text-xs font-semibold text-gray-700 mb-1 flex items-center justify-between">
-                                    <span>Nama Toko / Loket Usaha</span>
-                                    <span class="text-[10px] text-gray-400 font-normal">Opsional</span>
-                                </label>
-                                <input
-                                    id="store_name"
-                                    v-model="form.store_name"
-                                    type="text"
-                                    placeholder="Contoh: Berkah Cell / Loket Pembayaran RT 03"
-                                    class="w-full text-xs sm:text-sm rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 px-3.5 py-2.5 transition"
-                                />
-                                <p v-if="form.errors.store_name" class="text-xs text-rose-500 mt-1 font-medium">{{ form.errors.store_name }}</p>
-                            </div>
-
-                            <div>
-                                <label for="phone" class="block text-xs font-semibold text-gray-700 mb-1">
-                                    Nomor WhatsApp Aktif <span class="text-rose-500">*</span>
-                                </label>
-                                <div class="relative">
-                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 text-xs font-bold">
-                                        +62 /
-                                    </div>
-                                    <input
-                                        id="phone"
-                                        v-model="form.phone"
-                                        type="tel"
-                                        required
-                                        placeholder="081234567890"
-                                        class="w-full pl-12 text-xs sm:text-sm rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 pr-3.5 py-2.5 transition"
-                                    />
-                                </div>
-                                <p v-if="form.errors.phone" class="text-xs text-rose-500 mt-1 font-medium">{{ form.errors.phone }}</p>
-                            </div>
-
-                            <div>
-                                <label for="area_id" class="block text-xs font-semibold text-gray-700 mb-1 flex items-center justify-between">
-                                    <span>Wilayah / Area Operasional</span>
-                                    <span class="text-[10px] text-gray-400 font-normal">Opsional</span>
-                                </label>
-                                <select
-                                    id="area_id"
-                                    v-model="form.area_id"
-                                    class="w-full text-xs sm:text-sm rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 px-3.5 py-2.5 transition cursor-pointer"
+                    <form @submit.prevent="submit" class="p-6 sm:p-8 space-y-6">
+                        
+                        <!-- Pilihan Tipe Kemitraan (Tier Selection) -->
+                        <div>
+                            <label class="block text-xs font-extrabold uppercase tracking-wider text-gray-700 mb-2">
+                                Pilih Tipe Kemitraan <span class="text-rose-500">*</span>
+                            </label>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                
+                                <!-- Option 1: Mitra Loket Biasa (Reseller) -->
+                                <div 
+                                    v-if="resellerRegistrationEnabled"
+                                    @click="form.tier = 'regular'" 
+                                    :class="[
+                                        'p-4 rounded-2xl border-2 cursor-pointer transition-all relative flex flex-col justify-between',
+                                        form.tier === 'regular' 
+                                            ? 'border-emerald-500 bg-emerald-50/50 ring-2 ring-emerald-200' 
+                                            : 'border-gray-200 bg-white hover:border-gray-300'
+                                    ]"
                                 >
-                                    <option value="">-- Pilih Wilayah Operasional --</option>
-                                    <option v-for="area in areas" :key="area.id" :value="area.id">
-                                        {{ area.name }}
-                                    </option>
-                                </select>
-                                <p v-if="form.errors.area_id" class="text-xs text-rose-500 mt-1 font-medium">{{ form.errors.area_id }}</p>
-                            </div>
+                                    <div class="flex items-start justify-between mb-2">
+                                        <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg font-bold">
+                                            🏪
+                                        </div>
+                                        <span v-if="form.tier === 'regular'" class="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs">
+                                            ✓
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-sm font-bold text-gray-900">Mitra Reseller (Voucher &amp; Eceran)</h3>
+                                        <p class="text-[11px] text-gray-500 mt-1 leading-relaxed">
+                                            Fokus melayani penjualan voucher WiFi hotspot eceran &amp; pembayaran tagihan warga sekitar.
+                                        </p>
+                                    </div>
+                                    <div class="mt-3 pt-2.5 border-t border-emerald-100/70 flex items-center justify-between text-[11px]">
+                                        <span class="text-gray-500 font-medium">Min. Isi Saldo:</span>
+                                        <strong class="text-emerald-700 font-bold font-mono text-xs">{{ formatRupiah(minDepositRegular) }}</strong>
+                                    </div>
+                                </div>
 
-                            <div class="sm:col-span-2">
-                                <label for="address" class="block text-xs font-semibold text-gray-700 mb-1">
-                                    Alamat Lengkap Toko / Loket <span class="text-rose-500">*</span>
-                                </label>
-                                <textarea
-                                    id="address"
-                                    v-model="form.address"
-                                    rows="2"
-                                    required
-                                    placeholder="Contoh: Jl. Melati No. 15 RT 02/04, Depan Pos Ronda"
-                                    class="w-full text-xs sm:text-sm rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 px-3.5 py-2.5 transition resize-none"
-                                ></textarea>
-                                <p v-if="form.errors.address" class="text-xs text-rose-500 mt-1 font-medium">{{ form.errors.address }}</p>
+                                <!-- Option 2: Master Biller / Distributor -->
+                                <div 
+                                    v-if="billerRegistrationEnabled"
+                                    @click="form.tier = 'master'" 
+                                    :class="[
+                                        'p-4 rounded-2xl border-2 cursor-pointer transition-all relative flex flex-col justify-between',
+                                        form.tier === 'master' 
+                                            ? 'border-purple-600 bg-purple-50/50 ring-2 ring-purple-200' 
+                                            : 'border-gray-200 bg-white hover:border-gray-300'
+                                    ]"
+                                >
+                                    <div class="flex items-start justify-between mb-2">
+                                        <div class="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center text-lg font-bold">
+                                            👑
+                                        </div>
+                                        <span v-if="form.tier === 'master'" class="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs">
+                                            ✓
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <div class="flex items-center gap-1.5">
+                                            <h3 class="text-sm font-bold text-purple-950">Master Biller &amp; Loket Resmi</h3>
+                                            <span class="px-1.5 py-0.5 bg-purple-200 text-purple-900 rounded text-[9px] font-black uppercase">Pusat</span>
+                                        </div>
+                                        <p class="text-[11px] text-purple-900/80 mt-1 leading-relaxed">
+                                            Bina warung loket binaan, transfer saldo downline, &amp; nikmati royalti pasif tiap transaksi.
+                                        </p>
+                                    </div>
+                                    <div class="mt-3 pt-2.5 border-t border-purple-200/70 flex items-center justify-between text-[11px]">
+                                        <span class="text-purple-700 font-medium">Min. Isi Saldo:</span>
+                                        <strong class="text-purple-900 font-bold font-mono text-xs">{{ formatRupiah(minDepositMaster) }}</strong>
+                                    </div>
+                                </div>
+                            </div>
+                            <p v-if="form.errors.tier" class="text-xs text-rose-500 mt-1 font-medium">{{ form.errors.tier }}</p>
+                        </div>
+
+                        <!-- Kode Sponsor / Master Referral (Hanya jika memilih Mitra Reseller) -->
+                        <div v-if="form.tier === 'regular'" class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl animate-fade-in">
+                            <label for="master_referral_code" class="block text-xs font-semibold text-gray-700 mb-1 flex items-center justify-between">
+                                <span class="flex items-center gap-1">
+                                    <span>🔗</span> Kode Master / Sponsor
+                                </span>
+                                <span class="text-[10px] text-gray-400 font-normal">Opsional (Jika Diajak Master Biller)</span>
+                            </label>
+                            <input
+                                id="master_referral_code"
+                                v-model="form.master_referral_code"
+                                type="text"
+                                placeholder="Contoh: MSTR-A1B2C"
+                                class="w-full text-xs sm:text-sm rounded-xl border-gray-300 bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 px-3.5 py-2 uppercase font-mono transition"
+                            />
+                            <p class="text-[10.5px] text-gray-500 mt-1">
+                                Masukkan kode ini jika Anda diajak bergabung oleh Master Biller wilayah Anda.
+                            </p>
+                        </div>
+
+                        <!-- Section 1: Profil Agen & Toko -->
+                        <div>
+                            <h2 class="text-xs font-extrabold uppercase tracking-wider text-emerald-800 mb-3 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                Informasi Pemilik &amp; Usaha
+                            </h2>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="name" class="block text-xs font-semibold text-gray-700 mb-1">
+                                        Nama Lengkap Pemilik <span class="text-rose-500">*</span>
+                                    </label>
+                                    <input
+                                        id="name"
+                                        v-model="form.name"
+                                        type="text"
+                                        required
+                                        placeholder="Contoh: Ahmad Fauzi"
+                                        class="w-full text-xs sm:text-sm rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 px-3.5 py-2.5 transition"
+                                    />
+                                    <p v-if="form.errors.name" class="text-xs text-rose-500 mt-1 font-medium">{{ form.errors.name }}</p>
+                                </div>
+
+                                <div>
+                                    <label for="store_name" class="block text-xs font-semibold text-gray-700 mb-1 flex items-center justify-between">
+                                        <span>Nama Toko / Loket Usaha</span>
+                                        <span class="text-[10px] text-gray-400 font-normal">Opsional</span>
+                                    </label>
+                                    <input
+                                        id="store_name"
+                                        v-model="form.store_name"
+                                        type="text"
+                                        placeholder="Contoh: Berkah Cell / Loket Pembayaran RT 03"
+                                        class="w-full text-xs sm:text-sm rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 px-3.5 py-2.5 transition"
+                                    />
+                                    <p v-if="form.errors.store_name" class="text-xs text-rose-500 mt-1 font-medium">{{ form.errors.store_name }}</p>
+                                </div>
+
+                                <div>
+                                    <label for="phone" class="block text-xs font-semibold text-gray-700 mb-1">
+                                        Nomor WhatsApp Aktif <span class="text-rose-500">*</span>
+                                    </label>
+                                    <div class="relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 text-xs font-bold">
+                                            +62 /
+                                        </div>
+                                        <input
+                                            id="phone"
+                                            v-model="form.phone"
+                                            type="tel"
+                                            required
+                                            placeholder="081234567890"
+                                            class="w-full pl-12 text-xs sm:text-sm rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 pr-3.5 py-2.5 transition"
+                                        />
+                                    </div>
+                                    <p v-if="form.errors.phone" class="text-xs text-rose-500 mt-1 font-medium">{{ form.errors.phone }}</p>
+                                </div>
+
+                                <div>
+                                    <label for="area_id" class="block text-xs font-semibold text-gray-700 mb-1 flex items-center justify-between">
+                                        <span>Wilayah / Area Operasional</span>
+                                        <span class="text-[10px] text-gray-400 font-normal">Opsional</span>
+                                    </label>
+                                    <select
+                                        id="area_id"
+                                        v-model="form.area_id"
+                                        class="w-full text-xs sm:text-sm rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 px-3.5 py-2.5 transition cursor-pointer"
+                                    >
+                                        <option value="">-- Pilih Wilayah Operasional --</option>
+                                        <option v-for="area in areas" :key="area.id" :value="area.id">
+                                            {{ area.name }}
+                                        </option>
+                                    </select>
+                                    <p v-if="form.errors.area_id" class="text-xs text-rose-500 mt-1 font-medium">{{ form.errors.area_id }}</p>
+                                </div>
+
+                                <div class="sm:col-span-2">
+                                    <label for="address" class="block text-xs font-semibold text-gray-700 mb-1">
+                                        Alamat Lengkap Toko / Loket <span class="text-rose-500">*</span>
+                                    </label>
+                                    <textarea
+                                        id="address"
+                                        v-model="form.address"
+                                        rows="2"
+                                        required
+                                        placeholder="Contoh: Jl. Melati No. 15 RT 02/04, Depan Pos Ronda"
+                                        class="w-full text-xs sm:text-sm rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 px-3.5 py-2.5 transition resize-none"
+                                    ></textarea>
+                                    <p v-if="form.errors.address" class="text-xs text-rose-500 mt-1 font-medium">{{ form.errors.address }}</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Section 2: Kredensial Login Client Area -->
-                    <div class="pt-4 border-t border-gray-100">
-                        <h2 class="text-xs font-extrabold uppercase tracking-wider text-emerald-800 mb-3 flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                            Akun Login Portal Mitra
-                        </h2>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div class="sm:col-span-2">
-                                <label for="email" class="block text-xs font-semibold text-gray-700 mb-1">
-                                    Alamat Email (Username Login) <span class="text-rose-500">*</span>
-                                </label>
-                                <input
-                                    id="email"
-                                    v-model="form.email"
-                                    type="email"
-                                    required
-                                    placeholder="nama.konter@gmail.com"
-                                    class="w-full text-xs sm:text-sm rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 px-3.5 py-2.5 transition"
-                                />
-                                <p v-if="form.errors.email" class="text-xs text-rose-500 mt-1 font-medium">{{ form.errors.email }}</p>
-                            </div>
+                        <!-- Section 2: Kredensial Login Client Area -->
+                        <div class="pt-4 border-t border-gray-100">
+                            <h2 class="text-xs font-extrabold uppercase tracking-wider text-emerald-800 mb-3 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                Akun Login Portal Mitra
+                            </h2>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div class="sm:col-span-2">
+                                    <label for="email" class="block text-xs font-semibold text-gray-700 mb-1">
+                                        Alamat Email (Username Login) <span class="text-rose-500">*</span>
+                                    </label>
+                                    <input
+                                        id="email"
+                                        v-model="form.email"
+                                        type="email"
+                                        required
+                                        placeholder="nama.konter@gmail.com"
+                                        class="w-full text-xs sm:text-sm rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 px-3.5 py-2.5 transition"
+                                    />
+                                    <p v-if="form.errors.email" class="text-xs text-rose-500 mt-1 font-medium">{{ form.errors.email }}</p>
+                                </div>
 
-                            <div>
-                                <label for="password" class="block text-xs font-semibold text-gray-700 mb-1">
-                                    Password <span class="text-rose-500">*</span>
-                                </label>
-                                <input
-                                    id="password"
-                                    v-model="form.password"
-                                    type="password"
-                                    required
-                                    placeholder="Minimal 6 karakter"
-                                    class="w-full text-xs sm:text-sm rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 px-3.5 py-2.5 transition"
-                                />
-                                <p v-if="form.errors.password" class="text-xs text-rose-500 mt-1 font-medium">{{ form.errors.password }}</p>
-                            </div>
+                                <div>
+                                    <label for="password" class="block text-xs font-semibold text-gray-700 mb-1">
+                                        Password <span class="text-rose-500">*</span>
+                                    </label>
+                                    <input
+                                        id="password"
+                                        v-model="form.password"
+                                        type="password"
+                                        required
+                                        placeholder="Minimal 6 karakter"
+                                        class="w-full text-xs sm:text-sm rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 px-3.5 py-2.5 transition"
+                                    />
+                                    <p v-if="form.errors.password" class="text-xs text-rose-500 mt-1 font-medium">{{ form.errors.password }}</p>
+                                </div>
 
-                            <div>
-                                <label for="password_confirmation" class="block text-xs font-semibold text-gray-700 mb-1">
-                                    Ulangi Password <span class="text-rose-500">*</span>
-                                </label>
-                                <input
-                                    id="password_confirmation"
-                                    v-model="form.password_confirmation"
-                                    type="password"
-                                    required
-                                    placeholder="Ketik ulang password"
-                                    class="w-full text-xs sm:text-sm rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 px-3.5 py-2.5 transition"
-                                />
-                                <p v-if="form.errors.password_confirmation" class="text-xs text-rose-500 mt-1 font-medium">{{ form.errors.password_confirmation }}</p>
+                                <div>
+                                    <label for="password_confirmation" class="block text-xs font-semibold text-gray-700 mb-1">
+                                        Ulangi Password <span class="text-rose-500">*</span>
+                                    </label>
+                                    <input
+                                        id="password_confirmation"
+                                        v-model="form.password_confirmation"
+                                        type="password"
+                                        required
+                                        placeholder="Ketik ulang password"
+                                        class="w-full text-xs sm:text-sm rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 px-3.5 py-2.5 transition"
+                                    />
+                                    <p v-if="form.errors.password_confirmation" class="text-xs text-rose-500 mt-1 font-medium">{{ form.errors.password_confirmation }}</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Terms & Agreement Note -->
-                    <div class="p-4 bg-emerald-50/80 rounded-2xl border border-emerald-200 text-xs text-emerald-900 space-y-1">
-                        <div class="font-bold flex items-center gap-1.5">
-                            <span>🛡️</span> Ketentuan Kemitraan:
+                        <!-- Syarat & Ketentuan Kemitraan (Terms & Agreement) -->
+                        <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs space-y-3">
+                            <div class="font-bold flex items-center justify-between text-slate-900 border-b border-slate-200/80 pb-2">
+                                <span class="flex items-center gap-1.5">
+                                    <span>🛡️</span> Syarat &amp; Ketentuan Kemitraan Resmi
+                                </span>
+                                <span v-if="requireApproval" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800">
+                                    Wajib Approve Admin
+                                </span>
+                            </div>
+
+                            <!-- Isi Teks Ketentuan -->
+                            <div class="p-3 bg-white rounded-xl border border-slate-200/70 text-[11px] text-slate-700 leading-relaxed max-h-36 overflow-y-auto whitespace-pre-line font-mono font-medium">
+                                {{ termsText }}
+                            </div>
+
+                            <!-- Checkbox Persetujuan -->
+                            <label class="flex items-start gap-2.5 cursor-pointer pt-1">
+                                <input
+                                    type="checkbox"
+                                    v-model="form.terms"
+                                    required
+                                    class="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 mt-0.5 cursor-pointer"
+                                />
+                                <span class="text-[11.5px] text-gray-800 leading-snug">
+                                    Saya telah membaca, memahami, dan menyetujui seluruh <strong>Syarat &amp; Ketentuan Kemitraan</strong> di atas. Saya bersedia memenuhi ketentuan <strong>minimal saldo awal ({{ form.tier === 'master' ? formatRupiah(minDepositMaster) : formatRupiah(minDepositRegular) }})</strong> dan mengikuti prosedur verifikasi / persetujuan Administrator.
+                                </span>
+                            </label>
+                            <p v-if="form.errors.terms" class="text-xs text-rose-500 mt-1 font-semibold">{{ form.errors.terms }}</p>
                         </div>
-                        <p class="text-[11px] text-emerald-800 leading-relaxed">
-                            Dengan mendaftar sebagai <strong>{{ form.tier === 'master' ? 'Master Biller & Distributor Wilayah' : 'Mitra Loket Biller' }}</strong>, akun Anda bebas dari biaya langganan bulanan dan langsung dapat digunakan untuk melayani pembayaran tagihan serta mencetak voucher setelah mengisi saldo modal.
-                        </p>
-                    </div>
 
-                    <!-- Submit Button -->
-                    <div>
-                        <button
-                            type="submit"
-                            :disabled="form.processing"
-                            class="w-full py-3.5 px-6 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-500/25 transition-all transform hover:-translate-y-0.5 focus:ring-4 focus:ring-emerald-300 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
-                        >
-                            <svg v-if="form.processing" class="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span>{{ form.processing ? 'Memproses Pendaftaran...' : (form.tier === 'master' ? 'Daftar Sebagai Master Biller Sekarang' : 'Daftar Sebagai Mitra Loket Sekarang') }}</span>
-                            <span v-if="!form.processing">&rarr;</span>
-                        </button>
-                    </div>
+                        <!-- Submit Button -->
+                        <div>
+                            <button
+                                type="submit"
+                                :disabled="form.processing"
+                                class="w-full py-3.5 px-6 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-500/25 transition-all transform hover:-translate-y-0.5 focus:ring-4 focus:ring-emerald-300 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
+                            >
+                                <svg v-if="form.processing" class="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span>
+                                    {{ form.processing 
+                                        ? 'Memproses Pendaftaran...' 
+                                        : (form.tier === 'master' 
+                                            ? `Daftar Master Biller (Min. Saldo ${formatRupiah(minDepositMaster)})` 
+                                            : `Daftar Mitra Reseller (Min. Saldo ${formatRupiah(minDepositRegular)})`) 
+                                    }}
+                                </span>
+                                <span v-if="!form.processing">&rarr;</span>
+                            </button>
+                        </div>
 
-                    <!-- Back to Login Link -->
-                    <div class="text-center pt-2">
-                        <p class="text-xs text-gray-500">
-                            Sudah memiliki akun kemitraan?
-                            <Link :href="route('login')" class="font-bold text-emerald-600 hover:text-emerald-800 hover:underline">
-                                Masuk ke Portal Mitra Di Sini
-                            </Link>
-                        </p>
-                    </div>
+                        <!-- Back to Login Link -->
+                        <div class="text-center pt-2">
+                            <p class="text-xs text-gray-500">
+                                Sudah memiliki akun kemitraan?
+                                <Link :href="route('login', { portal: 'reseller' })" class="font-bold text-emerald-600 hover:text-emerald-800 hover:underline">
+                                    Masuk ke Portal Mitra Di Sini
+                                </Link>
+                            </p>
+                        </div>
 
-                </form>
-            </div>
+                    </form>
+                </div>
+            </template>
 
             <!-- Footer Note -->
             <p class="text-center text-xs text-gray-400">

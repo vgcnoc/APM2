@@ -791,6 +791,9 @@ Route::middleware(['auth'])->group(function () {
         })->name('settings.api.token');
 
         Route::get('/settings/resellers', [\App\Http\Controllers\ResellerSettingController::class, 'index'])->name('settings.resellers.index');
+        Route::post('/settings/resellers/save-registration-settings', [\App\Http\Controllers\ResellerSettingController::class, 'saveRegistrationSettings'])->name('settings.resellers.save-registration-settings');
+        Route::post('/settings/resellers/{reseller}/approve', [\App\Http\Controllers\ResellerSettingController::class, 'approveReseller'])->name('settings.resellers.approve');
+        Route::post('/settings/resellers/{reseller}/reject', [\App\Http\Controllers\ResellerSettingController::class, 'rejectReseller'])->name('settings.resellers.reject');
         Route::post('/settings/resellers/{user}/update', [\App\Http\Controllers\ResellerSettingController::class, 'update'])->name('settings.resellers.update.post');
 
         // Data Migration Center

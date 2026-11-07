@@ -594,7 +594,7 @@
                                     step="5000"
                                     required
                                     class="w-full bg-gray-50/70 border border-gray-300 text-gray-900 text-base font-extrabold rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white block pl-11 pr-4 py-3 shadow-xs transition" 
-                                    placeholder="50000"
+                                    placeholder="20000"
                                 />
                             </div>
                             <span class="text-[11px] text-gray-500 mt-1 block">Minimal pengisian saldo ({{ is_master ? 'Master Biller' : 'Mitra Loket' }}): <strong>Rp {{ Number(effectiveMinDeposit).toLocaleString('id-ID') }}</strong></span>
@@ -700,7 +700,7 @@ const props = defineProps({
     },
     min_deposit: {
         type: Number,
-        default: 50000
+        default: 20000
     },
     recentPayments: Object,
     totalTransactionsAmount: Number,
@@ -928,12 +928,12 @@ _Terima kasih atas pembayaran Anda. Simpan bukti ini sebagai tanda terima sah._`
 // Top Up Modal State
 const showTopUpModal = ref(false);
 const topUpForm = useForm({
-    amount: props.is_master ? Math.max(2000000, Number(props.min_deposit || 2000000)) : Math.max(50000, Number(props.min_deposit || 50000)),
+    amount: props.is_master ? Math.max(2000000, Number(props.min_deposit || 2000000)) : Math.max(20000, Number(props.min_deposit || 20000)),
     channel: 'QRIS',
 });
 const effectiveMinDeposit = computed(() => {
     if (props.min_deposit && Number(props.min_deposit) > 0) return Number(props.min_deposit);
-    return props.is_master ? 2000000 : 50000;
+    return props.is_master ? 2000000 : 20000;
 });
 
 const effectiveMaxDeposit = computed(() => props.is_master ? 50000000 : 10000000);
@@ -941,7 +941,7 @@ const effectiveMaxDeposit = computed(() => props.is_master ? 50000000 : 10000000
 const presetAmounts = computed(() => {
     return props.is_master
         ? [2000000, 3000000, 5000000, 10000000, 15000000, 25000000]
-        : [50000, 100000, 200000, 300000, 500000, 1000000];
+        : [20000, 50000, 100000, 200000, 500000, 1000000];
 });
 
 const formatPresetLabel = (amt) => {
