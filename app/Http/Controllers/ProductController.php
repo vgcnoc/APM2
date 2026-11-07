@@ -25,7 +25,7 @@ class ProductController extends Controller
             $query->where('category', $request->category);
         }
 
-        $products = $query->with('stocks.area')->latest()->paginate(10)->withQueryString();
+        $products = $query->with('stocks.area')->orderByDesc('updated_at')->orderByDesc('id')->paginate(10)->withQueryString();
 
         $dbCategories = Material::catalogProducts()->select('category')->whereNotNull('category')->where('category', '!=', '')->distinct()->pluck('category')->toArray();
         $defaultCategories = ['Umum', 'Kabel', 'Patchcord', 'Klem', 'Isolasi', 'ONT', 'Splitter', 'Aksesoris', 'Peralatan'];
@@ -79,8 +79,10 @@ class ProductController extends Controller
         // Cek jika produk dengan nama yang sama sudah ada di sistem
         $existing = \App\Services\MaterialService::findByName($validated['name']);
         if ($existing) {
+            $validated['is_catalog'] = true;
+            $validated['is_migration'] = false;
             \App\Services\MaterialService::addStockToExistingMaterial($existing, $validated, null);
-            return redirect()->back()->with('success', 'Produk dengan nama tersebut sudah ada. Stok dan data berhasil digabungkan.');
+            return redirect()->back()->with('success', 'Produk dengan nama tersebut sudah ada di sistem. Data dan stok berhasil disinkronkan ke Katalog Produk.');
         }
 
         Material::create($validated);
@@ -125,6 +127,7 @@ class ProductController extends Controller
         }
 
         $validated['is_catalog'] = true;
+        $validated['is_migration'] = false;
         $product->update($validated);
 
         return redirect()->back()->with('success', 'Produk berhasil diperbarui.');

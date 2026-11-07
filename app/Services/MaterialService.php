@@ -143,6 +143,7 @@ class MaterialService
                 'name', 'supplier', 'category', 'unit', 'meter_per_roll', 'total_rolls',
                 'pcs_per_pack', 'total_packs', 'cm_per_pcs', 'total_pieces',
                 'price_per_unit', 'selling_price', 'description', 'requires_sn', 'requires_mac',
+                'is_catalog', 'is_migration',
             ];
 
             foreach ($fillableAttributes as $attr) {
@@ -251,6 +252,31 @@ class MaterialService
             $initialStock = max(0.0, (float) ($validated['initial_stock'] ?? $inputStock));
 
             $lockedTarget->is_active = true;
+
+            // Pastikan jika ada flag is_catalog dan is_migration di validated, sinkronkan ke target
+            if (isset($validated['is_catalog'])) {
+                $lockedTarget->is_catalog = (bool) $validated['is_catalog'];
+            }
+            if (isset($validated['is_migration']) && $validated['is_migration'] === false) {
+                $lockedTarget->is_migration = false;
+            }
+
+            // Update harga beli, harga jual, dan kategori jika disediakan di form
+            if (isset($validated['price_per_unit']) && $validated['price_per_unit'] !== null && (float) $validated['price_per_unit'] > 0) {
+                $lockedTarget->price_per_unit = $validated['price_per_unit'];
+            }
+            if (isset($validated['selling_price']) && $validated['selling_price'] !== null && (float) $validated['selling_price'] > 0) {
+                $lockedTarget->selling_price = $validated['selling_price'];
+            }
+            if (!empty($validated['category']) && (empty($lockedTarget->category) || $lockedTarget->category === 'Umum')) {
+                $lockedTarget->category = $validated['category'];
+            }
+            if (!empty($validated['unit']) && empty($lockedTarget->unit)) {
+                $lockedTarget->unit = $validated['unit'];
+            }
+            if (!empty($validated['description']) && empty($lockedTarget->description)) {
+                $lockedTarget->description = $validated['description'];
+            }
 
             // Update info konversi atau supplier jika belum terisi di target
             if (empty($lockedTarget->supplier) && !empty($validated['supplier'])) {
