@@ -141,18 +141,26 @@ class AffiliatePortalController extends Controller
             $custPhone = preg_replace('/[^0-9]/', '', (string) ($cust->phone ?? ''));
             if (str_starts_with($custPhone, '0')) {
                 $custPhone = '62' . substr($custPhone, 1);
+            } elseif (str_starts_with($custPhone, '8')) {
+                $custPhone = '62' . $custPhone;
             }
-            $periodLabel = $earliestInv?->period_label ?: ($earliestInv?->month ? "Bulan {$earliestInv->month}/{$earliestInv->year}" : '-');
-            $issuedDateLabel = $earliestInv?->issued_date ? $earliestInv->issued_date->format('d M Y') : '-';
-            $dueDateLabel = $earliestInv?->due_date ? $earliestInv->due_date->format('d M Y') : '-';
+            $periodLabel = $earliestInv?->period_label ?: ($earliestInv?->month ? "Bulan {$earliestInv->month}/{$earliestInv->year}" : 'berjalan');
+            $issuedDateLabel = $earliestInv?->issued_date ? $earliestInv->issued_date->format('d M Y') : '1 ' . now()->format('M Y');
+            $dueDateLabel = $earliestInv?->due_date ? $earliestInv->due_date->format('d M Y') : '12 ' . now()->format('M Y');
 
-            // Pesan WA Bantu Tagih HANYA jika tagihan sudah terbit dan lewat jatuh tempo
+            // Pesan WA Bantu Tagih untuk semua pelanggan dengan tagihan belum lunas
             $waUrl = null;
-            if ($hasOverdue && $isIssued) {
-                $waMsg = "Halo Kak {$cust->name}, saya {$user->name} dari tim layanan internet WiFi. "
-                    . "Sekadar menginfokan bahwa tagihan internet periode {$periodLabel} sebesar Rp " . number_format($totalUnpaid, 0, ',', '.') . " saat ini telah melewati batas jatuh tempo ({$dueDateLabel}). "
-                    . "Mohon dibantu pelunasannya ya Kak agar koneksi internet tetap aktif dan lancar. Terima kasih banyak 🙏";
-                $waUrl = $custPhone ? "https://wa.me/{$custPhone}?text=" . urlencode($waMsg) : null;
+            if ($hasUnpaid && !empty($custPhone)) {
+                if ($hasOverdue) {
+                    $waMsg = "Halo Kak {$cust->name}, saya {$user->name} dari tim layanan internet WiFi. "
+                        . "Sekadar menginfokan bahwa tagihan internet periode {$periodLabel} sebesar Rp " . number_format($totalUnpaid, 0, ',', '.') . " saat ini telah melewati batas jatuh tempo ({$dueDateLabel}). "
+                        . "Mohon dibantu pelunasannya ya Kak agar koneksi internet tetap aktif dan lancar tanpa kendala. Terima kasih banyak 🙏";
+                } else {
+                    $waMsg = "Halo Kak {$cust->name}, saya {$user->name} dari tim layanan internet WiFi. "
+                        . "Sekadar mengingatkan untuk tagihan internet periode {$periodLabel} sebesar Rp " . number_format($totalUnpaid, 0, ',', '.') . ", batas jatuh tempo pembayarannya adalah tanggal {$dueDateLabel}. "
+                        . "Mohon dapat dibantu penyelesaiannya ya Kak agar koneksi internet tetap aktif dan lancar. Terima kasih banyak 🙏";
+                }
+                $waUrl = "https://wa.me/{$custPhone}?text=" . urlencode($waMsg);
             }
 
             return [
@@ -165,8 +173,8 @@ class AffiliatePortalController extends Controller
                 'is_migrated' => (bool) $cust->is_migrated,
                 'is_eligible_commission' => $isActiveAndEligible,
                 'monthly_commission_rate' => $isActiveAndEligible ? $directMonthlyRate : 0,
-                'registration_date' => $cust->registration_date ? $cust->registration_date->format('d M Y') : '-',
-                'activation_date' => $cust->activation_date ? $cust->activation_date->format('d M Y') : '-',
+                'registration_date' => $cust->registration_date ? \Carbon\Carbon::parse($cust->registration_date)->format('d M Y') : '-',
+                'activation_date' => $cust->activation_date ? \Carbon\Carbon::parse($cust->activation_date)->format('d M Y') : '-',
                 'total_commission' => (float) $totalCommissions,
                 'has_unpaid_invoice' => $hasUnpaid,
                 'has_overdue_invoice' => $hasOverdue,
@@ -174,7 +182,7 @@ class AffiliatePortalController extends Controller
                 'is_prorata' => $isProrata,
                 'is_issued' => $isIssued,
                 'is_before_issue_date' => $isBeforeIssueDate,
-                'can_bantu_tagih' => $hasOverdue && $isIssued,
+                'can_bantu_tagih' => $hasUnpaid && !empty($custPhone),
                 'unpaid_invoices_count' => $custUnpaidInvoices->count(),
                 'unpaid_amount' => $totalUnpaid,
                 'period_label' => $periodLabel,
@@ -312,6 +320,7 @@ class AffiliatePortalController extends Controller
 
         // Pelanggan yang tagihannya sudah benar-benar melewati batas jatuh tempo (Overdue)
         $overdueCustomers = AffiliateService::getUnpaidCustomersForAffiliate($user, true);
+        $allUnpaidCustomers = AffiliateService::getUnpaidCustomersForAffiliate($user, false);
         $issueDay = (int) ($settings['invoice_issue_date'] ?? 1);
         $isolateDay = (int) ($settings['isolate_day'] ?? 12);
         $payoutDay = (int) ($settings['affiliate_payout_day'] ?? 15);
@@ -323,6 +332,7 @@ class AffiliatePortalController extends Controller
 
         $prorataCount = $customers->filter(fn($c) => !empty($c['is_prorata']))->count();
         $prorataRunningCount = $customers->filter(fn($c) => !empty($c['is_prorata']) && !empty($c['is_not_due_yet']))->count();
+        $allUnpaidCount = $customers->filter(fn($c) => !empty($c['has_unpaid_invoice']))->count();
 
         $payoutInfo = [
             'payout_day' => $payoutDay,
@@ -333,9 +343,11 @@ class AffiliatePortalController extends Controller
             'next_payout_date' => $nextPayoutDate,
             'has_unpaid_customers' => $overdueCustomers->isNotEmpty(), // HANYA tagihan lewat jatuh tempo yang menahan pencairan dana
             'has_overdue_customers' => $overdueCustomers->isNotEmpty(),
-            'unpaid_customers_count' => $overdueCustomers->count(),
-            'total_unpaid_amount' => (float) $overdueCustomers->sum('total_unpaid_amount'),
-            'unpaid_customers' => $overdueCustomers, // Hanya yang berstatus lewat jatuh tempo untuk dibantu tagih
+            'unpaid_customers_count' => $allUnpaidCount,
+            'overdue_customers_count' => $overdueCustomers->count(),
+            'total_unpaid_amount' => (float) $allUnpaidCustomers->sum('total_unpaid_amount'),
+            'unpaid_customers' => $allUnpaidCustomers,
+            'overdue_customers' => $overdueCustomers,
             'prorata_customers_count' => $prorataCount,
             'prorata_running_count' => $prorataRunningCount,
             'can_withdraw' => !$isEmployee && $isPayoutOpen && $overdueCustomers->isEmpty() && ((float) $profile->balance >= (float) $settings['affiliate_min_withdraw']),

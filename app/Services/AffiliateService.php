@@ -873,15 +873,24 @@ class AffiliateService
                 $custPhone = preg_replace('/[^0-9]/', '', (string) ($cust->phone ?? ''));
                 if (str_starts_with($custPhone, '0')) {
                     $custPhone = '62' . substr($custPhone, 1);
+                } elseif (str_starts_with($custPhone, '8')) {
+                    $custPhone = '62' . $custPhone;
                 }
 
-                // Pesan WA Bantu Tagih HANYA jika tagihan sudah terbit dan lewat jatuh tempo
+                // Pesan WA Bantu Tagih untuk semua tagihan belum lunas
                 $waUrl = null;
-                if ($isOverdue && $isIssued) {
-                    $msg = "Halo Kak {$cust->name}, saya {$user->name} dari tim layanan internet WiFi. "
-                        . "Sekadar menginfokan bahwa tagihan internet periode {$periodLabel} sebesar Rp " . number_format($totalUnpaid, 0, ',', '.') . " saat ini telah melewati batas jatuh tempo ({$earliestInvoice?->due_date?->format('d M Y')}). "
-                        . "Mohon dibantu pelunasannya ya Kak agar koneksi internet tetap aktif dan lancar. Terima kasih banyak 🙏";
-                    $waUrl = $custPhone ? "https://wa.me/{$custPhone}?text=" . urlencode($msg) : null;
+                if ($unpaidInvoices->isNotEmpty() && !empty($custPhone)) {
+                    $dueDateStr = $earliestInvoice?->due_date ? $earliestInvoice->due_date->format('d M Y') : '12 ' . now()->format('M Y');
+                    if ($isOverdue) {
+                        $msg = "Halo Kak {$cust->name}, saya {$user->name} dari tim layanan internet WiFi. "
+                            . "Sekadar menginfokan bahwa tagihan internet periode {$periodLabel} sebesar Rp " . number_format($totalUnpaid, 0, ',', '.') . " saat ini telah melewati batas jatuh tempo ({$dueDateStr}). "
+                            . "Mohon dibantu pelunasannya ya Kak agar koneksi internet tetap aktif dan lancar tanpa kendala. Terima kasih banyak 🙏";
+                    } else {
+                        $msg = "Halo Kak {$cust->name}, saya {$user->name} dari tim layanan internet WiFi. "
+                            . "Sekadar mengingatkan untuk tagihan internet periode {$periodLabel} sebesar Rp " . number_format($totalUnpaid, 0, ',', '.') . ", batas jatuh tempo pembayarannya adalah tanggal {$dueDateStr}. "
+                            . "Mohon dapat dibantu penyelesaiannya ya Kak agar koneksi internet tetap aktif dan lancar. Terima kasih banyak 🙏";
+                    }
+                    $waUrl = "https://wa.me/{$custPhone}?text=" . urlencode($msg);
                 }
 
                 return [
@@ -901,6 +910,7 @@ class AffiliateService
                     'is_issued' => $isIssued,
                     'is_before_issue_date' => $isBeforeIssueDate,
                     'is_not_due_yet' => !$isOverdue,
+                    'can_bantu_tagih' => $unpaidInvoices->isNotEmpty() && !empty($custPhone),
                     'wa_reminder_url' => $waUrl,
                 ];
             });
