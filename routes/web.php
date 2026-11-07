@@ -425,6 +425,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('material-mutations', [\App\Http\Controllers\MaterialMutationController::class, 'index'])->name('material-mutations.index');
 
     // ── INVENTORY & LOGISTIK (NEW SYSTEM) ─────────────────────
+    Route::get('produk/check-duplicate', [\App\Http\Controllers\ProductController::class, 'checkDuplicate'])->name('produk.check-duplicate');
     Route::resource('produk', \App\Http\Controllers\ProductController::class);
     Route::get('order-toko/{id}/print', [\App\Http\Controllers\PurchaseOrderController::class, 'print'])->name('order-toko.print');
     Route::resource('order-toko', \App\Http\Controllers\PurchaseOrderController::class);

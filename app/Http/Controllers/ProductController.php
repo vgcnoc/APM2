@@ -40,6 +40,40 @@ class ProductController extends Controller
         ]);
     }
 
+    /**
+     * Cek apakah nama produk sudah ada di sistem (untuk mendeteksi duplikasi & perbedaan harga secara realtime).
+     */
+    public function checkDuplicate(Request $request)
+    {
+        $name = trim((string) $request->input('name', ''));
+        $excludeId = $request->input('exclude_id') ? (int) $request->input('exclude_id') : null;
+
+        if (mb_strlen($name) < 2) {
+            return response()->json(['exists' => false]);
+        }
+
+        $existing = \App\Services\MaterialService::findByName($name, $excludeId);
+
+        if (!$existing) {
+            return response()->json(['exists' => false]);
+        }
+
+        return response()->json([
+            'exists' => true,
+            'product' => [
+                'id' => $existing->id,
+                'name' => $existing->name,
+                'category' => $existing->category,
+                'unit' => $existing->unit,
+                'stock' => (float) ($existing->stock ?? 0),
+                'price_per_unit' => (float) ($existing->price_per_unit ?? 0),
+                'selling_price' => (float) ($existing->selling_price ?? 0),
+                'supplier' => $existing->supplier,
+                'is_catalog' => (bool) $existing->is_catalog,
+            ]
+        ]);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -60,7 +94,13 @@ class ProductController extends Controller
             'is_active' => 'boolean',
             'requires_sn' => 'boolean',
             'requires_mac' => 'boolean',
+            'duplicate_action' => 'nullable|string|in:merge_update_price,merge_average_price,create_variant',
+            'variant_suffix' => 'nullable|string|max:100',
         ]);
+
+        $duplicateAction = $request->input('duplicate_action', 'merge_update_price');
+        $variantSuffix = trim((string) $request->input('variant_suffix', ''));
+        unset($validated['duplicate_action'], $validated['variant_suffix']);
 
         $areaId = $validated['area_id'] ?? null;
         unset($validated['area_id']);
@@ -79,10 +119,50 @@ class ProductController extends Controller
         // Cek jika produk dengan nama yang sama sudah ada di sistem
         $existing = \App\Services\MaterialService::findByName($validated['name']);
         if ($existing) {
+            // Opsi 3: Buat sebagai varian / batch baru dengan nama terpisah
+            if ($duplicateAction === 'create_variant') {
+                if ($variantSuffix === '') {
+                    $variantSuffix = 'Batch ' . date('d/m/Y');
+                }
+                $validated['name'] = trim($validated['name']) . " ({$variantSuffix})";
+
+                // Jika nama varian baru ini kebetulan sudah ada, gabungkan ke varian tersebut
+                $existingVariant = \App\Services\MaterialService::findByName($validated['name']);
+                if ($existingVariant) {
+                    $validated['is_catalog'] = true;
+                    $validated['is_migration'] = false;
+                    \App\Services\MaterialService::addStockToExistingMaterial($existingVariant, $validated, null);
+                    return redirect()->back()->with('success', "Stok berhasil ditambahkan ke varian yang sudah ada: '{$validated['name']}'.");
+                }
+
+                Material::create($validated);
+                return redirect()->back()->with('success', "Produk baru berhasil dibuat sebagai varian: '{$validated['name']}'.");
+            }
+
+            // Opsi 2: Hitung Harga Rata-Rata Tertimbang (Moving Average Cost)
+            if ($duplicateAction === 'merge_average_price') {
+                $oldStock = max(0.0, (float) ($existing->stock ?? 0));
+                $oldPrice = (float) ($existing->price_per_unit ?? 0);
+                $newStock = max(0.0, (float) ($validated['stock'] ?? 0));
+                $newPrice = (float) ($validated['price_per_unit'] ?? 0);
+
+                if (($oldStock + $newStock) > 0 && ($oldPrice > 0 || $newPrice > 0)) {
+                    $totalValue = ($oldStock * $oldPrice) + ($newStock * $newPrice);
+                    $avgPrice = $totalValue / ($oldStock + $newStock);
+                    $validated['price_per_unit'] = round($avgPrice, 2);
+                }
+            }
+
+            // Opsi 1 (default) & Opsi 2: Gabungkan stok ke material target
             $validated['is_catalog'] = true;
             $validated['is_migration'] = false;
             \App\Services\MaterialService::addStockToExistingMaterial($existing, $validated, null);
-            return redirect()->back()->with('success', 'Produk dengan nama tersebut sudah ada di sistem. Data dan stok berhasil disinkronkan ke Katalog Produk.');
+
+            $msg = $duplicateAction === 'merge_average_price'
+                ? "Produk '{$existing->name}' berhasil digabungkan dengan HPP Rata-Rata Rp " . number_format($validated['price_per_unit'] ?? 0, 0, ',', '.') . "."
+                : "Produk '{$existing->name}' sudah ada di sistem. Stok berhasil digabungkan dan harga diperbarui.";
+
+            return redirect()->back()->with('success', $msg);
         }
 
         Material::create($validated);

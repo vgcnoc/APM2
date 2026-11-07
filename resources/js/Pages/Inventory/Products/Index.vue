@@ -192,12 +192,126 @@
                                     <div class="space-y-4">
                                         <div>
                                             <label class="block text-sm font-bold text-gray-700 mb-1">Nama Barang / Material <span class="text-red-500">*</span></label>
-                                            <input type="text" v-model="form.name" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all" placeholder="Contoh: Kabel Drop Core 1 Core" required>
+                                            <div class="relative">
+                                                <input 
+                                                    type="text" 
+                                                    v-model="form.name" 
+                                                    @input="handleNameInput"
+                                                    class="w-full px-4 py-2 border rounded-xl focus:ring-2 transition-all" 
+                                                    :class="existingProductMatch ? 'border-amber-400 bg-amber-50/20 focus:ring-amber-500' : 'border-gray-200 focus:ring-emerald-500 bg-white'"
+                                                    placeholder="Contoh: Kabel Drop Core 1 Core" 
+                                                    required
+                                                />
+                                                <span v-if="isCheckingDuplicate" class="absolute right-3 top-2.5 text-xs text-gray-400 flex items-center gap-1">
+                                                    <svg class="animate-spin h-4 w-4 text-amber-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                                </span>
+                                            </div>
                                             <p v-if="form.id" class="text-[11px] text-emerald-700 font-medium mt-1 flex items-center gap-1">
                                                 <span>✓</span>
                                                 <span>Jika nama diubah sama persis dengan material yang sudah ada, sistem akan otomatis menimpa dan menyatukan riwayat stoknya.</span>
                                             </p>
                                             <div v-if="form.errors.name" class="text-xs text-red-500 mt-1">{{ form.errors.name }}</div>
+
+                                            <!-- CARD DETEKSI CERDAS PRODUK SAMA & PERBEDAAN HARGA -->
+                                            <div v-if="existingProductMatch && !form.id" class="mt-3 p-4 bg-gradient-to-br from-amber-50/90 via-orange-50/40 to-white border-2 border-amber-300 rounded-2xl shadow-sm text-xs space-y-3 animate-fade-in">
+                                                <div class="flex items-start justify-between gap-2">
+                                                    <div class="flex items-center gap-2">
+                                                        <span class="w-6 h-6 rounded-lg bg-amber-500 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">💡</span>
+                                                        <div>
+                                                            <strong class="text-amber-950 font-bold text-xs">Produk dengan nama ini sudah terdaftar di sistem!</strong>
+                                                            <p class="text-[11px] text-amber-800">Sistem mendeteksi data produk lama dengan rincian harga &amp; stok berikut:</p>
+                                                        </div>
+                                                    </div>
+                                                    <span class="px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-900 font-mono text-[10px] font-bold">
+                                                        ID: #{{ existingProductMatch.id }}
+                                                    </span>
+                                                </div>
+
+                                                <!-- Data Bandingan Lama -->
+                                                <div class="grid grid-cols-3 gap-2 p-2.5 rounded-xl bg-white/95 border border-amber-200 text-[11px] shadow-2xs">
+                                                    <div>
+                                                        <span class="text-gray-500 block text-[10px]">Stok Saat Ini:</span>
+                                                        <strong class="text-gray-900 font-bold">{{ formatNum(existingProductMatch.stock) }} {{ existingProductMatch.unit }}</strong>
+                                                    </div>
+                                                    <div>
+                                                        <span class="text-gray-500 block text-[10px]">Harga Modal Lama:</span>
+                                                        <strong class="text-gray-900 font-bold">Rp {{ formatNum(existingProductMatch.price_per_unit) }}</strong>
+                                                    </div>
+                                                    <div>
+                                                        <span class="text-gray-500 block text-[10px]">Harga Jual Lama:</span>
+                                                        <strong class="text-gray-900 font-bold">Rp {{ formatNum(existingProductMatch.selling_price) }}</strong>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Pilihan Penanganan Cerdas -->
+                                                <div class="space-y-1.5 pt-1">
+                                                    <label class="block text-[11px] font-bold uppercase tracking-wider text-amber-900">Pilih Cara Penanganan Harga &amp; Stok:</label>
+                                                    
+                                                    <div class="space-y-2">
+                                                        <!-- Opsi 1: Update Harga Terbaru -->
+                                                        <label class="p-2.5 rounded-xl border flex items-start gap-2.5 cursor-pointer transition"
+                                                            :class="form.duplicate_action === 'merge_update_price' ? 'border-amber-500 bg-amber-100/40 ring-2 ring-amber-400/30' : 'border-gray-200 bg-white hover:border-amber-300'">
+                                                            <input type="radio" v-model="form.duplicate_action" value="merge_update_price" class="mt-0.5 text-amber-600 focus:ring-amber-500">
+                                                            <div class="flex-1">
+                                                                <div class="font-bold text-gray-900 flex items-center justify-between">
+                                                                    <span>1. Gabungkan Stok &amp; Gunakan Harga Baru</span>
+                                                                    <span class="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded font-semibold border border-emerald-200">Harga Terkini</span>
+                                                                </div>
+                                                                <p class="text-[11px] text-gray-600 mt-0.5 leading-snug">
+                                                                    Stok lama ({{ formatNum(existingProductMatch.stock) }}) + stok baru ({{ formatNum(form.stock || 0) }}) akan disatukan. Harga modal di katalog otomatis diperbarui ke <strong>Rp {{ formatNum(form.price_per_unit) }}</strong>.
+                                                                </p>
+                                                            </div>
+                                                        </label>
+
+                                                        <!-- Opsi 2: Hitung Harga Rata-Rata (Moving Average Cost) -->
+                                                        <label class="p-2.5 rounded-xl border flex items-start gap-2.5 cursor-pointer transition"
+                                                            :class="form.duplicate_action === 'merge_average_price' ? 'border-amber-500 bg-amber-100/40 ring-2 ring-amber-400/30' : 'border-gray-200 bg-white hover:border-amber-300'">
+                                                            <input type="radio" v-model="form.duplicate_action" value="merge_average_price" class="mt-0.5 text-amber-600 focus:ring-amber-500">
+                                                            <div class="flex-1">
+                                                                <div class="font-bold text-gray-900 flex items-center justify-between">
+                                                                    <span>2. Gabungkan Stok &amp; Hitung Harga Rata-Rata (Moving Average)</span>
+                                                                    <span class="text-[10px] text-indigo-700 bg-indigo-50 px-1.5 py-0.2 rounded font-semibold border border-indigo-200">&asymp; Rp {{ formatNum(calculatedAveragePrice) }}</span>
+                                                                </div>
+                                                                <p class="text-[11px] text-gray-600 mt-0.5 leading-snug">
+                                                                    Sistem menghitung rata-rata HPP modal berdasarkan bobot stok lama dan stok baru. HPP modal otomatis menjadi <strong>Rp {{ formatNum(calculatedAveragePrice) }} / {{ existingProductMatch.unit }}</strong>.
+                                                                </p>
+                                                            </div>
+                                                        </label>
+
+                                                        <!-- Opsi 3: Buat Varian / Batch Baru -->
+                                                        <label class="p-2.5 rounded-xl border flex items-start gap-2.5 cursor-pointer transition"
+                                                            :class="form.duplicate_action === 'create_variant' ? 'border-amber-500 bg-amber-100/40 ring-2 ring-amber-400/30' : 'border-gray-200 bg-white hover:border-amber-300'">
+                                                            <input type="radio" v-model="form.duplicate_action" value="create_variant" class="mt-0.5 text-amber-600 focus:ring-amber-500">
+                                                            <div class="flex-1">
+                                                                <div class="font-bold text-gray-900 flex items-center justify-between">
+                                                                    <span>3. Simpan Sebagai Varian / Batch Baru (Pisah Produk)</span>
+                                                                    <span class="text-[10px] text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded font-semibold border border-blue-200">SKU Terpisah</span>
+                                                                </div>
+                                                                <p class="text-[11px] text-gray-600 mt-0.5 leading-snug">
+                                                                    Jika merk, kualitas, atau batch berbeda dan ingin dicatat terpisah tanpa mencampur stok lama.
+                                                                </p>
+
+                                                                <!-- Input Pembeda Varian jika opsi 3 dipilih -->
+                                                                <div v-if="form.duplicate_action === 'create_variant'" class="mt-2.5 pt-2 border-t border-amber-200/80">
+                                                                    <label class="block text-[11px] font-bold text-gray-700 mb-1">Keterangan Varian / Batch Pembeda:</label>
+                                                                    <div class="flex gap-2">
+                                                                        <input 
+                                                                            type="text" 
+                                                                            v-model="form.variant_suffix" 
+                                                                            class="w-full px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 bg-white font-medium" 
+                                                                            placeholder="Contoh: Batch 2 / Merk B / Import"
+                                                                            required
+                                                                        />
+                                                                    </div>
+                                                                    <div class="mt-1 text-[10px] text-gray-500">
+                                                                        Nama produk akan disimpan sebagai: <strong class="text-gray-800">{{ form.name }} ({{ form.variant_suffix || 'Nama Varian' }})</strong>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                         <div class="grid grid-cols-2 gap-4">
                                             <div>
@@ -497,6 +611,7 @@ import { ref, computed } from 'vue';
 import { useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/vue';
+import axios from 'axios';
 
 import { debounce } from 'lodash';
 import { Link } from '@inertiajs/vue3';
@@ -573,6 +688,9 @@ const setCategory = (cat) => {
 };
 
 const isModalOpen = ref(false);
+const isCheckingDuplicate = ref(false);
+const existingProductMatch = ref(null);
+let checkDebounceTimer = null;
 
 const form = useForm({
     id: null,
@@ -592,7 +710,57 @@ const form = useForm({
     requires_sn: false,
     requires_mac: false,
     description: '',
+    duplicate_action: 'merge_update_price',
+    variant_suffix: '',
 });
+
+const calculatedAveragePrice = computed(() => {
+    if (!existingProductMatch.value) return 0;
+    const oldStock = Math.max(0, Number(existingProductMatch.value.stock) || 0);
+    const oldPrice = Number(existingProductMatch.value.price_per_unit) || 0;
+    const newStock = Math.max(0, Number(form.stock) || 0);
+    const newPrice = Number(form.price_per_unit) || 0;
+
+    const totalStock = oldStock + newStock;
+    if (totalStock <= 0) return newPrice || oldPrice;
+    const totalVal = (oldStock * oldPrice) + (newStock * newPrice);
+    return Math.round(totalVal / totalStock);
+});
+
+const handleNameInput = () => {
+    if (form.id) {
+        existingProductMatch.value = null;
+        return;
+    }
+    clearTimeout(checkDebounceTimer);
+    const name = (form.name || '').trim();
+    if (name.length < 2) {
+        existingProductMatch.value = null;
+        isCheckingDuplicate.value = false;
+        return;
+    }
+
+    isCheckingDuplicate.value = true;
+    checkDebounceTimer = setTimeout(async () => {
+        try {
+            const res = await axios.get(route('produk.check-duplicate'), {
+                params: { name: form.name.trim(), exclude_id: form.id }
+            });
+            if (res.data.exists && res.data.product) {
+                existingProductMatch.value = res.data.product;
+                if (!form.variant_suffix) {
+                    form.variant_suffix = 'Batch ' + new Date().toLocaleDateString('id-ID');
+                }
+            } else {
+                existingProductMatch.value = null;
+            }
+        } catch (e) {
+            console.error('Failed to check duplicate product', e);
+        } finally {
+            isCheckingDuplicate.value = false;
+        }
+    }, 350);
+};
 
 const getInitialStock = (product) => {
     if (product.initial_stock !== null && product.initial_stock !== undefined && product.initial_stock !== '') {
@@ -707,17 +875,25 @@ const openModal = (product = null) => {
         form.clearErrors();
         
         isNewCategory.value = false;
+        existingProductMatch.value = null;
+        form.duplicate_action = 'merge_update_price';
+        form.variant_suffix = '';
         initialRolls.value = 0;
         initialPacks.value = 0;
         initialBungkus.value = 0;
     }
+    existingProductMatch.value = null;
     isModalOpen.value = true;
 };
 
 const closeModal = () => {
     isModalOpen.value = false;
+    existingProductMatch.value = null;
     setTimeout(() => {
         form.reset();
+        existingProductMatch.value = null;
+        form.duplicate_action = 'merge_update_price';
+        form.variant_suffix = '';
         initialRolls.value = 0;
         initialPacks.value = 0;
         initialBungkus.value = 0;
