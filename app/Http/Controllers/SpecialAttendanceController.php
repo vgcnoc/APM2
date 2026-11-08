@@ -342,7 +342,7 @@ class SpecialAttendanceController extends Controller
                 ? sprintf("%02d:%02d WIB", (int) floor($avgClockIn / 3600), (int) floor(((int) $avgClockIn % 3600) / 60))
                 : '-';
 
-            $latePenalty = (int) $empRecords->sum(fn($rec) => min(100, (int) ($rec->late_minutes ?? 0) * 2));
+            $latePenalty = (int) $memberAtts->sum(fn($rec) => min(100, (int) ($rec->late_minutes ?? 0) * 2));
             $score = ($presents > 0) ? max(0, ($presents * 100) - $latePenalty - ($noClockOut * 50)) : 0;
 
             $adminMatrix[] = [
