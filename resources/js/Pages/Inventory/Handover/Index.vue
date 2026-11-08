@@ -98,6 +98,16 @@
                         </span>
                     </button>
                 </div>
+
+                <!-- Tombol Ajukan Permintaan Material / ONT ke Ka. Teknisi -->
+                <div class="flex items-center gap-2">
+                    <button 
+                        @click="openRequestModal" 
+                        class="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"
+                    >
+                        <span>⚡</span> + Ajukan Material / Ganti ONT
+                    </button>
+                </div>
             </div>
 
             <!-- ── 3. FILTERS BAR ─────────────────────────────────────── -->
@@ -657,6 +667,43 @@ const resetFilters = () => {
 };
 
 // ── Modals & Actions ──────────────────────────────────────────────────────────
+// Request Modal
+const showRequestModal = ref(false);
+const requestForm = useForm({
+    request_type: 'additional_material',
+    source_type: 'pgs',
+    source_reference: '',
+    source_id: null,
+    area_id: '',
+    old_ont_id: null,
+    replacement_ont_id: '',
+    notes: '',
+    items: [
+        { material_id: '', quantity: 1, unit: 'pcs' }
+    ],
+});
+
+const openRequestModal = () => {
+    requestForm.reset();
+    requestForm.request_type = 'additional_material';
+    requestForm.source_type = 'pgs';
+    requestForm.items = [{ material_id: '', quantity: 1, unit: 'pcs' }];
+    showRequestModal.value = true;
+};
+
+const addRequestItem = () => {
+    requestForm.items.push({ material_id: '', quantity: 1, unit: 'pcs' });
+};
+
+const submitRequestForm = () => {
+    requestForm.post('/material-handovers/request', {
+        preserveScroll: true,
+        onSuccess: () => {
+            showRequestModal.value = false;
+        }
+    });
+};
+
 const showReceiveModal = ref(false);
 const activeTrx = ref(null);
 const receiveForm = useForm({
