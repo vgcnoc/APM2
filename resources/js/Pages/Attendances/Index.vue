@@ -1003,11 +1003,13 @@
                                             :class="[
                                                 att.attendance_type === 'dinas_luar'
                                                     ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                                                    : 'bg-slate-100 text-slate-600 border-slate-200',
+                                                    : (att.attendance_type === 'special_team'
+                                                        ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                                        : 'bg-slate-100 text-slate-600 border-slate-200'),
                                                 'px-1.5 py-0.5 rounded text-[10px] font-bold border inline-block mt-0.5'
                                             ]"
                                         >
-                                            {{ att.attendance_type === 'dinas_luar' ? '🚗 Dinas Luar' : '🏢 Kantor (WFO)' }}
+                                            {{ att.attendance_type === 'dinas_luar' ? '🚗 Dinas Luar' : (att.attendance_type === 'special_team' ? '⭐ ' + (att.shift?.name || 'Tim Khusus') : '🏢 Kantor (WFO)') }}
                                         </span>
                                     </td>
                                     <td class="px-4 py-3">

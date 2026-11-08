@@ -9,7 +9,7 @@ class SpecialAttendance extends Model
     protected $guarded = ['id'];
 
     protected $casts = [
-        'date' => 'date',
+        'date' => 'date:Y-m-d',
         'is_synced_to_payroll' => 'boolean',
     ];
 

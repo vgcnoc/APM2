@@ -573,7 +573,7 @@
                             </thead>
                             <tbody class="divide-y divide-slate-100 text-slate-700">
                                 <tr v-for="item in history.data" :key="item.id" class="hover:bg-slate-50/50">
-                                    <td class="p-3 font-semibold">{{ item.date }}</td>
+                                    <td class="p-3 font-semibold">{{ formatDateOnly(item.date) }}</td>
                                     <td class="p-3">
                                         <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
                                             {{ item.team?.name || '-' }}
@@ -1687,7 +1687,8 @@ const formatEarlyLimitCountdown = (mins) => {
 };
 
 // Tab Active State
-const activeTab = ref('absen'); // 'absen', 'riwayat', 'admin', 'best', 'potongan_khusus', 'potongan_serbu', 'potongan_bc4'
+const initialTab = props.filters?.tab || (props.filters?.history_team_id ? 'riwayat' : 'absen');
+const activeTab = ref(initialTab); // 'absen', 'riwayat', 'admin', 'best', 'potongan_khusus', 'potongan_serbu', 'potongan_bc4'
 
 const globalTop3 = computed(() => {
     return (props.leaderboard || []).slice(0, 3);
@@ -1754,6 +1755,11 @@ const formatTimeDisplay = (timeStr) => {
     return timeStr.slice(0, 5);
 };
 
+const formatDateOnly = (dateStr) => {
+    if (!dateStr) return '-';
+    return String(dateStr).split('T')[0];
+};
+
 const getInitials = (name) => {
     if (!name) return 'K';
     return name
@@ -1790,6 +1796,7 @@ const applyHistoryFilter = () => {
             filter_status: filterHistoryStatus.value,
             start_date: filterStartDate.value,
             end_date: filterEndDate.value,
+            tab: 'riwayat',
         },
         { preserveState: true }
     );

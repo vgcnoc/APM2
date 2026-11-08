@@ -381,11 +381,44 @@ class AttendanceController extends Controller
         }
         $todayAllAttendances = $monitoringQuery->latest()->get();
 
+        // Gabungkan absensi tim khusus hari ini ke monitoring live
+        $todaySpecialQuery = SpecialAttendance::with(['employee.area', 'team'])
+            ->where('date', $today);
+        if ($filterArea) {
+            $todaySpecialQuery->whereHas('employee', fn($eq) => $eq->where('area_id', $filterArea));
+        }
+        $todaySpecialAttendances = $todaySpecialQuery->latest('clock_in')->get()->map(function ($sa) {
+            return (object) [
+                'id' => 'special_' . $sa->id,
+                'employee_id' => $sa->employee_id,
+                'employee' => $sa->employee,
+                'shift' => (object) [
+                    'name' => $sa->team?->name ?? 'Tim Khusus',
+                ],
+                'area' => (object) [
+                    'name' => $sa->team?->name ?? 'Tim Khusus',
+                ],
+                'attendance_type' => 'special_team',
+                'clock_in' => $sa->clock_in,
+                'clock_out' => $sa->clock_out,
+                'photo_in' => $sa->photo_in,
+                'photo_out' => $sa->photo_out,
+                'lat_in' => $sa->lat_in,
+                'lng_in' => $sa->lng_in,
+                'status' => $sa->status,
+                'late_minutes' => $sa->late_minutes,
+                'duty_location' => $sa->location_in,
+                'notes' => $sa->notes,
+            ];
+        });
+
+        $allMonitoringAttendances = $todayAllAttendances->concat($todaySpecialAttendances);
+
         $totalEmployeesCount = Employee::excludeTokoAndDemo()->count();
-        $presentCount = $todayAllAttendances->whereNotNull('clock_in')->count();
-        $lateCount = $todayAllAttendances->where('status', 'late')->count();
-        $onTimeCount = $todayAllAttendances->where('status', 'present')->where('late_minutes', '<=', 5)->count();
-        $fieldDutyCount = $todayAllAttendances->where('attendance_type', 'dinas_luar')->count();
+        $presentCount = $allMonitoringAttendances->whereNotNull('clock_in')->count();
+        $lateCount = $allMonitoringAttendances->where('status', 'late')->count();
+        $onTimeCount = $allMonitoringAttendances->where('status', 'present')->where('late_minutes', '<=', 5)->count();
+        $fieldDutyCount = $allMonitoringAttendances->where('attendance_type', 'dinas_luar')->count();
 
         // 8. Rekapitulasi Kehadiran Bulanan (Tab Rekap & Sinkronisasi Gaji)
         $selectedMonth = $request->get('month', $now->format('Y-m'));
@@ -396,14 +429,26 @@ class AttendanceController extends Controller
             ->whereBetween('date', [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
             ->get();
 
-        // Rekap per Karyawan
-        $monthlyRecap = $allEmployees->map(function ($emp) use ($monthAttendances, $monthStart, $monthEnd) {
+        $monthSpecialAttendances = SpecialAttendance::with(['employee.area', 'team'])
+            ->whereBetween('date', [$monthStart->format('Y-m-d'), $monthEnd->format('Y-m-d')])
+            ->get();
+
+        // Rekap per Karyawan (Konsolidasi Absensi Reguler & Tim Khusus)
+        $monthlyRecap = $allEmployees->map(function ($emp) use ($monthAttendances, $monthSpecialAttendances, $monthStart, $monthEnd) {
             $empAtts = $monthAttendances->where('employee_id', $emp->id);
-            $totalPresent = $empAtts->whereNotNull('clock_in')->count();
-            $totalLate = $empAtts->where('status', 'late')->count();
-            $totalLateMinutes = $empAtts->sum('late_minutes');
+            $empSpecAtts = $monthSpecialAttendances->where('employee_id', $emp->id);
+
+            $regularPresent = $empAtts->whereNotNull('clock_in')->count();
+            $specialPresent = $empSpecAtts->whereNotNull('clock_in')->count();
+            $totalPresent = $regularPresent + $specialPresent;
+
+            $regularLate = $empAtts->where('status', 'late')->count();
+            $specialLate = $empSpecAtts->where('status', 'late')->count();
+            $totalLate = $regularLate + $specialLate;
+
+            $totalLateMinutes = (int) $empAtts->sum('late_minutes') + (int) $empSpecAtts->sum('late_minutes');
             $totalFieldDuty = $empAtts->where('attendance_type', 'dinas_luar')->count();
-            $totalSynced = $empAtts->where('is_synced_to_payroll', true)->count();
+            $totalSynced = $empAtts->where('is_synced_to_payroll', true)->count() + $empSpecAtts->where('is_synced_to_payroll', true)->count();
 
             // Cek apakah karyawan terhubung ke user di sistem payroll
             $linkedUser = User::where('email', $emp->email)->first();
@@ -457,7 +502,7 @@ class AttendanceController extends Controller
             'weeklySchedules' => $weeklySchedules,
             'officeLocation' => $officeLocation,
             'monitoring' => [
-                'attendances' => $todayAllAttendances,
+                'attendances' => $allMonitoringAttendances,
                 'totalEmployees' => $totalEmployeesCount,
                 'presentCount' => $presentCount,
                 'onTimeCount' => $onTimeCount,

@@ -26,7 +26,17 @@ class SpecialAttendanceController extends Controller
     {
         $today = Carbon::today()->format('Y-m-d');
         $user = auth()->user();
-        if ($user && !$user->hasRole('admin') && $user->role !== 'admin' && !$user->can('attendance_tab_special')) {
+        $isSpecialMember = false;
+        if ($user) {
+            $userEmp = Employee::where('email', $user->email)->first();
+            if ($userEmp) {
+                $isSpecialMember = SpecialTeamMember::where('employee_id', $userEmp->id)
+                    ->whereHas('team', fn($q) => $q->where('is_active', true))
+                    ->exists();
+            }
+        }
+
+        if ($user && !$user->hasRole('admin') && $user->role !== 'admin' && !$user->can('attendance_tab_special') && !$isSpecialMember) {
             abort(403, 'Anda tidak memiliki hak akses ke halaman Absen Tim Khusus.');
         }
 
@@ -564,7 +574,7 @@ class SpecialAttendanceController extends Controller
             'checkoutDeadlineLabel' => $checkoutDeadlineLabel,
             'clockInWindowInfo' => $clockInWindowInfo,
             'clockOutWindowInfo' => $clockOutWindowInfo,
-            'filters' => $request->only(['team_id', 'start_date', 'end_date', 'filter_employee_id', 'filter_status', 'month', 'history_team_id']),
+            'filters' => $request->only(['team_id', 'start_date', 'end_date', 'filter_employee_id', 'filter_status', 'month', 'history_team_id', 'tab']),
         ]);
     }
 

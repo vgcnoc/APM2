@@ -12,6 +12,7 @@ use App\Models\WorkSchedule;
 use App\Services\AttendanceCalculatorService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -316,7 +317,7 @@ class AttendanceReportController extends Controller
         }
 
         // 4. Kalkulasi Summary Cards (Statistik Global Periode)
-        $totalLogs = $allAttendancesInPeriod->count();
+        $totalLogs = $allAttendancesInPeriod->count() + $allSpecialAttendancesInPeriod->count();
         $totalPresentCount = $employeeRecap->sum('total_present');
         $totalLateCount = $employeeRecap->sum('total_late');
         $totalLateMinutesCount = $employeeRecap->sum('total_late_minutes');
@@ -346,42 +347,83 @@ class AttendanceReportController extends Controller
             'avg_discipline_rate' => round($avgDiscipline, 1),
         ];
 
-        // 5. Query Log Rinci Harian (Detail Tab)
+        // 5. Query Log Rinci Harian (Detail Tab) - Konsolidasi Reguler & Tim Khusus
         $nowJakarta = Carbon::now('Asia/Jakarta');
         $attSettings = AttendanceCalculatorService::getAttendanceSettings();
         $detailQuery = clone $attQuery;
+        $specialDetailQuery = clone $specialAttQuery;
+
+        if ($request->filled('attendance_type') && $request->attendance_type !== 'all') {
+            if ($request->attendance_type === 'special_team') {
+                $detailQuery->whereRaw('1=0');
+            } else {
+                $specialDetailQuery->whereRaw('1=0');
+            }
+        }
+
         if ($request->filled('status') && $request->status !== 'all') {
             if ($request->status === 'on_time') {
                 $detailQuery->where('status', 'present')->where(function ($q) {
                     $q->whereNull('late_minutes')->orWhere('late_minutes', '<=', 0);
                 })->where('attendance_type', '!=', 'dinas_luar');
+
+                $specialDetailQuery->where('status', 'present')->where(function ($q) {
+                    $q->whereNull('late_minutes')->orWhere('late_minutes', '<=', 0);
+                });
             } elseif ($request->status === 'late') {
                 $detailQuery->where(function ($q) {
                     $q->where('status', 'late')->orWhere('late_minutes', '>', 0);
                 });
+
+                $specialDetailQuery->where(function ($q) {
+                    $q->where('status', 'late')->orWhere('late_minutes', '>', 0);
+                });
             } elseif ($request->status === 'field_duty') {
                 $detailQuery->where('attendance_type', 'dinas_luar');
+                $specialDetailQuery->whereRaw('1=0');
             } elseif ($request->status === 'missing_out') {
                 $missingOutIds = $allAttendancesInPeriod
                     ->filter(fn($a) => AttendanceCalculatorService::isMissingClockOut($a, $nowJakarta, $attSettings, null, 'Asia/Jakarta'))
                     ->pluck('id')
                     ->all();
                 $detailQuery->whereIn('id', !empty($missingOutIds) ? $missingOutIds : [0]);
+
+                $specialMissingOutIds = $allSpecialAttendancesInPeriod
+                    ->filter(fn($a) => AttendanceCalculatorService::isSpecialMissingClockOut($a, $a->team, $nowJakarta))
+                    ->pluck('id')
+                    ->all();
+                $specialDetailQuery->whereIn('id', !empty($specialMissingOutIds) ? $specialMissingOutIds : [0]);
             }
         }
 
-        $detailQuery->orderByDesc('date')->orderByDesc('clock_in');
+        $regularLogs = $detailQuery->orderByDesc('date')->orderByDesc('clock_in')->get()->map(function ($item) use ($today, $nowJakarta, $attSettings) {
+            return $this->formatDetailItem($item, $today, $nowJakarta, $attSettings);
+        });
+
+        $specialLogs = $specialDetailQuery->orderByDesc('date')->orderByDesc('clock_in')->get()->map(function ($item) use ($today, $nowJakarta) {
+            return $this->formatSpecialDetailItem($item, $today, $nowJakarta);
+        });
+
+        $combinedLogs = $regularLogs->concat($specialLogs)->sort(function ($a, $b) {
+            if ($a['date'] !== $b['date']) {
+                return strcmp($b['date'], $a['date']);
+            }
+            return strcmp($b['clock_in'] ?? '', $a['clock_in'] ?? '');
+        })->values();
 
         if ($paginateDetail) {
-            $paginatedDetails = $detailQuery->paginate($request->get('per_page', 25))->withQueryString();
-            $detailLogs = $paginatedDetails->through(function ($item) use ($today, $nowJakarta, $attSettings) {
-                return $this->formatDetailItem($item, $today, $nowJakarta, $attSettings);
-            });
+            $page = (int) $request->get('page', 1);
+            $perPage = (int) $request->get('per_page', 25);
+            $paginatedDetails = new LengthAwarePaginator(
+                $combinedLogs->forPage($page, $perPage)->values(),
+                $combinedLogs->count(),
+                $perPage,
+                $page,
+                ['path' => $request->url(), 'query' => $request->query()]
+            );
+            $detailLogs = $paginatedDetails;
         } else {
-            $rawItems = $detailQuery->get();
-            $detailLogs = $rawItems->map(function ($item) use ($today, $nowJakarta, $attSettings) {
-                return $this->formatDetailItem($item, $today, $nowJakarta, $attSettings);
-            });
+            $detailLogs = $combinedLogs;
             $paginatedDetails = null;
         }
 
@@ -412,6 +454,66 @@ class AttendanceReportController extends Controller
     /**
      * Format item record absensi untuk tabel detail dan export
      */
+
+    /**
+     * Format item record absensi tim khusus untuk tabel detail dan export
+     */
+    protected function formatSpecialDetailItem(SpecialAttendance $item, Carbon $today, ?Carbon $nowJakarta = null): array
+    {
+        $dateCarbon = Carbon::parse($item->date);
+        $isLate = $item->status === 'late' || (int)$item->late_minutes > 0;
+        $isMissingOut = AttendanceCalculatorService::isSpecialMissingClockOut($item, $item->team, $nowJakarta ?? Carbon::now('Asia/Jakarta'));
+
+        $statusLabel = 'Tepat Waktu';
+        $statusBadge = 'green';
+        if ($isLate) {
+            $statusLabel = 'Terlambat (' . $item->late_minutes . 'm)';
+            $statusBadge = 'amber';
+        } elseif ($isMissingOut) {
+            $statusLabel = 'Tanpa Clock Out';
+            $statusBadge = 'red';
+        } elseif (empty($item->clock_in)) {
+            $statusLabel = 'Tidak Hadir';
+            $statusBadge = 'slate';
+        }
+
+        $shiftTime = '-';
+        if ($item->team && $item->team->start_time && $item->team->end_time) {
+            $shiftTime = substr($item->team->start_time, 0, 5) . ' - ' . substr($item->team->end_time, 0, 5) . ' WIB';
+        }
+
+        return [
+            'id' => 'special_' . $item->id,
+            'special_attendance_id' => $item->id,
+            'date' => $dateCarbon->format('Y-m-d'),
+            'formatted_date' => $dateCarbon->translatedFormat('d M Y'),
+            'day_name' => $dateCarbon->translatedFormat('l'),
+            'employee_name' => $item->employee?->name ?? 'Karyawan Dihapus',
+            'iak_number' => $item->employee?->iak_number ?? '-',
+            'position' => $item->employee?->position ?? '-',
+            'area_name' => $item->employee?->area?->name ?? ($item->team?->name ?? 'Tim Khusus'),
+            'shift_name' => $item->team?->name ?? 'Tim Khusus',
+            'shift_time' => $shiftTime,
+            'clock_in' => $item->clock_in ? substr($item->clock_in, 0, 5) : null,
+            'clock_out' => $item->clock_out ? substr($item->clock_out, 0, 5) : null,
+            'late_minutes' => (int) $item->late_minutes,
+            'status' => $item->status,
+            'status_label' => $statusLabel,
+            'status_badge' => $statusBadge,
+            'attendance_type' => 'special_team',
+            'attendance_type_label' => $item->team?->name ?? 'Tim Khusus',
+            'distance_in' => 0,
+            'distance_out' => 0,
+            'photo_in' => $item->photo_in,
+            'photo_out' => $item->photo_out,
+            'lat_in' => $item->lat_in,
+            'lng_in' => $item->lng_in,
+            'notes' => $item->notes,
+            'duty_location' => $item->location_in,
+            'is_synced' => (bool) $item->is_synced_to_payroll,
+        ];
+    }
+
     protected function formatDetailItem(Attendance $item, Carbon $today, ?Carbon $nowJakarta = null, ?array $attSettings = null): array
     {
         $dateCarbon = Carbon::parse($item->date);

@@ -394,6 +394,12 @@ class BestAttendanceController extends Controller
             ->orderBy('date', 'desc')
             ->get();
 
+        $specialAttendances = SpecialAttendance::with('team')
+            ->where('employee_id', $employeeId)
+            ->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+            ->orderBy('date', 'desc')
+            ->get();
+
         $formattedAttendances = $attendances->map(function ($att) use ($employee, $schedules) {
             $dStr = $att->date ? Carbon::parse($att->date)->format('Y-m-d') : '';
             $resolvedShift = AttendanceCalculatorService::resolveEmployeeShiftForDate($employee, $dStr, $att->shift, $schedules);
@@ -429,6 +435,39 @@ class BestAttendanceController extends Controller
                 ] : null,
             ];
         });
+
+        $formattedSpecial = $specialAttendances->map(function ($att) {
+            $dStr = $att->date ? Carbon::parse($att->date)->format('Y-m-d') : '';
+            $team = $att->team;
+            $lateMinutes = (int) ($att->late_minutes ?? 0);
+            $isLate = $att->status === 'late' || $lateMinutes > 0;
+            $punctualityLabel = $isLate ? "Terlambat {$lateMinutes} menit" : 'Tepat Waktu';
+
+            return [
+                'id' => 'special_' . $att->id,
+                'date' => $dStr,
+                'formatted_date' => Carbon::parse($att->date)->translatedFormat('l, d F Y'),
+                'clock_in' => $att->clock_in,
+                'clock_out' => $att->clock_out,
+                'formatted_clock_in' => $att->clock_in ? substr($att->clock_in, 0, 5) . ' WIB' : '-',
+                'formatted_clock_out' => $att->clock_out ? substr($att->clock_out, 0, 5) . ' WIB' : '-',
+                'status' => $att->status,
+                'is_late' => $isLate,
+                'late_minutes' => $lateMinutes,
+                'is_early_leave' => false,
+                'early_leave_minutes' => 0,
+                'relative_early_minutes' => 0,
+                'punctuality_label' => $punctualityLabel,
+                'shift' => $team ? [
+                    'name' => $team->name,
+                    'start_time' => substr($team->start_time, 0, 5),
+                    'end_time' => substr($team->end_time, 0, 5),
+                    'formatted_time' => substr($team->start_time, 0, 5) . ' - ' . substr($team->end_time, 0, 5),
+                ] : null,
+            ];
+        });
+
+        $formattedAttendances = $formattedAttendances->concat($formattedSpecial)->sortByDesc('date')->values();
 
         $duties = FieldDuty::where('employee_id', $employeeId)
             ->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
