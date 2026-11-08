@@ -758,6 +758,9 @@
                                     <span v-else-if="selectedCustomer.service_status === 'gratis'" class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-500/20 text-emerald-700 rounded-md border border-emerald-500/30 font-bold">
                                         <span>🎁</span> Gratis
                                     </span>
+                                    <span v-else-if="selectedCustomer.is_reseller && !selectedCustomer.package" class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-500/20 text-amber-800 rounded-md border border-amber-500/30 font-bold">
+                                        <span>🎟️</span> Khusus Reseller Voucher (Pasang ONT)
+                                    </span>
                                     <span v-else class="inline-flex px-2 py-1 bg-purple-500/20 text-purple-500 rounded-md border border-purple-500/30">
                                         {{ selectedCustomer.package?.name || 'Belum dipilih' }}
                                     </span>

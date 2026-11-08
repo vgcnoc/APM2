@@ -221,6 +221,9 @@
                     <span v-else-if="row.service_status === 'gratis'" class="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold whitespace-nowrap">
                         <span>🎁</span> Gratis
                     </span>
+                    <span v-else-if="row.is_reseller && !row.package" class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded text-[10px] font-bold whitespace-nowrap">
+                        <span>🎟️</span> Reseller Voucher
+                    </span>
                     <span v-else class="text-xs text-blue-600 font-bold whitespace-nowrap">{{ row.package?.name || '-' }}</span>
                 </td>
                 <td>

@@ -246,14 +246,18 @@
                                 </div>
                                 
                                 <div v-if="registration_type === 'reseller'" class="md:col-span-2 space-y-4">
-                                    <div class="px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-800 font-semibold flex items-start gap-3 shadow-sm">
-                                        <div class="w-8 h-8 rounded-lg bg-blue-500 text-white flex items-center justify-center shrink-0 shadow-sm text-sm">
+                                    <div class="px-4 py-3 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border border-amber-200 rounded-xl text-sm text-amber-900 font-semibold flex items-start gap-3 shadow-sm">
+                                        <div class="w-9 h-9 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm text-base">
                                             🎟️
                                         </div>
                                         <div>
-                                            <p class="font-bold text-blue-900">Pendaftaran Khusus Mitra Reseller Voucher (Tanpa Internet Kabel)</p>
-                                            <p class="text-xs text-blue-700 mt-0.5 leading-relaxed">
-                                                Mitra Reseller ini tidak memerlukan survey, penarikan kabel fiber, maupun perangkat ONT. Data kemitraan akan <strong>langsung aktif</strong> di menu Reseller dan siap digunakan untuk transaksi voucher hotspot.
+                                            <p class="font-bold text-amber-950 flex items-center gap-2">
+                                                Pendaftaran Khusus Reseller Voucher (Melalui Alur PSB &amp; Pemasangan ONT)
+                                                <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 uppercase font-black tracking-wider">Pasang ONT</span>
+                                            </p>
+                                            <p class="text-xs text-amber-800 mt-1 leading-relaxed">
+                                                Mitra Reseller ini akan dipasangkan perangkat <strong>ONT Hotspot</strong> di rumah/lokasi reseller. Pendaftaran akan diproses melalui alur PSB resmi: 
+                                                <strong>📋 Booking ➔ 🔍 Survey ➔ 📅 Jadwal Penugasan ➔ 🔧 Instalasi ONT ➔ ⚡ Aktivasi</strong>.
                                             </p>
                                         </div>
                                     </div>
@@ -388,6 +392,7 @@
                                         <span>Tarif Bulanan (Rp) <span class="text-red-500">*</span></span>
                                         <span v-if="form.service_status === 'gratis' && !isAffiliateAccount" class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">Otomatis Rp 0 (Gratis)</span>
                                         <span v-else-if="form.service_status === 'free_home' && !isAffiliateAccount" class="text-[10px] text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded">Otomatis Rp 0 (Free Home)</span>
+                                        <span v-else-if="registration_type === 'reseller'" class="text-[10px] text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded">Otomatis Rp 0 (Reseller Voucher)</span>
                                         <span v-else-if="form.package_id && Number(form.base_amount) > 0 && form.enable_tax && ppnPercent > 0" class="text-[10px] font-bold px-2 py-0.5 rounded-md border bg-indigo-50 text-indigo-700 border-indigo-200">
                                             Total + PPN ({{ ppnPercent }}%): Rp {{ formatCurrency(totalWithPpn) }} / bln
                                         </span>

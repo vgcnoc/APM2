@@ -183,6 +183,9 @@
                     <span v-else-if="row.service_status === 'gratis'" class="inline-flex items-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-700 rounded-md text-xs font-bold border border-emerald-200">
                         <span>🎁</span> Gratis
                     </span>
+                    <span v-else-if="row.is_reseller && !row.package" class="inline-flex items-center gap-1 px-2 py-1 bg-amber-50 text-amber-800 rounded-md text-xs font-bold border border-amber-200 shadow-2xs">
+                        <span>🎟️</span> Reseller Voucher
+                    </span>
                     <span v-else-if="row.package" class="inline-flex px-2 py-1 bg-purple-50 text-purple-600 rounded-md text-xs font-medium border border-purple-100">
                         {{ row.package.name }}
                     </span>
@@ -464,6 +467,9 @@
                                         </span>
                                         <span v-else-if="selectedCustomer.service_status === 'gratis'" class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-500/20 text-emerald-700 rounded-md border border-emerald-500/30 font-bold">
                                             <span>🎁</span> Gratis (Non-Invoice)
+                                        </span>
+                                        <span v-else-if="selectedCustomer.is_reseller && !selectedCustomer.package" class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-500/20 text-amber-800 rounded-md border border-amber-500/30 font-bold">
+                                            <span>🎟️</span> Khusus Reseller Voucher (Pasang ONT)
                                         </span>
                                         <span v-else class="inline-flex px-2 py-1 bg-purple-500/20 text-purple-600 rounded-md border border-purple-500/30">
                                             {{ selectedCustomer.package?.name || 'Belum dipilih' }}

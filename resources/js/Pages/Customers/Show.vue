@@ -44,7 +44,7 @@
                             <InfoRow icon="📞" label="Telepon" :value="customer.phone" />
                             <InfoRow icon="📧" label="Email" :value="customer.email || '-'" />
                             <InfoRow icon="📍" label="Alamat" :value="customer.address" />
-                            <InfoRow icon="📦" label="Paket" :value="customer.service_status === 'free_home' ? 'Free Home (Voucher Rumahan)' : (customer.package?.name || 'Belum pilih')" />
+                            <InfoRow icon="📦" label="Paket" :value="customer.service_status === 'free_home' ? 'Free Home (Voucher Rumahan)' : (customer.is_reseller && !customer.package ? 'Khusus Reseller Voucher (Pasang ONT)' : (customer.package?.name || 'Belum pilih'))" />
                             <InfoRow icon="💳" label="Layanan" :value="customer.service_status === 'free_home' ? 'Free Home (Rp 0)' : (customer.service_status === 'gratis' ? 'Gratis (Rp 0)' : 'Berbayar')" />
                             <div class="pt-3 mt-3 border-t border-slate-200 space-y-3">
                                 <InfoRow icon="📅" label="Registrasi" :value="formatDate(customer.registration_date)" />
@@ -332,7 +332,7 @@
                         </div>
                         <div>
                             <span class="text-[10px] text-gray-500 uppercase font-bold block mb-1">Paket Internet</span>
-                            <span class="text-sm font-bold text-gray-900">{{ customer.package?.name || '-' }}</span>
+                            <span class="text-sm font-bold text-gray-900">{{ customer.service_status === 'free_home' ? 'Free Home (Voucher Rumahan)' : (customer.is_reseller && !customer.package ? 'Khusus Reseller Voucher (Pasang ONT)' : (customer.package?.name || '-')) }}</span>
                         </div>
                         <div>
                             <span class="text-[10px] text-gray-500 uppercase font-bold block mb-1">Biaya Pasang (PSB)</span>

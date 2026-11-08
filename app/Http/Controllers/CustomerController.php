@@ -66,11 +66,6 @@ class CustomerController extends Controller
         }
         $baseQuery = Customer::query()
             ->where('status', '!=', 'terminated')
-            ->where(function ($q) {
-                $q->where('is_reseller', false)
-                  ->orWhereNull('is_reseller')
-                  ->orWhereNotNull('package_id');
-            })
             ->when($isolirOnly, fn ($q) => $q->where('status', 'suspended'))
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function($q) {
                 if (auth()->user()->can('customers_all_view_area')) {
@@ -1918,24 +1913,14 @@ class CustomerController extends Controller
         };
 
         // 1. Antrean Menunggu Aktivasi (status installing & sudah diaudit)
-        $waitingQuery = Customer::query()->where('status', 'installing')->where('is_audited', true)
-            ->where(function ($q) {
-                $q->where('is_reseller', false)
-                  ->orWhereNull('is_reseller')
-                  ->orWhereNotNull('package_id');
-            });
+        $waitingQuery = Customer::query()->where('status', 'installing')->where('is_audited', true);
         $applyAreaScope($waitingQuery);
 
         // 2. Riwayat Aktivasi (pelanggan yang sudah diaktivasi dan bukan berhenti/dibatalkan)
         $historyQuery = Customer::query()->where(function($q) {
             $q->whereNotNull('activation_date')
               ->orWhere('status', 'active');
-        })->whereNotIn('status', ['installing', 'terminated', 'canceled'])
-          ->where(function ($q) {
-              $q->where('is_reseller', false)
-                ->orWhereNull('is_reseller')
-                ->orWhereNotNull('package_id');
-          });
+        })->whereNotIn('status', ['installing', 'terminated', 'canceled']);
         $applyAreaScope($historyQuery);
 
         $statsWaiting = clone $waitingQuery;
@@ -2734,11 +2719,8 @@ class CustomerController extends Controller
         }
 
         $isPureReseller = !empty($validated['is_reseller']) && empty($validated['package_id']);
-        $validated['status'] = $isPureReseller ? 'active' : 'booking';
-        if ($isPureReseller) {
-            $validated['activation_date'] = now();
-            $validated['service_status'] = 'berbayar';
-        }
+        // Reseller Voucher yang didaftarkan melalui booking WAJIB melalui alur PSB lengkap: Booking -> Survey -> Jadwal -> Instalasi ONT -> Aktivasi
+        $validated['status'] = 'booking';
 
         if (empty($validated['billing_type'])) {
             $validated['billing_type'] = \App\Models\Setting::get('billing_type', 'prabayar');
@@ -2825,8 +2807,8 @@ class CustomerController extends Controller
         });
 
         if ($isPureReseller) {
-            return redirect()->route('resellers.index')
-                ->with('success', "Mitra Reseller '{$customer->name}' berhasil didaftarkan dan langsung aktif di menu Reseller Voucher.");
+            return redirect()->route('customers.booking')
+                ->with('success', "Data booking Mitra Reseller '{$customer->name}' berhasil didaftarkan dan masuk ke antrean Booking Pelanggan (siap untuk Survey & Instalasi ONT).");
         }
 
         return redirect()->route($isAffiliatePortal ? 'affiliate.dashboard' : 'customers.booking')
@@ -4243,8 +4225,8 @@ class CustomerController extends Controller
                 $dueDateTime = app(\App\Services\BillingIsolationSchedule::class)->forIssueDate($invoiceIssuedDate)
                     ->setTimezone(config('billing.timezone', 'Asia/Jakarta'));
 
-                // JANGAN BUAT INVOICE APAPUN JIKA PELANGGAN GRATIS ATAU FREE HOME
-                if (!in_array($serviceStatus, ['gratis', 'free_home'])) {
+                // JANGAN BUAT INVOICE BULANAN JIKA PELANGGAN GRATIS, FREE HOME, ATAU RESELLER VOUCHER TANPA PAKET BULANAN (NOMINAL <= 0)
+                if (!in_array($serviceStatus, ['gratis', 'free_home']) && $amount > 0) {
                     if ($taxPpn > 0) {
                         $amount = $amount + ($amount * ($taxPpn / 100));
                     }
@@ -4464,6 +4446,14 @@ class CustomerController extends Controller
                     ->where('type', 'installation')
                     ->whereIn('status', ['scheduled', 'on_the_way', 'working'])
                     ->update(['status' => 'done']);
+
+                // Jika pelanggan adalah Mitra Reseller, pastikan akun reseller berstatus aktif setelah aktivasi ONT
+                if ($customer->is_reseller && $customer->reseller) {
+                    $customer->reseller->update([
+                        'is_active' => true,
+                        'status' => 'active',
+                    ]);
+                }
             });
 
             // Sinkronisasi RADIUS PPPoE (dilewati jika mode free_home voucher ONT)
