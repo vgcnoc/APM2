@@ -152,18 +152,18 @@
                     <td>
                         <div class="space-y-1">
                             <div class="flex items-center gap-1.5 flex-wrap">
-                                <span v-if="row.service_status === 'free_home'" class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-[10px] font-bold whitespace-nowrap">
+                                <span v-if="row.is_reseller && !row.package" class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded text-[10px] font-bold whitespace-nowrap">
+                                    <span>🎟️</span> Reseller Voucher
+                                </span>
+                                <span v-else-if="row.service_status === 'free_home'" class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-[10px] font-bold whitespace-nowrap">
                                     <span>🏠</span> Free Home
                                 </span>
                                 <span v-else-if="row.service_status === 'gratis'" class="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold whitespace-nowrap">
                                     <span>🎁</span> Gratis
                                 </span>
-                                <span v-else-if="row.is_reseller && !row.package" class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded text-[10px] font-bold whitespace-nowrap">
-                                    <span>🎟️</span> Reseller Voucher
-                                </span>
                                 <span v-else class="text-xs font-bold text-slate-800">{{ row.package?.name || '-' }}</span>
 
-                                <span :class="['px-1.5 py-0.5 rounded text-[10px] font-semibold border', row.billing_type === 'pascabayar' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-blue-50 text-blue-700 border-blue-200']">
+                                <span v-if="!(row.is_reseller && !row.package) && row.service_status !== 'free_home'" :class="['px-1.5 py-0.5 rounded text-[10px] font-semibold border', row.billing_type === 'pascabayar' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-blue-50 text-blue-700 border-blue-200']">
                                     {{ row.billing_type === 'pascabayar' ? 'Pascabayar' : 'Prabayar' }}
                                 </span>
                             </div>
@@ -546,7 +546,22 @@
                         </div>
 
                         <!-- Status Layanan Pelanggan -->
-                        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-2">
+                        <div v-if="isResellerVoucher" class="p-4 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border border-amber-200 rounded-xl space-y-2">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center font-bold text-base shadow-sm shrink-0">
+                                    🎟️
+                                </div>
+                                <div>
+                                    <h4 class="text-xs font-bold text-amber-950 uppercase tracking-wider">Kemitraan Khusus Reseller Voucher</h4>
+                                    <p class="text-[11px] text-amber-800">Status Layanan: <strong class="text-emerald-700">Gratis (Rp 0 / Non-Invoice)</strong></p>
+                                </div>
+                            </div>
+                            <p class="text-[11px] text-amber-900 leading-relaxed pl-10.5">
+                                Mitra Reseller Voucher hanya menjual voucher hotspot. Seluruh fasilitas ONT hotspot disediakan <strong>gratis oleh perusahaan tanpa siklus penagihan invoice atau tagihan bulanan</strong>.
+                            </p>
+                        </div>
+
+                        <div v-else class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-2">
                             <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center justify-between">
                                 <span class="flex items-center gap-1.5">
                                     <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -595,8 +610,8 @@
                             </div>
                         </div>
 
-                        <!-- Siklus Penagihan Invoice (Ditiadakan jika Free Home) -->
-                        <div v-if="activationForm.service_status !== 'free_home'" class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
+                        <!-- Siklus Penagihan Invoice (Ditiadakan jika Free Home atau Reseller Voucher) -->
+                        <div v-if="!isResellerVoucher && activationForm.service_status !== 'free_home'" class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
                             <div class="flex items-center justify-between">
                                 <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
                                     <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
@@ -704,8 +719,20 @@
                             <span v-if="customerIncentivesPreview.hasAny" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-200 text-amber-900">Affiliate Luar Aktif</span>
                         </div>
 
+                        <!-- Info Khusus Reseller Voucher (Tanpa Fee Karyawan) -->
+                        <div v-if="isResellerVoucher" class="p-3.5 bg-blue-50/90 rounded-xl border border-blue-200 text-blue-950 text-xs flex items-start justify-between gap-2 shadow-xs">
+                            <div class="flex items-start gap-2.5">
+                                <span class="text-base">🎟️</span>
+                                <div>
+                                    <span class="font-bold block text-blue-950">Reseller Voucher: Bebas Fee Karyawan</span>
+                                    <span class="text-blue-800 text-[11px] leading-relaxed">Tidak ada fee untuk karyawan (Fee Booking, Fee Survey, maupun Fee Pasang) karena kemitraan voucher difasilitasi gratis oleh perusahaan. Reseller hanya menjual voucher hotspot.</span>
+                                </div>
+                            </div>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-200 text-blue-900 whitespace-nowrap">Bebas Fee</span>
+                        </div>
+
                         <!-- Rincian Insentif Otomatis (Booking, Survey, Pasang) -->
-                        <div v-if="customerIncentivesPreview.hasAny" class="bg-gradient-to-br from-emerald-50/90 via-teal-50/50 to-slate-50 p-4 rounded-xl border border-emerald-200 shadow-xs space-y-3">
+                        <div v-if="!isResellerVoucher && customerIncentivesPreview.hasAny" class="bg-gradient-to-br from-emerald-50/90 via-teal-50/50 to-slate-50 p-4 rounded-xl border border-emerald-200 shadow-xs space-y-3">
                             <div class="flex items-center justify-between border-b border-emerald-100 pb-2.5">
                                 <div class="flex items-center gap-2">
                                     <div class="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-sm shadow-xs font-bold">
@@ -788,8 +815,8 @@
                             </p>
                         </div>
 
-                        <!-- Simulasi Tagihan Invoice Pertama (Hanya Berbayar & Gratis) -->
-                        <div v-if="invoiceSimulation && activationForm.service_status !== 'free_home'" class="bg-gradient-to-br from-slate-50 via-purple-50/40 to-slate-50 p-4 rounded-xl border border-purple-200/90 shadow-sm space-y-3">
+                        <!-- Simulasi Tagihan Invoice Pertama (Hanya Berbayar & Gratis, Bukan Reseller Voucher) -->
+                        <div v-if="!isResellerVoucher && invoiceSimulation && activationForm.service_status !== 'free_home'" class="bg-gradient-to-br from-slate-50 via-purple-50/40 to-slate-50 p-4 rounded-xl border border-purple-200/90 shadow-sm space-y-3">
                             <div class="flex items-center justify-between border-b border-purple-100 pb-2.5">
                                 <div class="flex items-center gap-2">
                                     <div class="w-7 h-7 rounded-lg bg-purple-600 text-white flex items-center justify-center text-sm shadow-sm font-bold">
@@ -971,8 +998,8 @@
                             </div>
                         </div>
 
-                        <!-- Pengaturan Pajak Pelanggan (Ditiadakan jika Free Home) -->
-                        <div v-if="activationForm.service_status !== 'free_home'" class="bg-white border rounded-xl p-4 shadow-sm space-y-3 transition-all"
+                        <!-- Pengaturan Pajak Pelanggan (Ditiadakan jika Free Home atau Reseller Voucher) -->
+                        <div v-if="!isResellerVoucher && activationForm.service_status !== 'free_home'" class="bg-white border rounded-xl p-4 shadow-sm space-y-3 transition-all"
                             :class="activationForm.enable_tax ? 'border-purple-200 ring-1 ring-purple-100 bg-purple-50/20' : 'border-gray-200 bg-gray-50/50'">
                             
                             <!-- Jika user berwenang (Admin/Finance/customers_tax_toggle): Tampilkan kontrol aktif -->
@@ -1054,7 +1081,20 @@
                         </div>
 
                         <!-- Status Pembayaran Biaya Pasang Baru (PSB) -->
-                        <div class="bg-white border rounded-xl p-4 shadow-sm space-y-3 transition-all"
+                        <div v-if="isResellerVoucher" class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                            <div class="flex items-center gap-2.5">
+                                <span class="text-base">🎁</span>
+                                <div>
+                                    <span class="text-xs font-bold text-slate-800 block">Biaya Pasang Baru (PSB)</span>
+                                    <span class="text-[11px] text-slate-600">Gratis Rp 0 (Fasilitas Resmi Perusahaan)</span>
+                                </div>
+                            </div>
+                            <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700">
+                                Bebas Biaya
+                            </span>
+                        </div>
+
+                        <div v-else class="bg-white border rounded-xl p-4 shadow-sm space-y-3 transition-all"
                             :class="activationForm.psb_payment_status === 'paid' ? 'border-emerald-200 ring-1 ring-emerald-100 bg-emerald-50/20' : (activationForm.psb_payment_status === 'unpaid' ? 'border-rose-200 ring-1 ring-rose-100 bg-rose-50/20' : 'border-gray-200 bg-gray-50/40')">
                             
                             <div class="flex items-center justify-between">
@@ -1245,8 +1285,23 @@
                                 </div>
                             </div>
 
-                            <!-- Status Layanan Pelanggan (3 Radio Cards) -->
-                            <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-2">
+                            <!-- Status Layanan Pelanggan -->
+                            <div v-if="isEditResellerVoucher" class="p-4 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border border-amber-200 rounded-xl space-y-2">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center font-bold text-base shadow-sm shrink-0">
+                                        🎟️
+                                    </div>
+                                    <div>
+                                        <h4 class="text-xs font-bold text-amber-950 uppercase tracking-wider">Kemitraan Khusus Reseller Voucher</h4>
+                                        <p class="text-[11px] text-amber-800">Status Layanan: <strong class="text-emerald-700">Gratis (Rp 0 / Non-Invoice)</strong></p>
+                                    </div>
+                                </div>
+                                <p class="text-[11px] text-amber-900 leading-relaxed pl-10.5">
+                                    Mitra Reseller Voucher hanya menjual voucher hotspot tanpa invoice atau tagihan bulanan.
+                                </p>
+                            </div>
+
+                            <div v-else class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-2">
                                 <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center justify-between">
                                     <span class="flex items-center gap-1.5">
                                         <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -1295,8 +1350,8 @@
                                 </div>
                             </div>
 
-                            <!-- Siklus Penagihan Invoice (Ditiadakan jika Free Home) -->
-                            <div v-if="editForm.service_status !== 'free_home'" class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
+                            <!-- Siklus Penagihan Invoice (Ditiadakan jika Free Home atau Reseller Voucher) -->
+                            <div v-if="!isEditResellerVoucher && editForm.service_status !== 'free_home'" class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
                                 <div class="flex items-center justify-between">
                                     <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
                                         <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
@@ -2105,6 +2160,11 @@ function formatDateIndo(dateStr) {
 // Edit Activation Modal State
 const showEditModal = ref(false);
 const editCustomer = ref(null);
+const isEditResellerVoucher = computed(() => {
+    const cust = editCustomer.value;
+    if (!cust) return false;
+    return Boolean(cust.is_reseller && (!cust.package || !cust.package_id || Number(cust.base_amount || 0) === 0));
+});
 const editForm = useForm({
     activation_date: '',
     service_status: 'berbayar',
@@ -2129,8 +2189,14 @@ const editForm = useForm({
 function openEditActivationModal(customer) {
     editCustomer.value = customer;
     editForm.activation_date = customer.activation_date || new Date().toISOString().split('T')[0];
-    editForm.service_status = customer.service_status || 'berbayar';
-    editForm.billing_type = customer.billing_type || defaultBillingType.value;
+    const isReseller = Boolean(customer.is_reseller && (!customer.package || !customer.package_id || Number(customer.base_amount || 0) === 0));
+    if (isReseller) {
+        editForm.service_status = 'gratis';
+        editForm.billing_type = 'prabayar';
+    } else {
+        editForm.service_status = customer.service_status || 'berbayar';
+        editForm.billing_type = customer.billing_type || defaultBillingType.value;
+    }
     editForm.billing_cycle = customer.billing_cycle || 'default';
     editForm.billing_day = customer.billing_day || null;
     editForm.package_id = customer.package_id || '';
@@ -2270,9 +2336,27 @@ watch(() => activationForm.enable_tax, (val) => {
     }
 });
 
+const isResellerVoucher = computed(() => {
+    const cust = activeCustomer.value;
+    if (!cust) return false;
+    return Boolean(cust.is_reseller && (!cust.package || !cust.package_id || Number(cust.base_amount || 0) === 0));
+});
+
 const customerIncentivesPreview = computed(() => {
     const cust = activeCustomer.value;
     if (!cust) return { booking: null, surveys: [], installers: [], totalAmount: 0, hasAny: false, isMigrated: false };
+
+    if (isResellerVoucher.value) {
+        return {
+            booking: null,
+            surveys: [],
+            installers: [],
+            totalAmount: 0,
+            hasAny: false,
+            isMigrated: false,
+            isResellerVoucher: true
+        };
+    }
 
     const isMigrated = Boolean(cust.is_migrated);
     if (isMigrated) {
@@ -2379,7 +2463,7 @@ const assignedInstallationTechnicians = computed(() => customerIncentivesPreview
 
 const invoiceSimulation = computed(() => {
     const cust = activeCustomer.value;
-    if (!cust) return null;
+    if (!cust || isResellerVoucher.value) return null;
 
     const basePrice = Number(cust.base_amount || cust.package?.price || 0);
     const isGratis = activationForm.service_status === 'gratis';
@@ -2525,18 +2609,29 @@ function openActivationModal(customer) {
     activeCustomer.value = customer;
     activationForm.reset();
     activationForm.activation_date = new Date().toISOString().split('T')[0];
-    let bType = customer.billing_type || defaultBillingType.value;
-    if (bType !== 'pascabayar') bType = 'prabayar';
-    activationForm.billing_type = bType;
-    activationForm.is_prorata = page.props.billingSettings?.prorata_first_month !== false;
-    activationForm.service_status = customer.service_status === 'free_home' ? 'free_home' : (customer.service_status === 'gratis' ? 'gratis' : 'berbayar');
 
-    // Default status PSB
-    const fee = Number(customer.installation_fee || 0);
-    if (fee <= 0) {
+    const isReseller = Boolean(customer.is_reseller && (!customer.package || !customer.package_id || Number(customer.base_amount || 0) === 0));
+    if (isReseller) {
+        activationForm.service_status = 'gratis';
+        activationForm.billing_type = 'prabayar';
+        activationForm.is_prorata = false;
         activationForm.psb_payment_status = 'free';
+        activationForm.enable_tax = false;
+        activationForm.tax_ppn = 0;
     } else {
-        activationForm.psb_payment_status = customer.psb_payment_status || 'paid';
+        let bType = customer.billing_type || defaultBillingType.value;
+        if (bType !== 'pascabayar') bType = 'prabayar';
+        activationForm.billing_type = bType;
+        activationForm.is_prorata = page.props.billingSettings?.prorata_first_month !== false;
+        activationForm.service_status = customer.service_status === 'free_home' ? 'free_home' : (customer.service_status === 'gratis' ? 'gratis' : 'berbayar');
+
+        // Default status PSB
+        const fee = Number(customer.installation_fee || 0);
+        if (fee <= 0) {
+            activationForm.psb_payment_status = 'free';
+        } else {
+            activationForm.psb_payment_status = customer.psb_payment_status || 'paid';
+        }
     }
     activationForm.psb_payment_method = customer.psb_payment_method || 'cash';
     activationForm.psb_notes = customer.psb_notes || '';
@@ -2579,22 +2674,27 @@ function openActivationModal(customer) {
     activationForm.hotspot_vlan_id = customer.ont?.hotspot_vlan_id || '';
     
     // Default to customer's saved PPN or global tax settings (default 11%)
-    const custPpn = customer.tax_ppn !== null && customer.tax_ppn !== undefined ? Number(customer.tax_ppn) : null;
-    const globalPpn = Number(page.props.taxSettings?.tax_ppn || 11);
-
-    if (!canToggleTax.value) {
-        activationForm.enable_tax = true;
-        activationForm.tax_ppn = (custPpn !== null && custPpn > 0) ? custPpn : (globalPpn || 11);
-    } else if (custPpn !== null && custPpn === 0) {
+    if (isReseller) {
         activationForm.enable_tax = false;
-        activationForm.tax_ppn = globalPpn || 11;
-    } else if (custPpn !== null && custPpn > 0) {
-        activationForm.enable_tax = true;
-        activationForm.tax_ppn = custPpn;
+        activationForm.tax_ppn = 0;
     } else {
-        const hasGlobalTax = globalPpn > 0;
-        activationForm.enable_tax = hasGlobalTax;
-        activationForm.tax_ppn = globalPpn || 11;
+        const custPpn = customer.tax_ppn !== null && customer.tax_ppn !== undefined ? Number(customer.tax_ppn) : null;
+        const globalPpn = Number(page.props.taxSettings?.tax_ppn || 11);
+
+        if (!canToggleTax.value) {
+            activationForm.enable_tax = true;
+            activationForm.tax_ppn = (custPpn !== null && custPpn > 0) ? custPpn : (globalPpn || 11);
+        } else if (custPpn !== null && custPpn === 0) {
+            activationForm.enable_tax = false;
+            activationForm.tax_ppn = globalPpn || 11;
+        } else if (custPpn !== null && custPpn > 0) {
+            activationForm.enable_tax = true;
+            activationForm.tax_ppn = custPpn;
+        } else {
+            const hasGlobalTax = globalPpn > 0;
+            activationForm.enable_tax = hasGlobalTax;
+            activationForm.tax_ppn = globalPpn || 11;
+        }
     }
 
     showActivationModal.value = true;
@@ -2628,8 +2728,8 @@ function submitActivation() {
     const customerSnapshot = {
         ...activeCustomer.value,
         activation_date: activationForm.activation_date || new Date().toISOString().slice(0, 10),
-        installation_fee: activationForm.psb_payment_status === 'free' ? 0 : (activeCustomer.value?.installation_fee || 0),
-        psb_payment_status: activationForm.psb_payment_status,
+        installation_fee: (isResellerVoucher.value || activationForm.psb_payment_status === 'free') ? 0 : (activeCustomer.value?.installation_fee || 0),
+        psb_payment_status: isResellerVoucher.value ? 'free' : activationForm.psb_payment_status,
         psb_payment_method: activationForm.psb_payment_method,
         pppoe_user: activationForm.access_mode === 'HOTSPOT/MEMBER' ? activationForm.hotspot_user : activationForm.pppoe_user,
         access_mode: activationForm.access_mode
@@ -2638,8 +2738,10 @@ function submitActivation() {
         preserveScroll: true,
         onSuccess: () => {
             showActivationModal.value = false;
-            // Buka otomatis Invoice PSB agar langsung bisa kirim ke WhatsApp / cetak!
-            openPsbInvoiceModal(customerSnapshot);
+            // Buka otomatis Invoice PSB agar langsung bisa kirim ke WhatsApp / cetak jika berbayar
+            if (!isResellerVoucher.value && customerSnapshot.installation_fee > 0 && customerSnapshot.psb_payment_status !== 'free') {
+                openPsbInvoiceModal(customerSnapshot);
+            }
         }
     });
 }

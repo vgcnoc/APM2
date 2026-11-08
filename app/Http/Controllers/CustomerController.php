@@ -2722,6 +2722,15 @@ class CustomerController extends Controller
         }
 
         $isPureReseller = !empty($validated['is_reseller']) && empty($validated['package_id']);
+        if ($isPureReseller) {
+            $validated['service_status'] = 'gratis';
+            $validated['base_amount'] = 0;
+            $validated['installation_fee'] = 0;
+            $validated['tax_ppn'] = 0;
+            $validated['tax_bhp'] = 0;
+            $validated['tax_uso'] = 0;
+        }
+
         // Reseller Voucher yang didaftarkan melalui booking WAJIB melalui alur PSB lengkap: Booking -> Survey -> Jadwal -> Instalasi ONT -> Aktivasi
         $validated['status'] = 'booking';
 
@@ -4122,38 +4131,50 @@ class CustomerController extends Controller
 
         if ($customer->status === 'installing' && $customer->is_audited && $customer->ont) {
             DB::transaction(function () use ($customer, $validated, $request) {
-                $billingType = $validated['billing_type'] ?? $customer->billing_type ?? \App\Models\Setting::get('billing_type', 'prabayar');
-                if (!in_array($billingType, ['prabayar', 'pascabayar'])) {
-                    $billingType = 'pascabayar';
-                }
+                $isResellerVoucher = !empty($customer->is_reseller) && (empty($customer->package_id) || (float)($customer->base_amount ?? 0) <= 0);
 
-                $billingCycle = $validated['billing_cycle'] ?? $customer->billing_cycle ?? 'default';
-                $billingDay = $validated['billing_day'] ?? $customer->billing_day ?? null;
-
-                $serviceStatus = $validated['service_status'] ?? $customer->service_status ?? 'berbayar';
-
-                $canToggleTax = auth()->user()?->can('customers_tax_toggle')
-                    || auth()->user()?->hasRole('admin')
-                    || auth()->user()?->hasRole('super admin')
-                    || auth()->user()?->hasRole('finance');
-
-                $isTaxEnabled = $canToggleTax ? ($request->has('enable_tax') ? $request->boolean('enable_tax') : true) : true;
-
-                if (!$isTaxEnabled) {
+                if ($isResellerVoucher) {
+                    $billingType = 'prabayar';
+                    $billingCycle = 'default';
+                    $billingDay = null;
+                    $serviceStatus = 'gratis';
                     $taxPpn = 0.0;
                     $taxBhp = 0.0;
                     $taxUso = 0.0;
                 } else {
-                    $globalPpn = (float) \App\Models\Setting::get('tax_ppn', '11');
-                    $inputPpn = $validated['tax_ppn'] ?? null;
-                    $taxPpn = ($inputPpn !== null && is_numeric($inputPpn) && $canToggleTax)
-                        ? (float) $inputPpn
-                        : ($customer->tax_ppn > 0 ? (float) $customer->tax_ppn : ($globalPpn > 0 ? $globalPpn : 11));
-                    $taxBhp = (float) ($validated['tax_bhp'] ?? \App\Models\Setting::get('tax_bhp', '0'));
-                    $taxUso = (float) ($validated['tax_uso'] ?? \App\Models\Setting::get('tax_uso', '0'));
+                    $billingType = $validated['billing_type'] ?? $customer->billing_type ?? \App\Models\Setting::get('billing_type', 'prabayar');
+                    if (!in_array($billingType, ['prabayar', 'pascabayar'])) {
+                        $billingType = 'pascabayar';
+                    }
+
+                    $billingCycle = $validated['billing_cycle'] ?? $customer->billing_cycle ?? 'default';
+                    $billingDay = $validated['billing_day'] ?? $customer->billing_day ?? null;
+
+                    $serviceStatus = $validated['service_status'] ?? $customer->service_status ?? 'berbayar';
+
+                    $canToggleTax = auth()->user()?->can('customers_tax_toggle')
+                        || auth()->user()?->hasRole('admin')
+                        || auth()->user()?->hasRole('super admin')
+                        || auth()->user()?->hasRole('finance');
+
+                    $isTaxEnabled = $canToggleTax ? ($request->has('enable_tax') ? $request->boolean('enable_tax') : true) : true;
+
+                    if (!$isTaxEnabled) {
+                        $taxPpn = 0.0;
+                        $taxBhp = 0.0;
+                        $taxUso = 0.0;
+                    } else {
+                        $globalPpn = (float) \App\Models\Setting::get('tax_ppn', '11');
+                        $inputPpn = $validated['tax_ppn'] ?? null;
+                        $taxPpn = ($inputPpn !== null && is_numeric($inputPpn) && $canToggleTax)
+                            ? (float) $inputPpn
+                            : ($customer->tax_ppn > 0 ? (float) $customer->tax_ppn : ($globalPpn > 0 ? $globalPpn : 11));
+                        $taxBhp = (float) ($validated['tax_bhp'] ?? \App\Models\Setting::get('tax_bhp', '0'));
+                        $taxUso = (float) ($validated['tax_uso'] ?? \App\Models\Setting::get('tax_uso', '0'));
+                    }
                 }
 
-                $customer->update([
+                $customerUpdates = [
                     'status' => 'active',
                     'activation_date' => $validated['activation_date'],
                     'billing_type' => $billingType,
@@ -4164,7 +4185,15 @@ class CustomerController extends Controller
                     'tax_ppn' => $taxPpn,
                     'tax_bhp' => $taxBhp,
                     'tax_uso' => $taxUso,
-                ]);
+                ];
+
+                if ($isResellerVoucher) {
+                    $customerUpdates['base_amount'] = 0;
+                    $customerUpdates['installation_fee'] = 0;
+                    $customerUpdates['psb_payment_status'] = 'free';
+                }
+
+                $customer->update($customerUpdates);
 
                 $accessMode = $validated['access_mode'] ?? 'PPPOE';
                 $isHotspot = in_array(strtoupper($accessMode), ['HOTSPOT', 'HOTSPOT/MEMBER', 'MEMBER']);
@@ -4301,7 +4330,7 @@ class CustomerController extends Controller
                     ->setTimezone(config('billing.timezone', 'Asia/Jakarta'));
 
                 // RESELLER TIDAK BOLEH ADA INVOICE PELANGGAN (BEGITUPUN STATUS GRATIS, FREE HOME, ATAU NOMINAL <= 0)
-                if (!$customer->is_reseller && empty($customer->is_reseller) && !in_array($serviceStatus, ['gratis', 'free_home']) && $amount > 0) {
+                if (!$customer->is_reseller && empty($customer->is_reseller) && !$isResellerVoucher && !in_array($serviceStatus, ['gratis', 'free_home']) && $amount > 0) {
                     if ($taxPpn > 0) {
                         $amount = $amount + ($amount * ($taxPpn / 100));
                     }
@@ -4329,8 +4358,8 @@ class CustomerController extends Controller
                 $psbMethod = $validated['psb_payment_method'] ?? 'cash';
                 $psbNotes = $validated['psb_notes'] ?? null;
 
-                if ($psbStatus === 'free' || (float)($customer->installation_fee ?? 0) <= 0) {
-                    \App\Services\PsbPaymentService::markFree($customer, $psbNotes);
+                if ($isResellerVoucher || $psbStatus === 'free' || (float)($customer->installation_fee ?? 0) <= 0) {
+                    \App\Services\PsbPaymentService::markFree($customer, $psbNotes ?: 'Reseller Voucher - Bebas Biaya Pasang');
                 } elseif ($psbStatus === 'unpaid') {
                     \App\Services\PsbPaymentService::markUnpaid($customer, $psbNotes);
                 } else {
@@ -4349,7 +4378,7 @@ class CustomerController extends Controller
                     ? " ({$customer->customer_code})"
                     : '';
 
-                $isOperationalFeeEligible = \App\Services\AffiliateService::isOperationalFeeEligible($customer);
+                $isOperationalFeeEligible = !$customer->is_reseller && !$isResellerVoucher && \App\Services\AffiliateService::isOperationalFeeEligible($customer);
 
                 // 1. Fee Booking (Sales / Referral)
                 if ($customer->sales_id) {
@@ -5647,7 +5676,16 @@ class CustomerController extends Controller
             'billing_cycle' => $validated['billing_cycle'] ?? 'default',
             'billing_day' => $validated['billing_day'] ?? null,
         ];
-        if (!empty($validated['package_id'])) {
+
+        $isPureReseller = !empty($customer->is_reseller) && empty($validated['package_id']);
+        if ($isPureReseller) {
+            $custUpdates['service_status'] = 'gratis';
+            $custUpdates['base_amount'] = 0;
+            $custUpdates['installation_fee'] = 0;
+            $custUpdates['tax_ppn'] = 0;
+            $custUpdates['tax_bhp'] = 0;
+            $custUpdates['tax_uso'] = 0;
+        } elseif (!empty($validated['package_id'])) {
             $custUpdates['package_id'] = $validated['package_id'];
             $pkg = \App\Models\InternetPackage::find($validated['package_id']);
             if ($pkg) {
