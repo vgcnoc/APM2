@@ -66,6 +66,10 @@ class CustomerController extends Controller
         }
         $baseQuery = Customer::query()
             ->where('status', '!=', 'terminated')
+            ->where(function ($q) {
+                $q->where('is_reseller', false)
+                  ->orWhereNull('is_reseller');
+            })
             ->when($isolirOnly, fn ($q) => $q->where('status', 'suspended'))
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function($q) {
                 if (auth()->user()->can('customers_all_view_area')) {
@@ -1066,8 +1070,7 @@ class CustomerController extends Controller
             ->where('status', '!=', 'terminated')
             ->where(function ($q) {
                 $q->where('is_reseller', false)
-                  ->orWhereNull('is_reseller')
-                  ->orWhereNotNull('package_id');
+                  ->orWhereNull('is_reseller');
             })
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function($q) {
                 if (auth()->user()->can('customers_all_view_area')) {
@@ -2784,8 +2787,8 @@ class CustomerController extends Controller
                 $reseller = $customer->reseller()->create([
                     'user_id' => $resellerUser?->id,
                     'balance' => $initialBalance,
-                    'is_active' => true,
-                    'status' => 'active',
+                    'is_active' => false,
+                    'status' => 'pending_installation',
                     'tier' => $tier,
                     'can_sell_vouchers' => true,
                     'can_pay_bills' => true,
@@ -4225,8 +4228,8 @@ class CustomerController extends Controller
                 $dueDateTime = app(\App\Services\BillingIsolationSchedule::class)->forIssueDate($invoiceIssuedDate)
                     ->setTimezone(config('billing.timezone', 'Asia/Jakarta'));
 
-                // JANGAN BUAT INVOICE BULANAN JIKA PELANGGAN GRATIS, FREE HOME, ATAU RESELLER VOUCHER TANPA PAKET BULANAN (NOMINAL <= 0)
-                if (!in_array($serviceStatus, ['gratis', 'free_home']) && $amount > 0) {
+                // RESELLER TIDAK BOLEH ADA INVOICE PELANGGAN (BEGITUPUN STATUS GRATIS, FREE HOME, ATAU NOMINAL <= 0)
+                if (!$customer->is_reseller && empty($customer->is_reseller) && !in_array($serviceStatus, ['gratis', 'free_home']) && $amount > 0) {
                     if ($taxPpn > 0) {
                         $amount = $amount + ($amount * ($taxPpn / 100));
                     }
@@ -4447,12 +4450,20 @@ class CustomerController extends Controller
                     ->whereIn('status', ['scheduled', 'on_the_way', 'working'])
                     ->update(['status' => 'done']);
 
-                // Jika pelanggan adalah Mitra Reseller, pastikan akun reseller berstatus aktif setelah aktivasi ONT
-                if ($customer->is_reseller && $customer->reseller) {
-                    $customer->reseller->update([
-                        'is_active' => true,
-                        'status' => 'active',
-                    ]);
+                // Jika pelanggan adalah Mitra Reseller, pastikan akun reseller berstatus aktif setelah aktivasi ONT dan masuk ke Data Reseller & Pengaturan Reseller
+                if ($customer->is_reseller) {
+                    if ($customer->reseller) {
+                        $customer->reseller->update([
+                            'is_active' => true,
+                            'status' => 'active',
+                        ]);
+                    }
+                    if ($customer->user) {
+                        $customer->user->update([
+                            'is_active' => true,
+                            'role' => 'reseller',
+                        ]);
+                    }
                 }
             });
 
@@ -4474,7 +4485,11 @@ class CustomerController extends Controller
 
             \App\Models\AuditLog::createLog('Aktivasi Layanan', $customer, 'installing', 'active', 'Mengaktifkan layanan pelanggan');
 
-            return redirect()->back()->with('success', 'Pelanggan berhasil diaktivasi!');
+            $successMsg = $customer->is_reseller
+                ? "Mitra Reseller '{$customer->name}' berhasil diaktivasi dan otomatis masuk ke Data Reseller & Pengaturan Reseller!"
+                : 'Pelanggan berhasil diaktivasi!';
+
+            return redirect()->back()->with('success', $successMsg);
         }
         return redirect()->back()->with('error', 'Pelanggan belum siap diaktivasi.');
     }

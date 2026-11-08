@@ -458,6 +458,10 @@ class Customer extends Model
     {
         return $query->where('status', 'active')
             ->where(function ($q) {
+                $q->where('is_reseller', false)
+                  ->orWhereNull('is_reseller');
+            })
+            ->where(function ($q) {
                 $q->whereDate('activation_date', '>=', '2026-10-01')
                   ->orWhere(function ($sub) {
                       $sub->whereNull('activation_date')

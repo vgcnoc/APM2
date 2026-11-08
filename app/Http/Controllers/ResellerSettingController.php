@@ -53,8 +53,15 @@ class ResellerSettingController extends Controller
                   ->orWhereHas('roles', function ($rq) {
                       $rq->where('name', 'reseller');
                   })
-                  ->orWhereHas('reseller')
+                  ->orWhereHas('reseller', function ($rq) {
+                      $rq->where('is_active', true);
+                  })
                   ->orHas('voucherProfiles');
+            })->where(function ($q) {
+                // Pastikan jika reseller terikat pelanggan, hanya muncul setelah aktivasi (bukan masih booking/survey/instalasi)
+                $q->whereDoesntHave('customer', function ($cq) {
+                    $cq->whereIn('status', ['booking', 'survey', 'installing']);
+                });
             });
         } elseif ($roleFilter === 'customer') {
             $query->where(function ($q) {

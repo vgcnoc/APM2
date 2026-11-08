@@ -65,7 +65,11 @@ class AffiliateProfile extends Model
      */
     public function customers(): HasMany
     {
-        return $this->hasMany(Customer::class, 'sales_id', 'user_id');
+        return $this->hasMany(Customer::class, 'sales_id', 'user_id')
+            ->where(function ($q) {
+                $q->where('is_reseller', false)
+                  ->orWhereNull('is_reseller');
+            });
     }
 
     /**
@@ -73,7 +77,12 @@ class AffiliateProfile extends Model
      */
     public function activeCustomers(): HasMany
     {
-        return $this->hasMany(Customer::class, 'sales_id', 'user_id')->where('status', 'active');
+        return $this->hasMany(Customer::class, 'sales_id', 'user_id')
+            ->where('status', 'active')
+            ->where(function ($q) {
+                $q->where('is_reseller', false)
+                  ->orWhereNull('is_reseller');
+            });
     }
 
     /**
@@ -83,6 +92,10 @@ class AffiliateProfile extends Model
     {
         return $this->hasMany(Customer::class, 'sales_id', 'user_id')
             ->where('status', 'active')
+            ->where(function ($q) {
+                $q->where('is_reseller', false)
+                  ->orWhereNull('is_reseller');
+            })
             ->where(function ($q) {
                 $q->whereDate('activation_date', '>=', '2026-10-01')
                   ->orWhere(function ($sub) {
