@@ -183,7 +183,7 @@ class CbpRequestController extends Controller
             ->paginate($request->per_page ?? 15)
             ->withQueryString();
 
-        $technicians = \App\Models\User::where(function ($query) {
+        $technicians = \App\Models\User::forAssignment()->where(function ($query) {
             $query->whereHas('roles', function ($q) {
                 $q->whereIn('name', ['teknisi', 'kepala teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance', 'teknisi-2', 'maintenance-1'])
                   ->orWhere('name', 'like', '%teknisi%')

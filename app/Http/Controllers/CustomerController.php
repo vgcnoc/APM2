@@ -1405,7 +1405,8 @@ class CustomerController extends Controller
             $today = now()->toDateString();
             $currentTime = now()->format('H:i');
 
-            $csOfficers = User::where(function ($q) {
+            $csOfficers = User::forAssignment()
+                ->where(function ($q) {
                     $q->where('role', 'cs')
                         ->orWhere('role', 'like', '%cs%')
                         ->orWhere('role', 'like', '%customer%')
@@ -1414,9 +1415,6 @@ class CustomerController extends Controller
                             $eq->where('position', 'like', '%cs%')
                                 ->orWhere('position', 'like', '%customer%');
                         });
-                })
-                ->where(function ($q) {
-                    $q->where('is_active', true)->orWhereNull('is_active');
                 })
                 ->with(['employee.schedules' => function ($sq) use ($today) {
                     $sq->whereDate('date', $today)->with('shift');
@@ -1458,13 +1456,11 @@ class CustomerController extends Controller
                 ->values();
 
             if ($csOfficers->isEmpty()) {
-                $csOfficers = User::where(function ($q) {
+                $csOfficers = User::forAssignment()
+                    ->where(function ($q) {
                         $q->where('role', 'cs')
                             ->orWhere('role', 'like', '%cs%')
                             ->orWhere('role', 'admin');
-                    })
-                    ->where(function ($q) {
-                        $q->where('is_active', true)->orWhereNull('is_active');
                     })
                     ->get(['id', 'name', 'phone', 'email', 'role', 'is_on_duty'])
                     ->map(fn ($u) => [
@@ -1740,9 +1736,7 @@ class CustomerController extends Controller
             'customers' => $customers,
             // Full ODPs must remain visible when editing the customer's own occupied port.
             'availableOdps' => fn () => Odp::whereIn('status', ['active', 'full'])->with(['odc.olt', 'odc.area', 'area', 'ports'])->get(),
-            'technicians' => fn () => User::where(function ($q) {
-                    $q->where('is_active', true)->orWhereNull('is_active');
-                })
+            'technicians' => fn () => User::forAssignment()
                 ->with('employee')
                 ->orderBy('name')
                 ->get(['id', 'name', 'phone', 'email', 'role']),
@@ -1888,9 +1882,7 @@ class CustomerController extends Controller
 
         return Inertia::render('Customers/Installed', [
             'customers' => $customers,
-            'technicians' => fn () => User::where(function ($q) {
-                    $q->where('is_active', true)->orWhereNull('is_active');
-                })
+            'technicians' => fn () => User::forAssignment()
                 ->with('employee')
                 ->orderBy('name')
                 ->get(['id', 'name', 'phone', 'email', 'role']),
@@ -2508,8 +2500,7 @@ class CustomerController extends Controller
         // Seluruh karyawan bebas booking di semua area/wilayah
         $areas = \App\Models\Area::orderBy('name')->pluck('name')->all();
         
-        $sales = User::where('is_active', true)
-            ->whereNotIn('role', ['customer'])
+        $sales = User::forAssignment()
             ->when($isAffiliatePortal, fn ($query) => $query->whereKey(auth()->id()))
             ->with(['employee:id,email,phone,name,position'])
             ->orderBy('name')
@@ -2569,8 +2560,10 @@ class CustomerController extends Controller
         $isAffiliate = $isAffiliatePortal || (!$isInternalStaff && ($userRole === 'affiliate' || $userRole === 'reseller'));
 
         $packagesQuery = InternetPackage::active();
-        if ($isAffiliatePortal) {
-            $packagesQuery->visibleToSales();
+        if ($isAffiliatePortal || $isAffiliate) {
+            $packagesQuery->visibleToSales()
+                ->where('name', 'not like', '%voucher%')
+                ->where('name', 'not like', '%reseller%');
         }
 
         return Inertia::render('Customers/Create', [
@@ -2580,7 +2573,7 @@ class CustomerController extends Controller
             'area_villages' => $areaVillagesMap,
             'area_coverage' => $areaCoverageList,
             'isAffiliate' => $isAffiliate,
-            'affiliatePortal' => $isAffiliatePortal,
+            'affiliatePortal' => $isAffiliatePortal || $isAffiliate,
             'taxSettings' => [
                 'tax_ppn' => (float) \App\Models\Setting::get('tax_ppn', '0'),
                 'tax_bhp' => (float) \App\Models\Setting::get('tax_bhp', '0'),
@@ -2594,12 +2587,23 @@ class CustomerController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $isAffiliatePortal = $request->routeIs('affiliate.booking.store');
+        $user = $request->user();
+        $userRole = strtolower(trim($user?->role ?? ''));
+        $isInternalStaff = in_array($userRole, [
+            'admin', 'super admin', 'superadmin', 'super-admin', 
+            'cs', 'admin cs', 'manager', 'noc', 'kepala teknisi', 'teknisi', 'maintenance', 'dispatcher', 'finance', 'hrd'
+        ]) || ($user && method_exists($user, 'hasRole') && $user->hasRole('admin'));
+
+        $isAffiliate = !$isInternalStaff && ($userRole === 'affiliate' || $userRole === 'reseller');
+        $isAffiliatePortal = $request->routeIs('affiliate.booking.store') || $request->routeIs('affiliate.booking.*') || $isAffiliate;
+
         $availablePackageRule = Rule::exists('internet_packages', 'id')->where(function ($query) use ($isAffiliatePortal) {
             $query->where('is_active', true);
 
             if ($isAffiliatePortal) {
-                $query->where('is_visible_to_sales', true);
+                $query->where('is_visible_to_sales', true)
+                      ->where('name', 'not like', '%voucher%')
+                      ->where('name', 'not like', '%reseller%');
             }
         });
 
@@ -2953,10 +2957,10 @@ class CustomerController extends Controller
             'source' => request()->query('source'),
             'availableOdps' => Odp::active()->with(['odc.olt', 'onts.customer', 'ports'])->get(),
             'availableOnts' => Ont::availableForAssignment()->get(['id', 'ont_id', 'serial_number', 'brand', 'model', 'status', 'area_id']),
-            'technicians' => User::where('is_active', true)->orderBy('name')->get(['id', 'name', 'phone', 'role']),
+            'technicians' => User::forAssignment()->orderBy('name')->get(['id', 'name', 'phone', 'role']),
             'packages' => InternetPackage::active()->get(),
             'areas' => \App\Models\Area::orderBy('name')->get(['id', 'name']),
-            'salesUsers' => User::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'salesUsers' => User::forAssignment()->orderBy('name')->get(['id', 'name']),
             'materials' => \App\Models\Material::with('stocks')
                 ->where(function ($q) {
                     $q->where('is_active', true)->orWhereNull('is_active');
@@ -3248,8 +3252,7 @@ class CustomerController extends Controller
         
         $areas = \App\Models\Area::orderBy('name')->pluck('name')->all();
 
-        $sales = User::where('is_active', true)
-            ->whereNotIn('role', ['customer'])
+        $sales = User::forAssignment()
             ->with(['employee:id,email,phone,name,position'])
             ->orderBy('name')
             ->get(['id', 'name', 'email', 'phone', 'role'])

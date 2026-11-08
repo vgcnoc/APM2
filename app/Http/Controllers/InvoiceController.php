@@ -408,12 +408,12 @@ class InvoiceController extends Controller
                 ];
             });
 
-        $leadTechnicians = fn () => \App\Models\User::where(function($q) {
+        $leadTechnicians = fn () => \App\Models\User::forAssignment()->where(function($q) {
             $q->whereHas('roles', function($rq) {
                 $rq->whereIn('name', ['kepala teknisi', 'teknisi', 'admin']);
             })->orWhere('role', 'like', '%teknisi%')
               ->orWhere('role', 'like', '%admin%');
-        })->where('is_active', true)->orderBy('name')->get(['id', 'name', 'phone']);
+        })->orderBy('name')->get(['id', 'name', 'phone']);
 
         return Inertia::render('Invoices/Index', [
             'invoices' => $invoices,

@@ -111,9 +111,7 @@ class InfrastructureWorkOrderController extends Controller
      */
     protected function getEligibleTechnicians()
     {
-        return User::where(function ($q) {
-            $q->where('is_active', true)->orWhereNull('is_active');
-        })->orderBy('name')->get(['id', 'name', 'phone', 'role']);
+        return User::forAssignment()->orderBy('name')->get(['id', 'name', 'phone', 'role']);
     }
 
     /**

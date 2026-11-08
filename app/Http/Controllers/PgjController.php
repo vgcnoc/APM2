@@ -181,7 +181,7 @@ class PgjController extends Controller
         DataScopeService::applyCustomerScope($totalActiveCustQuery, $user);
         $totalActiveCustomers = $totalActiveCustQuery->count();
 
-        $technicians = User::where(function ($query) {
+        $technicians = User::forAssignment()->where(function ($query) {
             $query->whereHas('roles', function ($q) {
                 $q->whereIn('name', ['teknisi', 'kepala teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance', 'teknisi-2', 'maintenance-1'])
                   ->orWhere('name', 'like', '%teknisi%')
@@ -192,9 +192,9 @@ class PgjController extends Controller
             ->orWhere('role', 'like', '%serbu%');
         })->orderBy('name')->get();
 
-        $leadTechnicians = User::role(['kepala teknisi', 'admin', 'noc', 'manager'])->select('id', 'name')->get();
+        $leadTechnicians = User::forAssignment()->role(['kepala teknisi', 'admin', 'noc', 'manager'])->select('id', 'name')->get();
         if ($leadTechnicians->isEmpty()) {
-            $leadTechnicians = User::select('id', 'name')->get();
+            $leadTechnicians = User::forAssignment()->select('id', 'name')->get();
         }
 
         return Inertia::render('Pgj/Index', [
@@ -354,7 +354,7 @@ class PgjController extends Controller
 
         $areas = DataScopeService::getScopedAreas($user, 'pgj');
 
-        $technicians = User::where(function ($query) {
+        $technicians = User::forAssignment()->where(function ($query) {
             $query->whereHas('roles', function ($q) {
                 $q->whereIn('name', ['teknisi', 'kepala teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance', 'teknisi-2', 'maintenance-1'])
                   ->orWhere('name', 'like', '%teknisi%')

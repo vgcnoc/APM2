@@ -56,7 +56,7 @@ class DataMigrationController extends Controller
                     $u->display_name = "{$u->name} ({$pos})";
                     return $u;
                 }),
-            'technicians' => User::select('id', 'name', 'email', 'role')->whereIn('role', ['admin', 'teknisi', 'noc', 'maintenance'])->orderBy('name')->get(),
+            'technicians' => User::forAssignment()->select('id', 'name', 'email', 'role')->whereIn('role', ['admin', 'teknisi', 'noc', 'maintenance'])->orderBy('name')->get(),
             'olts' => Olt::select('id', 'name', 'ip_address')->orderBy('name')->get(),
             'odcs' => Odc::select('id', 'name', 'olt_id', 'pon_port', 'splitter_ratio')->orderBy('name')->get(),
             'odps' => Odp::select('id', 'name', 'odc_id', 'area_id', 'total_ports', 'used_ports')->orderBy('name')->get(),

@@ -175,9 +175,7 @@ class OperationalDailyProgressController extends Controller
         }
 
         // Ambil Daftar Teknisi Lapangan untuk Penugasan Cepat (Teknisi & Maintenance)
-        $rawTechnicians = User::where(function ($q) {
-            $q->where('is_active', true)->orWhereNull('is_active');
-        })->where(function ($q) {
+        $rawTechnicians = User::forAssignment()->where(function ($q) {
             $q->whereHas('roles', function ($r) {
                 $r->where(function ($rq) {
                     $rq->where('name', 'LIKE', '%teknisi%')
@@ -1152,10 +1150,7 @@ class OperationalDailyProgressController extends Controller
             ->get(['id', 'name', 'email', 'phone', 'position', 'area_id', 'branch', 'status']);
 
         // 2. Ambil seluruh User aktif dengan role teknisi / maintenance / lapangan
-        $allTechUsers = User::query()
-            ->where(function ($q) {
-                $q->where('is_active', true)->orWhereNull('is_active');
-            })
+        $allTechUsers = User::forAssignment()
             ->where(function ($q) {
                 $q->whereHas('roles', function ($r) {
                     $r->where(function ($rq) {

@@ -348,6 +348,68 @@ class User extends Authenticatable
             });
     }
 
+    /**
+     * Scope untuk memastikan HANYA pengguna yang terdaftar di Data Karyawan (tabel employees)
+     * dan masih aktif yang boleh masuk ke list penugasan teknisi/operasional/lapangan.
+     * Nama di luar data karyawan sama sekali tidak boleh masuk ke list penugasan.
+     */
+    public function scopeActiveEmployeeOnly($query)
+    {
+        return $query
+            ->where(function ($uq) {
+                $uq->where('users.is_active', true)->orWhereNull('users.is_active');
+            })
+            // Harus terdaftar di data karyawan (Employee) aktif
+            ->where(function ($sub) {
+                $sub->whereHas('employee', function ($eq) {
+                    $eq->where(function ($s) {
+                        $s->where('status', '!=', 'resigned')->orWhereNull('status');
+                    })->excludeTokoAndDemo();
+                })
+                ->orWhereExists(function ($ex) {
+                    $ex->select(\Illuminate\Support\Facades\DB::raw(1))
+                        ->from('employees')
+                        ->where(function ($s) {
+                            $s->where('employees.status', '!=', 'resigned')->orWhereNull('employees.status');
+                        })
+                        ->where(function ($m) {
+                            $m->whereColumn('employees.email', 'users.email')
+                              ->orWhere(function ($m2) {
+                                  $m2->whereNotNull('users.phone')
+                                     ->where('users.phone', '!=', '')
+                                     ->whereColumn('employees.phone', 'users.phone');
+                              })
+                              ->orWhere(function ($m3) {
+                                  $m3->whereNotNull('users.name')
+                                     ->where('users.name', '!=', '')
+                                     ->whereRaw('LOWER(TRIM(employees.name)) = LOWER(TRIM(users.name))');
+                              });
+                        })
+                        ->whereNotIn(\Illuminate\Support\Facades\DB::raw("LOWER(TRIM(COALESCE(employees.name, '')))"), ['toko', 'demo', 'akun toko', 'akun demo'])
+                        ->whereNotIn(\Illuminate\Support\Facades\DB::raw("LOWER(TRIM(COALESCE(employees.position, '')))"), ['toko', 'demo', 'akun toko', 'akun demo'])
+                        ->whereNotIn(\Illuminate\Support\Facades\DB::raw("LOWER(TRIM(COALESCE(employees.email, '')))"), ['toko@gmail.com', 'demo@gmail.com', 'toko@isp.local', 'demo@isp.local']);
+                });
+            })
+            // Tolak akun Toko dan Demo
+            ->excludeTokoAndDemo()
+            // Tolak akun bertipe Customer, Reseller, atau Afiliasi murni
+            ->where(function ($q) {
+                $q->whereNull('users.role')
+                  ->orWhereNotIn(\Illuminate\Support\Facades\DB::raw("LOWER(TRIM(COALESCE(users.role, '')))"), ['customer', 'pelanggan', 'reseller', 'affiliate', 'mitra']);
+            })
+            ->whereDoesntHave('roles', function ($rq) {
+                $rq->whereIn(\Illuminate\Support\Facades\DB::raw("LOWER(TRIM(COALESCE(name, '')))"), ['customer', 'pelanggan', 'reseller', 'affiliate', 'mitra']);
+            });
+    }
+
+    /**
+     * Alias resmi penugasan: hanya personil yang terdaftar di data karyawan aktif
+     */
+    public function scopeForAssignment($query)
+    {
+        return $this->scopeActiveEmployeeOnly($query);
+    }
+
     public function customer(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(Customer::class, 'user_id');

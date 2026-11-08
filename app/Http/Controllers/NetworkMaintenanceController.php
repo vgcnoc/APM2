@@ -199,9 +199,7 @@ class NetworkMaintenanceController extends Controller
         ];
 
         // Daftar teknisi dan maintenance lapangan untuk form create
-        $rawTechnicians = User::where(function ($q) {
-            $q->where('is_active', true)->orWhereNull('is_active');
-        })->where(function ($q) {
+        $rawTechnicians = User::forAssignment()->where(function ($q) {
             $q->whereHas('roles', function ($r) {
                 $r->where(function ($rq) {
                     $rq->where('name', 'LIKE', '%teknisi%')

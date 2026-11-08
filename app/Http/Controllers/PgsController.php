@@ -141,7 +141,7 @@ class PgsController extends Controller
         DataScopeService::applyCustomerScope($customerQuery, $user);
         $customers = function () use ($user) { $q = Customer::whereIn('status', ['active', 'suspended', 'isolir', 'installing'])->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'area', 'package_id', 'is_reseller')->with(['package:id,name', 'areaModel:id,name', 'ont:id,customer_id,serial_number,status,rx_power,odp_id', 'ont.odp:id,name']); DataScopeService::applyCustomerScope($q, $user); return $q->get(); };
 
-        $technicians = User::where(function ($query) {
+        $technicians = User::forAssignment()->where(function ($query) {
             $query->whereHas('roles', function ($q) {
                 $q->whereIn('name', ['teknisi', 'kepala teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance', 'teknisi-2', 'maintenance-1'])
                   ->orWhere('name', 'like', '%teknisi%')
@@ -152,12 +152,12 @@ class PgsController extends Controller
             ->orWhere('role', 'like', '%serbu%');
         })->select('id', 'name', 'phone')->orderBy('name')->get();
         if ($technicians->isEmpty()) {
-            $technicians = User::select('id', 'name', 'phone')->get();
+            $technicians = User::forAssignment()->select('id', 'name', 'phone')->get();
         }
 
-        $leadTechnicians = User::role(['kepala teknisi', 'admin', 'noc', 'manager'])->select('id', 'name')->get();
+        $leadTechnicians = User::forAssignment()->role(['kepala teknisi', 'admin', 'noc', 'manager'])->select('id', 'name')->get();
         if ($leadTechnicians->isEmpty()) {
-            $leadTechnicians = User::select('id', 'name')->get();
+            $leadTechnicians = User::forAssignment()->select('id', 'name')->get();
         }
 
         $materials = fn () => Material::select('id', 'name', 'category', 'unit', 'stock')->where('stock', '>', 0)->get();
@@ -365,7 +365,7 @@ class PgsController extends Controller
 
         $tickets = $query->latest('id')->paginate($request->per_page ?? 15)->withQueryString();
 
-        $technicians = User::where(function ($query) {
+        $technicians = User::forAssignment()->where(function ($query) {
             $query->whereHas('roles', function ($q) {
                 $q->whereIn('name', ['teknisi', 'kepala teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance', 'teknisi-2', 'maintenance-1'])
                   ->orWhere('name', 'like', '%teknisi%')
@@ -376,7 +376,7 @@ class PgsController extends Controller
             ->orWhere('role', 'like', '%serbu%');
         })->select('id', 'name', 'phone')->orderBy('name')->get();
         if ($technicians->isEmpty()) {
-            $technicians = User::select('id', 'name', 'phone')->get();
+            $technicians = User::forAssignment()->select('id', 'name', 'phone')->get();
         }
 
         $materials = Material::with('stocks')

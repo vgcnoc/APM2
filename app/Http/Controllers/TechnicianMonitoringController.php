@@ -41,7 +41,7 @@ class TechnicianMonitoringController extends Controller
         $areas = \App\Services\DataScopeService::getScopedAreas($user, 'monitoring_teknisi');
 
         // Ambil Daftar Teknisi
-        $technicianQuery = User::where(function ($q) {
+        $technicianQuery = User::forAssignment()->where(function ($q) {
             $q->whereHas('roles', function ($r) {
                 $r->whereIn('name', ['teknisi', 'kepala teknisi', 'maintenance', 'teknisi lapangan']);
             })->orWhereIn('role', ['teknisi', 'kepala teknisi', 'maintenance']);

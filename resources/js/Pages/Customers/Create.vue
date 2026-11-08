@@ -236,12 +236,12 @@
                                 Detail Layanan & Tagihan
                             </h4>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <div class="md:col-span-2">
+                                <div v-if="!affiliatePortal" class="md:col-span-2">
                                     <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Tipe Pendaftaran / Layanan <span class="text-red-500">*</span></label>
                                     <select v-model="registration_type" class="w-full px-4 py-2.5 bg-indigo-50 border border-indigo-200 rounded-lg text-sm text-indigo-900 font-bold focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
                                         <option value="customer">🌐 Pelanggan Internet Biasa</option>
-                                        <option v-if="!affiliatePortal" value="both">🌐+🎟️ Pelanggan Internet + Reseller Voucher</option>
-                                        <option v-if="!affiliatePortal" value="reseller">🎟️ Khusus Reseller Voucher (Tanpa Internet)</option>
+                                        <option value="both">🌐+🎟️ Pelanggan Internet + Reseller Voucher</option>
+                                        <option value="reseller">🎟️ Khusus Reseller Voucher (Tanpa Internet)</option>
                                     </select>
                                 </div>
                                 

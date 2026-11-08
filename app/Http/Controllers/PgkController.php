@@ -154,7 +154,7 @@ class PgkController extends Controller
             },
             'areas' => fn () => DataScopeService::getScopedAreas($user, 'pgk'),
             'technicians' => function () {
-                $techs = User::where(function ($query) {
+                $techs = User::forAssignment()->where(function ($query) {
                     $query->whereHas('roles', function ($q) {
                         $q->whereIn('name', ['teknisi', 'kepala teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance', 'teknisi-2', 'maintenance-1'])
                           ->orWhere('name', 'like', '%teknisi%')
@@ -164,11 +164,11 @@ class PgkController extends Controller
                     ->orWhere('role', 'like', '%teknisi%')
                     ->orWhere('role', 'like', '%serbu%');
                 })->select('id', 'name', 'phone')->orderBy('name')->get();
-                return $techs->isEmpty() ? User::select('id', 'name', 'phone')->get() : $techs;
+                return $techs->isEmpty() ? User::forAssignment()->select('id', 'name', 'phone')->get() : $techs;
             },
             'leadTechnicians' => function () {
-                $leads = User::role(['kepala teknisi', 'admin', 'noc', 'manager'])->select('id', 'name')->get();
-                return $leads->isEmpty() ? User::select('id', 'name')->get() : $leads;
+                $leads = User::forAssignment()->role(['kepala teknisi', 'admin', 'noc', 'manager'])->select('id', 'name')->get();
+                return $leads->isEmpty() ? User::forAssignment()->select('id', 'name')->get() : $leads;
             },
             'materials' => fn () => Material::select('id', 'name', 'category', 'unit', 'stock')->where('stock', '>', 0)->get(),
             'filters' => $request->only(['search', 'status', 'priority', 'channel', 'area_id']),
@@ -372,7 +372,7 @@ class PgkController extends Controller
 
         $tickets = $query->latest('id')->paginate($request->per_page ?? 15)->withQueryString();
 
-        $technicians = User::where(function ($query) {
+        $technicians = User::forAssignment()->where(function ($query) {
             $query->whereHas('roles', function ($q) {
                 $q->whereIn('name', ['teknisi', 'kepala teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance', 'teknisi-2', 'maintenance-1'])
                   ->orWhere('name', 'like', '%teknisi%')
@@ -383,7 +383,7 @@ class PgkController extends Controller
             ->orWhere('role', 'like', '%serbu%');
         })->select('id', 'name', 'phone')->orderBy('name')->get();
         if ($technicians->isEmpty()) {
-            $technicians = User::select('id', 'name', 'phone')->get();
+            $technicians = User::forAssignment()->select('id', 'name', 'phone')->get();
         }
 
         $materials = Material::with('stocks')
