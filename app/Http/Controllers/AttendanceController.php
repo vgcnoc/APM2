@@ -384,8 +384,8 @@ class AttendanceController extends Controller
         // Gabungkan absensi tim khusus hari ini ke monitoring live
         $todaySpecialQuery = SpecialAttendance::with(['employee.area', 'team'])
             ->where('date', $today);
-        if ($filterArea) {
-            $todaySpecialQuery->whereHas('employee', fn($eq) => $eq->where('area_id', $filterArea));
+        if ($request->filled('area_id')) {
+            $todaySpecialQuery->whereHas('employee', fn($eq) => $eq->where('area_id', $request->area_id));
         }
         $todaySpecialAttendances = $todaySpecialQuery->latest('clock_in')->get()->map(function ($sa) {
             return (object) [
