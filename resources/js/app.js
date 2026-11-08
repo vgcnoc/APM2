@@ -86,6 +86,18 @@ router.on('invalid', (event) => {
     }
 });
 
+// Auto-recover dari chunk deployment lama agar tidak terjadi layar putih (blank screen)
+if (typeof window !== 'undefined') {
+    window.addEventListener('vite:preloadError', (event) => {
+        const lastReload = sessionStorage.getItem('vite_preload_reload');
+        const now = Date.now();
+        if (!lastReload || now - parseInt(lastReload, 10) > 10000) {
+            sessionStorage.setItem('vite_preload_reload', String(now));
+            window.location.reload();
+        }
+    });
+}
+
 // Workspace 90%; portal sales dan auth tetap mengikuti skala native perangkat.
 applyTheme();
 
@@ -110,7 +122,25 @@ import Can from './Components/Can.vue';
 
 createInertiaApp({
     title: (title) => `${title} - ISP Management`,
-    resolve: (name) => resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
+    resolve: (name) => {
+        const pages = import.meta.glob('./Pages/**/*.vue');
+        return resolvePageComponent(`./Pages/${name}.vue`, pages).catch((err) => {
+            const isChunkError = 
+                err?.message?.includes('Failed to fetch dynamically imported module') ||
+                err?.message?.includes('Importing a module script failed') ||
+                err?.name === 'TypeError';
+            if (isChunkError && typeof window !== 'undefined') {
+                const retryKey = `chunk_retry_${name}`;
+                if (!sessionStorage.getItem(retryKey)) {
+                    sessionStorage.setItem(retryKey, '1');
+                    window.location.reload();
+                    return;
+                }
+                sessionStorage.removeItem(retryKey);
+            }
+            throw err;
+        });
+    },
     setup({ el, App, props, plugin }) {
         window.__pageProps = props.initialPage.props;
         applyDeviceScale(props.initialPage.component, props.initialPage.props);

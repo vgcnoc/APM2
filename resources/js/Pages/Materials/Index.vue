@@ -318,6 +318,15 @@
                                     <span class="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
                                         {{ item.category || 'Lainnya' }}
                                     </span>
+                                    <div v-if="item.category?.toLowerCase().includes('ont') || item.name?.toLowerCase().includes('ont')" class="mt-1.5 flex flex-wrap gap-1">
+                                        <Link 
+                                            :href="`/onts?create=1&brand_new=${encodeURIComponent(item.name)}`" 
+                                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 transition-all shadow-2xs"
+                                            title="Daftarkan Serial Number (SN) unit fisik baru perangkat ini ke Data ONT"
+                                        >
+                                            <span>➕ Daftarkan SN ONT &rarr;</span>
+                                        </Link>
+                                    </div>
                                 </td>
                                 <td class="py-4 px-6 text-right">
                                     <div class="flex flex-col items-end gap-1">
@@ -695,6 +704,16 @@
                                     <input type="checkbox" v-model="form.requires_mac" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                                     <span>Wajib MAC Address</span>
                                 </label>
+                            </div>
+
+                            <div v-if="form.category?.toLowerCase().includes('ont') || form.name?.toLowerCase().includes('ont')" class="mt-3 p-3 rounded-xl bg-purple-50 border border-purple-200 text-purple-900 text-xs flex items-start gap-2.5">
+                                <span class="text-base leading-none">💡</span>
+                                <div class="space-y-1">
+                                    <div class="font-bold text-purple-950">Info Registrasi Perangkat ONT:</div>
+                                    <p class="text-[11px] text-purple-800 leading-relaxed">
+                                        Form ini mencatat <b>kuantitas stok barang</b> di gudang (misal 10 unit). Agar unit fisik dapat disiapkan & digunakan teknisi pada penanganan tiket (PGK/PGS/Instalasi), tiap unit fisik ber-Serial Number (SN) didaftarkan di menu <b>Data ONT</b>.
+                                    </p>
+                                </div>
                             </div>
                         </div>
 

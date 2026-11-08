@@ -1546,7 +1546,7 @@
 </style>
 
 <script setup>
-import { ref, computed, watch, nextTick, onUnmounted } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import axios from 'axios';
@@ -1821,15 +1821,28 @@ const form = useForm({
     id: null
 });
 
-function openCreateModal() {
+function openCreateModal(initialBrand = '') {
     isEditing.value = false;
     form.reset();
     form.clearErrors();
     form.id = null;
+    if (initialBrand) {
+        form.brand = initialBrand;
+    }
     pppoeCheckStatus.value = 'idle';
     pppoeConflictMessage.value = '';
     isModalOpen.value = true;
 }
+
+onMounted(() => {
+    if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('create') === '1' || params.get('brand_new')) {
+            const initialBrand = params.get('brand_new') || '';
+            openCreateModal(initialBrand);
+        }
+    }
+});
 
 function openEditModal(ont) {
     isEditing.value = true;
