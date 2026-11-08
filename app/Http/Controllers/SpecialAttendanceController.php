@@ -597,7 +597,11 @@ class SpecialAttendanceController extends Controller
             ->first();
 
         if ($yesterdayOpen && $now->lessThanOrEqualTo(AttendanceCalculatorService::resolveSpecialCheckoutDeadline($yesterday, $team))) {
-            return back()->with('error', 'Anda masih memiliki sesi absensi Tim Khusus kemarin yang belum di-absen pulang. Silakan lakukan absen pulang terlebih dahulu.');
+            $msg = 'Anda masih memiliki sesi absensi Tim Khusus kemarin yang belum di-absen pulang. Silakan lakukan absen pulang terlebih dahulu.';
+            if ($request->wantsJson()) {
+                return response()->json(['message' => $msg, 'error' => $msg], 422);
+            }
+            return back()->with('error', $msg);
         }
 
         $targetDate = $today;
@@ -658,6 +662,15 @@ class SpecialAttendanceController extends Controller
         if ($now->greaterThan($lateThreshold)) {
             $status = 'late';
             $lateMinutes = (int) round($scheduledStartTime->diffInMinutes($now));
+        }
+
+        // Bersihkan foto lama jika ada perbaruan
+        $existing = SpecialAttendance::where('special_team_id', $team->id)
+            ->where('employee_id', $request->employee_id)
+            ->where('date', $targetDate)
+            ->first();
+        if ($existing && $existing->photo_in && Storage::disk('public')->exists($existing->photo_in)) {
+            Storage::disk('public')->delete($existing->photo_in);
         }
 
         // Simpan Foto Selfie
@@ -731,11 +744,19 @@ class SpecialAttendanceController extends Controller
         }
 
         if (!$attendance || !$attendance->clock_in) {
-            return back()->with('error', 'Anda belum melakukan absensi masuk hari ini.');
+            $msg = 'Anda belum melakukan absensi masuk hari ini.';
+            if ($request->wantsJson()) {
+                return response()->json(['message' => $msg, 'error' => $msg], 422);
+            }
+            return back()->with('error', $msg);
         }
 
         if ($attendance->clock_out) {
-            return back()->with('error', 'Anda sudah melakukan absensi pulang hari ini.');
+            $msg = 'Anda sudah melakukan absensi pulang hari ini.';
+            if ($request->wantsJson()) {
+                return response()->json(['message' => $msg, 'error' => $msg], 422);
+            }
+            return back()->with('error', $msg);
         }
 
         $attDateStr = is_string($attendance->date) ? substr($attendance->date, 0, 10) : $attendance->date->format('Y-m-d');
@@ -748,7 +769,11 @@ class SpecialAttendanceController extends Controller
                 $deadlineLabel = $deadlineCarbon->format('Y-m-d') !== $attDateStr
                     ? $deadlineCarbon->translatedFormat('d M Y \p\u\k\u\l H:i')
                     : 'pukul ' . $deadlineCarbon->format('H:i');
-                return back()->with('error', "Batas waktu terakhir absen pulang Tim Khusus ({$team->name}) telah berakhir pada {$deadlineLabel} WIB. Absensi dikunci otomatis (Lupa Absen Pulang). Silakan hubungi Admin / Koordinator Tim.");
+                $msg = "Batas waktu terakhir absen pulang Tim Khusus ({$team->name}) telah berakhir pada {$deadlineLabel} WIB. Absensi dikunci otomatis (Lupa Absen Pulang). Silakan hubungi Admin / Koordinator Tim.";
+                if ($request->wantsJson()) {
+                    return response()->json(['message' => $msg, 'error' => $msg], 422);
+                }
+                return back()->with('error', $msg);
             }
         }
 
@@ -790,6 +815,11 @@ class SpecialAttendanceController extends Controller
                 }
                 return back()->with('error', $msg);
             }
+        }
+
+        // Bersihkan foto pulang lama jika ada
+        if ($attendance->photo_out && Storage::disk('public')->exists($attendance->photo_out)) {
+            Storage::disk('public')->delete($attendance->photo_out);
         }
 
         // Simpan Foto Selfie Pulang
@@ -941,6 +971,19 @@ class SpecialAttendanceController extends Controller
             abort(403, 'Anda tidak memiliki hak akses untuk menghapus grup tim khusus.');
         }
 
+        $code = strtoupper($team->code ?? '');
+        $nameUpper = strtoupper($team->name ?? '');
+        $isCoreTeam = in_array($code, ['BC-04', 'TS-01', 'TK-01', 'TK-77'])
+            || str_contains($nameUpper, 'BC-4')
+            || str_contains($nameUpper, 'BC 4')
+            || str_contains($nameUpper, 'BC4')
+            || str_contains($nameUpper, 'SERBU')
+            || str_contains($nameUpper, 'TIM KHUSUS');
+
+        if ($isCoreTeam) {
+            return back()->with('error', "Grup utama sistem '{$team->name}' tidak dapat dihapus karena merupakan grup operasional resmi.");
+        }
+
         $name = $team->name;
         $team->delete();
         return redirect()->route('special-attendances.index')->with('success', "Grup '{$name}' berhasil dihapus.");
@@ -967,17 +1010,33 @@ class SpecialAttendanceController extends Controller
             'notes' => 'nullable|string',
         ]);
 
+        $cleanDate = Carbon::parse($request->date)->format('Y-m-d');
+        $lateMinutes = (int) ($request->late_minutes ?? 0);
+
+        if ($request->status === 'late' && $lateMinutes === 0 && !empty($request->clock_in)) {
+            $team = SpecialTeam::find($request->special_team_id);
+            if ($team && !empty($team->start_time)) {
+                $scheduledStart = Carbon::parse($cleanDate . ' ' . $team->start_time);
+                $clockInCarbon = Carbon::parse($cleanDate . ' ' . $request->clock_in);
+                if ($clockInCarbon->greaterThan($scheduledStart)) {
+                    $lateMinutes = (int) round($scheduledStart->diffInMinutes($clockInCarbon));
+                }
+            }
+        } elseif ($request->status === 'present') {
+            $lateMinutes = 0;
+        }
+
         SpecialAttendance::updateOrCreate(
             [
                 'special_team_id' => $request->special_team_id,
                 'employee_id' => $request->employee_id,
-                'date' => $request->date,
+                'date' => $cleanDate,
             ],
             [
                 'clock_in' => $request->clock_in,
                 'clock_out' => $request->clock_out,
                 'status' => $request->status,
-                'late_minutes' => $request->late_minutes ?? 0,
+                'late_minutes' => $lateMinutes,
                 'notes' => $request->notes ?: 'Koreksi / Input Manual Admin',
             ]
         );
@@ -993,6 +1052,13 @@ class SpecialAttendanceController extends Controller
         $user = auth()->user();
         if (!$user || (!$user->hasRole('admin') && $user->role !== 'admin' && !$user->can('attendances_special_tab_admin') && !$user->can('attendances_special_manage'))) {
             abort(403, 'Anda tidak memiliki hak akses untuk menghapus data absensi admin tim khusus.');
+        }
+
+        if ($attendance->photo_in && Storage::disk('public')->exists($attendance->photo_in)) {
+            Storage::disk('public')->delete($attendance->photo_in);
+        }
+        if ($attendance->photo_out && Storage::disk('public')->exists($attendance->photo_out)) {
+            Storage::disk('public')->delete($attendance->photo_out);
         }
 
         $attendance->delete();
@@ -1019,6 +1085,9 @@ class SpecialAttendanceController extends Controller
         $monthEnd = Carbon::parse($month . '-01')->endOfMonth()->format('Y-m-d');
         $isSyncAll = empty($request->special_team_id) || $request->special_team_id === 'all';
 
+        $clockInEarlyLimitEnabled = Setting::get('attendance_clock_in_early_limit_enabled', '1') === '1';
+        $clockInEarlyLimitMinutes = max(1, (int) Setting::get('attendance_clock_in_early_limit_minutes', 60));
+
         if ($isSyncAll) {
             $targetTeams = SpecialTeam::where('is_active', true)->get();
         } else {
@@ -1028,7 +1097,17 @@ class SpecialAttendanceController extends Controller
         $totalSyncedDeductions = 0;
         $totalSyncedRewards = 0;
 
-        DB::transaction(function () use ($targetTeams, $isSyncAll, $month, $monthStart, $monthEnd, &$totalSyncedDeductions, &$totalSyncedRewards) {
+        DB::transaction(function () use (
+            $targetTeams,
+            $isSyncAll,
+            $month,
+            $monthStart,
+            $monthEnd,
+            $clockInEarlyLimitEnabled,
+            $clockInEarlyLimitMinutes,
+            &$totalSyncedDeductions,
+            &$totalSyncedRewards
+        ) {
             $nowSync = Carbon::now();
 
             // 1. Sinkronkan Potongan Keterlambatan & Tanpa Pulang per Tim
@@ -1055,7 +1134,7 @@ class SpecialAttendanceController extends Controller
                         $latestIncident = $atts->filter(fn($att) => $att->status === 'late' || AttendanceCalculatorService::isSpecialMissingClockOut($att, $team, $nowSync))->sortByDesc('date')->first();
                         $incidentDate = $latestIncident 
                             ? Carbon::parse($latestIncident->date)->format('Y-m-d') 
-                            : min(Carbon::today('Asia/Jakarta')->format('Y-m-d'), $monthEnd->format('Y-m-d'));
+                            : min(Carbon::today('Asia/Jakarta')->format('Y-m-d'), $monthEnd);
 
                         $refId = "SPECIAL_DEDUCT_{$team->id}_{$emp->id}_{$month}";
                         $desc = "Potongan Absen {$team->name} Periode {$month} ({$lates}x telat, {$noOutCount}x tanpa absen pulang)";
@@ -1154,6 +1233,7 @@ class SpecialAttendanceController extends Controller
                             'presents' => $presents,
                             'lates' => $lates,
                             'late_minutes' => $lateMinutes,
+                            'no_clock_out' => $noOut,
                             'avg_clock_in' => $avgClockIn,
                         ];
                     }
@@ -1171,6 +1251,9 @@ class SpecialAttendanceController extends Controller
                     }
                     if ($a['late_minutes'] !== $b['late_minutes']) {
                         return $a['late_minutes'] <=> $b['late_minutes'];
+                    }
+                    if ($a['no_clock_out'] !== $b['no_clock_out']) {
+                        return $a['no_clock_out'] <=> $b['no_clock_out'];
                     }
                     return ($a['avg_clock_in'] ?? 86400) <=> ($b['avg_clock_in'] ?? 86400);
                 })->values();
@@ -1193,7 +1276,7 @@ class SpecialAttendanceController extends Controller
                                 'type' => 'auto',
                                 'description' => "Reward Absen Terbaik Tim Khusus (Juara {$rank} Global - {$winner['employee']->name}) Periode {$month}",
                                 'amount' => $amt,
-                                'incentive_date' => $monthEnd->format('Y-m-d'),
+                                'incentive_date' => $monthEnd,
                                 'status' => 'pending',
                             ]
                         );

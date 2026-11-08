@@ -169,6 +169,23 @@
                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
                     <span>Potongan Tim BC-4</span>
                 </button>
+
+                <!-- TAB POTONGAN TIM LAINNYA (JIKA DIBUAT ADMIN) -->
+                <button
+                    v-for="other in otherTeams"
+                    :key="other.id"
+                    type="button"
+                    @click="activeTab = 'potongan_team_' + other.id"
+                    :class="[
+                        activeTab === ('potongan_team_' + other.id)
+                            ? 'bg-blue-900 text-white shadow-sm'
+                            : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50',
+                        'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap'
+                    ]"
+                >
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                    <span>Potongan {{ other.name }}</span>
+                </button>
             </div>
 
             <!-- 3. ACCORDION PANDUAN ABSENSI (MASUK & PULANG) -->
@@ -892,9 +909,9 @@
             </div>
 
             <!-- ========================================================= -->
-            <!-- TAB 5, 6, 7: POTONGAN TIM KHUSUS / SERBU / BC-4           -->
+            <!-- TAB 5, 6, 7+: POTONGAN TIM KHUSUS / SERBU / BC-4 / LAINNYA -->
             <!-- ========================================================= -->
-            <div v-else-if="activeTab === 'potongan_khusus' || activeTab === 'potongan_serbu' || activeTab === 'potongan_bc4'" class="space-y-5">
+            <div v-else-if="activeTab.startsWith('potongan_')" class="space-y-5">
                 <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs space-y-5">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div>
@@ -1794,7 +1811,16 @@ const switchAdminMonth = (monthVal) => {
     router.get(route('special-attendances.index'), { team_id: props.currentTeam?.id, month: monthVal }, { preserveState: true });
 };
 
-// Deductions Team Computation for Tabs 5, 6 & 7
+// Tim lainnya di luar 3 grup utama
+const otherTeams = computed(() => {
+    return (props.teams || []).filter((t) => {
+        const n = (t.name || '').toLowerCase();
+        const c = (t.code || '').toLowerCase();
+        return !n.includes('khusus') && !n.includes('serbu') && !n.includes('bc-4') && !n.includes('bc 4') && !n.includes('bc4') && !c.includes('bc-04') && !c.includes('bc-4');
+    });
+});
+
+// Deductions Team Computation for Tabs 5, 6, 7+
 const activeDeductionTeam = computed(() => {
     if (activeTab.value === 'potongan_khusus') {
         const found = (props.teams || []).find((t) => t.name.toLowerCase().includes('khusus'));
@@ -1810,6 +1836,11 @@ const activeDeductionTeam = computed(() => {
             const code = (t.code || '').toLowerCase();
             return name.includes('bc-4') || name.includes('bc 4') || name.includes('bc4') || code.includes('bc-04') || code.includes('bc-4');
         });
+        return found || props.currentTeam;
+    }
+    if (activeTab.value.startsWith('potongan_team_')) {
+        const tId = parseInt(activeTab.value.replace('potongan_team_', ''));
+        const found = (props.teams || []).find((t) => t.id === tId);
         return found || props.currentTeam;
     }
     return props.currentTeam;
@@ -2354,7 +2385,7 @@ const submitAdminManual = () => {
 // ========================================================
 const triggerSyncPayroll = async () => {
     const isBestTab = activeTab.value === 'best';
-    const isDeductionTab = ['potongan_khusus', 'potongan_serbu', 'potongan_bc4'].includes(activeTab.value);
+    const isDeductionTab = activeTab.value.startsWith('potongan_');
     
     let targetTeamId = props.currentTeam?.id;
     let targetLabel = `grup '${props.currentTeam?.name}'`;
