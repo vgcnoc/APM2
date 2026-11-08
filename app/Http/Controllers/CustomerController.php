@@ -1363,23 +1363,41 @@ class CustomerController extends Controller
             })
             ->search($request->search);
 
-        $customers = (clone $query)
-            ->with(['package', 'sales.employee'])
-            ->orderByRaw('COALESCE(registration_date, created_at) DESC, id DESC')
-            ->paginate(15)
-            ->withQueryString();
+        $tab = $request->input('tab', 'regular');
+        $isReseller = ($tab === 'reseller');
 
-        // Calculate statistics based on the current filtered view (1x query agregasi)
-        $bAgg = (clone $query)->selectRaw("
+        // Calculate statistics based on regular vs reseller (1x query agregasi per kategori)
+        $bAggRegular = (clone $query)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'))->selectRaw("
             COUNT(*) as total_all,
             COALESCE(SUM(CASE WHEN status = 'booking' THEN 1 ELSE 0 END), 0) as baru_all,
             COALESCE(SUM(CASE WHEN status = 'survey' THEN 1 ELSE 0 END), 0) as survey_all
         ")->first();
+
+        $bAggReseller = (clone $query)->where('is_reseller', true)->selectRaw("
+            COUNT(*) as total_all,
+            COALESCE(SUM(CASE WHEN status = 'booking' THEN 1 ELSE 0 END), 0) as baru_all,
+            COALESCE(SUM(CASE WHEN status = 'survey' THEN 1 ELSE 0 END), 0) as survey_all
+        ")->first();
+
+        $activeAgg = $isReseller ? $bAggReseller : $bAggRegular;
         $stats = [
-            'total' => (int) ($bAgg->total_all ?? 0),
-            'baru' => (int) ($bAgg->baru_all ?? 0),
-            'disurvey' => (int) ($bAgg->survey_all ?? 0),
+            'total' => (int) ($activeAgg->total_all ?? 0),
+            'baru' => (int) ($activeAgg->baru_all ?? 0),
+            'disurvey' => (int) ($activeAgg->survey_all ?? 0),
+            'regular' => (int) ($bAggRegular->total_all ?? 0),
+            'reseller' => (int) ($bAggReseller->total_all ?? 0),
         ];
+
+        $customers = (clone $query)
+            ->when($isReseller, function ($q) {
+                $q->where('is_reseller', true);
+            }, function ($q) {
+                $q->where(fn($sub) => $sub->where('is_reseller', false)->orWhereNull('is_reseller'));
+            })
+            ->with(['package', 'sales.employee'])
+            ->orderByRaw('COALESCE(registration_date, created_at) DESC, id DESC')
+            ->paginate(15)
+            ->withQueryString();
 
         $resolveCsOfficers = function () {
             static $memo = null;
@@ -1483,7 +1501,7 @@ class CustomerController extends Controller
             'stats' => $stats,
             'technicians' => fn () => $resolveCsOfficers(),
             'cs_officers' => fn () => $resolveCsOfficers(),
-            'filters' => $request->only(['search', 'date', 'area', 'area_id', 'status']),
+            'filters' => array_merge(['tab' => $tab], $request->only(['search', 'date', 'area', 'area_id', 'status', 'tab'])),
         ]);
     }
 
@@ -1602,34 +1620,40 @@ class CustomerController extends Controller
             ->when($request->area || $request->area_id, fn($q) => $this->applyAreaFilter($q, $request->area_id ?: $request->area))
             ->search($request->search);
 
-        // Calculate statistics based on the base query
+        // Calculate statistics based on the base query (pisahkan reguler vs khusus reseller)
         $stats = [
-            'total' => (clone $baseQuery)->count(),
-            'jadwalkan' => (clone $baseQuery)->where('status', 'survey')->doesntHave('surveys')->whereDoesntHave('technicianSchedules', fn($q) => $q->where('type', 'survey'))->count(),
-            'laporan' => (clone $baseQuery)->where('status', 'survey')->doesntHave('surveys')->whereHas('technicianSchedules', fn($q) => $q->where('type', 'survey'))->count(),
-            'ready' => (clone $baseQuery)->where('status', 'survey')->whereHas('surveys', function ($sq) {
+            'total' => (clone $baseQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'))->count(),
+            'jadwalkan' => (clone $baseQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'))->where('status', 'survey')->doesntHave('surveys')->whereDoesntHave('technicianSchedules', fn($q) => $q->where('type', 'survey'))->count(),
+            'laporan' => (clone $baseQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'))->where('status', 'survey')->doesntHave('surveys')->whereHas('technicianSchedules', fn($q) => $q->where('type', 'survey'))->count(),
+            'ready' => (clone $baseQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'))->where('status', 'survey')->whereHas('surveys', function ($sq) {
                 $sq->where('feasibility', 'feasible');
             })->count(),
-            'unfeasible' => (clone $baseQuery)->whereHas('surveys', function ($sq) {
+            'unfeasible' => (clone $baseQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'))->whereHas('surveys', function ($sq) {
                 $sq->where('feasibility', 'not_feasible');
             })->count(),
+            'reseller' => (clone $baseQuery)->where('is_reseller', true)->count(),
         ];
 
         $customers = (clone $baseQuery)
-            ->when($tab === 'jadwalkan', function ($q) {
-                $q->where('status', 'survey')->doesntHave('surveys')->whereDoesntHave('technicianSchedules', fn($sq) => $sq->where('type', 'survey'));
-            })
-            ->when($tab === 'laporan', function ($q) {
-                $q->where('status', 'survey')->doesntHave('surveys')->whereHas('technicianSchedules', fn($sq) => $sq->where('type', 'survey'));
-            })
-            ->when($tab === 'ready', function ($q) {
-                $q->where('status', 'survey')->whereHas('surveys', function ($sq) {
-                    $sq->where('feasibility', 'feasible');
-                });
-            })
-            ->when($tab === 'unfeasible', function ($q) {
-                $q->whereHas('surveys', function ($sq) {
-                    $sq->where('feasibility', 'not_feasible');
+            ->when($tab === 'reseller', function ($q) {
+                $q->where('is_reseller', true);
+            }, function ($q) use ($tab) {
+                $q->where(fn($sub) => $sub->where('is_reseller', false)->orWhereNull('is_reseller'));
+                $q->when($tab === 'jadwalkan', function ($sq) {
+                    $sq->where('status', 'survey')->doesntHave('surveys')->whereDoesntHave('technicianSchedules', fn($ts) => $ts->where('type', 'survey'));
+                })
+                ->when($tab === 'laporan', function ($sq) {
+                    $sq->where('status', 'survey')->doesntHave('surveys')->whereHas('technicianSchedules', fn($ts) => $ts->where('type', 'survey'));
+                })
+                ->when($tab === 'ready', function ($sq) {
+                    $sq->where('status', 'survey')->whereHas('surveys', function ($ts) {
+                        $ts->where('feasibility', 'feasible');
+                    });
+                })
+                ->when($tab === 'unfeasible', function ($sq) {
+                    $sq->whereHas('surveys', function ($ts) {
+                        $ts->where('feasibility', 'not_feasible');
+                    });
                 });
             })
             ->orderByRaw('COALESCE(registration_date, created_at) DESC, id DESC')
@@ -1797,16 +1821,16 @@ class CustomerController extends Controller
         }
 
         $stats = [
-            'semua' => (clone $filteredBaseQuery)->count(),
-            'jadwal_pasang' => (clone $filteredBaseQuery)
+            'semua' => (clone $filteredBaseQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'))->count(),
+            'jadwal_pasang' => (clone $filteredBaseQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'))
                 ->where('status', 'installing')
                 ->whereDoesntHave('technicianSchedules', fn($q) => $q->where('type', 'installation')->where('status', '!=', 'cancelled'))->count(),
-            'laporan_pasang' => (clone $filteredBaseQuery)
+            'laporan_pasang' => (clone $filteredBaseQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'))
                 ->where('status', 'installing')
                 ->whereHas('technicianSchedules', function($q) {
                     $q->where('type', 'installation')->whereIn('status', ['scheduled', 'on_the_way', 'working']);
                 })->count(),
-            'audit' => (clone $filteredBaseQuery)
+            'audit' => (clone $filteredBaseQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'))
                 ->where('status', 'installing')
                 ->where('is_audited', false)
                 ->whereDoesntHave('technicianSchedules', function($q) {
@@ -1815,36 +1839,42 @@ class CustomerController extends Controller
                 ->whereHas('ont', function ($q) {
                     $q->whereNotNull('rx_power');
                 })->count(),
-            'selesai_instalasi' => (clone $filteredBaseQuery)
+            'selesai_instalasi' => (clone $filteredBaseQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'))
                 ->where(function($q) {
                     $q->where('status', 'installing')->where('is_audited', true)
                       ->orWhere('status', 'active');
                 })
                 ->count(),
+            'reseller' => (clone $filteredBaseQuery)->where('is_reseller', true)->count(),
         ];
 
         $customerQuery = clone $filteredBaseQuery;
         
         $currentTab = $request->tab;
         
-        if ($currentTab) {
-            if ($currentTab === 'jadwal_pasang') {
-                $customerQuery->where('status', 'installing')->whereDoesntHave('technicianSchedules', fn($q) => $q->where('type', 'installation')->where('status', '!=', 'cancelled'));
-            } elseif ($currentTab === 'laporan_pasang') {
-                $customerQuery->where('status', 'installing')->whereHas('technicianSchedules', function($q) {
-                    $q->where('type', 'installation')->whereIn('status', ['scheduled', 'on_the_way', 'working']);
-                });
-            } elseif ($currentTab === 'audit') {
-                $customerQuery->where('status', 'installing')->where('is_audited', false)->whereDoesntHave('technicianSchedules', function($q) {
-                    $q->where('type', 'installation')->whereIn('status', ['scheduled', 'on_the_way', 'working']);
-                })->whereHas('ont', function ($q) {
-                        $q->whereNotNull('rx_power');
+        if ($currentTab === 'reseller') {
+            $customerQuery->where('is_reseller', true);
+        } else {
+            $customerQuery->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'));
+            if ($currentTab) {
+                if ($currentTab === 'jadwal_pasang') {
+                    $customerQuery->where('status', 'installing')->whereDoesntHave('technicianSchedules', fn($q) => $q->where('type', 'installation')->where('status', '!=', 'cancelled'));
+                } elseif ($currentTab === 'laporan_pasang') {
+                    $customerQuery->where('status', 'installing')->whereHas('technicianSchedules', function($q) {
+                        $q->where('type', 'installation')->whereIn('status', ['scheduled', 'on_the_way', 'working']);
                     });
-            } elseif ($currentTab === 'selesai_instalasi') {
-                $customerQuery->where(function($q) {
-                    $q->where('status', 'installing')->where('is_audited', true)
-                      ->orWhere('status', 'active');
-                });
+                } elseif ($currentTab === 'audit') {
+                    $customerQuery->where('status', 'installing')->where('is_audited', false)->whereDoesntHave('technicianSchedules', function($q) {
+                        $q->where('type', 'installation')->whereIn('status', ['scheduled', 'on_the_way', 'working']);
+                    })->whereHas('ont', function ($q) {
+                            $q->whereNotNull('rx_power');
+                        });
+                } elseif ($currentTab === 'selesai_instalasi') {
+                    $customerQuery->where(function($q) {
+                        $q->where('status', 'installing')->where('is_audited', true)
+                          ->orWhere('status', 'active');
+                    });
+                }
             }
         }
 
@@ -1915,38 +1945,53 @@ class CustomerController extends Controller
             }
         };
 
-        // 1. Antrean Menunggu Aktivasi (status installing & sudah diaudit)
+        // 1. Antrean Menunggu Aktivasi Reguler (status installing & sudah diaudit)
         $waitingQuery = Customer::query()->where('status', 'installing')->where('is_audited', true);
         $applyAreaScope($waitingQuery);
 
-        // 2. Riwayat Aktivasi (pelanggan yang sudah diaktivasi dan bukan berhenti/dibatalkan)
+        // 2. Riwayat Aktivasi Reguler (pelanggan yang sudah diaktivasi dan bukan berhenti/dibatalkan)
         $historyQuery = Customer::query()->where(function($q) {
             $q->whereNotNull('activation_date')
               ->orWhere('status', 'active');
         })->whereNotIn('status', ['installing', 'terminated', 'canceled']);
         $applyAreaScope($historyQuery);
 
-        $statsWaiting = clone $waitingQuery;
-        $statsHistory = clone $historyQuery;
+        // 3. Khusus Reseller Voucher (menunggu aktivasi atau riwayat aktivasi reseller)
+        $resellerQuery = Customer::query()->where('is_reseller', true)->whereIn('status', ['installing', 'active']);
+        $applyAreaScope($resellerQuery);
+
+        $statsWaiting = (clone $waitingQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'));
+        $statsHistory = (clone $historyQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'));
+        $statsReseller = clone $resellerQuery;
+
         if ($request->area || $request->area_id) {
             $this->applyAreaFilter($statsWaiting, $request->area_id ?: $request->area);
             $this->applyAreaFilter($statsHistory, $request->area_id ?: $request->area);
+            $this->applyAreaFilter($statsReseller, $request->area_id ?: $request->area);
         }
         if ($request->search) {
             $statsWaiting->search($request->search);
             $statsHistory->search($request->search);
+            $statsReseller->search($request->search);
         }
         $stats = [
             'aktivasi' => $statsWaiting->count(),
             'riwayat' => $statsHistory->count(),
+            'reseller' => $statsReseller->count(),
         ];
 
         $currentTab = $request->input('tab', 'menunggu');
-        if (!in_array($currentTab, ['menunggu', 'riwayat'])) {
+        if (!in_array($currentTab, ['menunggu', 'riwayat', 'reseller'])) {
             $currentTab = 'menunggu';
         }
 
-        $activeQuery = ($currentTab === 'riwayat') ? clone $historyQuery : clone $waitingQuery;
+        if ($currentTab === 'reseller') {
+            $activeQuery = clone $resellerQuery;
+        } elseif ($currentTab === 'riwayat') {
+            $activeQuery = (clone $historyQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'));
+        } else {
+            $activeQuery = (clone $waitingQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'));
+        }
 
         $customers = $activeQuery
             ->with([
@@ -1988,10 +2033,14 @@ class CustomerController extends Controller
                 }
             })
             ->search($request->search)
-            ->when($currentTab === 'riwayat', function ($q) {
-                $q->orderByRaw('COALESCE(activation_date, updated_at) DESC, id DESC');
-            }, function ($q) {
-                $q->orderByRaw('COALESCE(registration_date, created_at) DESC, id DESC');
+            ->when($currentTab === 'reseller', function ($q) {
+                $q->orderByRaw("CASE WHEN status = 'installing' THEN 0 ELSE 1 END, COALESCE(activation_date, registration_date, created_at) DESC, id DESC");
+            }, function ($q) use ($currentTab) {
+                $q->when($currentTab === 'riwayat', function ($sub) {
+                    $sub->orderByRaw('COALESCE(activation_date, updated_at) DESC, id DESC');
+                }, function ($sub) {
+                    $sub->orderByRaw('COALESCE(registration_date, created_at) DESC, id DESC');
+                });
             })
             ->paginate(15)
             ->withQueryString();

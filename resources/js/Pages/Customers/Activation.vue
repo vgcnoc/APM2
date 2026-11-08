@@ -5,7 +5,7 @@
         <PipelineGuideCard stage="activation" />
         
         <!-- Statistik Cards -->
-        <div v-can="'customers_activation_card_stats'" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <div v-can="'customers_activation_card_stats'" class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <StatCard 
                 title="Menunggu Aktivasi" 
                 :value="stats?.aktivasi || 0" 
@@ -21,6 +21,14 @@
                 color="emerald" 
                 class="cursor-pointer transition-all hover:scale-[1.01]"
                 @click="switchTab('riwayat')"
+            />
+            <StatCard 
+                title="Khusus Reseller Voucher" 
+                :value="stats?.reseller || 0" 
+                icon="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" 
+                color="amber" 
+                class="cursor-pointer transition-all hover:scale-[1.01]"
+                @click="switchTab('reseller')"
             />
         </div>
 
@@ -57,6 +65,23 @@
                 <span>Riwayat Aktivasi</span>
                 <span :class="['px-2 py-0.5 rounded-full text-xs font-semibold', currentTab === 'riwayat' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-600']">
                     {{ stats?.riwayat || 0 }}
+                </span>
+            </button>
+
+            <button 
+                type="button"
+                @click="switchTab('reseller')" 
+                :class="[
+                    'px-5 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 whitespace-nowrap flex-1 flex items-center justify-center gap-2 cursor-pointer', 
+                    currentTab === 'reseller' 
+                        ? 'bg-white text-amber-600 shadow-sm ring-1 ring-amber-400' 
+                        : 'text-amber-700 hover:text-amber-800 hover:bg-white/50 font-semibold'
+                ]"
+            >
+                <span class="w-2 h-2 rounded-full" :class="currentTab === 'reseller' ? 'bg-amber-500 animate-pulse' : 'bg-amber-400'"></span>
+                <span>🎟️ Khusus Reseller Voucher</span>
+                <span :class="['px-2 py-0.5 rounded-full text-xs font-semibold', currentTab === 'reseller' ? 'bg-amber-100 text-amber-700' : 'bg-amber-100/80 text-amber-800']">
+                    {{ stats?.reseller || 0 }}
                 </span>
             </button>
         </div>
@@ -284,6 +309,9 @@
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                                 <span>Aktivasi</span>
                             </button>
+                            <span v-else-if="row.status === 'active'" class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold">
+                                <span>✓</span> Aktif
+                            </span>
 
                             <!-- Tombol Titik 3 Menu Aksi -->
                             <button 
@@ -315,7 +343,10 @@
                         </div>
                     </td>
                     <td>
-                        <span class="text-xs text-cyan-600 font-medium">{{ row.package?.name || '-' }}</span>
+                        <span v-if="row.is_reseller && !row.package" class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded text-[10px] font-bold whitespace-nowrap">
+                            <span>🎟️</span> Reseller Voucher
+                        </span>
+                        <span v-else class="text-xs text-cyan-600 font-medium">{{ row.package?.name || '-' }}</span>
                     </td>
                     <td><StatusBadge :status="row.status" /></td>
                     <td>
@@ -2126,7 +2157,7 @@ const columns = computed(() => {
     return [
         { key: 'actions', label: 'Aksi', class: 'w-32 text-center whitespace-nowrap' },
         { key: 'name', label: 'Pelanggan', class: 'min-w-[190px]' },
-        { key: 'package', label: 'Paket', class: 'whitespace-nowrap' },
+        { key: 'package', label: 'Kategori / Paket', class: 'whitespace-nowrap' },
         { key: 'status', label: 'Status', class: 'text-center whitespace-nowrap' },
         { key: 'ont', label: 'ONT S/N', class: 'whitespace-nowrap' },
         { key: 'topology', label: 'Topologi', class: 'min-w-[140px]' },

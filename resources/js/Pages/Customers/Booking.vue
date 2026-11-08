@@ -3,6 +3,43 @@
         
         <!-- Panduan & SOP Penggunaan Fitur -->
         <PipelineGuideCard stage="booking" />
+
+        <!-- Tabs Reguler vs Khusus Reseller Voucher -->
+        <div class="flex space-x-1.5 bg-slate-100/80 p-1.5 rounded-xl mb-6 shadow-inner border border-slate-200/60 overflow-x-auto">
+            <button 
+                type="button" 
+                @click="switchTab('regular')" 
+                :class="[
+                    'px-5 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 whitespace-nowrap flex-1 flex items-center justify-center gap-2 cursor-pointer', 
+                    filterTab !== 'reseller' 
+                        ? 'bg-white text-blue-600 shadow-sm ring-1 ring-gray-900/5' 
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
+                ]"
+            >
+                <span class="w-2 h-2 rounded-full" :class="filterTab !== 'reseller' ? 'bg-blue-500' : 'bg-gray-400'"></span>
+                <span>🌐 Pelanggan Reguler</span>
+                <span :class="['px-2 py-0.5 rounded-full text-xs font-semibold', filterTab !== 'reseller' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-600']">
+                    {{ stats?.regular ?? stats?.total ?? 0 }}
+                </span>
+            </button>
+
+            <button 
+                type="button" 
+                @click="switchTab('reseller')" 
+                :class="[
+                    'px-5 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 whitespace-nowrap flex-1 flex items-center justify-center gap-2 cursor-pointer', 
+                    filterTab === 'reseller' 
+                        ? 'bg-white text-amber-600 shadow-sm ring-1 ring-amber-400' 
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'
+                ]"
+            >
+                <span class="w-2 h-2 rounded-full" :class="filterTab === 'reseller' ? 'bg-amber-500 animate-pulse' : 'bg-gray-400'"></span>
+                <span>🎟️ Khusus Reseller Voucher</span>
+                <span :class="['px-2 py-0.5 rounded-full text-xs font-semibold', filterTab === 'reseller' ? 'bg-amber-100 text-amber-700' : 'bg-gray-200 text-gray-600']">
+                    {{ stats?.reseller ?? 0 }}
+                </span>
+            </button>
+        </div>
         
         <!-- Statistik -->
         <div v-can="'customers_booking_card_stats'" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -1086,24 +1123,33 @@ const canDelete = computed(() => {
     }
 });
 
+const filterTab = ref(props.filters?.tab || 'regular');
 const filterDate = ref(props.filters?.date || '');
 const filterArea = ref(props.filters?.area || props.filters?.area_id || '');
 const filterStatus = ref(props.filters?.status || '');
 
 watch(() => props.filters, (newFilters) => {
+    filterTab.value = newFilters?.tab || 'regular';
     filterDate.value = newFilters?.date || '';
     filterArea.value = newFilters?.area || newFilters?.area_id || '';
     filterStatus.value = newFilters?.status || '';
 }, { deep: true });
 
+function switchTab(tab) {
+    filterTab.value = tab;
+    filterStatus.value = '';
+    applyFilters();
+}
+
 function applyFilters() {
     const currentSearch = typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('search') || undefined) : undefined;
     router.get('/customers/booking', {
         search: currentSearch,
+        tab: filterTab.value === 'reseller' ? 'reseller' : undefined,
         date: filterDate.value || undefined,
         area: filterArea.value || undefined,
         status: filterStatus.value || undefined,
-    }, { preserveState: true, preserveScroll: true });
+    }, { preserveState: false, preserveScroll: true });
 }
 
 function resetFilters() {
@@ -1113,7 +1159,8 @@ function resetFilters() {
     const currentSearch = typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('search') || undefined) : undefined;
     router.get('/customers/booking', {
         search: currentSearch,
-    }, { preserveState: true, preserveScroll: true });
+        tab: filterTab.value === 'reseller' ? 'reseller' : undefined,
+    }, { preserveState: false, preserveScroll: true });
 }
 
 function formatDate(dateStr) {

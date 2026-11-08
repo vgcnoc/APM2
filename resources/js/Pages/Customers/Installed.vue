@@ -111,6 +111,20 @@
                 <span>Selesai Instalasi</span>
                 <span v-if="stats?.selesai_instalasi !== undefined" :class="['px-2 py-0.5 rounded-full text-[10px] font-bold', filterState.tab === 'selesai_instalasi' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-200/70 text-slate-600']">{{ stats.selesai_instalasi }}</span>
             </button>
+            <button 
+                type="button"
+                @click="filterState.tab = 'reseller'; applyFilter()" 
+                :class="[
+                    'px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 whitespace-nowrap flex-1 flex items-center justify-center gap-2 cursor-pointer', 
+                    filterState.tab === 'reseller' 
+                        ? 'bg-white text-amber-600 shadow-xs ring-1 ring-amber-300' 
+                        : 'text-amber-700 hover:text-amber-800 hover:bg-white/60 font-semibold'
+                ]"
+            >
+                <span class="w-2 h-2 rounded-full" :class="filterState.tab === 'reseller' ? 'bg-amber-500 animate-pulse' : 'bg-amber-400'"></span>
+                <span>🎟️ Khusus Reseller Voucher</span>
+                <span v-if="stats?.reseller !== undefined" :class="['px-2 py-0.5 rounded-full text-[10px] font-bold', filterState.tab === 'reseller' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-amber-100/80 text-amber-800']">{{ stats.reseller }}</span>
+            </button>
         </div>
 
         <DataTable

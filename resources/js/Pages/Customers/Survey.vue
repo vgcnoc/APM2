@@ -57,6 +57,22 @@
             <button @click="selectedStatus = 'unfeasible'; applyFilters()" :class="['px-4 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 whitespace-nowrap flex-1 text-center', selectedStatus === 'unfeasible' ? 'bg-white text-rose-600 shadow-sm ring-1 ring-gray-900/5' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50']">
                 Unfeasible
             </button>
+            <button 
+                type="button" 
+                @click="selectedStatus = 'reseller'; applyFilters()" 
+                :class="[
+                    'px-4 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 whitespace-nowrap flex-1 text-center flex items-center justify-center gap-1.5 cursor-pointer', 
+                    selectedStatus === 'reseller' 
+                        ? 'bg-white text-amber-600 shadow-sm ring-1 ring-amber-400' 
+                        : 'text-amber-700 hover:text-amber-800 hover:bg-amber-100/60 font-semibold'
+                ]"
+            >
+                <span class="w-2 h-2 rounded-full" :class="selectedStatus === 'reseller' ? 'bg-amber-500 animate-pulse' : 'bg-gray-400'"></span>
+                <span>🎟️ Khusus Reseller Voucher</span>
+                <span :class="['px-2 py-0.5 rounded-full text-xs font-semibold', selectedStatus === 'reseller' ? 'bg-amber-100 text-amber-700' : 'bg-amber-100/80 text-amber-800']">
+                    {{ stats?.reseller || 0 }}
+                </span>
+            </button>
         </div>
 
         <DataTable
@@ -192,6 +208,9 @@
                                 </Link>
                                 <span v-if="row.customer_code" class="text-[10px] font-mono px-1.5 py-0.2 bg-gray-100 text-gray-600 rounded">
                                     {{ row.customer_code }}
+                                </span>
+                                <span v-if="row.is_reseller && !row.package" class="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.2 bg-amber-50 text-amber-800 border border-amber-200 rounded whitespace-nowrap">
+                                    <span>🎟️</span> Reseller
                                 </span>
                             </div>
                             <p class="text-xs text-gray-500 line-clamp-2 mt-0.5 leading-snug break-words" :title="row.address">
