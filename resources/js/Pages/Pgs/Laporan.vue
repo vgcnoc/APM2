@@ -291,6 +291,9 @@
                                         <span v-else-if="ticket.ont_replacement_status === 'installed'" class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
                                             ✅ ONT Diganti: {{ ticket.prepared_ont?.serial_number || '-' }}
                                         </span>
+                                        <span v-else-if="ticket.ont_replacement_status === 'rejected'" class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                                            ❌ Req Ganti ONT Ditolak
+                                        </span>
                                         <span v-else-if="ticket.ont_replacement_status === 'cancelled'" class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-gray-100 text-gray-600 border border-gray-200">
                                             ↩️ Ganti Batal (Retur Gudang)
                                         </span>
@@ -1073,9 +1076,17 @@
                                         </label>
                                     </div>
                                 </div>
-                                <div v-else class="text-[11px] text-gray-500 flex items-center justify-between">
+                                <div v-if="selectedTicket?.ont_replacement_status === 'rejected'" class="p-2 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-0.5">
+                                    <div class="font-bold flex items-center gap-1 text-[11px] text-rose-800">
+                                        <span>❌</span> Request ganti ONT ditolak Ka. Teknisi:
+                                    </div>
+                                    <div class="text-[11px] text-rose-900 italic">
+                                        "{{ selectedTicket.ont_replacement_notes || 'Ditolak' }}"
+                                    </div>
+                                </div>
+                                <div v-if="selectedTicket?.ont_replacement_status !== 'prepared'" class="text-[11px] text-gray-500 flex items-center justify-between">
                                     <span>ONT terpasang: {{ selectedTicket?.customer?.ont?.serial_number || '-' }}</span>
-                                    <button v-if="!selectedTicket?.ont_replacement_status || selectedTicket?.ont_replacement_status === 'none'" type="button" @click="isOntRequestFormOpen = !isOntRequestFormOpen" class="text-indigo-600 hover:text-indigo-800 font-bold underline cursor-pointer">
+                                    <button v-if="!selectedTicket?.ont_replacement_status || selectedTicket?.ont_replacement_status === 'none' || selectedTicket?.ont_replacement_status === 'rejected' || selectedTicket?.ont_replacement_status === 'cancelled'" type="button" @click="isOntRequestFormOpen = !isOntRequestFormOpen" class="text-indigo-600 hover:text-indigo-800 font-bold underline cursor-pointer">
                                         + Ajukan Ganti ONT
                                     </button>
                                 </div>

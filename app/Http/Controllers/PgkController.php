@@ -2240,6 +2240,59 @@ class PgkController extends Controller
     }
 
     /**
+     * Kepala Teknisi / Admin menolak permintaan pergantian ONT dari teknisi lapangan
+     */
+    public function rejectOnt(Request $request, PgkTicket $pgk)
+    {
+        $user = $request->user();
+        $canReject = $user && (
+            $user->can('pgk_btn_assign') ||
+            $user->can('pgk_manage') ||
+            $user->hasRole(['admin', 'kepala teknisi', 'dispatcher', 'maintenance']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'dispatcher', 'maintenance'])
+        );
+        if (!$canReject) {
+            abort(403, 'Hanya Kepala Teknisi atau Admin yang dapat menolak permintaan ganti ONT.');
+        }
+
+        $validated = $request->validate([
+            'rejection_reason' => 'required|string|max:1000',
+        ]);
+
+        $this->restorePreparedOntStock($pgk);
+
+        if ($pgk->prepared_ont_id) {
+            $preparedOnt = Ont::find($pgk->prepared_ont_id);
+            if ($preparedOnt) {
+                $preparedOnt->update([
+                    'customer_id' => null,
+                    'status' => 'Sudah Set',
+                ]);
+            }
+        }
+
+        $oldStatus = $pgk->ont_replacement_status;
+        $reasonText = trim($validated['rejection_reason']);
+
+        $pgk->update([
+            'prepared_ont_id' => null,
+            'ont_replacement_status' => 'rejected',
+            'ont_replacement_action' => 'rejected',
+            'ont_replacement_notes' => 'Permintaan ganti ONT ditolak: ' . $reasonText,
+        ]);
+
+        AuditLog::createLog(
+            'Kepala Teknisi Menolak Permintaan Ganti ONT PGK',
+            $pgk,
+            $oldStatus,
+            'rejected',
+            'Alasan penolakan: ' . $reasonText
+        );
+
+        return redirect()->back()->with('success', 'Permintaan pergantian unit ONT lapangan berhasil ditolak.');
+    }
+
+    /**
      * Tambah material terpasang baru di pelanggan
      */
     public function storeInstalledMaterial(Request $request, PgkTicket $pgk)

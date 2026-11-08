@@ -626,6 +626,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('pgs/{pgs}/request-ont', [\App\Http\Controllers\PgsController::class, 'requestOnt'])->name('pgs.request-ont');
     Route::post('pgs/{pgs}/prepare-ont', [\App\Http\Controllers\PgsController::class, 'prepareOnt'])->name('pgs.prepare-ont');
     Route::post('pgs/{pgs}/cancel-ont', [\App\Http\Controllers\PgsController::class, 'cancelOnt'])->name('pgs.cancel-ont');
+    Route::post('pgs/{pgs}/reject-ont', [\App\Http\Controllers\PgsController::class, 'rejectOnt'])->name('pgs.reject-ont');
     Route::post('pgs/{pgs}/installed-materials', [\App\Http\Controllers\PgsController::class, 'storeInstalledMaterial'])->name('pgs.installed-materials.store');
     Route::post('pgs/{pgs}/dismantles/{dismantle}/handover', [\App\Http\Controllers\PgsController::class, 'confirmDismantleHandover'])->name('pgs.dismantles.handover');
     Route::delete('pgs/{pgs}', [\App\Http\Controllers\PgsController::class, 'destroy'])->name('pgs.destroy');
@@ -647,6 +648,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('pgk/{pgk}/request-ont', [\App\Http\Controllers\PgkController::class, 'requestOnt'])->name('pgk.request-ont');
     Route::post('pgk/{pgk}/prepare-ont', [\App\Http\Controllers\PgkController::class, 'prepareOnt'])->name('pgk.prepare-ont');
     Route::post('pgk/{pgk}/cancel-ont', [\App\Http\Controllers\PgkController::class, 'cancelOnt'])->name('pgk.cancel-ont');
+    Route::post('pgk/{pgk}/reject-ont', [\App\Http\Controllers\PgkController::class, 'rejectOnt'])->name('pgk.reject-ont');
     Route::post('pgk/{pgk}/installed-materials', [\App\Http\Controllers\PgkController::class, 'storeInstalledMaterial'])->name('pgk.installed-materials.store');
     Route::post('pgk/{pgk}/dismantles/{dismantle}/handover', [\App\Http\Controllers\PgkController::class, 'confirmDismantleHandover'])->name('pgk.dismantles.handover');
     Route::delete('pgk/{pgk}', [\App\Http\Controllers\PgkController::class, 'destroy'])->name('pgk.destroy');

@@ -327,13 +327,23 @@
                                             <span class="text-base">🔄</span>
                                             <span>Ada Request Ganti ONT Lapangan!</span>
                                         </div>
-                                        <button 
-                                            type="button" 
-                                            @click="openOntPrepareModal(ticket)" 
-                                            class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-[10px] shadow-sm transition-all shrink-0"
-                                        >
-                                            Siapkan ONT &rarr;
-                                        </button>
+                                        <div class="flex items-center gap-1.5 shrink-0">
+                                            <button 
+                                                type="button" 
+                                                @click="rejectOntRequest(ticket)" 
+                                                class="px-2.5 py-1 bg-white hover:bg-rose-50 text-rose-700 border border-rose-300 font-bold rounded-lg text-[10px] shadow-2xs transition-all cursor-pointer"
+                                                title="Tolak Permintaan Ganti ONT"
+                                            >
+                                                ✗ Tolak
+                                            </button>
+                                            <button 
+                                                type="button" 
+                                                @click="openOntPrepareModal(ticket)" 
+                                                class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-[10px] shadow-sm transition-all cursor-pointer"
+                                            >
+                                                Siapkan ONT &rarr;
+                                            </button>
+                                        </div>
                                     </div>
                                     <div v-else-if="ticket.ont_replacement_status === 'prepared'" class="mt-2 p-1.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-[11px] flex items-center justify-between gap-1 shadow-sm">
                                         <div class="flex items-center gap-1 font-semibold truncate">
@@ -343,9 +353,25 @@
                                         <button 
                                             type="button" 
                                             @click="openOntPrepareModal(ticket)" 
-                                            class="text-blue-700 hover:text-blue-900 underline font-bold shrink-0 text-[10px]"
+                                            class="text-blue-700 hover:text-blue-900 underline font-bold shrink-0 text-[10px] cursor-pointer"
                                         >
                                             Kelola
+                                        </button>
+                                    </div>
+                                    <div v-else-if="ticket.ont_replacement_status === 'rejected'" class="mt-2 p-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-[11px] flex items-center justify-between gap-1 shadow-2xs">
+                                        <div class="flex items-center gap-1.5 truncate font-medium">
+                                            <span>❌ Ganti ONT:</span>
+                                            <span class="text-rose-700 font-bold">Ditolak</span>
+                                            <span v-if="ticket.ont_replacement_notes" class="text-[10px] text-rose-600 italic truncate" :title="ticket.ont_replacement_notes">
+                                                ("{{ ticket.ont_replacement_notes }}")
+                                            </span>
+                                        </div>
+                                        <button 
+                                            type="button" 
+                                            @click="openOntPrepareModal(ticket)" 
+                                            class="text-rose-700 hover:text-rose-900 underline font-bold shrink-0 text-[10px] cursor-pointer"
+                                        >
+                                            Detail
                                         </button>
                                     </div>
 
@@ -358,9 +384,9 @@
                                         <button 
                                             type="button" 
                                             @click="openMaterialReviewModal(ticket)" 
-                                            class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-[10px] shadow-sm transition-all shrink-0"
+                                            class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-[10px] shadow-sm transition-all shrink-0 cursor-pointer"
                                         >
-                                            Beri Tambahan &rarr;
+                                            Review / Putuskan &rarr;
                                         </button>
                                     </div>
                                 </td>
@@ -1048,6 +1074,19 @@
                         </div>
                     </div>
 
+                    <!-- Banner Status Ditolak jika sebelumnya ditolak -->
+                    <div v-if="ontTicket?.ont_replacement_status === 'rejected'" class="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-1">
+                        <div class="font-bold flex items-center gap-1.5 text-rose-800 text-[11px]">
+                            <span>❌</span> Permintaan Ganti ONT Ini Telah Ditolak Ka. Teknisi
+                        </div>
+                        <div class="italic bg-white/80 p-2 rounded-lg border border-rose-200 text-rose-900 font-medium">
+                            {{ ontTicket.ont_replacement_notes || 'Permintaan ganti ONT ditolak.' }}
+                        </div>
+                        <p class="text-[10px] text-rose-700 italic">
+                            Jika kondisi lapangan berubah dan tetap ingin menyiapkan unit ONT pengganti, pilih unit baru di bawah dan klik simpan.
+                        </p>
+                    </div>
+
                     <!-- Jika Unit Sudah Disiapkan Saat Ini -->
                     <div v-if="ontTicket?.ont_replacement_status === 'prepared'" class="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-300 text-xs text-emerald-950 space-y-2">
                         <div class="flex items-center justify-between">
@@ -1118,22 +1157,35 @@
                     </div>
 
                     <!-- Footer Action -->
-                    <div class="pt-3 border-t flex items-center justify-end gap-2">
-                        <button 
-                            type="button" 
-                            @click="showOntPrepareModal = false" 
-                            class="px-4 py-2 border border-gray-200 rounded-xl text-gray-700 text-xs font-bold hover:bg-gray-50"
-                        >
-                            Tutup
-                        </button>
-                        <button 
-                            type="button" 
-                            @click="submitPrepareOnt" 
-                            :disabled="ontPrepareForm.processing || !ontPrepareForm.prepared_ont_id" 
-                            class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black shadow-md shadow-indigo-600/20 disabled:opacity-50 transition-all flex items-center gap-1.5"
-                        >
-                            <span>{{ ontPrepareForm.processing ? 'Menyimpan...' : '✓ Konfirmasi Siapkan ONT untuk Teknisi' }}</span>
-                        </button>
+                    <div class="pt-3 border-t flex items-center justify-between gap-2">
+                        <div>
+                            <button 
+                                v-if="ontTicket?.ont_replacement_status === 'requested'"
+                                type="button" 
+                                @click="rejectOntRequest(ontTicket)" 
+                                class="px-3.5 py-2 bg-white hover:bg-rose-50 text-rose-700 border border-rose-300 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                            >
+                                <span>✗</span>
+                                <span>Tolak Request Ganti ONT</span>
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button 
+                                type="button" 
+                                @click="showOntPrepareModal = false" 
+                                class="px-4 py-2 border border-gray-200 rounded-xl text-gray-700 text-xs font-bold hover:bg-gray-50 cursor-pointer"
+                            >
+                                Tutup
+                            </button>
+                            <button 
+                                type="button" 
+                                @click="submitPrepareOnt" 
+                                :disabled="ontPrepareForm.processing || !ontPrepareForm.prepared_ont_id" 
+                                class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black shadow-md shadow-indigo-600/20 disabled:opacity-50 transition-all flex items-center gap-1.5 cursor-pointer"
+                            >
+                                <span>{{ ontPrepareForm.processing ? 'Menyimpan...' : '✓ Konfirmasi Siapkan ONT untuk Teknisi' }}</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1234,6 +1286,33 @@ const submitPrepareOnt = () => {
         onSuccess: () => {
             showOntPrepareModal.value = false;
             ontTicket.value = null;
+        }
+    });
+};
+
+const rejectOntRequest = (ticket) => {
+    if (!ticket) return;
+    const reason = prompt(`Masukkan alasan penolakan permintaan ganti ONT untuk tiket #${ticket.ticket_number}:\n(Contoh: ONT lama masih normal / gangguan ada pada kabel dropcore / port reset)`);
+    if (reason === null) return;
+    if (!reason.trim()) {
+        alert('Mohon masukkan alasan penolakan.');
+        return;
+    }
+
+    router.post(`/pgk/${ticket.id}/reject-ont`, {
+        rejection_reason: reason.trim(),
+    }, {
+        preserveScroll: true,
+        onSuccess: (page) => {
+            showOntPrepareModal.value = false;
+            ontTicket.value = null;
+            if (page.props.flash?.success) {
+                alert(page.props.flash.success);
+            }
+        },
+        onError: (err) => {
+            const msg = Object.values(err).flat().join('\n');
+            alert('Gagal menolak permintaan ONT: ' + msg);
         }
     });
 };
