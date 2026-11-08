@@ -346,12 +346,16 @@
                     <div class="bg-gray-50 p-5 rounded-xl border border-gray-200">
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
                             <div>
-                                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">PPPoE/Member Username</label>
-                                <input :value="customer.ont?.pppoe_user || '-'" type="text" class="w-full border rounded-lg px-4 py-2.5 bg-gray-100 border-gray-200 text-gray-700 font-medium" readonly />
+                                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                                    {{ (customer.ont?.access_mode === 'HOTSPOT/MEMBER' || customer.ont?.access_mode === 'HOTSPOT' || customer.ont?.access_mode === 'MEMBER') ? 'Member / Hotspot Username' : 'PPPoE / Member Username' }}
+                                </label>
+                                <input :value="customer.ont?.pppoe_user || customer.ont?.hotspot_user || customer.pppoe_username || '-'" type="text" class="w-full border rounded-lg px-4 py-2.5 bg-gray-100 border-gray-200 text-gray-700 font-medium" readonly />
                             </div>
                             <div>
-                                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">PPPoE/Member Password</label>
-                                <input :value="customer.ont?.pppoe_password || '-'" type="text" class="w-full border rounded-lg px-4 py-2.5 bg-gray-100 border-gray-200 text-gray-700 font-medium" readonly />
+                                <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                                    {{ (customer.ont?.access_mode === 'HOTSPOT/MEMBER' || customer.ont?.access_mode === 'HOTSPOT' || customer.ont?.access_mode === 'MEMBER') ? 'Member / Hotspot Password' : 'PPPoE / Member Password' }}
+                                </label>
+                                <input :value="customer.ont?.pppoe_password || customer.ont?.hotspot_password || customer.pppoe_password || '-'" type="text" class="w-full border rounded-lg px-4 py-2.5 bg-gray-100 border-gray-200 text-gray-700 font-medium" readonly />
                             </div>
                         </div>
 
@@ -363,7 +367,7 @@
                             
                             <div>
                                 <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">VLAN Mode & ID</label>
-                                <input :value="customer.ont?.vlan_mode ? `${customer.ont.vlan_mode} ${customer.ont.vlan_id ? '(ID: ' + customer.ont.vlan_id + ')' : ''}` : '-'" type="text" class="w-full border rounded-lg px-4 py-2.5 bg-gray-100 border-gray-200 text-gray-700 font-medium" readonly />
+                                <input :value="(customer.ont?.vlan_mode || customer.ont?.vlan_id || customer.ont?.hotspot_vlan_id) ? `${customer.ont?.vlan_mode ? customer.ont.vlan_mode + ' ' : ''}${ (customer.ont?.vlan_id || customer.ont?.hotspot_vlan_id) ? '(ID: ' + (customer.ont?.vlan_id || customer.ont?.hotspot_vlan_id) + ')' : '' }`.trim() : '-'" type="text" class="w-full border rounded-lg px-4 py-2.5 bg-gray-100 border-gray-200 text-gray-700 font-medium" readonly />
                             </div>
                         </div>
                         
@@ -4274,8 +4278,8 @@ const activationForm = useForm({
     is_prorata: usePage().props.billingSettings?.prorata_first_month !== false,
     service_status: props.customer?.service_status || 'berbayar',
     enable_tax: initialTaxEnabled,
-    pppoe_user: props.customer?.ont?.pppoe_user || '',
-    pppoe_password: props.customer?.ont?.pppoe_password || '',
+    pppoe_user: props.customer?.ont?.pppoe_user || props.customer?.ont?.hotspot_user || props.customer?.pppoe_username || '',
+    pppoe_password: props.customer?.ont?.pppoe_password || props.customer?.ont?.hotspot_password || props.customer?.pppoe_password || '',
     vlan_mode: props.customer?.ont?.vlan_mode || '',
     vlan_id: props.customer?.ont?.vlan_id || '',
     access_mode: props.customer?.ont?.access_mode || 'PPPOE',
@@ -4491,20 +4495,33 @@ function openEditActiveModal() {
         activeConfigForm.ip_login = props.customer.ont?.ip_login || '';
         activeConfigForm.login_user = props.customer.ont?.login_user || '';
         activeConfigForm.login_password = props.customer.ont?.login_password || '';
-        activeConfigForm.pppoe_user = props.customer.ont?.pppoe_user || '';
-        activeConfigForm.pppoe_password = props.customer.ont?.pppoe_password || '';
+        activeConfigForm.pppoe_user = props.customer.ont?.pppoe_user || props.customer.ont?.hotspot_user || props.customer.pppoe_username || '';
+        activeConfigForm.pppoe_password = props.customer.ont?.pppoe_password || props.customer.ont?.hotspot_password || props.customer.pppoe_password || '';
         activeConfigForm.vlan_mode = props.customer.ont?.vlan_mode || '';
         activeConfigForm.vlan_id = props.customer.ont?.vlan_id || '';
         activeConfigForm.access_mode = props.customer.ont?.access_mode || 'PPPOE';
         activeConfigForm.free_hotspot = props.customer.ont?.free_hotspot || false;
-        activeConfigForm.hotspot_user = props.customer.ont?.hotspot_user || '';
-        activeConfigForm.hotspot_password = props.customer.ont?.hotspot_password || '';
+        activeConfigForm.hotspot_user = props.customer.ont?.hotspot_user || props.customer.ont?.pppoe_user || props.customer.pppoe_username || '';
+        activeConfigForm.hotspot_password = props.customer.ont?.hotspot_password || props.customer.ont?.pppoe_password || props.customer.pppoe_password || '';
         activeConfigForm.hotspot_vlan_id = props.customer.ont?.hotspot_vlan_id || '';
     }
     showEditActiveModal.value = true;
 }
 
 function submitEditActive() {
+    const isHs = ['HOTSPOT/MEMBER', 'HOTSPOT', 'MEMBER'].includes((activeConfigForm.access_mode || '').toUpperCase());
+    if (isHs) {
+        const u = activeConfigForm.pppoe_user || activeConfigForm.hotspot_user;
+        const p = activeConfigForm.pppoe_password || activeConfigForm.hotspot_password;
+        if (u) {
+            activeConfigForm.pppoe_user = u;
+            activeConfigForm.hotspot_user = u;
+        }
+        if (p) {
+            activeConfigForm.pppoe_password = p;
+            activeConfigForm.hotspot_password = p;
+        }
+    }
     activeConfigForm.post(`/customers/${props.customer.id}/update-ont-inline`, {
         preserveScroll: true,
         onSuccess: () => {
@@ -5413,9 +5430,18 @@ function openEditActivationModal() {
 }
 
 function submitEditActivation() {
-    if (editActivationForm.access_mode === 'HOTSPOT/MEMBER') {
-        editActivationForm.hotspot_user = editActivationForm.pppoe_user;
-        editActivationForm.hotspot_password = editActivationForm.pppoe_password;
+    const isHs = ['HOTSPOT/MEMBER', 'HOTSPOT', 'MEMBER'].includes((editActivationForm.access_mode || '').toUpperCase());
+    if (isHs) {
+        const u = editActivationForm.pppoe_user || editActivationForm.hotspot_user;
+        const p = editActivationForm.pppoe_password || editActivationForm.hotspot_password;
+        if (u) {
+            editActivationForm.hotspot_user = u;
+            editActivationForm.pppoe_user = u;
+        }
+        if (p) {
+            editActivationForm.hotspot_password = p;
+            editActivationForm.pppoe_password = p;
+        }
     }
     editActivationForm.post(`/customers/${props.customer.id}/update-activation`, {
         preserveScroll: true,

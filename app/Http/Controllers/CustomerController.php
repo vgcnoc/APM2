@@ -4026,14 +4026,12 @@ class CustomerController extends Controller
                 $hotspotPassword = $validated['hotspot_password'] ?? null;
 
                 if ($isHotspot) {
-                    if (!empty($pppoeUser)) {
-                        $hotspotUser = $pppoeUser;
-                        $hotspotPassword = $pppoePassword;
-                    }
-                    if (!$request->boolean('free_hotspot')) {
-                        $pppoeUser = null;
-                        $pppoePassword = null;
-                    }
+                    $memberUser = $pppoeUser ?: $hotspotUser;
+                    $memberPassword = $pppoePassword ?: $hotspotPassword;
+                    $hotspotUser = $memberUser;
+                    $hotspotPassword = $memberPassword;
+                    $pppoeUser = $memberUser;
+                    $pppoePassword = $memberPassword;
                 }
 
                 if (!empty($pppoeUser)) {
@@ -4060,6 +4058,13 @@ class CustomerController extends Controller
                     'login_user' => $validated['login_user'] ?? $customer->ont->login_user,
                     'login_password' => $validated['login_password'] ?? $customer->ont->login_password,
                 ]);
+
+                if (!empty($pppoeUser)) {
+                    $customer->update([
+                        'pppoe_username' => $pppoeUser,
+                        'pppoe_password' => $pppoePassword,
+                    ]);
+                }
 
                 // Create initial invoice
                 $activationDate = \Carbon\Carbon::parse($validated['activation_date']);
@@ -4423,7 +4428,27 @@ class CustomerController extends Controller
         ]);
 
         if ($customer->ont) {
+            $accessMode = $validated['access_mode'] ?? $customer->ont->access_mode ?? 'PPPOE';
+            $isHotspot = in_array(strtoupper($accessMode), ['HOTSPOT', 'HOTSPOT/MEMBER', 'MEMBER']);
+            if ($isHotspot) {
+                $memberUser = ($validated['pppoe_user'] ?? null) ?: ($validated['hotspot_user'] ?? null) ?: $customer->ont->pppoe_user ?: $customer->ont->hotspot_user;
+                $memberPass = ($validated['pppoe_password'] ?? null) ?: ($validated['hotspot_password'] ?? null) ?: $customer->ont->pppoe_password ?: $customer->ont->hotspot_password;
+                if ($memberUser) {
+                    $validated['pppoe_user'] = $memberUser;
+                    $validated['hotspot_user'] = $memberUser;
+                }
+                if ($memberPass) {
+                    $validated['pppoe_password'] = $memberPass;
+                    $validated['hotspot_password'] = $memberPass;
+                }
+            }
             $customer->ont->update($validated);
+            if (!empty($validated['pppoe_user'])) {
+                $customer->update([
+                    'pppoe_username' => $validated['pppoe_user'],
+                    'pppoe_password' => $validated['pppoe_password'] ?? null,
+                ]);
+            }
             try {
                 app(\App\Services\RadiusService::class)->syncCustomer($customer);
             } catch (\Throwable $e) {
@@ -5491,14 +5516,12 @@ class CustomerController extends Controller
             $hotspotPassword = $validated['hotspot_password'] ?? null;
 
             if ($isHotspot) {
-                if (!empty($pppoeUser)) {
-                    $hotspotUser = $pppoeUser;
-                    $hotspotPassword = $pppoePassword;
-                }
-                if (!$request->boolean('free_hotspot')) {
-                    $pppoeUser = null;
-                    $pppoePassword = null;
-                }
+                $memberUser = $pppoeUser ?: $hotspotUser;
+                $memberPassword = $pppoePassword ?: $hotspotPassword;
+                $hotspotUser = $memberUser;
+                $hotspotPassword = $memberPassword;
+                $pppoeUser = $memberUser;
+                $pppoePassword = $memberPassword;
             } else if (strtoupper($accessMode) === 'PPPOE') {
                 if (empty($pppoeUser) && !empty($hotspotUser)) {
                     $pppoeUser = $hotspotUser;
@@ -5530,6 +5553,13 @@ class CustomerController extends Controller
                 'hotspot_password' => $hotspotPassword,
                 'hotspot_vlan_id' => $validated['hotspot_vlan_id'],
             ]);
+
+            if (!empty($pppoeUser)) {
+                $customer->update([
+                    'pppoe_username' => $pppoeUser,
+                    'pppoe_password' => $pppoePassword,
+                ]);
+            }
 
             try {
                 app(\App\Services\RadiusService::class)->syncCustomer($customer);

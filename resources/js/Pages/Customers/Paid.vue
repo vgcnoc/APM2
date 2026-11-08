@@ -447,8 +447,8 @@
                                             <span class="font-mono font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-1.5 py-0.2 rounded border border-blue-200 dark:border-blue-800/60">
                                                 {{ customer.customer_code }}
                                             </span>
-                                            <span v-if="customer.ont?.pppoe_user" class="font-mono text-gray-600 dark:text-gray-400 text-[11px]" title="Username PPPoE">
-                                                User: {{ customer.ont.pppoe_user }}
+                                            <span v-if="customer.ont?.pppoe_user || customer.ont?.hotspot_user" class="font-mono text-gray-600 dark:text-gray-400 text-[11px]" :title="customer.ont?.pppoe_user ? 'Username PPPoE' : 'Username Member'">
+                                                User: {{ customer.ont?.pppoe_user || customer.ont?.hotspot_user }}
                                             </span>
                                         </div>
                                         <div v-if="customer.phone" class="mt-1 flex items-center gap-1.5">

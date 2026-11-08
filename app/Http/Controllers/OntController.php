@@ -175,10 +175,14 @@ class OntController extends Controller
             $validated['port_number'] = null;
         }
 
-        // Mode Hotspot: akun member diset saat aktivasi pelanggan, tidak disimpan di master ONT
-        if (strcasecmp($validated['access_mode'] ?? '', 'Hotspot') === 0) {
-            $validated['pppoe_user'] = null;
-            $validated['pppoe_password'] = null;
+        // Mode Hotspot / Member: selaraskan pppoe_user dan hotspot_user agar kredensial selalu sinkron
+        if (in_array(strtoupper($validated['access_mode'] ?? ''), ['HOTSPOT', 'HOTSPOT/MEMBER', 'MEMBER'])) {
+            $memberUser = ($validated['pppoe_user'] ?? null) ?: ($validated['hotspot_user'] ?? null);
+            $memberPass = ($validated['pppoe_password'] ?? null) ?: ($validated['hotspot_password'] ?? null);
+            $validated['pppoe_user'] = $memberUser;
+            $validated['hotspot_user'] = $memberUser;
+            $validated['pppoe_password'] = $memberPass;
+            $validated['hotspot_password'] = $memberPass;
         }
 
         // Auto-reject duplikasi Akun Member / PPPoE
@@ -276,10 +280,14 @@ class OntController extends Controller
             $validated['port_number'] = null;
         }
 
-        // Mode Hotspot: akun member diset saat aktivasi pelanggan, tidak disimpan di master ONT
-        if (strcasecmp($validated['access_mode'] ?? '', 'Hotspot') === 0) {
-            $validated['pppoe_user'] = null;
-            $validated['pppoe_password'] = null;
+        // Mode Hotspot / Member: selaraskan pppoe_user dan hotspot_user agar kredensial selalu sinkron
+        if (in_array(strtoupper($validated['access_mode'] ?? ''), ['HOTSPOT', 'HOTSPOT/MEMBER', 'MEMBER'])) {
+            $memberUser = ($validated['pppoe_user'] ?? null) ?: ($validated['hotspot_user'] ?? null);
+            $memberPass = ($validated['pppoe_password'] ?? null) ?: ($validated['hotspot_password'] ?? null);
+            $validated['pppoe_user'] = $memberUser;
+            $validated['hotspot_user'] = $memberUser;
+            $validated['pppoe_password'] = $memberPass;
+            $validated['hotspot_password'] = $memberPass;
         }
 
         // Auto-reject duplikasi Akun Member / PPPoE

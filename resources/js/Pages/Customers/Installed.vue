@@ -2114,8 +2114,8 @@ function openActivationModal(customer) {
     activeCustomer.value = customer;
     activationForm.reset();
     activationForm.activation_date = new Date().toISOString().split('T')[0];
-    activationForm.pppoe_user = customer.ont?.pppoe_user || '';
-    activationForm.pppoe_password = customer.ont?.pppoe_password || '';
+    activationForm.pppoe_user = customer.ont?.pppoe_user || customer.ont?.hotspot_user || customer.pppoe_username || '';
+    activationForm.pppoe_password = customer.ont?.pppoe_password || customer.ont?.hotspot_password || customer.pppoe_password || '';
     activationForm.vlan_mode = customer.ont?.vlan_mode || '';
     activationForm.vlan_id = customer.ont?.vlan_id || '';
     activationForm.access_mode = customer.ont?.access_mode || 'PPPOE';
@@ -2131,6 +2131,19 @@ function openActivationModal(customer) {
 }
 
 function submitActivation() {
+    const isHs = ['HOTSPOT/MEMBER', 'HOTSPOT', 'MEMBER'].includes((activationForm.access_mode || '').toUpperCase());
+    if (isHs) {
+        const u = activationForm.pppoe_user || activationForm.hotspot_user;
+        const p = activationForm.pppoe_password || activationForm.hotspot_password;
+        if (u) {
+            activationForm.hotspot_user = u;
+            activationForm.pppoe_user = u;
+        }
+        if (p) {
+            activationForm.hotspot_password = p;
+            activationForm.pppoe_password = p;
+        }
+    }
     activationForm.post(`/customers/${activeCustomer.value.id}/activate`, {
         preserveScroll: true,
         onSuccess: () => {

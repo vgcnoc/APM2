@@ -404,7 +404,7 @@
                                     </div>
                                     <div class="text-[11px] text-gray-500 font-mono mt-1 flex items-center gap-1">
                                         <span class="text-gray-400 text-[10px]">User:</span>
-                                        <span class="font-bold text-gray-700 truncate max-w-[130px]">{{ c.ont?.pppoe_user || c.ont?.ip_login || '-' }}</span>
+                                        <span class="font-bold text-gray-700 truncate max-w-[130px]">{{ c.ont?.pppoe_user || c.ont?.hotspot_user || c.ont?.ip_login || '-' }}</span>
                                     </div>
                                     <div class="mt-0.5 flex items-center gap-1.5">
                                         <span class="text-[9px] uppercase px-1.5 py-0.2 rounded font-bold" :class="c.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'">

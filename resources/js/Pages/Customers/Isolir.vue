@@ -93,8 +93,8 @@
                         <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
                             <span class="w-2 h-2 rounded-full bg-rose-500"></span> Terisolir
                         </span>
-                        <span v-if="row.ont?.pppoe_user" class="text-[11px] text-gray-400 font-mono">
-                            {{ row.ont.pppoe_user }}
+                        <span v-if="row.ont?.pppoe_user || row.ont?.hotspot_user" class="text-[11px] text-gray-400 font-mono">
+                            {{ row.ont?.pppoe_user || row.ont?.hotspot_user }}
                         </span>
                     </div>
                 </td>
