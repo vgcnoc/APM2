@@ -619,7 +619,7 @@
 
                                         <!-- Tombol Batalkan & Hapus Tiket -->
                                         <button 
-                                            v-if="can('pgs_btn_delete') || $page.props.auth?.user?.roles?.includes('admin')"
+                                            v-if="can('pgs_btn_delete') || hasRole('admin')"
                                             @click="deleteTicket(ticket)" 
                                             class="p-2 text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-colors shrink-0"
                                             title="Batalkan & Hapus Tiket (Material Kembali ke Gudang)"
@@ -630,12 +630,12 @@
                                 </td>
                             </tr>
 
-                            <tr v-if="tickets.data.length === 0">
+                            <tr v-if="!tickets?.data || tickets.data.length === 0">
                                 <td colspan="5" class="p-8 text-center text-gray-400">
                                     <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                    <span v-if="currentStatus === 'completed'">Tidak ada riwayat tiket yang sudah selesai dikerjakan pada filter ini.</span>
-                                    <span v-else-if="currentStatus === 'waiting'">Tidak ada tiket penanganan sigap yang menunggu penjadwalan saat ini.</span>
-                                    <span v-else-if="currentStatus === 'scheduled'">Tidak ada tiket penanganan sigap yang sedang terjadwal/di lapangan saat ini.</span>
+                                    <span v-if="filterStatus === 'completed'">Tidak ada riwayat tiket yang sudah selesai dikerjakan pada filter ini.</span>
+                                    <span v-else-if="filterStatus === 'waiting'">Tidak ada tiket penanganan sigap yang menunggu penjadwalan saat ini.</span>
+                                    <span v-else-if="filterStatus === 'scheduled'">Tidak ada tiket penanganan sigap yang sedang terjadwal/di lapangan saat ini.</span>
                                     <span v-else>Tidak ada tiket penanganan sigap pada tab ini saat ini.</span>
                                 </td>
                             </tr>
@@ -1224,7 +1224,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import TechnicianAvailabilitySelector from '@/Components/TechnicianAvailabilitySelector.vue';
 import { usePermission } from '@/Composables/usePermission';
 
-const { can } = usePermission();
+const { can, hasRole } = usePermission();
 
 const props = defineProps({
     tickets: Object,

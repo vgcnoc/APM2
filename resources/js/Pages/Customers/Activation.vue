@@ -2367,10 +2367,15 @@ watch(() => activationForm.enable_tax, (val) => {
     }
 });
 
-const isResellerVoucher = computed(() => {
-    const cust = activeCustomer.value;
+const isCustomerResellerVoucher = (cust) => {
     if (!cust) return false;
-    return Boolean(cust.is_reseller && (!cust.package || !cust.package_id || Number(cust.base_amount || 0) === 0));
+    const isResellerFlag = cust.is_reseller === true || cust.is_reseller === 1 || cust.is_reseller === '1';
+    const hasNoPaidPackage = !cust.package_id || !cust.package || Number(cust.base_amount || 0) === 0;
+    return Boolean(isResellerFlag && hasNoPaidPackage);
+};
+
+const isResellerVoucher = computed(() => {
+    return isCustomerResellerVoucher(activeCustomer.value);
 });
 
 const customerIncentivesPreview = computed(() => {
@@ -2641,7 +2646,7 @@ function openActivationModal(customer) {
     activationForm.reset();
     activationForm.activation_date = new Date().toISOString().split('T')[0];
 
-    const isReseller = Boolean(customer.is_reseller && (!customer.package || !customer.package_id || Number(customer.base_amount || 0) === 0));
+    const isReseller = isCustomerResellerVoucher(customer);
     if (isReseller) {
         activationForm.service_status = 'gratis';
         activationForm.billing_type = 'prabayar';

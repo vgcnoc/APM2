@@ -91,6 +91,7 @@ class Customer extends Model
             'cancel_date' => 'date:Y-m-d',
             'suspend_start' => 'date:Y-m-d',
             'suspend_end' => 'date:Y-m-d',
+            'is_reseller' => 'boolean',
             'is_audited' => 'boolean',
             'is_migrated' => 'boolean',
             'connection_disabled' => 'boolean',

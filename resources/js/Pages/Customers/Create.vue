@@ -549,7 +549,7 @@
                                     </div>
                                 </div>
 
-                                <div v-if="!affiliatePortal && form.service_status === 'berbayar'" class="md:col-span-2 pt-2 border-t border-gray-100 space-y-3">
+                                <div v-if="!affiliatePortal && registration_type !== 'reseller' && form.service_status === 'berbayar'" class="md:col-span-2 pt-2 border-t border-gray-100 space-y-3">
                                     <!-- Jika user berwenang (Admin/Finance/customers_tax_toggle): Tampilkan kontrol aktif -->
                                     <template v-if="canToggleTax">
                                         <div class="flex items-center justify-between">

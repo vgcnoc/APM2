@@ -2770,6 +2770,25 @@ class CustomerController extends Controller
             }
         }
 
+        $canToggleTax = auth()->user()?->can('customers_tax_toggle')
+            || auth()->user()?->hasRole('admin')
+            || auth()->user()?->hasRole('super admin')
+            || auth()->user()?->hasRole('finance');
+
+        if ($canToggleTax && $request->has('enable_tax') && !$request->boolean('enable_tax')) {
+            $validated['tax_ppn'] = 0;
+            $validated['tax_bhp'] = 0;
+            $validated['tax_uso'] = 0;
+        } else {
+            $globalPpn = (float) \App\Models\Setting::get('tax_ppn', '11');
+            $inputPpn = $request->input('tax_ppn');
+            $validated['tax_ppn'] = ($inputPpn !== null && is_numeric($inputPpn) && $canToggleTax)
+                ? (float) $inputPpn
+                : ($globalPpn > 0 ? $globalPpn : 11);
+            $validated['tax_bhp'] = (float) ($request->input('tax_bhp') ?? \App\Models\Setting::get('tax_bhp', '0'));
+            $validated['tax_uso'] = (float) ($request->input('tax_uso') ?? \App\Models\Setting::get('tax_uso', '0'));
+        }
+
         $isPureReseller = !empty($validated['is_reseller']) && empty($validated['package_id']);
         if ($isPureReseller) {
             $validated['service_status'] = 'gratis';
@@ -2788,25 +2807,6 @@ class CustomerController extends Controller
         }
         if (empty($validated['billing_cycle'])) {
             $validated['billing_cycle'] = 'default';
-        }
-
-        $canToggleTax = auth()->user()?->can('customers_tax_toggle')
-            || auth()->user()?->hasRole('admin')
-            || auth()->user()?->hasRole('super admin')
-            || auth()->user()?->hasRole('finance');
-
-        if ($canToggleTax && $request->has('enable_tax') && !$request->boolean('enable_tax')) {
-            $validated['tax_ppn'] = 0;
-            $validated['tax_bhp'] = 0;
-            $validated['tax_uso'] = 0;
-        } else {
-            $globalPpn = (float) \App\Models\Setting::get('tax_ppn', '11');
-            $inputPpn = $request->input('tax_ppn');
-            $validated['tax_ppn'] = ($inputPpn !== null && is_numeric($inputPpn) && $canToggleTax)
-                ? (float) $inputPpn
-                : ($globalPpn > 0 ? $globalPpn : 11);
-            $validated['tax_bhp'] = (float) ($request->input('tax_bhp') ?? \App\Models\Setting::get('tax_bhp', '0'));
-            $validated['tax_uso'] = (float) ($request->input('tax_uso') ?? \App\Models\Setting::get('tax_uso', '0'));
         }
 
         $resellerUser = null;
@@ -3399,6 +3399,23 @@ class CustomerController extends Controller
 
         if ($isAffiliate && isset($validated['service_status'])) {
             $validated['service_status'] = 'berbayar';
+        }
+
+        $isPureReseller = (!empty($validated['is_reseller']) || $customer->is_reseller) && (empty($validated['package_id']) && (empty($customer->package_id) || array_key_exists('package_id', $validated)));
+        if (!empty($validated['is_reseller']) && empty($validated['package_id'])) {
+            $isPureReseller = true;
+        } elseif (!empty($validated['package_id'])) {
+            $isPureReseller = false;
+        }
+
+        if ($isPureReseller) {
+            $validated['service_status'] = 'gratis';
+            $validated['base_amount'] = 0;
+            $validated['tax_ppn'] = 0;
+            $validated['tax_bhp'] = 0;
+            $validated['tax_uso'] = 0;
+            $validated['billing_type'] = 'prabayar';
+            $validated['billing_cycle'] = 'default';
         }
 
         $targetServiceStatus = $validated['service_status'] ?? $customer->service_status;

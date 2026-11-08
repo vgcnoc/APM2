@@ -326,7 +326,7 @@
                                     </div>
                                 </div>
                                 
-                                <div class="md:col-span-2 pt-2 border-t border-gray-100 space-y-3">
+                                <div v-if="registration_type !== 'reseller'" class="md:col-span-2 pt-2 border-t border-gray-100 space-y-3">
                                     <!-- Jika user berwenang (Admin/Finance/customers_tax_toggle): Tampilkan kontrol aktif -->
                                     <template v-if="canToggleTax">
                                         <div class="flex items-center justify-between">
@@ -425,7 +425,7 @@
                                     </div>
                                 </div>
 
-                                <div class="md:col-span-2 pt-2 border-t border-gray-100">
+                                <div v-if="registration_type !== 'reseller'" class="md:col-span-2 pt-2 border-t border-gray-100">
                                     <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Siklus Penagihan Tagihan (Billing Cycle)</label>
                                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         <label :class="form.billing_type === 'prabayar' ? 'border-yellow-500 bg-yellow-50/50 text-yellow-900 ring-2 ring-yellow-200' : 'border-gray-200 hover:border-gray-300 text-gray-700'" class="flex items-center gap-2 p-3 border rounded-xl cursor-pointer transition-all">
@@ -446,7 +446,7 @@
                                 </div>
 
                                 <!-- Siklus Tanggal Tagihan (Billing Cycle) -->
-                                <div class="col-span-full pt-1">
+                                <div v-if="registration_type !== 'reseller'" class="col-span-full pt-1">
                                     <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">
                                         Siklus Tanggal Tagihan
                                     </label>
@@ -772,6 +772,10 @@ watch(() => form.enable_tax, (val) => {
 const registration_type = ref('customer');
 if (form.is_reseller && !form.package_id) {
     registration_type.value = 'reseller';
+    form.service_status = 'gratis';
+    form.enable_tax = false;
+    form.tax_ppn = 0;
+    form.base_amount = 0;
 } else if (form.is_reseller && form.package_id) {
     registration_type.value = 'both';
 } else {
@@ -783,6 +787,9 @@ watch(registration_type, (type) => {
         form.is_reseller = true;
         form.package_id = '';
         form.base_amount = 0;
+        form.service_status = 'gratis';
+        form.enable_tax = false;
+        form.tax_ppn = 0;
     } else if (type === 'both') {
         form.is_reseller = true;
     } else {

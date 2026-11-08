@@ -38,6 +38,21 @@
                 document.documentElement.setAttribute('data-bg-pattern', pattern);
             } catch (e) {}
         })();
+
+        // Auto-recovery jika chunk Vite lama 404 (mencegah layar putih saat browser membuka sesi lama)
+        window.addEventListener('error', function(e) {
+            if (e && e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
+                var src = e.target.src || e.target.href || '';
+                if (src.indexOf('/build/') !== -1) {
+                    var lastReload = sessionStorage.getItem('apm_chunk_reload');
+                    var now = Date.now();
+                    if (!lastReload || now - parseInt(lastReload, 10) > 8000) {
+                        sessionStorage.setItem('apm_chunk_reload', String(now));
+                        window.location.reload();
+                    }
+                }
+            }
+        }, true);
     </script>
 
     @routes
