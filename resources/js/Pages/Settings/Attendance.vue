@@ -1075,10 +1075,10 @@
                                         <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
                                         <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                                     </svg>
-                                    <span>Reward Tim Khusus (Top 3 per Grup)</span>
+                                    <span>Reward Tim Khusus (Top 3 Global / All Tim)</span>
                                 </div>
                                 <p class="text-xs text-slate-500 mt-1">
-                                    Nominal reward untuk peringkat 1-3 di setiap grup Tim Khusus (berlaku seragam semua grup).
+                                    Nominal reward untuk peringkat 1-3 gabungan seluruh anggota Tim Khusus (Global All Tim).
                                 </p>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">

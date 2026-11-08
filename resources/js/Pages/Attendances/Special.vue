@@ -806,39 +806,17 @@
                     </p>
                 </div>
 
-                <!-- Filter Pill Kategori Perlombaan -->
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                    <div class="flex flex-wrap items-center gap-2">
-                        <span class="text-xs font-bold text-slate-500 mr-1">Filter Anggota Tim:</span>
-                        <button
-                            type="button"
-                            @click="selectedLeaderboardTeamFilter = 'all'"
-                            :class="[
-                                selectedLeaderboardTeamFilter === 'all'
-                                    ? 'bg-blue-900 text-white shadow-xs font-bold'
-                                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50',
-                                'px-4 py-2 rounded-xl text-xs font-semibold transition'
-                            ]"
-                        >
-                            🏆 Semua Tim Khusus (Global)
-                        </button>
-                        <button
-                            v-for="t in teams"
-                            :key="t.id"
-                            type="button"
-                            @click="selectedLeaderboardTeamFilter = t.id"
-                            :class="[
-                                selectedLeaderboardTeamFilter === t.id
-                                    ? 'bg-blue-900 text-white shadow-xs font-bold'
-                                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50',
-                                'px-4 py-2 rounded-xl text-xs font-semibold transition'
-                            ]"
-                        >
-                            {{ t.name }}
-                        </button>
+                <!-- Status Papan Peringkat Absen Terbaik (All Seluruh Tim Khusus) -->
+                <div class="flex flex-wrap items-center justify-between gap-3 bg-blue-50/70 border border-blue-200/80 rounded-2xl px-5 py-3.5 shadow-2xs">
+                    <div class="flex items-center gap-2.5">
+                        <span class="text-xl">🏆</span>
+                        <div>
+                            <span class="text-xs font-bold text-blue-950">Klasemen Absen Terbaik Gabungan Seluruh Tim Khusus (All)</span>
+                            <p class="text-[11px] text-blue-700">Tidak ada juara per grup tim — seluruh anggota tim (Grup Tim Khusus, Tim Serbu, Tim BC-4) dinilai dan diperingkatkan dalam satu klasemen global terpadu.</p>
+                        </div>
                     </div>
-                    <span class="text-xs text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
-                        * Peringkat & reward dihitung secara <strong>Global Seluruh Tim Khusus</strong>
+                    <span class="text-xs font-bold text-blue-800 bg-white px-3 py-1.5 rounded-xl border border-blue-200 shadow-2xs">
+                        {{ (leaderboard || []).length }} Peserta Berkompetisi
                     </span>
                 </div>
 
@@ -1694,19 +1672,12 @@ const formatEarlyLimitCountdown = (mins) => {
 // Tab Active State
 const activeTab = ref('absen'); // 'absen', 'riwayat', 'admin', 'best', 'potongan_khusus', 'potongan_serbu', 'potongan_bc4'
 
-// Leaderboard Perlombaan 3 Tim Filter State
-const selectedLeaderboardTeamFilter = ref('all');
-
 const globalTop3 = computed(() => {
     return (props.leaderboard || []).slice(0, 3);
 });
 
 const filteredLeaderboard = computed(() => {
-    const list = props.leaderboard || [];
-    if (selectedLeaderboardTeamFilter.value === 'all') {
-        return list;
-    }
-    return list.filter((item) => String(item.team_id) === String(selectedLeaderboardTeamFilter.value));
+    return props.leaderboard || [];
 });
 
 // Collapsible Guide State

@@ -44,7 +44,7 @@ class BestAttendanceController extends Controller
         $shiftsById = Shift::all()->keyBy('id');
         $employeesQuery = Employee::with(['area', 'shift', 'specialTeamMembers'])->excludeTokoAndDemo();
 
-        if (($scope === 'branch' || $scope === 'maintenance') && $selectedAreaId) {
+        if ($scope === 'branch' && $selectedAreaId) {
             $employeesQuery->where('area_id', $selectedAreaId);
         }
 
@@ -350,7 +350,7 @@ class BestAttendanceController extends Controller
                 'year' => $year,
                 'department' => $department,
                 'scope' => $scope,
-                'area_id' => $selectedAreaId,
+                'area_id' => ($scope === 'branch') ? $selectedAreaId : null,
                 'is_month_completed' => $endDate->endOfDay()->isPast(),
                 'is_current_month' => $isCurrentMonth,
             ],

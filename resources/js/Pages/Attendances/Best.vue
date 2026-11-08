@@ -27,7 +27,7 @@
                                     Peringkat kedisiplinan dan absensi terbaik tingkat cabang — Top 3 mendapat reward cabang
                                 </span>
                                 <span v-else-if="currentScope === 'maintenance'">
-                                    Nominasi khusus karyawan jabatan Maintenance — Top 3 mendapat reward maintenance
+                                    Nominasi khusus seluruh karyawan Maintenance (All Cabang) — Top 3 mendapat reward maintenance
                                 </span>
                             </p>
                         </div>
@@ -152,12 +152,12 @@
                                 ]"
                             >
                                 <span>🛠️</span>
-                                <span>Juara Maintenance</span>
+                                <span>Juara Maintenance (All)</span>
                             </button>
                         </div>
 
-                        <!-- Dropdown Cabang saat scope branch atau maintenance aktif -->
-                        <div v-if="currentScope === 'branch' || (currentScope === 'maintenance' && areas.length > 0)" class="relative">
+                        <!-- Dropdown Cabang hanya saat scope branch aktif -->
+                        <div v-if="currentScope === 'branch'" class="relative">
                             <select
                                 v-model="selectedAreaId"
                                 @change="applyFilters"
@@ -1255,13 +1255,13 @@ const currentScope = ref(props.filters.scope || 'global');
 const selectedAreaId = ref(props.filters.area_id || null);
 
 const currentScopeLabel = computed(() => {
-    if (currentScope.value === 'maintenance') return 'Maintenance';
+    if (currentScope.value === 'maintenance') return 'Maintenance (All)';
     if (currentScope.value === 'branch') return 'Per Cabang';
     return 'Global';
 });
 
 const currentScopeShortLabel = computed(() => {
-    if (currentScope.value === 'maintenance') return 'Maintenance';
+    if (currentScope.value === 'maintenance') return 'Maintenance (All)';
     if (currentScope.value === 'branch') return 'Cabang';
     return 'Global';
 });
@@ -1277,7 +1277,7 @@ const currentRewards = computed(() => {
 });
 
 const printScopeSubtitle = computed(() => {
-    if (currentScope.value === 'maintenance') return 'KATEGORI KHUSUS DIVISI MAINTENANCE';
+    if (currentScope.value === 'maintenance') return 'KATEGORI KHUSUS DIVISI MAINTENANCE (ALL CABANG)';
     if (currentScope.value === 'branch') {
         const area = props.areas.find(a => a.id === selectedAreaId.value);
         return area ? `TINGKAT CABANG: ${area.name.toUpperCase()}` : 'TINGKAT PER CABANG';
@@ -1318,7 +1318,7 @@ const applyFilters = () => {
 
 const setScope = (scope) => {
     currentScope.value = scope;
-    if (scope === 'global') {
+    if (scope === 'global' || scope === 'maintenance') {
         selectedAreaId.value = null;
     }
     applyFilters();
