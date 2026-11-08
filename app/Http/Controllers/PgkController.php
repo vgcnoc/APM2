@@ -781,6 +781,24 @@ class PgkController extends Controller
                     $newWifiSsid ?: ($targetOnt?->wifi_ssid ?: '-'),
                     'Nama WiFi/Sandi diperbarui oleh Admin di sistem'
                 );
+
+                // Sinkronkan ke laporan instalasi sebelumnya di jadwal teknisi
+                if ($customer) {
+                    $effSsid = $newWifiSsid ?: ($targetOnt?->wifi_ssid ?: $customer->wifi_ssid);
+                    $effPass = $newWifiPass ?: ($targetOnt?->wifi_password ?: $customer->wifi_password);
+                    if (!empty($effSsid)) {
+                        $installSchedules = \App\Models\TechnicianSchedule::where('customer_id', $customer->id)
+                            ->where('type', 'installation')
+                            ->get();
+                        foreach ($installSchedules as $sch) {
+                            $lines = explode("\n", $sch->notes ?? '');
+                            $lines = array_filter($lines, fn($l) => !str_starts_with(trim($l), 'WiFi:'));
+                            $passText = !empty($effPass) ? ", Sandi '{$effPass}'" : '';
+                            $lines[] = "WiFi: SSID '{$effSsid}'{$passText} (Diperbarui via PGK #{$pgk->ticket_number})";
+                            $sch->update(['notes' => implode("\n", $lines)]);
+                        }
+                    }
+                }
             }
         }
 
@@ -1683,6 +1701,24 @@ class PgkController extends Controller
                     $newWifiSsid ?: ($targetOnt?->wifi_ssid ?: '-'),
                     'WiFi pelanggan diperbarui melalui laporan tiket PGK #' . $pgk->ticket_number . ' oleh ' . (auth()->user()?->name ?? 'Teknisi')
                 );
+
+                // Sinkronkan ke laporan instalasi sebelumnya di jadwal teknisi
+                if ($customer) {
+                    $effSsid = $newWifiSsid ?: ($targetOnt?->wifi_ssid ?: $customer->wifi_ssid);
+                    $effPass = $newWifiPass ?: ($targetOnt?->wifi_password ?: $customer->wifi_password);
+                    if (!empty($effSsid)) {
+                        $installSchedules = \App\Models\TechnicianSchedule::where('customer_id', $customer->id)
+                            ->where('type', 'installation')
+                            ->get();
+                        foreach ($installSchedules as $sch) {
+                            $lines = explode("\n", $sch->notes ?? '');
+                            $lines = array_filter($lines, fn($l) => !str_starts_with(trim($l), 'WiFi:'));
+                            $passText = !empty($effPass) ? ", Sandi '{$effPass}'" : '';
+                            $lines[] = "WiFi: SSID '{$effSsid}'{$passText} (Diperbarui via PGK #{$pgk->ticket_number})";
+                            $sch->update(['notes' => implode("\n", $lines)]);
+                        }
+                    }
+                }
             }
         }
 

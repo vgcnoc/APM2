@@ -326,7 +326,7 @@
                                     </div>
                                 </div>
                                 
-                                <div v-if="registration_type !== 'reseller'" class="md:col-span-2 pt-2 border-t border-gray-100 space-y-3">
+                                <div v-if="!isResellerVoucher && registration_type !== 'reseller'" class="md:col-span-2 pt-2 border-t border-gray-100 space-y-3">
                                     <!-- Jika user berwenang (Admin/Finance/customers_tax_toggle): Tampilkan kontrol aktif -->
                                     <template v-if="canToggleTax">
                                         <div class="flex items-center justify-between">
@@ -401,7 +401,10 @@
                                 </div>
                                 
                                 <div>
-                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Petugas Sales / Karyawan Referral</label>
+                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2 flex items-center justify-between">
+                                        <span>Petugas Sales / Karyawan Referral</span>
+                                        <span v-if="isResellerVoucher" class="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">Bebas Fee</span>
+                                    </label>
                                     <div v-if="canChangeSales">
                                         <select v-model="form.sales_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all">
                                             <option value="">-- Tanpa Sales / Referral --</option>
@@ -423,9 +426,12 @@
                                             🔒 Terkunci
                                         </span>
                                     </div>
+                                    <p v-if="isResellerVoucher" class="text-[10px] text-blue-700 mt-1 leading-relaxed">
+                                        * Khusus Reseller Voucher tidak ada insentif/fee untuk karyawan (Booking, Survey, Pasang) karena kemitraan voucher difasilitasi gratis oleh perusahaan.
+                                    </p>
                                 </div>
 
-                                <div v-if="registration_type !== 'reseller'" class="md:col-span-2 pt-2 border-t border-gray-100">
+                                <div v-if="!isResellerVoucher && registration_type !== 'reseller'" class="md:col-span-2 pt-2 border-t border-gray-100">
                                     <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Siklus Penagihan Tagihan (Billing Cycle)</label>
                                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         <label :class="form.billing_type === 'prabayar' ? 'border-yellow-500 bg-yellow-50/50 text-yellow-900 ring-2 ring-yellow-200' : 'border-gray-200 hover:border-gray-300 text-gray-700'" class="flex items-center gap-2 p-3 border rounded-xl cursor-pointer transition-all">
@@ -446,7 +452,7 @@
                                 </div>
 
                                 <!-- Siklus Tanggal Tagihan (Billing Cycle) -->
-                                <div v-if="registration_type !== 'reseller'" class="col-span-full pt-1">
+                                <div v-if="!isResellerVoucher && registration_type !== 'reseller'" class="col-span-full pt-1">
                                     <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">
                                         Siklus Tanggal Tagihan
                                     </label>
@@ -770,8 +776,15 @@ watch(() => form.enable_tax, (val) => {
 });
 
 const registration_type = ref('customer');
-if (form.is_reseller && !form.package_id) {
+const isResellerVoucher = computed(() => {
+    return registration_type.value === 'reseller' || Boolean(form.is_reseller && (form.service_status === 'gratis' || !form.package_id || Number(form.base_amount || 0) === 0));
+});
+
+const isPureResellerCust = Boolean(props.customer?.is_reseller && (!props.customer?.package_id || Number(props.customer?.base_amount || 0) === 0 || props.customer?.service_status === 'gratis'));
+if (isPureResellerCust) {
     registration_type.value = 'reseller';
+    form.is_reseller = true;
+    form.package_id = '';
     form.service_status = 'gratis';
     form.enable_tax = false;
     form.tax_ppn = 0;

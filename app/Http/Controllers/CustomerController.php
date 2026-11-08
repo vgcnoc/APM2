@@ -3556,6 +3556,8 @@ class CustomerController extends Controller
             'rx_power' => 'required|string',
             'start_time' => 'required|date_format:H:i',
             'end_time' => 'required|date_format:H:i',
+            'wifi_ssid' => 'nullable|string|max:100',
+            'wifi_password' => 'nullable|string|max:100',
         ];
 
         // Photos are optional (can be uploaded now or edited manually later)
@@ -3567,6 +3569,8 @@ class CustomerController extends Controller
 
         $validated = $request->validate($rules);
         $validated['rx_power'] = number_format(\App\Services\DataMigrationService::parseRxPower($validated['rx_power'] ?? null), 2, '.', '');
+        $wifiSsid = !empty($validated['wifi_ssid']) ? trim($validated['wifi_ssid']) : null;
+        $wifiPass = !empty($validated['wifi_password']) ? (string)$validated['wifi_password'] : null;
 
         if ($request->hasFile('photo_odp')) $validated['photo_odp'] = $request->file('photo_odp')->store('installations', 'public');
         if ($request->hasFile('photo_installation')) $validated['photo_installation'] = $request->file('photo_installation')->store('installations', 'public');
@@ -3585,7 +3589,7 @@ class CustomerController extends Controller
 
         $usageDetails = [];
         try {
-            DB::transaction(function () use ($validated, $customer, $odp, $request, $ont, &$usageDetails) {
+            DB::transaction(function () use ($validated, $customer, $odp, $request, $ont, &$usageDetails, $wifiSsid, $wifiPass) {
             $isNewAssignment = false;
             
             // Update existing linked ONT or Create new
@@ -3609,7 +3613,7 @@ class CustomerController extends Controller
                 }
 
                 // Update existing linked ONT
-                $ont->update([
+                $ontUpdateData = [
                     'odp_id' => $validated['odp_id'],
                     'port_number' => $validated['port_number'],
                     'rx_power' => $validated['rx_power'] ?? null,
@@ -3622,7 +3626,10 @@ class CustomerController extends Controller
                     'photo_customer' => $validated['photo_customer'] ?? $ont->photo_customer,
                     'photo_redaman' => $validated['photo_redaman'] ?? $ont->photo_redaman,
                     'status' => 'active',
-                ]);
+                ];
+                if ($wifiSsid !== null) $ontUpdateData['wifi_ssid'] = $wifiSsid;
+                if ($wifiPass !== null) $ontUpdateData['wifi_password'] = $wifiPass;
+                $ont->update($ontUpdateData);
             } else {
                 $isNewAssignment = true;
                 // Create new ONT if none is linked
@@ -3635,6 +3642,8 @@ class CustomerController extends Controller
                     'initial_rx_power' => $validated['rx_power'] ?? null,
                     'start_time' => $validated['start_time'] ?? null,
                     'end_time' => $validated['end_time'] ?? null,
+                    'wifi_ssid' => $wifiSsid,
+                    'wifi_password' => $wifiPass,
                     'photo_odp' => $validated['photo_odp'] ?? null,
                     'photo_installation' => $validated['photo_installation'] ?? null,
                     'photo_ont' => $validated['photo_ont'] ?? null,
@@ -3642,6 +3651,14 @@ class CustomerController extends Controller
                     'photo_redaman' => $validated['photo_redaman'] ?? null,
                     'status' => 'active',
                 ]);
+            }
+
+            // Sync WiFi info ke data Customer
+            $customerWifiUpdates = [];
+            if ($wifiSsid !== null) $customerWifiUpdates['wifi_ssid'] = $wifiSsid;
+            if ($wifiPass !== null) $customerWifiUpdates['wifi_password'] = $wifiPass;
+            if (!empty($customerWifiUpdates)) {
+                $customer->update($customerWifiUpdates);
             }
 
             $newOdp = Odp::find($validated['odp_id']);
@@ -4049,6 +4066,16 @@ class CustomerController extends Controller
                     }
                     $newNotes = implode("\n", $lines);
                 }
+
+                // Catat / perbarui rincian WiFi instalasi ke catatan penugasan teknisi
+                if (!empty($wifiSsid)) {
+                    $schLines = explode("\n", $newNotes ?? '');
+                    $schLines = array_filter($schLines, fn($l) => !str_starts_with(trim($l), 'WiFi:'));
+                    $passText = !empty($wifiPass) ? ", Sandi '{$wifiPass}'" : '';
+                    $schLines[] = "WiFi: SSID '{$wifiSsid}'{$passText} (Laporan Instalasi)";
+                    $newNotes = implode("\n", $schLines);
+                }
+
                 $schedule->update([
                     'status' => 'done',
                     'notes' => $newNotes
@@ -5666,6 +5693,8 @@ class CustomerController extends Controller
             'rx_power' => 'nullable|string',
             'start_time' => 'nullable|string',
             'end_time' => 'nullable|string',
+            'wifi_ssid' => 'nullable|string|max:100',
+            'wifi_password' => 'nullable|string|max:100',
             'photo_odp' => 'nullable|image|max:10240',
             'photo_installation' => 'nullable|image|max:10240',
             'photo_ont' => 'nullable|image|max:10240',
@@ -5681,6 +5710,9 @@ class CustomerController extends Controller
             ? \App\Services\DataMigrationService::parseRxPower($validated['rx_power'])
             : null;
 
+        $wifiSsid = $request->has('wifi_ssid') ? (!empty($validated['wifi_ssid']) ? trim($validated['wifi_ssid']) : null) : null;
+        $wifiPass = $request->has('wifi_password') ? (!empty($validated['wifi_password']) ? (string)$validated['wifi_password'] : null) : null;
+
         $ont = $customer->ont;
         if (!$ont) {
             $ont = \App\Models\Ont::where('serial_number', $validated['serial_number'])->first();
@@ -5694,6 +5726,8 @@ class CustomerController extends Controller
                     'odp_id' => $validated['odp_id'],
                     'port_number' => $validated['port_number'],
                     'model' => $validated['model'] ?? 'Standard ONT',
+                    'wifi_ssid' => $wifiSsid,
+                    'wifi_password' => $wifiPass,
                     'status' => 'active',
                 ]);
             }
@@ -5706,7 +5740,7 @@ class CustomerController extends Controller
             }
         }
 
-        $ont->update(array_merge([
+        $ontUpdates = array_merge([
             'odp_id' => $validated['odp_id'],
             'port_number' => $validated['port_number'],
             'serial_number' => $validated['serial_number'],
@@ -5715,7 +5749,40 @@ class CustomerController extends Controller
             'rx_power' => $cleanRx !== null ? $cleanRx : $ont->rx_power,
             'start_time' => $validated['start_time'] ?? $ont->start_time,
             'end_time' => $validated['end_time'] ?? $ont->end_time,
-        ], $photoUpdates));
+        ], $photoUpdates);
+
+        if ($request->has('wifi_ssid')) {
+            $ontUpdates['wifi_ssid'] = $wifiSsid;
+        }
+        if ($request->has('wifi_password')) {
+            $ontUpdates['wifi_password'] = $wifiPass;
+        }
+
+        $ont->update($ontUpdates);
+
+        // Update data Customer jika field WiFi diinput
+        $custWifiUpdates = [];
+        if ($request->has('wifi_ssid')) $custWifiUpdates['wifi_ssid'] = $wifiSsid;
+        if ($request->has('wifi_password')) $custWifiUpdates['wifi_password'] = $wifiPass;
+        if (!empty($custWifiUpdates)) {
+            $customer->update($custWifiUpdates);
+        }
+
+        // Sinkronkan catatan jadwal penugasan instalasi teknisi
+        $installSchedules = \App\Models\TechnicianSchedule::where('customer_id', $customer->id)
+            ->where('type', 'installation')
+            ->get();
+        $effectiveSsid = $wifiSsid ?? $ont->wifi_ssid ?? $customer->wifi_ssid;
+        $effectivePass = $wifiPass ?? $ont->wifi_password ?? $customer->wifi_password;
+        if (!empty($effectiveSsid)) {
+            foreach ($installSchedules as $sch) {
+                $lines = explode("\n", $sch->notes ?? '');
+                $lines = array_filter($lines, fn($l) => !str_starts_with(trim($l), 'WiFi:'));
+                $passText = !empty($effectivePass) ? ", Sandi '{$effectivePass}'" : '';
+                $lines[] = "WiFi: SSID '{$effectiveSsid}'{$passText} (Laporan Instalasi)";
+                $sch->update(['notes' => implode("\n", $lines)]);
+            }
+        }
 
         // Mark port as used
         \App\Models\OdpPort::updateOrCreate(

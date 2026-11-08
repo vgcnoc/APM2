@@ -668,6 +668,29 @@
                                 <InfoRow v-if="customer.ont?.last_rx_ticket_ref" label="Pembaruan Pasca Gangguan" :value="`Tiket ${customer.ont.last_rx_ticket_ref}`" />
                             </div>
                         </div>
+
+                        <!-- Info WiFi Hasil Laporan Instalasi (Khusus Mode PPPoE) -->
+                        <div v-if="isCustomerPppoe && (customer.ont?.wifi_ssid || customer.wifi_ssid)" class="mb-6 p-4 bg-gradient-to-r from-emerald-50 via-teal-50/40 to-slate-50 border border-emerald-200 rounded-xl space-y-2.5">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
+                                    WiFi Pelanggan (Mode PPPoE)
+                                </span>
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                    Tersinkronisasi Otomatis
+                                </span>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
+                                <div class="bg-white p-2.5 rounded-lg border border-emerald-100 flex items-center justify-between shadow-2xs">
+                                    <span class="text-gray-500 font-medium">Nama WiFi (SSID):</span>
+                                    <span class="font-bold text-emerald-950 font-mono">{{ customer.ont?.wifi_ssid || customer.wifi_ssid || '-' }}</span>
+                                </div>
+                                <div class="bg-white p-2.5 rounded-lg border border-emerald-100 flex items-center justify-between shadow-2xs">
+                                    <span class="text-gray-500 font-medium">Sandi WiFi (WPA2):</span>
+                                    <span class="font-bold text-emerald-950 font-mono">{{ customer.ont?.wifi_password || customer.wifi_password || '-' }}</span>
+                                </div>
+                            </div>
+                        </div>
                         
                         <div class="pt-4 border-t border-gray-200 mt-4">
                             <p class="text-xs text-gray-500 mb-3 uppercase font-semibold">Hasil Dokumentasi Lapangan:</p>
@@ -1072,6 +1095,62 @@
                                     </div>
                                 </div>
 
+                                <!-- Konfigurasi WiFi Pelanggan (Khusus Pelanggan Mode PPPoE) -->
+                                <div v-if="isCustomerPppoe" class="p-4 bg-gradient-to-r from-emerald-50 via-teal-50/40 to-slate-50 border border-emerald-200 rounded-xl space-y-3 shadow-xs">
+                                    <div class="flex items-center justify-between">
+                                        <label class="block text-xs font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-2">
+                                            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
+                                            Konfigurasi WiFi Pelanggan (Mode PPPoE)
+                                        </label>
+                                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                            SSID &amp; Sandi WiFi
+                                        </span>
+                                    </div>
+                                    <p class="text-[11px] text-emerald-800 leading-relaxed">
+                                        Catat Nama WiFi (SSID) dan Sandi WiFi yang diatur pada ONT saat instalasi di rumah pelanggan. Jika di masa mendatang ada perubahan via tiket PGS/PGK, data ini akan tersinkronisasi otomatis.
+                                    </p>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Nama WiFi (SSID)</label>
+                                            <input 
+                                                v-model="ontForm.wifi_ssid" 
+                                                type="text" 
+                                                maxlength="100"
+                                                class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 font-medium" 
+                                                placeholder="Contoh: KELUARGA-BUDI-WIFI" 
+                                            />
+                                        </div>
+                                        <div>
+                                            <div class="flex items-center justify-between mb-1">
+                                                <label class="block text-xs font-medium text-gray-700">Password WiFi (Sandi WPA2)</label>
+                                                <button 
+                                                    type="button" 
+                                                    @click="generateOntFormWifiPassword" 
+                                                    class="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-100/70 hover:bg-emerald-200 px-2 py-0.5 rounded transition-colors"
+                                                >
+                                                    🎲 Acak Sandi
+                                                </button>
+                                            </div>
+                                            <div class="relative">
+                                                <input 
+                                                    :type="showOntFormWifiPass ? 'text' : 'password'" 
+                                                    v-model="ontForm.wifi_password" 
+                                                    maxlength="100"
+                                                    class="w-full bg-white border border-gray-200 rounded-lg pl-3 pr-9 py-2 text-sm focus:ring-2 focus:ring-emerald-500 font-mono" 
+                                                    placeholder="Minimal 8 karakter" 
+                                                />
+                                                <button 
+                                                    type="button" 
+                                                    @click="showOntFormWifiPass = !showOntFormWifiPass" 
+                                                    class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs"
+                                                >
+                                                    {{ showOntFormWifiPass ? '🙈' : '👁️' }}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <!-- Dokumentasi Foto -->
                             <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
                                 <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Dokumentasi (Foto Laporan)</p>
@@ -1360,10 +1439,23 @@
                                     </p>
                                 </div>
                             </div>
+                            <!-- Banner Khusus Reseller Voucher -->
+                            <div v-if="isCustomerResellerVoucher || customer.is_reseller" class="p-4 bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 border border-blue-200 rounded-xl space-y-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xl">🎟️</span>
+                                    <div>
+                                        <h4 class="text-xs font-bold text-blue-950 uppercase tracking-wider">Aktivasi Khusus Reseller Voucher</h4>
+                                        <p class="text-[11px] text-blue-800">Tanpa siklus tagihan invoice &amp; tanpa fee karyawan. Perusahaan memfasilitasi gratis.</p>
+                                    </div>
+                                </div>
+                                <p class="text-[11px] text-blue-900 leading-relaxed">
+                                    Mitra Reseller hanya menjual voucher hotspot. Sistem otomatis membebaskan reseller dari invoice tagihan bulanan dan tidak ada insentif karyawan internal.
+                                </p>
+                            </div>
                         </div>
 
                         <!-- Siklus Penagihan Invoice -->
-                        <div v-if="!customer.is_reseller && activationForm.service_status !== 'free_home'" class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
+                        <div v-if="!isCustomerResellerVoucher && !customer.is_reseller && activationForm.service_status !== 'free_home'" class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
                             <div class="flex items-center justify-between">
                                 <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
                                     <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
@@ -1423,7 +1515,7 @@
                         </div>
 
                         <!-- Simulasi Tagihan Invoice Pertama -->
-                        <div v-if="!customer.is_reseller && invoiceSimulation && activationForm.service_status !== 'free_home'" class="bg-gradient-to-br from-slate-50 via-amber-50/40 to-slate-50 p-4 rounded-xl border border-amber-200/90 shadow-sm space-y-3">
+                        <div v-if="!isCustomerResellerVoucher && !customer.is_reseller && invoiceSimulation && activationForm.service_status !== 'free_home'" class="bg-gradient-to-br from-slate-50 via-amber-50/40 to-slate-50 p-4 rounded-xl border border-amber-200/90 shadow-sm space-y-3">
                             <div class="flex items-center justify-between border-b border-amber-100 pb-2.5">
                                 <div class="flex items-center gap-2">
                                     <div class="w-7 h-7 rounded-lg bg-amber-600 text-white flex items-center justify-center text-sm shadow-sm font-bold">
@@ -3089,6 +3181,33 @@
                                     <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Redaman Optik ONT (dBm)</label>
                                     <input v-model="installReportForm.rx_power" type="text" placeholder="-19.50" class="w-full text-sm font-mono border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
                                 </div>
+
+                                <!-- Field WiFi Mode PPPoE -->
+                                <div v-if="isCustomerPppoe" class="col-span-full p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <label class="block text-xs font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
+                                            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
+                                            WiFi Pelanggan (Mode PPPoE)
+                                        </label>
+                                        <button 
+                                            type="button" 
+                                            @click="generateEditInstallWifiPassword" 
+                                            class="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-100/70 hover:bg-emerald-200 px-2 py-0.5 rounded transition-colors"
+                                        >
+                                            🎲 Acak Sandi
+                                        </button>
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-xs font-semibold text-gray-700 mb-1">Nama WiFi (SSID)</label>
+                                            <input v-model="installReportForm.wifi_ssid" type="text" maxlength="100" placeholder="Nama WiFi (SSID)" class="w-full text-xs font-medium border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-semibold text-gray-700 mb-1">Sandi WiFi (WPA2)</label>
+                                            <input v-model="installReportForm.wifi_password" type="text" maxlength="100" placeholder="Password WiFi" class="w-full text-xs font-mono border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white" />
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -3548,6 +3667,48 @@ const isInstallationScheduled = computed(() => {
 const isLaporanPasang = computed(() => {
     return props.customer.status === 'installing' && isInstallationScheduled.value;
 });
+
+const isCustomerPppoe = computed(() => {
+    if (props.customer?.is_reseller) return false;
+    if (props.customer?.service_status === 'free_home' || props.customer?.service_status === 'gratis') return false;
+    const pkgMode = (props.customer?.package?.access_mode || '').toUpperCase().trim();
+    const ontMode = (props.customer?.ont?.access_mode || '').toUpperCase().trim();
+    if (pkgMode === 'HOTSPOT/MEMBER' || ontMode === 'HOTSPOT/MEMBER') return false;
+    return true; // Default internet pelanggan rumahan APM2 adalah PPPoE
+});
+
+const isCustomerResellerVoucher = computed(() => {
+    if (props.customer?.is_reseller) {
+        const hasPaidInternetPackage = Boolean(
+            props.customer?.package_id &&
+            props.customer?.package &&
+            Number(props.customer?.base_amount || props.customer?.package?.price || 0) > 0 &&
+            props.customer?.service_status === 'berbayar'
+        );
+        return !hasPaidInternetPackage;
+    }
+    return false;
+});
+
+const showOntFormWifiPass = ref(false);
+function generateOntFormWifiPassword() {
+    const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%';
+    let res = '';
+    for (let i = 0; i < 10; i++) {
+        res += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    ontForm.wifi_password = res;
+    showOntFormWifiPass.value = true;
+}
+
+function generateEditInstallWifiPassword() {
+    const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%';
+    let res = '';
+    for (let i = 0; i < 10; i++) {
+        res += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    installReportForm.wifi_password = res;
+}
 
 const isAudit = computed(() => {
     return props.customer.status === 'installing' && !isInstallationScheduled.value && props.customer.ont && props.customer.ont.rx_power;
@@ -4171,6 +4332,8 @@ const ontForm = useForm({
     rx_power: '',
     start_time: '',
     end_time: '',
+    wifi_ssid: '',
+    wifi_password: '',
     photo_odp: null,
     photo_installation: null,
     photo_ont: null,
@@ -4295,6 +4458,16 @@ onMounted(() => {
     
     const savedRx = localStorage.getItem(`apm_rx_power_${props.customer.id}`);
     if (savedRx) ontForm.rx_power = savedRx;
+
+    const savedWifiSsid = localStorage.getItem(`apm_wifi_ssid_${props.customer.id}`);
+    if (savedWifiSsid) ontForm.wifi_ssid = savedWifiSsid;
+    else if (props.customer.ont?.wifi_ssid) ontForm.wifi_ssid = props.customer.ont.wifi_ssid;
+    else if (props.customer.wifi_ssid) ontForm.wifi_ssid = props.customer.wifi_ssid;
+
+    const savedWifiPass = localStorage.getItem(`apm_wifi_password_${props.customer.id}`);
+    if (savedWifiPass) ontForm.wifi_password = savedWifiPass;
+    else if (props.customer.ont?.wifi_password) ontForm.wifi_password = props.customer.ont.wifi_password;
+    else if (props.customer.wifi_password) ontForm.wifi_password = props.customer.wifi_password;
     
     // Restore photos
     const photoFields = ['photo_odp', 'photo_installation', 'photo_ont', 'photo_customer', 'photo_redaman'];
@@ -4320,6 +4493,14 @@ watch(() => ontForm.port_number, (val) => {
 watch(() => ontForm.rx_power, (val) => {
     if (val) localStorage.setItem(`apm_rx_power_${props.customer.id}`, val);
     else localStorage.removeItem(`apm_rx_power_${props.customer.id}`);
+});
+watch(() => ontForm.wifi_ssid, (val) => {
+    if (val) localStorage.setItem(`apm_wifi_ssid_${props.customer.id}`, val);
+    else localStorage.removeItem(`apm_wifi_ssid_${props.customer.id}`);
+});
+watch(() => ontForm.wifi_password, (val) => {
+    if (val) localStorage.setItem(`apm_wifi_password_${props.customer.id}`, val);
+    else localStorage.removeItem(`apm_wifi_password_${props.customer.id}`);
 });
 
 watch(hardwareItems, (items) => {
@@ -4421,6 +4602,8 @@ function submitOnt() {
             localStorage.removeItem(`apm_odp_id_${props.customer.id}`);
             localStorage.removeItem(`apm_port_number_${props.customer.id}`);
             localStorage.removeItem(`apm_rx_power_${props.customer.id}`);
+            localStorage.removeItem(`apm_wifi_ssid_${props.customer.id}`);
+            localStorage.removeItem(`apm_wifi_password_${props.customer.id}`);
             localStorage.removeItem(`apm_hardware_${props.customer.id}`);
             localStorage.removeItem(`apm_materials_used_${props.customer.id}`);
             
@@ -5532,6 +5715,8 @@ const installReportForm = useForm({
     rx_power: '',
     start_time: '',
     end_time: '',
+    wifi_ssid: '',
+    wifi_password: '',
     photo_odp: null,
     photo_installation: null,
     photo_ont: null,
@@ -5549,6 +5734,8 @@ function openEditInstallationReportModal() {
     installReportForm.rx_power = ont?.rx_power || '';
     installReportForm.start_time = ont?.start_time ? ont.start_time.substring(0, 5) : '09:00';
     installReportForm.end_time = ont?.end_time ? ont.end_time.substring(0, 5) : '11:00';
+    installReportForm.wifi_ssid = ont?.wifi_ssid || props.customer?.wifi_ssid || '';
+    installReportForm.wifi_password = ont?.wifi_password || props.customer?.wifi_password || '';
 
     installPhotoPreviews.value.photo_odp = ont?.photo_odp ? '/storage/' + ont.photo_odp : null;
     installPhotoPreviews.value.photo_installation = ont?.photo_installation ? '/storage/' + ont.photo_installation : null;

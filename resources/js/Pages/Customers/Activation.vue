@@ -2224,7 +2224,7 @@ const editCustomer = ref(null);
 const isEditResellerVoucher = computed(() => {
     const cust = editCustomer.value;
     if (!cust) return false;
-    return Boolean(cust.is_reseller && (!cust.package || !cust.package_id || Number(cust.base_amount || 0) === 0));
+    return isCustomerResellerVoucher(cust);
 });
 const editForm = useForm({
     activation_date: '',
@@ -2407,11 +2407,18 @@ watch(() => activationForm.enable_tax, (val) => {
 const isCustomerResellerVoucher = (cust) => {
     if (!cust) return false;
     const isResellerFlag = cust.is_reseller === true || cust.is_reseller === 1 || cust.is_reseller === '1';
-    const hasNoPaidPackage = !cust.package_id || !cust.package || Number(cust.base_amount || 0) === 0;
-    return Boolean(isResellerFlag && hasNoPaidPackage);
+    if (!isResellerFlag) return false;
+    const hasPaidInternetPackage = Boolean(
+        cust.package_id &&
+        cust.package &&
+        Number(cust.base_amount || cust.package?.price || 0) > 0 &&
+        cust.service_status === 'berbayar'
+    );
+    return !hasPaidInternetPackage;
 };
 
 const isResellerVoucher = computed(() => {
+    if (currentTab.value === 'reseller') return true;
     return isCustomerResellerVoucher(activeCustomer.value);
 });
 
@@ -2683,7 +2690,7 @@ function openActivationModal(customer) {
     activationForm.reset();
     activationForm.activation_date = new Date().toISOString().split('T')[0];
 
-    const isReseller = isCustomerResellerVoucher(customer);
+    const isReseller = currentTab.value === 'reseller' || isCustomerResellerVoucher(customer);
     if (isReseller) {
         activationForm.service_status = 'gratis';
         activationForm.billing_type = 'prabayar';

@@ -624,7 +624,10 @@
                                 </div>
                                 
                                 <div>
-                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Petugas Sales / Karyawan Referral</label>
+                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2 flex items-center justify-between">
+                                        <span>Petugas Sales / Karyawan Referral</span>
+                                        <span v-if="registration_type === 'reseller'" class="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">Bebas Fee</span>
+                                    </label>
                                     <div v-if="canChangeSales">
                                         <select v-model="form.sales_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
                                             <option value="">-- Tanpa Sales / Referral --</option>
@@ -647,6 +650,9 @@
                                             <span>Petugas dikunci ke akun Anda.</span>
                                         </p>
                                     </div>
+                                    <p v-if="registration_type === 'reseller'" class="text-[10px] text-indigo-700 mt-1 leading-relaxed">
+                                        * Pendaftaran khusus reseller voucher tidak menghasilkan insentif/fee untuk karyawan (Booking, Survey, Pasang) karena kemitraan voucher difasilitasi gratis oleh perusahaan.
+                                    </p>
                                 </div>
                             </div>
                         </div>
