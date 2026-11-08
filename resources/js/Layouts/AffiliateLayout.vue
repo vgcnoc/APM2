@@ -142,6 +142,27 @@ html.dark .sales-mobile-dialog[role="dialog"], html.dark .sales-withdraw-dialog[
 }
 @media (prefers-reduced-motion: reduce) { .sales-mobile-panel { animation: none; } .sales-nav-link { transition: none; } }
 
+html[data-bg-pattern="royal-batik"] .affiliate-workspace {
+    --sales-canvas: #faf4ef;
+    --sales-surface: #ffffff;
+    --sales-subtle: #f5ede4;
+    --sales-text: #2d120a;
+    --sales-muted: #825345;
+    --sales-line: #dfcebe;
+    --sales-accent: #c2410c;
+    --sales-accent-soft: #ffedd5;
+}
+html.dark[data-bg-pattern="royal-batik"] .affiliate-workspace {
+    --sales-canvas: #160503;
+    --sales-surface: #220b07;
+    --sales-subtle: #1c0805;
+    --sales-text: #fff5f0;
+    --sales-muted: #b58578;
+    --sales-line: #441a12;
+    --sales-accent: #ea580c;
+    --sales-accent-soft: #38120a;
+}
+
 html[data-bg-pattern="gold-wood"] .affiliate-workspace {
     --sales-canvas: #faf5ee;
     --sales-surface: #ffffff;

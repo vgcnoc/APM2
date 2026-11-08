@@ -679,6 +679,36 @@ html.dark [role="dialog"] {
 }
 
 
+/* ── CORAK ROYAL: ROYAL TERRACOTTA BATIK (Sesuai Corak & Warna Pilihan User) ──
+   Motif ornamen damask batik terracotta mewah dipadu spotlight hangat & kontras teks optimal */
+html[data-bg-pattern="royal-batik"] .apm-shell::before {
+    background-color: #faf4ef !important;
+    background-image:
+        radial-gradient(1200px 700px at 50% -5%, rgba(234, 88, 12, 0.16), transparent 60%),
+        radial-gradient(1000px 600px at 85% -5%, rgba(194, 65, 12, 0.12), transparent 55%),
+        radial-gradient(1200px 800px at 50% 100%, rgba(120, 53, 15, 0.10), transparent 65%),
+        linear-gradient(rgba(250, 244, 239, 0.88), rgba(250, 244, 239, 0.88)),
+        url('/images/patterns/royal-batik-full.jpg') !important;
+    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, cover !important;
+    background-position: center top, center top, center top, center top, center top !important;
+    background-attachment: fixed !important;
+    background-repeat: no-repeat !important;
+}
+
+html.dark[data-bg-pattern="royal-batik"] .apm-shell::before {
+    background-color: #160503 !important;
+    background-image:
+        radial-gradient(1200px 700px at 50% -5%, rgba(234, 88, 12, 0.28), transparent 60%),
+        radial-gradient(1000px 600px at 85% -5%, rgba(249, 115, 22, 0.18), transparent 55%),
+        radial-gradient(1200px 800px at 50% 100%, rgba(67, 20, 7, 0.40), transparent 65%),
+        linear-gradient(rgba(22, 5, 3, 0.60), rgba(22, 5, 3, 0.82)),
+        url('/images/patterns/royal-batik-full.jpg') !important;
+    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, cover !important;
+    background-position: center top, center top, center top, center top, center top !important;
+    background-attachment: fixed !important;
+    background-repeat: no-repeat !important;
+}
+
 /* ── CORAK 0: GOLDEN WOOD & AMBER (Sesuai Corak & Warna Pilihan User) ──
    Serat tekstur kayu emas elegan dipadu pencahayaan hangat & kontras teks optimal */
 html[data-bg-pattern="gold-wood"] .apm-shell::before {

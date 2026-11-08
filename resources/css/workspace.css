@@ -55,6 +55,78 @@
 
     /* Preserve the chosen pattern, with quieter canvas and solid reading surfaces. */
     
+    /* ── ROYAL TERRACOTTA BATIK THEME OVERRIDE (Sesuai Permintaan Corak & Warna User) ── */
+    html[data-bg-pattern="royal-batik"] .workspace-ui, 
+    html[data-bg-pattern="royal-batik"] body.workspace-ui-page {
+        --ws-canvas: #faf4ef;
+        --ws-surface: #ffffff;
+        --ws-subtle: #f5ede4;
+        --ws-raised: #ebdfd3;
+        --ws-border: #dfcebe;
+        --ws-heading: #2d120a; /* Deep rich terracotta espresso for maximum readability */
+        --ws-text: #4c261b;    /* Warm dark body font */
+        --ws-muted: #825345;   /* Warm muted reddish amber */
+        --ws-accent: #c2410c;  /* Royal terracotta flame accent */
+        --ws-accent-soft: #ffedd5;
+        --ws-accent-text: #9a3412;
+        --ws-shadow: 0 2px 4px -2px rgb(60 25 15 / .06), 0 8px 24px -10px rgb(60 25 15 / .09);
+        --ws-focus: 0 0 0 3px rgb(194 65 12 / .20);
+        --apm-canvas: var(--ws-canvas);
+        --apm-surface: var(--ws-surface);
+        --apm-recessed: var(--ws-subtle);
+        --apm-raised: var(--ws-raised);
+        --apm-border: var(--ws-border);
+        --apm-text: var(--ws-heading);
+        --apm-secondary: var(--ws-text);
+        --apm-muted: var(--ws-muted);
+    }
+
+    html.dark[data-bg-pattern="royal-batik"] .workspace-ui, 
+    html.dark[data-bg-pattern="royal-batik"] body.workspace-ui-page {
+        --ws-canvas: #160503;
+        --ws-surface: #220b07;
+        --ws-subtle: #1c0805;
+        --ws-raised: #30130d;
+        --ws-border: #441a12;
+        --ws-heading: #fff5f0; /* Warm glowing ivory headers */
+        --ws-text: #f0ddd5;    /* Warm beige high readability text */
+        --ws-muted: #b58578;   /* Warm terracotta muted text */
+        --ws-accent: #ea580c;  /* Radiant flame terracotta */
+        --ws-accent-soft: #38120a;
+        --ws-accent-text: #fb923c;
+        --ws-shadow: 0 4px 22px -8px rgb(0 0 0 / .6);
+        --ws-focus: 0 0 0 3px rgb(234 88 12 / .30);
+        --apm-canvas: var(--ws-canvas);
+        --apm-surface: var(--ws-surface);
+        --apm-recessed: var(--ws-subtle);
+        --apm-raised: var(--ws-raised);
+        --apm-border: var(--ws-border);
+        --apm-text: var(--ws-heading);
+        --apm-secondary: var(--ws-text);
+        --apm-muted: var(--ws-muted);
+    }
+
+    /* Font & Surface adaptation specifically for Royal Terracotta Batik */
+    html[data-bg-pattern="royal-batik"] .workspace-ui :is(h1, h2, h3, h4, h5, h6) { color: var(--ws-heading); }
+    html[data-bg-pattern="royal-batik"] .workspace-ui :is(.text-gray-900, .text-slate-900, .text-gray-800, .text-slate-800) { color: var(--ws-heading) !important; }
+    html[data-bg-pattern="royal-batik"] .workspace-ui :is(.text-gray-700, .text-slate-700, .text-gray-600, .text-slate-600) { color: var(--ws-text) !important; }
+    html[data-bg-pattern="royal-batik"] .workspace-ui :is(.text-gray-500, .text-slate-500, .text-gray-400, .text-slate-400) { color: var(--ws-muted) !important; }
+    html[data-bg-pattern="royal-batik"] .workspace-ui :is(.border-gray-200, .border-slate-200, .border-gray-100, .border-slate-100) { border-color: var(--ws-border) !important; }
+    html[data-bg-pattern="royal-batik"] .workspace-ui :is(.bg-gray-50, .bg-slate-50) { background-color: var(--ws-subtle) !important; }
+    html[data-bg-pattern="royal-batik"] .workspace-ui :is(.data-table thead, table thead) { background-color: var(--ws-subtle) !important; border-color: var(--ws-border) !important; }
+    html[data-bg-pattern="royal-batik"] .workspace-ui :is(.data-table, table) thead th { color: var(--ws-muted) !important; border-color: var(--ws-border) !important; }
+    html[data-bg-pattern="royal-batik"] .workspace-ui :is(.data-table, table) tbody tr { border-color: var(--ws-border) !important; }
+    html[data-bg-pattern="royal-batik"] .workspace-ui :is(.data-table, table) tbody td { color: var(--ws-text) !important; }
+    html[data-bg-pattern="royal-batik"] .workspace-ui :is(.data-table, table) tbody tr:hover { background-color: var(--ws-subtle) !important; }
+    html[data-bg-pattern="royal-batik"] .workspace-ui .workspace-welcome {
+        border-color: #dfcebe;
+        background: linear-gradient(105deg, #fcf8f3 0%, #fffcf8 65%, #f6ede3 100%);
+    }
+    html.dark[data-bg-pattern="royal-batik"] .workspace-ui .workspace-welcome {
+        border-color: #441a12;
+        background: linear-gradient(110deg, #2a0f08, #200a05 65%, #2d1109);
+    }
+
     /* ── GOLDEN WOOD & AMBER THEME OVERRIDE (Sesuai Permintaan Corak & Warna User) ── */
     html[data-bg-pattern="gold-wood"] .workspace-ui, 
     html[data-bg-pattern="gold-wood"] body.workspace-ui-page {

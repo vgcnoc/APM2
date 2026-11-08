@@ -34,7 +34,7 @@
                 } else {
                     document.documentElement.classList.remove('dark');
                 }
-                var pattern = localStorage.getItem('apm_bg_pattern') || 'dots';
+                var pattern = localStorage.getItem('apm_bg_pattern') || 'royal-batik';
                 document.documentElement.setAttribute('data-bg-pattern', pattern);
             } catch (e) {}
         })();

@@ -2,6 +2,14 @@ import { ref } from 'vue';
 
 export const AVAILABLE_PATTERNS = [
     {
+        id: 'royal-batik',
+        name: 'Royal Terracotta Batik',
+        subtitle: 'Motif ornamen damask batik & ruby amber hangat',
+        badge: 'Terbaru',
+        icon: '👑',
+        swatchType: 'royal-batik',
+    },
+    {
         id: 'gold-wood',
         name: 'Golden Wood & Amber',
         subtitle: 'Corak serat kayu emas & estetika hangat',
@@ -51,7 +59,7 @@ export const AVAILABLE_PATTERNS = [
     },
 ];
 
-const currentPattern = ref('dots');
+const currentPattern = ref('royal-batik');
 let initialized = false;
 
 function applyPatternToDOM(patternId) {
@@ -67,9 +75,9 @@ export function initPattern() {
     try {
         const saved = window.localStorage.getItem('apm_bg_pattern');
         const valid = AVAILABLE_PATTERNS.some(p => p.id === saved);
-        currentPattern.value = valid ? saved : 'dots';
+        currentPattern.value = valid ? saved : 'royal-batik';
     } catch {
-        currentPattern.value = 'dots';
+        currentPattern.value = 'royal-batik';
     }
 
     applyPatternToDOM(currentPattern.value);
