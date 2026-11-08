@@ -447,22 +447,25 @@
                     </div>
                         
                         <!-- RIWAYAT ALOKASI & SERAH TERIMA MATERIAL & ONT -->
-                        <div v-if="hardwareItems.length > 0 || detailedReturnItems.length > 0" class="bg-gradient-to-br from-amber-50/70 via-white to-amber-50/40 p-5 rounded-2xl border border-amber-200/90 shadow-sm mb-6 space-y-4">
+                        <div v-if="displayInstalledMaterials.length > 0 || detailedReturnItems.length > 0 || (props.dismantledMaterials && props.dismantledMaterials.length > 0)" class="bg-gradient-to-br from-amber-50/70 via-white to-amber-50/40 p-5 rounded-2xl border border-amber-200/90 shadow-sm mb-6 space-y-4">
                             <!-- Header -->
                             <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-amber-200/70 gap-2">
                                 <div>
                                     <div class="flex items-center gap-2">
                                         <span class="text-base">📦</span>
-                                        <p class="text-xs font-bold text-amber-900 uppercase tracking-wider">Riwayat Alokasi & Serah Terima Material / ONT</p>
+                                        <p class="text-xs font-bold text-amber-900 uppercase tracking-wider">Perangkat &amp; Material Terpasang di Pelanggan</p>
                                     </div>
-                                    <p class="text-[11px] text-amber-700/80 mt-0.5">Rincian perangkat terpasang di pelanggan dan sisa material yang dikembalikan ke Gudang.</p>
+                                    <p class="text-[11px] text-amber-700/80 mt-0.5">Rincian perangkat/material aktif di rumah pelanggan (PSB, PGS, PGK) serta riwayat serah terima fisik.</p>
                                 </div>
-                                <div class="flex items-center gap-2">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span v-if="props.dismantledMaterials && props.dismantledMaterials.length > 0" class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1 shadow-2xs">
+                                        <span>♻️</span> {{ props.dismantledMaterials.length }} Item Dibongkar/Diganti
+                                    </span>
                                     <span v-if="detailedReturnItems.length > 0" class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1 shadow-2xs">
                                         <span>↩️</span> {{ detailedReturnItems.length }} Item Retur Gudang
                                     </span>
                                     <span class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1 shadow-2xs">
-                                        <span>✓</span> {{ hardwareItems.length }} Terpasang
+                                        <span>✓</span> {{ displayInstalledMaterials.length }} Terpasang Aktif
                                     </span>
                                 </div>
                             </div>
@@ -471,9 +474,44 @@
                             <div class="space-y-2">
                                 <p class="text-[11px] font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
                                     <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
-                                    Perangkat & Material Terpasang di Pelanggan (Pemakaian):
+                                    Perangkat &amp; Material Terpasang di Pelanggan (Aktif di Lokasi):
                                 </p>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+
+                                <!-- Tampilan jika menggunakan data CustomerInstalledMaterial -->
+                                <div v-if="hasDbInstalledMaterials" class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                                    <div v-for="item in displayInstalledMaterials" :key="item.id" class="text-sm bg-white p-3.5 rounded-xl border border-gray-200 shadow-2xs hover:border-emerald-300 transition-all flex items-start justify-between gap-2">
+                                        <div class="min-w-0 flex-1">
+                                            <div class="flex items-center gap-1.5 mb-1 flex-wrap">
+                                                <span class="text-[10px] font-bold px-2 py-0.5 rounded border" :class="getSourceBadgeClass(item.installation_source)">
+                                                    {{ formatInstallationSource(item.installation_source) }}
+                                                </span>
+                                                <span v-if="item.serial_number" class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                                    SN: {{ item.serial_number }}
+                                                </span>
+                                                <span v-if="item.status === 'partially_replaced'" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+                                                    Sebagian Diganti
+                                                </span>
+                                            </div>
+                                            <span class="font-bold text-gray-900 text-xs sm:text-sm block" :title="item.item_name">
+                                                {{ item.item_name }}
+                                            </span>
+                                            <p v-if="item.notes" class="text-[11px] text-gray-500 mt-0.5 line-clamp-1" :title="item.notes">
+                                                {{ item.notes }}
+                                            </p>
+                                        </div>
+                                        <div class="shrink-0 text-right flex flex-col items-end gap-1">
+                                            <span class="text-xs font-mono font-black text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                                                {{ item.quantity }} {{ item.unit }}
+                                            </span>
+                                            <span class="text-[10px] text-gray-400 font-medium">
+                                                {{ item.installed_at ? new Date(item.installed_at).toLocaleDateString('id-ID') : 'Terpasang' }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Fallback jika data dari schedule notes -->
+                                <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                                     <div v-for="item in hardwareItems" :key="item.id" class="text-sm bg-white p-3 rounded-xl border border-gray-200 shadow-2xs hover:border-emerald-300 transition-all flex items-center justify-between">
                                         <div class="min-w-0 pr-2">
                                             <div class="flex items-center gap-1.5 mb-0.5">
@@ -495,6 +533,36 @@
                                                 Dipasang
                                             </span>
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 2. RIWAYAT MATERIAL BEKAS / BONGKARAN (HASIL PERGANTIAN PGS / PGK) -->
+                            <div v-if="props.dismantledMaterials && props.dismantledMaterials.length > 0" class="pt-3 border-t border-amber-200/70 space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <p class="text-[11px] font-bold text-rose-950 uppercase tracking-wider flex items-center gap-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-rose-500 inline-block"></span>
+                                        Riwayat Material Bekas / Bongkaran (Diganti di Lapangan):
+                                    </p>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
+                                        {{ props.dismantledMaterials.length }} Item Bekas
+                                    </span>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                    <div v-for="dism in props.dismantledMaterials" :key="dism.id" class="p-3 bg-white rounded-xl border border-rose-200 shadow-2xs space-y-1">
+                                        <div class="flex items-center justify-between text-xs">
+                                            <span class="font-bold text-gray-900">{{ dism.item_name }}</span>
+                                            <span class="font-mono text-rose-700 font-bold">{{ dism.quantity }} {{ dism.unit }}</span>
+                                        </div>
+                                        <div class="flex items-center justify-between text-[11px] text-gray-500">
+                                            <span>Tiket: <strong class="text-gray-700">{{ dism.ticket_number || dism.ticket_type?.toUpperCase() }}</strong></span>
+                                            <span class="px-2 py-0.5 rounded font-bold text-[10px]" :class="dism.handover_status === 'received_warehouse' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-amber-100 text-amber-800 border border-amber-200'">
+                                                {{ dism.handover_status === 'received_warehouse' ? '✓ Diterima Gudang' : '⏳ Pending Serah Terima' }}
+                                            </span>
+                                        </div>
+                                        <p v-if="dism.damage_reason" class="text-[10px] text-rose-600 italic">
+                                            Alasan: {{ dism.damage_reason }} (Kondisi: {{ dism.condition === 'rusak_scrap' ? 'Rusak/Scrap' : (dism.condition === 'normal_reusable' ? 'Layak Pakai' : 'Perlu Cek') }})
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -3339,7 +3407,50 @@ const props = defineProps({
     packages: Array,
     areas: Array,
     salesUsers: Array,
+    installedMaterials: {
+        type: Array,
+        default: () => [],
+    },
+    dismantledMaterials: {
+        type: Array,
+        default: () => [],
+    },
 });
+
+const hasDbInstalledMaterials = computed(() => {
+    return Array.isArray(props.installedMaterials) && props.installedMaterials.length > 0;
+});
+
+const displayInstalledMaterials = computed(() => {
+    if (hasDbInstalledMaterials.value) {
+        return props.installedMaterials.filter(m => m.status === 'installed' || m.status === 'partially_replaced');
+    }
+    return hardwareItems.value;
+});
+
+const formatInstallationSource = (src) => {
+    switch (src) {
+        case 'psb_installation': return 'Instalasi PSB';
+        case 'pgs_replacement': return 'Pergantian PGS';
+        case 'pgs_additional': return 'Tambahan Lapangan (PGS)';
+        case 'pgs_overage': return 'Kelebihan Pemakaian (PGS)';
+        case 'pgk_replacement': return 'Pergantian PGK';
+        case 'pgk_additional': return 'Tambahan Lapangan (PGK)';
+        case 'pgk_overage': return 'Kelebihan Pemakaian (PGK)';
+        case 'manual_initial': return 'Pemasangan Awal';
+        case 'migration': return 'Data Migrasi';
+        default: return src || 'Terpasang';
+    }
+};
+
+const getSourceBadgeClass = (src) => {
+    if (!src) return 'bg-gray-100 text-gray-700 border-gray-200';
+    if (src.includes('replacement')) return 'bg-purple-100 text-purple-700 border-purple-200';
+    if (src.includes('additional')) return 'bg-blue-100 text-blue-700 border-blue-200';
+    if (src.includes('overage')) return 'bg-amber-100 text-amber-800 border-amber-200';
+    if (src.includes('psb')) return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+    return 'bg-gray-100 text-gray-700 border-gray-200';
+};
 
 const canEditProfile = computed(() => {
     if (hasPermission('customers_all_edit')) return true;

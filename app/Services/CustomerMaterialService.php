@@ -114,7 +114,53 @@ class CustomerMaterialService
                 $created->push($ontRecord);
             }
 
-            // 2. Standard FTTH accessories
+            // 2. Cek apakah ada riwayat pemakaian material aktual dari MaterialTransaction (OUT-INSTALASI, OUT-PGS, OUT-PGK)
+            $outInstalasi = MaterialTransaction::with('items.material')
+                ->where(function ($q) use ($customer) {
+                    $q->where('customer_id', $customer->id)
+                      ->orWhere(function ($sub) use ($customer) {
+                          $sub->where('source_type', 'instalasi')->where('source_id', $customer->id);
+                      });
+                })
+                ->where('transaction_number', 'like', 'OUT-INSTALASI-%')
+                ->latest()
+                ->first();
+
+            if ($outInstalasi && $outInstalasi->items->isNotEmpty()) {
+                foreach ($outInstalasi->items as $trxItem) {
+                    $mat = $trxItem->material;
+                    $isOnt = $mat && (
+                        str_contains(strtolower($mat->category ?? ''), 'ont') ||
+                        str_contains(strtolower($mat->category ?? ''), 'modem') ||
+                        str_contains(strtolower($mat->name ?? ''), 'ont') ||
+                        str_contains(strtolower($mat->name ?? ''), 'modem')
+                    );
+
+                    // Lewati ONT jika sudah dicatat di atas
+                    if ($isOnt && $created->contains(fn($c) => str_contains(strtolower($c->item_name), 'ont') || str_contains(strtolower($c->item_name), 'modem'))) {
+                        continue;
+                    }
+
+                    $item = CustomerInstalledMaterial::create([
+                        'customer_id' => $customer->id,
+                        'material_id' => $mat?->id,
+                        'item_name' => $mat?->name ?: ($trxItem->notes ?: 'Material Terpasang'),
+                        'quantity' => (float) $trxItem->quantity,
+                        'unit' => $trxItem->unit ?: ($mat?->unit ?? 'pcs'),
+                        'installed_at' => $outInstalasi->date ?: ($customer->activation_date ?: now()),
+                        'installation_source' => 'psb_installation',
+                        'status' => 'installed',
+                        'notes' => 'Material aktual dari transaksi instalasi ' . $outInstalasi->transaction_number,
+                    ]);
+                    $created->push($item);
+                }
+
+                if ($created->isNotEmpty()) {
+                    return $created;
+                }
+            }
+
+            // 3. Fallback: Standard FTTH accessories jika tidak ada riwayat transaksi instalasi sama sekali
             $standardAccessories = [
                 ['name' => 'Kabel Dropcore 1 Core', 'qty' => 150, 'unit' => 'meter', 'category' => 'Kabel'],
                 ['name' => 'Fast Connector SC/UPC', 'qty' => 2, 'unit' => 'pcs', 'category' => 'Aksesoris'],

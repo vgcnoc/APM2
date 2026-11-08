@@ -504,6 +504,7 @@ class PgjController extends Controller
             'tickets' => $tickets,
             'areas' => $areas,
             'counts' => $counts,
+            'materials' => \App\Models\Material::where('is_active', true)->orWhereNull('is_active')->orderBy('name')->get(['id', 'name', 'unit', 'category']),
             'filters' => array_merge(
                 $request->only(['search', 'priority', 'segment_type', 'area_id', 'period', 'start_date', 'end_date']),
                 ['status' => $status]
@@ -1003,6 +1004,11 @@ class PgjController extends Controller
             'materials' => 'nullable|array',
             'materials.*.pgj_material_id' => 'required|exists:pgj_materials,id',
             'materials.*.quantity_used' => 'required|numeric|min:0',
+            'additional_materials' => 'nullable|array',
+            'additional_materials.*.material_id' => 'nullable|exists:materials,id',
+            'additional_materials.*.quantity' => 'nullable|numeric|min:0',
+            'additional_materials.*.unit' => 'nullable|string',
+            'additional_materials.*.notes' => 'nullable|string',
         ]);
 
         // 1. Tangani incident_coordinates (bisa lebih dari 1)
@@ -1203,6 +1209,71 @@ class PgjController extends Controller
                     areaId: $pgj->area_id,
                     notes: "Pengembalian Sisa Material Jalur PGJ #{$pgj->ticket_number}"
                 );
+            }
+        }
+
+        // Handle Permintaan / Material Tambahan di Lapangan untuk Penanganan Jalur PGJ (Extra Materials)
+        if (!empty($request->additional_materials) && is_array($request->additional_materials)) {
+            $extraItems = array_filter($request->additional_materials, function ($item) {
+                return !empty($item['material_id']) && (float) ($item['quantity'] ?? 0) > 0;
+            });
+
+            if (!empty($extraItems)) {
+                $extraTrxNum = \App\Services\MaterialService::generateTransactionNumber('OUT-PGJ-EXTRA');
+                $outTrans = MaterialTransaction::create([
+                    'transaction_number' => $extraTrxNum,
+                    'type' => 'out',
+                    'status' => 'approved',
+                    'date' => now(),
+                    'technician_name' => auth()->user()->name,
+                    'purpose' => 'Material Tambahan Lapangan Jalur PGJ #' . $pgj->ticket_number,
+                    'source_type' => 'pgj',
+                    'source_id' => $pgj->id,
+                    'source_reference' => $pgj->ticket_number,
+                    'request_type' => 'additional_material',
+                    'user_id' => auth()->id(),
+                    'area_id' => $pgj->area_id,
+                ]);
+
+                $extraTotalCost = 0;
+                foreach ($extraItems as $extra) {
+                    $matId = $extra['material_id'];
+                    $extraQty = (float) $extra['quantity'];
+                    $material = Material::find($matId);
+                    if (!$material) continue;
+
+                    $unit = $extra['unit'] ?? $material->unit;
+                    $notes = !empty($extra['notes']) ? 'Tambahan: ' . $extra['notes'] : 'Material Tambahan di Lapangan';
+
+                    $stockRes = \App\Services\MaterialService::deductOperationalStock($material, $extraQty, $pgj->area_id, $unit);
+
+                    // Catat ke PgjMaterial agar tercatat di riwayat penggunaan jalur
+                    \App\Models\PgjMaterial::create([
+                        'pgj_ticket_id' => $pgj->id,
+                        'material_id' => $material->id,
+                        'quantity_prepared' => $extraQty,
+                        'quantity_used' => $extraQty,
+                        'quantity_returned' => 0,
+                        'unit' => $unit,
+                        'notes' => $notes,
+                    ]);
+
+                    $ppu = \App\Services\MaterialService::calculateUnitPrice($material, $unit);
+                    $itemTotal = $ppu * $extraQty;
+                    $extraTotalCost += $itemTotal;
+
+                    MaterialTransactionItem::create([
+                        'material_transaction_id' => $outTrans->id,
+                        'material_id' => $material->id,
+                        'quantity' => $extraQty,
+                        'unit' => $unit,
+                        'price_per_unit' => $ppu,
+                        'total_price' => $itemTotal,
+                        'stock_before' => $stockRes['stock_before'],
+                        'stock_after' => $stockRes['stock_after'],
+                    ]);
+                }
+                $outTrans->update(['total_cost' => $extraTotalCost]);
             }
         }
 

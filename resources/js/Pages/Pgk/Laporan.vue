@@ -1087,6 +1087,66 @@
                                     <button type="button" @click="sendOntRequest" :disabled="ontRequestForm.processing || !ontRequestForm.requested_ont_notes" class="px-3 py-1 bg-indigo-600 text-white rounded-lg font-bold text-xs cursor-pointer disabled:opacity-50">Kirim</button>
                                 </div>
                             </div>
+
+                            <!-- 2D. Material Tambahan di Lapangan (Extra Materials Lapangan) -->
+                            <div class="p-4 rounded-2xl bg-blue-50/60 border border-blue-200/80 space-y-3 shadow-2xs">
+                                <div class="flex items-center justify-between flex-wrap gap-2">
+                                    <div>
+                                        <div class="text-xs font-black text-blue-950 uppercase tracking-wider flex items-center gap-1.5">
+                                            <span>➕</span> D. Tambah Material Lapangan ({{ additionalMaterials.length }} Item)
+                                        </div>
+                                        <p class="text-[11px] text-blue-800">
+                                            Gunakan ini jika di lapangan ada penambahan material baru untuk kabel/pelanggan (kabel ekstra, fast connector, roset, dll.) di luar bekal awal.
+                                        </p>
+                                    </div>
+                                    <button 
+                                        type="button" 
+                                        @click="addAdditionalMaterial" 
+                                        class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-sm transition-all flex items-center gap-1 shrink-0 cursor-pointer"
+                                    >
+                                        <span>+ Tambah Material Lapangan</span>
+                                    </button>
+                                </div>
+
+                                <div v-if="additionalMaterials.length === 0" class="p-3 rounded-xl bg-white border border-dashed border-blue-200 text-xs text-gray-400 italic text-center">
+                                    Tidak ada material tambahan di lapangan. Klik tombol di atas jika ada material ekstra yang dipasang.
+                                </div>
+
+                                <div v-else class="space-y-2">
+                                    <div 
+                                        v-for="(am, aIdx) in additionalMaterials" 
+                                        :key="'am-' + aIdx" 
+                                        class="p-3 bg-white rounded-xl border border-blue-200 shadow-2xs space-y-2"
+                                    >
+                                        <div class="flex items-center justify-between gap-2">
+                                            <span class="text-xs font-bold text-blue-950">Item Tambahan #{{ aIdx + 1 }}</span>
+                                            <button type="button" @click="removeAdditionalMaterial(aIdx)" class="text-rose-500 hover:text-rose-700 text-xs font-bold cursor-pointer">✕ Hapus</button>
+                                        </div>
+                                        <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 text-xs">
+                                            <div class="sm:col-span-6">
+                                                <label class="block text-[10px] font-bold text-gray-600 uppercase mb-0.5">Pilih Material *</label>
+                                                <select v-model="am.material_id" @change="onAdditionalMaterialSelected(am)" class="w-full text-xs rounded-lg border-gray-300 py-1.5 px-2" required>
+                                                    <option value="">-- Pilih Material dari Master --</option>
+                                                    <option v-for="mat in props.materials" :key="'mat-' + mat.id" :value="mat.id">
+                                                        {{ mat.name }} ({{ mat.unit }})
+                                                    </option>
+                                                </select>
+                                            </div>
+                                            <div class="sm:col-span-3">
+                                                <label class="block text-[10px] font-bold text-gray-600 uppercase mb-0.5">Jumlah *</label>
+                                                <div class="flex items-center gap-1">
+                                                    <input type="number" step="0.01" min="0.01" v-model="am.quantity" class="w-full text-xs rounded-lg border-gray-300 font-bold text-center py-1.5" required />
+                                                    <span class="text-gray-500 font-bold text-xs">{{ am.unit || 'pcs' }}</span>
+                                                </div>
+                                            </div>
+                                            <div class="sm:col-span-3">
+                                                <label class="block text-[10px] font-bold text-gray-600 uppercase mb-0.5">Catatan</label>
+                                                <input type="text" v-model="am.notes" placeholder="Alasan penambahan..." class="w-full text-xs rounded-lg border-gray-300 py-1.5 px-2" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- ═════════════════════════════════════════════════════ -->

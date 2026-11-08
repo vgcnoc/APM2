@@ -2885,6 +2885,11 @@ class CustomerController extends Controller
             ->limit(100)
             ->get();
 
+        $installedMaterials = \App\Services\CustomerMaterialService::getOrSeedInstalledMaterials($customer);
+        $dismantledMaterials = \App\Models\CustomerMaterialDismantle::where('customer_id', $customer->id)
+            ->latest()
+            ->get();
+
         return Inertia::render('Customers/Show', [
             'customer' => $customer,
             'source' => request()->query('source'),
@@ -2904,6 +2909,8 @@ class CustomerController extends Controller
             'installationReturns' => $installationReturns,
             'installationUsages' => $installationUsages,
             'materialTransactions' => $materialTransactions,
+            'installedMaterials' => $installedMaterials,
+            'dismantledMaterials' => $dismantledMaterials,
         ]);
     }
 
@@ -3822,6 +3829,71 @@ class CustomerController extends Controller
                         ]);
                     }
                     $transactionOut->update(['total_cost' => $totalCostOut]);
+
+                    // Sinkronisasi otomatis ke CustomerInstalledMaterial (Perangkat & Material Terpasang di Rumah Pelanggan)
+                    foreach ($usedItems as $ui) {
+                        $mat = $ui['material'];
+                        $actualQty = (float) ($ui['actual_used'] ?? $ui['qty']);
+                        if ($actualQty <= 0) continue;
+
+                        $isOnt = str_contains(strtolower($mat->category ?? ''), 'ont') 
+                            || str_contains(strtolower($mat->category ?? ''), 'modem')
+                            || str_contains(strtolower($mat->name ?? ''), 'ont')
+                            || str_contains(strtolower($mat->name ?? ''), 'modem');
+
+                        $sn = null;
+                        if ($isOnt) {
+                            $activeOnt = $customer->ont ?: $customer->onts()->where('status', 'active')->first();
+                            $sn = $activeOnt?->serial_number;
+                        }
+
+                        \App\Models\CustomerInstalledMaterial::updateOrCreate(
+                            [
+                                'customer_id' => $customer->id,
+                                'material_id' => $mat->id,
+                                'installation_source' => 'psb_installation',
+                            ],
+                            [
+                                'item_name' => $mat->name,
+                                'quantity' => $actualQty,
+                                'unit' => $ui['unit'],
+                                'serial_number' => $sn,
+                                'installed_at' => $customer->activation_date ?: now(),
+                                'status' => 'installed',
+                                'notes' => 'Material terpasang aktual saat instalasi PSB pelanggan.',
+                            ]
+                        );
+                    }
+
+                    // Pastikan perangkat ONT aktif pelanggan selalu tercatat di CustomerInstalledMaterial
+                    $customer->loadMissing('ont');
+                    $activeOnt = $customer->ont ?: $customer->onts()->where('status', 'active')->first();
+                    if ($activeOnt && $activeOnt->serial_number) {
+                        $hasOntRecord = \App\Models\CustomerInstalledMaterial::where('customer_id', $customer->id)
+                            ->where('status', 'installed')
+                            ->where(function ($q) use ($activeOnt) {
+                                $q->where('serial_number', $activeOnt->serial_number)
+                                  ->orWhere('item_name', 'like', '%ont%')
+                                  ->orWhere('item_name', 'like', '%modem%');
+                            })
+                            ->exists();
+
+                        if (!$hasOntRecord) {
+                            $ontMat = \App\Services\MaterialService::resolveOntMaterial($activeOnt);
+                            \App\Models\CustomerInstalledMaterial::create([
+                                'customer_id' => $customer->id,
+                                'material_id' => $ontMat?->id,
+                                'item_name' => $activeOnt->brand ? "ONT {$activeOnt->brand} {$activeOnt->model}" : ($ontMat?->name ?? 'Unit ONT Modem FTTH'),
+                                'quantity' => 1,
+                                'unit' => 'unit',
+                                'serial_number' => $activeOnt->serial_number,
+                                'installed_at' => $customer->activation_date ?: now(),
+                                'installation_source' => 'psb_installation',
+                                'status' => 'installed',
+                                'notes' => 'Unit ONT aktif pelanggan (SN: ' . $activeOnt->serial_number . ') terpasang saat PSB.',
+                            ]);
+                        }
+                    }
                 }
 
                 // Proses Serah Terima Pengembalian Sisa ke Gudang (Verifikasi Fisik oleh Petugas Gudang / Ka. Teknisi)

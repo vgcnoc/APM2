@@ -1169,6 +1169,21 @@ class PgkController extends Controller
                         'stock_before' => $ovStock['stock_before'],
                         'stock_after' => $ovStock['stock_after'],
                     ]);
+
+                    // Sinkronisasi otomatis ke CustomerInstalledMaterial
+                    if ($pgk->customer_id) {
+                        \App\Models\CustomerInstalledMaterial::create([
+                            'customer_id' => $pgk->customer_id,
+                            'material_id' => $ovMat->id,
+                            'item_name' => $ovMat->name,
+                            'quantity' => (float) $ov['quantity'],
+                            'unit' => $ov['unit'],
+                            'installed_at' => now(),
+                            'installation_source' => 'pgk_overage',
+                            'status' => 'installed',
+                            'notes' => "Kelebihan pemakaian material lapangan pada tiket PGK #{$pgk->ticket_number}",
+                        ]);
+                    }
                 }
                 $ovTrans->update(['total_cost' => $ovCost]);
             }
@@ -1247,6 +1262,21 @@ class PgkController extends Controller
                         'stock_before' => $stockRes['stock_before'],
                         'stock_after' => $stockRes['stock_after'],
                     ]);
+
+                    // Sinkronisasi otomatis ke CustomerInstalledMaterial
+                    if ($pgk->customer_id) {
+                        \App\Models\CustomerInstalledMaterial::create([
+                            'customer_id' => $pgk->customer_id,
+                            'material_id' => $material->id,
+                            'item_name' => $material->name,
+                            'quantity' => $extraQty,
+                            'unit' => $unit,
+                            'installed_at' => now(),
+                            'installation_source' => 'pgk_additional',
+                            'status' => 'installed',
+                            'notes' => "Material tambahan lapangan pada tiket PGK #{$pgk->ticket_number}" . (!empty($extra['notes']) ? ": {$extra['notes']}" : ''),
+                        ]);
+                    }
                 }
                 $outTrans->update(['total_cost' => $extraTotalCost]);
             }
