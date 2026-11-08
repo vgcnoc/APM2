@@ -130,8 +130,11 @@
 
                                 <!-- 2. Data Pelanggan & Pelapor -->
                                 <td class="p-4">
-                                    <div class="font-bold text-gray-900">
-                                        {{ ticket.customer?.name || '-' }}
+                                    <div class="font-bold text-gray-900 flex items-center gap-1.5 flex-wrap">
+                                        <span>{{ ticket.customer?.name || '-' }}</span>
+                                        <span v-if="ticket.customer?.is_reseller && !ticket.customer?.package_id" class="inline-flex items-center gap-0.5 px-1.5 py-0.2 bg-amber-50 text-amber-800 border border-amber-200 rounded text-[10px] font-bold">
+                                            <span>🎟️</span> Reseller Voucher
+                                        </span>
                                     </div>
                                     <div class="text-[11px] text-gray-500 flex flex-wrap items-center gap-1.5 mt-0.5">
                                         <span class="px-1.5 py-0.2 rounded bg-gray-100 border text-gray-700 font-mono text-[10px]">{{ ticket.customer?.customer_code }}</span>
@@ -147,7 +150,7 @@
                                         📍 {{ ticket.customer?.address || 'Alamat tidak ada' }}
                                     </div>
                                     <div class="text-[10px] text-sky-700 font-semibold mt-0.5">
-                                        ODP: {{ ticket.customer?.ont?.odp?.name || '-' }} · Paket: {{ ticket.customer?.package?.name || '-' }}
+                                        ODP: {{ ticket.customer?.ont?.odp?.name || '-' }} · Paket: {{ (ticket.customer?.is_reseller && !ticket.customer?.package_id) ? '🎟️ Reseller Voucher' : (ticket.customer?.package?.name || '-') }}
                                     </div>
                                 </td>
 
@@ -321,14 +324,14 @@
                         >
                             <option value="">-- Pilih Pelanggan ({{ filteredCustomers.length }} Pelanggan) --</option>
                             <option v-for="c in filteredCustomers" :key="c.id" :value="c.id">
-                                {{ c.name }} ({{ c.customer_code }}) - {{ c.address || 'Alamat tidak ada' }}
+                                {{ c.name }} ({{ c.customer_code }})<template v-if="c.is_reseller"> [🎟️ Reseller Voucher]</template> - {{ c.address || 'Alamat tidak ada' }}
                             </option>
                         </select>
 
                         <!-- Info Ringkas Pelanggan Terpilih -->
                         <div v-if="selectedCustomerInfo" class="mt-2 p-3 rounded-xl bg-sky-50/70 border border-sky-100 text-xs text-sky-900 space-y-1">
                             <div class="font-bold flex justify-between">
-                                <span>Paket: {{ selectedCustomerInfo.package?.name || '-' }}</span>
+                                <span>Paket: {{ (selectedCustomerInfo.is_reseller && !selectedCustomerInfo.package) ? '🎟️ Reseller Voucher (Hotspot)' : (selectedCustomerInfo.package?.name || '-') }}</span>
                                 <span>Status ONT: {{ selectedCustomerInfo.ont?.status || 'N/A' }}</span>
                             </div>
                             <div class="flex flex-wrap items-center justify-between gap-1">
@@ -386,6 +389,7 @@
                                 <option value="Internet Lambat / Lemot">Internet Lambat / Sering RTO</option>
                                 <option value="Tidak Bisa Akses / Isolir">Tidak Bisa Browsing / Pembayaran / Isolir</option>
                                 <option value="Konfigurasi / WiFi / Password">Lupa Sandi / Ganti Nama WiFi</option>
+                                <option value="Kendala Reseller / Voucher Hotspot">Kendala Reseller / Voucher Hotspot</option>
                                 <option value="Lainnya">Lainnya</option>
                             </select>
                         </div>
@@ -695,7 +699,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { Link, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { usePermission } from '@/Composables/usePermission';
@@ -773,6 +777,7 @@ const filteredCustomers = computed(() => {
         c.address,
         c.area,
         c.area_model?.name,
+        c.is_reseller ? 'reseller voucher hotspot' : '',
     ].some(value => String(value || '').toLowerCase().includes(keyword)));
 });
 
@@ -845,6 +850,21 @@ const openCreateModal = () => {
     }
     showCreateModal.value = true;
 };
+
+onMounted(() => {
+    if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const custId = urlParams.get('customer_id');
+        const shouldCreate = urlParams.get('create');
+        if (custId || shouldCreate) {
+            openCreateModal();
+            if (custId) {
+                createForm.customer_id = isNaN(Number(custId)) ? custId : Number(custId);
+                onCustomerChange();
+            }
+        }
+    }
+});
 
 const submitCreate = () => {
     createForm.post('/pgk', {

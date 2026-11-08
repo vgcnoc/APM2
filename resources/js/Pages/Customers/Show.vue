@@ -56,6 +56,17 @@
                             <Link :href="`/customers/${customer.id}/edit`" class="btn-primary w-full justify-center py-2.5 text-sm shadow-md hover:shadow-lg transition-all">
                                 Edit Profil
                             </Link>
+
+                            <!-- Quick Action: Lapor Gangguan PGS & PGK -->
+                            <div class="grid grid-cols-2 gap-2">
+                                <Link :href="`/pgs?create=1&customer_id=${customer.id}`" class="py-2 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs">
+                                    <span>🛠️</span> Lapor PGS
+                                </Link>
+                                <Link :href="`/pgk?create=1&customer_id=${customer.id}`" class="py-2 px-3 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs">
+                                    <span>⚡</span> Tiket PGK
+                                </Link>
+                            </div>
+
                             <button v-if="!customer.user_id" @click="openAccountModal" class="btn-primary w-full justify-center py-2.5 text-sm shadow-md hover:shadow-lg transition-all bg-indigo-600 hover:bg-indigo-700 text-white">
                                 + Buat Akun Client Area
                             </button>

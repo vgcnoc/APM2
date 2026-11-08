@@ -136,10 +136,10 @@ class PgsController extends Controller
         ];
 
         $customerQuery = Customer::whereIn('status', ['active', 'suspended', 'isolir', 'installing'])
-            ->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'area', 'package_id')
+            ->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'area', 'package_id', 'is_reseller')
             ->with(['package:id,name', 'areaModel:id,name', 'ont:id,customer_id,serial_number,status,rx_power,odp_id', 'ont.odp:id,name']);
         DataScopeService::applyCustomerScope($customerQuery, $user);
-        $customers = function () use ($user) { $q = Customer::whereIn('status', ['active', 'suspended', 'isolir', 'installing'])->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'area', 'package_id')->with(['package:id,name', 'areaModel:id,name', 'ont:id,customer_id,serial_number,status,rx_power,odp_id', 'ont.odp:id,name']); DataScopeService::applyCustomerScope($q, $user); return $q->get(); };
+        $customers = function () use ($user) { $q = Customer::whereIn('status', ['active', 'suspended', 'isolir', 'installing'])->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'area', 'package_id', 'is_reseller')->with(['package:id,name', 'areaModel:id,name', 'ont:id,customer_id,serial_number,status,rx_power,odp_id', 'ont.odp:id,name']); DataScopeService::applyCustomerScope($q, $user); return $q->get(); };
 
         $technicians = User::where(function ($query) {
             $query->whereHas('roles', function ($q) {

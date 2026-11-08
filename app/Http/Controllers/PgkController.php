@@ -147,7 +147,7 @@ class PgkController extends Controller
             'counts' => $counts,
             'customers' => function () use ($user) {
                 $customerQuery = Customer::whereIn('status', ['active', 'suspended', 'isolir', 'installing'])
-                    ->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'area', 'package_id')
+                    ->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'area', 'package_id', 'is_reseller')
                     ->with(['package:id,name', 'areaModel:id,name', 'ont:id,customer_id,serial_number,status,rx_power,odp_id', 'ont.odp:id,name']);
                 DataScopeService::applyCustomerScope($customerQuery, $user);
                 return $customerQuery->get();

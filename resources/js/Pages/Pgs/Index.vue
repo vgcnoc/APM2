@@ -110,8 +110,11 @@
                                         <span class="font-mono font-bold text-blue-600 text-xs">{{ ticket.ticket_number }}</span>
                                         <span class="text-[10px] text-gray-400">· {{ formatDate(ticket.created_at) }}</span>
                                     </div>
-                                    <div class="font-bold text-gray-900 mt-1 group-hover:text-blue-600 transition-colors">
-                                        {{ ticket.customer?.name || '-' }}
+                                    <div class="font-bold text-gray-900 mt-1 group-hover:text-blue-600 transition-colors flex items-center gap-1.5 flex-wrap">
+                                        <span>{{ ticket.customer?.name || '-' }}</span>
+                                        <span v-if="ticket.customer?.is_reseller && !ticket.customer?.package_id" class="inline-flex items-center gap-0.5 px-1.5 py-0.2 bg-amber-50 text-amber-800 border border-amber-200 rounded text-[10px] font-bold">
+                                            <span>🎟️</span> Reseller Voucher
+                                        </span>
                                     </div>
                                     <div class="text-[11px] text-gray-500 flex flex-wrap items-center gap-1.5 mt-0.5">
                                         <span class="px-1.5 py-0.2 rounded bg-gray-100 border text-gray-700 font-mono text-[10px]">{{ ticket.customer?.customer_code }}</span>
@@ -336,13 +339,13 @@
                         >
                             <option value="">-- Pilih Pelanggan ({{ filteredCustomers.length }} Pelanggan) --</option>
                             <option v-for="c in filteredCustomers" :key="c.id" :value="c.id">
-                                {{ c.name }} ({{ c.customer_code }}) - {{ c.address || 'Alamat tidak ada' }}
+                                {{ c.name }} ({{ c.customer_code }})<template v-if="c.is_reseller"> [🎟️ Reseller Voucher]</template> - {{ c.address || 'Alamat tidak ada' }}
                             </option>
                         </select>
                         <!-- Info Ringkas Pelanggan Terpilih -->
                         <div v-if="selectedCustomerInfo" class="mt-2 p-3 rounded-xl bg-blue-50/70 border border-blue-100 text-xs text-blue-900 space-y-1">
                             <div class="font-bold flex justify-between">
-                                <span>Paket: {{ selectedCustomerInfo.package?.name || '-' }}</span>
+                                <span>Paket: {{ (selectedCustomerInfo.is_reseller && !selectedCustomerInfo.package) ? '🎟️ Reseller Voucher (Hotspot)' : (selectedCustomerInfo.package?.name || '-') }}</span>
                                 <span>Status ONT: {{ selectedCustomerInfo.ont?.status || 'N/A' }}</span>
                             </div>
                             <div class="flex flex-wrap items-center justify-between gap-1">
@@ -363,6 +366,7 @@
                                 <option value="ONT / Modem Mati">ONT / Modem Mati / Rusak</option>
                                 <option value="Internet Lambat / Lemot">Internet Lambat / Sinyal Drop</option>
                                 <option value="Konfigurasi / PPPoE / VLAN">Konfigurasi / PPPoE / VLAN</option>
+                                <option value="Kendala Reseller / Voucher Hotspot">Kendala Reseller / Voucher Hotspot</option>
                                 <option value="Lainnya">Lainnya</option>
                             </select>
                         </div>
@@ -705,7 +709,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { usePermission } from '@/Composables/usePermission';
@@ -779,6 +783,7 @@ const filteredCustomers = computed(() => {
         c.address,
         c.area,
         c.area_model?.name,
+        c.is_reseller ? 'reseller voucher hotspot' : '',
     ].some(value => String(value || '').toLowerCase().includes(keyword)));
 });
 
@@ -840,6 +845,21 @@ function openCreateModal() {
     }
     showCreateModal.value = true;
 }
+
+onMounted(() => {
+    if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const custId = urlParams.get('customer_id');
+        const shouldCreate = urlParams.get('create');
+        if (custId || shouldCreate) {
+            openCreateModal();
+            if (custId) {
+                createForm.customer_id = isNaN(Number(custId)) ? custId : Number(custId);
+                onCustomerChange();
+            }
+        }
+    }
+});
 
 function submitCreate() {
     createForm.post('/pgs', {

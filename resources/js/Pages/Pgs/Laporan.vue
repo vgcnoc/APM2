@@ -252,8 +252,11 @@
                                             {{ ticket.priority }}
                                         </span>
                                     </div>
-                                    <div class="font-bold text-gray-900 mt-1">
-                                        {{ ticket.customer?.name || '-' }}
+                                    <div class="font-bold text-gray-900 mt-1 flex items-center gap-1.5 flex-wrap">
+                                        <span>{{ ticket.customer?.name || '-' }}</span>
+                                        <span v-if="ticket.customer?.is_reseller && !ticket.customer?.package_id" class="inline-flex items-center gap-0.5 px-1.5 py-0.2 bg-amber-50 text-amber-800 border border-amber-200 rounded text-[10px] font-bold">
+                                            <span>🎟️</span> Reseller Voucher
+                                        </span>
                                     </div>
                                     <div class="text-[11px] text-gray-500 flex flex-wrap items-center gap-1.5 mt-0.5">
                                         <span class="px-1.5 py-0.2 rounded bg-gray-100 border text-gray-700 font-mono text-[10px]">{{ ticket.customer?.customer_code }}</span>
@@ -500,6 +503,7 @@
                         <div class="flex items-center gap-2 truncate">
                             <span class="font-black text-gray-900 text-sm truncate">{{ selectedTicket?.customer?.name }}</span>
                             <span class="px-1.5 py-0.5 rounded bg-white text-gray-700 border text-[10px] font-mono shrink-0">{{ selectedTicket?.customer?.customer_code }}</span>
+                            <span v-if="selectedTicket?.customer?.is_reseller && !selectedTicket?.customer?.package_id" class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold shrink-0">🎟️ Reseller Voucher</span>
                             <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold shrink-0">Area: {{ selectedTicket?.area?.name || selectedTicket?.customer?.area_model?.name || '-' }}</span>
                         </div>
                         <button type="button" @click="showCustomerDetail = !showCustomerDetail" class="text-[11px] text-emerald-700 hover:text-emerald-900 font-bold flex items-center gap-0.5 shrink-0 cursor-pointer">
