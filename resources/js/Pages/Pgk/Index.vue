@@ -468,6 +468,53 @@
                         ></textarea>
                     </div>
 
+                    <!-- Bagian Ganti User & Password Login Internet Pelanggan (PPPoE) -->
+                    <div v-if="!selectedTicket?.customer?.is_reseller" class="p-3.5 bg-blue-50/70 border border-blue-200 rounded-2xl space-y-2.5">
+                        <div class="flex items-center justify-between gap-2">
+                            <label class="flex items-center gap-2 cursor-pointer select-none">
+                                <input type="checkbox" v-model="resolveForm.update_pppoe" class="rounded border-blue-300 text-blue-600 focus:ring-blue-500 w-4 h-4" />
+                                <span class="text-xs font-bold text-blue-950">🔄 Ganti User & Password Login Internet (PPPoE)</span>
+                            </label>
+                            <span v-if="selectedTicket?.category === 'Konfigurasi / PPPoE / VLAN'" class="px-1.5 py-0.5 bg-blue-200 text-blue-800 rounded text-[10px] font-bold">Direkomendasikan</span>
+                        </div>
+
+                        <!-- Info Akun Saat Ini -->
+                        <div class="text-[11px] text-blue-700 bg-white/90 p-2 rounded-xl border border-blue-100 flex flex-wrap items-center justify-between gap-1.5 font-mono">
+                            <div>User Login: <strong>{{ selectedTicket?.customer?.ont?.pppoe_user || selectedTicket?.customer?.pppoe_username || '-' }}</strong></div>
+                            <div>Password: <strong>{{ selectedTicket?.customer?.ont?.pppoe_password || selectedTicket?.customer?.pppoe_password || '-' }}</strong></div>
+                        </div>
+
+                        <!-- Form Input Akun Baru -->
+                        <div v-if="resolveForm.update_pppoe" class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-blue-200/60 animate-fade-in">
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-700 uppercase mb-0.5">Username Login Internet Baru <span class="text-red-500">*</span></label>
+                                <input 
+                                    type="text" 
+                                    v-model="resolveForm.new_pppoe_user" 
+                                    placeholder="Username baru..." 
+                                    class="w-full rounded-xl border-gray-300 py-1.5 px-2.5 text-xs font-mono font-bold text-gray-800 bg-white focus:border-blue-500" 
+                                    :required="resolveForm.update_pppoe"
+                                />
+                            </div>
+                            <div>
+                                <div class="flex items-center justify-between mb-0.5">
+                                    <label class="block text-[11px] font-bold text-gray-700 uppercase">Password Baru <span class="text-red-500">*</span></label>
+                                    <button type="button" @click="generateRandomPppoePassword(resolveForm)" class="text-[10px] text-blue-600 hover:text-blue-800 font-bold cursor-pointer">🎲 Acak</button>
+                                </div>
+                                <input 
+                                    type="text" 
+                                    v-model="resolveForm.new_pppoe_password" 
+                                    placeholder="Password baru..." 
+                                    class="w-full rounded-xl border-gray-300 py-1.5 px-2.5 text-xs font-mono font-bold text-gray-800 bg-white focus:border-blue-500" 
+                                    :required="resolveForm.update_pppoe"
+                                />
+                            </div>
+                            <p class="col-span-full text-[10px] text-blue-600">
+                                💡 Akun login internet baru otomatis disimpan ke data ONT pelanggan & disinkronkan ke RADIUS/MikroTik.
+                            </p>
+                        </div>
+                    </div>
+
                     <div class="pt-3 border-t flex justify-end gap-2">
                         <button type="button" @click="showResolveAdminModal = false" class="px-4 py-2 border rounded-xl text-gray-600 text-sm font-semibold hover:bg-gray-50">Batal</button>
                         <button type="submit" :disabled="resolveForm.processing" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-md shadow-emerald-500/20 disabled:opacity-50">
@@ -743,6 +790,9 @@ const createForm = useForm({
 
 const resolveForm = useForm({
     admin_notes: '',
+    update_pppoe: false,
+    new_pppoe_user: '',
+    new_pppoe_password: '',
 });
 
 const escalateForm = useForm({
@@ -878,7 +928,17 @@ const submitCreate = () => {
 const openResolveAdminModal = (ticket) => {
     selectedTicket.value = ticket;
     resolveForm.reset();
+    resolveForm.update_pppoe = ticket.category === 'Konfigurasi / PPPoE / VLAN';
+    resolveForm.new_pppoe_user = ticket.customer?.ont?.pppoe_user || ticket.customer?.pppoe_username || '';
+    resolveForm.new_pppoe_password = ticket.customer?.ont?.pppoe_password || ticket.customer?.pppoe_password || '';
     showResolveAdminModal.value = true;
+};
+
+const generateRandomPppoePassword = (form) => {
+    const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+    let pass = '';
+    for (let i = 0; i < 8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    form.new_pppoe_password = pass;
 };
 
 const submitResolveAdmin = () => {

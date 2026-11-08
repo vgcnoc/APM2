@@ -690,14 +690,64 @@ class PgkController extends Controller
 
         $validated = $request->validate([
             'admin_notes' => 'required|string',
+            'update_pppoe' => 'nullable|boolean',
+            'new_pppoe_user' => 'nullable|string|max:100',
+            'new_pppoe_password' => 'nullable|string|max:100',
         ]);
 
         $oldStatus = $pgk->status;
+        $resolutionNotes = 'Diselesaikan langsung oleh Admin di sistem: ' . $validated['admin_notes'];
+
+        // Handle update kredensial login internet pelanggan (PPPoE) jika diisi
+        if ($request->boolean('update_pppoe') || !empty($validated['new_pppoe_user']) || !empty($validated['new_pppoe_password'])) {
+            $customer = $pgk->customer ?? Customer::find($pgk->customer_id);
+            $targetOnt = $customer?->ont ?? Ont::where('customer_id', $pgk->customer_id)->first();
+            $newPppoeUser = trim((string)($validated['new_pppoe_user'] ?? ''));
+            $newPppoePass = (string)($validated['new_pppoe_password'] ?? '');
+
+            if (!empty($newPppoeUser) && $targetOnt) {
+                $dup = \App\Http\Controllers\OntController::findPppoeDuplicate($newPppoeUser, $targetOnt->id);
+                if ($dup) {
+                    $detail = !empty($dup->customer) ? " (digunakan oleh pelanggan: {$dup->customer->name} / {$dup->customer->customer_code})" : " (digunakan oleh ONT SN: {$dup->serial_number})";
+                    return redirect()->back()->withErrors([
+                        'new_pppoe_user' => "Akun login internet / PPPoE '{$newPppoeUser}' sudah digunakan{$detail}. Sistem otomatis menolak duplikasi!"
+                    ])->with('error', "Username PPPoE '{$newPppoeUser}' sudah terdaftar{$detail}.");
+                }
+            }
+
+            $oldPppoeUser = $targetOnt?->pppoe_user ?: $customer?->pppoe_username;
+            $ontUpdates = [];
+            $custUpdates = [];
+            if (!empty($newPppoeUser)) {
+                $ontUpdates['pppoe_user'] = $newPppoeUser;
+                $custUpdates['pppoe_username'] = $newPppoeUser;
+            }
+            if (!empty($newPppoePass)) {
+                $ontUpdates['pppoe_password'] = $newPppoePass;
+                $custUpdates['pppoe_password'] = $newPppoePass;
+            }
+
+            if (!empty($ontUpdates) && $targetOnt) {
+                $targetOnt->update($ontUpdates);
+            }
+            if (!empty($custUpdates) && $customer) {
+                $customer->update($custUpdates);
+            }
+
+            if ($customer && (!empty($newPppoeUser) || !empty($newPppoePass))) {
+                try {
+                    app(\App\Services\RadiusService::class)->syncCustomer($customer, array_filter([$oldPppoeUser]));
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[RADIUS] PGK resolveByAdmin PPPoE sync error: ' . $e->getMessage());
+                }
+                $resolutionNotes .= ' | Login Internet (PPPoE) diperbarui ke: ' . ($newPppoeUser ?: $oldPppoeUser);
+            }
+        }
 
         $pgk->update([
             'status' => 'resolved_by_admin',
             'admin_notes' => $validated['admin_notes'],
-            'resolution_notes' => 'Diselesaikan langsung oleh Admin di sistem: ' . $validated['admin_notes'],
+            'resolution_notes' => $resolutionNotes,
             'resolved_by' => auth()->id(),
             'resolved_at' => now(),
         ]);
@@ -1009,6 +1059,9 @@ class PgkController extends Controller
             'resolution_notes' => 'nullable|string',
             'photo_before' => 'nullable|image|max:10240',
             'photo_after' => 'nullable|image|max:10240',
+            'update_pppoe' => 'nullable|boolean',
+            'new_pppoe_user' => 'nullable|string|max:100',
+            'new_pppoe_password' => 'nullable|string|max:100',
             'ont_replacement_action' => 'nullable|in:installed,cancelled',
             'ont_replacement_notes' => 'nullable|string',
             'materials' => 'nullable|array',
@@ -1498,6 +1551,59 @@ class PgkController extends Controller
                     );
                     $replacementCount++;
                 }
+            }
+        }
+
+        // 5. Handle Update Kredensial Login Internet Pelanggan (PPPoE)
+        if ($request->boolean('update_pppoe') || !empty($request->new_pppoe_user) || !empty($request->new_pppoe_password)) {
+            $customer = $pgk->customer ?? Customer::find($pgk->customer_id);
+            $targetOnt = $ontSwapped ? $preparedOnt : ($customer?->ont ?? Ont::where('customer_id', $pgk->customer_id)->first());
+            $newPppoeUser = trim((string)($request->new_pppoe_user ?? ''));
+            $newPppoePass = (string)($request->new_pppoe_password ?? '');
+
+            if (!empty($newPppoeUser) && $targetOnt) {
+                $dup = \App\Http\Controllers\OntController::findPppoeDuplicate($newPppoeUser, $targetOnt->id);
+                if ($dup) {
+                    $detail = !empty($dup->customer) ? " (digunakan oleh pelanggan: {$dup->customer->name} / {$dup->customer->customer_code})" : " (digunakan oleh ONT SN: {$dup->serial_number})";
+                    return redirect()->back()->withErrors([
+                        'new_pppoe_user' => "Akun login internet / PPPoE '{$newPppoeUser}' sudah digunakan{$detail}. Sistem otomatis menolak duplikasi!"
+                    ])->with('error', "Username PPPoE '{$newPppoeUser}' sudah terdaftar{$detail}.");
+                }
+            }
+
+            $oldPppoeUser = $targetOnt?->pppoe_user ?: $customer?->pppoe_username;
+            $ontUpdates = [];
+            $custUpdates = [];
+            if (!empty($newPppoeUser)) {
+                $ontUpdates['pppoe_user'] = $newPppoeUser;
+                $custUpdates['pppoe_username'] = $newPppoeUser;
+            }
+            if (!empty($newPppoePass)) {
+                $ontUpdates['pppoe_password'] = $newPppoePass;
+                $custUpdates['pppoe_password'] = $newPppoePass;
+            }
+
+            if (!empty($ontUpdates) && $targetOnt) {
+                $targetOnt->update($ontUpdates);
+            }
+            if (!empty($custUpdates) && $customer) {
+                $customer->update($custUpdates);
+            }
+
+            if ($customer && (!empty($newPppoeUser) || !empty($newPppoePass))) {
+                try {
+                    app(\App\Services\RadiusService::class)->syncCustomer($customer, array_filter([$oldPppoeUser]));
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[RADIUS] PGK submitReport PPPoE sync error: ' . $e->getMessage());
+                }
+
+                AuditLog::createLog(
+                    'Update PPPoE Pasca Laporan PGK',
+                    $targetOnt ?? $customer,
+                    $oldPppoeUser,
+                    $newPppoeUser ?: $oldPppoeUser,
+                    'Login internet (PPPoE) diperbarui melalui laporan tiket PGK #' . $pgk->ticket_number . ' oleh ' . (auth()->user()?->name ?? 'Teknisi')
+                );
             }
         }
 
