@@ -30,8 +30,9 @@ class ResellerController extends Controller
         ->withCount('downlines')
         ->where(function($q) {
             $q->whereNull('customer_id')
+              ->orWhere('is_active', true)
               ->orWhereHas('customer', function($cq) {
-                  $cq->where('status', 'active');
+                  $cq->where('status', 'active')->orWhere('is_reseller', true);
               });
         });
 

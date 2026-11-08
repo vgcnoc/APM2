@@ -973,15 +973,19 @@
                             :class="activationForm.enable_tax ? 'border-purple-200 ring-1 ring-purple-100 bg-purple-50/20' : 'border-gray-200 bg-gray-50/50'">
                             
                             <div class="flex items-center justify-between">
-                                <label for="enable_tax" class="flex items-center gap-2.5 cursor-pointer select-none">
+                                <label for="enable_tax" class="flex items-center gap-2.5 select-none" :class="canToggleTax ? 'cursor-pointer' : 'cursor-not-allowed'">
                                     <input 
                                         type="checkbox" 
                                         id="enable_tax" 
                                         v-model="activationForm.enable_tax" 
-                                        class="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer transition-colors"
+                                        :disabled="!canToggleTax"
+                                        class="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 transition-colors disabled:opacity-75 disabled:cursor-not-allowed"
                                     />
-                                    <span class="text-xs font-bold text-gray-700 uppercase tracking-wider">
-                                        Pengaturan Pajak Pelanggan
+                                    <span class="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                                        Pengaturan Pajak Pelanggan (PPN)
+                                        <span v-if="!canToggleTax" class="text-[10px] text-amber-600 font-semibold flex items-center gap-0.5">
+                                            🔒 Terkunci
+                                        </span>
                                     </span>
                                 </label>
                                 
@@ -995,13 +999,27 @@
                                 </span>
                             </div>
 
+                            <div v-if="!canToggleTax" class="text-[11px] text-amber-700 bg-amber-50/80 border border-amber-200 rounded-lg p-2.5 flex items-center gap-2">
+                                <svg class="w-4 h-4 shrink-0 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                <span>Pengaturan Pajak (PPN) wajib aktif secara default. Hanya Admin atau Finance yang memiliki wewenang menonaktifkan PPN pelanggan.</span>
+                            </div>
+
                             <!-- Form Input PPN (Muncul jika enable_tax aktif) -->
                             <div v-if="activationForm.enable_tax" class="pt-2 border-t border-purple-100/60 space-y-2">
                                 <p class="text-[11px] text-gray-500">Pajak Pertambahan Nilai (PPN) yang ditambahkan ke invoice tagihan pelanggan:</p>
                                 <div class="max-w-xs">
                                     <label class="block text-xs font-semibold text-gray-700 mb-1">PPN (%)</label>
                                     <div class="relative">
-                                        <input v-model="activationForm.tax_ppn" type="number" step="0.01" min="0" max="100" class="w-full bg-white border border-gray-200 rounded-lg pr-7 pl-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all font-semibold text-purple-700" placeholder="11" />
+                                        <input 
+                                            v-model="activationForm.tax_ppn" 
+                                            type="number" 
+                                            step="0.01" 
+                                            min="0" 
+                                            max="100" 
+                                            :disabled="!canToggleTax"
+                                            class="w-full bg-white border border-gray-200 rounded-lg pr-7 pl-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all font-semibold text-purple-700 disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed" 
+                                            placeholder="11" 
+                                        />
                                         <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold">%</span>
                                     </div>
                                 </div>
@@ -1988,6 +2006,25 @@ const canDelete = computed(() => {
     }
 });
 
+const canToggleTax = computed(() => {
+    try {
+        const user = page.props.auth?.user;
+        if (!user) return false;
+        const r = String(user.role || '').toLowerCase().trim();
+        if (['admin', 'super admin', 'superadmin', 'finance'].includes(r) || user.id === 1) return true;
+        let roles = [];
+        if (Array.isArray(user.roles)) roles = user.roles.map(x => String(typeof x === 'string' ? x : x.name).toLowerCase().trim());
+        else if (user.roles) roles = Object.values(user.roles).map(x => String(typeof x === 'string' ? x : x.name).toLowerCase().trim());
+        if (roles.some(rl => ['admin', 'super admin', 'superadmin', 'finance'].includes(rl))) return true;
+        let perms = [];
+        if (Array.isArray(user.permissions)) perms = user.permissions;
+        else if (user.permissions) perms = Object.values(user.permissions);
+        return perms.includes('customers_tax_toggle');
+    } catch (e) {
+        return false;
+    }
+});
+
 function bulkDelete() {
     if (confirm(`Hapus ${selectedIds.value.length} data terpilih secara permanen?`)) {
         router.post('/customers/bulk-destroy', { ids: selectedIds.value }, {
@@ -2204,6 +2241,9 @@ const activationForm = useForm({
 });
 
 watch(() => activationForm.enable_tax, (val) => {
+    if (!canToggleTax.value && !val) {
+        activationForm.enable_tax = true;
+    }
     if (val && !activationForm.tax_ppn) {
         activationForm.tax_ppn = page.props.taxSettings?.tax_ppn || 11;
     }
@@ -2521,7 +2561,10 @@ function openActivationModal(customer) {
     const custPpn = customer.tax_ppn !== null && customer.tax_ppn !== undefined ? Number(customer.tax_ppn) : null;
     const globalPpn = Number(page.props.taxSettings?.tax_ppn || 11);
 
-    if (custPpn !== null && custPpn === 0) {
+    if (!canToggleTax.value) {
+        activationForm.enable_tax = true;
+        activationForm.tax_ppn = (custPpn !== null && custPpn > 0) ? custPpn : (globalPpn || 11);
+    } else if (custPpn !== null && custPpn === 0) {
         activationForm.enable_tax = false;
         activationForm.tax_ppn = globalPpn || 11;
     } else if (custPpn !== null && custPpn > 0) {

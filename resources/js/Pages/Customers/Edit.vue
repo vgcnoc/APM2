@@ -328,15 +328,19 @@
                                 
                                 <div class="md:col-span-2 pt-2 border-t border-gray-100 space-y-3">
                                     <div class="flex items-center justify-between">
-                                        <label for="edit_enable_tax" class="flex items-center gap-2 cursor-pointer select-none">
+                                        <label for="edit_enable_tax" class="flex items-center gap-2 select-none" :class="canToggleTax ? 'cursor-pointer' : 'cursor-not-allowed'">
                                             <input 
                                                 type="checkbox" 
                                                 id="edit_enable_tax" 
                                                 v-model="form.enable_tax" 
-                                                class="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500 h-4 w-4 cursor-pointer" 
+                                                :disabled="!canToggleTax"
+                                                class="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500 h-4 w-4 disabled:opacity-75 disabled:cursor-not-allowed" 
                                             />
-                                            <span class="text-[11px] font-bold text-gray-700 uppercase tracking-wider">
-                                                Pengaturan Pajak Pelanggan
+                                            <span class="text-[11px] font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                                                Pengaturan Pajak Pelanggan (PPN)
+                                                <span v-if="!canToggleTax" class="text-[10px] text-amber-600 font-semibold flex items-center gap-0.5">
+                                                    🔒 Terkunci
+                                                </span>
                                             </span>
                                         </label>
                                         <span 
@@ -348,10 +352,21 @@
                                             {{ form.enable_tax ? 'PPN Aktif (' + (form.tax_ppn || 11) + '%)' : 'Bebas PPN (Nonaktif)' }}
                                         </span>
                                     </div>
+                                    <div v-if="!canToggleTax" class="text-[11px] text-amber-700 bg-amber-50/80 border border-amber-200 rounded-lg p-2.5 flex items-center gap-2">
+                                        <svg class="w-4 h-4 shrink-0 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                        <span>Pengaturan Pajak (PPN) selalu aktif secara default. Hanya Admin atau Finance yang memiliki wewenang menonaktifkan PPN pelanggan.</span>
+                                    </div>
                                     <div v-if="form.enable_tax" class="max-w-xs pt-1">
                                         <label class="block text-[10px] font-bold text-gray-500 mb-1">PPN (%)</label>
                                         <div class="relative">
-                                            <input v-model="form.tax_ppn" type="number" step="0.01" class="w-full pr-8 pl-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:bg-white focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all font-semibold" placeholder="11" />
+                                            <input 
+                                                v-model="form.tax_ppn" 
+                                                type="number" 
+                                                step="0.01" 
+                                                :disabled="!canToggleTax"
+                                                class="w-full pr-8 pl-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 focus:bg-white focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all font-semibold disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed" 
+                                                placeholder="11" 
+                                            />
                                             <span class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
                                         </div>
                                     </div>
@@ -546,6 +561,25 @@ const props = defineProps({
 
 const isNewArea = ref(false);
 const page = usePage();
+
+const canToggleTax = computed(() => {
+    try {
+        const user = page.props.auth?.user;
+        if (!user) return false;
+        const r = String(user.role || '').toLowerCase().trim();
+        if (['admin', 'super admin', 'superadmin', 'finance'].includes(r) || user.id === 1) return true;
+        let roles = [];
+        if (Array.isArray(user.roles)) roles = user.roles.map(x => String(typeof x === 'string' ? x : x.name).toLowerCase().trim());
+        else if (user.roles) roles = Object.values(user.roles).map(x => String(typeof x === 'string' ? x : x.name).toLowerCase().trim());
+        if (roles.some(rl => ['admin', 'super admin', 'superadmin', 'finance'].includes(rl))) return true;
+        let perms = [];
+        if (Array.isArray(user.permissions)) perms = user.permissions;
+        else if (user.permissions) perms = Object.values(user.permissions);
+        return perms.includes('customers_tax_toggle');
+    } catch (e) {
+        return false;
+    }
+});
 const isAdmin = computed(() => {
     const user = page.props.auth?.user;
     if (!user) return false;
@@ -668,9 +702,11 @@ const form = useForm({
     notes: props.customer.notes || '',
     is_reseller: props.customer.is_reseller == 1 ? true : false,
     service_status: props.customer.service_status || 'berbayar',
-    enable_tax: (props.customer.tax_ppn !== null && props.customer.tax_ppn !== undefined)
-        ? (Number(props.customer.tax_ppn) > 0 || Number(props.customer.tax_bhp) > 0 || Number(props.customer.tax_uso) > 0)
-        : false,
+    enable_tax: canToggleTax.value
+        ? ((props.customer.tax_ppn !== null && props.customer.tax_ppn !== undefined)
+            ? (Number(props.customer.tax_ppn) > 0 || Number(props.customer.tax_bhp) > 0 || Number(props.customer.tax_uso) > 0)
+            : true)
+        : true,
     tax_ppn: props.customer.tax_ppn,
     tax_bhp: props.customer.tax_bhp,
     tax_uso: props.customer.tax_uso,
@@ -706,6 +742,12 @@ const totalWithPpn = computed(() => {
     if (form.service_status === 'gratis' || form.service_status === 'free_home') return 0;
     const base = Number(form.base_amount || 0);
     return base + ppnAmount.value;
+});
+
+watch(() => form.enable_tax, (val) => {
+    if (!canToggleTax.value && !val) {
+        form.enable_tax = true;
+    }
 });
 
 const registration_type = ref('customer');

@@ -85,6 +85,7 @@ class PermissionRegistry
                     ['name' => 'customers_all_export', 'type' => 'button', 'label' => 'Tombol Export Data Pelanggan (Excel/PDF)'],
                     ['name' => 'customers_btn_whatsapp', 'type' => 'button', 'label' => 'Tombol Chat WhatsApp Cepat'],
                     ['name' => 'customers_btn_reset_secret', 'type' => 'button', 'label' => 'Tombol Reset Password PPPoE / Secret'],
+                    ['name' => 'customers_tax_toggle', 'type' => 'feature', 'label' => 'Izin Menonaktifkan / Mengubah Pajak (PPN) Pelanggan'],
                     
                     // Scope
                     ['name' => 'customers_all_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Data Pelanggan'],
@@ -1437,7 +1438,7 @@ class PermissionRegistry
                 'menu_resellers', 'menu_reseller_billing', 'menu_reseller_requests', 'menu_reseller_settlements', 'menu_reseller_reports',
                 'menu_marketing_affiliates', 'menu_affiliate_withdrawals', 'affiliate_tab_withdrawals', 'marketing_affiliates_withdraw_approve', 'marketing_affiliates_withdraw_reject', 'affiliate_tab_affiliates', 'affiliate_tab_commissions',
                 'menu_settings_billing', 'menu_settings_payroll',
-                'menu_customers_all', 'customers_card_summary', 'customers_all_view_all', 'customers_tab_invoices',
+                'menu_customers_all', 'customers_card_summary', 'customers_all_view_all', 'customers_tab_invoices', 'customers_tax_toggle',
                 'menu_customers_gratis', 'menu_customers_free_home', 'menu_customers_terminated',
                 'menu_monitoring_pelanggan', 'monitoring_pelanggan_card_stats', 'monitoring_pelanggan_tab_menunggak', 'monitoring_pelanggan_tab_janji_bayar', 'monitoring_pelanggan_tab_stop_sementara', 'monitoring_pelanggan_filter', 'monitoring_pelanggan_btn_whatsapp', 'monitoring_pelanggan_btn_action',
                 'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',

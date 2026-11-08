@@ -2620,6 +2620,9 @@ class CustomerController extends Controller
             'billing_cycle' => 'nullable|in:default,anniversary,calendar,custom_date',
             'billing_day' => 'nullable|integer|min:1|max:28',
             'is_reseller' => 'boolean',
+            'reseller_tier' => 'nullable|in:regular,master',
+            'reseller_password' => 'nullable|string|min:6',
+            'reseller_balance' => 'nullable|numeric|min:0',
             'service_status' => 'nullable|in:berbayar,gratis,free_home',
             'enable_tax' => 'nullable|boolean',
             'tax_ppn' => 'nullable|numeric|min:0|max:100',
@@ -2730,7 +2733,12 @@ class CustomerController extends Controller
             }
         }
 
-        $validated['status'] = 'booking'; // Ensure it goes to booking
+        $isPureReseller = !empty($validated['is_reseller']) && empty($validated['package_id']);
+        $validated['status'] = $isPureReseller ? 'active' : 'booking';
+        if ($isPureReseller) {
+            $validated['activation_date'] = now();
+            $validated['service_status'] = 'berbayar';
+        }
 
         if (empty($validated['billing_type'])) {
             $validated['billing_type'] = \App\Models\Setting::get('billing_type', 'prabayar');
@@ -2739,28 +2747,87 @@ class CustomerController extends Controller
             $validated['billing_cycle'] = 'default';
         }
 
-        if ($request->has('enable_tax') && !$request->boolean('enable_tax')) {
+        $canToggleTax = auth()->user()?->can('customers_tax_toggle')
+            || auth()->user()?->hasRole('admin')
+            || auth()->user()?->hasRole('super admin')
+            || auth()->user()?->hasRole('finance');
+
+        if ($canToggleTax && $request->has('enable_tax') && !$request->boolean('enable_tax')) {
             $validated['tax_ppn'] = 0;
             $validated['tax_bhp'] = 0;
             $validated['tax_uso'] = 0;
         } else {
-            $validated['tax_ppn'] = (float) ($request->input('tax_ppn') ?? \App\Models\Setting::get('tax_ppn', '0'));
+            $globalPpn = (float) \App\Models\Setting::get('tax_ppn', '11');
+            $inputPpn = $request->input('tax_ppn');
+            $validated['tax_ppn'] = ($inputPpn !== null && is_numeric($inputPpn) && $canToggleTax)
+                ? (float) $inputPpn
+                : ($globalPpn > 0 ? $globalPpn : 11);
             $validated['tax_bhp'] = (float) ($request->input('tax_bhp') ?? \App\Models\Setting::get('tax_bhp', '0'));
             $validated['tax_uso'] = (float) ($request->input('tax_uso') ?? \App\Models\Setting::get('tax_uso', '0'));
         }
 
-        DB::transaction(function () use ($validated, &$customer) {
+        $resellerUser = null;
+        DB::transaction(function () use ($validated, $request, $isPureReseller, &$customer, &$resellerUser) {
             $customer = Customer::create($validated);
 
             if (!empty($validated['is_reseller']) && $validated['is_reseller']) {
-                $customer->reseller()->create([
-                    'balance' => 0,
-                    'is_active' => true, // Default to true, or handle differently based on status? Let's true for now.
+                $tier = $request->input('reseller_tier', 'regular');
+                $initialBalance = (float) ($request->input('reseller_balance', 0));
+                $email = !empty($validated['email']) ? strtolower(trim($validated['email'])) : null;
+                $password = $request->input('reseller_password');
+
+                // Jika ada email & password, buatkan akun login User secara otomatis
+                if ($email && $password) {
+                    $resellerUser = \App\Models\User::firstOrCreate(
+                        ['email' => $email],
+                        [
+                            'name' => $customer->name,
+                            'phone' => $customer->phone,
+                            'password' => \Illuminate\Support\Facades\Hash::make($password),
+                            'role' => 'reseller',
+                            'area_id' => $customer->area_id,
+                            'address' => $customer->address,
+                            'is_active' => true,
+                        ]
+                    );
+
+                    try {
+                        $role = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'reseller', 'guard_name' => 'web']);
+                        $resellerUser->syncRoles([$role]);
+                    } catch (\Throwable $e) {}
+
+                    $customer->update(['user_id' => $resellerUser->id]);
+                }
+
+                $reseller = $customer->reseller()->create([
+                    'user_id' => $resellerUser?->id,
+                    'balance' => $initialBalance,
+                    'is_active' => true,
+                    'status' => 'active',
+                    'tier' => $tier,
+                    'can_sell_vouchers' => true,
+                    'can_pay_bills' => true,
+                    'referral_code' => $tier === 'master' ? \App\Models\Reseller::generateReferralCode() : null,
                 ]);
+
+                if ($initialBalance > 0) {
+                    \App\Models\ResellerTransaction::create([
+                        'reseller_id' => $reseller->id,
+                        'type' => 'credit',
+                        'amount' => $initialBalance,
+                        'description' => 'Saldo Modal Awal Registrasi Kemitraan',
+                        'reference_id' => 'INIT-' . time(),
+                    ]);
+                }
             }
             
-            \App\Models\AuditLog::createLog('Create Booking', $customer, null, 'booking', 'Membuat booking baru');
+            \App\Models\AuditLog::createLog('Create Booking', $customer, null, $validated['status'], 'Pendaftaran ' . ($isPureReseller ? 'Mitra Reseller' : 'Booking Pelanggan'));
         });
+
+        if ($isPureReseller) {
+            return redirect()->route('resellers.index')
+                ->with('success', "Mitra Reseller '{$customer->name}' berhasil didaftarkan dan langsung aktif di menu Reseller Voucher.");
+        }
 
         return redirect()->route($isAffiliatePortal ? 'affiliate.dashboard' : 'customers.booking')
             ->with('success', 'Data booking pelanggan berhasil ditambahkan.');
@@ -3211,6 +3278,9 @@ class CustomerController extends Controller
             'billing_cycle' => 'nullable|in:default,anniversary,calendar,custom_date',
             'billing_day' => 'nullable|integer|min:1|max:28',
             'is_reseller' => 'boolean',
+            'reseller_tier' => 'nullable|in:regular,master',
+            'reseller_password' => 'nullable|string|min:6',
+            'reseller_balance' => 'nullable|numeric|min:0',
             'service_status' => 'nullable|in:berbayar,gratis,free_home',
             'enable_tax' => 'nullable|boolean',
             'tax_ppn' => 'nullable|numeric|min:0|max:100',
@@ -3221,10 +3291,23 @@ class CustomerController extends Controller
             'email.email' => 'Format penulisan email tidak valid.',
         ]);
 
-        if ($request->has('enable_tax') && !$request->boolean('enable_tax')) {
+        $canToggleTax = auth()->user()?->can('customers_tax_toggle')
+            || auth()->user()?->hasRole('admin')
+            || auth()->user()?->hasRole('super admin')
+            || auth()->user()?->hasRole('finance');
+
+        if ($canToggleTax && $request->has('enable_tax') && !$request->boolean('enable_tax')) {
             $validated['tax_ppn'] = 0;
             $validated['tax_bhp'] = 0;
             $validated['tax_uso'] = 0;
+        } else {
+            $globalPpn = (float) \App\Models\Setting::get('tax_ppn', '11');
+            $inputPpn = $request->input('tax_ppn');
+            $validated['tax_ppn'] = ($inputPpn !== null && is_numeric($inputPpn) && $canToggleTax)
+                ? (float) $inputPpn
+                : ($customer->tax_ppn > 0 ? (float) $customer->tax_ppn : ($globalPpn > 0 ? $globalPpn : 11));
+            $validated['tax_bhp'] = (float) ($request->input('tax_bhp') ?? \App\Models\Setting::get('tax_bhp', '0'));
+            $validated['tax_uso'] = (float) ($request->input('tax_uso') ?? \App\Models\Setting::get('tax_uso', '0'));
         }
 
         $user = auth()->user();
@@ -3992,14 +4075,23 @@ class CustomerController extends Controller
 
                 $serviceStatus = $validated['service_status'] ?? $customer->service_status ?? 'berbayar';
 
-                $isTaxEnabled = $request->has('enable_tax') ? $request->boolean('enable_tax') : true;
+                $canToggleTax = auth()->user()?->can('customers_tax_toggle')
+                    || auth()->user()?->hasRole('admin')
+                    || auth()->user()?->hasRole('super admin')
+                    || auth()->user()?->hasRole('finance');
+
+                $isTaxEnabled = $canToggleTax ? ($request->has('enable_tax') ? $request->boolean('enable_tax') : true) : true;
 
                 if (!$isTaxEnabled) {
                     $taxPpn = 0.0;
                     $taxBhp = 0.0;
                     $taxUso = 0.0;
                 } else {
-                    $taxPpn = (float) ($validated['tax_ppn'] ?? \App\Models\Setting::get('tax_ppn', '0'));
+                    $globalPpn = (float) \App\Models\Setting::get('tax_ppn', '11');
+                    $inputPpn = $validated['tax_ppn'] ?? null;
+                    $taxPpn = ($inputPpn !== null && is_numeric($inputPpn) && $canToggleTax)
+                        ? (float) $inputPpn
+                        : ($customer->tax_ppn > 0 ? (float) $customer->tax_ppn : ($globalPpn > 0 ? $globalPpn : 11));
                     $taxBhp = (float) ($validated['tax_bhp'] ?? \App\Models\Setting::get('tax_bhp', '0'));
                     $taxUso = (float) ($validated['tax_uso'] ?? \App\Models\Setting::get('tax_uso', '0'));
                 }
