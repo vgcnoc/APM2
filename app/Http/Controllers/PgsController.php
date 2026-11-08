@@ -2181,7 +2181,7 @@ class PgsController extends Controller
     }
 
     /**
-     * Batalkan permintaan atau kembalikan ONT baru yang disiapkan ke inventory gudang
+     * Batalkan permintaan atau kembalikan ONT baru yang disiapkan / terpasang ke inventory gudang
      */
     public function cancelOnt(Request $request, PgsTicket $pgs)
     {
@@ -2189,14 +2189,69 @@ class PgsController extends Controller
 
         $this->restorePreparedOntStock($pgs);
 
-        if ($pgs->prepared_ont_id) {
-            $preparedOnt = Ont::find($pgs->prepared_ont_id);
-            if ($preparedOnt) {
-                // Kembalikan ke persediaan gudang
-                $preparedOnt->update([
-                    'customer_id' => null,
-                    'status' => 'Sudah Set',
+        $preparedOnt = $pgs->prepared_ont_id ? Ont::find($pgs->prepared_ont_id) : null;
+        $oldOnt = $pgs->old_ont_id ? Ont::find($pgs->old_ont_id) : null;
+
+        // Jika prepared_ont_id tidak terisi tapi status installed, cari unit ONT baru yang terpasang di customer
+        if (!$preparedOnt && $pgs->customer_id) {
+            $preparedOnt = Ont::where('customer_id', $pgs->customer_id)
+                ->where('description', 'like', "%{$pgs->ticket_number}%")
+                ->first();
+        }
+
+        $odpId = null;
+        $odpPortId = null;
+        $portNum = null;
+
+        // 1. Kembalikan unit ONT baru ke persediaan gudang
+        if ($preparedOnt) {
+            $odpId = $preparedOnt->odp_id;
+            $odpPortId = $preparedOnt->odp_port_id;
+            $portNum = $preparedOnt->port_number;
+
+            $preparedOnt->update([
+                'customer_id' => null,
+                'odp_id' => null,
+                'odp_port_id' => null,
+                'port_number' => null,
+                'status' => 'Sudah Set',
+                'description' => trim(($preparedOnt->description ? $preparedOnt->description . ' | ' : '') . 'Batal dipasang pada tiket ' . $pgs->ticket_number . ' (diretur ke gudang)'),
+            ]);
+
+            // Hapus rekaman CustomerInstalledMaterial untuk ONT baru
+            if ($pgs->customer_id) {
+                \App\Models\CustomerInstalledMaterial::where('customer_id', $pgs->customer_id)
+                    ->where('serial_number', $preparedOnt->serial_number)
+                    ->delete();
+            }
+        }
+
+        // 2. Pulihkan unit ONT lama pelanggan jika sebelumnya sempat diganti
+        if ($oldOnt && $pgs->customer_id) {
+            $oldOnt->update([
+                'customer_id' => $pgs->customer_id,
+                'status' => 'active',
+                'odp_id' => $oldOnt->odp_id ?: $odpId,
+                'odp_port_id' => $oldOnt->odp_port_id ?: $odpPortId,
+                'port_number' => $oldOnt->port_number ?: $portNum,
+                'description' => trim(($oldOnt->description ? $oldOnt->description . ' | ' : '') . 'Dipulihkan aktif kembali karena pergantian unit batal pada tiket ' . $pgs->ticket_number),
+            ]);
+
+            // Pulihkan status CustomerInstalledMaterial untuk ONT lama
+            \App\Models\CustomerInstalledMaterial::where('customer_id', $pgs->customer_id)
+                ->where('serial_number', $oldOnt->serial_number)
+                ->update([
+                    'status' => 'installed',
+                    'notes' => 'ONT aktif pelanggan (pembatalan retur pergantian unit)',
                 ]);
+
+            if ($pgs->customer) {
+                $pgs->customer->touch();
+                try {
+                    app(\App\Services\RadiusService::class)->syncCustomer($pgs->customer);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[RADIUS] cancelOnt PGS sync error: ' . $e->getMessage());
+                }
             }
         }
 
@@ -2216,7 +2271,7 @@ class PgsController extends Controller
             $notes
         );
 
-        return redirect()->back()->with('success', 'Pergantian ONT dibatalkan. Unit ONT telah dikembalikan ke Inventory Gudang.');
+        return redirect()->back()->with('success', 'Pergantian ONT dibatalkan. Unit ONT baru telah dikembalikan ke Inventory Gudang dan unit ONT lama pelanggan telah dipulihkan aktif.');
     }
 
     /**

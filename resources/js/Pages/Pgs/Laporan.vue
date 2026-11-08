@@ -1084,7 +1084,33 @@
                                         "{{ selectedTicket.ont_replacement_notes || 'Ditolak' }}"
                                     </div>
                                 </div>
-                                <div v-if="selectedTicket?.ont_replacement_status !== 'prepared'" class="text-[11px] text-gray-500 flex items-center justify-between">
+                                <div v-if="selectedTicket?.ont_replacement_status === 'installed'" class="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs flex items-center justify-between gap-2 shadow-2xs">
+                                    <div>
+                                        <div class="font-bold text-emerald-950 flex items-center gap-1 text-[11px]">
+                                            <span>✅</span> Unit ONT Baru Terpasang: <span class="font-mono text-emerald-800 font-black">{{ selectedTicket.prepared_ont?.serial_number || selectedTicket.customer?.ont?.serial_number }}</span>
+                                        </div>
+                                        <div class="text-[10px] text-emerald-700 italic mt-0.5">
+                                            {{ selectedTicket.ont_replacement_notes || 'Unit ONT baru berhasil dipasang di pelanggan.' }}
+                                        </div>
+                                    </div>
+                                    <button 
+                                        type="button" 
+                                        @click="cancelPreparedOnt(selectedTicket)"
+                                        class="px-2.5 py-1 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold border border-rose-300 text-[10px] cursor-pointer transition-all shrink-0"
+                                        title="Batalkan pemasangan unit ONT baru, kembalikan unit baru ke gudang, dan pulihkan ONT lama pelanggan"
+                                    >
+                                        ↩️ Batalkan & Retur
+                                    </button>
+                                </div>
+                                <div v-if="selectedTicket?.ont_replacement_status === 'cancelled'" class="p-2 rounded-xl bg-gray-50 border border-gray-200 text-xs text-gray-700 space-y-0.5">
+                                    <div class="font-bold flex items-center gap-1 text-[11px] text-gray-800">
+                                        <span>↩️</span> Pergantian ONT dibatalkan / diretur:
+                                    </div>
+                                    <div class="text-[11px] text-gray-600 italic">
+                                        "{{ selectedTicket.ont_replacement_notes || 'Unit ONT telah diretur ke stok gudang dan ONT lama tetap aktif.' }}"
+                                    </div>
+                                </div>
+                                <div v-if="selectedTicket?.ont_replacement_status !== 'prepared' && selectedTicket?.ont_replacement_status !== 'installed'" class="text-[11px] text-gray-500 flex items-center justify-between">
                                     <span>ONT terpasang: {{ selectedTicket?.customer?.ont?.serial_number || '-' }}</span>
                                     <button v-if="!selectedTicket?.ont_replacement_status || selectedTicket?.ont_replacement_status === 'none' || selectedTicket?.ont_replacement_status === 'rejected' || selectedTicket?.ont_replacement_status === 'cancelled'" type="button" @click="isOntRequestFormOpen = !isOntRequestFormOpen" class="text-indigo-600 hover:text-indigo-800 font-bold underline cursor-pointer">
                                         + Ajukan Ganti ONT
@@ -2663,7 +2689,7 @@ const sendOntRequest = () => {
 };
 
 const cancelPreparedOnt = (ticket) => {
-    if (!confirm('Apakah Anda yakin ingin membatalkan pergantian ONT ini? Unit ONT baru akan otomatis dikembalikan ke stok Inventory Gudang.')) {
+    if (!confirm('Apakah Anda yakin ingin membatalkan pergantian ONT ini? Unit ONT baru akan otomatis dikembalikan ke stok gudang dan unit ONT lama pelanggan akan dipulihkan aktif.')) {
         return;
     }
     router.post(`/pgs/${ticket.id}/cancel-ont`, {}, {

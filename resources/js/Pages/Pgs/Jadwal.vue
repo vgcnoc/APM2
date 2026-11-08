@@ -372,6 +372,26 @@
                                             Detail
                                         </button>
                                     </div>
+                                    <div v-else-if="ticket.ont_replacement_status === 'installed'" class="mt-2 p-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-[11px] flex items-center justify-between gap-1 shadow-2xs">
+                                        <div class="flex items-center gap-1.5 truncate font-medium">
+                                            <span>✅ ONT Baru:</span>
+                                            <span class="font-mono font-bold text-emerald-800">{{ ticket.prepared_ont?.serial_number || ticket.customer?.ont?.serial_number || 'Terpasang' }}</span>
+                                        </div>
+                                        <button 
+                                            type="button" 
+                                            @click="cancelPreparedOntFromLead(ticket)" 
+                                            class="text-rose-700 hover:text-rose-900 underline font-bold shrink-0 text-[10px] cursor-pointer"
+                                            title="Batalkan pergantian ONT, kembalikan unit baru ke gudang dan pulihkan ONT lama pelanggan"
+                                        >
+                                            Batalkan & Retur
+                                        </button>
+                                    </div>
+                                    <div v-else-if="ticket.ont_replacement_status === 'cancelled'" class="mt-2 p-1.5 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 text-[11px] flex items-center justify-between gap-1 shadow-2xs">
+                                        <div class="flex items-center gap-1.5 truncate font-medium">
+                                            <span>↩️ Ganti ONT:</span>
+                                            <span class="text-gray-600 font-bold">Dibatalkan / Diretur</span>
+                                        </div>
+                                    </div>
 
                                     <!-- Alert Permintaan Tambahan Material dari Teknisi Lapangan -->
                                     <div v-if="ticket.material_requests?.some(r => r.status === 'pending')" class="mt-2 p-2 rounded-xl bg-amber-100 border border-amber-300 text-amber-900 text-xs flex items-center justify-between gap-2 shadow-sm animate-pulse">
@@ -1318,7 +1338,7 @@ const rejectOntRequest = (ticket) => {
 };
 
 const cancelPreparedOntFromLead = (ticket) => {
-    if (!confirm('Apakah Anda yakin ingin membatalkan unit ONT ini? Unit ONT akan dikembalikan ke stok inventory gudang.')) {
+    if (!confirm('Apakah Anda yakin ingin membatalkan pergantian unit ONT ini? Unit ONT baru akan otomatis dikembalikan ke stok gudang dan unit ONT lama pelanggan akan dipulihkan aktif.')) {
         return;
     }
     router.post(`/pgs/${ticket.id}/cancel-ont`, {}, {
