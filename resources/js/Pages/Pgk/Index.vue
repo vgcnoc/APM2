@@ -468,19 +468,66 @@
                         ></textarea>
                     </div>
 
-                    <!-- Bagian Ganti User & Password Login Internet Pelanggan (PPPoE) -->
+                    <!-- Bagian Ganti Nama & Kata Sandi WiFi Pelanggan (SSID / Password WiFi) -->
+                    <div class="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-2xl space-y-2.5">
+                        <div class="flex items-center justify-between gap-2">
+                            <label class="flex items-center gap-2 cursor-pointer select-none">
+                                <input type="checkbox" v-model="resolveForm.update_wifi" class="rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4" />
+                                <span class="text-xs font-bold text-emerald-950">📶 Ganti Nama & Kata Sandi WiFi Pelanggan (SSID / Sandi HP)</span>
+                            </label>
+                            <span v-if="selectedTicket?.category === 'WiFi / Sinyal Lemah' || selectedTicket?.category === 'Konfigurasi / PPPoE / VLAN'" class="px-1.5 py-0.5 bg-emerald-200 text-emerald-800 rounded text-[10px] font-bold">Direkomendasikan</span>
+                        </div>
+
+                        <!-- Info WiFi Saat Ini -->
+                        <div class="text-[11px] text-emerald-800 bg-white/90 p-2 rounded-xl border border-emerald-100 flex flex-wrap items-center justify-between gap-1.5 font-mono">
+                            <div>Nama WiFi (SSID): <strong>{{ selectedTicket?.customer?.ont?.wifi_ssid || selectedTicket?.customer?.wifi_ssid || '(Belum diset)' }}</strong></div>
+                            <div>Sandi WiFi: <strong>{{ selectedTicket?.customer?.ont?.wifi_password || selectedTicket?.customer?.wifi_password || '(Belum diset)' }}</strong></div>
+                        </div>
+
+                        <!-- Form Input WiFi Baru -->
+                        <div v-if="resolveForm.update_wifi" class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-emerald-200/60 animate-fade-in">
+                            <div>
+                                <label class="block text-[11px] font-bold text-gray-700 uppercase mb-0.5">Nama WiFi Baru (SSID) <span class="text-red-500">*</span></label>
+                                <input 
+                                    type="text" 
+                                    v-model="resolveForm.new_wifi_ssid" 
+                                    placeholder="Contoh: WiFi-Rumah" 
+                                    class="w-full rounded-xl border-gray-300 py-1.5 px-2.5 text-xs font-semibold text-gray-800 bg-white focus:border-emerald-500" 
+                                    :required="resolveForm.update_wifi"
+                                />
+                            </div>
+                            <div>
+                                <div class="flex items-center justify-between mb-0.5">
+                                    <label class="block text-[11px] font-bold text-gray-700 uppercase">Sandi WiFi Baru <span class="text-red-500">*</span></label>
+                                    <button type="button" @click="generateRandomWifiPassword(resolveForm)" class="text-[10px] text-emerald-600 hover:text-emerald-800 font-bold cursor-pointer">🎲 Acak</button>
+                                </div>
+                                <input 
+                                    type="text" 
+                                    v-model="resolveForm.new_wifi_password" 
+                                    placeholder="Password WiFi..." 
+                                    class="w-full rounded-xl border-gray-300 py-1.5 px-2.5 text-xs font-mono font-bold text-gray-800 bg-white focus:border-emerald-500" 
+                                    :required="resolveForm.update_wifi"
+                                />
+                            </div>
+                            <p class="col-span-full text-[10px] text-emerald-700">
+                                💡 Nama WiFi & Sandi ini yang diketik pelanggan di HP/perangkat mereka. Disimpan ke data profil & ONT pelanggan.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Bagian Ganti Akun Dial-up PPPoE ONT (RADIUS / WAN ISP) -->
                     <div v-if="!selectedTicket?.customer?.is_reseller" class="p-3.5 bg-blue-50/70 border border-blue-200 rounded-2xl space-y-2.5">
                         <div class="flex items-center justify-between gap-2">
                             <label class="flex items-center gap-2 cursor-pointer select-none">
                                 <input type="checkbox" v-model="resolveForm.update_pppoe" class="rounded border-blue-300 text-blue-600 focus:ring-blue-500 w-4 h-4" />
-                                <span class="text-xs font-bold text-blue-950">🔄 Ganti User & Password Login Internet (PPPoE)</span>
+                                <span class="text-xs font-bold text-blue-950">🔐 Ganti Akun Dial-up PPPoE ONT (RADIUS / WAN)</span>
                             </label>
                             <span v-if="selectedTicket?.category === 'Konfigurasi / PPPoE / VLAN'" class="px-1.5 py-0.5 bg-blue-200 text-blue-800 rounded text-[10px] font-bold">Direkomendasikan</span>
                         </div>
 
                         <!-- Info Akun Saat Ini -->
                         <div class="text-[11px] text-blue-700 bg-white/90 p-2 rounded-xl border border-blue-100 flex flex-wrap items-center justify-between gap-1.5 font-mono">
-                            <div>User Login: <strong>{{ selectedTicket?.customer?.ont?.pppoe_user || selectedTicket?.customer?.pppoe_username || '-' }}</strong></div>
+                            <div>User PPPoE WAN: <strong>{{ selectedTicket?.customer?.ont?.pppoe_user || selectedTicket?.customer?.pppoe_username || '-' }}</strong></div>
                             <div>Password: <strong>{{ selectedTicket?.customer?.ont?.pppoe_password || selectedTicket?.customer?.pppoe_password || '-' }}</strong></div>
                         </div>
 
@@ -510,7 +557,7 @@
                                 />
                             </div>
                             <p class="col-span-full text-[10px] text-blue-600">
-                                💡 Akun login internet baru otomatis disimpan ke data ONT pelanggan & disinkronkan ke RADIUS/MikroTik.
+                                💡 Akun dial-up WAN ini otomatis disimpan ke data ONT pelanggan & disinkronkan ke server RADIUS MikroTik.
                             </p>
                         </div>
                     </div>
@@ -793,6 +840,9 @@ const resolveForm = useForm({
     update_pppoe: false,
     new_pppoe_user: '',
     new_pppoe_password: '',
+    update_wifi: false,
+    new_wifi_ssid: '',
+    new_wifi_password: '',
 });
 
 const escalateForm = useForm({
@@ -931,7 +981,17 @@ const openResolveAdminModal = (ticket) => {
     resolveForm.update_pppoe = ticket.category === 'Konfigurasi / PPPoE / VLAN';
     resolveForm.new_pppoe_user = ticket.customer?.ont?.pppoe_user || ticket.customer?.pppoe_username || '';
     resolveForm.new_pppoe_password = ticket.customer?.ont?.pppoe_password || ticket.customer?.pppoe_password || '';
+    resolveForm.update_wifi = ticket.category === 'WiFi / Sinyal Lemah' || ticket.category === 'Konfigurasi / PPPoE / VLAN';
+    resolveForm.new_wifi_ssid = ticket.customer?.ont?.wifi_ssid || ticket.customer?.wifi_ssid || '';
+    resolveForm.new_wifi_password = ticket.customer?.ont?.wifi_password || ticket.customer?.wifi_password || '';
     showResolveAdminModal.value = true;
+};
+
+const generateRandomWifiPassword = (form) => {
+    const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+    let pass = '';
+    for (let i = 0; i < 8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    form.new_wifi_password = pass;
 };
 
 const generateRandomPppoePassword = (form) => {

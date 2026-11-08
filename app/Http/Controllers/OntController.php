@@ -152,6 +152,8 @@ class OntController extends Controller
             'ip_login' => 'nullable|string',
             'login_user' => 'nullable|string',
             'login_password' => 'nullable|string',
+            'wifi_ssid' => 'nullable|string|max:100',
+            'wifi_password' => 'nullable|string|max:100',
             'pppoe_user' => 'nullable|string',
             'pppoe_password' => 'nullable|string',
             'free_hotspot' => 'nullable|boolean',
@@ -257,6 +259,8 @@ class OntController extends Controller
             'ip_login' => 'nullable|string',
             'login_user' => 'nullable|string',
             'login_password' => 'nullable|string',
+            'wifi_ssid' => 'nullable|string|max:100',
+            'wifi_password' => 'nullable|string|max:100',
             'pppoe_user' => 'nullable|string',
             'pppoe_password' => 'nullable|string',
             'free_hotspot' => 'nullable|boolean',
@@ -436,6 +440,15 @@ class OntController extends Controller
             }
 
             $lockedOnt->update($validated);
+
+            if ($lockedOnt->customer_id && (isset($validated['wifi_ssid']) || isset($validated['wifi_password']))) {
+                $custWifiSync = [];
+                if (isset($validated['wifi_ssid'])) $custWifiSync['wifi_ssid'] = $validated['wifi_ssid'];
+                if (isset($validated['wifi_password'])) $custWifiSync['wifi_password'] = $validated['wifi_password'];
+                if (!empty($custWifiSync)) {
+                    \App\Models\Customer::where('id', $lockedOnt->customer_id)->update($custWifiSync);
+                }
+            }
 
             if ($newOdpId && $newPortNumber && ($oldOdpId != $newOdpId || $oldPortNumber != $newPortNumber)) {
                 // Mark new port as used

@@ -67,6 +67,8 @@ class Customer extends Model
         'psb_notes',
         'sales_id',
         'referral_code',
+        'wifi_ssid',
+        'wifi_password',
         'is_migrated',
         'is_audited',
         'area_id',

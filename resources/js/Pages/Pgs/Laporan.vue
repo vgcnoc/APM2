@@ -714,13 +714,73 @@
                                 </div>
                             </div>
 
-                            <!-- 4. Perubahan Kredensial Login Internet (PPPoE) Pelanggan -->
+                            <!-- 4A. Perubahan Nama & Password WiFi Pelanggan (SSID / Sandi WiFi) -->
+                            <div class="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/90 space-y-3">
+                                <div class="flex items-center justify-between flex-wrap gap-2">
+                                    <label class="flex items-center gap-2 cursor-pointer select-none">
+                                        <input type="checkbox" v-model="reportForm.update_wifi" class="rounded border-emerald-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4" />
+                                        <span class="text-xs font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
+                                            <span>📶</span> Ganti Nama WiFi (SSID) & Sandi WiFi Pelanggan
+                                        </span>
+                                    </label>
+                                    <span v-if="selectedTicket?.category === 'WiFi / Sinyal Lemah' || selectedTicket?.category === 'Konfigurasi / PPPoE / VLAN'" class="px-2 py-0.5 bg-emerald-200 text-emerald-900 rounded-full text-[10px] font-bold">
+                                        Rekomendasi Tiket
+                                    </span>
+                                </div>
+
+                                <!-- Info WiFi Saat Ini -->
+                                <div class="text-[11px] text-emerald-900 bg-white/95 p-2.5 rounded-xl border border-emerald-100 flex flex-wrap items-center justify-between gap-2">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="text-gray-500 font-medium">Nama WiFi (SSID) Saat Ini:</span>
+                                        <span class="font-mono font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">{{ selectedTicket?.customer?.ont?.wifi_ssid || selectedTicket?.customer?.wifi_ssid || '(Belum tercatat)' }}</span>
+                                    </div>
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="text-gray-500 font-medium">Sandi WiFi Saat Ini:</span>
+                                        <span class="font-mono font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">{{ selectedTicket?.customer?.ont?.wifi_password || selectedTicket?.customer?.wifi_password || '(Belum tercatat)' }}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Form Input WiFi Baru -->
+                                <div v-if="reportForm.update_wifi" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-emerald-200/60 animate-fade-in">
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-emerald-900 uppercase mb-1">Nama WiFi Baru (SSID) <span class="text-red-500">*</span></label>
+                                        <input 
+                                            type="text" 
+                                            v-model="reportForm.new_wifi_ssid" 
+                                            placeholder="Contoh: WiFi-Keluarga / Net-Rumah" 
+                                            class="w-full rounded-xl border-emerald-200 focus:border-emerald-500 py-1.5 px-3 text-xs font-medium text-gray-800 bg-white" 
+                                            :required="reportForm.update_wifi"
+                                        />
+                                    </div>
+                                    <div>
+                                        <div class="flex items-center justify-between mb-1">
+                                            <label class="block text-[11px] font-bold text-emerald-900 uppercase">Sandi WiFi Baru (WPA2) <span class="text-red-500">*</span></label>
+                                            <button type="button" @click="generateReportWifiPassword()" class="text-[10px] text-emerald-700 hover:text-emerald-900 font-bold flex items-center gap-1 cursor-pointer">
+                                                <span>🎲</span> Acak Sandi
+                                            </button>
+                                        </div>
+                                        <input 
+                                            type="text" 
+                                            v-model="reportForm.new_wifi_password" 
+                                            placeholder="Minimal 8 karakter sandi..." 
+                                            class="w-full rounded-xl border-emerald-200 focus:border-emerald-500 py-1.5 px-3 text-xs font-mono font-bold text-gray-800 bg-white" 
+                                            :required="reportForm.update_wifi"
+                                        />
+                                    </div>
+                                    <p class="col-span-full text-[10px] text-emerald-800 flex items-center gap-1">
+                                        <span>💡</span>
+                                        <span>Nama WiFi & sandi ini yang diketik pelanggan pada HP, Laptop, atau Smart TV saat menyambung internet di rumah. Pastikan teknisi juga telah merubah settingan pada modem ONT.</span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- 4B. Perubahan Kredensial Dial-up PPPoE ONT (RADIUS / WAN) -->
                             <div v-if="!selectedTicket?.customer?.is_reseller" class="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200/80 space-y-3">
                                 <div class="flex items-center justify-between flex-wrap gap-2">
                                     <label class="flex items-center gap-2 cursor-pointer select-none">
                                         <input type="checkbox" v-model="reportForm.update_pppoe" class="rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4" />
                                         <span class="text-xs font-bold text-indigo-950 uppercase tracking-wider flex items-center gap-1.5">
-                                            <span>🔐</span> Ganti User & Password Login Internet Pelanggan (PPPoE)
+                                            <span>🔐</span> Ganti Akun Dial-up PPPoE ONT (RADIUS / WAN ISP)
                                         </span>
                                     </label>
                                     <span v-if="selectedTicket?.category === 'Konfigurasi / PPPoE / VLAN'" class="px-2 py-0.5 bg-indigo-200 text-indigo-900 rounded-full text-[10px] font-bold">
@@ -731,11 +791,11 @@
                                 <!-- Info Kredensial Saat Ini -->
                                 <div class="text-[11px] text-indigo-800 bg-white/90 p-2.5 rounded-xl border border-indigo-100 flex flex-wrap items-center justify-between gap-2">
                                     <div class="flex items-center gap-1.5">
-                                        <span class="text-gray-500 font-medium">User Login Saat Ini:</span>
+                                        <span class="text-gray-500 font-medium">User PPPoE WAN:</span>
                                         <span class="font-mono font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">{{ selectedTicket?.customer?.ont?.pppoe_user || selectedTicket?.customer?.pppoe_username || '-' }}</span>
                                     </div>
                                     <div class="flex items-center gap-1.5">
-                                        <span class="text-gray-500 font-medium">Password:</span>
+                                        <span class="text-gray-500 font-medium">Password PPPoE:</span>
                                         <span class="font-mono font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">{{ selectedTicket?.customer?.ont?.pppoe_password || selectedTicket?.customer?.pppoe_password || '-' }}</span>
                                     </div>
                                 </div>
@@ -769,7 +829,7 @@
                                     </div>
                                     <p class="col-span-full text-[10px] text-indigo-700 flex items-center gap-1">
                                         <span>🔄</span>
-                                        <span>Akun login internet baru otomatis tersimpan di data profil & ONT pelanggan, serta langsung disinkronkan ke RADIUS/MikroTik secara real-time.</span>
+                                        <span>Akun dial-up WAN ini yang digunakan perangkat modem ONT untuk menghubungi server RADIUS MikroTik APM2.</span>
                                     </p>
                                 </div>
                             </div>
@@ -2272,6 +2332,9 @@ const reportForm = useForm({
     update_pppoe: false,
     new_pppoe_user: '',
     new_pppoe_password: '',
+    update_wifi: false,
+    new_wifi_ssid: '',
+    new_wifi_password: '',
     ont_replacement_action: 'installed',
     ont_replacement_notes: '',
     materials: [],
@@ -2477,6 +2540,9 @@ const saveDraft = () => {
             update_pppoe: reportForm.update_pppoe,
             new_pppoe_user: reportForm.new_pppoe_user,
             new_pppoe_password: reportForm.new_pppoe_password,
+            update_wifi: reportForm.update_wifi,
+            new_wifi_ssid: reportForm.new_wifi_ssid,
+            new_wifi_password: reportForm.new_wifi_password,
             ont_replacement_action: reportForm.ont_replacement_action,
             ont_replacement_notes: reportForm.ont_replacement_notes,
             started_at: startedAt.value,
@@ -2545,6 +2611,9 @@ const openReportModal = (ticket, ignoreDraft = false) => {
             reportForm.update_pppoe = draft.update_pppoe ?? (ticket.category === 'Konfigurasi / PPPoE / VLAN');
             reportForm.new_pppoe_user = draft.new_pppoe_user ?? (ticket.customer?.ont?.pppoe_user || ticket.customer?.pppoe_username || '');
             reportForm.new_pppoe_password = draft.new_pppoe_password ?? (ticket.customer?.ont?.pppoe_password || ticket.customer?.pppoe_password || '');
+            reportForm.update_wifi = draft.update_wifi ?? (ticket.category === 'WiFi / Sinyal Lemah');
+            reportForm.new_wifi_ssid = draft.new_wifi_ssid ?? (ticket.customer?.ont?.wifi_ssid || ticket.customer?.wifi_ssid || '');
+            reportForm.new_wifi_password = draft.new_wifi_password ?? (ticket.customer?.ont?.wifi_password || ticket.customer?.wifi_password || '');
             reportForm.ont_replacement_action = draft.ont_replacement_action || 'installed';
             reportForm.ont_replacement_notes = draft.ont_replacement_notes || '';
             activeReportTab.value = draft.active_tab || 'tindakan';
@@ -2599,6 +2668,9 @@ const openReportModal = (ticket, ignoreDraft = false) => {
         reportForm.update_pppoe = ticket.category === 'Konfigurasi / PPPoE / VLAN';
         reportForm.new_pppoe_user = ticket.customer?.ont?.pppoe_user || ticket.customer?.pppoe_username || '';
         reportForm.new_pppoe_password = ticket.customer?.ont?.pppoe_password || ticket.customer?.pppoe_password || '';
+        reportForm.update_wifi = ticket.category === 'WiFi / Sinyal Lemah';
+        reportForm.new_wifi_ssid = ticket.customer?.ont?.wifi_ssid || ticket.customer?.wifi_ssid || '';
+        reportForm.new_wifi_password = ticket.customer?.ont?.wifi_password || ticket.customer?.wifi_password || '';
         reportForm.ont_replacement_action = ticket.ont_replacement_action || 'installed';
         reportForm.ont_replacement_notes = ticket.ont_replacement_notes || '';
 
@@ -2854,6 +2926,13 @@ const generateReportPppoePassword = () => {
     reportForm.new_pppoe_password = pass;
 };
 
+const generateReportWifiPassword = () => {
+    const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+    let pass = '';
+    for (let i = 0; i < 8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    reportForm.new_wifi_password = pass;
+};
+
 // Deep Watcher to Auto-Save to localStorage
 watch([
     () => reportForm.action_taken,
@@ -2865,6 +2944,9 @@ watch([
     () => reportForm.update_pppoe,
     () => reportForm.new_pppoe_user,
     () => reportForm.new_pppoe_password,
+    () => reportForm.update_wifi,
+    () => reportForm.new_wifi_ssid,
+    () => reportForm.new_wifi_password,
     () => reportForm.materials,
     () => additionalMaterials.value,
 ], () => {

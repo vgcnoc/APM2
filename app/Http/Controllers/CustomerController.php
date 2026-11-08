@@ -4173,6 +4173,8 @@ class CustomerController extends Controller
             'billing_day' => 'nullable|integer|min:1|max:28',
             'is_prorata' => 'nullable|boolean',
             'service_status' => 'nullable|in:berbayar,gratis,free_home',
+            'wifi_ssid' => 'nullable|string|max:100',
+            'wifi_password' => 'nullable|string|max:100',
             'pppoe_user' => 'nullable|string',
             'pppoe_password' => 'nullable|string',
             'vlan_mode' => 'nullable|string',
@@ -4289,6 +4291,8 @@ class CustomerController extends Controller
                 }
 
                 $customer->ont->update([
+                    'wifi_ssid' => $validated['wifi_ssid'] ?? $customer->ont->wifi_ssid,
+                    'wifi_password' => $validated['wifi_password'] ?? $customer->ont->wifi_password,
                     'pppoe_user' => $pppoeUser,
                     'pppoe_password' => $pppoePassword,
                     'vlan_mode' => $validated['vlan_mode'] ?? $customer->ont->vlan_mode,
@@ -4308,6 +4312,13 @@ class CustomerController extends Controller
                         'pppoe_username' => $pppoeUser,
                         'pppoe_password' => $pppoePassword,
                     ]);
+                }
+
+                if (isset($validated['wifi_ssid']) || isset($validated['wifi_password'])) {
+                    $customer->update(array_filter([
+                        'wifi_ssid' => $validated['wifi_ssid'] ?? $customer->wifi_ssid,
+                        'wifi_password' => $validated['wifi_password'] ?? $customer->wifi_password,
+                    ], fn($val) => !is_null($val)));
                 }
 
                 // Create initial invoice
@@ -4677,6 +4688,8 @@ class CustomerController extends Controller
         }
 
         $validated = $request->validate([
+            'wifi_ssid' => 'nullable|string|max:100',
+            'wifi_password' => 'nullable|string|max:100',
             'pppoe_user' => 'nullable|string',
             'pppoe_password' => 'nullable|string',
             'vlan_mode' => 'nullable|string',
@@ -4712,6 +4725,12 @@ class CustomerController extends Controller
                     'pppoe_username' => $validated['pppoe_user'],
                     'pppoe_password' => $validated['pppoe_password'] ?? null,
                 ]);
+            }
+            if (isset($validated['wifi_ssid']) || isset($validated['wifi_password'])) {
+                $customer->update(array_filter([
+                    'wifi_ssid' => $validated['wifi_ssid'] ?? $customer->wifi_ssid,
+                    'wifi_password' => $validated['wifi_password'] ?? $customer->wifi_password,
+                ], fn($val) => !is_null($val)));
             }
             try {
                 app(\App\Services\RadiusService::class)->syncCustomer($customer);
@@ -5721,6 +5740,8 @@ class CustomerController extends Controller
             'billing_cycle' => 'nullable|in:default,anniversary,calendar,custom_date',
             'billing_day' => 'nullable|integer|min:1|max:28',
             'package_id' => 'nullable|exists:internet_packages,id',
+            'wifi_ssid' => 'nullable|string|max:100',
+            'wifi_password' => 'nullable|string|max:100',
             'pppoe_user' => 'nullable|string',
             'pppoe_password' => 'nullable|string',
             'vlan_mode' => 'nullable|string',
@@ -5813,6 +5834,8 @@ class CustomerController extends Controller
             }
 
             $ont->update([
+                'wifi_ssid' => $validated['wifi_ssid'] ?? $ont->wifi_ssid,
+                'wifi_password' => $validated['wifi_password'] ?? $ont->wifi_password,
                 'pppoe_user' => $pppoeUser,
                 'pppoe_password' => $pppoePassword,
                 'vlan_mode' => $validated['vlan_mode'],
@@ -5832,6 +5855,13 @@ class CustomerController extends Controller
                     'pppoe_username' => $pppoeUser,
                     'pppoe_password' => $pppoePassword,
                 ]);
+            }
+
+            if (isset($validated['wifi_ssid']) || isset($validated['wifi_password'])) {
+                $customer->update(array_filter([
+                    'wifi_ssid' => $validated['wifi_ssid'] ?? $customer->wifi_ssid,
+                    'wifi_password' => $validated['wifi_password'] ?? $customer->wifi_password,
+                ], fn($val) => !is_null($val)));
             }
 
             try {

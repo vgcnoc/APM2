@@ -693,6 +693,9 @@ class PgkController extends Controller
             'update_pppoe' => 'nullable|boolean',
             'new_pppoe_user' => 'nullable|string|max:100',
             'new_pppoe_password' => 'nullable|string|max:100',
+            'update_wifi' => 'nullable|boolean',
+            'new_wifi_ssid' => 'nullable|string|max:100',
+            'new_wifi_password' => 'nullable|string|max:100',
         ]);
 
         $oldStatus = $pgk->status;
@@ -740,7 +743,44 @@ class PgkController extends Controller
                 } catch (\Throwable $e) {
                     \Illuminate\Support\Facades\Log::warning('[RADIUS] PGK resolveByAdmin PPPoE sync error: ' . $e->getMessage());
                 }
-                $resolutionNotes .= ' | Login Internet (PPPoE) diperbarui ke: ' . ($newPppoeUser ?: $oldPppoeUser);
+                $resolutionNotes .= ' | Akun PPPoE ONT diperbarui ke: ' . ($newPppoeUser ?: $oldPppoeUser);
+            }
+        }
+
+        // Handle update kredensial WiFi Pelanggan (SSID & Password) jika diisi
+        if ($request->boolean('update_wifi') || !empty($validated['new_wifi_ssid']) || !empty($validated['new_wifi_password'])) {
+            $customer = $pgk->customer ?? Customer::find($pgk->customer_id);
+            $targetOnt = $customer?->ont ?? Ont::where('customer_id', $pgk->customer_id)->first();
+            $newWifiSsid = trim((string)($validated['new_wifi_ssid'] ?? ''));
+            $newWifiPass = (string)($validated['new_wifi_password'] ?? '');
+
+            $wifiOntUpdates = [];
+            $wifiCustUpdates = [];
+            if (!empty($newWifiSsid)) {
+                $wifiOntUpdates['wifi_ssid'] = $newWifiSsid;
+                $wifiCustUpdates['wifi_ssid'] = $newWifiSsid;
+            }
+            if (!empty($newWifiPass)) {
+                $wifiOntUpdates['wifi_password'] = $newWifiPass;
+                $wifiCustUpdates['wifi_password'] = $newWifiPass;
+            }
+
+            if (!empty($wifiOntUpdates) && $targetOnt) {
+                $targetOnt->update($wifiOntUpdates);
+            }
+            if (!empty($wifiCustUpdates) && $customer) {
+                $customer->update($wifiCustUpdates);
+            }
+
+            if (!empty($newWifiSsid) || !empty($newWifiPass)) {
+                $resolutionNotes .= ' | WiFi Pelanggan diperbarui: SSID ' . ($newWifiSsid ?: ($targetOnt?->wifi_ssid ?: '-'));
+                AuditLog::createLog(
+                    'Update WiFi Pasca Resolve PGK Admin',
+                    $targetOnt ?? $customer,
+                    $targetOnt?->wifi_ssid ?: '-',
+                    $newWifiSsid ?: ($targetOnt?->wifi_ssid ?: '-'),
+                    'Nama WiFi/Sandi diperbarui oleh Admin di sistem'
+                );
             }
         }
 
@@ -1062,6 +1102,9 @@ class PgkController extends Controller
             'update_pppoe' => 'nullable|boolean',
             'new_pppoe_user' => 'nullable|string|max:100',
             'new_pppoe_password' => 'nullable|string|max:100',
+            'update_wifi' => 'nullable|boolean',
+            'new_wifi_ssid' => 'nullable|string|max:100',
+            'new_wifi_password' => 'nullable|string|max:100',
             'ont_replacement_action' => 'nullable|in:installed,cancelled',
             'ont_replacement_notes' => 'nullable|string',
             'materials' => 'nullable|array',
@@ -1603,6 +1646,42 @@ class PgkController extends Controller
                     $oldPppoeUser,
                     $newPppoeUser ?: $oldPppoeUser,
                     'Login internet (PPPoE) diperbarui melalui laporan tiket PGK #' . $pgk->ticket_number . ' oleh ' . (auth()->user()?->name ?? 'Teknisi')
+                );
+            }
+        }
+
+        // 5B. Handle Update Nama & Password WiFi Pelanggan (SSID / WPA2)
+        if ($request->boolean('update_wifi') || !empty($request->new_wifi_ssid) || !empty($request->new_wifi_password)) {
+            $customer = $pgk->customer ?? Customer::find($pgk->customer_id);
+            $targetOnt = $ontSwapped ? $preparedOnt : ($customer?->ont ?? Ont::where('customer_id', $pgk->customer_id)->first());
+            $newWifiSsid = trim((string)($request->new_wifi_ssid ?? ''));
+            $newWifiPass = (string)($request->new_wifi_password ?? '');
+
+            $wifiOntUpdates = [];
+            $wifiCustUpdates = [];
+            if (!empty($newWifiSsid)) {
+                $wifiOntUpdates['wifi_ssid'] = $newWifiSsid;
+                $wifiCustUpdates['wifi_ssid'] = $newWifiSsid;
+            }
+            if (!empty($newWifiPass)) {
+                $wifiOntUpdates['wifi_password'] = $newWifiPass;
+                $wifiCustUpdates['wifi_password'] = $newWifiPass;
+            }
+
+            if (!empty($wifiOntUpdates) && $targetOnt) {
+                $targetOnt->update($wifiOntUpdates);
+            }
+            if (!empty($wifiCustUpdates) && $customer) {
+                $customer->update($wifiCustUpdates);
+            }
+
+            if (!empty($newWifiSsid) || !empty($newWifiPass)) {
+                AuditLog::createLog(
+                    'Update WiFi Pasca Laporan PGK',
+                    $targetOnt ?? $customer,
+                    $targetOnt?->wifi_ssid ?: '-',
+                    $newWifiSsid ?: ($targetOnt?->wifi_ssid ?: '-'),
+                    'WiFi pelanggan diperbarui melalui laporan tiket PGK #' . $pgk->ticket_number . ' oleh ' . (auth()->user()?->name ?? 'Teknisi')
                 );
             }
         }

@@ -31,6 +31,8 @@ class Ont extends Model
         'ip_login',
         'login_user',
         'login_password',
+        'wifi_ssid',
+        'wifi_password',
         'pppoe_user',
         'pppoe_password',
         'free_hotspot',

@@ -925,6 +925,21 @@
                             </div>
                         </div>
 
+                        <!-- WiFi Pelanggan (SSID & Sandi HP) -->
+                        <div class="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200 mb-4">
+                            <label class="block text-xs font-bold text-emerald-950 uppercase mb-2">📶 WiFi Pelanggan (SSID & Sandi HP)</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-emerald-900 mb-1">Nama WiFi (SSID)</label>
+                                    <input v-model="activationForm.wifi_ssid" type="text" class="w-full bg-white border border-emerald-300 rounded-lg px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-emerald-500" placeholder="Misal: WiFi-Rumah" />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-emerald-900 mb-1">Sandi WiFi</label>
+                                    <input v-model="activationForm.wifi_password" type="text" class="w-full bg-white border border-emerald-300 rounded-lg px-3 py-2 text-sm font-mono shadow-sm focus:ring-2 focus:ring-emerald-500" placeholder="Sandi WiFi..." />
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Banner Bypass PPPoE & Hotspot Radius untuk Free Home -->
                         <div v-if="activationForm.service_status === 'free_home'" class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
                             <div class="flex items-center gap-2 text-slate-800">
@@ -1505,6 +1520,21 @@
                                         <span class="text-[10px] font-bold text-emerald-800 bg-emerald-100/80 border border-emerald-300 px-2.5 py-1 rounded-full inline-flex items-center gap-1 shadow-2xs">
                                             <span>✓</span> Auto-Sync ke Data ONT
                                         </span>
+                                    </div>
+                                </div>
+
+                                <!-- WiFi Pelanggan (SSID & Sandi HP) -->
+                                <div class="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200">
+                                    <label class="block text-xs font-bold text-emerald-950 uppercase mb-2">📶 WiFi Pelanggan (SSID & Sandi HP)</label>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-xs font-medium text-emerald-900 mb-1">Nama WiFi (SSID)</label>
+                                            <input v-model="editForm.wifi_ssid" type="text" class="w-full bg-white border border-emerald-300 rounded-lg px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-emerald-500" placeholder="Misal: WiFi-Rumah" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-medium text-emerald-900 mb-1">Sandi WiFi</label>
+                                            <input v-model="editForm.wifi_password" type="text" class="w-full bg-white border border-emerald-300 rounded-lg px-3 py-2 text-sm font-mono shadow-sm focus:ring-2 focus:ring-emerald-500" placeholder="Sandi WiFi..." />
+                                        </div>
                                     </div>
                                 </div>
 
@@ -2203,6 +2233,8 @@ const editForm = useForm({
     billing_cycle: 'default',
     billing_day: null,
     package_id: '',
+    wifi_ssid: '',
+    wifi_password: '',
     pppoe_user: '',
     pppoe_password: '',
     vlan_mode: '',
@@ -2247,6 +2279,9 @@ function openEditActivationModal(customer) {
         mode = 'Bridge';
     }
     editForm.access_mode = mode;
+
+    editForm.wifi_ssid = customer.ont?.wifi_ssid || customer.wifi_ssid || '';
+    editForm.wifi_password = customer.ont?.wifi_password || customer.wifi_password || '';
 
     // Ambil kredensial akun: jika pppoe_user kosong tapi hotspot_user ada (seperti pada pelanggan Hotspot/Member), ambil dari hotspot_user
     editForm.pppoe_user = customer.ont?.pppoe_user || customer.ont?.hotspot_user || '';
@@ -2337,6 +2372,8 @@ const activationForm = useForm({
     is_prorata: true,
     service_status: 'berbayar',
     enable_tax: true,
+    wifi_ssid: '',
+    wifi_password: '',
     pppoe_user: '',
     pppoe_password: '',
     vlan_mode: '',
@@ -2687,6 +2724,9 @@ function openActivationModal(customer) {
         mode = 'Bridge';
     }
     activationForm.access_mode = mode;
+
+    activationForm.wifi_ssid = customer.ont?.wifi_ssid || customer.wifi_ssid || '';
+    activationForm.wifi_password = customer.ont?.wifi_password || customer.wifi_password || '';
 
     // Untuk mode hotspot, user & password diset baru saat aktivasi, tidak boleh mengambil dari data ONT
     if (mode === 'HOTSPOT/MEMBER') {

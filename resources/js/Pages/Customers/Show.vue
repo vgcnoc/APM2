@@ -355,10 +355,30 @@
                     </div>
 
                     <div class="bg-gray-50 p-5 rounded-xl border border-gray-200">
+                        <!-- Kredensial WiFi Pelanggan (SSID & Sandi HP / Perangkat) -->
+                        <div class="mb-5 p-4 rounded-xl bg-emerald-50/70 border border-emerald-200">
+                            <div class="flex items-center justify-between mb-2.5">
+                                <span class="text-xs font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
+                                    <span>📶</span> WiFi Pelanggan (SSID & Sandi HP / Perangkat)
+                                </span>
+                                <span class="text-[10px] text-emerald-700 font-semibold px-2 py-0.5 bg-emerald-100/70 rounded-full">Koneksi WiFi Lokal</span>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-emerald-900 mb-1">Nama WiFi (SSID)</label>
+                                    <input :value="customer.ont?.wifi_ssid || customer.wifi_ssid || '-'" type="text" class="w-full border rounded-lg px-3 py-2 bg-white border-emerald-200 text-gray-800 font-bold text-sm" readonly />
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-emerald-900 mb-1">Password / Sandi WiFi</label>
+                                    <input :value="customer.ont?.wifi_password || customer.wifi_password || '-'" type="text" class="w-full border rounded-lg px-3 py-2 bg-white border-emerald-200 text-gray-800 font-mono font-bold text-sm" readonly />
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
                             <div>
                                 <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
-                                    {{ (customer.ont?.access_mode === 'HOTSPOT/MEMBER' || customer.ont?.access_mode === 'HOTSPOT' || customer.ont?.access_mode === 'MEMBER') ? 'Member / Hotspot Username' : 'PPPoE / Member Username' }}
+                                    {{ (customer.ont?.access_mode === 'HOTSPOT/MEMBER' || customer.ont?.access_mode === 'HOTSPOT' || customer.ont?.access_mode === 'MEMBER') ? 'Member / Hotspot Username' : 'Akun Dial-up PPPoE ONT (WAN)' }}
                                 </label>
                                 <input :value="customer.ont?.pppoe_user || customer.ont?.hotspot_user || customer.pppoe_username || '-'" type="text" class="w-full border rounded-lg px-4 py-2.5 bg-gray-100 border-gray-200 text-gray-700 font-medium" readonly />
                             </div>
@@ -1505,6 +1525,21 @@
                             </div>
                         </div>
                         
+                        <!-- WiFi Pelanggan (SSID & Sandi) -->
+                        <div class="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200">
+                            <label class="block text-xs font-bold text-emerald-950 uppercase mb-2">📶 WiFi Pelanggan (SSID & Sandi HP)</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-emerald-900 mb-1">Nama WiFi (SSID)</label>
+                                    <input v-model="activationForm.wifi_ssid" type="text" class="w-full border rounded-lg px-3 py-2 text-sm shadow-sm transition-all" :class="!isEditingOnt ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white border-emerald-300 focus:ring-2 focus:ring-emerald-500'" placeholder="Misal: WiFi-Rumah" :readonly="!isEditingOnt" />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-emerald-900 mb-1">Sandi WiFi</label>
+                                    <input v-model="activationForm.wifi_password" type="text" class="w-full border rounded-lg px-3 py-2 text-sm font-mono shadow-sm transition-all" :class="!isEditingOnt ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white border-emerald-300 focus:ring-2 focus:ring-emerald-500'" placeholder="Sandi WiFi..." :readonly="!isEditingOnt" />
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">PPPoE/Member Username</label>
@@ -1775,6 +1810,21 @@
                             <p>Perbarui data konfigurasi akses ONT untuk pelanggan ini.</p>
                         </div>
                         
+                        <!-- WiFi Pelanggan (SSID & Sandi) -->
+                        <div class="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200">
+                            <label class="block text-xs font-bold text-emerald-950 uppercase mb-2">📶 WiFi Pelanggan (SSID & Sandi HP)</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-emerald-900 mb-1">Nama WiFi (SSID)</label>
+                                    <input v-model="activeConfigForm.wifi_ssid" type="text" class="w-full bg-white border border-emerald-300 rounded-lg px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-emerald-500" placeholder="Misal: WiFi-Rumah" />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-emerald-900 mb-1">Sandi WiFi</label>
+                                    <input v-model="activeConfigForm.wifi_password" type="text" class="w-full bg-white border border-emerald-300 rounded-lg px-3 py-2 text-sm font-mono shadow-sm focus:ring-2 focus:ring-emerald-500" placeholder="Sandi WiFi..." />
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">PPPoE/Member Username</label>
@@ -3247,6 +3297,23 @@
                             </div>
                         </div>
 
+                        <!-- WiFi Pelanggan (SSID & Password) -->
+                        <div class="bg-emerald-50/70 p-4 rounded-xl border border-emerald-200 space-y-3">
+                            <h4 class="text-xs font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-2">
+                                <span class="p-1 rounded bg-emerald-200 text-emerald-800">📶</span> WiFi Pelanggan (SSID & Sandi HP)
+                            </h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-emerald-900 uppercase tracking-wider mb-1">Nama WiFi (SSID)</label>
+                                    <input v-model="editActivationForm.wifi_ssid" type="text" placeholder="Misal: WiFi-Rumah" class="w-full text-sm font-medium border-emerald-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white" />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-emerald-900 uppercase tracking-wider mb-1">Password / Sandi WiFi</label>
+                                    <input v-model="editActivationForm.wifi_password" type="text" placeholder="Sandi WiFi..." class="w-full text-sm font-mono font-medium border-emerald-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 bg-white" />
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- 3. Kredensial PPPoE & Akses Jaringan -->
                         <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
                             <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
@@ -4442,6 +4509,8 @@ const activationForm = useForm({
     is_prorata: usePage().props.billingSettings?.prorata_first_month !== false,
     service_status: props.customer?.service_status || 'berbayar',
     enable_tax: initialTaxEnabled,
+    wifi_ssid: props.customer?.ont?.wifi_ssid || props.customer?.wifi_ssid || '',
+    wifi_password: props.customer?.ont?.wifi_password || props.customer?.wifi_password || '',
     pppoe_user: props.customer?.ont?.pppoe_user || props.customer?.ont?.hotspot_user || props.customer?.pppoe_username || '',
     pppoe_password: props.customer?.ont?.pppoe_password || props.customer?.ont?.hotspot_password || props.customer?.pppoe_password || '',
     vlan_mode: props.customer?.ont?.vlan_mode || '',
@@ -4646,6 +4715,8 @@ const activeConfigForm = useForm({
     ip_login: '',
     login_user: '',
     login_password: '',
+    wifi_ssid: '',
+    wifi_password: '',
     pppoe_user: '',
     pppoe_password: '',
     vlan_mode: '',
@@ -4662,6 +4733,8 @@ function openEditActiveModal() {
         activeConfigForm.ip_login = props.customer.ont?.ip_login || '';
         activeConfigForm.login_user = props.customer.ont?.login_user || '';
         activeConfigForm.login_password = props.customer.ont?.login_password || '';
+        activeConfigForm.wifi_ssid = props.customer.ont?.wifi_ssid || props.customer.wifi_ssid || '';
+        activeConfigForm.wifi_password = props.customer.ont?.wifi_password || props.customer.wifi_password || '';
         activeConfigForm.pppoe_user = props.customer.ont?.pppoe_user || props.customer.ont?.hotspot_user || props.customer.pppoe_username || '';
         activeConfigForm.pppoe_password = props.customer.ont?.pppoe_password || props.customer.ont?.hotspot_password || props.customer.pppoe_password || '';
         activeConfigForm.vlan_mode = props.customer.ont?.vlan_mode || '';
@@ -5543,6 +5616,8 @@ const editActivationForm = useForm({
     billing_cycle: 'default',
     billing_day: null,
     package_id: '',
+    wifi_ssid: '',
+    wifi_password: '',
     pppoe_user: '',
     pppoe_password: '',
     vlan_mode: '',
@@ -5582,6 +5657,8 @@ function openEditActivationModal() {
     }
     editActivationForm.access_mode = mode;
 
+    editActivationForm.wifi_ssid = ont?.wifi_ssid || cust?.wifi_ssid || '';
+    editActivationForm.wifi_password = ont?.wifi_password || cust?.wifi_password || '';
     editActivationForm.pppoe_user = ont?.pppoe_user || ont?.hotspot_user || '';
     editActivationForm.pppoe_password = ont?.pppoe_password || ont?.hotspot_password || '';
     editActivationForm.vlan_mode = ont?.vlan_mode || '';
