@@ -486,7 +486,8 @@ class PgkController extends Controller
                 $q->where('ticket_number', 'like', "%{$search}%")
                   ->orWhere('action_taken', 'like', "%{$search}%")
                   ->orWhere('complainant_name', 'like', "%{$search}%")
-                  ->orWhere('complaint_details', 'like', "%{$search}%")
+                  ->orWhere('reported_issue', 'like', "%{$search}%")
+                  ->orWhere('admin_notes', 'like', "%{$search}%")
                   ->orWhere('resolution_notes', 'like', "%{$search}%")
                   ->orWhereHas('customer', function($cq) use ($search) {
                       $cq->where('name', 'like', "%{$search}%")
@@ -1889,7 +1890,9 @@ class PgkController extends Controller
                     $q->where('ticket_number', 'like', "%{$search}%")
                       ->orWhere('action_taken', 'like', "%{$search}%")
                       ->orWhere('complainant_name', 'like', "%{$search}%")
-                      ->orWhere('complaint_details', 'like', "%{$search}%")
+                      ->orWhere('reported_issue', 'like', "%{$search}%")
+                      ->orWhere('admin_notes', 'like', "%{$search}%")
+                      ->orWhere('resolution_notes', 'like', "%{$search}%")
                       ->orWhereHas('customer', function($cq) use ($search) {
                           $cq->where('name', 'like', "%{$search}%")
                              ->orWhere('customer_code', 'like', "%{$search}%");
