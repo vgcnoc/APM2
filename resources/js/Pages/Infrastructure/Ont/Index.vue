@@ -1052,21 +1052,21 @@
                                 <!-- Template Card VIRUZS - Using Original Image -->
                                 <div v-for="ont in getSelectedOntData()" :key="ont.id" class="print-card" style="width: 90mm; position: relative; break-inside: avoid; page-break-inside: avoid;">
                                     <!-- Background Template Image -->
-                                    <img src="/images/card-template.jpg" alt="Card Template" style="width: 100%; display: block; border-radius: 6px; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;" />
+                                    <img src="/images/card-template.jpg?v=2" alt="Card Template" style="width: 100%; display: block; border-radius: 6px; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;" />
                                     
                                     <!-- Overlay: Nama Pelanggan -->
                                     <div style="position: absolute; top: 46%; left: 41.5%; right: 3%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #1e1b4b; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1;">
                                         {{ ont.customer ? ont.customer.name : '-' }}
                                     </div>
                                     
-                                    <!-- Overlay: Sales -->
-                                    <div style="position: absolute; top: 61%; left: 41.5%; right: 3%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #1e1b4b; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1;">
-                                        {{ ont.customer?.sales?.name || getOfficerName(ont) }}
+                                    <!-- Overlay: Sales + No WA -->
+                                    <div style="position: absolute; top: 61%; left: 41.5%; right: 3%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #1e1b4b; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" :title="getCardSalesInfo(ont)">
+                                        {{ getCardSalesInfo(ont) }}
                                     </div>
                                     
-                                    <!-- Overlay: Tanggal Aktivasi -->
+                                    <!-- Overlay: Tanggal Instalasi (dari Penugasan) -->
                                     <div style="position: absolute; top: 76%; left: 41.5%; right: 3%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #1e1b4b; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1;">
-                                        {{ formatDate(ont.created_at) }}
+                                        {{ getCardInstallationDate(ont) }}
                                     </div>
                                     
                                     <!-- Overlay: ID-O -->
@@ -1779,6 +1779,45 @@ onUnmounted(() => {
     document.body.classList.remove('is-printing-ont-card');
 });
 
+function getCardSalesInfo(ont) {
+    if (!ont) return '-';
+    const sales = ont.customer?.sales;
+    if (sales) {
+        const name = sales.name || '-';
+        const phone = sales.phone || sales.whatsapp || sales.no_wa || sales.employee?.phone;
+        if (phone) {
+            return `${name} (${phone})`;
+        }
+        return name;
+    }
+    return getOfficerName(ont);
+}
+
+function getCardInstallationDate(ont) {
+    if (!ont) return '-';
+    const cust = ont.customer;
+    if (cust) {
+        const schedules = cust.technician_schedules || cust.technicianSchedules || [];
+        const installSched = schedules.find(s => s.type === 'installation' || s.type === 'instalasi') || schedules[0];
+        if (installSched && installSched.scheduled_date) {
+            return formatDate(installSched.scheduled_date);
+        }
+        if (cust.installation_date) {
+            return formatDate(cust.installation_date);
+        }
+    }
+    if (ont.start_time) {
+        return formatDate(ont.start_time);
+    }
+    if (cust && cust.activation_date) {
+        return formatDate(cust.activation_date);
+    }
+    if (cust && cust.registration_date) {
+        return formatDate(cust.registration_date);
+    }
+    return formatDate(ont.created_at);
+}
+
 function getOfficerName(ont) {
     if (ont.input_officers && ont.input_officers.length > 0) {
         const first = ont.input_officers[0];
@@ -1789,7 +1828,15 @@ function getOfficerName(ont) {
 
 function formatDate(dateStr) {
     if (!dateStr) return '-';
-    const d = new Date(dateStr);
+    const str = String(dateStr).trim();
+    let d;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+        const [y, m, dayNum] = str.split('-').map(Number);
+        d = new Date(y, m - 1, dayNum);
+    } else {
+        d = new Date(str);
+    }
+    if (isNaN(d.getTime())) return str;
     const day = String(d.getDate()).padStart(2, '0');
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
     return `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;

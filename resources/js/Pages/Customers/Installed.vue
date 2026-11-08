@@ -1167,21 +1167,21 @@
                                 <!-- Template Card VIRUZS -->
                                 <div v-for="customer in getSelectedCustomerData()" :key="customer.id" class="print-card" style="width: 90mm; position: relative; break-inside: avoid; page-break-inside: avoid;">
                                     <!-- Background Template Image -->
-                                    <img src="/images/card-template.jpg" alt="Card Template" style="width: 100%; display: block; border-radius: 6px; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;" />
+                                    <img src="/images/card-template.jpg?v=2" alt="Card Template" style="width: 100%; display: block; border-radius: 6px; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;" />
                                     
                                     <!-- Overlay: Nama Pelanggan -->
-                                    <div style="position: absolute; top: 46%; left: 41.5%; right: 3%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #1e1b4b; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1;">
+                                    <div style="position: absolute; top: 46%; left: 41.5%; right: 3%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #1e1b4b; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                         {{ customer.name || '-' }}
                                     </div>
                                     
-                                    <!-- Overlay: Sales -->
-                                    <div style="position: absolute; top: 61%; left: 41.5%; right: 3%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #1e1b4b; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1;">
-                                        {{ customer.sales ? customer.sales.name : '-' }}
+                                    <!-- Overlay: Sales + No WA -->
+                                    <div style="position: absolute; top: 61%; left: 41.5%; right: 3%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #1e1b4b; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" :title="getCardSalesInfo(customer)">
+                                        {{ getCardSalesInfo(customer) }}
                                     </div>
                                     
-                                    <!-- Overlay: Tanggal Aktivasi -->
+                                    <!-- Overlay: Tanggal Instalasi (dari Penugasan) -->
                                     <div style="position: absolute; top: 76%; left: 41.5%; right: 3%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #1e1b4b; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1;">
-                                        {{ formatDate(customer.created_at) }}
+                                        {{ getCardInstallationDate(customer) }}
                                     </div>
                                     
                                     <!-- Overlay: ID-O -->
@@ -2224,6 +2224,42 @@ onUnmounted(() => {
 
 function getSelectedCustomerData() {
     return props.customers.data.filter(customer => selectedIds.value.includes(customer.id));
+}
+
+function getCardSalesInfo(customer) {
+    if (!customer) return '-';
+    const sales = customer.sales;
+    if (!sales) return '-';
+    const name = sales.name || '-';
+    const phone = sales.phone || sales.whatsapp || sales.no_wa || sales.employee?.phone;
+    if (phone) {
+        return `${name} (${phone})`;
+    }
+    return name;
+}
+
+function getCardInstallationDate(customer) {
+    if (!customer) return '-';
+    // 1. Ambil dari penugasan teknisi (technician_schedules) tipe installation
+    const schedules = customer.technician_schedules || customer.technicianSchedules || [];
+    const installSched = schedules.find(s => s.type === 'installation' || s.type === 'instalasi') || schedules[0];
+    if (installSched && installSched.scheduled_date) {
+        return formatDate(installSched.scheduled_date);
+    }
+    // 2. Fallback cerdas: data instalasi atau tanggal terkait
+    if (customer.installation_date) {
+        return formatDate(customer.installation_date);
+    }
+    if (customer.ont && customer.ont.start_time) {
+        return formatDate(customer.ont.start_time);
+    }
+    if (customer.activation_date) {
+        return formatDate(customer.activation_date);
+    }
+    if (customer.registration_date) {
+        return formatDate(customer.registration_date);
+    }
+    return formatDate(customer.created_at);
 }
 
 function formatDate(dateStr) {

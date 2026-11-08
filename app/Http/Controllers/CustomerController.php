@@ -1879,8 +1879,8 @@ class CustomerController extends Controller
         }
 
         $customers = $customerQuery
-            ->with(['package', 'surveys.odp', 'ont.odp.odc.olt', 'sales', 'technicianSchedules' => function ($q) {
-                $q->where('type', 'installation')->with('technician');
+            ->with(['package', 'surveys.odp', 'ont.odp.odc.olt', 'sales.employee', 'technicianSchedules' => function ($q) {
+                $q->where('type', 'installation')->with('technician.employee');
             }])
             ->orderByRaw('COALESCE(registration_date, created_at) DESC, id DESC')
             ->paginate(15)
