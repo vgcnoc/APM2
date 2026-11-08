@@ -342,7 +342,8 @@ class SpecialAttendanceController extends Controller
                 ? sprintf("%02d:%02d WIB", (int) floor($avgClockIn / 3600), (int) floor(((int) $avgClockIn % 3600) / 60))
                 : '-';
 
-            $score = ($presents > 0) ? max(0, ($presents * 100) - ($lateMinutes * 2)) : 0;
+            $latePenalty = (int) $empRecords->sum(fn($rec) => min(100, (int) ($rec->late_minutes ?? 0) * 2));
+            $score = ($presents > 0) ? max(0, ($presents * 100) - $latePenalty - ($noClockOut * 50)) : 0;
 
             $adminMatrix[] = [
                 'employee_id' => $emp->id,
@@ -414,8 +415,9 @@ class SpecialAttendanceController extends Controller
                 ? sprintf("%02d:%02d WIB", (int) floor($avgClockIn / 3600), (int) floor(((int) $avgClockIn % 3600) / 60))
                 : '-';
 
-            // Poin dasar per kehadiran = 100, penalti menit telat = 2 pts, penalti tanpa pulang = 50 pts
-            $score = ($presents > 0) ? max(0, ($presents * 100) - ($lateMinutes * 2) - ($noClockOut * 50)) : 0;
+            // Poin dasar per kehadiran = 100, penalti menit telat = 2 pts (maksimal 100 pts per hari), penalti tanpa pulang = 50 pts
+            $latePenalty = (int) $memberAtts->sum(fn($rec) => min(100, (int) ($rec->late_minutes ?? 0) * 2));
+            $score = ($presents > 0) ? max(0, ($presents * 100) - $latePenalty - ($noClockOut * 50)) : 0;
 
             $competingMatrix[] = [
                 'employee_id' => $emp->id,
@@ -1055,20 +1057,28 @@ class SpecialAttendanceController extends Controller
                             ? Carbon::parse($latestIncident->date)->format('Y-m-d') 
                             : min(Carbon::today('Asia/Jakarta')->format('Y-m-d'), $monthEnd->format('Y-m-d'));
 
+                        $refId = "SPECIAL_DEDUCT_{$team->id}_{$emp->id}_{$month}";
                         $desc = "Potongan Absen {$team->name} Periode {$month} ({$lates}x telat, {$noOutCount}x tanpa absen pulang)";
                         Deduction::updateOrCreate(
                             [
                                 'user_id' => $u->id,
-                                'type' => 'auto',
-                                'description' => $desc,
+                                'reference_id' => $refId,
                             ],
                             [
+                                'type' => 'auto',
+                                'description' => $desc,
                                 'amount' => $totalDeduction,
                                 'deduction_date' => $incidentDate,
                                 'status' => 'pending',
                             ]
                         );
                         $totalSyncedDeductions++;
+                    } else {
+                        $refId = "SPECIAL_DEDUCT_{$team->id}_{$emp->id}_{$month}";
+                        Deduction::where('user_id', $u->id)
+                            ->where('reference_id', $refId)
+                            ->where('status', 'pending')
+                            ->delete();
                     }
                 }
             }
@@ -1110,7 +1120,8 @@ class SpecialAttendanceController extends Controller
                     $lates = $mAtts->where('status', 'late')->count();
                     $noOut = $mAtts->filter(fn($att) => AttendanceCalculatorService::isSpecialMissingClockOut($att, $mTeam, $nowSync))->count();
 
-                    $score = ($presents > 0) ? max(0, ($presents * 100) - ($lateMinutes * 2) - ($noOut * 50)) : 0;
+                    $latePenalty = (int) $mAtts->sum(fn($rec) => min(100, (int) ($rec->late_minutes ?? 0) * 2));
+                    $score = ($presents > 0) ? max(0, ($presents * 100) - $latePenalty - ($noOut * 50)) : 0;
 
                     $clockInSecs = [];
                     foreach ($mAtts as $a) {

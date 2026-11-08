@@ -1088,12 +1088,12 @@ class AttendanceCalculatorService
         // Rata-rata jam masuk & pulang (untuk display)
         $avgClockInDisplaySec = !empty($rawClockInSecs) ? (array_sum($rawClockInSecs) / count($rawClockInSecs)) : null;
         $avgClockInFormatted = $avgClockInDisplaySec !== null
-            ? sprintf("%02d:%02d WIB", floor($avgClockInDisplaySec / 3600), floor(($avgClockInDisplaySec % 3600) / 60))
+            ? sprintf("%02d:%02d WIB", (int) floor($avgClockInDisplaySec / 3600), (int) floor(((int) $avgClockInDisplaySec % 3600) / 60))
             : '-';
 
         $avgClockOutSec = !empty($clockOutSecs) ? (array_sum($clockOutSecs) / count($clockOutSecs)) : null;
         $avgClockOutFormatted = $avgClockOutSec !== null
-            ? sprintf("%02d:%02d WIB", floor($avgClockOutSec / 3600), floor(($avgClockOutSec % 3600) / 60))
+            ? sprintf("%02d:%02d WIB", (int) floor($avgClockOutSec / 3600), (int) floor(((int) $avgClockOutSec % 3600) / 60))
             : '-';
 
         $todayStr = Carbon::today('Asia/Jakarta')->format('Y-m-d');
