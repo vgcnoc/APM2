@@ -549,16 +549,17 @@
                                 </td>
                                 <td class="py-3 px-4 text-center">
                                     <button
-                                        v-if="log.photo_in || log.lat_in"
+                                        v-if="log.photo_in || log.lat_in || log.photo_out || log.lat_out"
                                         type="button"
                                         @click="openMediaModal(log)"
-                                        class="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition cursor-pointer"
+                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition cursor-pointer"
+                                        title="Lihat foto presensi masuk & pulang beserta koordinat GPS"
                                     >
                                         <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                         </svg>
-                                        <span>Lihat GPS</span>
+                                        <span>Lihat Bukti</span>
                                     </button>
                                     <span v-else class="text-slate-400 text-[11px]">-</span>
                                 </td>
@@ -613,70 +614,204 @@
             <!-- ========================================== -->
             <div
                 v-if="selectedLogForModal"
-                class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
+                class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs overflow-y-auto"
                 @click.self="selectedLogForModal = null"
             >
-                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-xl">
-                    <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full p-5 space-y-4 shadow-2xl transition-all my-8 max-h-[90vh] flex flex-col">
+                    <!-- Header Modal -->
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
                         <div>
-                            <h3 class="font-bold text-slate-900 dark:text-white text-sm">Bukti Presensi & Titik Lokasi</h3>
-                            <p class="text-xs text-slate-400">{{ selectedLogForModal.employee_name }} • {{ selectedLogForModal.formatted_date }}</p>
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-bold text-slate-900 dark:text-white text-base">Bukti Presensi & Titik Lokasi</h3>
+                                <span
+                                    class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                                    :class="selectedLogForModal.status_badge === 'green' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : (selectedLogForModal.status_badge === 'amber' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300')"
+                                >
+                                    {{ selectedLogForModal.status_label }}
+                                </span>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-0.5">
+                                {{ selectedLogForModal.employee_name }} • {{ selectedLogForModal.formatted_date }} ({{ selectedLogForModal.day_name }}) • {{ selectedLogForModal.shift_name }}
+                            </p>
                         </div>
                         <button
                             type="button"
                             @click="selectedLogForModal = null"
-                            class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg font-bold p-1 cursor-pointer"
+                            class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg font-bold p-1 cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                         >
                             ✕
                         </button>
                     </div>
 
-                    <div class="space-y-3 text-xs">
-                        <!-- Foto Masuk -->
-                        <div v-if="selectedLogForModal.photo_in" class="space-y-1">
-                            <span class="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Foto Clock In:</span>
-                            <div class="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 max-h-48 flex items-center justify-center bg-slate-950">
-                                <img :src="selectedLogForModal.photo_in" alt="Foto Masuk" class="max-h-48 object-contain" />
-                            </div>
-                        </div>
+                    <!-- Body Modal (Scrollable) -->
+                    <div class="overflow-y-auto space-y-4 pr-1 text-xs">
+                        <!-- Grid 2 Kolom: Masuk (Clock In) & Pulang (Clock Out) -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                            <!-- 1. KARTU PRESENSI MASUK -->
+                            <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3.5 border border-slate-200/80 dark:border-slate-700/60 space-y-2.5">
+                                <div class="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-700/60 pb-2">
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
+                                        <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Presensi Masuk
+                                    </span>
+                                    <span class="font-extrabold text-slate-800 dark:text-slate-200 text-xs">
+                                        {{ selectedLogForModal.clock_in ? selectedLogForModal.clock_in + ' WIB' : 'Belum Masuk' }}
+                                    </span>
+                                </div>
 
-                        <!-- Data GPS Masuk -->
-                        <div v-if="selectedLogForModal.lat_in" class="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl space-y-1.5">
-                            <div class="flex items-center justify-between">
-                                <span class="font-bold text-slate-700 dark:text-slate-300">Koordinat Masuk:</span>
-                                <span class="font-mono text-slate-600 dark:text-slate-400">{{ selectedLogForModal.lat_in }}, {{ selectedLogForModal.lng_in }}</span>
+                                <!-- Foto Masuk -->
+                                <div class="space-y-1">
+                                    <span class="font-bold text-slate-500 uppercase tracking-wider text-[10px] block">Foto Clock In:</span>
+                                    <div
+                                        v-if="selectedLogForModal.photo_in"
+                                        class="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-950 relative group cursor-pointer aspect-4/3 flex items-center justify-center shadow-2xs"
+                                        @click="previewZoomPhoto(selectedLogForModal.photo_in, 'Foto Clock In - ' + selectedLogForModal.employee_name)"
+                                        title="Klik untuk memperbesar foto"
+                                    >
+                                        <img
+                                            :src="resolvePhotoUrl(selectedLogForModal.photo_in)"
+                                            alt="Foto Masuk"
+                                            class="w-full h-full object-cover transition duration-200 group-hover:scale-105"
+                                            @error="onImageError"
+                                        />
+                                        <div class="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-[11px] font-bold gap-1 backdrop-blur-2xs">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/></svg>
+                                            <span>Perbesar Foto</span>
+                                        </div>
+                                    </div>
+                                    <div v-else class="h-28 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center text-slate-400 gap-1 bg-white/50 dark:bg-slate-900/30">
+                                        <svg class="w-6 h-6 text-slate-300 dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                        <span class="text-[11px]">Tidak ada foto masuk</span>
+                                    </div>
+                                </div>
+
+                                <!-- GPS Masuk -->
+                                <div v-if="selectedLogForModal.lat_in" class="bg-white dark:bg-slate-900/80 p-2.5 rounded-lg border border-slate-200/60 dark:border-slate-700/60 space-y-1 text-[11px]">
+                                    <div class="flex items-center justify-between">
+                                        <span class="font-bold text-slate-600 dark:text-slate-400">Koordinat:</span>
+                                        <span class="font-mono text-slate-700 dark:text-slate-300 text-[10px]">{{ selectedLogForModal.lat_in }}, {{ selectedLogForModal.lng_in }}</span>
+                                    </div>
+                                    <div v-if="selectedLogForModal.distance_in !== null && selectedLogForModal.distance_in !== undefined" class="flex items-center justify-between">
+                                        <span class="font-bold text-slate-600 dark:text-slate-400">Jarak ke Pos/Kantor:</span>
+                                        <span class="font-extrabold text-blue-600 dark:text-blue-400">{{ selectedLogForModal.distance_in }} meter</span>
+                                    </div>
+                                    <div class="pt-1 border-t border-slate-100 dark:border-slate-800">
+                                        <a
+                                            :href="`https://www.google.com/maps?q=${selectedLogForModal.lat_in},${selectedLogForModal.lng_in}`"
+                                            target="_blank"
+                                            class="text-blue-600 dark:text-blue-400 hover:underline font-bold inline-flex items-center gap-1"
+                                        >
+                                            <span>Buka di Google Maps</span>
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                        </a>
+                                    </div>
+                                </div>
                             </div>
-                            <div v-if="selectedLogForModal.distance_in !== null" class="flex items-center justify-between">
-                                <span class="font-bold text-slate-700 dark:text-slate-300">Jarak ke Kantor / Pos:</span>
-                                <span class="font-extrabold text-blue-600 dark:text-blue-400">{{ selectedLogForModal.distance_in }} meter</span>
-                            </div>
-                            <div class="pt-1">
-                                <a
-                                    :href="`https://www.google.com/maps?q=${selectedLogForModal.lat_in},${selectedLogForModal.lng_in}`"
-                                    target="_blank"
-                                    class="text-blue-600 dark:text-blue-400 hover:underline font-bold inline-flex items-center gap-1"
-                                >
-                                    <span>Buka di Google Maps</span>
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-                                </a>
+
+                            <!-- 2. KARTU PRESENSI PULANG -->
+                            <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3.5 border border-slate-200/80 dark:border-slate-700/60 space-y-2.5">
+                                <div class="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-700/60 pb-2">
+                                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300">
+                                        <span class="w-2 h-2 rounded-full bg-blue-500"></span> Presensi Pulang
+                                    </span>
+                                    <span class="font-extrabold text-slate-800 dark:text-slate-200 text-xs">
+                                        {{ selectedLogForModal.clock_out ? selectedLogForModal.clock_out + ' WIB' : 'Belum Pulang' }}
+                                    </span>
+                                </div>
+
+                                <!-- Foto Pulang -->
+                                <div class="space-y-1">
+                                    <span class="font-bold text-slate-500 uppercase tracking-wider text-[10px] block">Foto Clock Out:</span>
+                                    <div
+                                        v-if="selectedLogForModal.photo_out"
+                                        class="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-950 relative group cursor-pointer aspect-4/3 flex items-center justify-center shadow-2xs"
+                                        @click="previewZoomPhoto(selectedLogForModal.photo_out, 'Foto Clock Out - ' + selectedLogForModal.employee_name)"
+                                        title="Klik untuk memperbesar foto"
+                                    >
+                                        <img
+                                            :src="resolvePhotoUrl(selectedLogForModal.photo_out)"
+                                            alt="Foto Pulang"
+                                            class="w-full h-full object-cover transition duration-200 group-hover:scale-105"
+                                            @error="onImageError"
+                                        />
+                                        <div class="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-[11px] font-bold gap-1 backdrop-blur-2xs">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/></svg>
+                                            <span>Perbesar Foto</span>
+                                        </div>
+                                    </div>
+                                    <div v-else class="h-28 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center text-slate-400 gap-1 bg-white/50 dark:bg-slate-900/30">
+                                        <svg class="w-6 h-6 text-slate-300 dark:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                        <span class="text-[11px]">{{ selectedLogForModal.clock_out ? 'Tidak ada foto pulang' : 'Belum absen pulang' }}</span>
+                                    </div>
+                                </div>
+
+                                <!-- GPS Pulang -->
+                                <div v-if="selectedLogForModal.lat_out" class="bg-white dark:bg-slate-900/80 p-2.5 rounded-lg border border-slate-200/60 dark:border-slate-700/60 space-y-1 text-[11px]">
+                                    <div class="flex items-center justify-between">
+                                        <span class="font-bold text-slate-600 dark:text-slate-400">Koordinat:</span>
+                                        <span class="font-mono text-slate-700 dark:text-slate-300 text-[10px]">{{ selectedLogForModal.lat_out }}, {{ selectedLogForModal.lng_out }}</span>
+                                    </div>
+                                    <div v-if="selectedLogForModal.distance_out !== null && selectedLogForModal.distance_out !== undefined" class="flex items-center justify-between">
+                                        <span class="font-bold text-slate-600 dark:text-slate-400">Jarak ke Pos/Kantor:</span>
+                                        <span class="font-extrabold text-blue-600 dark:text-blue-400">{{ selectedLogForModal.distance_out }} meter</span>
+                                    </div>
+                                    <div v-if="selectedLogForModal.location_out" class="flex items-center justify-between">
+                                        <span class="font-bold text-slate-600 dark:text-slate-400">Lokasi:</span>
+                                        <span class="text-slate-700 dark:text-slate-300 truncate max-w-[150px]">{{ selectedLogForModal.location_out }}</span>
+                                    </div>
+                                    <div class="pt-1 border-t border-slate-100 dark:border-slate-800">
+                                        <a
+                                            :href="`https://www.google.com/maps?q=${selectedLogForModal.lat_out},${selectedLogForModal.lng_out}`"
+                                            target="_blank"
+                                            class="text-blue-600 dark:text-blue-400 hover:underline font-bold inline-flex items-center gap-1"
+                                        >
+                                            <span>Buka di Google Maps</span>
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                        </a>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
                         <!-- Keterangan / Tugas Luar -->
-                        <div v-if="selectedLogForModal.notes || selectedLogForModal.duty_location" class="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/50 rounded-xl">
+                        <div v-if="selectedLogForModal.notes || selectedLogForModal.duty_location" class="p-3 bg-blue-50/80 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/50 rounded-xl text-xs">
                             <span class="font-bold text-blue-900 dark:text-blue-200 block mb-0.5">Keterangan / Lokasi Tugas:</span>
                             <p class="text-blue-800 dark:text-blue-300">{{ selectedLogForModal.notes || selectedLogForModal.duty_location }}</p>
                         </div>
                     </div>
 
-                    <div class="pt-2 text-right">
+                    <!-- Footer Modal -->
+                    <div class="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">
+                        <span class="text-[11px] text-slate-400 italic">Klik pada foto untuk melihat ukuran penuh</span>
                         <button
                             type="button"
                             @click="selectedLogForModal = null"
-                            class="px-4 py-2 bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-bold text-xs rounded-xl hover:opacity-90 transition cursor-pointer"
+                            class="px-5 py-2 bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-bold text-xs rounded-xl hover:opacity-90 transition cursor-pointer shadow-xs"
                         >
                             Tutup
                         </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODAL ZOOM LIGHTBOX FOTO -->
+            <div
+                v-if="activeZoomPhoto"
+                class="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md"
+                @click="activeZoomPhoto = null"
+            >
+                <div class="relative max-w-3xl w-full bg-slate-900 rounded-2xl overflow-hidden shadow-2xl border border-slate-700 flex flex-col max-h-[90vh]" @click.stop>
+                    <div class="flex items-center justify-between px-4 py-3 bg-slate-800/90 border-b border-slate-700">
+                        <span class="text-xs font-bold text-white">{{ activeZoomPhotoTitle || 'Pratinjau Foto Presensi' }}</span>
+                        <button
+                            type="button"
+                            @click="activeZoomPhoto = null"
+                            class="text-slate-400 hover:text-white text-base font-bold p-1 cursor-pointer"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                    <div class="p-2 flex items-center justify-center overflow-auto bg-black">
+                        <img :src="resolvePhotoUrl(activeZoomPhoto)" alt="Foto Zoom" class="max-h-[75vh] w-auto object-contain rounded-lg" />
                     </div>
                 </div>
             </div>
@@ -720,6 +855,38 @@ const canSyncPayroll = computed(() => {
 
 const activeTab = ref(props.filters.tab || 'recap');
 const selectedLogForModal = ref(null);
+const activeZoomPhoto = ref(null);
+const activeZoomPhotoTitle = ref('');
+
+function previewZoomPhoto(photo, title = '') {
+    activeZoomPhoto.value = photo;
+    activeZoomPhotoTitle.value = title;
+}
+
+function resolvePhotoUrl(path) {
+    if (!path) return '';
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+        return path;
+    }
+    const clean = path.replace(/^\/+/, '');
+    if (clean.startsWith('storage/')) {
+        return `/${clean}`;
+    }
+    return `/storage/${clean}`;
+}
+
+function onImageError(e) {
+    e.target.style.display = 'none';
+    if (e.target.parentElement) {
+        const existing = e.target.parentElement.querySelector('.img-error-placeholder');
+        if (!existing) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'img-error-placeholder flex flex-col items-center justify-center p-3 text-center text-slate-400 text-xs w-full h-full';
+            errorDiv.innerHTML = '<span class="text-amber-500 font-bold mb-0.5 text-[11px]">⚠️ Gambar Tidak Ditemukan</span><span class="text-[10px] text-slate-400">Berkas foto tidak tersedia</span>';
+            e.target.parentElement.appendChild(errorDiv);
+        }
+    }
+}
 
 const filterForm = ref({
     period_mode: props.filters.period_mode || 'month',

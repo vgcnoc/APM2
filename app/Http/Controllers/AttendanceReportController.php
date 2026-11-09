@@ -452,8 +452,25 @@ class AttendanceReportController extends Controller
     }
 
     /**
-     * Format item record absensi untuk tabel detail dan export
+     * Format path foto presensi menjadi path web publik (/storage/...)
      */
+    protected function formatPhotoUrl(?string $path): ?string
+    {
+        if (empty($path)) {
+            return null;
+        }
+
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://') || str_starts_with($path, 'data:')) {
+            return $path;
+        }
+
+        $clean = ltrim($path, '/');
+        if (str_starts_with($clean, 'storage/')) {
+            return '/' . $clean;
+        }
+
+        return '/storage/' . $clean;
+    }
 
     /**
      * Format item record absensi tim khusus untuk tabel detail dan export
@@ -504,10 +521,13 @@ class AttendanceReportController extends Controller
             'attendance_type_label' => $item->team?->name ?? 'Tim Khusus',
             'distance_in' => 0,
             'distance_out' => 0,
-            'photo_in' => $item->photo_in,
-            'photo_out' => $item->photo_out,
+            'photo_in' => $this->formatPhotoUrl($item->photo_in),
+            'photo_out' => $this->formatPhotoUrl($item->photo_out),
             'lat_in' => $item->lat_in,
             'lng_in' => $item->lng_in,
+            'lat_out' => $item->lat_out,
+            'lng_out' => $item->lng_out,
+            'location_out' => $item->location_out,
             'notes' => $item->notes,
             'duty_location' => $item->location_in,
             'is_synced' => (bool) $item->is_synced_to_payroll,
@@ -577,10 +597,12 @@ class AttendanceReportController extends Controller
             'attendance_type_label' => $typeLabel,
             'distance_in' => $item->distance_in,
             'distance_out' => $item->distance_out,
-            'photo_in' => $item->photo_in,
-            'photo_out' => $item->photo_out,
+            'photo_in' => $this->formatPhotoUrl($item->photo_in),
+            'photo_out' => $this->formatPhotoUrl($item->photo_out),
             'lat_in' => $item->lat_in,
             'lng_in' => $item->lng_in,
+            'lat_out' => $item->lat_out,
+            'lng_out' => $item->lng_out,
             'notes' => $item->notes,
             'duty_location' => $item->duty_location,
             'is_synced' => (bool) $item->is_synced_to_payroll,
