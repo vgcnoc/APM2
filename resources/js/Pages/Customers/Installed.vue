@@ -133,6 +133,7 @@
             :pagination="customers"
             searchPlaceholder="Cari pelanggan instalasi..."
             searchRoute="/customers/installed"
+            :filters="filterState"
             selectable
             v-model:selected="selectedIds"
         >
@@ -153,9 +154,9 @@
                     </select>
                     
                     <div class="flex items-center gap-2 w-full md:w-auto">
-                        <input type="date" v-model="filterState.date_from" @change="applyFilter" class="w-full md:w-auto px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-2xs transition-all" title="Tanggal Dari">
+                        <input type="date" v-model="filterState.date_from" @change="onDateFilterChange" @keydown.enter.prevent="applyFilter" class="w-full md:w-auto px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-2xs transition-all" title="Tanggal Dari">
                         <span class="text-xs text-slate-400 font-medium px-0.5">s/d</span>
-                        <input type="date" v-model="filterState.date_to" @change="applyFilter" class="w-full md:w-auto px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-2xs transition-all" title="Tanggal Sampai">
+                        <input type="date" v-model="filterState.date_to" @change="onDateFilterChange" @keydown.enter.prevent="applyFilter" class="w-full md:w-auto px-3 py-1.5 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-2xs transition-all" title="Tanggal Sampai">
                     </div>
 
                     <div class="flex items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
@@ -1906,13 +1907,21 @@ const filterState = ref({
     technician_id: props.filters?.technician_id || '',
 });
 
-watch(() => props.filters, (newFilters) => {
-    filterState.value.date_from = newFilters?.date_from || '';
-    filterState.value.date_to = newFilters?.date_to || '';
-    filterState.value.area = newFilters?.area || newFilters?.area_id || '';
-    filterState.value.tab = newFilters?.tab || '';
-    filterState.value.technician_id = newFilters?.technician_id || '';
-}, { deep: true });
+watch(() => props.filters?.tab, (newTab) => {
+    filterState.value.tab = newTab || '';
+});
+
+function isCompleteDateOrEmpty(val) {
+    if (!val) return true;
+    return /^(19|20)\d{2}-\d{2}-\d{2}$/.test(String(val));
+}
+
+function onDateFilterChange() {
+    if (!isCompleteDateOrEmpty(filterState.value.date_from) || !isCompleteDateOrEmpty(filterState.value.date_to)) {
+        return;
+    }
+    applyFilter();
+}
 
 function getTabUrl(tab) {
     const params = new URLSearchParams();

@@ -1352,10 +1352,7 @@ class CustomerController extends Controller
                 }
             })
             ->when($request->date, function ($q, $date) {
-                $q->where(function ($sub) use ($date) {
-                    $sub->whereDate('registration_date', $date)
-                        ->orWhereDate('created_at', $date);
-                });
+                $q->whereRaw('DATE(COALESCE(registration_date, created_at)) = ?', [$date]);
             })
             ->when($request->area || $request->area_id, fn($q) => $this->applyAreaFilter($q, $request->area_id ?: $request->area))
             ->when($request->status, function ($q, $status) {
@@ -1603,8 +1600,7 @@ class CustomerController extends Controller
             })
             ->when($request->date, function ($q, $date) {
                 $q->where(function($sub) use ($date) {
-                    $sub->whereDate('created_at', $date)
-                        ->orWhereDate('registration_date', $date)
+                    $sub->whereRaw('DATE(COALESCE(registration_date, created_at)) = ?', [$date])
                         ->orWhereHas('technicianSchedules', function($sq) use ($date) {
                             $sq->whereDate('scheduled_date', $date)->where('type', 'survey');
                         })
@@ -1788,26 +1784,33 @@ class CustomerController extends Controller
                 $sq->where('technician_id', $techId)->where('type', 'installation');
             });
         }
-        if ($request->date_from) {
-            $dateFrom = $request->date_from;
-            $filteredBaseQuery->where(function($sub) use ($dateFrom) {
-                $sub->whereHas('technicianSchedules', function($ts) use ($dateFrom) {
-                    $ts->where('scheduled_date', '>=', $dateFrom)->where('type', 'installation');
+        $instDateFrom = $request->input('date_from') ?: $request->input('start_date');
+        $instDateTo = $request->input('date_to') ?: $request->input('end_date');
+        if ($instDateFrom && $instDateTo && $instDateFrom > $instDateTo) {
+            [$instDateFrom, $instDateTo] = [$instDateTo, $instDateFrom];
+        }
+        if ($instDateFrom) {
+            $filteredBaseQuery->where(function($sub) use ($instDateFrom) {
+                $sub->whereHas('technicianSchedules', function($ts) use ($instDateFrom) {
+                    $ts->whereDate('scheduled_date', '>=', $instDateFrom)->where('type', 'installation');
                 })
-                ->orWhereDate('registration_date', '>=', $dateFrom)
-                ->orWhereDate('activation_date', '>=', $dateFrom)
-                ->orWhereDate('created_at', '>=', $dateFrom);
+                ->orWhere(function($fb) use ($instDateFrom) {
+                    $fb->whereDoesntHave('technicianSchedules', function($ts) {
+                        $ts->where('type', 'installation');
+                    })->whereRaw('DATE(COALESCE(registration_date, created_at)) >= ?', [$instDateFrom]);
+                });
             });
         }
-        if ($request->date_to) {
-            $dateTo = $request->date_to;
-            $filteredBaseQuery->where(function($sub) use ($dateTo) {
-                $sub->whereHas('technicianSchedules', function($ts) use ($dateTo) {
-                    $ts->where('scheduled_date', '<=', $dateTo)->where('type', 'installation');
+        if ($instDateTo) {
+            $filteredBaseQuery->where(function($sub) use ($instDateTo) {
+                $sub->whereHas('technicianSchedules', function($ts) use ($instDateTo) {
+                    $ts->whereDate('scheduled_date', '<=', $instDateTo)->where('type', 'installation');
                 })
-                ->orWhereDate('registration_date', '<=', $dateTo)
-                ->orWhereDate('activation_date', '<=', $dateTo)
-                ->orWhereDate('created_at', '<=', $dateTo);
+                ->orWhere(function($fb) use ($instDateTo) {
+                    $fb->whereDoesntHave('technicianSchedules', function($ts) {
+                        $ts->where('type', 'installation');
+                    })->whereRaw('DATE(COALESCE(registration_date, created_at)) <= ?', [$instDateTo]);
+                });
             });
         }
         if ($request->search) {
@@ -1937,39 +1940,62 @@ class CustomerController extends Controller
             }
         };
 
+        $dateFrom = $request->input('date_from') ?: $request->input('start_date');
+        $dateTo = $request->input('date_to') ?: $request->input('end_date');
+        if ($dateFrom && $dateTo && $dateFrom > $dateTo) {
+            [$dateFrom, $dateTo] = [$dateTo, $dateFrom];
+        }
+
         // 1. Antrean Menunggu Aktivasi Reguler (status installing & sudah diaudit)
-        $waitingQuery = Customer::query()->where('status', 'installing')->where('is_audited', true);
+        $waitingQuery = Customer::query()
+            ->where('status', 'installing')
+            ->where('is_audited', true)
+            ->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'));
         $applyAreaScope($waitingQuery);
 
         // 2. Riwayat Aktivasi Reguler (pelanggan yang sudah diaktivasi dan bukan berhenti/dibatalkan)
-        $historyQuery = Customer::query()->where(function($q) {
-            $q->whereNotNull('activation_date')
-              ->orWhere('status', 'active');
-        })->whereNotIn('status', ['installing', 'terminated', 'canceled']);
+        $historyQuery = Customer::query()
+            ->where(function($q) {
+                $q->whereNotNull('activation_date')
+                  ->orWhere('status', 'active');
+            })
+            ->whereNotIn('status', ['installing', 'terminated', 'canceled'])
+            ->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'));
         $applyAreaScope($historyQuery);
 
         // 3. Khusus Reseller Voucher (menunggu aktivasi atau riwayat aktivasi reseller)
-        $resellerQuery = Customer::query()->where('is_reseller', true)->whereIn('status', ['installing', 'active']);
+        $resellerQuery = Customer::query()
+            ->where('is_reseller', true)
+            ->whereIn('status', ['installing', 'active']);
         $applyAreaScope($resellerQuery);
 
-        $statsWaiting = (clone $waitingQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'));
-        $statsHistory = (clone $historyQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'));
-        $statsReseller = clone $resellerQuery;
-
+        // Terapkan filter Area, Rentang Tanggal, dan Pencarian secara konsisten ke seluruh query & statistik
         if ($request->area || $request->area_id) {
-            $this->applyAreaFilter($statsWaiting, $request->area_id ?: $request->area);
-            $this->applyAreaFilter($statsHistory, $request->area_id ?: $request->area);
-            $this->applyAreaFilter($statsReseller, $request->area_id ?: $request->area);
+            $areaVal = $request->area_id ?: $request->area;
+            $this->applyAreaFilter($waitingQuery, $areaVal);
+            $this->applyAreaFilter($historyQuery, $areaVal);
+            $this->applyAreaFilter($resellerQuery, $areaVal);
+        }
+        if ($dateFrom) {
+            $waitingQuery->whereRaw('DATE(COALESCE(registration_date, created_at)) >= ?', [$dateFrom]);
+            $historyQuery->whereRaw('DATE(COALESCE(activation_date, registration_date, created_at)) >= ?', [$dateFrom]);
+            $resellerQuery->whereRaw('DATE(COALESCE(activation_date, registration_date, created_at)) >= ?', [$dateFrom]);
+        }
+        if ($dateTo) {
+            $waitingQuery->whereRaw('DATE(COALESCE(registration_date, created_at)) <= ?', [$dateTo]);
+            $historyQuery->whereRaw('DATE(COALESCE(activation_date, registration_date, created_at)) <= ?', [$dateTo]);
+            $resellerQuery->whereRaw('DATE(COALESCE(activation_date, registration_date, created_at)) <= ?', [$dateTo]);
         }
         if ($request->search) {
-            $statsWaiting->search($request->search);
-            $statsHistory->search($request->search);
-            $statsReseller->search($request->search);
+            $waitingQuery->search($request->search);
+            $historyQuery->search($request->search);
+            $resellerQuery->search($request->search);
         }
+
         $stats = [
-            'aktivasi' => $statsWaiting->count(),
-            'riwayat' => $statsHistory->count(),
-            'reseller' => $statsReseller->count(),
+            'aktivasi' => (clone $waitingQuery)->count(),
+            'riwayat' => (clone $historyQuery)->count(),
+            'reseller' => (clone $resellerQuery)->count(),
         ];
 
         $currentTab = $request->input('tab', 'menunggu');
@@ -1980,9 +2006,9 @@ class CustomerController extends Controller
         if ($currentTab === 'reseller') {
             $activeQuery = clone $resellerQuery;
         } elseif ($currentTab === 'riwayat') {
-            $activeQuery = (clone $historyQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'));
+            $activeQuery = clone $historyQuery;
         } else {
-            $activeQuery = (clone $waitingQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'));
+            $activeQuery = clone $waitingQuery;
         }
 
         $customers = $activeQuery
@@ -1995,41 +2021,11 @@ class CustomerController extends Controller
                 'technicianSchedules.technician:id,name,role,installation_fee,booking_fee',
                 'psbReceiver:id,name',
             ])
-            ->when($request->area || $request->area_id, fn($q) => $this->applyAreaFilter($q, $request->area_id ?: $request->area))
-            ->when($request->date_from, function ($q, $dateFrom) use ($currentTab) {
-                if ($currentTab === 'riwayat') {
-                    $q->where(function($sub) use ($dateFrom) {
-                        $sub->whereDate('activation_date', '>=', $dateFrom)
-                            ->orWhereDate('updated_at', '>=', $dateFrom)
-                            ->orWhereDate('created_at', '>=', $dateFrom);
-                    });
-                } else {
-                    $q->where(function($sub) use ($dateFrom) {
-                        $sub->whereDate('registration_date', '>=', $dateFrom)
-                            ->orWhereDate('created_at', '>=', $dateFrom);
-                    });
-                }
-            })
-            ->when($request->date_to, function ($q, $dateTo) use ($currentTab) {
-                if ($currentTab === 'riwayat') {
-                    $q->where(function($sub) use ($dateTo) {
-                        $sub->whereDate('activation_date', '<=', $dateTo)
-                            ->orWhereDate('updated_at', '<=', $dateTo)
-                            ->orWhereDate('created_at', '<=', $dateTo);
-                    });
-                } else {
-                    $q->where(function($sub) use ($dateTo) {
-                        $sub->whereDate('registration_date', '<=', $dateTo)
-                            ->orWhereDate('created_at', '<=', $dateTo);
-                    });
-                }
-            })
-            ->search($request->search)
             ->when($currentTab === 'reseller', function ($q) {
                 $q->orderByRaw("CASE WHEN status = 'installing' THEN 0 ELSE 1 END, COALESCE(activation_date, registration_date, created_at) DESC, id DESC");
             }, function ($q) use ($currentTab) {
                 $q->when($currentTab === 'riwayat', function ($sub) {
-                    $sub->orderByRaw('COALESCE(activation_date, updated_at) DESC, id DESC');
+                    $sub->orderByRaw('COALESCE(activation_date, registration_date, created_at) DESC, id DESC');
                 }, function ($sub) {
                     $sub->orderByRaw('COALESCE(registration_date, created_at) DESC, id DESC');
                 });

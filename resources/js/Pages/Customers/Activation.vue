@@ -92,6 +92,7 @@
             :pagination="customers"
             searchPlaceholder="Cari nama, ID, PPPoE..."
             searchRoute="/customers/activation"
+            :filters="{ tab: currentTab, area: filterArea, date_from: filterDateFrom, date_to: filterDateTo }"
             selectable
             v-model:selected="selectedIds"
         >
@@ -107,16 +108,16 @@
                     <!-- Filter Rentang Tanggal -->
                     <div class="flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 shadow-2xs">
                         <span class="text-gray-400 font-medium">{{ currentTab === 'riwayat' ? 'Tgl Aktif:' : 'Tgl Daftar:' }}</span>
-                        <input v-model="filterDateFrom" @change="applyFilters" type="date" class="border-0 p-0 text-xs text-slate-700 focus:ring-0" />
+                        <input v-model="filterDateFrom" @change="onDateFilterChange" @keydown.enter.prevent="applyFilters" type="date" class="border-0 p-0 text-xs text-slate-700 focus:ring-0" />
                         <span class="text-gray-300">s/d</span>
-                        <input v-model="filterDateTo" @change="applyFilters" type="date" class="border-0 p-0 text-xs text-slate-700 focus:ring-0" />
+                        <input v-model="filterDateTo" @change="onDateFilterChange" @keydown.enter.prevent="applyFilters" type="date" class="border-0 p-0 text-xs text-slate-700 focus:ring-0" />
                     </div>
 
-                    <button @click="applyFilters" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs rounded-lg transition-colors shadow-2xs cursor-pointer">
+                    <button type="button" @click="applyFilters" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs rounded-lg transition-colors shadow-2xs cursor-pointer">
                         Filter
                     </button>
 
-                    <button v-if="filterArea || filterDateFrom || filterDateTo" @click="resetFilters" class="px-3.5 py-2 bg-gray-50 text-gray-600 hover:bg-gray-100 font-medium text-xs rounded-lg transition-colors border border-gray-200 whitespace-nowrap cursor-pointer">
+                    <button type="button" v-if="filterArea || filterDateFrom || filterDateTo" @click="resetFilters" class="px-3.5 py-2 bg-gray-50 text-gray-600 hover:bg-gray-100 font-medium text-xs rounded-lg transition-colors border border-gray-200 whitespace-nowrap cursor-pointer">
                         Reset
                     </button>
                 </div>
@@ -2072,19 +2073,29 @@ const filterArea = ref(props.filters?.area || props.filters?.area_id || '');
 const filterDateFrom = ref(props.filters?.date_from || '');
 const filterDateTo = ref(props.filters?.date_to || '');
 
-watch(() => props.filters, (newFilters) => {
-    if (newFilters?.tab) currentTab.value = newFilters.tab;
-    filterArea.value = newFilters?.area || newFilters?.area_id || '';
-    filterDateFrom.value = newFilters?.date_from || '';
-    filterDateTo.value = newFilters?.date_to || '';
-}, { deep: true });
+watch(() => props.filters?.tab, (newTab) => {
+    if (newTab) currentTab.value = newTab;
+});
+
+function isCompleteDateOrEmpty(val) {
+    if (!val) return true;
+    return /^(19|20)\d{2}-\d{2}-\d{2}$/.test(String(val));
+}
+
+function onDateFilterChange() {
+    if (!isCompleteDateOrEmpty(filterDateFrom.value) || !isCompleteDateOrEmpty(filterDateTo.value)) {
+        return;
+    }
+    applyFilters();
+}
 
 function switchTab(tab) {
     currentTab.value = tab;
+    const currentSearch = typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('search') || props.filters?.search || undefined) : props.filters?.search;
     router.get('/customers/activation', {
         tab: tab,
         area: filterArea.value || undefined,
-        search: props.filters?.search || undefined,
+        search: currentSearch || undefined,
         date_from: filterDateFrom.value || undefined,
         date_to: filterDateTo.value || undefined,
     }, { preserveState: false, preserveScroll: true });
@@ -2105,8 +2116,10 @@ function resetFilters() {
     filterArea.value = '';
     filterDateFrom.value = '';
     filterDateTo.value = '';
+    const currentSearch = typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('search') || props.filters?.search || undefined) : props.filters?.search;
     router.get('/customers/activation', {
-        tab: currentTab.value
+        tab: currentTab.value,
+        search: currentSearch || undefined,
     }, { preserveState: true, preserveScroll: true, replace: true });
 }
 

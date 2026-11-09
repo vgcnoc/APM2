@@ -533,9 +533,11 @@ class Customer extends Model
             // Search by Package name
             $q->orWhereHas('package', fn ($pq) => $pq->where('name', 'like', "%{$term}%"));
 
-            // Search by ONT info (PPPoE user, serial number, IP, MAC)
+            // Search by ONT info (PPPoE user, Hotspot user, ONT ID, serial number, IP, MAC)
             $q->orWhereHas('ont', function ($oq) use ($term) {
                 $oq->where('pppoe_user', 'like', "%{$term}%")
+                   ->orWhere('hotspot_user', 'like', "%{$term}%")
+                   ->orWhere('ont_id', 'like', "%{$term}%")
                    ->orWhere('serial_number', 'like', "%{$term}%")
                    ->orWhere('ip_login', 'like', "%{$term}%")
                    ->orWhere('mac_address', 'like', "%{$term}%");
