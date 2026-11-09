@@ -1336,45 +1336,93 @@ class DashboardController extends Controller
         $realTraffic = $trafficService->getRealTraffic($nasId, $allowedNasIds);
 
         // ── 1. Ambil Sesi RADIUS Online & Disconnect Terakhir ───────────────────────
-        $onlineSessions = collect();
-        $lastDisconnects = collect();
+        $onlineLookup = [];
+        $lastDisconnectLookup = [];
         $scopedNas = Nas::when($allowedNasIds !== null, fn ($q) => $q->whereIn('id', $allowedNasIds))
             ->when(is_numeric($nasId), fn ($q) => $q->where('id', (int) $nasId))
             ->when(!is_numeric($nasId) && !in_array($nasId, [null, '', 'all'], true), fn ($q) => $q->whereRaw('1 = 0'))->get();
         $nasAddresses = $scopedNas->flatMap(fn ($nas) => $nas->accountingAddresses())->unique()->values()->all();
+        $shouldFilterByNasIp = ($allowedNasIds !== null || is_numeric($nasId)) && !empty($nasAddresses);
 
         try {
             if (class_exists(RadAcct::class)) {
-                $radQuery = RadAcct::online()->fresh()->whereIn('nasipaddress', $nasAddresses);
-                $onlineSessions = $radQuery->get()->keyBy('username');
+                $radQuery = RadAcct::online()->orderByDesc('acctstarttime');
+                if ($shouldFilterByNasIp) {
+                    $radQuery->whereIn('nasipaddress', $nasAddresses);
+                }
+                $radOnlineRows = $radQuery->get([
+                    'radacctid', 'username', 'framedipaddress', 'callingstationid',
+                    'nasipaddress', 'acctstarttime', 'acctupdatetime', 'acctsessiontime',
+                    'acctinputoctets', 'acctoutputoctets'
+                ]);
+
+                foreach ($radOnlineRows as $rs) {
+                    $rawUser = trim((string) $rs->username);
+                    if ($rawUser === '') continue;
+                    $k = mb_strtolower($rawUser);
+                    $kNoRealm = explode('@', $k)[0];
+                    if (!isset($onlineLookup[$k])) {
+                        $onlineLookup[$k] = $rs;
+                    }
+                    if (!isset($onlineLookup[$kNoRealm])) {
+                        $onlineLookup[$kNoRealm] = $rs;
+                    }
+                    if (!empty($rs->callingstationid)) {
+                        $cleanMac = mb_strtolower(preg_replace('/[^a-f0-9]/i', '', (string) $rs->callingstationid));
+                        if ($cleanMac && !isset($onlineLookup['mac_' . $cleanMac])) {
+                            $onlineLookup['mac_' . $cleanMac] = $rs;
+                        }
+                    }
+                }
 
                 // Sesi disconnect terakhir per username
                 $lastDisconnectQuery = RadAcct::whereNotNull('acctstoptime');
-                $lastDisconnectQuery->whereIn('nasipaddress', $nasAddresses);
-                $lastDisconnects = $lastDisconnectQuery
+                if ($shouldFilterByNasIp) {
+                    $lastDisconnectQuery->whereIn('nasipaddress', $nasAddresses);
+                }
+                $lastDisconnectRows = $lastDisconnectQuery
                     ->orderByDesc('acctstoptime')
-                    ->get(['username', 'acctstoptime', 'callingstationid', 'framedipaddress', 'acctterminatecause', 'acctsessiontime', 'acctinputoctets', 'acctoutputoctets'])
-                    ->unique('username')
-                    ->keyBy('username');
+                    ->limit(5000)
+                    ->get(['username', 'acctstoptime', 'callingstationid', 'framedipaddress', 'acctterminatecause', 'acctsessiontime', 'acctinputoctets', 'acctoutputoctets']);
+
+                foreach ($lastDisconnectRows as $ld) {
+                    $rawUser = trim((string) $ld->username);
+                    if ($rawUser === '') continue;
+                    $k = mb_strtolower($rawUser);
+                    $kNoRealm = explode('@', $k)[0];
+                    if (!isset($lastDisconnectLookup[$k])) {
+                        $lastDisconnectLookup[$k] = $ld;
+                    }
+                    if (!isset($lastDisconnectLookup[$kNoRealm])) {
+                        $lastDisconnectLookup[$kNoRealm] = $ld;
+                    }
+                    if (!empty($ld->callingstationid)) {
+                        $cleanMac = mb_strtolower(preg_replace('/[^a-f0-9]/i', '', (string) $ld->callingstationid));
+                        if ($cleanMac && !isset($lastDisconnectLookup['mac_' . $cleanMac])) {
+                            $lastDisconnectLookup['mac_' . $cleanMac] = $ld;
+                        }
+                    }
+                }
             }
         } catch (\Throwable $e) {}
 
-        $onlineUsernames = $onlineSessions->keys()->all();
-        if (!empty($realTraffic['active_ppp_users'])) {
-            $onlineUsernames = array_unique(array_merge($onlineUsernames, $realTraffic['active_ppp_users']));
-        }
+        $activePppLower = array_map(fn($u) => mb_strtolower(trim((string) $u)), $realTraffic['active_ppp_users'] ?? []);
+        $activeHotspotLower = array_map(fn($u) => mb_strtolower(trim((string) $u)), $realTraffic['active_hotspot_users'] ?? []);
+        $allActiveRouterUsersLower = array_unique(array_merge($activePppLower, $activeHotspotLower));
 
-        // ── 2. Data Pelanggan PPPoE & Status UP/DOWN Lengkap (100% Real) ────────────
+        // ── 2. Data Pelanggan PPPoE / Member Hotspot & Status UP/DOWN Lengkap (100% Real) ──
         $custBase = Customer::query()
             ->whereNotNull('package_id')
             ->with(['areaModel', 'ont.odp', 'package']);
         $applyAreaScope($custBase);
         // Monitoring realtime hanya untuk layanan yang masih berjalan atau
-        // sedang diisolir. Pelanggan booking, survey, instalasi, terminated,
-        // maupun canceled adalah arsip proses layanan dan tidak boleh tampil
-        // sebagai koneksi DOWN.
+        // sedang diisolir (memiliki ONT dan bukan paket voucher). Pelanggan booking,
+        // survey, instalasi, terminated, maupun canceled adalah arsip proses layanan
+        // dan tidak boleh tampil sebagai koneksi DOWN.
         $rawCustomers = (clone $custBase)
             ->whereIn('status', ['active', 'suspended'])
+            ->whereDoesntHave('package', fn ($q) => $q->where('access_mode', 'voucher'))
+            ->whereHas('ont')
             ->get();
 
         $pppoeItems = [];
@@ -1383,10 +1431,65 @@ class DashboardController extends Controller
         $pppoeIsolirCount = 0;
 
         foreach ($rawCustomers as $c) {
-            $u = $c->ont?->pppoe_user ?: $c->customer_code;
-            $s = $onlineSessions->get($u);
-            $isOnline = !is_null($s) || in_array($u, $realTraffic['active_ppp_users'] ?? []);
-            $last = $lastDisconnects->get($u);
+            $modeRaw = mb_strtolower((string) ($c->package?->access_mode ?? $c->ont?->access_mode ?? 'pppoe'));
+            $isMemberHotspot = str_contains($modeRaw, 'hotspot');
+            $primaryUser = $isMemberHotspot
+                ? ($c->ont?->hotspot_user ?: $c->ont?->pppoe_user ?: $c->customer_code)
+                : ($c->ont?->pppoe_user ?: $c->ont?->hotspot_user ?: $c->customer_code);
+
+            $candidates = array_values(array_unique(array_filter([
+                $primaryUser,
+                $c->ont?->pppoe_user,
+                $c->ont?->hotspot_user,
+                $c->customer_code,
+            ])));
+
+            $s = null;
+            $matchedRouterOnline = false;
+            foreach ($candidates as $cand) {
+                $candKey = mb_strtolower(trim((string) $cand));
+                $candNoRealm = explode('@', $candKey)[0];
+                if (isset($onlineLookup[$candKey])) {
+                    $s = $onlineLookup[$candKey];
+                    break;
+                }
+                if (isset($onlineLookup[$candNoRealm])) {
+                    $s = $onlineLookup[$candNoRealm];
+                    break;
+                }
+                if (in_array($candKey, $allActiveRouterUsersLower, true) || in_array($candNoRealm, $allActiveRouterUsersLower, true)) {
+                    $matchedRouterOnline = true;
+                }
+            }
+
+            if (!$s && !empty($c->ont?->mac_address)) {
+                $cleanMac = mb_strtolower(preg_replace('/[^a-f0-9]/i', '', (string) $c->ont->mac_address));
+                if ($cleanMac && isset($onlineLookup['mac_' . $cleanMac])) {
+                    $s = $onlineLookup['mac_' . $cleanMac];
+                }
+            }
+
+            $isOnline = !is_null($s) || $matchedRouterOnline;
+
+            $last = null;
+            foreach ($candidates as $cand) {
+                $candKey = mb_strtolower(trim((string) $cand));
+                $candNoRealm = explode('@', $candKey)[0];
+                if (isset($lastDisconnectLookup[$candKey])) {
+                    $last = $lastDisconnectLookup[$candKey];
+                    break;
+                }
+                if (isset($lastDisconnectLookup[$candNoRealm])) {
+                    $last = $lastDisconnectLookup[$candNoRealm];
+                    break;
+                }
+            }
+            if (!$last && !empty($c->ont?->mac_address)) {
+                $cleanMac = mb_strtolower(preg_replace('/[^a-f0-9]/i', '', (string) $c->ont->mac_address));
+                if ($cleanMac && isset($lastDisconnectLookup['mac_' . $cleanMac])) {
+                    $last = $lastDisconnectLookup['mac_' . $cleanMac];
+                }
+            }
 
             $isIsolir = in_array($c->status, ['suspended']) || $c->service_status === 'isolir';
 
@@ -1401,14 +1504,36 @@ class DashboardController extends Controller
                 $pppoeDownCount++;
             }
 
-            // Waktu Lengkap WIB dan Waktu Relatif
-            $eventTime = $isOnline
-                ? ($s?->acctstarttime ? Carbon::parse($s->acctstarttime) : Carbon::parse($c->activation_date ?? $c->updated_at))
-                : ($last?->acctstoptime ? Carbon::parse($last->acctstoptime) : Carbon::parse($c->updated_at));
-
-            // Keterangan Penyebab Disconnect (Up/Down)
-            $cause = $last?->acctterminatecause ?? 'Koneksi Terputus';
+            // Waktu Lengkap WIB dan Waktu Relatif (Hanya gunakan waktu sesi RADIUS asli, jangan gunakan updated_at edit profil sebagai waktu putus!)
+            $hasRealSessionTime = $isOnline ? !empty($s?->acctstarttime) : !empty($last?->acctstoptime);
             if ($isOnline) {
+                $eventTime = $s?->acctstarttime
+                    ? Carbon::parse($s->acctstarttime)
+                    : Carbon::parse($c->activation_date ?? $c->created_at);
+                $fullTimeStr = $s?->acctstarttime
+                    ? $eventTime->timezone('Asia/Jakarta')->translatedFormat('d M Y, H:i:s') . ' WIB'
+                    : 'Sesi Aktif (' . ($c->activation_date ? Carbon::parse($c->activation_date)->timezone('Asia/Jakarta')->translatedFormat('d M Y') : 'Live') . ')';
+                $timeAgoStr = $s?->acctstarttime
+                    ? 'Aktif ' . $eventTime->diffForHumans(null, true)
+                    : 'Sedang Online (Live Router)';
+            } elseif ($last?->acctstoptime) {
+                $eventTime = Carbon::parse($last->acctstoptime);
+                $fullTimeStr = $eventTime->timezone('Asia/Jakarta')->translatedFormat('d M Y, H:i:s') . ' WIB';
+                $timeAgoStr = 'Down ' . $eventTime->diffForHumans();
+            } else {
+                $fallbackDate = $c->activation_date ? Carbon::parse($c->activation_date)->startOfDay() : Carbon::parse($c->created_at ?? '2026-01-01');
+                $eventTime = $fallbackDate;
+                $fullTimeStr = $c->activation_date
+                    ? 'Aktivasi: ' . Carbon::parse($c->activation_date)->timezone('Asia/Jakarta')->translatedFormat('d M Y')
+                    : 'Belum Tercatat Sesi';
+                $timeAgoStr = 'Belum ada log disconnect RADIUS';
+            }
+
+            // Keterangan Penyebab Disconnect (Up/Down/Isolir)
+            $cause = $last?->acctterminatecause ?? null;
+            if ($isIsolir && !$isOnline) {
+                $causeDesc = 'Layanan Diisolir (Suspended)';
+            } elseif ($isOnline) {
                 $causeDesc = 'Koneksi Normal (Sesi Aktif)';
             } else {
                 if ($cause === 'User-Request') {
@@ -1423,8 +1548,10 @@ class DashboardController extends Controller
                     $causeDesc = 'Permintaan Router NAS (NAS-Request)';
                 } elseif ($cause === 'Port-Error') {
                     $causeDesc = 'Gangguan Port / Fisik (Port-Error)';
+                } elseif ($last?->acctstoptime) {
+                    $causeDesc = 'Koneksi Terputus (' . ($cause ?: 'Offline') . ')';
                 } else {
-                    $causeDesc = 'Koneksi Terputus (Offline)';
+                    $causeDesc = 'Belum Terhubung / Offline';
                 }
             }
 
@@ -1433,29 +1560,45 @@ class DashboardController extends Controller
             if (str_starts_with($phoneClean, '0')) {
                 $phoneClean = '62' . substr($phoneClean, 1);
             }
-            $waMsg = rawurlencode("Halo Bpk/Ibu {$c->name} ({$c->customer_code}), kami mendeteksi koneksi internet Anda sedang " . ($isOnline ? "aktif normal" : "terputus sejak {$eventTime->timezone('Asia/Jakarta')->translatedFormat('d M Y, H:i:s')} WIB") . ". Apakah membutuhkan bantuan teknisi?");
+            $waStatusText = $isOnline
+                ? "aktif normal"
+                : ($last?->acctstoptime
+                    ? "terputus sejak {$eventTime->timezone('Asia/Jakarta')->translatedFormat('d M Y, H:i:s')} WIB"
+                    : "sedang tidak terhubung (offline)");
+            $waMsg = rawurlencode("Halo Bpk/Ibu {$c->name} ({$c->customer_code}), kami mendeteksi koneksi internet Anda {$waStatusText}. Apakah membutuhkan bantuan teknisi?");
             $waUrl = !empty($phoneClean) ? "https://wa.me/{$phoneClean}?text={$waMsg}" : null;
 
             $pppoeItems[] = [
                 'id'               => $c->id,
                 'service_type'     => 'pppoe',
+                'access_label'     => $isMemberHotspot ? 'HOTSPOT' : 'PPPOE',
                 'customer_code'    => $c->customer_code,
                 'name'             => $c->name,
                 'phone'            => $c->phone ?? '-',
-                'username'         => $u,
+                'username'         => $primaryUser,
                 'area_name'        => $c->areaModel?->name ?? 'Default Area',
                 'odp_name'         => $c->ont?->odp?->name ?? 'Belum Ada ODP',
                 'ip_address'       => $s?->framedipaddress ?? $last?->framedipaddress ?? '-',
                 'mac_address'      => $s?->callingstationid ?? $last?->callingstationid ?? $c->ont?->mac_address ?? '-',
                 'status'           => $statusKey,
+                'has_real_event'   => $hasRealSessionTime,
                 'exact_timestamp'  => $eventTime->toIso8601String(),
-                'full_time'        => $eventTime->timezone('Asia/Jakarta')->translatedFormat('d M Y, H:i:s') . ' WIB',
-                'time_ago'         => $isOnline ? 'Aktif ' . $eventTime->diffForHumans(null, true) : 'Down ' . $eventTime->diffForHumans(),
+                'full_time'        => $fullTimeStr,
+                'time_ago'         => $timeAgoStr,
                 'disconnect_cause' => $causeDesc,
                 'package_name'     => $c->package?->name ?? 'Paket Reguler',
                 'whatsapp_url'     => $waUrl,
             ];
         }
+
+        usort($pppoeItems, function ($a, $b) {
+            $realA = !empty($a['has_real_event']) ? 1 : 0;
+            $realB = !empty($b['has_real_event']) ? 1 : 0;
+            if ($realA !== $realB) {
+                return $realB <=> $realA;
+            }
+            return strcmp($b['exact_timestamp'], $a['exact_timestamp']);
+        });
 
         $pppoeTotal = count($pppoeItems);
         $pppoeUptimeRate = $pppoeTotal > 0 ? round(($pppoeOnlineCount / $pppoeTotal) * 100, 1) : 100;
@@ -1529,16 +1672,19 @@ class DashboardController extends Controller
                     ];
                 }
 
-                // Ambil daftar sesi Hotspot terbaru (15 item)
+                // Ambil daftar sesi Hotspot terbaru (50 item)
                 $sampleVouchers = Voucher::with(['profile', 'reseller.user'])
                     ->whereIn('status', ['used', 'expired'])
                     ->orderByDesc('used_at')
-                    ->take(15)
+                    ->take(50)
                     ->get();
 
                 foreach ($sampleVouchers as $v) {
                     $vUser = $v->username ?: $v->code;
-                    $isVOnline = in_array($vUser, $onlineUsernames) || in_array($vUser, $realTraffic['active_hotspot_users'] ?? []);
+                    $vUserKey = mb_strtolower(trim((string) $vUser));
+                    $vSession = $onlineLookup[$vUserKey] ?? null;
+                    $vLast = $lastDisconnectLookup[$vUserKey] ?? null;
+                    $isVOnline = !is_null($vSession) || in_array($vUserKey, $activeHotspotLower, true);
                     if ($isVOnline) {
                         $vStatus = 'up';
                         $hotspotOnlineCount++;
@@ -1550,20 +1696,26 @@ class DashboardController extends Controller
                         $hotspotDownCount++;
                     }
 
-                    $usedTime = $v->used_at ? Carbon::parse($v->used_at) : Carbon::parse($v->updated_at);
+                    $usedTime = $vSession?->acctstarttime
+                        ? Carbon::parse($vSession->acctstarttime)
+                        : ($vLast?->acctstoptime
+                            ? Carbon::parse($vLast->acctstoptime)
+                            : ($v->used_at ? Carbon::parse($v->used_at) : Carbon::parse($v->updated_at)));
                     $disconnectCause = $vStatus === 'up' ? 'Sesi Aktif' : ($vStatus === 'expired' ? 'Masa Aktif Habis (Expired)' : 'Masa Aktif Selesai / Offline');
                     $hotspotItems[] = [
                         'id'               => $v->id,
                         'service_type'     => 'hotspot',
+                        'access_label'     => 'HOTSPOT',
                         'customer_code'    => $v->code,
                         'name'             => 'Hotspot: ' . $v->code,
                         'phone'            => '-',
                         'username'         => $vUser,
                         'area_name'        => 'Hotspot Area',
                         'odp_name'         => 'Access Point',
-                        'ip_address'       => '-',
-                        'mac_address'      => '-',
+                        'ip_address'       => $vSession?->framedipaddress ?? $vLast?->framedipaddress ?? '-',
+                        'mac_address'      => $vSession?->callingstationid ?? $vLast?->callingstationid ?? '-',
                         'status'           => $vStatus,
+                        'has_real_event'   => true,
                         'exact_timestamp'  => $usedTime->toIso8601String(),
                         'full_time'        => $usedTime->timezone('Asia/Jakarta')->translatedFormat('d M Y, H:i:s') . ' WIB',
                         'time_ago'         => $usedTime->diffForHumans(),
@@ -1575,16 +1727,18 @@ class DashboardController extends Controller
                         'whatsapp_url'     => null,
                     ];
 
-                    $recentVouchers[] = [
-                        'id'               => $v->id,
-                        'code'             => $v->code,
-                        'profile_name'     => $v->profile?->name ?? 'Hotspot Reguler',
-                        'price'            => (float) ($v->profile?->price ?? 0),
-                        'price_formatted'  => 'Rp ' . number_format($v->profile?->price ?? 0, 0, ',', '.'),
-                        'full_time'        => $usedTime->timezone('Asia/Jakarta')->translatedFormat('d M Y, H:i:s') . ' WIB',
-                        'time_ago'         => $usedTime->diffForHumans(),
-                        'reseller_name'    => $v->reseller?->name ?? $v->reseller?->user?->name ?? 'Admin / Langsung',
-                    ];
+                    if (count($recentVouchers) < 15) {
+                        $recentVouchers[] = [
+                            'id'               => $v->id,
+                            'code'             => $v->code,
+                            'profile_name'     => $v->profile?->name ?? 'Hotspot Reguler',
+                            'price'            => (float) ($v->profile?->price ?? 0),
+                            'price_formatted'  => 'Rp ' . number_format($v->profile?->price ?? 0, 0, ',', '.'),
+                            'full_time'        => $usedTime->timezone('Asia/Jakarta')->translatedFormat('d M Y, H:i:s') . ' WIB',
+                            'time_ago'         => $usedTime->diffForHumans(),
+                            'reseller_name'    => $v->reseller?->name ?? $v->reseller?->user?->name ?? 'Admin / Langsung',
+                        ];
+                    }
                 }
             }
         } catch (\Throwable $e) {}
@@ -1637,9 +1791,9 @@ class DashboardController extends Controller
 
         if (!$isGlobalOutageOrNoRadius) {
             $now = Carbon::now();
-            // Hanya evaluasi pelanggan yang terputus baru-baru ini (maksimal 2 jam terakhir) dengan ODP valid
+            // Hanya evaluasi pelanggan yang benar-benar memiliki sesi RADIUS terputus baru-baru ini (maksimal 2 jam terakhir) dengan ODP valid
             $recentDownPPPoE = array_filter($pppoeItems, function ($item) use ($now) {
-                if ($item['status'] !== 'down') return false;
+                if ($item['status'] !== 'down' || empty($item['has_real_event'])) return false;
                 $odp = $item['odp_name'] ?? '';
                 if (empty($odp) || $odp === 'Belum Ada ODP' || $odp === 'ODP Default') return false;
 
@@ -1698,8 +1852,15 @@ class DashboardController extends Controller
 
         // ── 7. Feed Aktivitas Koneksi UP & DOWN Terkini ──────────────────────────────
         $allEvents = array_merge($pppoeItems, $hotspotItems);
-        // Urutkan berdasarkan waktu kejadian terbaru
-        usort($allEvents, fn($a, $b) => strcmp($b['exact_timestamp'], $a['exact_timestamp']));
+        // Prioritaskan sesi yang memiliki riwayat waktu RADIUS nyata (has_real_event = true), lalu urutkan waktu terbaru
+        usort($allEvents, function ($a, $b) {
+            $realA = !empty($a['has_real_event']) ? 1 : 0;
+            $realB = !empty($b['has_real_event']) ? 1 : 0;
+            if ($realA !== $realB) {
+                return $realB <=> $realA;
+            }
+            return strcmp($b['exact_timestamp'], $a['exact_timestamp']);
+        });
 
         // Filter penerapan Search & Service & Status jika ada parameter
         if (!empty($search)) {
@@ -1716,19 +1877,31 @@ class DashboardController extends Controller
         }
 
         if ($service !== 'all') {
-            $allEvents = array_values(array_filter($allEvents, fn($ev) => $ev['service_type'] === $service));
+            $allEvents = array_values(array_filter($allEvents, fn($ev) => $ev['service_type'] === $service || mb_strtolower($ev['access_label'] ?? '') === $service));
         }
 
         if ($statusFilter !== 'all') {
             $allEvents = array_values(array_filter($allEvents, fn($ev) => $ev['status'] === $statusFilter));
         }
 
-        // Batasi 30 feed aktivitas untuk efisiensi transfer data realtime
-        $connectionFeed = array_slice($allEvents, 0, 30);
+        // Sediakan hingga 500 feed aktivitas agar tab filter (Semua/UP/DOWN/ISOLIR/EXPIRED) & paginasi lengkap
+        $connectionFeed = array_slice($allEvents, 0, 500);
 
         // ── 8. Unpaid & Isolir Billing ──────────────────────────────────────────────
-        $invoiceBase = Invoice::query()->whereIn('status', ['unpaid', 'partially_paid', 'pending']);
-        $invoiceBase->whereHas('customer', fn ($q) => $applyAreaScope($q));
+        $invoiceBase = Invoice::query()
+            ->where('is_reseller_balance', false)
+            ->where('invoice_number', 'not like', 'INV-MIG-%')
+            ->whereIn('status', ['unpaid', 'partial', 'overdue'])
+            ->where(function ($q) {
+                $q->where('period_year', '>', 2026)
+                  ->orWhere(function ($sub) {
+                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
+                  })
+                  ->orWhere(function ($sub) {
+                      $sub->where('is_prorata', true)->orWhere('billing_type', 'prorata');
+                  });
+            });
+        $invoiceBase->whereHas('customer', fn ($q) => $applyAreaScope($q)->where('status', '!=', 'terminated')->whereNotIn('service_status', ['gratis', 'free_home']));
         $unpaidCount = (clone $invoiceBase)->count();
 
         $unpaidCustomers = (clone $invoiceBase)
@@ -1805,7 +1978,7 @@ class DashboardController extends Controller
                 'isolir'      => $pppoeIsolirCount,
                 'total'       => $pppoeTotal,
                 'uptime_rate' => $pppoeUptimeRate,
-                'items'       => array_slice($pppoeItems, 0, 50),
+                'items'       => array_slice($pppoeItems, 0, 200),
             ],
 
             // Hotspot Stats & Items
@@ -1816,7 +1989,7 @@ class DashboardController extends Controller
                 'available'   => $voucherAvailableCount,
                 'total'       => $hotspotTotal,
                 'uptime_rate' => $hotspotUptimeRate,
-                'items'       => array_slice($hotspotItems, 0, 50),
+                'items'       => array_slice($hotspotItems, 0, 100),
             ],
 
             // Isi Saldo Hari Ini

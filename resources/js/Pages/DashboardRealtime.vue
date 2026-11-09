@@ -738,6 +738,14 @@
                         <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span> DOWN (Offline)
                     </button>
                     <button
+                        @click="tableFilterStatus = 'isolir'"
+                        type="button"
+                        class="px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1"
+                        :class="tableFilterStatus === 'isolir' ? 'bg-amber-600 text-white shadow-2xs' : 'bg-slate-100 dark:bg-slate-800 text-amber-600 dark:text-amber-400'"
+                    >
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> ISOLIR
+                    </button>
+                    <button
                         @click="tableFilterStatus = 'expired'"
                         type="button"
                         class="px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1"
@@ -803,9 +811,9 @@
                                 <div class="flex items-center gap-2">
                                     <span
                                         class="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wide"
-                                        :class="item.service_type === 'pppoe' ? 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300' : 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300'"
+                                        :class="(item.access_label || item.service_type || 'pppoe').toLowerCase() === 'pppoe' ? 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300' : 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300'"
                                     >
-                                        {{ item.service_type }}
+                                        {{ item.access_label || item.service_type }}
                                     </span>
                                     <div>
                                         <p class="font-bold text-slate-900 dark:text-white">{{ item.name }}</p>
@@ -837,7 +845,9 @@
                             <!-- Jaringan & Lokasi -->
                             <td class="py-3 px-4 whitespace-nowrap">
                                 <p class="text-xs font-mono text-slate-700 dark:text-slate-300">
-                                    IP: {{ item.ip_address }}
+                                    <template v-if="item.ip_address && item.ip_address !== '-'">IP: {{ item.ip_address }}</template>
+                                    <template v-else-if="item.mac_address && item.mac_address !== '-'">MAC: {{ item.mac_address }}</template>
+                                    <template v-else>IP: -</template>
                                 </p>
                                 <p class="text-[10px] text-slate-400">
                                     📍 {{ item.area_name }} · 🗄️ {{ item.odp_name }}
