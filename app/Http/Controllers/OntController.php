@@ -439,14 +439,40 @@ class OntController extends Controller
                 }
             }
 
+            $oldPppoeUser = $lockedOnt->pppoe_user;
             $lockedOnt->update($validated);
 
-            if ($lockedOnt->customer_id && (isset($validated['wifi_ssid']) || isset($validated['wifi_password']))) {
-                $custWifiSync = [];
-                if (isset($validated['wifi_ssid'])) $custWifiSync['wifi_ssid'] = $validated['wifi_ssid'];
-                if (isset($validated['wifi_password'])) $custWifiSync['wifi_password'] = $validated['wifi_password'];
-                if (!empty($custWifiSync)) {
-                    \App\Models\Customer::where('id', $lockedOnt->customer_id)->update($custWifiSync);
+            if ($lockedOnt->customer_id) {
+                $customer = \App\Models\Customer::find($lockedOnt->customer_id);
+                if ($customer) {
+                    $custSync = [];
+                    if (array_key_exists('wifi_ssid', $validated)) $custSync['wifi_ssid'] = $validated['wifi_ssid'];
+                    if (array_key_exists('wifi_password', $validated)) $custSync['wifi_password'] = $validated['wifi_password'];
+                    if (array_key_exists('pppoe_user', $validated)) $custSync['pppoe_username'] = $validated['pppoe_user'];
+                    if (array_key_exists('pppoe_password', $validated)) $custSync['pppoe_password'] = $validated['pppoe_password'];
+                    if (!empty($custSync)) {
+                        $customer->update($custSync);
+                    }
+
+                    // Sinkronisasi server RADIUS MikroTik jika akun dial-up PPPoE diperbarui di Data ONT
+                    if (array_key_exists('pppoe_user', $validated) || array_key_exists('pppoe_password', $validated)) {
+                        $newPppoeUser = $lockedOnt->pppoe_user;
+                        try {
+                            app(\App\Services\RadiusService::class)->syncCustomer($customer, array_filter([$oldPppoeUser]));
+                        } catch (\Throwable $e) {
+                            \Illuminate\Support\Facades\Log::warning('[RADIUS] ONT update PPPoE sync error: ' . $e->getMessage());
+                        }
+
+                        if ($oldPppoeUser !== $newPppoeUser) {
+                            \App\Models\AuditLog::createLog(
+                                'Update PPPoE Data ONT',
+                                $lockedOnt,
+                                $oldPppoeUser,
+                                $newPppoeUser,
+                                'Akun Dial-up PPPoE diperbarui melalui Data ONT oleh ' . (auth()->user()?->name ?? 'Admin')
+                            );
+                        }
+                    }
                 }
             }
 
