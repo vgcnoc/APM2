@@ -175,9 +175,30 @@ class SurveyNetworkService
             // Existing ONT and Survey
             $ont = $customer->ont ?: $customer->onts()->orderBy('id')->lockForUpdate()->first();
             if (!$ont && !empty($attributes['serial_number'])) {
-                $ont = Ont::where('serial_number', $attributes['serial_number'])->lockForUpdate()->first();
+                $ont = Ont::where('serial_number', $attributes['serial_number'])
+                    ->where(function ($q) use ($customer) {
+                        $q->whereNull('customer_id')->orWhere('customer_id', $customer->id);
+                    })
+                    ->lockForUpdate()
+                    ->first();
                 if ($ont) {
                     $ont->customer_id = $customer->id;
+                }
+            } elseif ($ont && !empty($attributes['serial_number'])) {
+                // Jika ada stub ONT gudang (belum terhubung ke pelanggan) dengan SN yang sama, gabungkan agar tidak duplikat
+                $inventoryStub = Ont::where('serial_number', $attributes['serial_number'])
+                    ->where('id', '!=', $ont->id)
+                    ->whereNull('customer_id')
+                    ->lockForUpdate()
+                    ->first();
+                if ($inventoryStub) {
+                    if (empty($ont->brand) && !empty($inventoryStub->brand)) {
+                        $ont->brand = $inventoryStub->brand;
+                    }
+                    if (empty($ont->material_transaction_item_id) && !empty($inventoryStub->material_transaction_item_id)) {
+                        $ont->material_transaction_item_id = $inventoryStub->material_transaction_item_id;
+                    }
+                    $inventoryStub->delete();
                 }
             }
 

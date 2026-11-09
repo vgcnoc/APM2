@@ -5692,20 +5692,39 @@ class CustomerController extends Controller
             $customer->update($custWifiUpdates);
         }
 
-        // Sinkronkan catatan jadwal penugasan instalasi teknisi
+        // Sinkronkan SN ONT pada customer_installed_materials
+        if (!empty($ont->serial_number)) {
+            \App\Models\CustomerInstalledMaterial::where('customer_id', $customer->id)
+                ->where('status', 'installed')
+                ->where(function ($q) {
+                    $q->where('item_name', 'like', '%ONT%')
+                      ->orWhere('item_name', 'like', '%Modem%');
+                })
+                ->update(['serial_number' => $ont->serial_number]);
+        }
+
+        // Sinkronkan catatan jadwal penugasan instalasi teknisi (SN ONT & WiFi)
         $installSchedules = \App\Models\TechnicianSchedule::where('customer_id', $customer->id)
             ->where('type', 'installation')
             ->get();
         $effectiveSsid = $wifiSsid ?? $ont->wifi_ssid ?? $customer->wifi_ssid;
         $effectivePass = $wifiPass ?? $ont->wifi_password ?? $customer->wifi_password;
-        if (!empty($effectiveSsid)) {
-            foreach ($installSchedules as $sch) {
-                $lines = explode("\n", $sch->notes ?? '');
+        foreach ($installSchedules as $sch) {
+            $lines = explode("\n", $sch->notes ?? '');
+            if (!empty($ont->serial_number)) {
+                $lines = array_map(function ($line) use ($ont) {
+                    if (str_starts_with(trim($line), 'ONT:')) {
+                        return preg_replace('/\(SN:\s*[^)]+\)/i', '(SN: ' . $ont->serial_number . ')', $line);
+                    }
+                    return $line;
+                }, $lines);
+            }
+            if (!empty($effectiveSsid)) {
                 $lines = array_filter($lines, fn($l) => !str_starts_with(trim($l), 'WiFi:'));
                 $passText = !empty($effectivePass) ? ", Sandi '{$effectivePass}'" : '';
                 $lines[] = "WiFi: SSID '{$effectiveSsid}'{$passText} (Laporan Instalasi)";
-                $sch->update(['notes' => implode("\n", $lines)]);
             }
+            $sch->update(['notes' => implode("\n", $lines)]);
         }
 
         \App\Models\AuditLog::createLog('Edit Laporan Instalasi', $customer, $customer->status, $customer->status, 'Memperbarui laporan instalasi, ODP & ONT');
