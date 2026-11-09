@@ -276,7 +276,7 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
-                        <span>Rekap Per Karyawan ({{ employeeRecap.length }})</span>
+                        <span>Rekap Per Karyawan ({{ filteredEmployeeRecap.length }})</span>
                     </button>
 
                     <button
@@ -292,7 +292,7 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                         </svg>
-                        <span>Log Rinci Presensi</span>
+                        <span>Log Rinci Presensi<template v-if="paginatedDetails && paginatedDetails.total !== undefined"> ({{ paginatedDetails.total }})</template></span>
                     </button>
                 </div>
 
@@ -310,6 +310,20 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                     </div>
+
+                    <select
+                        v-if="activeTab === 'recap'"
+                        v-model="recapPerPage"
+                        @change="recapCurrentPage = 1"
+                        class="text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 py-1.5 px-2.5 focus:ring-2 focus:ring-blue-500 font-medium"
+                        title="Jumlah baris per halaman"
+                    >
+                        <option :value="10">10 / hal</option>
+                        <option :value="15">15 / hal</option>
+                        <option :value="25">25 / hal</option>
+                        <option :value="50">50 / hal</option>
+                        <option value="all">Semua</option>
+                    </select>
 
                     <select
                         v-if="activeTab === 'detail'"
@@ -353,11 +367,11 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-800/80">
                             <tr
-                                v-for="(emp, i) in employeeRecap"
+                                v-for="(emp, i) in paginatedEmployeeRecap"
                                 :key="emp.employee_id"
                                 class="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition"
                             >
-                                <td class="py-3 px-3 text-center text-slate-400 font-semibold">{{ i + 1 }}</td>
+                                <td class="py-3 px-3 text-center text-slate-400 font-semibold">{{ recapStartIndex + i + 1 }}</td>
                                 <td class="py-3 px-3">
                                     <div class="font-bold text-slate-900 dark:text-white">{{ emp.name }}</div>
                                     <div class="text-[10px] text-slate-400">IAK: {{ emp.iak_number || '-' }}</div>
@@ -466,13 +480,89 @@
                                     </div>
                                 </td>
                             </tr>
-                            <tr v-if="employeeRecap.length === 0">
+                            <tr v-if="filteredEmployeeRecap.length === 0">
                                 <td colspan="15" class="py-12 text-center text-slate-400 italic">
                                     Tidak ada data rekapitulasi karyawan yang sesuai dengan filter.
                                 </td>
                             </tr>
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Pagination Footer for Rekap Per Karyawan -->
+                <div v-if="filteredEmployeeRecap.length > 0" class="px-5 py-3.5 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/40 dark:bg-slate-900/40">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <p class="text-xs text-slate-500 dark:text-slate-400">
+                            Menampilkan
+                            <span class="font-bold text-slate-800 dark:text-slate-200">{{ recapStartIndex + 1 }}</span>
+                            s/d
+                            <span class="font-bold text-slate-800 dark:text-slate-200">{{ recapEndIndex }}</span>
+                            dari
+                            <span class="font-bold text-slate-800 dark:text-slate-200">{{ filteredEmployeeRecap.length }}</span>
+                            karyawan
+                        </p>
+                        <div class="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                            <span>Baris:</span>
+                            <select
+                                v-model="recapPerPage"
+                                @change="recapCurrentPage = 1"
+                                class="text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 py-1 px-2 font-semibold focus:ring-2 focus:ring-blue-500"
+                            >
+                                <option :value="10">10</option>
+                                <option :value="15">15</option>
+                                <option :value="25">25</option>
+                                <option :value="50">50</option>
+                                <option value="all">Semua</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div v-if="recapTotalPages > 1" class="flex items-center gap-1 flex-wrap">
+                        <button
+                            type="button"
+                            :disabled="recapCurrentPage <= 1"
+                            @click="goToRecapPage(recapCurrentPage - 1)"
+                            :class="[
+                                'px-3 py-1.5 text-xs rounded-lg font-semibold transition flex items-center gap-1',
+                                recapCurrentPage <= 1
+                                    ? 'text-slate-300 dark:text-slate-700 bg-slate-100/60 dark:bg-slate-800/40 cursor-not-allowed'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer'
+                            ]"
+                        >
+                            <span>&laquo; Sebelumnya</span>
+                        </button>
+
+                        <template v-for="(p, idx) in recapVisiblePages" :key="idx">
+                            <span v-if="p === '...'" class="px-2 py-1 text-xs text-slate-400">...</span>
+                            <button
+                                v-else
+                                type="button"
+                                @click="goToRecapPage(p)"
+                                :class="[
+                                    'min-w-[30px] px-2.5 py-1.5 text-xs rounded-lg font-bold transition cursor-pointer',
+                                    p === recapCurrentPage
+                                        ? 'bg-blue-600 text-white shadow-2xs'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                                ]"
+                            >
+                                {{ p }}
+                            </button>
+                        </template>
+
+                        <button
+                            type="button"
+                            :disabled="recapCurrentPage >= recapTotalPages"
+                            @click="goToRecapPage(recapCurrentPage + 1)"
+                            :class="[
+                                'px-3 py-1.5 text-xs rounded-lg font-semibold transition flex items-center gap-1',
+                                recapCurrentPage >= recapTotalPages
+                                    ? 'text-slate-300 dark:text-slate-700 bg-slate-100/60 dark:bg-slate-800/40 cursor-not-allowed'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer'
+                            ]"
+                        >
+                            <span>Berikutnya &raquo;</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -590,18 +680,36 @@
                 </div>
 
                 <!-- Pagination for Details -->
-                <div v-if="paginatedDetails && paginatedDetails.links && paginatedDetails.links.length > 3" class="px-5 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                    <p class="text-xs text-slate-500">
-                        Menampilkan <span class="font-bold">{{ paginatedDetails.from || 0 }}</span> s/d <span class="font-bold">{{ paginatedDetails.to || 0 }}</span> dari <span class="font-bold">{{ paginatedDetails.total || 0 }}</span> data
-                    </p>
-                    <div class="flex items-center gap-1">
+                <div v-if="paginatedDetails && (paginatedDetails.total > 0 || (paginatedDetails.links && paginatedDetails.links.length > 0))" class="px-5 py-3.5 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/40 dark:bg-slate-900/40">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <p class="text-xs text-slate-500 dark:text-slate-400">
+                            Menampilkan <span class="font-bold text-slate-800 dark:text-slate-200">{{ paginatedDetails.from || 0 }}</span> s/d <span class="font-bold text-slate-800 dark:text-slate-200">{{ paginatedDetails.to || 0 }}</span> dari <span class="font-bold text-slate-800 dark:text-slate-200">{{ paginatedDetails.total || 0 }}</span> data
+                        </p>
+                        <div class="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                            <span>Baris:</span>
+                            <select
+                                v-model="filterForm.per_page"
+                                @change="applyFilters"
+                                class="text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 py-1 px-2 font-semibold focus:ring-2 focus:ring-blue-500"
+                            >
+                                <option :value="10">10</option>
+                                <option :value="15">15</option>
+                                <option :value="25">25</option>
+                                <option :value="50">50</option>
+                                <option :value="100">100</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div v-if="paginatedDetails.links && paginatedDetails.links.length > 3" class="flex items-center gap-1 flex-wrap">
                         <Link
                             v-for="(link, idx) in paginatedDetails.links"
                             :key="idx"
                             :href="link.url || '#'"
+                            preserve-scroll
+                            preserve-state
                             :class="[
-                                'px-3 py-1 text-xs rounded-lg font-medium transition',
-                                link.active ? 'bg-blue-600 text-white font-bold' : (link.url ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200' : 'text-slate-300 dark:text-slate-700 cursor-not-allowed')
+                                'px-3 py-1.5 text-xs rounded-lg font-medium transition',
+                                link.active ? 'bg-blue-600 text-white font-bold shadow-2xs' : (link.url ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700' : 'text-slate-300 dark:text-slate-700 cursor-not-allowed')
                             ]"
                             v-html="link.label"
                         />
@@ -821,7 +929,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { router, Link, usePage } from '@inertiajs/vue3';
 import Swal from 'sweetalert2';
 import AppLayout from '@/Layouts/AppLayout.vue';
@@ -899,7 +1007,80 @@ const filterForm = ref({
     attendance_type: props.filters.attendance_type || 'all',
     tab: activeTab.value,
     search: props.filters.search || '',
+    per_page: Number(props.filters.per_page) || 15,
 });
+
+// State Paginasi untuk Tab 1: Rekap Per Karyawan
+const recapCurrentPage = ref(1);
+const recapPerPage = ref(10);
+
+const filteredEmployeeRecap = computed(() => {
+    const list = props.employeeRecap || [];
+    const q = (filterForm.value.search || '').trim().toLowerCase();
+    if (!q) return list;
+    return list.filter(emp => {
+        const name = (emp.name || '').toLowerCase();
+        const iak = (emp.iak_number || '').toLowerCase();
+        const pos = (emp.position || '').toLowerCase();
+        const area = (emp.area_name || '').toLowerCase();
+        return name.includes(q) || iak.includes(q) || pos.includes(q) || area.includes(q);
+    });
+});
+
+const effectiveRecapPerPage = computed(() => {
+    if (recapPerPage.value === 'all') {
+        return Math.max(1, filteredEmployeeRecap.value.length);
+    }
+    return Number(recapPerPage.value) || 10;
+});
+
+const recapTotalPages = computed(() => {
+    return Math.max(1, Math.ceil(filteredEmployeeRecap.value.length / effectiveRecapPerPage.value));
+});
+
+const recapStartIndex = computed(() => {
+    if (filteredEmployeeRecap.value.length === 0) return 0;
+    const safePage = Math.min(recapCurrentPage.value, recapTotalPages.value);
+    return (safePage - 1) * effectiveRecapPerPage.value;
+});
+
+const recapEndIndex = computed(() => {
+    return Math.min(recapStartIndex.value + effectiveRecapPerPage.value, filteredEmployeeRecap.value.length);
+});
+
+const paginatedEmployeeRecap = computed(() => {
+    return filteredEmployeeRecap.value.slice(recapStartIndex.value, recapEndIndex.value);
+});
+
+const recapVisiblePages = computed(() => {
+    const total = recapTotalPages.value;
+    const current = recapCurrentPage.value;
+    if (total <= 7) {
+        return Array.from({ length: total }, (_, i) => i + 1);
+    }
+    const pages = [1];
+    if (current > 3) pages.push('...');
+    const start = Math.max(2, current - 1);
+    const end = Math.min(total - 1, current + 1);
+    for (let p = start; p <= end; p++) {
+        pages.push(p);
+    }
+    if (current < total - 2) pages.push('...');
+    pages.push(total);
+    return pages;
+});
+
+function goToRecapPage(p) {
+    const target = Math.max(1, Math.min(recapTotalPages.value, Number(p)));
+    recapCurrentPage.value = target;
+}
+
+watch(
+    () => [filterForm.value.search, props.employeeRecap],
+    () => {
+        recapCurrentPage.value = 1;
+    }
+);
 
 const filteredEmployeesDropdown = computed(() => {
     if (!filterForm.value.area_id) {
@@ -950,6 +1131,7 @@ function stepMonth(offset) {
 
 function resetToCurrentMonth() {
     const currentMonth = new Date().toISOString().slice(0, 7);
+    recapCurrentPage.value = 1;
     filterForm.value = {
         period_mode: 'month',
         month: currentMonth,
@@ -961,6 +1143,7 @@ function resetToCurrentMonth() {
         attendance_type: 'all',
         tab: activeTab.value,
         search: '',
+        per_page: filterForm.value.per_page || 15,
     };
     applyFilters();
 }

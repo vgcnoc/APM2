@@ -411,9 +411,13 @@ class AttendanceReportController extends Controller
             return strcmp($b['clock_in'] ?? '', $a['clock_in'] ?? '');
         })->values();
 
+        $perPage = (int) $request->get('per_page', 15);
+        if (!in_array($perPage, [10, 15, 25, 50, 100], true)) {
+            $perPage = 15;
+        }
+
         if ($paginateDetail) {
-            $page = (int) $request->get('page', 1);
-            $perPage = (int) $request->get('per_page', 25);
+            $page = max(1, (int) $request->get('page', 1));
             $paginatedDetails = new LengthAwarePaginator(
                 $combinedLogs->forPage($page, $perPage)->values(),
                 $combinedLogs->count(),
@@ -446,6 +450,7 @@ class AttendanceReportController extends Controller
                 'attendance_type' => $request->get('attendance_type', 'all'),
                 'tab' => $request->get('tab', 'recap'),
                 'search' => $request->get('search', ''),
+                'per_page' => $perPage,
             ],
             'filterPeriodLabel' => $filterPeriodLabel,
         ];
