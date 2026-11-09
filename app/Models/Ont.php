@@ -501,11 +501,17 @@ class Ont extends Model
     public function scopeDiganti($query)
     {
         return $query->where(function ($q) {
-            $q->whereHas('pgsTicketsReplaced')
-              ->orWhereHas('pgkTicketsReplaced')
-              ->orWhereHas('materialTransactionsOld')
-              ->orWhere('description', 'like', '%Diganti dengan SN%')
-              ->orWhere('description', 'like', '%Ditarik dari%');
+            $q->whereHas('pgsTicketsReplaced', function ($tq) {
+                $tq->where('ont_replacement_status', 'installed')
+                   ->orWhere('ont_replacement_action', 'installed');
+            })
+            ->orWhereHas('pgkTicketsReplaced', function ($tq) {
+                $tq->where('ont_replacement_status', 'installed')
+                   ->orWhere('ont_replacement_action', 'installed');
+            })
+            ->orWhereHas('materialTransactionsOld')
+            ->orWhere('description', 'like', '%Diganti dengan SN%')
+            ->orWhere('description', 'like', '%Ditarik dari%');
         });
     }
 
@@ -515,11 +521,23 @@ class Ont extends Model
     public function scopePengganti($query)
     {
         return $query->where(function ($q) {
-            $q->whereHas('pgsTicketsPrepared')
-              ->orWhereHas('pgkTicketsPrepared')
-              ->orWhereHas('materialTransactionsReplacement')
-              ->orWhere('status', 'Disiapkan Teknisi')
-              ->orWhere('description', 'like', '%Menggantikan SN%');
+            $q->whereHas('pgsTicketsPrepared', function ($tq) {
+                $tq->whereIn('ont_replacement_status', ['prepared', 'installed'])
+                   ->where(function ($sub) {
+                       $sub->whereNull('ont_replacement_action')
+                           ->orWhere('ont_replacement_action', '!=', 'cancelled');
+                   });
+            })
+            ->orWhereHas('pgkTicketsPrepared', function ($tq) {
+                $tq->whereIn('ont_replacement_status', ['prepared', 'installed'])
+                   ->where(function ($sub) {
+                       $sub->whereNull('ont_replacement_action')
+                           ->orWhere('ont_replacement_action', '!=', 'cancelled');
+                   });
+            })
+            ->orWhereHas('materialTransactionsReplacement')
+            ->orWhere('status', 'Disiapkan Teknisi')
+            ->orWhere('description', 'like', '%Menggantikan SN%');
         });
     }
 
@@ -528,21 +546,54 @@ class Ont extends Model
      */
     public function getReplacementInfo(): ?array
     {
+        $isValidReplaced = function ($t) {
+            return $t && (
+                $t->ont_replacement_status === 'installed' || 
+                $t->ont_replacement_action === 'installed'
+            );
+        };
+
+        $isValidPrepared = function ($t) {
+            return $t && (
+                in_array($t->ont_replacement_status, ['prepared', 'installed']) &&
+                $t->ont_replacement_action !== 'cancelled' &&
+                $t->ont_replacement_action !== 'rejected'
+            );
+        };
+
         $pgsOld = $this->relationLoaded('pgsTicketsReplaced') 
-            ? $this->pgsTicketsReplaced->sortByDesc('id')->first() 
-            : $this->pgsTicketsReplaced()->latest('id')->first();
+            ? $this->pgsTicketsReplaced->filter($isValidReplaced)->sortByDesc('id')->first() 
+            : $this->pgsTicketsReplaced()->where(function ($q) {
+                $q->where('ont_replacement_status', 'installed')
+                  ->orWhere('ont_replacement_action', 'installed');
+            })->latest('id')->first();
             
         $pgkOld = $this->relationLoaded('pgkTicketsReplaced') 
-            ? $this->pgkTicketsReplaced->sortByDesc('id')->first() 
-            : $this->pgkTicketsReplaced()->latest('id')->first();
+            ? $this->pgkTicketsReplaced->filter($isValidReplaced)->sortByDesc('id')->first() 
+            : $this->pgkTicketsReplaced()->where(function ($q) {
+                $q->where('ont_replacement_status', 'installed')
+                  ->orWhere('ont_replacement_action', 'installed');
+            })->latest('id')->first();
 
         $pgsPrep = $this->relationLoaded('pgsTicketsPrepared') 
-            ? $this->pgsTicketsPrepared->sortByDesc('id')->first() 
-            : $this->pgsTicketsPrepared()->latest('id')->first();
+            ? $this->pgsTicketsPrepared->filter($isValidPrepared)->sortByDesc('id')->first() 
+            : $this->pgsTicketsPrepared()->where(function ($q) {
+                $q->whereIn('ont_replacement_status', ['prepared', 'installed'])
+                  ->where(function ($sub) {
+                      $sub->whereNull('ont_replacement_action')
+                          ->orWhere('ont_replacement_action', '!=', 'cancelled');
+                  });
+            })->latest('id')->first();
             
         $pgkPrep = $this->relationLoaded('pgkTicketsPrepared') 
-            ? $this->pgkTicketsPrepared->sortByDesc('id')->first() 
-            : $this->pgkTicketsPrepared()->latest('id')->first();
+            ? $this->pgkTicketsPrepared->filter($isValidPrepared)->sortByDesc('id')->first() 
+            : $this->pgkTicketsPrepared()->where(function ($q) {
+                $q->whereIn('ont_replacement_status', ['prepared', 'installed'])
+                  ->where(function ($sub) {
+                      $sub->whereNull('ont_replacement_action')
+                          ->orWhere('ont_replacement_action', '!=', 'cancelled');
+                  });
+            })->latest('id')->first();
 
         $latestOld = null;
         if ($pgsOld && $pgkOld) {
@@ -567,7 +618,7 @@ class Ont extends Model
         }
 
         if (!$latestOld && !$latestPrep) {
-            if (!empty($this->description) && str_contains($this->description, 'Diganti dengan SN')) {
+            if (!$this->customer_id && !empty($this->description) && str_contains($this->description, 'Diganti dengan SN')) {
                 return [
                     'role' => 'replaced',
                     'label' => 'ONT Diganti',

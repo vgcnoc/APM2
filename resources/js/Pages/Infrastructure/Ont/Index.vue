@@ -794,11 +794,35 @@
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-gray-700 mb-1">Merk ONT</label>
-                                    <input v-model="form.brand" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Merk ONT" />
+                                    <input v-model="form.brand" list="ont-brand-suggestions" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Contoh: ZTE, Huawei, Zvolin..." />
+                                    <datalist id="ont-brand-suggestions">
+                                        <option value="ZTE">ZTE</option>
+                                        <option value="Huawei">Huawei</option>
+                                        <option value="Fiberhome">Fiberhome</option>
+                                        <option value="ZVOLIN">ZVOLIN</option>
+                                        <option value="NETVIBES">NETVIBES</option>
+                                        <option value="MYLINK">MYLINK</option>
+                                        <option value="CMC">CMC</option>
+                                        <option value="C-LINK">C-LINK</option>
+                                        <option value="Ruijie">Ruijie</option>
+                                    </datalist>
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-700 mb-1">Tipe ONT</label>
-                                    <input v-model="form.model" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Tipe ONT" />
+                                    <label class="block text-xs font-bold text-gray-700 mb-1">Tipe / Model ONT</label>
+                                    <input v-model="form.model" list="ont-model-suggestions" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Contoh: F660, F609, GM220..." />
+                                    <datalist id="ont-model-suggestions">
+                                        <option value="F660">F660</option>
+                                        <option value="F609">F609</option>
+                                        <option value="H609e">H609e</option>
+                                        <option value="F460">F460</option>
+                                        <option value="F452">F452</option>
+                                        <option value="P613s">P613s</option>
+                                        <option value="F613">F613</option>
+                                        <option value="GM220">GM220</option>
+                                        <option value="EG8141H5">EG8141H5</option>
+                                        <option value="HG8245H">HG8245H</option>
+                                        <option value="ML212X">ML212X</option>
+                                    </datalist>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-gray-700 mb-1">Serial Number</label>

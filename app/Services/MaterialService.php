@@ -739,6 +739,17 @@ class MaterialService
               ->orWhere('category', 'like', '%modem%');
         });
 
+        // 1. Cek model spesifik F660
+        $combinedText = strtolower($brand . ' ' . $model);
+        if (str_contains($combinedText, '660')) {
+            $f660Mat = (clone $baseQuery)->where('name', 'like', '%660%')
+                ->orderByRaw('CASE WHEN id > 260 THEN 0 ELSE 1 END')
+                ->first();
+            if ($f660Mat) {
+                return $f660Mat;
+            }
+        }
+
         if ($brand !== '' && $model !== '' && stripos($brand, $model) === false) {
             $exact = (clone $baseQuery)
                 ->where('name', 'like', "%{$brand}%")
