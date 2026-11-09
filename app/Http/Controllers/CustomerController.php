@@ -5638,6 +5638,15 @@ class CustomerController extends Controller
             'photo_redaman' => 'nullable|image|max:10240',
         ]);
 
+        $photoUpdates = [];
+        foreach (['photo_odp', 'photo_installation', 'photo_ont', 'photo_customer', 'photo_redaman'] as $field) {
+            if ($request->hasFile($field)) {
+                $photoUpdates[$field] = $request->file($field)->store('installations', 'public');
+            }
+        }
+
+        $existingOnt = $customer->ont;
+
         $cleanMac = !empty($validated['mac_address']) 
             ? \App\Services\DataMigrationService::sanitizeMacAddress($validated['mac_address']) 
             : null;
@@ -5653,11 +5662,12 @@ class CustomerController extends Controller
             'odp_id' => $validated['odp_id'],
             'port_number' => $validated['port_number'],
             'serial_number' => $validated['serial_number'],
-            'mac_address' => $cleanMac,
-            'model' => $validated['model'] ?? 'Standard ONT',
-            'rx_power' => $cleanRx,
-            'start_time' => $validated['start_time'] ?? null,
-            'end_time' => $validated['end_time'] ?? null,
+            'mac_address' => $cleanMac ?: $existingOnt?->mac_address,
+            'model' => !empty($validated['model']) ? $validated['model'] : ($existingOnt?->model ?? 'Standard ONT'),
+            'rx_power' => $cleanRx !== null ? $cleanRx : $existingOnt?->rx_power,
+            'initial_rx_power' => $existingOnt?->initial_rx_power ?? $cleanRx,
+            'start_time' => $validated['start_time'] ?? $existingOnt?->start_time,
+            'end_time' => $validated['end_time'] ?? $existingOnt?->end_time,
         ], $photoUpdates);
 
         if ($request->has('wifi_ssid')) {
