@@ -56,15 +56,15 @@ class AttendanceController extends Controller
                 abort(403, 'Anda tidak memiliki hak akses ke halaman absensi reguler.');
             }
         }
-        $today = Carbon::today()->format('Y-m-d');
-        $now = Carbon::now();
+        $today = Carbon::today('Asia/Jakarta')->format('Y-m-d');
+        $now = Carbon::now('Asia/Jakarta');
 
         // 1. Tentukan Karyawan Aktif
         $currentEmployee = null;
         $isUserExempt = $user && $user->isExemptFromAttendanceAndPayroll();
         if ($user && !$isUserExempt) {
             $currentEmployee = Employee::with(['area', 'shift'])
-                ->excludeTokoAndDemo()
+                ->activeOnly()
                 ->where('email', $user->email)
                 ->first();
         }
@@ -74,7 +74,7 @@ class AttendanceController extends Controller
 
         // Jika ada filter / switcher employee_id (hanya jika memiliki hak akses melihat karyawan lain)
         if (($canViewAll || $canViewArea) && $request->filled('employee_id')) {
-            $selected = Employee::with(['area', 'shift'])->excludeTokoAndDemo()->find($request->employee_id);
+            $selected = Employee::with(['area', 'shift'])->activeOnly()->find($request->employee_id);
             if ($selected) {
                 if ($canViewAll || in_array($selected->area_id, $user->getAccessibleAreaIds())) {
                     $currentEmployee = $selected;
@@ -88,19 +88,19 @@ class AttendanceController extends Controller
             $scheduledTodayEmpId = WorkSchedule::where('date', $today)
                 ->whereNotNull('shift_id')
                 ->where('status', '!=', 'off')
-                ->whereHas('employee', fn($q) => $q->excludeTokoAndDemo())
+                ->whereHas('employee', fn($q) => $q->activeOnly())
                 ->value('employee_id');
 
             if ($scheduledTodayEmpId) {
-                $currentEmployee = Employee::with(['area', 'shift'])->excludeTokoAndDemo()->find($scheduledTodayEmpId);
+                $currentEmployee = Employee::with(['area', 'shift'])->activeOnly()->find($scheduledTodayEmpId);
             }
 
             if (!$currentEmployee) {
-                $currentEmployee = Employee::with(['area', 'shift'])->excludeTokoAndDemo()->first();
+                $currentEmployee = Employee::with(['area', 'shift'])->activeOnly()->first();
             }
         }
 
-        $employeeQuery = Employee::with(['area', 'shift'])->excludeTokoAndDemo()->orderBy('name');
+        $employeeQuery = Employee::with(['area', 'shift'])->activeOnly()->orderBy('name');
         if (!$canViewAll) {
             if ($canViewArea) {
                 $employeeQuery->whereIn('area_id', $user->getAccessibleAreaIds());
@@ -370,7 +370,7 @@ class AttendanceController extends Controller
         // 7. Data Monitoring Kehadiran Seluruh Karyawan Hari Ini (Admin Tab)
         $monitoringQuery = Attendance::with(['employee.area', 'area', 'shift'])
             ->where('date', $today)
-            ->whereHas('employee', fn($q) => $q->excludeTokoAndDemo());
+            ->whereHas('employee', fn($q) => $q->activeOnly());
         if ($request->filled('area_id')) {
             $monitoringQuery->where(function ($q) use ($request) {
                 $q->where('area_id', $request->area_id)
@@ -414,7 +414,7 @@ class AttendanceController extends Controller
 
         $allMonitoringAttendances = $todayAllAttendances->concat($todaySpecialAttendances);
 
-        $totalEmployeesCount = Employee::excludeTokoAndDemo()->count();
+        $totalEmployeesCount = Employee::activeOnly()->count();
         $presentCount = $allMonitoringAttendances->whereNotNull('clock_in')->count();
         $lateCount = $allMonitoringAttendances->where('status', 'late')->count();
         $onTimeCount = $allMonitoringAttendances->where('status', 'present')->where('late_minutes', '<=', 5)->count();
@@ -568,6 +568,10 @@ class AttendanceController extends Controller
 
         $employee = Employee::with(['area', 'shift'])->findOrFail($request->employee_id);
 
+        if ($employee->is_resigned || $employee->status === 'resigned') {
+            return back()->with('error', "Karyawan {$employee->name} telah berstatus non-aktif/resigned, tidak dapat melakukan presensi.");
+        }
+
         if ($employee->isExemptFromAttendanceAndPayroll() || ($request->user() && $request->user()->isExemptFromAttendanceAndPayroll())) {
             return back()->with('error', 'Akun Toko dan Demo tidak diberlakukan absensi.');
         }
@@ -580,9 +584,9 @@ class AttendanceController extends Controller
         if ($specialCheck && $specialCheck->team) {
             return back()->with('error', "Karyawan {$employee->name} terdaftar dalam Absen Tim Khusus ({$specialCheck->team->name}). Silakan gunakan halaman Absen Tim Khusus.");
         }
-        $today = Carbon::today()->format('Y-m-d');
-        $yesterday = Carbon::yesterday()->format('Y-m-d');
-        $now = Carbon::now();
+        $today = Carbon::today('Asia/Jakarta')->format('Y-m-d');
+        $yesterday = Carbon::yesterday('Asia/Jakarta')->format('Y-m-d');
+        $now = Carbon::now('Asia/Jakarta');
         $timeStr = $now->format('H:i:s');
 
         // Cek apakah masih ada sesi absen masuk kemarin (Shift Malam / Lintas Hari) yang belum di-absen pulang dan batas pulangnya masih aktif
@@ -918,6 +922,10 @@ class AttendanceController extends Controller
 
         $employee = Employee::with('area')->findOrFail($request->employee_id);
 
+        if ($employee->is_resigned || $employee->status === 'resigned') {
+            return back()->with('error', "Karyawan {$employee->name} telah berstatus non-aktif/resigned, tidak dapat melakukan presensi.");
+        }
+
         // Karyawan Tim Khusus harus absen lewat menu Absen Tim Khusus
         $specialCheck = SpecialTeamMember::with('team')
             ->where('employee_id', $employee->id)
@@ -927,9 +935,9 @@ class AttendanceController extends Controller
             return back()->with('error', "Karyawan {$employee->name} terdaftar dalam Absen Tim Khusus ({$specialCheck->team->name}). Silakan gunakan halaman Absen Tim Khusus.");
         }
 
-        $today = Carbon::today()->format('Y-m-d');
-        $yesterday = Carbon::yesterday()->format('Y-m-d');
-        $now = Carbon::now();
+        $today = Carbon::today('Asia/Jakarta')->format('Y-m-d');
+        $yesterday = Carbon::yesterday('Asia/Jakarta')->format('Y-m-d');
+        $now = Carbon::now('Asia/Jakarta');
         $timeStr = $now->format('H:i:s');
 
         $attendance = null;

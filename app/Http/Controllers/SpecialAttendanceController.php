@@ -106,10 +106,10 @@ class SpecialAttendanceController extends Controller
         // 2. Karyawan Aktif (Login User / Switcher)
         $currentEmployee = null;
         if ($user && !$user->isExemptFromAttendanceAndPayroll()) {
-            $currentEmployee = Employee::with(['area'])->excludeTokoAndDemo()->where('email', $user->email)->first();
+            $currentEmployee = Employee::with(['area'])->activeOnly()->where('email', $user->email)->first();
         }
         if (($canViewAll || $canViewArea) && $request->filled('employee_id')) {
-            $selected = Employee::with(['area'])->excludeTokoAndDemo()->find($request->employee_id);
+            $selected = Employee::with(['area'])->activeOnly()->find($request->employee_id);
             if ($selected) {
                 if ($canViewAll || in_array($selected->area_id, $user->getAccessibleAreaIds())) {
                     $currentEmployee = $selected;
@@ -117,7 +117,7 @@ class SpecialAttendanceController extends Controller
             }
         }
         if (!$currentEmployee && ($canViewAll || $canViewArea) && !($user && $user->isExemptFromAttendanceAndPayroll())) {
-            $currentEmployee = Employee::with(['area'])->excludeTokoAndDemo()->first();
+            $currentEmployee = Employee::with(['area'])->activeOnly()->first();
         }
 
         // Tentukan Tim Aktif
@@ -594,9 +594,17 @@ class SpecialAttendanceController extends Controller
         ]);
 
         $team = SpecialTeam::findOrFail($request->special_team_id);
-        $today = Carbon::today()->format('Y-m-d');
-        $yesterday = Carbon::yesterday()->format('Y-m-d');
-        $now = Carbon::now();
+        $employee = Employee::findOrFail($request->employee_id);
+        if ($employee->status === 'resigned' || $employee->is_resigned) {
+            $msg = "Karyawan {$employee->name} telah non-aktif/resigned, tidak dapat melakukan absensi.";
+            if ($request->wantsJson()) {
+                return response()->json(['message' => $msg, 'error' => $msg], 422);
+            }
+            return back()->with('error', $msg);
+        }
+        $today = Carbon::today('Asia/Jakarta')->format('Y-m-d');
+        $yesterday = Carbon::yesterday('Asia/Jakarta')->format('Y-m-d');
+        $now = Carbon::now('Asia/Jakarta');
         $currentTimeStr = $now->format('H:i:s');
 
         $yesterdayOpen = SpecialAttendance::where('special_team_id', $team->id)
@@ -727,9 +735,17 @@ class SpecialAttendanceController extends Controller
         ]);
 
         $team = SpecialTeam::findOrFail($request->special_team_id);
-        $today = Carbon::today()->format('Y-m-d');
-        $yesterday = Carbon::yesterday()->format('Y-m-d');
-        $now = Carbon::now();
+        $employee = Employee::findOrFail($request->employee_id);
+        if ($employee->status === 'resigned' || $employee->is_resigned) {
+            $msg = "Karyawan {$employee->name} telah non-aktif/resigned, tidak dapat melakukan absensi.";
+            if ($request->wantsJson()) {
+                return response()->json(['message' => $msg, 'error' => $msg], 422);
+            }
+            return back()->with('error', $msg);
+        }
+        $today = Carbon::today('Asia/Jakarta')->format('Y-m-d');
+        $yesterday = Carbon::yesterday('Asia/Jakarta')->format('Y-m-d');
+        $now = Carbon::now('Asia/Jakarta');
         $currentTimeStr = $now->format('H:i:s');
 
         $attendance = SpecialAttendance::where('special_team_id', $team->id)

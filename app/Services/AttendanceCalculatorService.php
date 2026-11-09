@@ -1545,10 +1545,7 @@ class AttendanceCalculatorService
             ->get();
 
         $employees = Employee::with('area', 'shift')
-            ->excludeTokoAndDemo()
-            ->where(function ($q) {
-                $q->where('status', 'active')->orWhereNull('status');
-            })
+            ->activeOnly()
             ->get();
 
         $recap = self::calculateMonthlyRecap($employees, $attendances, $periodDetails, $settings, $workSchedules, $specialAtts);

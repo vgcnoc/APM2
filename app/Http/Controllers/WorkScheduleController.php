@@ -121,8 +121,8 @@ class WorkScheduleController extends Controller
             ];
         }
 
-        // Query Employees dengan eager load area & shift
-        $employeeQuery = Employee::with(['area', 'shift'])->excludeTokoAndDemo();
+        // Query Employees dengan eager load area & shift (Hanya Karyawan Aktif)
+        $employeeQuery = Employee::with(['area', 'shift'])->activeOnly();
 
         // Terapkan Scope Hak Akses Jadwal Roster (all, area, own)
         \App\Services\DataScopeService::applyWorkScheduleEmployeeScope($employeeQuery, $user);
@@ -329,7 +329,7 @@ class WorkScheduleController extends Controller
 
                 if ($change['shift_id'] === 'OFF') {
                     $shiftId = null;
-                    $status = 'off';
+                    $status = (!empty($change['status']) && $change['status'] !== 'work') ? $change['status'] : 'off';
                 }
 
                 // Jika benar-benar kosong dan status bukan off, hapus record
@@ -421,9 +421,16 @@ class WorkScheduleController extends Controller
 
         try {
             DB::transaction(function () use ($request, $startDate, $endDate, $patternType, $pattern, $patternLen, $startOffset, $defaultShiftId, $isStagger, $overwriteMode) {
-                $employeeIds = $request->employee_ids;
+                // Pastikan hanya memproses karyawan aktif
+                $selectedEmployees = Employee::activeOnly()->whereIn('id', $request->employee_ids)->get()->keyBy('id');
+                $employeeIds = $selectedEmployees->keys()->toArray();
 
                 foreach ($employeeIds as $empIdx => $empId) {
+                    $curEmp = $selectedEmployees[$empId] ?? null;
+                    $empDefaultShiftId = (!empty($request->default_shift_id) && (int) $request->default_shift_id > 0)
+                        ? (int) $request->default_shift_id
+                        : ($curEmp?->shift_id ?: $defaultShiftId);
+
                     $curDate = $startDate->copy();
                     $dayIndex = 0;
 
@@ -456,7 +463,7 @@ class WorkScheduleController extends Controller
                             // Pola 6 Kerja : 1 Libur
                             $offDayOfWeek = $isStagger ? (($empIdx + $startOffset) % 7) : 0;
                             $isOff = ($dayOfWeek === $offDayOfWeek);
-                            $targetShiftId = $isOff ? null : $defaultShiftId;
+                            $targetShiftId = $isOff ? null : $empDefaultShiftId;
                             $targetStatus = $isOff ? 'off' : 'work';
                         } elseif ($patternType === 'weekly_5_2') {
                             // Pola 5 Kerja : 2 Libur
@@ -467,7 +474,7 @@ class WorkScheduleController extends Controller
                             } else {
                                 $isOff = ($dayOfWeek === 0 || $dayOfWeek === 6);
                             }
-                            $targetShiftId = $isOff ? null : $defaultShiftId;
+                            $targetShiftId = $isOff ? null : $empDefaultShiftId;
                             $targetStatus = $isOff ? 'off' : 'work';
                         } else {
                             // Pola Roster Siklus / Bergilir
@@ -480,7 +487,7 @@ class WorkScheduleController extends Controller
 
                         // Verifikasi shift_id valid jika work
                         if ($targetShiftId && !Shift::where('id', $targetShiftId)->exists()) {
-                            $targetShiftId = $defaultShiftId;
+                            $targetShiftId = $empDefaultShiftId;
                         }
 
                         WorkSchedule::updateOrCreate(
@@ -535,137 +542,169 @@ class WorkScheduleController extends Controller
         $scopeLevel = \App\Services\DataScopeService::getScopeLevel($user, 'work_schedules');
         if ($scopeLevel === 'area') {
             $accessibleAreas = $user->getAccessibleAreaIds();
-            $prevQuery->whereHas('employee', fn($eq) => $eq->whereIn('area_id', $accessibleAreas));
+            $prevQuery->whereHas('employee', fn($eq) => $eq->whereIn('area_id', $accessibleAreas)->activeOnly());
         } elseif ($scopeLevel === 'own') {
             $ownEmpId = $user->employee?->id ?? Employee::where('email', $user->email)->value('id');
             $prevQuery->where('employee_id', $ownEmpId);
+        } else {
+            $prevQuery->whereHas('employee', fn($eq) => $eq->activeOnly());
         }
 
         $prevSchedules = $prevQuery->orderBy('date', 'asc')
             ->get()
             ->groupBy('employee_id');
 
-        if ($prevSchedules->isEmpty()) {
-            return back()->with('error', 'Tidak ditemukan data jadwal pada bulan sebelumnya (' . $prevMonth->translatedFormat('F Y') . ').');
+        // Pastikan memproses seluruh Karyawan Aktif yang sesuai hak akses data
+        $employeeQuery = Employee::with('shift')->activeOnly();
+        \App\Services\DataScopeService::applyWorkScheduleEmployeeScope($employeeQuery, $user);
+        $activeEmployees = $employeeQuery->get();
+
+        if ($activeEmployees->isEmpty()) {
+            return back()->with('error', 'Tidak ditemukan karyawan aktif untuk dilanjutkan jadwalnya.');
         }
 
-        DB::transaction(function () use ($prevSchedules, $targetMonth, $daysInTarget) {
-            foreach ($prevSchedules as $empId => $schedList) {
-                // Analisis karakteristik jadwal bulan lalu karyawan
-                $sundayOffCount = 0;
-                $saturdayOffCount = 0;
-                $totalOffCount = 0;
-                $activeShifts = [];
-                $sequence = [];
+        DB::transaction(function () use ($activeEmployees, $prevSchedules, $targetMonth, $daysInTarget) {
+            foreach ($activeEmployees as $emp) {
+                $empId = $emp->id;
+                $schedList = $prevSchedules->get($empId);
 
-                foreach ($schedList as $sc) {
-                    $dow = $sc->date->dayOfWeek;
-                    if ($sc->status === 'off' || empty($sc->shift_id)) {
-                        $totalOffCount++;
-                        if ($dow === 0) $sundayOffCount++;
-                        if ($dow === 6) $saturdayOffCount++;
-                        $sequence[] = 'OFF';
-                    } else {
-                        $activeShifts[] = $sc->shift_id;
-                        $sequence[] = (int) $sc->shift_id;
-                    }
-                }
+                // Jika karyawan memiliki jadwal bulan lalu, lanjutkan polanya secara presisi
+                if ($schedList && $schedList->isNotEmpty()) {
+                    // Analisis karakteristik jadwal bulan lalu karyawan
+                    $sundayOffCount = 0;
+                    $saturdayOffCount = 0;
+                    $totalOffCount = 0;
+                    $activeShifts = [];
+                    $sequence = [];
 
-                $sundaysInPrevMonth = 0;
-                $cur = $schedList->first()->date->copy()->startOfMonth();
-                $endPrev = $cur->copy()->endOfMonth();
-                while ($cur->lte($endPrev)) {
-                    if ($cur->dayOfWeek === 0) $sundaysInPrevMonth++;
-                    $cur->addDay();
-                }
-
-                $isWeekly5_2 = ($sundayOffCount >= ($sundaysInPrevMonth - 1)) && ($saturdayOffCount >= ($sundaysInPrevMonth - 1));
-                $isWeekly6_1 = ($sundayOffCount >= ($sundaysInPrevMonth - 1)) && ($totalOffCount <= ($sundaysInPrevMonth + 2));
-
-                $mostFrequentShiftId = !empty($activeShifts) 
-                    ? (int) array_search(max(array_count_values($activeShifts)), array_count_values($activeShifts))
-                    : 1;
-
-                if ($isWeekly5_2) {
-                    // Pola 5-2: Senin-Jumat Kerja, Sabtu-Minggu Libur
-                    for ($d = 1; $d <= $daysInTarget; $d++) {
-                        $dateObj = $targetMonth->copy()->day($d);
-                        $dow = $dateObj->dayOfWeek;
-                        $isWeekend = ($dow === 0 || $dow === 6);
-
-                        WorkSchedule::updateOrCreate(
-                            ['employee_id' => $empId, 'date' => $dateObj->format('Y-m-d')],
-                            [
-                                'shift_id' => $isWeekend ? null : $mostFrequentShiftId,
-                                'status' => $isWeekend ? 'off' : 'work',
-                            ]
-                        );
-                    }
-                } elseif ($isWeekly6_1) {
-                    // Pola 6-1: Senin-Sabtu Kerja, Minggu Libur
-                    for ($d = 1; $d <= $daysInTarget; $d++) {
-                        $dateObj = $targetMonth->copy()->day($d);
-                        $dow = $dateObj->dayOfWeek;
-                        $isSunday = ($dow === 0);
-
-                        WorkSchedule::updateOrCreate(
-                            ['employee_id' => $empId, 'date' => $dateObj->format('Y-m-d')],
-                            [
-                                'shift_id' => $isSunday ? null : $mostFrequentShiftId,
-                                'status' => $isSunday ? 'off' : 'work',
-                            ]
-                        );
-                    }
-                } else {
-                    // Pola Roster Bergilir / Rotasi Siklus (seperti CS atau teknisi 24/7)
-                    $detectedPeriod = null;
-                    $seqLen = count($sequence);
-
-                    for ($p = 2; $p <= 10; $p++) {
-                        if ($seqLen >= $p * 2) {
-                            $matches = true;
-                            for ($k = $seqLen - $p; $k < $seqLen; $k++) {
-                                if ($sequence[$k] !== $sequence[$k - $p]) {
-                                    $matches = false;
-                                    break;
-                                }
-                            }
-                            if ($matches) {
-                                $detectedPeriod = $p;
-                                break;
-                            }
+                    foreach ($schedList as $sc) {
+                        $dow = $sc->date->dayOfWeek;
+                        if ($sc->status === 'off' || empty($sc->shift_id)) {
+                            $totalOffCount++;
+                            if ($dow === 0) $sundayOffCount++;
+                            if ($dow === 6) $saturdayOffCount++;
+                            $sequence[] = 'OFF';
+                        } else {
+                            $activeShifts[] = $sc->shift_id;
+                            $sequence[] = (int) $sc->shift_id;
                         }
                     }
 
-                    if ($detectedPeriod) {
-                        $cyclePattern = array_slice($sequence, $seqLen - $detectedPeriod, $detectedPeriod);
-                    } else {
-                        $cyclePattern = array_slice($sequence, max(0, $seqLen - 7));
+                    $sundaysInPrevMonth = 0;
+                    $cur = $schedList->first()->date->copy()->startOfMonth();
+                    $endPrev = $cur->copy()->endOfMonth();
+                    while ($cur->lte($endPrev)) {
+                        if ($cur->dayOfWeek === 0) $sundaysInPrevMonth++;
+                        $cur->addDay();
                     }
 
-                    $pLen = count($cyclePattern);
-                    $cIdx = 0;
+                    $isWeekly5_2 = ($sundayOffCount >= ($sundaysInPrevMonth - 1)) && ($saturdayOffCount >= ($sundaysInPrevMonth - 1));
+                    $isWeekly6_1 = ($sundayOffCount >= ($sundaysInPrevMonth - 1)) && ($totalOffCount <= ($sundaysInPrevMonth + 2));
+
+                    $mostFrequentShiftId = !empty($activeShifts) 
+                        ? (int) array_search(max(array_count_values($activeShifts)), array_count_values($activeShifts))
+                        : ($emp->shift_id ?: 1);
+
+                    if ($isWeekly5_2) {
+                        // Pola 5-2: Senin-Jumat Kerja, Sabtu-Minggu Libur
+                        for ($d = 1; $d <= $daysInTarget; $d++) {
+                            $dateObj = $targetMonth->copy()->day($d);
+                            $dow = $dateObj->dayOfWeek;
+                            $isWeekend = ($dow === 0 || $dow === 6);
+
+                            WorkSchedule::updateOrCreate(
+                                ['employee_id' => $empId, 'date' => $dateObj->format('Y-m-d')],
+                                [
+                                    'shift_id' => $isWeekend ? null : $mostFrequentShiftId,
+                                    'status' => $isWeekend ? 'off' : 'work',
+                                ]
+                            );
+                        }
+                    } elseif ($isWeekly6_1) {
+                        // Pola 6-1: Senin-Sabtu Kerja, Minggu Libur
+                        for ($d = 1; $d <= $daysInTarget; $d++) {
+                            $dateObj = $targetMonth->copy()->day($d);
+                            $dow = $dateObj->dayOfWeek;
+                            $isSunday = ($dow === 0);
+
+                            WorkSchedule::updateOrCreate(
+                                ['employee_id' => $empId, 'date' => $dateObj->format('Y-m-d')],
+                                [
+                                    'shift_id' => $isSunday ? null : $mostFrequentShiftId,
+                                    'status' => $isSunday ? 'off' : 'work',
+                                ]
+                            );
+                        }
+                    } else {
+                        // Pola Roster Bergilir / Rotasi Siklus (seperti CS atau teknisi 24/7)
+                        $detectedPeriod = null;
+                        $seqLen = count($sequence);
+
+                        for ($p = 2; $p <= 10; $p++) {
+                            if ($seqLen >= $p * 2) {
+                                $matches = true;
+                                for ($k = $seqLen - $p; $k < $seqLen; $k++) {
+                                    if ($sequence[$k] !== $sequence[$k - $p]) {
+                                        $matches = false;
+                                        break;
+                                    }
+                                }
+                                if ($matches) {
+                                    $detectedPeriod = $p;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if ($detectedPeriod) {
+                            $cyclePattern = array_slice($sequence, $seqLen - $detectedPeriod, $detectedPeriod);
+                        } else {
+                            $cyclePattern = array_slice($sequence, max(0, $seqLen - 7));
+                        }
+
+                        $pLen = count($cyclePattern);
+                        $cIdx = 0;
+
+                        for ($d = 1; $d <= $daysInTarget; $d++) {
+                            $dateObj = $targetMonth->copy()->day($d);
+                            $val = $cyclePattern[$cIdx % $pLen];
+                            $isOff = ($val === 'OFF' || empty($val));
+
+                            WorkSchedule::updateOrCreate(
+                                ['employee_id' => $empId, 'date' => $dateObj->format('Y-m-d')],
+                                [
+                                    'shift_id' => $isOff ? null : (int) $val,
+                                    'status' => $isOff ? 'off' : 'work',
+                                ]
+                            );
+
+                            $cIdx++;
+                        }
+                    }
+                } else {
+                    // Karyawan belum memiliki jadwal bulan lalu: buatkan jadwal standar sesuai shift default & posisi
+                    $empShiftId = $emp->shift_id ?: (Shift::where('is_active', true)->first()?->id ?? 1);
+                    $pos = strtolower(trim($emp->position ?? ''));
+                    $is5_2 = str_contains($pos, 'admin') || str_contains($pos, 'finance') || str_contains($pos, 'manager');
 
                     for ($d = 1; $d <= $daysInTarget; $d++) {
                         $dateObj = $targetMonth->copy()->day($d);
-                        $val = $cyclePattern[$cIdx % $pLen];
-                        $isOff = ($val === 'OFF' || empty($val));
+                        $dow = $dateObj->dayOfWeek;
+                        $isOff = $is5_2 ? ($dow === 0 || $dow === 6) : ($dow === 0);
 
                         WorkSchedule::updateOrCreate(
                             ['employee_id' => $empId, 'date' => $dateObj->format('Y-m-d')],
                             [
-                                'shift_id' => $isOff ? null : (int) $val,
+                                'shift_id' => $isOff ? null : $empShiftId,
                                 'status' => $isOff ? 'off' : 'work',
                             ]
                         );
-
-                        $cIdx++;
                     }
                 }
             }
         });
 
-        return back()->with('success', 'Jadwal kerja berhasil dilanjutkan secara cerdas dari bulan lalu!');
+        return back()->with('success', 'Jadwal kerja seluruh karyawan aktif berhasil dilanjutkan secara cerdas!');
     }
 
     /**
@@ -689,12 +728,13 @@ class WorkScheduleController extends Controller
         $startFrom = $fromMonth->copy()->startOfMonth()->format('Y-m-d');
         $endFrom = $fromMonth->copy()->endOfMonth()->format('Y-m-d');
 
-        $sourceQuery = WorkSchedule::whereBetween('date', [$startFrom, $endFrom]);
+        $sourceQuery = WorkSchedule::whereBetween('date', [$startFrom, $endFrom])
+            ->whereHas('employee', fn($eq) => $eq->activeOnly());
 
         $scopeLevel = \App\Services\DataScopeService::getScopeLevel($user, 'work_schedules');
         if ($scopeLevel === 'area') {
             $accessibleAreas = $user->getAccessibleAreaIds();
-            $sourceQuery->whereHas('employee', fn($eq) => $eq->whereIn('area_id', $accessibleAreas));
+            $sourceQuery->whereHas('employee', fn($eq) => $eq->whereIn('area_id', $accessibleAreas)->activeOnly());
         } elseif ($scopeLevel === 'own') {
             $ownEmpId = $user->employee?->id ?? Employee::where('email', $user->email)->value('id');
             $sourceQuery->where('employee_id', $ownEmpId);
@@ -713,6 +753,12 @@ class WorkScheduleController extends Controller
                 $dayNumber = (int) $source->date->format('j');
                 if ($dayNumber <= $daysInTarget) {
                     $targetDate = $toMonth->copy()->day($dayNumber)->format('Y-m-d');
+
+                    // Jangan salin status sakit/izin/cuti/alpha masa lalu ke bulan baru (kembalikan ke shift kerja atau off)
+                    $isPastExcuse = in_array($source->status, ['sick', 'sick_no_cert', 'permit', 'leave', 'alpha']);
+                    $status = $isPastExcuse ? ($source->shift_id ? 'work' : 'off') : $source->status;
+                    $notes = $isPastExcuse ? null : $source->notes;
+
                     WorkSchedule::updateOrCreate(
                         [
                             'employee_id' => $source->employee_id,
@@ -720,8 +766,8 @@ class WorkScheduleController extends Controller
                         ],
                         [
                             'shift_id' => $source->shift_id,
-                            'status' => $source->status,
-                            'notes' => $source->notes,
+                            'status' => $status,
+                            'notes' => $notes,
                         ]
                     );
                 }

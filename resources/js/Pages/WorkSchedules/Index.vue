@@ -594,6 +594,19 @@
                         <span class="text-[10px] text-teal-600 font-bold">Bebas Denda</span>
                     </button>
 
+                    <!-- Option Alpha / Mangkir -->
+                    <button
+                        @click="selectShiftForActiveCell('OFF', 'alpha', 'Alpha / Mangkir')"
+                        type="button"
+                        class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-800 hover:bg-red-100 transition"
+                    >
+                        <div class="flex items-center gap-2">
+                            <span>❌</span>
+                            <span>Alpha (Mangkir)</span>
+                        </div>
+                        <span class="text-[10px] text-red-600 font-bold">Denda Alpha</span>
+                    </button>
+
                     <div class="my-1 border-t border-slate-100"></div>
                     <div class="px-2 pt-1 pb-0.5 text-[10px] uppercase font-bold text-slate-400">Pilihan Shift Kerja:</div>
 
@@ -1907,6 +1920,7 @@ const getScheduleLabel = (sched) => {
     if (st === 'sick' || nt.includes('sakit')) return 'SAKIT';
     if (st === 'leave' && nt.includes('cuti')) return 'CUTI';
     if (st === 'permit' || nt.includes('izin') || st === 'leave') return 'IZIN';
+    if (st === 'alpha' || nt.includes('alpha') || nt.includes('mangkir')) return 'ALPHA';
     if (sched.status === 'off' || sched.shift_id === null) return 'OFF';
     return sched.shift_name || 'Shift';
 };
@@ -1925,6 +1939,9 @@ const getCellBadgeClass = (sched) => {
     }
     if (st === 'permit' || nt.includes('izin') || st === 'leave') {
         return 'bg-purple-100 text-purple-900 border border-purple-300 font-extrabold';
+    }
+    if (st === 'alpha' || nt.includes('alpha') || nt.includes('mangkir')) {
+        return 'bg-rose-100 text-rose-900 border border-rose-400 font-extrabold';
     }
     if (sched.status === 'off' || sched.shift_id === null) {
         return 'bg-rose-50 text-rose-600 border border-rose-200/80 font-bold';

@@ -255,6 +255,17 @@ class Employee extends Model
             ->whereNotIn(\Illuminate\Support\Facades\DB::raw("LOWER(TRIM(COALESCE(employees.position, '')))"), ['toko', 'demo', 'akun toko', 'akun demo'])
             ->whereNotIn(\Illuminate\Support\Facades\DB::raw("LOWER(TRIM(COALESCE(employees.email, '')))"), ['toko@gmail.com', 'demo@gmail.com', 'toko@isp.local', 'demo@isp.local']);
     }
+
+    /**
+     * Scope untuk mengambil hanya karyawan aktif (bukan resigned/keluar dan bukan akun toko/demo).
+     */
+    public function scopeActiveOnly($query)
+    {
+        return $query->excludeTokoAndDemo()
+            ->where(function ($q) {
+                $q->where('status', '!=', 'resigned')->orWhereNull('status');
+            });
+    }
 }
 
 

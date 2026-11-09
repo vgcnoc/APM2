@@ -274,8 +274,8 @@ class AttendanceReportController extends Controller
 
         // Ambil data absensi tim khusus
         $specialAttQuery = SpecialAttendance::with(['employee', 'team'])
-            ->whereHas('employee', fn($q) => $q->excludeTokoAndDemo())
-        ->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]);
+            ->whereHas('employee', fn($q) => $q->activeOnly())
+            ->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]);
 
         if ($isAreaRestricted && !empty($userAreaIds)) {
             $specialAttQuery->whereHas('employee', fn($eq) => $eq->whereIn('area_id', $userAreaIds));

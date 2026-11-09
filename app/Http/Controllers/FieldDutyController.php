@@ -98,13 +98,13 @@ class FieldDutyController extends Controller
 
         // Daftar Karyawan untuk Modal Buat Tugas (disesuaikan dengan scope perizinan)
         if (!$canViewAll && !$canViewArea) {
-            $currentEmp = ($user && !$user->isExemptFromAttendanceAndPayroll()) ? Employee::excludeTokoAndDemo()->where('email', $user->email)->first() : null;
+            $currentEmp = ($user && !$user->isExemptFromAttendanceAndPayroll()) ? Employee::activeOnly()->where('email', $user->email)->first() : null;
             $allEmployees = $currentEmp ? collect([$currentEmp]) : collect();
         } elseif ($canViewArea) {
             $accessibleAreaIds = $user->getAccessibleAreaIds();
-            $allEmployees = Employee::excludeTokoAndDemo()->whereIn('area_id', $accessibleAreaIds)->orderBy('name')->get(['id', 'name', 'position', 'branch', 'email']);
+            $allEmployees = Employee::activeOnly()->whereIn('area_id', $accessibleAreaIds)->orderBy('name')->get(['id', 'name', 'position', 'branch', 'email']);
         } else {
-            $allEmployees = Employee::excludeTokoAndDemo()->orderBy('name')->get(['id', 'name', 'position', 'branch', 'email']);
+            $allEmployees = Employee::activeOnly()->orderBy('name')->get(['id', 'name', 'position', 'branch', 'email']);
         }
 
         return Inertia::render('Attendances/FieldDuty', [

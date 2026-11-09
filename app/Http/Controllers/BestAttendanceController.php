@@ -42,7 +42,7 @@ class BestAttendanceController extends Controller
         // 1. Ambil seluruh data master
         $areas = Area::orderBy('name')->get();
         $shiftsById = Shift::all()->keyBy('id');
-        $employeesQuery = Employee::with(['area', 'shift', 'specialTeamMembers'])->excludeTokoAndDemo();
+        $employeesQuery = Employee::with(['area', 'shift', 'specialTeamMembers'])->activeOnly();
 
         if ($scope === 'branch' && $selectedAreaId) {
             $employeesQuery->where('area_id', $selectedAreaId);

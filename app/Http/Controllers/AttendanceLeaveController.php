@@ -62,7 +62,7 @@ class AttendanceLeaveController extends Controller
         ];
 
         // Daftar Karyawan Aktif untuk pilihan input
-        $employees = Employee::excludeTokoAndDemo()->orderBy('name', 'asc')
+        $employees = Employee::activeOnly()->orderBy('name', 'asc')
             ->get(['id', 'name', 'iak_number', 'position', 'branch', 'area_id']);
 
         // Default setting nominal denda dari Master Settings
@@ -110,6 +110,9 @@ class AttendanceLeaveController extends Controller
         ]);
 
         $employee = Employee::findOrFail($validated['employee_id']);
+        if ($employee->status === 'resigned' || $employee->is_resigned) {
+            return back()->with('error', "Karyawan {$employee->name} telah non-aktif/resigned.");
+        }
         $startDate = Carbon::parse($validated['start_date']);
         $endDate = !empty($validated['end_date']) ? Carbon::parse($validated['end_date']) : $startDate->copy();
 
