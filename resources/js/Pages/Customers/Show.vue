@@ -1070,7 +1070,7 @@
                                                 <option value="" disabled>Tidak ada ODP di area ini</option>
                                             </template>
                                             <template v-else>
-                                                <option v-for="odp in filteredAvailableOdps" :key="odp.id" :value="odp.id" :disabled="(odp.total_ports - odp.used_ports) <= 0">
+                                                <option v-for="odp in filteredAvailableOdps" :key="odp.id" :value="odp.id" :disabled="(odp.total_ports - odp.used_ports) <= 0 && odp.id != ontForm.odp_id && odp.id != props.customer.ont?.odp_id && odp.id != latestSurvey?.odp_id">
                                                     {{ odp.name }} - {{ (odp.total_ports - odp.used_ports) <= 0 ? 'FULL' : `Sisa ${Math.max(0, odp.total_ports - odp.used_ports)} port` }}
                                                 </option>
                                             </template>
@@ -2844,14 +2844,20 @@
                                     <label class="block text-xs font-semibold text-gray-600 mb-1">Pilih ODP</label>
                                     <select v-model="surveyReportForm.odp_id" class="w-full text-sm border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
                                         <option value="">-- Pilih ODP --</option>
-                                        <option v-for="odp in filteredAvailableOdps" :key="odp.id" :value="odp.id">
+                                        <option v-for="odp in (filteredAvailableOdps.length > 0 ? filteredAvailableOdps : availableOdps)" :key="odp.id" :value="odp.id">
                                             {{ odp.name }} (Port: {{ odp.used_ports }}/{{ odp.total_ports }})
                                         </option>
                                     </select>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-semibold text-gray-600 mb-1">Nomor Port ODP</label>
-                                    <input v-model="surveyReportForm.port_number" type="number" min="1" max="64" class="w-full text-sm border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500" placeholder="1" />
+                                    <select v-if="selectedSurveyReportOdp && selectedSurveyReportOdp.total_ports > 0" v-model="surveyReportForm.port_number" class="w-full text-sm border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500">
+                                        <option value="">-- Pilih Port --</option>
+                                        <option v-for="i in selectedSurveyReportOdp.total_ports" :key="i" :value="i" :disabled="isPortUsed(selectedSurveyReportOdp, i)">
+                                            Port {{ i }} {{ getPortStatus(selectedSurveyReportOdp, i) }}
+                                        </option>
+                                    </select>
+                                    <input v-else v-model="surveyReportForm.port_number" type="number" min="1" max="64" class="w-full text-sm border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500" placeholder="1" />
                                 </div>
                             </div>
                             <div class="flex items-center gap-2 pt-1">
@@ -3147,14 +3153,20 @@
                                     <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">ODP Terpasang <span class="text-red-500">*</span></label>
                                     <select v-model="installReportForm.odp_id" required class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
                                         <option value="">-- Pilih ODP --</option>
-                                        <option v-for="odp in availableOdps" :key="odp.id" :value="odp.id">
+                                        <option v-for="odp in (filteredAvailableOdps.length > 0 ? filteredAvailableOdps : availableOdps)" :key="odp.id" :value="odp.id">
                                             {{ odp.name }} (Port: {{ odp.used_ports }}/{{ odp.total_ports }})
                                         </option>
                                     </select>
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Nomor Port ODP <span class="text-red-500">*</span></label>
-                                    <input v-model="installReportForm.port_number" type="number" min="1" max="64" required placeholder="Contoh: 1" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
+                                    <select v-if="selectedInstallReportOdp && selectedInstallReportOdp.total_ports > 0" v-model="installReportForm.port_number" required class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="">-- Pilih Port --</option>
+                                        <option v-for="i in selectedInstallReportOdp.total_ports" :key="i" :value="i" :disabled="isPortUsed(selectedInstallReportOdp, i)">
+                                            Port {{ i }} {{ getPortStatus(selectedInstallReportOdp, i) }}
+                                        </option>
+                                    </select>
+                                    <input v-else v-model="installReportForm.port_number" type="number" min="1" max="64" required placeholder="Contoh: 1" class="w-full text-sm border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" />
                                 </div>
                             </div>
                         </div>
@@ -3721,25 +3733,63 @@ const activeTab = ref(
     (props.customer.status === 'active' ? 'audit' : 'booking')))
 );
 
+
+
+const customerAreaId = computed(() => {
+    if (props.customer?.area_id) return props.customer.area_id;
+    if (props.customer?.area && props.areas) {
+        const found = props.areas.find(a => a.name?.toLowerCase().trim() === props.customer.area.toLowerCase().trim());
+        if (found) return found.id;
+    }
+    return null;
+});
+
 const filteredAvailableOdps = computed(() => {
-    if (!props.customer?.area_id) return [];
-    return props.availableOdps?.filter(odp => Number(odp.area_id) === Number(props.customer.area_id)) || [];
+    const targetAreaId = customerAreaId.value;
+    if (!targetAreaId) return props.availableOdps || [];
+    return props.availableOdps?.filter(odp => Number(odp.area_id) === Number(targetAreaId)) || [];
 });
 
 function isPortUsed(odp, portNumber) {
-    if (!odp || !odp.onts) return false;
-    return odp.onts.some(ont => ont.port_number == portNumber && ont.customer_id != props.customer.id);
+    if (!odp) return false;
+    if (odp.onts && odp.onts.some(ont => Number(ont.port_number) === Number(portNumber) && ont.customer_id != props.customer.id)) {
+        return true;
+    }
+    if (odp.ports) {
+        const port = odp.ports.find(p => Number(p.port_number) === Number(portNumber));
+        if (port && ['fault', 'stop'].includes(port.status)) return true;
+    }
+    return false;
 }
 
 function getPortStatus(odp, portNumber) {
-    if (!odp || !odp.onts) return '';
-    const ont = odp.onts.find(o => o.port_number == portNumber);
-    if (!ont) return '';
-    
-    if (ont.customer_id == props.customer.id) return '(Port Pelanggan Ini)';
-    if (ont.customer) return `(Terpakai - ${ont.customer.status})`;
-    return '(Terpakai - Kosong)';
+    if (!odp) return '';
+    if (odp.onts) {
+        const ont = odp.onts.find(o => Number(o.port_number) === Number(portNumber));
+        if (ont) {
+            if (ont.customer_id == props.customer.id) return '(Port Pelanggan Ini)';
+            if (ont.customer) return `(Terpakai - ${ont.customer.name || ont.customer.customer_code})`;
+            return '(Terpakai)';
+        }
+    }
+    if (odp.ports) {
+        const port = odp.ports.find(p => Number(p.port_number) === Number(portNumber));
+        if (port) {
+            if (port.status === 'fault') return '(Rusak/Fault)';
+            if (port.status === 'stop') return '(Stop)';
+            if (port.status === 'reserved') return '(Reservasi Survey)';
+        }
+    }
+    return '(Tersedia)';
 }
+
+const selectedInstallReportOdp = computed(() => {
+    return (props.availableOdps || []).find(o => Number(o.id) === Number(installReportForm.odp_id));
+});
+
+const selectedSurveyReportOdp = computed(() => {
+    return (props.availableOdps || []).find(o => Number(o.id) === Number(surveyReportForm.odp_id));
+});
 
 const getAssignedTechnicians = (type) => {
     if (!props.customer?.technician_schedules) return '-';
@@ -4348,7 +4398,7 @@ const selectedOdp = computed(() => props.availableOdps?.find(o => o.id == ontFor
 
 const isJamMulaiValid = computed(() => !!ontForm.start_time);
 const isMaterialValid = computed(() => hardwareItems.value.length === 0 || hardwareItems.value.every(i => i.isInstalled));
-const isOdpValid = computed(() => !!ontForm.odp_id && selectedOdp.value && selectedOdp.value.area_id === props.customer.area_id);
+const isOdpValid = computed(() => !!ontForm.odp_id && selectedOdp.value && (!customerAreaId.value || Number(selectedOdp.value.area_id) === Number(customerAreaId.value)));
 const isPortValid = computed(() => !!ontForm.port_number && !isPortUsed(selectedOdp.value, ontForm.port_number));
 const isRedamanValid = computed(() => !!ontForm.rx_power && !isNaN(parseFloat(ontForm.rx_power)));
 const isFotoValid = computed(() => true); // Foto tidak diwajibkan (bisa diedit belakangan)
@@ -5402,14 +5452,7 @@ const installScheduleForm = useForm({
     send_wa: true,
 });
 
-const customerAreaId = computed(() => {
-    if (props.customer?.area_id) return props.customer.area_id;
-    if (props.customer?.area && props.areas) {
-        const found = props.areas.find(a => a.name?.toLowerCase().trim() === props.customer.area.toLowerCase().trim());
-        if (found) return found.id;
-    }
-    return null;
-});
+
 
 const filteredOnts = computed(() => {
     let onts = (props.availableOnts || []).filter(ont => ont.status === 'Sudah Set');

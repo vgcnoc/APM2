@@ -1252,7 +1252,7 @@ const selectedOdp = computed(() => {
 
 const availablePortNumbers = computed(() => {
     const survey = isEditingSurvey.value ? activeCustomer.value?.surveys?.[0] : null;
-    return surveyPortNumbers(selectedOdp.value, survey);
+    return surveyPortNumbers(selectedOdp.value, survey, activeCustomer.value);
 });
 
 function calculateDistance(lat1, lon1, lat2, lon2) {

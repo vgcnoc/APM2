@@ -8,6 +8,7 @@ use App\Models\OdpPort;
 use App\Models\Ont;
 use App\Models\Survey;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class SurveyNetworkService
@@ -47,8 +48,12 @@ class SurveyNetworkService
 
             if ($feasible) {
                 $odp = $odps->get($targetOdpId);
-                if (!$odp || (int) $odp->area_id !== (int) $customer->area_id) {
+                $customerAreaId = $customer->area_id ?: ($customer->area ? \App\Models\Area::where('name', $customer->area)->value('id') : null);
+                if (!$odp || ($customerAreaId && (int) $odp->area_id !== (int) $customerAreaId)) {
                     throw ValidationException::withMessages(['odp_id' => 'ODP tidak sesuai dengan Area/Wilayah pelanggan.']);
+                }
+                if (empty($customer->area_id) && $odp && $odp->area_id) {
+                    $customer->update(['area_id' => $odp->area_id]);
                 }
                 if (!$targetPortNumber || (int) $targetPortNumber < 1 || (int) $targetPortNumber > (int) $odp->total_ports) {
                     throw ValidationException::withMessages(['port_number' => 'Port ODP harus berada dalam kapasitas ODP yang dipilih.']);
@@ -79,15 +84,36 @@ class SurveyNetworkService
             }
 
             $survey->fill($attributes)->save();
-            if ($feasible && $onts->isNotEmpty()) {
-                $ont = $onts->first();
-                $ont->fill([
-                    'odp_id' => $targetOdpId,
-                    'port_number' => $targetPortNumber,
-                    'odp_port_id' => $port->id,
-                ]);
-                // Port flags and counters are reconciled below, without RADIUS side effects.
-                $ont->saveQuietly();
+            if ($feasible) {
+                if ($onts->isNotEmpty()) {
+                    $ont = $onts->first();
+                    $ontFillData = [
+                        'odp_id' => $targetOdpId,
+                        'port_number' => $targetPortNumber,
+                        'odp_port_id' => $port->id,
+                    ];
+                    if ($odp && $odp->area_id && Schema::hasColumn('onts', 'area_id')) {
+                        $ontFillData['area_id'] = $odp->area_id;
+                    }
+                    $ont->fill($ontFillData);
+                    // Port flags and counters are reconciled below, without RADIUS side effects.
+                    $ont->saveQuietly();
+                } elseif (in_array($customer->status, ['active', 'suspended', 'installing'], true)) {
+                    // Jika pelanggan berstatus pasang/aktif tapi belum punya ONT record, sinkronkan ONT
+                    $newOntData = [
+                        'customer_id' => $customer->id,
+                        'odp_id' => $targetOdpId,
+                        'port_number' => $targetPortNumber,
+                        'odp_port_id' => $port->id,
+                        'serial_number' => 'SN-' . strtoupper(\Illuminate\Support\Str::random(8)),
+                        'status' => 'active',
+                    ];
+                    if ($odp && $odp->area_id && Schema::hasColumn('onts', 'area_id')) {
+                        $newOntData['area_id'] = $odp->area_id;
+                    }
+                    $createdOnt = Ont::create($newOntData);
+                    $onts = collect([$createdOnt]);
+                }
             }
 
             $assignments = collect($oldAssignments)->push([$survey->odp_id, $survey->port_number])
@@ -116,6 +142,162 @@ class SurveyNetworkService
             }
 
             return $survey->fresh();
+        });
+    }
+
+    /**
+     * Synchronize installation & ONT to ODP and port, keeping Survey, OdpPort, and ODP seamlessly in sync.
+     */
+    public function syncInstallation(Customer $customer, array $attributes): Ont
+    {
+        return DB::transaction(function () use ($customer, $attributes) {
+            $customer = Customer::whereKey($customer->id)->lockForUpdate()->firstOrFail();
+            $targetOdpId = (int) $attributes['odp_id'];
+            $targetPortNumber = (int) $attributes['port_number'];
+
+            $odp = Odp::whereKey($targetOdpId)->lockForUpdate()->first();
+            if (!$odp) {
+                throw ValidationException::withMessages(['odp_id' => 'ODP yang dipilih tidak ditemukan.']);
+            }
+
+            $customerAreaId = $customer->area_id ?: ($customer->area ? \App\Models\Area::where('name', $customer->area)->value('id') : null);
+            if ($customerAreaId && (int) $odp->area_id !== (int) $customerAreaId) {
+                throw ValidationException::withMessages(['odp_id' => 'ODP tidak sesuai dengan Area/Wilayah pelanggan.']);
+            }
+            if (empty($customer->area_id) && $odp->area_id) {
+                $customer->update(['area_id' => $odp->area_id]);
+            }
+
+            if ($targetPortNumber < 1 || $targetPortNumber > (int) $odp->total_ports) {
+                throw ValidationException::withMessages(['port_number' => 'Port ODP harus berada dalam kapasitas ODP (1 - ' . $odp->total_ports . ').']);
+            }
+
+            // Existing ONT and Survey
+            $ont = $customer->ont ?: $customer->onts()->orderBy('id')->lockForUpdate()->first();
+            if (!$ont && !empty($attributes['serial_number'])) {
+                $ont = Ont::where('serial_number', $attributes['serial_number'])->lockForUpdate()->first();
+                if ($ont) {
+                    $ont->customer_id = $customer->id;
+                }
+            }
+
+            $survey = $customer->surveys()->latest()->lockForUpdate()->first();
+
+            $oldAssignments = [];
+            if ($ont && $ont->odp_id && $ont->port_number) {
+                $oldAssignments[] = [(int) $ont->odp_id, (int) $ont->port_number];
+            }
+            if ($survey && $survey->odp_id && $survey->port_number) {
+                $oldAssignments[] = [(int) $survey->odp_id, (int) $survey->port_number];
+            }
+
+            $targetPort = OdpPort::firstOrCreate(
+                ['odp_id' => $odp->id, 'port_number' => $targetPortNumber],
+                ['status' => 'available']
+            );
+
+            if (in_array($targetPort->status, ['fault', 'stop'], true)) {
+                throw ValidationException::withMessages([
+                    'port_number' => "Port {$targetPortNumber} pada ODP {$odp->name} dalam status {$targetPort->status} (tidak dapat digunakan).",
+                ]);
+            }
+
+            $otherOnt = Ont::where('odp_id', $odp->id)
+                ->where('port_number', $targetPortNumber)
+                ->whereNotIn('status', self::INVENTORY_STATUSES)
+                ->where('customer_id', '!=', $customer->id)
+                ->when($ont, fn ($q) => $q->where('id', '!=', $ont->id))
+                ->with('customer:id,name,customer_code')
+                ->first();
+            if ($otherOnt) {
+                $holderName = $otherOnt->customer?->name ?? 'Pelanggan Lain';
+                $holderCode = $otherOnt->customer?->customer_code ? " ({$otherOnt->customer->customer_code})" : '';
+                throw ValidationException::withMessages([
+                    'port_number' => "Port {$targetPortNumber} pada ODP {$odp->name} sudah digunakan oleh {$holderName}{$holderCode}.",
+                ]);
+            }
+
+            $otherSurvey = $this->reservations((int) $odp->id, (int) $targetPortNumber)
+                ->where('customer_id', '!=', $customer->id)
+                ->with('customer:id,name,customer_code')
+                ->first();
+            if ($otherSurvey) {
+                $holderName = $otherSurvey->customer?->name ?? 'Pelanggan Lain';
+                $holderCode = $otherSurvey->customer?->customer_code ? " ({$otherSurvey->customer->customer_code})" : '';
+                throw ValidationException::withMessages([
+                    'port_number' => "Port {$targetPortNumber} pada ODP {$odp->name} sudah direservasi untuk {$holderName}{$holderCode}.",
+                ]);
+            }
+
+            // Update or create ONT
+            $ontData = array_merge($attributes, [
+                'customer_id' => $customer->id,
+                'odp_id' => $odp->id,
+                'port_number' => $targetPortNumber,
+                'odp_port_id' => $targetPort->id,
+                'status' => 'active',
+            ]);
+            if ($odp->area_id && Schema::hasColumn('onts', 'area_id')) {
+                $ontData['area_id'] = $odp->area_id;
+            }
+
+            if ($ont) {
+                $ont->fill($ontData)->save();
+            } else {
+                if (empty($ontData['serial_number'])) {
+                    $ontData['serial_number'] = 'SN-' . strtoupper(\Illuminate\Support\Str::random(8));
+                }
+                $ont = Ont::create($ontData);
+            }
+
+            // Sync Survey dua arah
+            if ($survey) {
+                $survey->update([
+                    'odp_id' => $odp->id,
+                    'port_number' => $targetPortNumber,
+                    'feasibility' => 'feasible',
+                ]);
+            } else {
+                $survey = Survey::create([
+                    'customer_id' => $customer->id,
+                    'odp_id' => $odp->id,
+                    'port_number' => $targetPortNumber,
+                    'feasibility' => 'feasible',
+                    'survey_date' => now()->toDateString(),
+                    'notes' => 'Otomatis tersinkron dari laporan instalasi ODP ' . $odp->name . ' Port ' . $targetPortNumber,
+                ]);
+            }
+
+            // Rekonsiliasi port odp_ports
+            $assignments = collect($oldAssignments)
+                ->push([(int) $odp->id, (int) $targetPortNumber])
+                ->filter(fn ($pair) => $pair[0] && $pair[1])
+                ->unique(fn ($pair) => $pair[0].':'.$pair[1]);
+
+            foreach ($assignments as [$odpId, $portNumber]) {
+                $port = OdpPort::where('odp_id', $odpId)->where('port_number', $portNumber)->first();
+                if (!$port || in_array($port->status, ['fault', 'stop'], true)) {
+                    continue;
+                }
+                $used = Ont::where('odp_id', $odpId)->where('port_number', $portNumber)
+                    ->whereNotIn('status', self::INVENTORY_STATUSES)->exists();
+                $reserved = $this->reservations((int) $odpId, (int) $portNumber)->exists();
+                $state = $used ? 'used' : ($reserved ? 'reserved' : 'available');
+                $port->update($state === 'available' ? ['status' => $state, 'description' => null] : ['status' => $state]);
+            }
+
+            // Rekonsiliasi ODP used_ports & status
+            $odpIds = collect($oldAssignments)->pluck(0)->push($odp->id)->filter()->unique();
+            $odpsToReconcile = Odp::whereIn('id', $odpIds)->get();
+            foreach ($odpsToReconcile as $odpItem) {
+                $used = Ont::where('odp_id', $odpItem->id)->whereNotIn('status', self::INVENTORY_STATUSES)->count();
+                $status = ($used >= $odpItem->total_ports && $odpItem->total_ports > 0)
+                    ? 'full'
+                    : ($odpItem->status === 'full' ? 'active' : $odpItem->status);
+                Odp::whereKey($odpItem->id)->update(['used_ports' => $used, 'status' => $status]);
+            }
+
+            return $ont->fresh();
         });
     }
 

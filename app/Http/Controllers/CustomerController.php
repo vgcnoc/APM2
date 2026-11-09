@@ -2955,7 +2955,7 @@ class CustomerController extends Controller
         return Inertia::render('Customers/Show', [
             'customer' => $customer,
             'source' => request()->query('source'),
-            'availableOdps' => Odp::active()->with(['odc.olt', 'onts.customer', 'ports'])->get(),
+            'availableOdps' => Odp::whereIn('status', ['active', 'full'])->with(['odc.olt', 'onts.customer', 'ports'])->get(),
             'availableOnts' => Ont::availableForAssignment()->get(['id', 'ont_id', 'serial_number', 'brand', 'model', 'status', 'area_id']),
             'technicians' => User::forAssignment()->orderBy('name')->get(['id', 'name', 'phone', 'role']),
             'packages' => InternetPackage::active()->get(),
@@ -3582,7 +3582,8 @@ class CustomerController extends Controller
         if ($request->hasFile('photo_redaman')) $validated['photo_redaman'] = $request->file('photo_redaman')->store('installations', 'public');
 
         $odp = Odp::findOrFail($validated['odp_id']);
-        if ($odp->area_id !== $customer->area_id) {
+        $customerAreaId = $customer->area_id ?: ($customer->area ? \App\Models\Area::where('name', $customer->area)->value('id') : null);
+        if ($customerAreaId && (int) $odp->area_id !== (int) $customerAreaId) {
             return back()->withErrors(['odp_id' => 'ODP tidak sesuai dengan Area/Wilayah pelanggan.']);
         }
 
@@ -3593,68 +3594,23 @@ class CustomerController extends Controller
         $usageDetails = [];
         try {
             DB::transaction(function () use ($validated, $customer, $odp, $request, $ont, &$usageDetails, $wifiSsid, $wifiPass) {
-            $isNewAssignment = false;
-            
-            // Update existing linked ONT or Create new
-            if ($ont) {
-                // Free old port if exist and changed
-                if ($ont->odp_id && $ont->port_number && ($ont->odp_id != $validated['odp_id'] || $ont->port_number != $validated['port_number'])) {
-                    \App\Models\OdpPort::where('odp_id', $ont->odp_id)
-                        ->where('port_number', $ont->port_number)
-                        ->update(['status' => 'available']);
-                    
-                    $oldOdp = \App\Models\Odp::find($ont->odp_id);
-                    if ($oldOdp && $oldOdp->used_ports > 0) {
-                        $oldOdp->decrement('used_ports');
-                        if ($oldOdp->used_ports - 1 < $oldOdp->total_ports && $oldOdp->status === 'full') {
-                            $oldOdp->update(['status' => 'active']);
-                        }
-                    }
-                    $isNewAssignment = true;
-                } elseif (!$ont->odp_id || !$ont->port_number) {
-                    $isNewAssignment = true;
-                }
+            $ontPayload = [
+                'odp_id' => $validated['odp_id'],
+                'port_number' => $validated['port_number'],
+                'rx_power' => $validated['rx_power'] ?? null,
+                'initial_rx_power' => $ont?->initial_rx_power ?? ($validated['rx_power'] ?? null),
+                'start_time' => $validated['start_time'] ?? null,
+                'end_time' => $validated['end_time'] ?? null,
+                'photo_odp' => $validated['photo_odp'] ?? $ont?->photo_odp,
+                'photo_installation' => $validated['photo_installation'] ?? $ont?->photo_installation,
+                'photo_ont' => $validated['photo_ont'] ?? $ont?->photo_ont,
+                'photo_customer' => $validated['photo_customer'] ?? $ont?->photo_customer,
+                'photo_redaman' => $validated['photo_redaman'] ?? $ont?->photo_redaman,
+            ];
+            if ($wifiSsid !== null) $ontPayload['wifi_ssid'] = $wifiSsid;
+            if ($wifiPass !== null) $ontPayload['wifi_password'] = $wifiPass;
 
-                // Update existing linked ONT
-                $ontUpdateData = [
-                    'odp_id' => $validated['odp_id'],
-                    'port_number' => $validated['port_number'],
-                    'rx_power' => $validated['rx_power'] ?? null,
-                    'initial_rx_power' => $ont->initial_rx_power ?? ($validated['rx_power'] ?? null),
-                    'start_time' => $validated['start_time'] ?? null,
-                    'end_time' => $validated['end_time'] ?? null,
-                    'photo_odp' => $validated['photo_odp'] ?? $ont->photo_odp,
-                    'photo_installation' => $validated['photo_installation'] ?? $ont->photo_installation,
-                    'photo_ont' => $validated['photo_ont'] ?? $ont->photo_ont,
-                    'photo_customer' => $validated['photo_customer'] ?? $ont->photo_customer,
-                    'photo_redaman' => $validated['photo_redaman'] ?? $ont->photo_redaman,
-                    'status' => 'active',
-                ];
-                if ($wifiSsid !== null) $ontUpdateData['wifi_ssid'] = $wifiSsid;
-                if ($wifiPass !== null) $ontUpdateData['wifi_password'] = $wifiPass;
-                $ont->update($ontUpdateData);
-            } else {
-                $isNewAssignment = true;
-                // Create new ONT if none is linked
-                $ont = Ont::create([
-                    'odp_id' => $validated['odp_id'],
-                    'customer_id' => $customer->id,
-                    'serial_number' => 'SN-' . strtoupper(\Illuminate\Support\Str::random(8)),
-                    'port_number' => $validated['port_number'],
-                    'rx_power' => $validated['rx_power'] ?? null,
-                    'initial_rx_power' => $validated['rx_power'] ?? null,
-                    'start_time' => $validated['start_time'] ?? null,
-                    'end_time' => $validated['end_time'] ?? null,
-                    'wifi_ssid' => $wifiSsid,
-                    'wifi_password' => $wifiPass,
-                    'photo_odp' => $validated['photo_odp'] ?? null,
-                    'photo_installation' => $validated['photo_installation'] ?? null,
-                    'photo_ont' => $validated['photo_ont'] ?? null,
-                    'photo_customer' => $validated['photo_customer'] ?? null,
-                    'photo_redaman' => $validated['photo_redaman'] ?? null,
-                    'status' => 'active',
-                ]);
-            }
+            $ont = app(\App\Services\SurveyNetworkService::class)->syncInstallation($customer, $ontPayload);
 
             // Sync WiFi info ke data Customer
             $customerWifiUpdates = [];
@@ -3662,29 +3618,6 @@ class CustomerController extends Controller
             if ($wifiPass !== null) $customerWifiUpdates['wifi_password'] = $wifiPass;
             if (!empty($customerWifiUpdates)) {
                 $customer->update($customerWifiUpdates);
-            }
-
-            $newOdp = Odp::find($validated['odp_id']);
-            // Update used_ports di ODP baru ONLY if it is a new assignment or port changed
-            if ($isNewAssignment && $newOdp) {
-                $newOdp->increment('used_ports');
-            }
-
-            // Update odp_ports if exists
-            if ($newOdp) {
-                $newOdpPort = \App\Models\OdpPort::where('odp_id', $newOdp->id)
-                    ->where('port_number', $validated['port_number'])
-                    ->first();
-                if ($newOdpPort) {
-                    $newOdpPort->update([
-                        'status' => 'used'
-                    ]);
-                }
-
-                // Jika ODP penuh, update statusnya
-                if ($newOdp->used_ports >= $newOdp->total_ports) {
-                    $newOdp->update(['status' => 'full']);
-                }
             }
 
             // Update status jadwal teknisi ke done jika ada
@@ -5716,52 +5649,25 @@ class CustomerController extends Controller
         $wifiSsid = $request->has('wifi_ssid') ? (!empty($validated['wifi_ssid']) ? trim($validated['wifi_ssid']) : null) : null;
         $wifiPass = $request->has('wifi_password') ? (!empty($validated['wifi_password']) ? (string)$validated['wifi_password'] : null) : null;
 
-        $ont = $customer->ont;
-        if (!$ont) {
-            $ont = \App\Models\Ont::where('serial_number', $validated['serial_number'])->first();
-            if ($ont) {
-                $ont->update(['customer_id' => $customer->id]);
-            } else {
-                $ont = \App\Models\Ont::create([
-                    'customer_id' => $customer->id,
-                    'serial_number' => $validated['serial_number'],
-                    'mac_address' => $cleanMac,
-                    'odp_id' => $validated['odp_id'],
-                    'port_number' => $validated['port_number'],
-                    'model' => $validated['model'] ?? 'Standard ONT',
-                    'wifi_ssid' => $wifiSsid,
-                    'wifi_password' => $wifiPass,
-                    'status' => 'active',
-                ]);
-            }
-        }
-
-        $photoUpdates = [];
-        foreach (['photo_odp', 'photo_installation', 'photo_ont', 'photo_customer', 'photo_redaman'] as $field) {
-            if ($request->hasFile($field)) {
-                $photoUpdates[$field] = $request->file($field)->store('ont_installations', 'public');
-            }
-        }
-
-        $ontUpdates = array_merge([
+        $ontPayload = array_merge([
             'odp_id' => $validated['odp_id'],
             'port_number' => $validated['port_number'],
             'serial_number' => $validated['serial_number'],
-            'mac_address' => $cleanMac ?: $ont->mac_address,
-            'model' => $validated['model'] ?: $ont->model,
-            'rx_power' => $cleanRx !== null ? $cleanRx : $ont->rx_power,
-            'start_time' => $validated['start_time'] ?? $ont->start_time,
-            'end_time' => $validated['end_time'] ?? $ont->end_time,
+            'mac_address' => $cleanMac,
+            'model' => $validated['model'] ?? 'Standard ONT',
+            'rx_power' => $cleanRx,
+            'start_time' => $validated['start_time'] ?? null,
+            'end_time' => $validated['end_time'] ?? null,
         ], $photoUpdates);
 
         if ($request->has('wifi_ssid')) {
-            $ontUpdates['wifi_ssid'] = $wifiSsid;
+            $ontPayload['wifi_ssid'] = $wifiSsid;
         }
         if ($request->has('wifi_password')) {
-            $ontUpdates['wifi_password'] = $wifiPass;
+            $ontPayload['wifi_password'] = $wifiPass;
         }
 
-        $ont->update($ontUpdates);
+        $ont = app(\App\Services\SurveyNetworkService::class)->syncInstallation($customer, $ontPayload);
 
         // Update data Customer jika field WiFi diinput
         $custWifiUpdates = [];
@@ -5787,15 +5693,9 @@ class CustomerController extends Controller
             }
         }
 
-        // Mark port as used
-        \App\Models\OdpPort::updateOrCreate(
-            ['odp_id' => $validated['odp_id'], 'port_number' => $validated['port_number']],
-            ['status' => 'used']
-        );
+        \App\Models\AuditLog::createLog('Edit Laporan Instalasi', $customer, $customer->status, $customer->status, 'Memperbarui laporan instalasi, ODP & ONT');
 
-        \App\Models\AuditLog::createLog('Edit Laporan Instalasi', $customer, $customer->status, $customer->status, 'Memperbarui laporan instalasi & ONT');
-
-        return back()->with('success', 'Laporan instalasi berhasil disimpan.');
+        return back()->with('success', 'Laporan instalasi berhasil disimpan dan data jaringan ODP/port tersinkronisasi.');
     }
 
     /**

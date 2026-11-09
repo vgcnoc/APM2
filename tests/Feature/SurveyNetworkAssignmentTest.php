@@ -248,6 +248,41 @@ class SurveyNetworkAssignmentTest extends TestCase
         $this->assertDatabaseHas('onts', ['id' => 1, 'odp_id' => 1, 'port_number' => 5]);
     }
 
+    public function test_sync_installation_moves_ont_and_updates_survey_and_reconciles_ports(): void
+    {
+        $service = app(SurveyNetworkService::class);
+        $customer = Customer::findOrFail(1);
+        $ont = $service->syncInstallation($customer, [
+            'odp_id' => 2,
+            'port_number' => 1,
+            'serial_number' => 'ONT-TEST-INST',
+        ]);
+
+        $this->assertDatabaseHas('onts', ['id' => 1, 'odp_id' => 2, 'port_number' => 1, 'odp_port_id' => 21]);
+        $this->assertDatabaseHas('surveys', ['id' => 1, 'odp_id' => 2, 'port_number' => 1]);
+        $this->assertDatabaseHas('odp_ports', ['id' => 11, 'status' => 'available']);
+        $this->assertDatabaseHas('odp_ports', ['id' => 21, 'status' => 'used']);
+        $this->assertDatabaseHas('odps', ['id' => 1, 'used_ports' => 0, 'status' => 'active']);
+        $this->assertDatabaseHas('odps', ['id' => 2, 'used_ports' => 1]);
+    }
+
+    public function test_sync_installation_rejects_conflicting_port(): void
+    {
+        $service = app(SurveyNetworkService::class);
+        $customer2 = Customer::findOrFail(2);
+        
+        try {
+            // Customer 1 is already on ODP 1 Port 5
+            $service->syncInstallation($customer2, [
+                'odp_id' => 1,
+                'port_number' => 5,
+            ]);
+            $this->fail('Conflicting port in syncInstallation must throw ValidationException.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('port_number', $e->errors());
+        }
+    }
+
     private function reportPayload(): array
     {
         return ['surveyor_id' => 1, 'survey_date' => '2026-11-02', 'odp_id' => 2,
