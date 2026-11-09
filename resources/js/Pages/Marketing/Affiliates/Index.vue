@@ -60,6 +60,9 @@
                     <div>
                         <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Pelanggan Hasil Referral</span>
                         <span class="text-2xl font-extrabold text-slate-900 mt-1 block">{{ kpi.total_customers }} Pelanggan</span>
+                        <span v-if="hasDateFilter" class="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded mt-1 inline-block">
+                            📅 {{ dateFilterLabel }}
+                        </span>
                     </div>
                     <div class="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl">
                         🎯
@@ -70,6 +73,9 @@
                     <div>
                         <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Total Komisi Disalurkan</span>
                         <span class="text-xl font-extrabold text-emerald-600 mt-1 block">{{ formatRupiah(kpi.total_commissions_paid) }}</span>
+                        <span v-if="hasDateFilter" class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded mt-1 inline-block">
+                            📅 {{ dateFilterLabel }}
+                        </span>
                     </div>
                     <div class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
                         💰
@@ -1139,30 +1145,82 @@
 
                 <!-- ════ TAB 2: DAFTAR AGEN AFILIASI ════ -->
                 <div v-if="currentTab === 'affiliates'" v-can="['menu_affiliate_agents', 'affiliate_tab_affiliates']" class="p-6">
-                    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
-                        <div v-can="'affiliate_filter_search'" class="relative w-full sm:w-72">
-                            <input
-                                v-model="searchQuery"
-                                @keyup.enter="handleSearch"
-                                type="text"
-                                placeholder="Cari nama, email, nomor, kode..."
-                                class="w-full pl-9 pr-16 py-2 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            />
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                                🔍
+                    <div class="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3 mb-4">
+                        <div class="flex flex-wrap items-center gap-2.5 flex-1">
+                            <div v-can="'affiliate_filter_search'" class="relative w-full sm:w-64">
+                                <input
+                                    v-model="searchQuery"
+                                    @keyup.enter="handleSearch"
+                                    type="text"
+                                    placeholder="Cari nama, email, nomor, kode..."
+                                    class="w-full pl-9 pr-16 py-2 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                />
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                    🔍
+                                </div>
+                                <button
+                                    v-if="searchQuery"
+                                    type="button"
+                                    @click="clearSearch"
+                                    class="absolute inset-y-0 right-1 px-2 text-[11px] font-bold text-slate-400 hover:text-rose-600"
+                                    aria-label="Hapus pencarian"
+                                >
+                                    ✕
+                                </button>
                             </div>
-                            <button
-                                v-if="searchQuery"
-                                type="button"
-                                @click="clearSearch"
-                                class="absolute inset-y-0 right-1 px-2 text-[11px] font-bold text-slate-400 hover:text-rose-600"
-                                aria-label="Hapus pencarian"
-                            >
-                                ✕
-                            </button>
+
+                            <!-- Filter Tanggal / Periode -->
+                            <div class="flex flex-wrap items-center gap-1.5 bg-slate-50 border border-slate-200/90 rounded-xl px-2.5 py-1.5">
+                                <span class="text-xs font-bold text-slate-500 flex items-center gap-1 pr-1">
+                                    <span>📅</span>
+                                    <span class="hidden sm:inline">Tanggal:</span>
+                                </span>
+                                <input
+                                    v-model="startDate"
+                                    @change="applyDateFilter"
+                                    type="date"
+                                    title="Dari Tanggal"
+                                    class="px-2 py-1 text-xs bg-white border border-slate-300 rounded-lg text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                />
+                                <span class="text-[11px] text-slate-400 font-bold">s/d</span>
+                                <input
+                                    v-model="endDate"
+                                    @change="applyDateFilter"
+                                    type="date"
+                                    title="Sampai Tanggal"
+                                    class="px-2 py-1 text-xs bg-white border border-slate-300 rounded-lg text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                />
+                                <div class="flex items-center gap-1 pl-1 border-l border-slate-200">
+                                    <button
+                                        type="button"
+                                        @click="setDatePreset('this_month')"
+                                        class="px-2 py-1 rounded-lg text-[11px] font-bold transition-colors whitespace-nowrap"
+                                        :class="isDatePreset('this_month') ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'"
+                                    >
+                                        Bulan Ini
+                                    </button>
+                                    <button
+                                        type="button"
+                                        @click="setDatePreset('last_month')"
+                                        class="px-2 py-1 rounded-lg text-[11px] font-bold transition-colors whitespace-nowrap"
+                                        :class="isDatePreset('last_month') ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'"
+                                    >
+                                        Bulan Lalu
+                                    </button>
+                                    <button
+                                        v-if="hasDateFilter"
+                                        type="button"
+                                        @click="clearDateFilter"
+                                        class="px-2 py-1 rounded-lg text-[11px] font-bold bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 transition-colors whitespace-nowrap"
+                                        title="Reset Filter Tanggal (Tampilkan Semua Waktu)"
+                                    >
+                                        ✕ Reset
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+                        <div class="flex flex-wrap items-center gap-2 w-full xl:w-auto justify-end">
                             <button
                                 v-can="'affiliate_btn_import'"
                                 type="button"
@@ -1362,11 +1420,61 @@
 
                 <!-- ════ TAB 3: RIWAYAT LOG KOMISI ════ -->
                 <div v-if="currentTab === 'commissions'" v-can="['menu_affiliate_commissions', 'affiliate_tab_commissions']" class="p-6">
-                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
-                        <div class="text-xs text-slate-500">
-                            Menampilkan riwayat pencatatan komisi booking, direct sales, dan multi-tier.
+                    <div class="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-3 mb-4">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <div class="text-xs text-slate-500">
+                                Menampilkan riwayat pencatatan komisi booking, direct sales, dan multi-tier.
+                            </div>
+                            <!-- Filter Tanggal / Periode -->
+                            <div class="flex flex-wrap items-center gap-1.5 bg-slate-50 border border-slate-200/90 rounded-xl px-2.5 py-1.5">
+                                <span class="text-xs font-bold text-slate-500 flex items-center gap-1 pr-1">
+                                    <span>📅</span>
+                                    <span class="hidden sm:inline">Tanggal:</span>
+                                </span>
+                                <input
+                                    v-model="startDate"
+                                    @change="applyDateFilter"
+                                    type="date"
+                                    title="Dari Tanggal"
+                                    class="px-2 py-1 text-xs bg-white border border-slate-300 rounded-lg text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                />
+                                <span class="text-[11px] text-slate-400 font-bold">s/d</span>
+                                <input
+                                    v-model="endDate"
+                                    @change="applyDateFilter"
+                                    type="date"
+                                    title="Sampai Tanggal"
+                                    class="px-2 py-1 text-xs bg-white border border-slate-300 rounded-lg text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                />
+                                <div class="flex items-center gap-1 pl-1 border-l border-slate-200">
+                                    <button
+                                        type="button"
+                                        @click="setDatePreset('this_month')"
+                                        class="px-2 py-1 rounded-lg text-[11px] font-bold transition-colors whitespace-nowrap"
+                                        :class="isDatePreset('this_month') ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'"
+                                    >
+                                        Bulan Ini
+                                    </button>
+                                    <button
+                                        type="button"
+                                        @click="setDatePreset('last_month')"
+                                        class="px-2 py-1 rounded-lg text-[11px] font-bold transition-colors whitespace-nowrap"
+                                        :class="isDatePreset('last_month') ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'"
+                                    >
+                                        Bulan Lalu
+                                    </button>
+                                    <button
+                                        v-if="hasDateFilter"
+                                        type="button"
+                                        @click="clearDateFilter"
+                                        class="px-2 py-1 rounded-lg text-[11px] font-bold bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 transition-colors whitespace-nowrap"
+                                    >
+                                        ✕ Reset
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="flex items-center gap-2 self-end sm:self-auto">
+                        <div class="flex items-center gap-2 self-end xl:self-auto">
                             <button
                                 v-can="'affiliate_btn_export'"
                                 type="button"
@@ -1379,77 +1487,146 @@
                         </div>
                     </div>
 
-                    <div v-if="commissions.data && commissions.data.length > 0" class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-slate-100 text-xs">
-                            <thead class="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider text-left">
-                                <tr>
-                                    <th class="px-4 py-3">Tanggal</th>
-                                    <th class="px-4 py-3">Penerima Komisi</th>
-                                    <th class="px-4 py-3">Tipe Komisi</th>
-                                    <th class="px-4 py-3">Deskripsi Transaksi</th>
-                                    <th v-can="'affiliate_field_commissions'" class="px-4 py-3 text-right">Nominal</th>
-                                    <th class="px-4 py-3 text-center">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                <tr v-for="c in commissions.data" :key="c.id" class="hover:bg-slate-50/60">
-                                    <td class="px-4 py-3 text-slate-500 whitespace-nowrap">{{ c.date }}</td>
-                                    <td class="px-4 py-3 font-bold text-slate-800">{{ c.affiliate_name }}</td>
-                                    <td class="px-4 py-3">
-                                        <span
-                                            class="px-2 py-0.5 rounded-full text-[10px] font-bold"
-                                            :class="{
-                                                'bg-indigo-100 text-indigo-800': c.type === 'booking',
-                                                'bg-emerald-100 text-emerald-800': c.type === 'monthly_direct',
-                                                'bg-purple-100 text-purple-800': c.type === 'upline_tier_1',
-                                                'bg-amber-100 text-amber-800': c.type === 'upline_tier_2',
-                                                'bg-rose-100 text-rose-800 border border-rose-200': c.type === 'clawback_booking' || c.type === 'clawback_survey',
-                                            }"
-                                        >
-                                            <template v-if="c.type === 'booking'">🎯 Booking Baru</template>
-                                            <template v-else-if="c.type === 'monthly_direct'">💰 Pasif Bulanan</template>
-                                            <template v-else-if="c.type === 'upline_tier_1'">🚀 Upline Tier 1</template>
-                                            <template v-else-if="c.type === 'upline_tier_2'">🌟 Upline Tier 2</template>
-                                            <template v-else-if="c.type === 'clawback_booking'">✂️ Potong Booking (&lt; 4 Bln)</template>
-                                            <template v-else-if="c.type === 'clawback_survey'">✂️ Potong Survey (&lt; 4 Bln)</template>
-                                            <template v-else>{{ c.type }}</template>
-                                        </span>
-                                    </td>
-                                    <td class="px-4 py-3 text-slate-700">{{ c.description }}</td>
-                                    <td v-can="'affiliate_field_commissions'" class="px-4 py-3 text-right font-extrabold whitespace-nowrap" :class="c.amount < 0 || c.type === 'clawback_booking' || c.type === 'clawback_survey' ? 'text-rose-600' : 'text-emerald-600'">
-                                        {{ (c.amount < 0 || c.type === 'clawback_booking' || c.type === 'clawback_survey') ? '-' : '+' }}{{ formatRupiah(Math.abs(c.amount)) }}
-                                    </td>
-                                    <td class="px-4 py-3 text-center">
-                                        <span 
-                                            class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border"
-                                            :class="{
-                                                'bg-rose-50 text-rose-700 border-rose-200': c.type === 'clawback_booking' || c.type === 'clawback_survey',
-                                                'bg-purple-50 text-purple-700 border-purple-200': c.status === 'payroll' && c.type !== 'clawback_booking' && c.type !== 'clawback_survey',
-                                                'bg-emerald-50 text-emerald-700 border-emerald-200': c.status === 'approved' && c.type !== 'clawback_booking' && c.type !== 'clawback_survey'
-                                            }"
-                                        >
-                                            {{ (c.type === 'clawback_booking' || c.type === 'clawback_survey') ? (c.status === 'payroll' ? 'Potong Gaji' : 'Dipotong') : (c.status === 'payroll' ? 'Slip Gaji' : c.status) }}
-                                        </span>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div v-if="commissions.data && commissions.data.length > 0" class="border border-slate-100 rounded-2xl overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-slate-100 text-xs">
+                                <thead class="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider text-left">
+                                    <tr>
+                                        <th class="px-4 py-3">Tanggal</th>
+                                        <th class="px-4 py-3">Penerima Komisi</th>
+                                        <th class="px-4 py-3">Tipe Komisi</th>
+                                        <th class="px-4 py-3">Deskripsi Transaksi</th>
+                                        <th v-can="'affiliate_field_commissions'" class="px-4 py-3 text-right">Nominal</th>
+                                        <th class="px-4 py-3 text-center">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    <tr v-for="c in commissions.data" :key="c.id" class="hover:bg-slate-50/60">
+                                        <td class="px-4 py-3 text-slate-500 whitespace-nowrap">{{ c.date }}</td>
+                                        <td class="px-4 py-3 font-bold text-slate-800">{{ c.affiliate_name }}</td>
+                                        <td class="px-4 py-3">
+                                            <span
+                                                class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                                                :class="{
+                                                    'bg-indigo-100 text-indigo-800': c.type === 'booking',
+                                                    'bg-emerald-100 text-emerald-800': c.type === 'monthly_direct',
+                                                    'bg-purple-100 text-purple-800': c.type === 'upline_tier_1',
+                                                    'bg-amber-100 text-amber-800': c.type === 'upline_tier_2',
+                                                    'bg-rose-100 text-rose-800 border border-rose-200': c.type === 'clawback_booking' || c.type === 'clawback_survey',
+                                                }"
+                                            >
+                                                <template v-if="c.type === 'booking'">🎯 Booking Baru</template>
+                                                <template v-else-if="c.type === 'monthly_direct'">💰 Pasif Bulanan</template>
+                                                <template v-else-if="c.type === 'upline_tier_1'">🚀 Upline Tier 1</template>
+                                                <template v-else-if="c.type === 'upline_tier_2'">🌟 Upline Tier 2</template>
+                                                <template v-else-if="c.type === 'clawback_booking'">✂️ Potong Booking (&lt; 4 Bln)</template>
+                                                <template v-else-if="c.type === 'clawback_survey'">✂️ Potong Survey (&lt; 4 Bln)</template>
+                                                <template v-else>{{ c.type }}</template>
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3 text-slate-700">{{ c.description }}</td>
+                                        <td v-can="'affiliate_field_commissions'" class="px-4 py-3 text-right font-extrabold whitespace-nowrap" :class="c.amount < 0 || c.type === 'clawback_booking' || c.type === 'clawback_survey' ? 'text-rose-600' : 'text-emerald-600'">
+                                            {{ (c.amount < 0 || c.type === 'clawback_booking' || c.type === 'clawback_survey') ? '-' : '+' }}{{ formatRupiah(Math.abs(c.amount)) }}
+                                        </td>
+                                        <td class="px-4 py-3 text-center">
+                                            <span 
+                                                class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border"
+                                                :class="{
+                                                    'bg-rose-50 text-rose-700 border-rose-200': c.type === 'clawback_booking' || c.type === 'clawback_survey',
+                                                    'bg-purple-50 text-purple-700 border-purple-200': c.status === 'payroll' && c.type !== 'clawback_booking' && c.type !== 'clawback_survey',
+                                                    'bg-emerald-50 text-emerald-700 border-emerald-200': c.status === 'approved' && c.type !== 'clawback_booking' && c.type !== 'clawback_survey'
+                                                }"
+                                            >
+                                                {{ (c.type === 'clawback_booking' || c.type === 'clawback_survey') ? (c.status === 'payroll' ? 'Potong Gaji' : 'Dipotong') : (c.status === 'payroll' ? 'Slip Gaji' : c.status) }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div v-if="commissions.links?.length > 3" class="px-4 py-3 border-t border-slate-100 bg-slate-50/70 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                            <span class="text-slate-600">
+                                Menampilkan <b class="text-slate-900">{{ commissions.from || 0 }}</b>–<b class="text-slate-900">{{ commissions.to || 0 }}</b> dari <b class="text-slate-900">{{ commissions.total || 0 }}</b> log komisi
+                            </span>
+                            <div class="flex gap-1 overflow-x-auto max-w-full">
+                                <button
+                                    v-for="(link, i) in commissions.links"
+                                    :key="i"
+                                    type="button"
+                                    :disabled="!link.url"
+                                    @click="visitPage(link.url)"
+                                    class="min-w-8 px-2.5 py-1 rounded-lg border transition-colors"
+                                    :class="[link.active ? 'bg-indigo-600 border-indigo-600 text-white font-bold shadow-sm' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100', !link.url ? 'opacity-40 cursor-not-allowed' : '']"
+                                    v-html="link.label"
+                                ></button>
+                            </div>
+                        </div>
                     </div>
-                    <div v-else class="text-center py-12 text-slate-400">
-                        Belum ada riwayat komisi yang dicatat.
+                    <div v-else class="text-center py-12 text-slate-400 border border-dashed border-slate-200 rounded-2xl">
+                        {{ hasDateFilter ? 'Tidak ada riwayat komisi pada rentang tanggal yang dipilih.' : 'Belum ada riwayat komisi yang dicatat.' }}
                     </div>
                 </div>
 
                 <!-- ════ TAB 4: PERMINTAAN PENARIKAN (WITHDRAWALS) ════ -->
                 <div v-if="currentTab === 'withdrawals'" v-can="['menu_affiliate_withdrawals', 'affiliate_tab_withdrawals']" class="p-6">
-                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
-                        <div class="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
-                            <span>Daftar pengajuan pencairan saldo komisi oleh mitra afiliasi.</span>
-                            <span v-if="pendingWithdrawalsList.length > 0" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800">
-                                ⏳ {{ pendingWithdrawalsList.length }} Menunggu Persetujuan
-                            </span>
+                    <div class="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-3 mb-4">
+                        <div class="flex flex-wrap items-center gap-3">
+                            <div class="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
+                                <span>Daftar pengajuan pencairan saldo komisi oleh mitra afiliasi.</span>
+                                <span v-if="pendingWithdrawalsList.length > 0" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800">
+                                    ⏳ {{ pendingWithdrawalsList.length }} Menunggu Persetujuan
+                                </span>
+                            </div>
+                            <!-- Filter Tanggal / Periode -->
+                            <div class="flex flex-wrap items-center gap-1.5 bg-slate-50 border border-slate-200/90 rounded-xl px-2.5 py-1.5">
+                                <span class="text-xs font-bold text-slate-500 flex items-center gap-1 pr-1">
+                                    <span>📅</span>
+                                    <span class="hidden sm:inline">Tanggal:</span>
+                                </span>
+                                <input
+                                    v-model="startDate"
+                                    @change="applyDateFilter"
+                                    type="date"
+                                    title="Dari Tanggal"
+                                    class="px-2 py-1 text-xs bg-white border border-slate-300 rounded-lg text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                />
+                                <span class="text-[11px] text-slate-400 font-bold">s/d</span>
+                                <input
+                                    v-model="endDate"
+                                    @change="applyDateFilter"
+                                    type="date"
+                                    title="Sampai Tanggal"
+                                    class="px-2 py-1 text-xs bg-white border border-slate-300 rounded-lg text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                />
+                                <div class="flex items-center gap-1 pl-1 border-l border-slate-200">
+                                    <button
+                                        type="button"
+                                        @click="setDatePreset('this_month')"
+                                        class="px-2 py-1 rounded-lg text-[11px] font-bold transition-colors whitespace-nowrap"
+                                        :class="isDatePreset('this_month') ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'"
+                                    >
+                                        Bulan Ini
+                                    </button>
+                                    <button
+                                        type="button"
+                                        @click="setDatePreset('last_month')"
+                                        class="px-2 py-1 rounded-lg text-[11px] font-bold transition-colors whitespace-nowrap"
+                                        :class="isDatePreset('last_month') ? 'bg-indigo-600 text-white shadow-2xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'"
+                                    >
+                                        Bulan Lalu
+                                    </button>
+                                    <button
+                                        v-if="hasDateFilter"
+                                        type="button"
+                                        @click="clearDateFilter"
+                                        class="px-2 py-1 rounded-lg text-[11px] font-bold bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 transition-colors whitespace-nowrap"
+                                    >
+                                        ✕ Reset
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+                        <div class="flex items-center gap-2 self-end xl:self-auto flex-wrap">
                             <button
                                 v-if="pendingWithdrawalsList.length > 0 && selectedWithdrawalIds.length === 0"
                                 v-can="'marketing_affiliates_withdraw_approve'"
@@ -1472,102 +1649,121 @@
                         </div>
                     </div>
 
-                    <div v-if="withdrawals.data && withdrawals.data.length > 0" class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-slate-100 text-xs">
-                            <thead class="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider text-left">
-                                <tr>
-                                    <th v-can="'marketing_affiliates_withdraw_approve'" class="px-3 py-3 w-10 text-center">
-                                        <input
-                                            type="checkbox"
-                                            :checked="isAllPendingSelected"
-                                            @change="toggleSelectAllPending"
-                                            title="Pilih Semua yang Pending"
-                                            class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
-                                        />
-                                    </th>
-                                    <th class="px-4 py-3">No. Referensi</th>
-                                    <th class="px-4 py-3">Nama Mitra</th>
-                                    <th v-can="'affiliate_field_bank'" class="px-4 py-3">Rekening Pencairan</th>
-                                    <th class="px-4 py-3">Nominal Tarik</th>
-                                    <th class="px-4 py-3 text-center">Status</th>
-                                    <th class="px-4 py-3">Tanggal</th>
-                                    <th class="px-4 py-3 text-center">Aksi Admin</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100">
-                                <tr
-                                    v-for="w in withdrawals.data"
-                                    :key="w.id"
-                                    class="hover:bg-slate-50/60 transition-colors"
-                                    :class="{ 'bg-indigo-50/40': selectedWithdrawalIds.includes(w.id) }"
-                                >
-                                    <td v-can="'marketing_affiliates_withdraw_approve'" class="px-3 py-3 text-center">
-                                        <input
-                                            v-if="w.status === 'pending'"
-                                            type="checkbox"
-                                            :value="w.id"
-                                            v-model="selectedWithdrawalIds"
-                                            class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
-                                        />
-                                        <span v-else class="text-slate-300 text-xs">-</span>
-                                    </td>
-                                    <td class="px-4 py-3 font-mono font-bold text-indigo-700">{{ w.reference_no }}</td>
-                                    <td class="px-4 py-3">
-                                        <div class="font-bold text-slate-900">{{ w.affiliate_name }}</div>
-                                        <div class="text-[11px] text-slate-400">{{ w.affiliate_phone || '-' }}</div>
-                                        <div v-if="w.unpaid_customers_count > 0" class="mt-1">
-                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200">
-                                                ⚠️ {{ w.unpaid_customers_count }} Pelanggan Menunggak ({{ formatRupiah(w.unpaid_customers_amount) }})
+                    <div v-if="withdrawals.data && withdrawals.data.length > 0" class="border border-slate-100 rounded-2xl overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-slate-100 text-xs">
+                                <thead class="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider text-left">
+                                    <tr>
+                                        <th v-can="'marketing_affiliates_withdraw_approve'" class="px-3 py-3 w-10 text-center">
+                                            <input
+                                                type="checkbox"
+                                                :checked="isAllPendingSelected"
+                                                @change="toggleSelectAllPending"
+                                                title="Pilih Semua yang Pending"
+                                                class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                            />
+                                        </th>
+                                        <th class="px-4 py-3">No. Referensi</th>
+                                        <th class="px-4 py-3">Nama Mitra</th>
+                                        <th v-can="'affiliate_field_bank'" class="px-4 py-3">Rekening Pencairan</th>
+                                        <th class="px-4 py-3">Nominal Tarik</th>
+                                        <th class="px-4 py-3 text-center">Status</th>
+                                        <th class="px-4 py-3">Tanggal</th>
+                                        <th class="px-4 py-3 text-center">Aksi Admin</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    <tr
+                                        v-for="w in withdrawals.data"
+                                        :key="w.id"
+                                        class="hover:bg-slate-50/60 transition-colors"
+                                        :class="{ 'bg-indigo-50/40': selectedWithdrawalIds.includes(w.id) }"
+                                    >
+                                        <td v-can="'marketing_affiliates_withdraw_approve'" class="px-3 py-3 text-center">
+                                            <input
+                                                v-if="w.status === 'pending'"
+                                                type="checkbox"
+                                                :value="w.id"
+                                                v-model="selectedWithdrawalIds"
+                                                class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                            />
+                                            <span v-else class="text-slate-300 text-xs">-</span>
+                                        </td>
+                                        <td class="px-4 py-3 font-mono font-bold text-indigo-700">{{ w.reference_no }}</td>
+                                        <td class="px-4 py-3">
+                                            <div class="font-bold text-slate-900">{{ w.affiliate_name }}</div>
+                                            <div class="text-[11px] text-slate-400">{{ w.affiliate_phone || '-' }}</div>
+                                            <div v-if="w.unpaid_customers_count > 0" class="mt-1">
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200">
+                                                    ⚠️ {{ w.unpaid_customers_count }} Pelanggan Menunggak ({{ formatRupiah(w.unpaid_customers_amount) }})
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td v-can="'affiliate_field_bank'" class="px-4 py-3">
+                                            <div class="font-semibold text-slate-800">{{ w.bank_name }} - {{ w.bank_account_number }}</div>
+                                            <div class="text-[11px] text-slate-500">a.n {{ w.bank_account_holder }}</div>
+                                        </td>
+                                        <td class="px-4 py-3 font-extrabold text-slate-900">{{ formatRupiah(w.amount) }}</td>
+                                        <td class="px-4 py-3 text-center">
+                                            <span
+                                                class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase"
+                                                :class="{
+                                                    'bg-amber-100 text-amber-800': w.status === 'pending',
+                                                    'bg-emerald-100 text-emerald-800': w.status === 'approved',
+                                                    'bg-rose-100 text-rose-800': w.status === 'rejected',
+                                                }"
+                                            >
+                                                {{ w.status }}
                                             </span>
-                                        </div>
-                                    </td>
-                                    <td v-can="'affiliate_field_bank'" class="px-4 py-3">
-                                        <div class="font-semibold text-slate-800">{{ w.bank_name }} - {{ w.bank_account_number }}</div>
-                                        <div class="text-[11px] text-slate-500">a.n {{ w.bank_account_holder }}</div>
-                                    </td>
-                                    <td class="px-4 py-3 font-extrabold text-slate-900">{{ formatRupiah(w.amount) }}</td>
-                                    <td class="px-4 py-3 text-center">
-                                        <span
-                                            class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase"
-                                            :class="{
-                                                'bg-amber-100 text-amber-800': w.status === 'pending',
-                                                'bg-emerald-100 text-emerald-800': w.status === 'approved',
-                                                'bg-rose-100 text-rose-800': w.status === 'rejected',
-                                            }"
-                                        >
-                                            {{ w.status }}
-                                        </span>
-                                    </td>
-                                    <td class="px-4 py-3 text-slate-500 whitespace-nowrap">{{ w.date }}</td>
-                                    <td class="px-4 py-3 text-center whitespace-nowrap">
-                                        <div v-if="w.status === 'pending'" class="flex items-center justify-center gap-1.5">
-                                            <button
-                                                v-can="'marketing_affiliates_withdraw_approve'"
-                                                type="button"
-                                                @click="openApproveModal(w)"
-                                                class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-lg shadow-2xs"
-                                            >
-                                                Approve / Transfer
-                                            </button>
-                                            <button
-                                                v-can="'marketing_affiliates_withdraw_reject'"
-                                                type="button"
-                                                @click="openRejectModal(w)"
-                                                class="px-2.5 py-1 bg-white hover:bg-rose-50 border border-rose-300 text-rose-700 font-bold text-[11px] rounded-lg"
-                                            >
-                                                Tolak
-                                            </button>
-                                        </div>
-                                        <span v-else class="text-[11px] text-slate-400">
-                                            Diproses oleh {{ w.processor_name || 'Admin' }}
-                                        </span>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                                        </td>
+                                        <td class="px-4 py-3 text-slate-500 whitespace-nowrap">{{ w.date }}</td>
+                                        <td class="px-4 py-3 text-center whitespace-nowrap">
+                                            <div v-if="w.status === 'pending'" class="flex items-center justify-center gap-1.5">
+                                                <button
+                                                    v-can="'marketing_affiliates_withdraw_approve'"
+                                                    type="button"
+                                                    @click="openApproveModal(w)"
+                                                    class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-lg shadow-2xs"
+                                                >
+                                                    Approve / Transfer
+                                                </button>
+                                                <button
+                                                    v-can="'marketing_affiliates_withdraw_reject'"
+                                                    type="button"
+                                                    @click="openRejectModal(w)"
+                                                    class="px-2.5 py-1 bg-white hover:bg-rose-50 border border-rose-300 text-rose-700 font-bold text-[11px] rounded-lg"
+                                                >
+                                                    Tolak
+                                                </button>
+                                            </div>
+                                            <span v-else class="text-[11px] text-slate-400">
+                                                Diproses oleh {{ w.processor_name || 'Admin' }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div v-if="withdrawals.links?.length > 3" class="px-4 py-3 border-t border-slate-100 bg-slate-50/70 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                            <span class="text-slate-600">
+                                Menampilkan <b class="text-slate-900">{{ withdrawals.from || 0 }}</b>–<b class="text-slate-900">{{ withdrawals.to || 0 }}</b> dari <b class="text-slate-900">{{ withdrawals.total || 0 }}</b> permintaan pencairan
+                            </span>
+                            <div class="flex gap-1 overflow-x-auto max-w-full">
+                                <button
+                                    v-for="(link, i) in withdrawals.links"
+                                    :key="i"
+                                    type="button"
+                                    :disabled="!link.url"
+                                    @click="visitPage(link.url)"
+                                    class="min-w-8 px-2.5 py-1 rounded-lg border transition-colors"
+                                    :class="[link.active ? 'bg-indigo-600 border-indigo-600 text-white font-bold shadow-sm' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100', !link.url ? 'opacity-40 cursor-not-allowed' : '']"
+                                    v-html="link.label"
+                                ></button>
+                            </div>
+                        </div>
                     </div>
-                    <div v-else class="text-center py-12 text-slate-400">
-                        Tidak ada permintaan penarikan dana komisi.
+                    <div v-else class="text-center py-12 text-slate-400 border border-dashed border-slate-200 rounded-2xl">
+                        {{ hasDateFilter ? 'Tidak ada permintaan penarikan pada rentang tanggal yang dipilih.' : 'Tidak ada permintaan penarikan dana komisi.' }}
                     </div>
 
                     <!-- Sticky Batch Action Floating Bar -->
@@ -2705,8 +2901,80 @@ onMounted(() => {
 const searchQuery = ref(props.filters?.search || '');
 const perPage = ref(Number(props.filters?.per_page) || 15);
 const perPageOptions = [15, 30, 50, 100];
+const startDate = ref(props.filters?.start_date || '');
+const endDate = ref(props.filters?.end_date || '');
 let searchTimer = null;
 const diagramActiveFilter = ref('all');
+
+const hasDateFilter = computed(() => Boolean(startDate.value || endDate.value));
+
+const formatDateShort = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr + 'T00:00:00');
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+const dateFilterLabel = computed(() => {
+    if (startDate.value && endDate.value) {
+        return `${formatDateShort(startDate.value)} – ${formatDateShort(endDate.value)}`;
+    }
+    if (startDate.value) return `Mulai ${formatDateShort(startDate.value)}`;
+    if (endDate.value) return `S/d ${formatDateShort(endDate.value)}`;
+    return 'Semua Waktu';
+});
+
+const toLocalIsoDate = (dateObj) => {
+    const y = dateObj.getFullYear();
+    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const d = String(dateObj.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+};
+
+const getPresetRange = (preset) => {
+    const now = new Date();
+    if (preset === 'this_month') {
+        const first = new Date(now.getFullYear(), now.getMonth(), 1);
+        const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        return { start: toLocalIsoDate(first), end: toLocalIsoDate(last) };
+    }
+    if (preset === 'last_month') {
+        const first = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const last = new Date(now.getFullYear(), now.getMonth(), 0);
+        return { start: toLocalIsoDate(first), end: toLocalIsoDate(last) };
+    }
+    if (preset === 'today') {
+        const t = toLocalIsoDate(now);
+        return { start: t, end: t };
+    }
+    return { start: '', end: '' };
+};
+
+const isDatePreset = (preset) => {
+    const range = getPresetRange(preset);
+    return startDate.value === range.start && endDate.value === range.end && range.start !== '';
+};
+
+const setDatePreset = (preset) => {
+    if (isDatePreset(preset)) {
+        clearDateFilter();
+        return;
+    }
+    const range = getPresetRange(preset);
+    startDate.value = range.start;
+    endDate.value = range.end;
+    handleSearch();
+};
+
+const applyDateFilter = () => {
+    handleSearch();
+};
+
+const clearDateFilter = () => {
+    startDate.value = '';
+    endDate.value = '';
+    handleSearch();
+};
 
 // Tree Diagram State
 const treeViewMode = ref('diagram'); // 'diagram' | 'list'
@@ -2922,6 +3190,8 @@ const switchTab = (tabId) => {
         tab: tabId,
         search: searchQuery.value.trim(),
         per_page: perPage.value,
+        start_date: startDate.value || undefined,
+        end_date: endDate.value || undefined,
     }, {
         preserveState: true,
         preserveScroll: true,
@@ -2939,6 +3209,8 @@ const handleSearch = () => {
         tab: currentTab.value,
         search: searchQuery.value.trim(),
         per_page: perPage.value,
+        start_date: startDate.value || undefined,
+        end_date: endDate.value || undefined,
     }, {
         preserveState: true,
         preserveScroll: true,
@@ -3187,7 +3459,12 @@ const openExportModal = (defaultType = 'affiliates') => {
 const triggerExport = (type, format = 'xlsx') => {
     const targetType = type || exportSelectedType.value || 'affiliates';
     showExportModal.value = false;
-    window.location.href = route('admin.affiliates.export', { type: targetType, format: format });
+    window.location.href = route('admin.affiliates.export', {
+        type: targetType,
+        format: format,
+        start_date: startDate.value || undefined,
+        end_date: endDate.value || undefined,
+    });
 };
 
 const openImportModal = () => {

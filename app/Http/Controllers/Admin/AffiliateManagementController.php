@@ -50,6 +50,74 @@ class AffiliateManagementController extends Controller
         $perPage = (int) $request->query('per_page', 15);
         $perPage = in_array($perPage, [15, 30, 50, 100], true) ? $perPage : 15;
 
+        $startDateInput = trim((string) $request->query('start_date', ''));
+        $endDateInput = trim((string) $request->query('end_date', ''));
+        $startDate = null;
+        $endDate = null;
+        try {
+            if ($startDateInput !== '') {
+                $startDate = \Carbon\Carbon::parse($startDateInput)->startOfDay();
+            }
+        } catch (\Throwable $e) {
+            $startDate = null;
+            $startDateInput = '';
+        }
+        try {
+            if ($endDateInput !== '') {
+                $endDate = \Carbon\Carbon::parse($endDateInput)->endOfDay();
+            }
+        } catch (\Throwable $e) {
+            $endDate = null;
+            $endDateInput = '';
+        }
+        if ($startDate && $endDate && $startDate->gt($endDate)) {
+            [$startDate, $endDate] = [$endDate->copy()->startOfDay(), $startDate->copy()->endOfDay()];
+            [$startDateInput, $endDateInput] = [$startDate->toDateString(), $endDate->toDateString()];
+        }
+        $hasDateFilter = (bool) ($startDate || $endDate);
+
+        $applyCustomerDateFilter = function ($q) use ($startDate, $endDate) {
+            if ($startDate) {
+                $startStr = $startDate->toDateString();
+                $q->where(function ($sub) use ($startStr) {
+                    $sub->whereDate('activation_date', '>=', $startStr)
+                        ->orWhere(function ($s2) use ($startStr) {
+                            $s2->whereNull('activation_date')
+                               ->whereDate('registration_date', '>=', $startStr);
+                        })
+                        ->orWhere(function ($s3) use ($startStr) {
+                            $s3->whereNull('activation_date')
+                               ->whereNull('registration_date')
+                               ->whereDate('created_at', '>=', $startStr);
+                        });
+                });
+            }
+            if ($endDate) {
+                $endStr = $endDate->toDateString();
+                $q->where(function ($sub) use ($endStr) {
+                    $sub->whereDate('activation_date', '<=', $endStr)
+                        ->orWhere(function ($s2) use ($endStr) {
+                            $s2->whereNull('activation_date')
+                               ->whereDate('registration_date', '<=', $endStr);
+                        })
+                        ->orWhere(function ($s3) use ($endStr) {
+                            $s3->whereNull('activation_date')
+                               ->whereNull('registration_date')
+                               ->whereDate('created_at', '<=', $endStr);
+                        });
+                });
+            }
+        };
+
+        $applyTimestampFilter = function ($q) use ($startDate, $endDate) {
+            if ($startDate) {
+                $q->where('created_at', '>=', $startDate);
+            }
+            if ($endDate) {
+                $q->where('created_at', '<=', $endDate);
+            }
+        };
+
         // 1. Settings
         $settings = AffiliateService::getSettings();
 
@@ -57,9 +125,18 @@ class AffiliateManagementController extends Controller
         $accessibleAreas = $isGlobal ? [] : ($user ? $user->getAccessibleAreaIds() : []);
 
         // 2. Daftar Agen Afiliasi
-        $affiliatesQuery = AffiliateProfile::with(['user', 'upline', 'eligibleCustomers.invoices'])
+        $affiliatesQuery = AffiliateProfile::with([
+                'user',
+                'upline',
+                'eligibleCustomers' => function ($q) use ($applyCustomerDateFilter) {
+                    $applyCustomerDateFilter($q);
+                    $q->with('invoices');
+                },
+            ])
             ->withCount([
-                'eligibleCustomers as eligible_customers_count',
+                'eligibleCustomers as eligible_customers_count' => function ($q) use ($applyCustomerDateFilter) {
+                    $applyCustomerDateFilter($q);
+                },
                 'downlinesLevel1 as downlines_count',
             ]);
         if (!$isGlobal && !empty($accessibleAreas)) {
@@ -81,7 +158,7 @@ class AffiliateManagementController extends Controller
         $affiliates = $affiliatesQuery->latest('id')
             ->paginate($perPage, ['*'], 'affiliates_page')
             ->withQueryString()
-            ->through(function ($aff) {
+            ->through(function ($aff) use ($applyTimestampFilter) {
                 $isEmployee = AffiliateService::isInternalEmployee($aff->user);
 
                 $eligible = $aff->eligibleCustomers ?? collect();
@@ -95,10 +172,11 @@ class AffiliateManagementController extends Controller
                     }
                 }
 
-                $commBooking = (float) $aff->commissions()->where('type', 'booking')->whereIn('status', ['approved', 'paid', 'payroll'])->sum('amount');
-                $commMonthly = (float) $aff->commissions()->where('type', 'monthly_direct')->whereIn('status', ['approved', 'paid', 'payroll'])->sum('amount');
-                $commUpline = (float) $aff->commissions()->whereIn('type', ['upline_tier_1', 'upline_tier_2'])->whereIn('status', ['approved', 'paid', 'payroll'])->sum('amount');
-                $payrollPending = (float) $aff->commissions()->where('status', 'payroll')->sum('amount');
+                $commBase = fn () => $aff->commissions()->tap($applyTimestampFilter);
+                $commBooking = (float) $commBase()->where('type', 'booking')->whereIn('status', ['approved', 'paid', 'payroll'])->sum('amount');
+                $commMonthly = (float) $commBase()->where('type', 'monthly_direct')->whereIn('status', ['approved', 'paid', 'payroll'])->sum('amount');
+                $commUpline = (float) $commBase()->whereIn('type', ['upline_tier_1', 'upline_tier_2'])->whereIn('status', ['approved', 'paid', 'payroll'])->sum('amount');
+                $payrollPending = (float) $commBase()->where('status', 'payroll')->sum('amount');
 
                 return [
                     'id' => $aff->id,
@@ -110,7 +188,7 @@ class AffiliateManagementController extends Controller
                     'upline_id' => $aff->upline_id,
                     'upline_name' => $aff->upline?->name ?? '-',
                     'balance' => (float) $aff->balance,
-                    'total_earned' => (float) $aff->commissions()->whereIn('status', ['approved', 'paid', 'payroll'])->sum('amount'),
+                    'total_earned' => (float) $commBase()->whereIn('status', ['approved', 'paid', 'payroll'])->sum('amount'),
                     'total_withdrawn' => (float) $aff->total_withdrawn,
                     'total_customers' => (int) ($aff->eligible_customers_count ?? $eligible->count()),
                     'paid_customers_count' => $paidCount,
@@ -137,6 +215,7 @@ class AffiliateManagementController extends Controller
                 $uq->whereIn('area_id', $accessibleAreas);
             });
         }
+        $applyTimestampFilter($commissionsQuery);
         $commissions = $commissionsQuery->latest('id')
             ->paginate(20, ['*'], 'commissions_page')
             ->withQueryString()
@@ -162,6 +241,7 @@ class AffiliateManagementController extends Controller
                 $uq->whereIn('area_id', $accessibleAreas);
             });
         }
+        $applyTimestampFilter($withdrawalsQuery);
         $withdrawals = $withdrawalsQuery->latest('id')
             ->paginate(15, ['*'], 'withdrawals_page')
             ->withQueryString()
@@ -198,7 +278,10 @@ class AffiliateManagementController extends Controller
         // 5. Data Struktur Pohon Jaringan Multi-Tier (Network Tree Diagram)
         $allProfilesQuery = AffiliateProfile::with([
             'user:id,name,email,phone,role,is_active,area_id',
-            'eligibleCustomers:id,sales_id,name,status,is_migrated,activation_date'
+            'eligibleCustomers' => function ($q) use ($applyCustomerDateFilter) {
+                $q->select('id', 'sales_id', 'name', 'status', 'is_migrated', 'activation_date', 'registration_date', 'created_at');
+                $applyCustomerDateFilter($q);
+            },
         ]);
         if (!$isGlobal && !empty($accessibleAreas)) {
             $allProfilesQuery->whereHas('user', function ($uq) use ($accessibleAreas) {
@@ -212,6 +295,14 @@ class AffiliateManagementController extends Controller
         $networkTrees = [];
         $totalDownline1Count = 0;
         $totalDownline2Count = 0;
+
+        $calcNodeEarned = function ($profile) use ($hasDateFilter, $applyTimestampFilter) {
+            $commSum = (float) $profile->commissions()
+                ->tap($applyTimestampFilter)
+                ->whereIn('status', ['approved', 'paid', 'payroll'])
+                ->sum('amount');
+            return $hasDateFilter ? $commSum : (float) max((float) $profile->total_earned, $commSum);
+        };
 
         foreach ($uplineUserIds as $uId) {
             $uProfile = $profilesByUser->get($uId);
@@ -242,8 +333,8 @@ class AffiliateManagementController extends Controller
                             'referral_code' => $l2->referral_code,
                             'status' => $l2->status,
                             'is_employee' => AffiliateService::isInternalEmployee($l2->user),
-                            'total_customers' => $l2->eligibleCustomers ? $l2->eligibleCustomers->count() : $l2->eligibleCustomers()->count(),
-                            'total_earned' => (float) max((float) $l2->total_earned, (float) $l2->commissions()->whereIn('status', ['approved', 'paid', 'payroll'])->sum('amount')),
+                            'total_customers' => $l2->eligibleCustomers ? $l2->eligibleCustomers->count() : $l2->eligibleCustomers()->tap($applyCustomerDateFilter)->count(),
+                            'total_earned' => $calcNodeEarned($l2),
                             'balance' => (float) $l2->balance,
                             'downlines_count' => 0,
                             'downlines' => [],
@@ -260,8 +351,8 @@ class AffiliateManagementController extends Controller
                         'referral_code' => $l1->referral_code,
                         'status' => $l1->status,
                         'is_employee' => AffiliateService::isInternalEmployee($l1->user),
-                        'total_customers' => $l1->eligibleCustomers ? $l1->eligibleCustomers->count() : $l1->eligibleCustomers()->count(),
-                        'total_earned' => (float) max((float) $l1->total_earned, (float) $l1->commissions()->whereIn('status', ['approved', 'paid', 'payroll'])->sum('amount')),
+                        'total_customers' => $l1->eligibleCustomers ? $l1->eligibleCustomers->count() : $l1->eligibleCustomers()->tap($applyCustomerDateFilter)->count(),
+                        'total_earned' => $calcNodeEarned($l1),
                         'balance' => (float) $l1->balance,
                         'downlines_count' => count($l2List),
                         'downlines' => $l2List,
@@ -277,8 +368,8 @@ class AffiliateManagementController extends Controller
                     'referral_code' => $uProfile->referral_code,
                     'status' => $uProfile->status,
                     'is_employee' => AffiliateService::isInternalEmployee($uProfile->user),
-                    'total_customers' => $uProfile->eligibleCustomers ? $uProfile->eligibleCustomers->count() : $uProfile->eligibleCustomers()->count(),
-                    'total_earned' => (float) max((float) $uProfile->total_earned, (float) $uProfile->commissions()->whereIn('status', ['approved', 'paid', 'payroll'])->sum('amount')),
+                    'total_customers' => $uProfile->eligibleCustomers ? $uProfile->eligibleCustomers->count() : $uProfile->eligibleCustomers()->tap($applyCustomerDateFilter)->count(),
+                    'total_earned' => $calcNodeEarned($uProfile),
                     'balance' => (float) $uProfile->balance,
                     'l1_count' => count($l1List),
                     'l2_count' => $uplineL2Count,
@@ -335,18 +426,18 @@ class AffiliateManagementController extends Controller
         if (!$isGlobal && !empty($accessibleAreas)) {
             $kpi = [
                 'total_affiliates' => AffiliateProfile::whereHas('user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas))->count(),
-                'total_customers' => Customer::whereNotNull('sales_id')->whereIn('area_id', $accessibleAreas)->activeOct2026()->count(),
-                'total_commissions_paid' => (float) AffiliateCommission::whereHas('affiliate.user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas))->where('status', 'paid')->sum('amount'),
-                'pending_withdrawals_count' => AffiliateWithdrawal::whereHas('affiliate.user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas))->where('status', 'pending')->count(),
-                'pending_withdrawals_amount' => (float) AffiliateWithdrawal::whereHas('affiliate.user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas))->where('status', 'pending')->sum('amount'),
+                'total_customers' => Customer::whereNotNull('sales_id')->whereIn('area_id', $accessibleAreas)->activeOct2026()->tap($applyCustomerDateFilter)->count(),
+                'total_commissions_paid' => (float) AffiliateCommission::whereHas('affiliate.user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas))->where('status', 'paid')->tap($applyTimestampFilter)->sum('amount'),
+                'pending_withdrawals_count' => AffiliateWithdrawal::whereHas('affiliate.user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas))->where('status', 'pending')->tap($applyTimestampFilter)->count(),
+                'pending_withdrawals_amount' => (float) AffiliateWithdrawal::whereHas('affiliate.user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas))->where('status', 'pending')->tap($applyTimestampFilter)->sum('amount'),
             ];
         } else {
             $kpi = [
                 'total_affiliates' => AffiliateProfile::count(),
-                'total_customers' => Customer::whereNotNull('sales_id')->activeOct2026()->count(),
-                'total_commissions_paid' => (float) AffiliateCommission::where('status', 'paid')->sum('amount'),
-                'pending_withdrawals_count' => AffiliateWithdrawal::where('status', 'pending')->count(),
-                'pending_withdrawals_amount' => (float) AffiliateWithdrawal::where('status', 'pending')->sum('amount'),
+                'total_customers' => Customer::whereNotNull('sales_id')->activeOct2026()->tap($applyCustomerDateFilter)->count(),
+                'total_commissions_paid' => (float) AffiliateCommission::where('status', 'paid')->tap($applyTimestampFilter)->sum('amount'),
+                'pending_withdrawals_count' => AffiliateWithdrawal::where('status', 'pending')->tap($applyTimestampFilter)->count(),
+                'pending_withdrawals_amount' => (float) AffiliateWithdrawal::where('status', 'pending')->tap($applyTimestampFilter)->sum('amount'),
             ];
         }
 
@@ -381,7 +472,13 @@ class AffiliateManagementController extends Controller
             'tree_data' => $networkTrees,
             'tree_kpi' => $treeKpi,
             'flip_config' => (new \App\Services\FlipDisbursementService())->getConfig(),
-            'filters' => $request->only(['tab', 'search', 'per_page']),
+            'filters' => [
+                'tab' => $tab,
+                'search' => $search,
+                'per_page' => $perPage,
+                'start_date' => $startDateInput,
+                'end_date' => $endDateInput,
+            ],
         ]);
     }
 
@@ -860,6 +957,71 @@ class AffiliateManagementController extends Controller
         $isGlobal = $user->hasRole('admin') || $user->hasRole('super admin') || $user->role === 'admin' || $user->can('marketing_affiliates_view_all');
         $accessibleAreas = $isGlobal ? [] : $user->getAccessibleAreaIds();
 
+        $startDateInput = trim((string) $request->query('start_date', ''));
+        $endDateInput = trim((string) $request->query('end_date', ''));
+        $startDate = null;
+        $endDate = null;
+        try {
+            if ($startDateInput !== '') {
+                $startDate = \Carbon\Carbon::parse($startDateInput)->startOfDay();
+            }
+        } catch (\Throwable $e) {
+            $startDate = null;
+        }
+        try {
+            if ($endDateInput !== '') {
+                $endDate = \Carbon\Carbon::parse($endDateInput)->endOfDay();
+            }
+        } catch (\Throwable $e) {
+            $endDate = null;
+        }
+        if ($startDate && $endDate && $startDate->gt($endDate)) {
+            [$startDate, $endDate] = [$endDate->copy()->startOfDay(), $startDate->copy()->endOfDay()];
+        }
+        $hasDateFilter = (bool) ($startDate || $endDate);
+
+        $applyCustomerDateFilter = function ($q) use ($startDate, $endDate) {
+            if ($startDate) {
+                $startStr = $startDate->toDateString();
+                $q->where(function ($sub) use ($startStr) {
+                    $sub->whereDate('activation_date', '>=', $startStr)
+                        ->orWhere(function ($s2) use ($startStr) {
+                            $s2->whereNull('activation_date')
+                               ->whereDate('registration_date', '>=', $startStr);
+                        })
+                        ->orWhere(function ($s3) use ($startStr) {
+                            $s3->whereNull('activation_date')
+                               ->whereNull('registration_date')
+                               ->whereDate('created_at', '>=', $startStr);
+                        });
+                });
+            }
+            if ($endDate) {
+                $endStr = $endDate->toDateString();
+                $q->where(function ($sub) use ($endStr) {
+                    $sub->whereDate('activation_date', '<=', $endStr)
+                        ->orWhere(function ($s2) use ($endStr) {
+                            $s2->whereNull('activation_date')
+                               ->whereDate('registration_date', '<=', $endStr);
+                        })
+                        ->orWhere(function ($s3) use ($endStr) {
+                            $s3->whereNull('activation_date')
+                               ->whereNull('registration_date')
+                               ->whereDate('created_at', '<=', $endStr);
+                        });
+                });
+            }
+        };
+
+        $applyTimestampFilter = function ($q) use ($startDate, $endDate) {
+            if ($startDate) {
+                $q->where('created_at', '>=', $startDate);
+            }
+            if ($endDate) {
+                $q->where('created_at', '<=', $endDate);
+            }
+        };
+
         $timestamp = date('Y-m-d_His');
 
         if ($type === 'commissions') {
@@ -881,6 +1043,7 @@ class AffiliateManagementController extends Controller
             if (!$isGlobal && !empty($accessibleAreas)) {
                 $query->whereHas('affiliate.user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas));
             }
+            $applyTimestampFilter($query);
 
             $dataRows = [];
             foreach ($query->latest('id')->get() as $c) {
@@ -924,6 +1087,7 @@ class AffiliateManagementController extends Controller
             if (!$isGlobal && !empty($accessibleAreas)) {
                 $query->whereHas('affiliate.user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas));
             }
+            $applyTimestampFilter($query);
 
             $dataRows = [];
             foreach ($query->latest('id')->get() as $w) {
@@ -970,13 +1134,25 @@ class AffiliateManagementController extends Controller
             'Tanggal Bergabung',
         ];
 
-        $query = AffiliateProfile::with(['user', 'upline.affiliateProfile'])->withCount(['eligibleCustomers as eligible_customers_count', 'downlinesLevel1']);
+        $query = AffiliateProfile::with(['user', 'upline.affiliateProfile'])
+            ->withCount([
+                'eligibleCustomers as eligible_customers_count' => function ($q) use ($applyCustomerDateFilter) {
+                    $applyCustomerDateFilter($q);
+                },
+                'downlinesLevel1',
+            ]);
         if (!$isGlobal && !empty($accessibleAreas)) {
             $query->whereHas('user', fn($uq) => $uq->whereIn('area_id', $accessibleAreas));
         }
 
         $dataRows = [];
         foreach ($query->latest('id')->get() as $a) {
+            $commSum = (float) $a->commissions()
+                ->tap($applyTimestampFilter)
+                ->whereIn('status', ['approved', 'paid', 'payroll'])
+                ->sum('amount');
+            $earnedVal = $hasDateFilter ? $commSum : (float) max((float) $a->total_earned, $commSum);
+
             $dataRows[] = [
                 $a->id,
                 $a->user?->name ?? 'Unknown',
@@ -988,7 +1164,7 @@ class AffiliateManagementController extends Controller
                 (int) ($a->eligible_customers_count ?? 0),
                 (int) $a->downlines_level1_count,
                 (float) $a->balance,
-                (float) max((float) $a->total_earned, (float) $a->commissions()->whereIn('status', ['approved', 'paid', 'payroll'])->sum('amount')),
+                $earnedVal,
                 (float) $a->total_withdrawn,
                 $a->bank_name ?? '-',
                 $a->bank_account_number ?? '-',
