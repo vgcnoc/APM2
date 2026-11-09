@@ -5548,6 +5548,11 @@ class CustomerController extends Controller
                         $trimmed === 'Jadwal pasang' ||
                         str_starts_with($trimmed, 'ONT:') ||
                         str_starts_with($trimmed, 'Material:') ||
+                        str_starts_with($trimmed, 'Material Terpasang:') ||
+                        str_starts_with($trimmed, 'Alokasi Awal:') ||
+                        str_starts_with($trimmed, 'Material Dikembalikan:') ||
+                        str_starts_with($trimmed, 'Retur Gudang:') ||
+                        str_starts_with($trimmed, 'WiFi:') ||
                         str_starts_with($trimmed, 'Material diambil dari Surat Jalan')
                     ) {
                         continue;
@@ -6116,8 +6121,14 @@ class CustomerController extends Controller
                     $trimmed = trim($rawLine);
                     if (
                         $trimmed === '' ||
+                        $trimmed === 'Jadwal pasang' ||
                         str_starts_with($trimmed, 'ONT:') ||
                         str_starts_with($trimmed, 'Material:') ||
+                        str_starts_with($trimmed, 'Material Terpasang:') ||
+                        str_starts_with($trimmed, 'Alokasi Awal:') ||
+                        str_starts_with($trimmed, 'Material Dikembalikan:') ||
+                        str_starts_with($trimmed, 'Retur Gudang:') ||
+                        str_starts_with($trimmed, 'WiFi:') ||
                         str_starts_with($trimmed, 'Material diambil dari Surat Jalan')
                     ) {
                         continue;

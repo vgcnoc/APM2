@@ -4005,16 +4005,36 @@ watch(() => props.customer, () => {
         }
     }
 
+    let inNoteSection = false;
+    const isLogOrNote = (txt) => (
+        /^\[?\d{2}\/\d{2}\s+\d{2}:\d{2}\]?/.test(txt) ||
+        txt.startsWith('[') ||
+        txt.startsWith('WiFi:') ||
+        txt.startsWith('---') ||
+        txt.startsWith('▶') ||
+        txt.startsWith('🔌') ||
+        txt.startsWith('📦') ||
+        txt.startsWith('📍') ||
+        txt.startsWith('⏹') ||
+        txt.includes('Pemasangan dimulai') ||
+        txt.includes('Pemasangan selesai') ||
+        txt.includes('ONT dipasang') ||
+        txt.includes('Material dipasang') ||
+        txt.includes('Port ODP dipilih')
+    );
+
     lines.forEach(line => {
         let text = line.trim();
         if (!text) return;
         if (text.startsWith('ONT: ')) {
+            inNoteSection = false;
             const onts = text.replace('ONT: ', '').split(', ');
             onts.forEach(ont => {
                 if (ont.trim()) items.push({ id: idCounter++, type: 'ONT', name: ont.trim(), isInstalled: isScheduleDone });
             });
-        } else if (text.startsWith('Material: ')) {
-            const mats = text.replace('Material: ', '').split(', ');
+        } else if (text.startsWith('Material: ') || text.startsWith('Material Terpasang: ')) {
+            inNoteSection = false;
+            const mats = text.replace(/^Material(\s+Terpasang)?:\s*/i, '').split(', ');
             mats.forEach(mat => {
                 if (mat.trim()) {
                     const cleanMatName = mat.trim();
@@ -4043,28 +4063,63 @@ watch(() => props.customer, () => {
                     });
                 }
             });
-        } else if (text.startsWith('Catatan Tambahan:') || text.startsWith('Catatan:')) {
-            const cleanNote = text.replace(/^Catatan(\s+Tambahan)?:\s*/i, '').trim();
-            if (cleanNote) notesList.push(cleanNote);
         } else if (
             text.startsWith('Material diambil dari Surat Jalan') || 
             text === 'ONT:' || 
+            text === 'Material:' ||
+            text === 'Jadwal pasang' ||
             text.startsWith('Alokasi Awal:') || 
             text.startsWith('Material Dikembalikan:') || 
             text.startsWith('Retur Gudang:')
         ) {
+            inNoteSection = false;
             // Abaikan header transaksi
+        } else if (text.toLowerCase().startsWith('catatan')) {
+            inNoteSection = true;
+            const cleanNote = text.replace(/^catatan[^:]*:\s*/i, '').trim();
+            if (cleanNote && cleanNote !== 'Jadwal pasang') notesList.push(cleanNote);
+        } else if (inNoteSection || isLogOrNote(text)) {
+            notesList.push(text);
         } else {
-            if (text.toLowerCase().startsWith('catatan')) {
-                const cleanNote = text.replace(/^catatan[^:]*:\s*/i, '').trim();
-                if (cleanNote) notesList.push(cleanNote);
-            } else {
-                items.push({ id: idCounter++, type: 'Material', name: text, isInstalled: isScheduleDone });
-            }
+            items.push({ id: idCounter++, type: 'Material', name: text, isInstalled: isScheduleDone });
         }
     });
+
+    // Sanitize any corrupted multi-day duration in notesList
+    let startDay = null;
+    let startTotalMins = null;
+    for (const nl of notesList) {
+        const m = nl.match(/^\[(\d{2}\/\d{2})\s+(\d{2}):(\d{2})\]/);
+        if (m) {
+            if (startDay === null || nl.includes('Pemasangan dimulai')) {
+                startDay = m[1];
+                startTotalMins = parseInt(m[2], 10) * 60 + parseInt(m[3], 10);
+                if (nl.includes('Pemasangan dimulai')) break;
+            }
+        }
+    }
+    const sanitizedNotes = notesList.map(nl => nl.replace(/\(Durasi:\s*(\d+)\s*jam(?:\s*(\d+)\s*menit)?\)/gi, (full, hStr, mStr) => {
+        const hours = parseInt(hStr, 10);
+        const mins = mStr !== undefined ? parseInt(mStr, 10) : 0;
+        if (hours < 24) return full;
+        const endMatch = nl.match(/^\[(\d{2}\/\d{2})\s+(\d{2}):(\d{2})\]/);
+        if (endMatch && startDay && endMatch[1] === startDay && startTotalMins !== null) {
+            const endTotalMins = parseInt(endMatch[2], 10) * 60 + parseInt(endMatch[3], 10);
+            const diff = endTotalMins - startTotalMins;
+            if (diff >= 0 && diff < 1440) {
+                const dHours = Math.floor(diff / 60);
+                const dMins = diff % 60;
+                if (dHours > 0) return `(Durasi: ${dHours} jam${dMins > 0 ? ' ' + dMins + ' menit' : ''})`;
+                return `(Durasi: ${Math.max(1, dMins)} menit)`;
+            }
+        }
+        const remHours = hours % 24;
+        if (remHours > 0 && remHours <= 5) return `(Durasi: ${remHours} jam${mins > 0 ? ' ' + mins + ' menit' : ''})`;
+        return `(Durasi: ${mins > 0 ? mins : 10} menit)`;
+    }));
+
     hardwareItems.value = items;
-    installationNotes.value = notesList.join('\n');
+    installationNotes.value = sanitizedNotes.join('\n');
     
     // Restore hardware status from localStorage
     const savedHardware = localStorage.getItem(`apm_hardware_${props.customer.id}`);

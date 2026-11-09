@@ -452,20 +452,45 @@ const hardwareItems = computed(() => {
     
     if (schedule && schedule.notes) {
         const lines = schedule.notes.split('\n');
+        let inNoteSection = false;
         lines.forEach(line => {
             let text = line.trim();
             if (!text) return;
             if (text.startsWith('ONT: ')) {
+                inNoteSection = false;
                 const onts = text.replace('ONT: ', '').split(', ');
                 onts.forEach(ont => {
                     if(ont.trim()) items.push({ id: idCounter++, type: 'ONT', name: ont.trim() });
                 });
-            } else if (text.startsWith('Material: ')) {
-                const mats = text.replace('Material: ', '').split(', ');
+            } else if (text.startsWith('Material: ') || text.startsWith('Material Terpasang: ')) {
+                inNoteSection = false;
+                const mats = text.replace(/^Material(\s+Terpasang)?:\s*/i, '').split(', ');
                 mats.forEach(mat => {
                     if(mat.trim()) items.push({ id: idCounter++, type: 'Material', name: mat.trim() });
                 });
-            } else if (!text.startsWith('Material diambil dari Surat Jalan') && text !== 'ONT:') {
+            } else if (text.toLowerCase().startsWith('catatan')) {
+                inNoteSection = true;
+            } else if (
+                inNoteSection ||
+                text.startsWith('Material diambil dari Surat Jalan') ||
+                text === 'ONT:' ||
+                text === 'Material:' ||
+                text === 'Jadwal pasang' ||
+                text.startsWith('Alokasi Awal:') ||
+                text.startsWith('Material Dikembalikan:') ||
+                text.startsWith('Retur Gudang:') ||
+                text.startsWith('WiFi:') ||
+                text.startsWith('[') ||
+                text.startsWith('---') ||
+                /^\[?\d{2}\/\d{2}\s+\d{2}:\d{2}\]?/.test(text) ||
+                text.includes('Pemasangan dimulai') ||
+                text.includes('Pemasangan selesai') ||
+                text.includes('ONT dipasang') ||
+                text.includes('Material dipasang') ||
+                text.includes('Port ODP dipilih')
+            ) {
+                // Note, log, or transaction header — not hardware
+            } else {
                 items.push({ id: idCounter++, type: 'Material', name: text });
             }
         });
