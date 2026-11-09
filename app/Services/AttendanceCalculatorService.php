@@ -1416,8 +1416,18 @@ class AttendanceCalculatorService
                 }
             }
 
+            // Jika total kehadiran aktif (kehadiran + dinas luar) melebihi hari kerja terjadwal yang berjalan:
+            // (misal hadir lembur/piket ekstra di hari OFF/libur):
+            // selaraskan hari kerja berjalan dan total hari kerja agar rasio seimbang & logis (Hadir tidak melebihi Hari Kerja)
+            $totalActiveAttendance = $totalPresent + $totalFieldDuty;
+            if ($totalActiveAttendance > $empElapsedWorkDays) {
+                $extraOffDaysWorked = $totalActiveAttendance - $empElapsedWorkDays;
+                $empElapsedWorkDays = $totalActiveAttendance;
+                $empWorkDays += $extraOffDaysWorked;
+            }
+
             // Alpha = hari kerja yang telah berjalan dikurangi kehadiran & dinas luar (ditambah alpha manual)
-            $effectiveAttendedDays = min($empElapsedWorkDays, $totalPresent + $totalFieldDuty);
+            $effectiveAttendedDays = min($empElapsedWorkDays, $totalActiveAttendance);
             $totalAlpha = max(0, $empElapsedWorkDays - $effectiveAttendedDays) + $totalManualAlpha;
 
             // 8. Rasio Kehadiran & Skor Kedisiplinan
