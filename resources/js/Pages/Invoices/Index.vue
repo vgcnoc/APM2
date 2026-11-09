@@ -2040,6 +2040,9 @@ watch(() => props.filters, (newFilters) => {
 
 function filterTab(tab) {
     filterTabVal.value = tab;
+    if (['lunas', 'piutang', 'jatuh_tempo', 'prorata', 'janji_bayar'].includes(tab)) {
+        filterStatusVal.value = '';
+    }
     applyFilters();
 }
 

@@ -1368,7 +1368,7 @@ const customerSubTab = ref('all'); // 'all', 'paid', 'unpaid', 'prorata', 'overd
 
 const paidCustomers = computed(() => (props.customers || []).filter(c => !c.has_unpaid_invoice && c.status === 'active'));
 const unpaidCustomersList = computed(() => (props.customers || []).filter(c => c.has_unpaid_invoice));
-const prorataCustomers = computed(() => (props.customers || []).filter(c => c.is_prorata));
+const prorataCustomers = computed(() => (props.customers || []).filter(c => c.is_prorata && c.has_unpaid_invoice));
 const overdueCustomers = computed(() => (props.customers || []).filter(c => c.has_overdue_invoice));
 const unpaidCustomers = unpaidCustomersList; // Backward compat for unpaid count / overdue
 const filteredCustomers = computed(() => {

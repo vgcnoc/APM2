@@ -94,7 +94,7 @@ class AffiliatePortalController extends Controller
 
         $customerIds = $rawCustomers->pluck('id')->toArray();
         $unpaidInvoicesByCust = Invoice::whereIn('customer_id', $customerIds)
-            ->whereIn('status', ['unpaid', 'partial'])
+            ->whereIn('status', ['unpaid', 'partial', 'overdue'])
             ->orderBy('due_date', 'asc')
             ->get()
             ->groupBy('customer_id');
@@ -124,13 +124,13 @@ class AffiliatePortalController extends Controller
             });
             $earliestInv = $custUnpaidInvoices->first();
 
-            // Deteksi Status Prorata & Waktu Jatuh Tempo
+            // Deteksi Status Prorata & Waktu Jatuh Tempo (Hanya aktif sebagai prorata jika masih belum lunas)
             $hasProrataInvoice = $custUnpaidInvoices->contains(function ($inv) {
                 return (bool) $inv->is_prorata 
                     || strtolower($inv->billing_type ?? '') === 'prorata' 
                     || str_contains(strtolower($inv->notes ?? ''), 'prorata');
             });
-            $isProrata = $hasProrataInvoice || strtolower($cust->billing_type ?? '') === 'prorata';
+            $isProrata = $hasUnpaid && ($hasProrataInvoice || strtolower($cust->billing_type ?? '') === 'prorata');
 
             // Evaluasi apakah tagihan sudah terbit dan apakah sudah melewati batas jatuh tempo (Overdue)
             $isIssued = $earliestInv && $earliestInv->issued_date && $earliestInv->issued_date->startOfDay()->lte($today);

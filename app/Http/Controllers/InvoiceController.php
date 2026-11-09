@@ -13,6 +13,12 @@ class InvoiceController extends Controller
     {
         $today = now()->startOfDay();
 
+        // Sinkronisasi otomatis status invoice jika total pembayaran terverifikasi sudah mencapai nominal tagihan
+        Invoice::whereIn('status', ['unpaid', 'partial', 'overdue'])
+            ->where('amount', '>', 0)
+            ->whereRaw('(SELECT COALESCE(SUM(payments.amount), 0) FROM payments WHERE payments.invoice_id = invoices.id AND payments.status = ?) >= invoices.amount', ['verified'])
+            ->update(['status' => 'paid']);
+
         $query = Invoice::with(['customer' => function($q) use ($today) {
             $q->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'package_id', 'billing_type', 'tax_ppn', 'created_at', 'status', 'registration_date', 'activation_date')
               ->withCount(['invoices as unpaid_invoices_count' => function ($query) {
@@ -281,7 +287,7 @@ class InvoiceController extends Controller
             'prorata' => (clone $baseQuery)->where(function($q) {
                 $q->where('is_prorata', true)
                   ->orWhere('billing_type', 'prorata');
-            })->count(),
+            })->whereIn('status', ['unpaid', 'partial', 'overdue'])->count(),
             'upgrade' => (clone $baseQuery)->where(function($q) {
                 $q->whereIn('billing_type', ['upgrade', 'downgrade'])
                   ->orWhere('notes', 'like', '%Upgrade%')
@@ -1460,7 +1466,7 @@ class InvoiceController extends Controller
             $targetQuery->where(function($q) {
                 $q->where('is_prorata', true)
                   ->orWhere('billing_type', 'prorata');
-            });
+            })->whereIn('status', ['unpaid', 'partial', 'overdue']);
         } elseif ($tab === 'upgrade') {
             $targetQuery->where(function($q) {
                 $q->whereIn('billing_type', ['upgrade', 'downgrade'])
@@ -1537,6 +1543,10 @@ class InvoiceController extends Controller
             $targetQuery->where(function($sub) use ($startDate, $endDate, $startCarbon, $endCarbon) {
                 $sub->whereBetween('issued_date', [$startDate, $endDate])
                     ->orWhereBetween('created_at', [$startCarbon, $endCarbon])
+                    ->orWhereHas('payments', function($payQ) use ($startDate, $endDate) {
+                        $payQ->where('status', 'verified')
+                             ->whereBetween('payment_date', [$startDate, $endDate]);
+                    })
                     ->orWhere(function($pq) use ($startCarbon, $endCarbon) {
                         $pq->whereBetween(
                             \Illuminate\Support\Facades\DB::raw("STR_TO_DATE(CONCAT(period_year, '-', LPAD(period_month, 2, '00'), '-01'), '%Y-%m-%d')"),
@@ -1550,6 +1560,10 @@ class InvoiceController extends Controller
             $targetQuery->where(function($sub) use ($startDate, $startCarbon) {
                 $sub->where('issued_date', '>=', $startDate)
                     ->orWhere('created_at', '>=', $startCarbon)
+                    ->orWhereHas('payments', function($payQ) use ($startDate) {
+                        $payQ->where('status', 'verified')
+                             ->where('payment_date', '>=', $startDate);
+                    })
                     ->orWhere(
                         \Illuminate\Support\Facades\DB::raw("STR_TO_DATE(CONCAT(period_year, '-', LPAD(period_month, 2, '00'), '-01'), '%Y-%m-%d')"),
                         '>=',
@@ -1562,6 +1576,10 @@ class InvoiceController extends Controller
             $targetQuery->where(function($sub) use ($endDate, $endCarbon) {
                 $sub->where('issued_date', '<=', $endDate)
                     ->orWhere('created_at', '<=', $endCarbon)
+                    ->orWhereHas('payments', function($payQ) use ($endDate) {
+                        $payQ->where('status', 'verified')
+                             ->where('payment_date', '<=', $endDate);
+                    })
                     ->orWhere(
                         \Illuminate\Support\Facades\DB::raw("STR_TO_DATE(CONCAT(period_year, '-', LPAD(period_month, 2, '00'), '-01'), '%Y-%m-%d')"),
                         '<=',
