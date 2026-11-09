@@ -27,19 +27,19 @@ class CustomerMaterialService
             ->whereIn('status', ['installed', 'partially_replaced'])
             ->get();
 
-        // Pastikan perangkat ONT terpasang selalu tercatat di CustomerInstalledMaterial
-        $hasOntInExisting = $existing->contains(function ($item) {
+        // Pastikan perangkat ONT terpasang selalu tercatat di CustomerInstalledMaterial & sinkron dengan data ONT riil
+        $existingOnt = $existing->first(function ($item) {
             $name = strtolower($item->item_name ?? '');
             return str_contains($name, 'ont') || str_contains($name, 'modem');
         });
 
-        if (!$hasOntInExisting) {
-            $customer->loadMissing('ont');
-            if ($customer->ont) {
-                $ontBrand = $customer->ont->brand ?: 'ONT';
-                $ontModel = $customer->ont->model ?: 'Fiber Modem';
-                $ontName = "ONT {$ontBrand} {$ontModel}";
+        $customer->loadMissing('ont');
+        if ($customer->ont) {
+            $ontBrand = $customer->ont->brand ?: 'ONT';
+            $ontModel = $customer->ont->model ?: 'Fiber Modem';
+            $ontName = "ONT {$ontBrand} {$ontModel}";
 
+            if (!$existingOnt) {
                 $matOnt = Material::where(function ($mq) use ($ontBrand) {
                     $mq->where('category', 'like', '%ont%')
                        ->orWhere('category', 'like', '%modem%')
@@ -59,6 +59,12 @@ class CustomerMaterialService
                     'notes' => 'Unit ONT aktif pelanggan (SN: ' . $customer->ont->serial_number . ')',
                 ]);
                 $existing->push($ontRecord);
+            } elseif (empty($existingOnt->serial_number) && !empty($customer->ont->serial_number)) {
+                $existingOnt->update([
+                    'item_name' => $ontName,
+                    'serial_number' => $customer->ont->serial_number,
+                    'notes' => 'Unit ONT aktif pelanggan (SN: ' . $customer->ont->serial_number . ')',
+                ]);
             }
         }
 
@@ -160,33 +166,7 @@ class CustomerMaterialService
                 }
             }
 
-            // 3. Fallback: Standard FTTH accessories jika tidak ada riwayat transaksi instalasi sama sekali
-            $standardAccessories = [
-                ['name' => 'Kabel Dropcore 1 Core', 'qty' => 150, 'unit' => 'meter', 'category' => 'Kabel'],
-                ['name' => 'Fast Connector SC/UPC', 'qty' => 2, 'unit' => 'pcs', 'category' => 'Aksesoris'],
-                ['name' => 'Roset Optik 1 Core', 'qty' => 1, 'unit' => 'pcs', 'category' => 'Aksesoris'],
-                ['name' => 'Patchcord SC-SC 3M', 'qty' => 1, 'unit' => 'pcs', 'category' => 'Aksesoris'],
-            ];
-
-            foreach ($standardAccessories as $acc) {
-                $matchedMat = Material::where('name', 'like', '%' . $acc['name'] . '%')
-                    ->orWhere('category', 'like', '%' . $acc['category'] . '%')
-                    ->first();
-
-                $item = CustomerInstalledMaterial::create([
-                    'customer_id' => $customer->id,
-                    'material_id' => $matchedMat?->id,
-                    'item_name' => $matchedMat?->name ?: $acc['name'],
-                    'quantity' => $acc['qty'],
-                    'unit' => $acc['unit'],
-                    'installed_at' => $customer->activation_date ?: $customer->registration_date ?: now(),
-                    'installation_source' => 'psb_installation',
-                    'status' => 'installed',
-                    'notes' => 'Material terpasang standar instalasi awal pelanggan.',
-                ]);
-                $created->push($item);
-            }
-
+            // 3. Jangan mengarang/auto-seed material fiktif jika tidak ada transaksi material aktual
             return $created;
         });
     }
