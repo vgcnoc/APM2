@@ -797,6 +797,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/settings/billing', [\App\Http\Controllers\SettingController::class, 'updateBilling'])->name('settings.billing.update');
         Route::get('/settings/invoice-template/preview', [\App\Http\Controllers\SettingController::class, 'previewInvoiceTemplate'])->name('settings.invoice-template.preview');
 
+        // Privasi Data & Masking Omset
+        Route::get('/settings/data-masking', [\App\Http\Controllers\DataMaskingController::class, 'index'])->name('settings.data-masking.index');
+        Route::post('/settings/data-masking', [\App\Http\Controllers\DataMaskingController::class, 'update'])->name('settings.data-masking.update');
+        Route::post('/settings/data-masking/simulate', [\App\Http\Controllers\DataMaskingController::class, 'simulate'])->name('settings.data-masking.simulate');
+        Route::post('/settings/data-masking/toggle-preview', [\App\Http\Controllers\DataMaskingController::class, 'togglePreview'])->name('settings.data-masking.toggle-preview');
+
         Route::get('/settings/attendance', [\App\Http\Controllers\SettingController::class, 'attendance'])->name('settings.attendance');
         Route::post('/settings/attendance', [\App\Http\Controllers\SettingController::class, 'updateAttendance'])->name('settings.attendance.update');
 

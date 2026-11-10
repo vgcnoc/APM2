@@ -31,6 +31,10 @@ class CustomerReportController extends Controller
             if ($areaId) {
                 $query->whereHas($relation, fn($cq) => $cq->where('area_id', $areaId));
             }
+            if (\App\Services\DataPrivacyMaskingService::isEnabledForUser(null, 'financial_reports')) {
+                $ids = \App\Services\DataPrivacyMaskingService::getMaskedCustomerIds();
+                $query->whereHas($relation, fn($cq) => $cq->whereIn('id', !empty($ids) ? $ids : [0]));
+            }
         };
 
         // 1. Total Pemasukan Bulan Ini (Hanya dari Pelanggan Internet)

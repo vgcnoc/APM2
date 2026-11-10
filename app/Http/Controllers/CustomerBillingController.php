@@ -42,6 +42,9 @@ class CustomerBillingController extends Controller
                 })
                 ->whereHas('customer', fn($c) => $c->where('status', '!=', 'terminated')->whereNotIn('service_status', ['gratis', 'free_home']));
 
+            // Terapkan penyamaran data penagihan jika aktif untuk akun ini
+            \App\Services\DataPrivacyMaskingService::applyInvoiceFilter($q, 'invoices.customer_id', null, 'billing');
+
             if (!empty($userAccessibleAreaIds)) {
                 $q->whereHas('customer', fn($c) => $c->whereIn('area_id', $userAccessibleAreaIds));
             }

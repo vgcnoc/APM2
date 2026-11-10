@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\User;
+use App\Services\DataPrivacyMaskingService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Spatie\Permission\Models\Role;
 
 class TaxReportController extends Controller
 {
@@ -13,6 +16,9 @@ class TaxReportController extends Controller
         $query = Customer::with(['package', 'invoices' => fn($q) => $q->where('is_reseller_balance', false)->latest('id')])
             ->where('status', 'active')
             ->orderBy('name');
+
+        // Apply Data Privacy Masking filter if active for this account
+        DataPrivacyMaskingService::applyCustomerFilter($query, 'customers.id', null, 'tax_report');
 
         if ($request->has('search') && $request->search != '') {
             $search = $request->search;
@@ -29,10 +35,11 @@ class TaxReportController extends Controller
             return $this->resolveCustomerTaxData($customer, $globalBhp, $globalUso);
         });
         
-        // Aggregate totals for active customers
-        $activeCustomers = Customer::with(['package', 'invoices' => fn($q) => $q->where('is_reseller_balance', false)->latest('id')])
-            ->where('status', 'active')
-            ->get();
+        // Aggregate totals for scoped active customers
+        $activeCustomersQuery = Customer::with(['package', 'invoices' => fn($q) => $q->where('is_reseller_balance', false)->latest('id')])
+            ->where('status', 'active');
+        DataPrivacyMaskingService::applyCustomerFilter($activeCustomersQuery, 'customers.id', null, 'tax_report');
+        $activeCustomers = $activeCustomersQuery->get();
 
         $total_base_price = 0;
         $total_ppn = 0;
@@ -57,10 +64,18 @@ class TaxReportController extends Controller
             'grand_total' => $grand_total,
         ];
 
+        $user = auth()->user();
+        $isSuperAdmin = DataPrivacyMaskingService::isSuperAdmin($user);
+
         return Inertia::render('Customers/TaxReport', [
             'customers' => $customers,
             'filters' => $request->only(['search']),
-            'totals' => $totals
+            'totals' => $totals,
+            'masking_info' => DataPrivacyMaskingService::getMaskingInfoForUser(),
+            'masking_settings' => DataPrivacyMaskingService::getSettings(),
+            'can_manage_masking' => $isSuperAdmin || ($user && $user->can('menu_settings_billing')),
+            'available_roles' => Role::orderBy('name')->pluck('name')->toArray(),
+            'available_users' => User::select('id', 'name', 'email', 'role')->orderBy('name')->get(),
         ]);
     }
 
@@ -69,6 +84,9 @@ class TaxReportController extends Controller
         $query = Customer::with(['package', 'invoices' => fn($q) => $q->where('is_reseller_balance', false)->latest('id')])
             ->where('status', 'active')
             ->orderBy('name');
+
+        // Apply Data Privacy Masking filter to print view as well
+        DataPrivacyMaskingService::applyCustomerFilter($query, 'customers.id', null, 'tax_report');
 
         if ($request->filled('search')) {
             $search = $request->search;

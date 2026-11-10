@@ -66,8 +66,12 @@ class CustomerController extends Controller
         }
         $baseQuery = Customer::query()
             ->where('status', '!=', 'terminated')
-            ->notPureReseller()
-            ->when($isolirOnly, fn ($q) => $q->where('status', 'suspended'))
+            ->notPureReseller();
+
+        // Terapkan pembatasan data pelanggan jika mode penyamaran data aktif untuk akun ini
+        \App\Services\DataPrivacyMaskingService::applyCustomerFilter($baseQuery, 'customers.id', null, 'customers');
+
+        $baseQuery->when($isolirOnly, fn ($q) => $q->where('status', 'suspended'))
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function($q) {
                 if (auth()->user()->can('customers_all_view_area')) {
                     $accessibleAreas = auth()->user()->getAccessibleAreaIds();

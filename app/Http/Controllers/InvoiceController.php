@@ -131,8 +131,12 @@ class InvoiceController extends Controller
               }]);
         }, 'customer.areaModel', 'customer.package', 'customer.ont.odp', 'payments' => function($q) {
             $q->with('collector')->latest('payment_date');
-        }])->where('is_reseller_balance', false)
-           ->where('invoice_number', 'not like', 'INV-MIG-%')
+        }])->where('is_reseller_balance', false);
+
+        // Terapkan penyamaran invoice jika mode privasi aktif untuk akun ini
+        \App\Services\DataPrivacyMaskingService::applyInvoiceFilter($query, 'invoices.customer_id', null, 'invoices');
+
+        $query->where('invoice_number', 'not like', 'INV-MIG-%')
            ->where('status', '!=', 'cancelled')
            ->where(function($q) {
                $q->where('period_year', '>', 2026)

@@ -1333,7 +1333,7 @@ const menuItems = [
         icon: 'cog',
         label: 'Konfigurasi Sistem',
         theme: 'violet',
-        active: (url) => ['/settings/branding', '/settings/terms-conditions', '/settings/billing', '/settings/payroll', '/settings/resellers', '/settings/api', '/settings/data-migration'].some(path => (url || '').startsWith(path)),
+        active: (url) => ['/settings/branding', '/settings/terms-conditions', '/settings/billing', '/settings/payroll', '/settings/resellers', '/settings/api', '/settings/data-migration', '/settings/data-masking'].some(path => (url || '').startsWith(path)),
         permission: ['menu_settings_branding', 'menu_settings_billing', 'menu_settings_payroll', 'menu_settings_api', 'menu_settings_roles', 'menu_data_migration'],
         children: [
             { href: '/settings/branding', label: 'Branding & Tampilan', active: (url) => (url || '').startsWith('/settings/branding'), permission: 'menu_settings_branding' },
@@ -1343,6 +1343,7 @@ const menuItems = [
             { href: '/settings/resellers', label: 'Pengaturan Reseller', active: (url) => (url || '').startsWith('/settings/resellers'), permission: 'menu_settings_roles' },
             { href: '/settings/api', label: 'API & Integrasi', active: (url) => (url || '').startsWith('/settings/api'), permission: 'menu_settings_api' },
             { href: '/settings/data-migration', label: '⚡ Data Migration Center', active: (url) => (url || '').startsWith('/settings/data-migration'), permission: 'menu_data_migration' },
+            { href: '/settings/data-masking', label: '🔒 Privasi & Target Omset', active: (url) => (url || '').startsWith('/settings/data-masking'), permission: ['menu_settings_billing', 'menu_financial_reports'] },
         ]
     },
     {
