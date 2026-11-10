@@ -126,104 +126,162 @@
         >
             <!-- Filter Slot -->
             <template #filters>
-                <!-- Status -->
-                <div v-if="!isolirOnly" v-can="'customers_filter_status'" class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[160px]">
-                    <div class="shrink-0 mr-2 text-gray-400">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                <div class="w-full space-y-2.5">
+                    <!-- Top Bar: Title, Active Filter Badge & Reset Button -->
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                                <span class="p-1 rounded-md bg-indigo-50 text-indigo-600">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                                    </svg>
+                                </span>
+                                <span>Filter & Urutkan</span>
+                            </div>
+                            <span 
+                                v-if="hasActiveFilters" 
+                                class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-700 border border-blue-200 shadow-2xs animate-fade-in"
+                            >
+                                <span class="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
+                                {{ activeFiltersCount }} Filter Aktif
+                            </span>
+                        </div>
+
+                        <!-- Reset Button -->
+                        <button 
+                            type="button"
+                            @click="resetFilters" 
+                            :disabled="!hasActiveFilters"
+                            class="text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                            :class="hasActiveFilters 
+                                ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200 active:scale-95' 
+                                : 'bg-white/80 hover:bg-white text-slate-400 border-slate-200/80 cursor-not-allowed opacity-60'"
+                            title="Bersihkan semua filter"
+                        >
+                            <svg class="w-3.5 h-3.5" :class="hasActiveFilters ? 'text-rose-600' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                            <span>Reset Filter</span>
+                        </button>
                     </div>
-                    <div class="flex flex-col flex-1 min-w-0">
-                        <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5 leading-none mt-1">Status</span>
-                        <select v-model="filterStatus" @change="applyFilters" class="form-select border-0 pt-0 pb-1 pl-0 !pr-7 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full cursor-pointer truncate">
-                            <option value="">Semua Status</option>
-                            <option v-for="(label, key) in statusOptions" :key="key" :value="key">{{ label }}</option>
-                        </select>
+
+                    <!-- 6 Filter Grid: Responsive, Pixel-Perfect Alignment -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-2.5 w-full">
+                        <!-- 1. Status -->
+                        <div 
+                            v-if="!isolirOnly" 
+                            v-can="'customers_filter_status'" 
+                            class="relative flex items-center bg-white border rounded-xl pl-3 pr-2 py-1.5 transition-all shadow-2xs"
+                            :class="filterStatus ? 'border-indigo-400 bg-indigo-50/20 ring-1 ring-indigo-400/40' : 'border-gray-200 hover:border-gray-300'"
+                        >
+                            <div class="shrink-0 mr-2" :class="filterStatus ? 'text-indigo-600' : 'text-gray-400'">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                            <div class="flex flex-col flex-1 min-w-0">
+                                <span class="text-[10px] font-bold uppercase tracking-wider mb-0.5 leading-none mt-0.5" :class="filterStatus ? 'text-indigo-600' : 'text-gray-500'">Status</span>
+                                <select v-model="filterStatus" @change="applyFilters" class="form-select border-0 pt-0 pb-0.5 pl-0 !pr-6 h-auto text-xs bg-transparent focus:ring-0 text-gray-800 font-semibold w-full cursor-pointer truncate">
+                                    <option value="">Semua Status</option>
+                                    <option v-for="(label, key) in statusOptions" :key="key" :value="key">{{ label }}</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- 2. Layanan (Berbayar / Gratis / Free Home) -->
+                        <div 
+                            v-can="'customers_filter_status'" 
+                            class="relative flex items-center bg-white border rounded-xl pl-3 pr-2 py-1.5 transition-all shadow-2xs"
+                            :class="filterServiceStatus ? 'border-indigo-400 bg-indigo-50/20 ring-1 ring-indigo-400/40' : 'border-gray-200 hover:border-gray-300'"
+                        >
+                            <div class="shrink-0 mr-2" :class="filterServiceStatus ? 'text-indigo-600' : 'text-gray-400'">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+                            </div>
+                            <div class="flex flex-col flex-1 min-w-0">
+                                <span class="text-[10px] font-bold uppercase tracking-wider mb-0.5 leading-none mt-0.5" :class="filterServiceStatus ? 'text-indigo-600' : 'text-gray-500'">Layanan</span>
+                                <select v-model="filterServiceStatus" @change="applyFilters" class="form-select border-0 pt-0 pb-0.5 pl-0 !pr-6 h-auto text-xs bg-transparent focus:ring-0 text-gray-800 font-semibold w-full cursor-pointer truncate">
+                                    <option value="">Semua Layanan</option>
+                                    <option value="berbayar">💳 Berbayar</option>
+                                    <option value="gratis">🎁 Gratis (CSR)</option>
+                                    <option value="free_home">🏠 Free Home (Voucher)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- 3. Paket -->
+                        <div 
+                            v-can="'customers_filter_package'" 
+                            class="relative flex items-center bg-white border rounded-xl pl-3 pr-2 py-1.5 transition-all shadow-2xs"
+                            :class="filterPackage ? 'border-indigo-400 bg-indigo-50/20 ring-1 ring-indigo-400/40' : 'border-gray-200 hover:border-gray-300'"
+                        >
+                            <div class="shrink-0 mr-2" :class="filterPackage ? 'text-indigo-600' : 'text-gray-400'">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/></svg>
+                            </div>
+                            <div class="flex flex-col flex-1 min-w-0">
+                                <span class="text-[10px] font-bold uppercase tracking-wider mb-0.5 leading-none mt-0.5" :class="filterPackage ? 'text-indigo-600' : 'text-gray-500'">Paket</span>
+                                <select v-model="filterPackage" @change="applyFilters" class="form-select border-0 pt-0 pb-0.5 pl-0 !pr-6 h-auto text-xs bg-transparent focus:ring-0 text-gray-800 font-semibold w-full cursor-pointer truncate">
+                                    <option value="">Semua Paket</option>
+                                    <option v-for="pkg in packages" :key="pkg.id" :value="String(pkg.id)">{{ pkg.name }}</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- 4. Area -->
+                        <div 
+                            v-can="'customers_filter_area'" 
+                            class="relative flex items-center bg-white border rounded-xl pl-3 pr-2 py-1.5 transition-all shadow-2xs"
+                            :class="filterArea ? 'border-indigo-400 bg-indigo-50/20 ring-1 ring-indigo-400/40' : 'border-gray-200 hover:border-gray-300'"
+                        >
+                            <div class="shrink-0 mr-2" :class="filterArea ? 'text-indigo-600' : 'text-gray-400'">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            </div>
+                            <div class="flex flex-col flex-1 min-w-0">
+                                <span class="text-[10px] font-bold uppercase tracking-wider mb-0.5 leading-none mt-0.5" :class="filterArea ? 'text-indigo-600' : 'text-gray-500'">Area</span>
+                                <select v-model="filterArea" @change="onAreaChange" class="form-select border-0 pt-0 pb-0.5 pl-0 !pr-6 h-auto text-xs bg-transparent focus:ring-0 text-gray-800 font-semibold w-full cursor-pointer truncate">
+                                    <option value="">Semua Area</option>
+                                    <option v-for="area in areas" :key="area.id" :value="String(area.id)">{{ area.name }}</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- 5. ODP -->
+                        <div 
+                            v-can="'customers_filter_area'" 
+                            class="relative flex items-center bg-white border rounded-xl pl-3 pr-2 py-1.5 transition-all shadow-2xs"
+                            :class="filterOdp ? 'border-indigo-400 bg-indigo-50/20 ring-1 ring-indigo-400/40' : 'border-gray-200 hover:border-gray-300'"
+                        >
+                            <div class="shrink-0 mr-2" :class="filterOdp ? 'text-indigo-600' : 'text-gray-400'">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"/></svg>
+                            </div>
+                            <div class="flex flex-col flex-1 min-w-0">
+                                <span class="text-[10px] font-bold uppercase tracking-wider mb-0.5 leading-none mt-0.5" :class="filterOdp ? 'text-indigo-600' : 'text-gray-500'">ODP</span>
+                                <select v-model="filterOdp" @change="applyFilters" class="form-select border-0 pt-0 pb-0.5 pl-0 !pr-6 h-auto text-xs bg-transparent focus:ring-0 text-gray-800 font-semibold w-full cursor-pointer truncate">
+                                    <option value="">Semua ODP</option>
+                                    <option v-for="odp in filteredOdps" :key="odp.id" :value="String(odp.id)">{{ odp.name }}</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- 6. Urutkan -->
+                        <div 
+                            class="relative flex items-center bg-white border rounded-xl pl-3 pr-2 py-1.5 transition-all shadow-2xs"
+                            :class="filterSort ? 'border-indigo-400 bg-indigo-50/20 ring-1 ring-indigo-400/40' : 'border-gray-200 hover:border-gray-300'"
+                        >
+                            <div class="shrink-0 mr-2" :class="filterSort ? 'text-indigo-600' : 'text-gray-400'">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/></svg>
+                            </div>
+                            <div class="flex flex-col flex-1 min-w-0">
+                                <span class="text-[10px] font-bold uppercase tracking-wider mb-0.5 leading-none mt-0.5" :class="filterSort ? 'text-indigo-600' : 'text-gray-500'">Urutkan</span>
+                                <select v-model="filterSort" @change="applyFilters" class="form-select border-0 pt-0 pb-0.5 pl-0 !pr-6 h-auto text-xs bg-transparent focus:ring-0 text-gray-800 font-semibold w-full cursor-pointer truncate">
+                                    <option value="">Terbaru (Tgl Daftar)</option>
+                                    <option value="terlama">Terlama (Tgl Daftar)</option>
+                                    <option value="nama_asc">Nama (A-Z)</option>
+                                    <option value="nama_desc">Nama (Z-A)</option>
+                                    <option value="kode_asc">ID / Kode (A-Z)</option>
+                                    <option value="kode_desc">ID / Kode (Z-A)</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
-                <!-- Layanan (Berbayar / Gratis / Free Home) -->
-                <div v-can="'customers_filter_status'" class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[165px]">
-                    <div class="shrink-0 mr-2 text-gray-400">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    </div>
-                    <div class="flex flex-col flex-1 min-w-0">
-                        <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5 leading-none mt-1">Layanan</span>
-                        <select v-model="filterServiceStatus" @change="applyFilters" class="form-select border-0 pt-0 pb-1 pl-0 !pr-7 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full cursor-pointer truncate">
-                            <option value="">Semua Layanan</option>
-                            <option value="berbayar">💳 Berbayar</option>
-                            <option value="gratis">🎁 Gratis (CSR)</option>
-                            <option value="free_home">🏠 Free Home (Voucher)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Paket -->
-                <div v-can="'customers_filter_package'" class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[170px]">
-                    <div class="shrink-0 mr-2 text-gray-400">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                    </div>
-                    <div class="flex flex-col flex-1 min-w-0">
-                        <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5 leading-none mt-1">Paket</span>
-                        <select v-model="filterPackage" @change="applyFilters" class="form-select border-0 pt-0 pb-1 pl-0 !pr-7 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full cursor-pointer truncate">
-                            <option value="">Semua Paket</option>
-                            <option v-for="pkg in packages" :key="pkg.id" :value="String(pkg.id)">{{ pkg.name }}</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Area -->
-                <div v-can="'customers_filter_area'" class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[155px]">
-                    <div class="shrink-0 mr-2 text-gray-400">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    </div>
-                    <div class="flex flex-col flex-1 min-w-0">
-                        <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5 leading-none mt-1">Area</span>
-                        <select v-model="filterArea" @change="onAreaChange" class="form-select border-0 pt-0 pb-1 pl-0 !pr-7 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full cursor-pointer truncate">
-                            <option value="">Semua Area</option>
-                            <option v-for="area in areas" :key="area.id" :value="String(area.id)">{{ area.name }}</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- ODP -->
-                <div v-can="'customers_filter_area'" class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[155px]">
-                    <div class="shrink-0 mr-2 text-gray-400">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-                    </div>
-                    <div class="flex flex-col flex-1 min-w-0">
-                        <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5 leading-none mt-1">ODP</span>
-                        <select v-model="filterOdp" @change="applyFilters" class="form-select border-0 pt-0 pb-1 pl-0 !pr-7 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full cursor-pointer truncate">
-                            <option value="">Semua ODP</option>
-                            <option v-for="odp in filteredOdps" :key="odp.id" :value="String(odp.id)">{{ odp.name }}</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Urutkan -->
-                <div class="relative flex items-center bg-white border border-gray-200 rounded-lg pl-3 pr-2 py-1 shadow-sm w-full md:w-auto md:min-w-[210px]">
-                    <div class="shrink-0 mr-2 text-gray-400">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg>
-                    </div>
-                    <div class="flex flex-col flex-1 min-w-0">
-                        <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5 leading-none mt-1">Urutkan</span>
-                        <select v-model="filterSort" @change="applyFilters" class="form-select border-0 pt-0 pb-1 pl-0 !pr-7 h-auto text-sm bg-transparent focus:ring-0 text-gray-700 font-medium w-full cursor-pointer truncate">
-                            <option value="">Terbaru (Tgl Daftar)</option>
-                            <option value="terlama">Terlama (Tgl Daftar)</option>
-                            <option value="nama_asc">Nama (A-Z)</option>
-                            <option value="nama_desc">Nama (Z-A)</option>
-                            <option value="kode_asc">ID / Kode (A-Z)</option>
-                            <option value="kode_desc">ID / Kode (Z-A)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Spacer to push reset to right -->
-                <div class="hidden xl:block flex-1"></div>
-
-                <!-- Reset Button -->
-                <button @click="resetFilters" class="btn-secondary bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-medium text-sm py-2 px-4 rounded-lg shadow-sm flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                    Reset
-                </button>
             </template>
 
             <!-- Action Button -->
@@ -1470,6 +1528,28 @@ const filterArea = ref(props.filters?.area_id ? String(props.filters.area_id) : 
 const filterOdp = ref(props.filters?.odp_id ? String(props.filters.odp_id) : '');
 const filterSort = ref(props.filters?.sort_by ? String(props.filters.sort_by) : '');
 const customerListRoute = computed(() => props.isolirOnly ? '/customers/isolir' : '/customers');
+
+const hasActiveFilters = computed(() => {
+    return Boolean(
+        filterStatus.value ||
+        filterServiceStatus.value ||
+        filterPackage.value ||
+        filterArea.value ||
+        filterOdp.value ||
+        filterSort.value
+    );
+});
+
+const activeFiltersCount = computed(() => {
+    let count = 0;
+    if (filterStatus.value) count++;
+    if (filterServiceStatus.value) count++;
+    if (filterPackage.value) count++;
+    if (filterArea.value) count++;
+    if (filterOdp.value) count++;
+    if (filterSort.value) count++;
+    return count;
+});
 
 // Status aktif untuk cards
 const isPendingActive = computed(() => ['pending', 'booking', 'survey', 'installing'].includes(filterStatus.value));
