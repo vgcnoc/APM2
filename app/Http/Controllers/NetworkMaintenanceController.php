@@ -76,7 +76,9 @@ class NetworkMaintenanceController extends Controller
         $query = NetworkMaintenance::with(['area', 'odp', 'odc', 'technicians', 'creator', 'materials.material']);
 
         // Filter Tanggal
-        $query->whereDate('scheduled_date', $date);
+        if ($date && $date !== 'all') {
+            $query->whereDate('scheduled_date', $date);
+        }
 
         // Filter Wilayah
         if (!empty($targetAreaIds)) {
@@ -254,8 +256,12 @@ class NetworkMaintenanceController extends Controller
         $availableOdps = Odp::select('id', 'name', 'area_id')->orderBy('name')->limit(500)->get();
         $availableOdcs = Odc::select('id', 'name', 'area_id')->orderBy('name')->limit(150)->get();
 
-        $carbonDate = Carbon::parse($date)->locale('id');
-        $indonesianDate = $carbonDate->isoFormat('dddd, D MMMM Y');
+        if ($date && $date !== 'all') {
+            $carbonDate = Carbon::parse($date)->locale('id');
+            $indonesianDate = $carbonDate->isoFormat('dddd, D MMMM Y');
+        } else {
+            $indonesianDate = 'Semua Tanggal Jadwal';
+        }
 
         $materials = Material::where(function ($q) {
                 $q->where('is_active', true)->orWhereNull('is_active');
@@ -467,10 +473,57 @@ class NetworkMaintenanceController extends Controller
 
             DB::commit();
 
+            $maintenance->load(['area', 'odp', 'odc', 'technicians', 'materials.material']);
+
+            // Kirim Notifikasi WA ke Teknisi yang ditugaskan jika diaktifkan
+            if ($request->boolean('send_wa_technician', true) && $maintenance->technicians->isNotEmpty()) {
+                try {
+                    $waService = app(\App\Services\WhatsAppGatewayService::class);
+                    $dateFormatted = $maintenance->scheduled_date
+                        ? Carbon::parse($maintenance->scheduled_date)->locale('id')->isoFormat('dddd, D MMMM Y')
+                        : '-';
+                    $timeStr = $maintenance->scheduled_time ? substr((string) $maintenance->scheduled_time, 0, 5) : '09:00';
+                    $nodeLabel = $maintenance->odp?->name ?: ($maintenance->odc?->name ?: ($maintenance->location_name ?: '-'));
+                    $areaLabel = $maintenance->area?->name ?? '-';
+                    $teamStr = $maintenance->technicians->pluck('name')->join(', ');
+
+                    $matLines = [];
+                    foreach ($maintenance->materials as $mRow) {
+                        $mName = $mRow->material?->name ?? 'Material';
+                        $mQty = (float) $mRow->quantity_prepared;
+                        $mUnit = $mRow->unit ?: ($mRow->material?->unit ?? 'pcs');
+                        $matLines[] = "  • {$mName}: *{$mQty} {$mUnit}*";
+                    }
+                    $matSection = !empty($matLines)
+                        ? "\n📦 *Bekal Material Disiapkan Gudang:*\n" . implode("\n", $matLines)
+                        : "\n📦 *Bekal Material:* Sesuai kebutuhan pengecekan lapangan";
+
+                    $msg = "🔧 *PENUGASAN PEMELIHARAAN / PEREMAJAAN JALUR*\n"
+                        . "━━━━━━━━━━━━━━━━━━━━\n"
+                        . "No. Tugas : *{$maintenance->maintenance_number}*\n"
+                        . "Kegiatan : *{$maintenance->title}*\n"
+                        . "Titik Jalur : *{$nodeLabel}* ({$areaLabel})\n"
+                        . "Jadwal : *{$dateFormatted}* Pukul *{$timeStr}*\n"
+                        . "Prioritas : *" . strtoupper((string) $maintenance->priority) . "*\n"
+                        . "Tim Petugas : *{$teamStr}*\n"
+                        . ($maintenance->description ? "\n📝 *Instruksi / Diagnosa:*\n{$maintenance->description}\n" : '')
+                        . $matSection . "\n\n"
+                        . "Silakan cek detail & isi laporan penyelesaian (redaman sesudah, pemakaian material & foto) di menu *Operasional -> Pemeliharaan Jalur (ODP/ODC)*.";
+
+                    foreach ($maintenance->technicians as $tech) {
+                        if (!empty($tech->phone)) {
+                            $waService->sendMessage($tech->phone, $msg);
+                        }
+                    }
+                } catch (\Throwable $waErr) {
+                    Log::warning('[NetworkMaintenanceController::store] Gagal kirim WA teknisi: ' . $waErr->getMessage());
+                }
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Kegiatan pemeliharaan/perapihan jalur berhasil ditambahkan!',
-                'maintenance' => $maintenance->load(['area', 'odp', 'odc', 'technicians', 'materials.material']),
+                'maintenance' => $maintenance,
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();

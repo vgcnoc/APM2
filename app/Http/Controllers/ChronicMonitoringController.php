@@ -334,11 +334,30 @@ class ChronicMonitoringController extends Controller
                         'pgk_count' => 0,
                         'pgs_count' => 0,
                         'customers' => [],
+                        'tickets' => [],
                     ];
                 }
                 $odcCustomerTicketsMap[$odcId]['pgk_count'] += $pgkCount;
                 $odcCustomerTicketsMap[$odcId]['pgs_count'] += $pgsCount;
-                $odcCustomerTicketsMap[$odcId]['customers'][$cid] = true;
+                $odcCustomerTicketsMap[$odcId]['customers'][$cid] = [
+                    'id' => $customer->id,
+                    'customer_code' => $customer->customer_code,
+                    'name' => $customer->name,
+                    'phone' => $customer->phone,
+                    'address' => $customer->address,
+                    'port_number' => $ont?->port_number,
+                    'rx_power' => $rxPower,
+                    'total_tickets' => $totalTickets,
+                    'dominant_category' => $dominantCat,
+                    'has_visited' => $completedVisitsCount > 0,
+                    'has_scheduled_visit' => $hasActiveVisit,
+                ];
+                foreach ($timeline as $tl) {
+                    $odcCustomerTicketsMap[$odcId]['tickets'][] = array_merge($tl, [
+                        'customer_name' => $customer->name,
+                        'customer_code' => $customer->customer_code,
+                    ]);
+                }
             }
 
             if ($totalTickets < $minTickets) {
@@ -441,13 +460,28 @@ class ChronicMonitoringController extends Controller
             : collect();
 
         $latestMaintByOdp = collect();
-        if (!empty($allAffectedOdpIds) && Schema::hasTable('network_maintenances')) {
-            $latestMaintByOdp = NetworkMaintenance::with('technicians')
-                ->whereIn('odp_id', $allAffectedOdpIds)
-                ->orderByDesc('scheduled_date')
-                ->orderByDesc('id')
-                ->get()
-                ->groupBy('odp_id');
+        $latestMaintByOdc = collect();
+        if (Schema::hasTable('network_maintenances')) {
+            if (!empty($allAffectedOdpIds)) {
+                $latestMaintByOdp = NetworkMaintenance::with(['technicians', 'materials.material'])
+                    ->whereIn('odp_id', $allAffectedOdpIds)
+                    ->orderByDesc('scheduled_date')
+                    ->orderByDesc('id')
+                    ->get()
+                    ->groupBy('odp_id');
+            }
+            $allAffectedOdcIds = array_unique(array_merge(
+                array_keys($odcCustomerTicketsMap),
+                $pgjByOdc->keys()->toArray()
+            ));
+            if (!empty($allAffectedOdcIds)) {
+                $latestMaintByOdc = NetworkMaintenance::with(['technicians', 'materials.material'])
+                    ->whereIn('odc_id', $allAffectedOdcIds)
+                    ->orderByDesc('scheduled_date')
+                    ->orderByDesc('id')
+                    ->get()
+                    ->groupBy('odc_id');
+            }
         }
 
         $chronicPaths = [];
@@ -565,8 +599,15 @@ class ChronicMonitoringController extends Controller
                     'maintenance_number' => $latestMaint->maintenance_number,
                     'status' => $latestMaint->status,
                     'scheduled_date' => $latestMaint->scheduled_date ? Carbon::parse($latestMaint->scheduled_date)->format('d M Y') : '-',
+                    'scheduled_date_raw' => $latestMaint->scheduled_date ? Carbon::parse($latestMaint->scheduled_date)->toDateString() : Carbon::today()->toDateString(),
                     'action_taken' => $latestMaint->action_taken,
                     'technicians' => $latestMaint->technicians->pluck('name')->join(', ') ?: 'Tim Maintenance',
+                    'materials_summary' => $latestMaint->materials->map(function ($m) {
+                        $nm = $m->material?->name ?? 'Material';
+                        $q = (float) $m->quantity_prepared;
+                        $u = $m->unit ?: ($m->material?->unit ?? 'pcs');
+                        return "{$nm} ({$q} {$u})";
+                    })->values()->toArray(),
                 ] : null,
                 'affected_customers' => $affectedCustomersList,
                 'recent_tickets' => array_slice($recentTickets, 0, 15),
@@ -580,11 +621,41 @@ class ChronicMonitoringController extends Controller
                 continue;
             }
             $pgjCount = $pgjOdcList->count();
-            $custAgg = $odcCustomerTicketsMap[$odcId] ?? ['pgk_count' => 0, 'pgs_count' => 0, 'customers' => []];
+            $custAgg = $odcCustomerTicketsMap[$odcId] ?? ['pgk_count' => 0, 'pgs_count' => 0, 'customers' => [], 'tickets' => []];
             $custTicketCount = $custAgg['pgk_count'] + $custAgg['pgs_count'];
             $totalIncidents = $pgjCount + $custTicketCount;
             if ($totalIncidents < $minTickets) {
                 continue;
+            }
+
+            if ($search !== '') {
+                $odcAreaName = $odcModel->area?->name ?? '';
+                $odcOltName = $odcModel->olt?->name ?? '';
+                $haystack = strtolower($odcModel->name . ' ' . $odcOltName . ' ' . $odcAreaName . ' ' . ($odcModel->address ?? ''));
+                if (!str_contains($haystack, strtolower($search))) {
+                    continue;
+                }
+            }
+
+            $odcMaintList = $latestMaintByOdc->get($odcId, collect());
+            $latestOdcMaint = $odcMaintList->first();
+
+            $odcRecentTickets = $custAgg['tickets'] ?? [];
+            foreach ($pgjOdcList as $pgj) {
+                $odcRecentTickets[] = [
+                    'id' => $pgj->id,
+                    'type' => 'PGJ',
+                    'ticket_number' => $pgj->ticket_number,
+                    'category' => $pgj->category ?: 'Gangguan Jalur ODC',
+                    'priority' => $pgj->priority ?? 'high',
+                    'status' => $pgj->status,
+                    'is_done' => in_array($pgj->status, ['completed', 'resolved_by_admin'], true),
+                    'reported_issue' => $pgj->reported_issue,
+                    'action_taken' => $pgj->action_taken ?: $pgj->resolution_notes,
+                    'customer_name' => "Jalur Distribusi ODC ({$pgj->affected_customers_count} Pelanggan)",
+                    'customer_code' => $odcModel->name,
+                    'created_at' => $pgj->created_at ? Carbon::parse($pgj->created_at)->format('d M Y H:i') : '-',
+                ];
             }
 
             $chronicPaths[] = [
@@ -613,9 +684,23 @@ class ChronicMonitoringController extends Controller
                 'bad_rx_ont_count' => 0,
                 'severity' => $pgjCount >= 2 || $totalIncidents >= 4 ? 'critical' : 'warning',
                 'diagnosis' => "Jalur distribusi utama ODC tercatat {$pgjCount}x PGJ & {$custTicketCount}x tiket pelanggan di bawahnya.",
-                'latest_maintenance' => null,
-                'affected_customers' => [],
-                'recent_tickets' => [],
+                'latest_maintenance' => $latestOdcMaint ? [
+                    'id' => $latestOdcMaint->id,
+                    'maintenance_number' => $latestOdcMaint->maintenance_number,
+                    'status' => $latestOdcMaint->status,
+                    'scheduled_date' => $latestOdcMaint->scheduled_date ? Carbon::parse($latestOdcMaint->scheduled_date)->format('d M Y') : '-',
+                    'scheduled_date_raw' => $latestOdcMaint->scheduled_date ? Carbon::parse($latestOdcMaint->scheduled_date)->toDateString() : Carbon::today()->toDateString(),
+                    'action_taken' => $latestOdcMaint->action_taken,
+                    'technicians' => $latestOdcMaint->technicians->pluck('name')->join(', ') ?: 'Tim Maintenance',
+                    'materials_summary' => $latestOdcMaint->materials->map(function ($m) {
+                        $nm = $m->material?->name ?? 'Material';
+                        $q = (float) $m->quantity_prepared;
+                        $u = $m->unit ?: ($m->material?->unit ?? 'pcs');
+                        return "{$nm} ({$q} {$u})";
+                    })->values()->toArray(),
+                ] : null,
+                'affected_customers' => array_values($custAgg['customers']),
+                'recent_tickets' => array_slice($odcRecentTickets, 0, 15),
             ];
         }
 
@@ -776,6 +861,16 @@ class ChronicMonitoringController extends Controller
         }
         $customerOptions = $customerOptionsQuery->get();
 
+        // Daftar Material & Order Toko Area untuk Persiapan Material Pemeliharaan Jalur
+        $materials = Material::where(function ($q) {
+                $q->where('is_active', true)->orWhereNull('is_active');
+            })
+            ->with('stocks')
+            ->orderBy('name')
+            ->get(['id', 'name', 'unit', 'stock', 'price_per_unit', 'category']);
+
+        $materialTransactions = fn () => RestockStockService::getRestockTransactions();
+
         return Inertia::render('Operational/ChronicMonitoring', [
             'chronicCustomers' => $chronicCustomers,
             'chronicPaths' => $chronicPaths,
@@ -785,6 +880,8 @@ class ChronicMonitoringController extends Controller
             'areas' => $areas,
             'availableOfficers' => $availableOfficers,
             'customerOptions' => $customerOptions,
+            'materials' => $materials,
+            'materialTransactions' => $materialTransactions,
             'filters' => [
                 'period' => $period,
                 'area_id' => $areaId ? (int) $areaId : null,

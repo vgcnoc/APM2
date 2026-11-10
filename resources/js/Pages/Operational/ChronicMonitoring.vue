@@ -13,6 +13,8 @@ const props = defineProps({
     areas: { type: Array, default: () => [] },
     availableOfficers: { type: Array, default: () => [] },
     customerOptions: { type: Array, default: () => [] },
+    materials: { type: Array, default: () => [] },
+    materialTransactions: { type: Array, default: () => [] },
     filters: { type: Object, default: () => ({}) },
     canManage: { type: Boolean, default: true },
 });
@@ -419,9 +421,12 @@ const deleteVisitItem = (visit) => {
     });
 };
 
-// ── MODAL 3: JADWALKAN PEMELIHARAAN JALUR ODP/ODC LANGSUNG ───────────────
+// ── MODAL 3: JADWALKAN PEMELIHARAAN JALUR ODP/ODC LANGSUNG + PERSIAPAN MATERIAL ──
 const showMaintenanceModal = ref(false);
 const isSubmittingMaint = ref(false);
+const showAllMaintOfficers = ref(false);
+const selectedMaintNode = ref(null);
+
 const maintForm = ref({
     category: 'pengecekan_odp',
     title: '',
@@ -434,9 +439,180 @@ const maintForm = ref({
     priority: 'high',
     description: '',
     technician_ids: [],
+    materials: [],
+    send_wa_technician: true,
 });
 
+const filteredMaintOfficers = computed(() => {
+    if (showAllMaintOfficers.value || !maintForm.value.area_id) {
+        return props.availableOfficers;
+    }
+    const scoped = props.availableOfficers.filter(
+        (o) => !o.area_id || Number(o.area_id) === Number(maintForm.value.area_id) || maintForm.value.technician_ids.includes(o.id)
+    );
+    return scoped.length > 0 ? scoped : props.availableOfficers;
+});
+
+// Daftar Material Persiapan Gudang (Bekal Petugas Pemeliharaan Jalur)
+const availableMaintMaterialItems = computed(() => {
+    const items = [];
+    const targetArea = maintForm.value.area_id;
+    const handledMaterialIds = new Set();
+
+    // 1. Dari Order Toko / Restock Area
+    const trxs = props.materialTransactions || [];
+    trxs.forEach((trx) => {
+        if (targetArea && trx.area_id && Number(trx.area_id) !== Number(targetArea)) return;
+        if (trx.items && trx.items.length > 0) {
+            trx.items.forEach((item) => {
+                if (!item.material) return;
+                const name = (item.material.name || '').toLowerCase();
+                const category = (item.material.category || '').toLowerCase();
+                const isRegistered = item.is_registered_to_ont === 1 || item.is_registered_to_ont === true;
+
+                if (!isRegistered && !name.includes('modem') && !category.includes('modem') && !name.includes('ont') && !category.includes('ont')) {
+                    const remainingInOrder =
+                        typeof item.remaining_quantity !== 'undefined'
+                            ? parseFloat(item.remaining_quantity)
+                            : parseFloat(item.quantity);
+
+                    let areaStock = null;
+                    if (item.material.stocks && targetArea) {
+                        const stockObj = item.material.stocks.find((s) => Number(s.area_id) === Number(targetArea));
+                        if (stockObj) {
+                            areaStock = parseFloat(stockObj.stock) || 0;
+                        }
+                    }
+
+                    let availableQty = remainingInOrder;
+                    if (areaStock !== null && areaStock < availableQty) {
+                        availableQty = areaStock;
+                    }
+
+                    if (availableQty > 0) {
+                        handledMaterialIds.add(item.material_id);
+                        items.push({
+                            unique_key: 'ord-' + item.id,
+                            id: item.id,
+                            material_id: item.material_id,
+                            trx_number: trx.transaction_number,
+                            trx_date: trx.date,
+                            purpose: trx.purpose,
+                            area_name: trx.area_model?.name || trx.area || 'Order Toko Area',
+                            name: item.material.name,
+                            category: item.material.category,
+                            area_stock: availableQty,
+                            unit: item.unit || item.material.unit || 'pcs',
+                            material: item.material,
+                        });
+                    }
+                }
+            });
+        }
+    });
+
+    // 2. Dari Inventory Gudang Area
+    const allMaterials = props.materials || [];
+    allMaterials.forEach((m) => {
+        const name = (m.name || '').toLowerCase();
+        const category = (m.category || '').toLowerCase();
+        if (name.includes('modem') || category.includes('modem') || name.includes('ont') || category.includes('ont')) {
+            return;
+        }
+
+        let areaStock = 0;
+        let hasAreaStock = false;
+        if (m.stocks && targetArea) {
+            const stockObj = m.stocks.find((s) => Number(s.area_id) === Number(targetArea));
+            if (stockObj) {
+                hasAreaStock = true;
+                areaStock = parseFloat(stockObj.stock) || 0;
+            }
+        }
+
+        if (targetArea) {
+            if (!hasAreaStock || areaStock <= 0) return;
+        } else {
+            areaStock = parseFloat(m.stock) || 0;
+            if (areaStock <= 0) return;
+        }
+
+        if (!handledMaterialIds.has(m.id) && areaStock > 0) {
+            items.push({
+                unique_key: 'mat-' + m.id,
+                id: 'mat-' + m.id,
+                material_id: m.id,
+                trx_number: '',
+                area_name: 'Stok Gudang Area',
+                name: m.name,
+                category: m.category,
+                area_stock: areaStock,
+                unit: m.unit || 'pcs',
+                material: m,
+            });
+        }
+    });
+
+    return items.filter((item) => (parseFloat(item.area_stock) || 0) > 0);
+});
+
+const addMaintMaterialRow = () => {
+    if (!maintForm.value.materials) {
+        maintForm.value.materials = [];
+    }
+    maintForm.value.materials.push({
+        selected_key: '',
+        material_transaction_item_id: null,
+        material_id: '',
+        trx_number: '',
+        name: '',
+        quantity: 1,
+        unit: 'pcs',
+        max_stock: null,
+        notes: '',
+    });
+};
+
+const removeMaintMaterialRow = (index) => {
+    maintForm.value.materials.splice(index, 1);
+};
+
+const onMaintMaterialChange = (item) => {
+    const selectedKey = item.selected_key;
+    const selectedOrder = availableMaintMaterialItems.value.find(
+        (i) => i.unique_key === selectedKey || i.id === selectedKey || i.material_id === selectedKey
+    );
+    if (selectedOrder) {
+        item.material_id = selectedOrder.material_id;
+        item.trx_number = selectedOrder.trx_number || '';
+        item.name = selectedOrder.name;
+        item.unit = selectedOrder.unit;
+        item.max_stock = selectedOrder.area_stock;
+        item.material_transaction_item_id = selectedOrder.unique_key?.startsWith('ord-')
+            ? selectedOrder.id || null
+            : null;
+
+        if (item.quantity && item.quantity > selectedOrder.area_stock) {
+            item.quantity = selectedOrder.area_stock;
+        } else if (!item.quantity || item.quantity <= 0) {
+            item.quantity = 1;
+        }
+    }
+};
+
+const validateMaintMaterialQty = (item) => {
+    if (item.max_stock !== undefined && item.max_stock !== null) {
+        if (item.quantity > item.max_stock) {
+            item.quantity = item.max_stock;
+        } else if (item.quantity < 0.01) {
+            item.quantity = 0.01;
+        }
+    }
+};
+
 const openScheduleMaintenanceModal = (pathNode) => {
+    selectedMaintNode.value = pathNode;
+    showAllMaintOfficers.value = false;
     maintForm.value = {
         category: pathNode.node_type === 'ODC' ? 'pengecekan_odc' : 'pengecekan_odp',
         title: `Peremajaan & Pengecekan ${pathNode.name} (Rawan Gangguan ${pathNode.total_incidents}x)`,
@@ -449,6 +625,8 @@ const openScheduleMaintenanceModal = (pathNode) => {
         priority: pathNode.severity === 'critical' ? 'urgent' : 'high',
         description: `${pathNode.diagnosis} Mohon cek konektor, adapter splitter, closure, dan redaman jalur distribusi pada ${pathNode.name}.`,
         technician_ids: [],
+        materials: [],
+        send_wa_technician: true,
     };
     showMaintenanceModal.value = true;
 };
@@ -462,6 +640,19 @@ const toggleMaintTech = (id) => {
     }
 };
 
+const openNetworkMaintenancePage = (maint) => {
+    if (!maint) {
+        router.visit('/operational/network-maintenance');
+        return;
+    }
+    router.visit('/operational/network-maintenance', {
+        data: {
+            date: maint.scheduled_date_raw || new Date().toISOString().slice(0, 10),
+            search: maint.maintenance_number || '',
+        },
+    });
+};
+
 const submitScheduleMaintenance = async () => {
     if (!maintForm.value.title) {
         alert('Judul pemeliharaan jalur wajib diisi.');
@@ -469,7 +660,24 @@ const submitScheduleMaintenance = async () => {
     }
     isSubmittingMaint.value = true;
     try {
-        const res = await axios.post(route('operational.network-maintenance.store'), maintForm.value);
+        const validMaterials = (maintForm.value.materials || [])
+            .filter((m) => m.material_id && parseFloat(m.quantity) > 0)
+            .map((m) => ({
+                material_id: m.material_id,
+                material_transaction_item_id: m.material_transaction_item_id || null,
+                trx_number: m.trx_number || null,
+                quantity_prepared: parseFloat(m.quantity) || 1,
+                quantity: parseFloat(m.quantity) || 1,
+                unit: m.unit || 'pcs',
+                notes: m.notes || '',
+            }));
+
+        const payload = {
+            ...maintForm.value,
+            materials: validMaterials,
+        };
+
+        const res = await axios.post(route('operational.network-maintenance.store'), payload);
         if (res.data?.success) {
             showMaintenanceModal.value = false;
             router.reload({ preserveScroll: true });
@@ -1176,8 +1384,45 @@ const formatWaUrl = (phone, customText = '') => {
                             </div>
 
                             <!-- Info Pemeliharaan Jalur Terakhir -->
-                            <div v-if="pathNode.latest_maintenance" class="p-2 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 text-xs text-emerald-800 dark:text-emerald-200">
-                                🔧 <strong>Riwayat Pemeliharaan Jalur:</strong> {{ pathNode.latest_maintenance.maintenance_number }} ({{ pathNode.latest_maintenance.scheduled_date }}) — Status: <strong class="uppercase">{{ pathNode.latest_maintenance.status }}</strong> oleh {{ pathNode.latest_maintenance.technicians }}
+                            <div
+                                v-if="pathNode.latest_maintenance"
+                                class="p-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 text-xs text-emerald-800 dark:text-emerald-200 space-y-1.5"
+                            >
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <div>
+                                        🔧 <strong>Pemeliharaan Jalur:</strong>
+                                        <span class="font-mono font-bold ml-1">{{ pathNode.latest_maintenance.maintenance_number }}</span>
+                                        <span class="mx-1">•</span>
+                                        <span>{{ pathNode.latest_maintenance.scheduled_date }}</span>
+                                        <span class="mx-1">•</span>
+                                        <span>Status: <strong class="uppercase">{{ pathNode.latest_maintenance.status }}</strong></span>
+                                        <span class="mx-1">•</span>
+                                        <span>Petugas: <strong>{{ pathNode.latest_maintenance.technicians }}</strong></span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        @click="openNetworkMaintenancePage(pathNode.latest_maintenance)"
+                                        class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold cursor-pointer transition"
+                                    >
+                                        📋 Buka & Isi Laporan di Pemeliharaan Jalur →
+                                    </button>
+                                </div>
+                                <div
+                                    v-if="pathNode.latest_maintenance.materials_summary && pathNode.latest_maintenance.materials_summary.length"
+                                    class="flex flex-wrap items-center gap-1.5 pt-0.5"
+                                >
+                                    <span class="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">📦 Bekal Material:</span>
+                                    <span
+                                        v-for="(ms, mIdx) in pathNode.latest_maintenance.materials_summary"
+                                        :key="mIdx"
+                                        class="px-2 py-0.5 rounded bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-700 text-[11px] font-semibold text-emerald-800 dark:text-emerald-200"
+                                    >
+                                        {{ ms }}
+                                    </span>
+                                </div>
+                                <p v-if="pathNode.latest_maintenance.action_taken" class="text-[11px] text-emerald-900 dark:text-emerald-100">
+                                    <strong>Hasil Tindakan:</strong> {{ pathNode.latest_maintenance.action_taken }}
+                                </p>
                             </div>
                         </div>
 
@@ -1190,6 +1435,16 @@ const formatWaUrl = (phone, customText = '') => {
                             >
                                 <span>🔧</span>
                                 <span>Jadwalkan Perbaikan Jalur</span>
+                            </button>
+
+                            <button
+                                v-if="pathNode.latest_maintenance"
+                                type="button"
+                                @click="openNetworkMaintenancePage(pathNode.latest_maintenance)"
+                                class="flex-1 lg:flex-none px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                            >
+                                <span>📝</span>
+                                <span>Update Laporan Jalur</span>
                             </button>
 
                             <button
@@ -1991,37 +2246,89 @@ const formatWaUrl = (phone, customText = '') => {
         </div>
 
         <!-- ================================================================= -->
-        <!-- MODAL 3: JADWALKAN PEMELIHARAAN JALUR ODP / ODC                    -->
+        <!-- MODAL 3: JADWALKAN PEMELIHARAAN JALUR ODP / ODC + BEKAL MATERIAL   -->
         <!-- ================================================================= -->
         <div
             v-if="showMaintenanceModal"
             class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto"
         >
-            <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-xl w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 my-8">
+            <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 my-8 max-h-[92vh] overflow-y-auto">
                 <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
                     <div>
-                        <h3 class="text-base font-extrabold text-slate-900 dark:text-white">
+                        <h3 class="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">
                             🔧 Jadwalkan Pemeliharaan / Peremajaan Jalur
                         </h3>
                         <p class="text-xs text-slate-500 mt-0.5">
-                            Otomatis terhubung ke menu Pemeliharaan Jalur (ODP/ODC)
+                            Otomatis terhubung ke menu <strong>Pemeliharaan Jalur (ODP/ODC)</strong> & Inventory Gudang Area
                         </p>
                     </div>
                     <button @click="showMaintenanceModal = false" class="text-slate-400 hover:text-slate-600 text-xl font-bold cursor-pointer">✕</button>
                 </div>
 
-                <div class="space-y-3">
+                <!-- Info Ringkas Titik Distribusi -->
+                <div
+                    v-if="selectedMaintNode"
+                    class="p-3 rounded-xl bg-purple-50/80 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/60 flex flex-wrap items-center justify-between gap-2 text-xs"
+                >
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="px-2 py-0.5 rounded bg-purple-600 text-white font-extrabold text-[11px]">
+                            {{ selectedMaintNode.node_type }}
+                        </span>
+                        <span class="font-extrabold text-purple-950 dark:text-purple-100 text-sm">
+                            {{ selectedMaintNode.name }}
+                        </span>
+                        <span class="px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-bold">
+                            📍 {{ selectedMaintNode.area_name }}
+                        </span>
+                    </div>
+                    <div class="text-[11px] font-bold text-rose-600 dark:text-rose-400">
+                        ⚡ {{ selectedMaintNode.total_incidents }} Insiden ({{ selectedMaintNode.affected_customers_count }} Pelanggan)
+                    </div>
+                </div>
+
+                <div class="space-y-3.5">
+                    <!-- Kategori & Prioritas -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Jenis Kegiatan Jalur</label>
+                            <select
+                                v-model="maintForm.category"
+                                class="w-full rounded-xl border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-xs font-semibold py-2 px-3"
+                            >
+                                <option value="pengecekan_odp">🔌 Pengecekan & Peremajaan ODP</option>
+                                <option value="pengecekan_odc">🗄️ Pengecekan & Peremajaan ODC</option>
+                                <option value="perapihan_jalur">🧵 Perapihan Jalur Distribusi / Dropcore</option>
+                                <option value="pengecekan_jalur_utama">⚡ Pengecekan Jalur Utama / Backbone</option>
+                                <option value="pemeliharaan_rutin">🛡️ Pemeliharaan Rutin Preventif</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Prioritas Penanganan</label>
+                            <select
+                                v-model="maintForm.priority"
+                                class="w-full rounded-xl border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-xs font-semibold py-2 px-3"
+                            >
+                                <option value="urgent">🔴 Urgent (Kritis / Segera)</option>
+                                <option value="high">🟠 High (Prioritas Tinggi)</option>
+                                <option value="normal">🔵 Normal (Terjadwal)</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Judul Kegiatan</label>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                            Judul Kegiatan <span class="text-rose-500">*</span>
+                        </label>
                         <input
                             v-model="maintForm.title"
                             type="text"
                             class="w-full rounded-xl border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-xs py-2 px-3"
                         />
                     </div>
+
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Tanggal</label>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Tanggal Pelaksanaan</label>
                             <input
                                 v-model="maintForm.scheduled_date"
                                 type="date"
@@ -2029,7 +2336,7 @@ const formatWaUrl = (phone, customText = '') => {
                             />
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Jam</label>
+                            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Jam Mulai</label>
                             <input
                                 v-model="maintForm.scheduled_time"
                                 type="time"
@@ -2037,33 +2344,152 @@ const formatWaUrl = (phone, customText = '') => {
                             />
                         </div>
                     </div>
+
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Instruksi Pengerjaan</label>
+                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Instruksi Pengerjaan & Diagnosa</label>
                         <textarea
                             v-model="maintForm.description"
                             rows="3"
                             class="w-full rounded-xl border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-xs p-2.5"
                         ></textarea>
                     </div>
+
+                    <!-- Pilih Petugas Teknis / Maintenance -->
                     <div>
-                        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                            Pilih Petugas Teknis / Maintenance ({{ maintForm.technician_ids.length }} dipilih)
-                        </label>
-                        <div class="grid grid-cols-2 gap-1.5 max-h-40 overflow-y-auto p-2 rounded-xl border border-slate-200 dark:border-slate-700">
-                            <label
-                                v-for="off in availableOfficers"
-                                :key="off.id"
-                                class="flex items-center gap-2 p-1.5 rounded-lg text-xs cursor-pointer"
-                            >
-                                <input
-                                    type="checkbox"
-                                    :checked="maintForm.technician_ids.includes(off.id)"
-                                    @change="toggleMaintTech(off.id)"
-                                    class="rounded text-purple-600"
-                                />
-                                <span class="truncate">{{ off.name }}</span>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                👷 Pilih Petugas Teknis / Maintenance ({{ maintForm.technician_ids.length }} dipilih)
+                            </label>
+                            <label class="flex items-center gap-1.5 text-[11px] text-slate-500 cursor-pointer">
+                                <input type="checkbox" v-model="showAllMaintOfficers" class="rounded text-purple-600" />
+                                <span>Tampilkan petugas semua wilayah</span>
                             </label>
                         </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-40 overflow-y-auto p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40">
+                            <label
+                                v-for="off in filteredMaintOfficers"
+                                :key="off.id"
+                                :class="[
+                                    'flex items-center justify-between p-2 rounded-lg text-xs cursor-pointer border transition',
+                                    maintForm.technician_ids.includes(off.id)
+                                        ? 'bg-purple-50 dark:bg-purple-950/60 border-purple-400 text-purple-900 dark:text-purple-200 font-bold'
+                                        : 'bg-white dark:bg-slate-800 border-slate-200/70 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                                ]"
+                            >
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <input
+                                        type="checkbox"
+                                        :checked="maintForm.technician_ids.includes(off.id)"
+                                        @change="toggleMaintTech(off.id)"
+                                        class="rounded text-purple-600"
+                                    />
+                                    <span class="truncate">{{ off.name }}</span>
+                                </div>
+                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 shrink-0">
+                                    {{ off.role_label }}
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- ========================================================= -->
+                    <!-- PERSIAPAN MATERIAL GUDANG / BEKAL PETUGAS (OPSIONAL)      -->
+                    <!-- ========================================================= -->
+                    <div class="p-3.5 rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/50 space-y-2.5">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                                <h4 class="text-xs font-extrabold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                                    <span>📦</span>
+                                    <span>Persiapan Material Gudang / Bekal Petugas (Opsional)</span>
+                                </h4>
+                                <p class="text-[11px] text-amber-700 dark:text-amber-400">
+                                    Otomatis memotong stok gudang area (OUT-MNT) & dihitung pemakaian/sisa kembalinya saat selesai
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                @click="addMaintMaterialRow"
+                                class="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-xs cursor-pointer flex items-center gap-1"
+                            >
+                                <span>+</span>
+                                <span>Tambah Material</span>
+                            </button>
+                        </div>
+
+                        <div
+                            v-if="!maintForm.materials || maintForm.materials.length === 0"
+                            class="text-center py-2.5 px-3 rounded-lg bg-white/70 dark:bg-slate-900/50 border border-dashed border-amber-300 dark:border-amber-800 text-[11px] text-slate-500 dark:text-slate-400"
+                        >
+                            Belum ada material yang disiapkan. Klik <strong>+ Tambah Material</strong> jika petugas membawa splitter, konektor, closure, atau kabel dari gudang.
+                        </div>
+
+                        <div v-else class="space-y-2">
+                            <div
+                                v-for="(matItem, mIdx) in maintForm.materials"
+                                :key="mIdx"
+                                class="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-amber-200 dark:border-slate-700 space-y-2"
+                            >
+                                <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                                    <div class="sm:col-span-7">
+                                        <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Pilih Material (Stok Area / Order Toko)</label>
+                                        <select
+                                            v-model="matItem.selected_key"
+                                            @change="onMaintMaterialChange(matItem)"
+                                            class="w-full rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white text-xs py-1.5 px-2"
+                                        >
+                                            <option value="">-- Pilih Material dari Gudang --</option>
+                                            <option
+                                                v-for="opt in availableMaintMaterialItems"
+                                                :key="opt.unique_key"
+                                                :value="opt.unique_key"
+                                            >
+                                                {{ opt.name }} — Sisa: {{ opt.area_stock }} {{ opt.unit }} ({{ opt.trx_number ? `Order ${opt.trx_number}` : opt.area_name }})
+                                            </option>
+                                        </select>
+                                    </div>
+                                    <div class="sm:col-span-3">
+                                        <label class="block text-[10px] font-bold text-slate-500 mb-0.5">
+                                            Jumlah Dibawa {{ matItem.max_stock !== null ? `(Maks: ${matItem.max_stock})` : '' }}
+                                        </label>
+                                        <div class="flex items-center gap-1">
+                                            <input
+                                                v-model.number="matItem.quantity"
+                                                type="number"
+                                                step="any"
+                                                min="0.01"
+                                                :max="matItem.max_stock || undefined"
+                                                @input="validateMaintMaterialQty(matItem)"
+                                                class="w-full rounded-lg border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-white text-xs py-1.5 px-2 font-bold"
+                                            />
+                                            <span class="text-[11px] font-bold text-slate-500 shrink-0">{{ matItem.unit || 'pcs' }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="sm:col-span-2 flex justify-end sm:pt-4">
+                                        <button
+                                            type="button"
+                                            @click="removeMaintMaterialRow(mIdx)"
+                                            class="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 text-xs font-bold cursor-pointer"
+                                        >
+                                            🗑️ Hapus
+                                        </button>
+                                    </div>
+                                </div>
+                                <input
+                                    v-model="matItem.notes"
+                                    type="text"
+                                    placeholder="Keterangan material (opsional, misal: Cadangan ganti splitter ODP)..."
+                                    class="w-full rounded-lg border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-white text-[11px] py-1 px-2.5"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Kirim Notifikasi WA ke Teknisi -->
+                    <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                        <label class="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-200 cursor-pointer">
+                            <input type="checkbox" v-model="maintForm.send_wa_technician" class="rounded text-purple-600" />
+                            <span>📲 Kirim WA Tugas & Rincian Bekal Material ke Teknisi yang Ditugaskan</span>
+                        </label>
                     </div>
                 </div>
 
@@ -2071,7 +2497,7 @@ const formatWaUrl = (phone, customText = '') => {
                     <button
                         type="button"
                         @click="showMaintenanceModal = false"
-                        class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold cursor-pointer"
+                        class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold cursor-pointer"
                     >
                         Batal
                     </button>
@@ -2079,9 +2505,9 @@ const formatWaUrl = (phone, customText = '') => {
                         type="button"
                         :disabled="isSubmittingMaint"
                         @click="submitScheduleMaintenance"
-                        class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold cursor-pointer disabled:opacity-50"
+                        class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-md cursor-pointer disabled:opacity-50"
                     >
-                        {{ isSubmittingMaint ? 'Menyimpan...' : '🔧 Simpan Jadwal Pemeliharaan' }}
+                        {{ isSubmittingMaint ? 'Menyimpan...' : '🔧 Simpan Jadwal & Bekal Material' }}
                     </button>
                 </div>
             </div>
