@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\Setting;
 use App\Models\User;
+use App\Services\CustomerBillingPrice;
 use App\Services\DataPrivacyMaskingService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -13,7 +15,15 @@ class TaxReportController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Customer::with(['package', 'invoices' => fn($q) => $q->where('is_reseller_balance', false)->latest('id')])
+        $month = (int) $request->input('month', now()->month);
+        $year = (int) $request->input('year', now()->year);
+        if ($month < 1 || $month > 12) $month = now()->month;
+        if ($year < 2020 || $year > 2050) $year = now()->year;
+
+        $query = Customer::with(['package', 'invoices' => fn($q) => $q->where('is_reseller_balance', false)
+            ->where('period_month', $month)
+            ->where('period_year', $year)
+            ->latest('id')])
             ->where('status', 'active')
             ->orderBy('name');
 
@@ -28,15 +38,19 @@ class TaxReportController extends Controller
             });
         }
 
-        $globalBhp = (float) \App\Models\Setting::get('tax_bhp', '1.25');
-        $globalUso = (float) \App\Models\Setting::get('tax_uso', '0.5');
+        $globalTaxPpn = (float) Setting::get('tax_ppn', '0');
+        $globalBhp = (float) Setting::get('tax_bhp', '1.25');
+        $globalUso = (float) Setting::get('tax_uso', '0.5');
 
-        $customers = $query->paginate(20)->withQueryString()->through(function ($customer) use ($globalBhp, $globalUso) {
-            return $this->resolveCustomerTaxData($customer, $globalBhp, $globalUso);
+        $customers = $query->paginate(20)->withQueryString()->through(function ($customer) use ($globalTaxPpn, $globalBhp, $globalUso, $month, $year) {
+            return $this->resolveCustomerTaxData($customer, $globalTaxPpn, $globalBhp, $globalUso, $month, $year);
         });
         
-        // Aggregate totals for scoped active customers
-        $activeCustomersQuery = Customer::with(['package', 'invoices' => fn($q) => $q->where('is_reseller_balance', false)->latest('id')])
+        // Aggregate totals for scoped active customers in this period
+        $activeCustomersQuery = Customer::with(['package', 'invoices' => fn($q) => $q->where('is_reseller_balance', false)
+            ->where('period_month', $month)
+            ->where('period_year', $year)
+            ->latest('id')])
             ->where('status', 'active');
         DataPrivacyMaskingService::applyCustomerFilter($activeCustomersQuery, 'customers.id', null, 'tax_report');
         $activeCustomers = $activeCustomersQuery->get();
@@ -48,7 +62,7 @@ class TaxReportController extends Controller
         $grand_total = 0;
         
         foreach ($activeCustomers as $cust) {
-            $data = $this->resolveCustomerTaxData($cust, $globalBhp, $globalUso);
+            $data = $this->resolveCustomerTaxData($cust, $globalTaxPpn, $globalBhp, $globalUso, $month, $year);
             $total_base_price += $data['base_price'];
             $total_ppn += $data['ppn_amount'];
             $total_bhp += $data['bhp_amount'];
@@ -69,7 +83,14 @@ class TaxReportController extends Controller
 
         return Inertia::render('Customers/TaxReport', [
             'customers' => $customers,
-            'filters' => $request->only(['search']),
+            'filters' => array_merge($request->only(['search']), [
+                'month' => $month,
+                'year' => $year,
+            ]),
+            'period' => [
+                'month' => $month,
+                'year' => $year,
+            ],
             'totals' => $totals,
             'masking_info' => DataPrivacyMaskingService::getMaskingInfoForUser(),
             'masking_settings' => DataPrivacyMaskingService::getSettings(),
@@ -81,7 +102,15 @@ class TaxReportController extends Controller
 
     public function print(Request $request)
     {
-        $query = Customer::with(['package', 'invoices' => fn($q) => $q->where('is_reseller_balance', false)->latest('id')])
+        $month = (int) $request->input('month', now()->month);
+        $year = (int) $request->input('year', now()->year);
+        if ($month < 1 || $month > 12) $month = now()->month;
+        if ($year < 2020 || $year > 2050) $year = now()->year;
+
+        $query = Customer::with(['package', 'invoices' => fn($q) => $q->where('is_reseller_balance', false)
+            ->where('period_month', $month)
+            ->where('period_year', $year)
+            ->latest('id')])
             ->where('status', 'active')
             ->orderBy('name');
 
@@ -96,13 +125,14 @@ class TaxReportController extends Controller
             });
         }
 
-        $globalBhp = (float) \App\Models\Setting::get('tax_bhp', '1.25');
-        $globalUso = (float) \App\Models\Setting::get('tax_uso', '0.5');
+        $globalTaxPpn = (float) Setting::get('tax_ppn', '0');
+        $globalBhp = (float) Setting::get('tax_bhp', '1.25');
+        $globalUso = (float) Setting::get('tax_uso', '0.5');
 
         $totals = ['base_price' => 0, 'ppn' => 0, 'bhp' => 0, 'uso' => 0, 'grand_total' => 0];
 
-        $rows = $query->get()->map(function ($customer) use (&$totals, $globalBhp, $globalUso) {
-            $data = $this->resolveCustomerTaxData($customer, $globalBhp, $globalUso);
+        $rows = $query->get()->map(function ($customer) use (&$totals, $globalTaxPpn, $globalBhp, $globalUso, $month, $year) {
+            $data = $this->resolveCustomerTaxData($customer, $globalTaxPpn, $globalBhp, $globalUso, $month, $year);
 
             $totals['base_price'] += $data['base_price'];
             $totals['ppn'] += $data['ppn_amount'];
@@ -117,19 +147,35 @@ class TaxReportController extends Controller
             'rows' => $rows,
             'totals' => $totals,
             'search' => $request->search,
+            'month' => $month,
+            'year' => $year,
         ]);
     }
 
-    private function resolveCustomerTaxData(Customer $customer, ?float $globalBhp = null, ?float $globalUso = null): array
-    {
+    private function resolveCustomerTaxData(
+        Customer $customer,
+        ?float $globalTaxPpn = null,
+        ?float $globalBhp = null,
+        ?float $globalUso = null,
+        ?int $month = null,
+        ?int $year = null
+    ): array {
+        if ($globalTaxPpn === null) {
+            $globalTaxPpn = (float) Setting::get('tax_ppn', '0');
+        }
         if ($globalBhp === null) {
-            $globalBhp = (float) \App\Models\Setting::get('tax_bhp', '1.25');
+            $globalBhp = (float) Setting::get('tax_bhp', '1.25');
         }
         if ($globalUso === null) {
-            $globalUso = (float) \App\Models\Setting::get('tax_uso', '0.5');
+            $globalUso = (float) Setting::get('tax_uso', '0.5');
         }
 
-        $ppn_percent = $customer->tax_ppn !== null ? (float) $customer->tax_ppn : 0.0;
+        $month = $month ?? now()->month;
+        $year = $year ?? now()->year;
+
+        // PPN: jika customer->tax_ppn NULL, warisi setting global tax_ppn.
+        // Jika customer->tax_ppn diisi angka (misal 0), gunakan angka tersebut (misal bebas pajak).
+        $ppn_percent = $customer->tax_ppn !== null ? (float) $customer->tax_ppn : $globalTaxPpn;
 
         // Auto-calculate BHP & USO if customer has tax enabled (or customer custom override > 0)
         if ($customer->tax_bhp !== null && (float) $customer->tax_bhp > 0) {
@@ -148,30 +194,40 @@ class TaxReportController extends Controller
             $uso_percent = 0.0;
         }
 
-        $invoice = $customer->invoices->where('period_month', now()->month)->where('period_year', now()->year)->first()
-            ?? $customer->invoices->first();
+        // Cari invoice khusus untuk periode (bulan & tahun) yang sedang dilihat
+        $invoice = $customer->invoices->where('period_month', $month)->where('period_year', $year)->first();
 
         $isProrata = $invoice ? ($invoice->is_prorata || $invoice->billing_type === 'prorata') : false;
 
         if ($customer->service_status === 'gratis') {
             $basePrice = 0;
+            $ppn_amount = 0;
+            $total_price = 0;
         } elseif ($invoice && $invoice->amount > 0) {
-            // Jika ada invoice terbit (termasuk tagihan prorata aktivasi), DPP dihitung dari nominal riil invoice
+            // Jika ada invoice terbit di periode ini, DPP dihitung dari nominal invoice
             if ($ppn_percent > 0) {
                 $basePrice = (int) round((float) $invoice->amount / (1 + ($ppn_percent / 100)));
+                $ppn_amount = (int) ($invoice->amount - $basePrice);
             } else {
                 $basePrice = (int) round((float) $invoice->amount);
+                $ppn_amount = 0;
             }
+            $total_price = (int) $invoice->amount;
         } else {
-            $basePrice = (int) round(\App\Services\CustomerBillingPrice::monthly($customer));
+            // Jika belum terbit invoice untuk periode ini, ambil nilai paket bulanan normal aktif
+            $basePrice = (int) round(CustomerBillingPrice::monthly($customer));
+            if ($ppn_percent > 0) {
+                $ppn_amount = (int) round($basePrice * ($ppn_percent / 100));
+            } else {
+                $ppn_amount = 0;
+            }
+            $total_price = (int) ($basePrice + $ppn_amount);
         }
 
-        $ppn_amount = (int) round($basePrice * ($ppn_percent / 100));
         $bhp_amount = (int) round($basePrice * ($bhp_percent / 100));
         $uso_amount = (int) round($basePrice * ($uso_percent / 100));
 
         $total_tax = (int) ($ppn_amount + $bhp_amount + $uso_amount);
-        $total_price = (int) ($basePrice + $ppn_amount); // Tagihan aktual pelanggan (DPP + PPN)
 
         return [
             'id' => $customer->id,

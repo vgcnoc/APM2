@@ -130,10 +130,14 @@ class DataPrivacyMaskingService
         $targetCustomers = (int) ($params['target_customers'] ?? 500);
         $selectionMethod = $params['selection_method'] ?? 'fifo';
 
+        $globalTaxPpn = (float) Setting::get('tax_ppn', '0');
         $globalBhp = (float) Setting::get('tax_bhp', '1.25');
         $globalUso = (float) Setting::get('tax_uso', '0.5');
 
-        $query = Customer::with(['package', 'invoices' => fn($q) => $q->where('is_reseller_balance', false)->latest('id')])
+        $query = Customer::with(['package', 'invoices' => fn($q) => $q->where('is_reseller_balance', false)
+            ->where('period_month', now()->month)
+            ->where('period_year', now()->year)
+            ->latest('id')])
             ->where('status', 'active');
 
         switch ($selectionMethod) {
@@ -170,7 +174,7 @@ class DataPrivacyMaskingService
         $sampleCustomers = [];
 
         foreach ($allCustomers as $cust) {
-            $ppn_percent = $cust->tax_ppn !== null ? (float) $cust->tax_ppn : 0.0;
+            $ppn_percent = $cust->tax_ppn !== null ? (float) $cust->tax_ppn : $globalTaxPpn;
             if ($cust->tax_bhp !== null && (float) $cust->tax_bhp > 0) {
                 $bhp_percent = (float) $cust->tax_bhp;
             } elseif ($cust->service_status !== 'gratis' && $ppn_percent > 0) {
@@ -187,25 +191,29 @@ class DataPrivacyMaskingService
                 $uso_percent = 0.0;
             }
 
-            $invoice = $cust->invoices->where('period_month', now()->month)->where('period_year', now()->year)->first()
-                ?? $cust->invoices->first();
+            $invoice = $cust->invoices->where('period_month', now()->month)->where('period_year', now()->year)->first();
 
             if ($cust->service_status === 'gratis') {
                 $basePrice = 0;
+                $ppn_amount = 0;
+                $total_price = 0;
             } elseif ($invoice && $invoice->amount > 0) {
                 if ($ppn_percent > 0) {
                     $basePrice = (int) round((float) $invoice->amount / (1 + ($ppn_percent / 100)));
+                    $ppn_amount = (int) ($invoice->amount - $basePrice);
                 } else {
                     $basePrice = (int) round((float) $invoice->amount);
+                    $ppn_amount = 0;
                 }
+                $total_price = (int) $invoice->amount;
             } else {
                 $basePrice = (int) round(CustomerBillingPrice::monthly($cust));
+                $ppn_amount = (int) round($basePrice * ($ppn_percent / 100));
+                $total_price = (int) ($basePrice + $ppn_amount);
             }
 
-            $ppn_amount = (int) round($basePrice * ($ppn_percent / 100));
             $bhp_amount = (int) round($basePrice * ($bhp_percent / 100));
             $uso_amount = (int) round($basePrice * ($uso_percent / 100));
-            $total_price = (int) ($basePrice + $ppn_amount);
 
             // Mode: Customer Count
             if ($mode === 'customer_count') {

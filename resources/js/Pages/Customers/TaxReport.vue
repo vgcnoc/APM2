@@ -127,13 +127,32 @@
                     </div>
 
                     <div class="flex flex-wrap sm:flex-nowrap items-center gap-2.5 w-full sm:w-auto">
+                        <!-- Filter Periode (Bulan & Tahun) -->
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <select 
+                                v-model="selectedMonth" 
+                                @change="onPeriodChange" 
+                                class="px-2.5 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 bg-white focus:border-indigo-500 shadow-sm"
+                                title="Pilih Bulan Laporan Pajak">
+                                <option v-for="(mName, mIdx) in monthNames" :key="mIdx" :value="mIdx + 1">{{ mName }}</option>
+                            </select>
+
+                            <select 
+                                v-model="selectedYear" 
+                                @change="onPeriodChange" 
+                                class="px-2.5 py-2 rounded-xl border border-gray-200 text-xs font-bold text-gray-800 bg-white focus:border-indigo-500 shadow-sm"
+                                title="Pilih Tahun Laporan Pajak">
+                                <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}</option>
+                            </select>
+                        </div>
+
                         <div class="relative flex-1 sm:flex-initial min-w-0">
                             <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                             <input 
                                 type="text" 
                                 v-model="search"
                                 placeholder="Cari pelanggan..." 
-                                class="pl-10 pr-4 py-2 w-full sm:w-56 border-gray-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-sm transition-shadow"
+                                class="pl-10 pr-4 py-2 w-full sm:w-52 border-gray-200 rounded-xl text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-sm transition-shadow"
                                 @keyup.enter="doSearch"
                             >
                         </div>
@@ -143,9 +162,9 @@
                             v-if="can_manage_masking" 
                             type="button"
                             @click="openMaskingModal" 
-                            class="flex items-center justify-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-xl font-bold text-sm transition-colors border border-purple-200 shadow-xs whitespace-nowrap">
+                            class="flex items-center justify-center gap-2 px-3.5 py-2 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-xl font-bold text-sm transition-colors border border-purple-200 shadow-xs whitespace-nowrap">
                             <span>🧮</span>
-                            <span>Target Omset & Privasi</span>
+                            <span>Target Omset</span>
                         </button>
 
                         <button @click="printReport" class="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-xl font-semibold text-sm transition-colors border border-indigo-100 shadow-sm whitespace-nowrap">
@@ -423,6 +442,7 @@ const props = defineProps({
     customers: Object,
     filters: Object,
     totals: Object,
+    period: { type: Object, default: () => ({ month: new Date().getMonth() + 1, year: new Date().getFullYear() }) },
     masking_info: { type: Object, default: () => ({}) },
     masking_settings: { type: Object, default: () => ({}) },
     can_manage_masking: { type: Boolean, default: false },
@@ -430,14 +450,35 @@ const props = defineProps({
     available_users: { type: Array, default: () => [] },
 });
 
+const monthNames = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+];
+const yearOptions = [2024, 2025, 2026, 2027, 2028];
+
+const selectedMonth = ref(props.period?.month || (new Date().getMonth() + 1));
+const selectedYear = ref(props.period?.year || new Date().getFullYear());
+
 const search = ref(props.filters.search || '');
 
 let searchTimeout = null;
 const doSearch = () => {
     if (searchTimeout) clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
-        router.get('/tax-reports', { search: search.value }, { preserveState: true, replace: true });
+        router.get('/tax-reports', {
+            search: search.value,
+            month: selectedMonth.value,
+            year: selectedYear.value,
+        }, { preserveState: true, replace: true });
     }, 300);
+};
+
+const onPeriodChange = () => {
+    router.get('/tax-reports', {
+        search: search.value,
+        month: selectedMonth.value,
+        year: selectedYear.value,
+    }, { preserveState: true, replace: true });
 };
 
 watch(search, (val) => {
@@ -463,8 +504,9 @@ function formatShortNumber(val) {
 function printReport() {
     const params = new URLSearchParams();
     if (search.value) params.set('search', search.value);
-    const qs = params.toString();
-    window.open('/tax-reports/print' + (qs ? '?' + qs : ''), '_blank');
+    params.set('month', selectedMonth.value);
+    params.set('year', selectedYear.value);
+    window.open('/tax-reports/print?' + params.toString(), '_blank');
 }
 
 function togglePreviewSession() {
