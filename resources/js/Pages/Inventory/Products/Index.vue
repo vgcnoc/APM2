@@ -352,11 +352,12 @@
                                             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                                                 <div>
                                                     <label class="block text-sm font-bold text-gray-700 mb-1">Meter per Roll</label>
-                                                    <input type="number" step="0.01" v-model="form.meter_per_roll" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white" placeholder="0">
+                                                    <input type="number" step="0.01" v-model="form.meter_per_roll" @input="recalcCableFromRolls" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white" placeholder="0">
                                                 </div>
                                                 <div>
                                                     <label class="block text-sm font-bold text-gray-700 mb-1">{{ form.id ? 'Jumlah Roll Saat Ini' : 'Jumlah Roll (Stok Awal)' }}</label>
-                                                    <input type="number" step="0.01" v-model="initialRolls" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white" placeholder="0">
+                                                    <input type="number" step="0.01" v-model="initialRolls" @input="recalcCableFromRolls" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white" placeholder="0">
+                                                    <p class="text-[10px] text-gray-400 mt-1">Masukkan jumlah <b>Roll</b> (bukan meter).</p>
                                                 </div>
                                                 <div>
                                                     <label class="block text-sm font-bold text-gray-700 mb-1">Harga Modal (per roll)</label>
@@ -367,9 +368,29 @@
                                                     <input type="number" step="0.01" min="0" v-model="form.selling_price" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white" placeholder="0">
                                                 </div>
                                             </div>
+
+                                            <div class="mt-4 pt-3 border-t border-blue-100 flex items-center justify-between">
+                                                <label class="text-xs font-bold text-gray-700">Atau Langsung Input Total Meter:</label>
+                                                <div class="relative w-44">
+                                                    <input type="number" step="0.01" min="0" v-model="form.stock" @input="recalcCableFromMeters" class="w-full pl-3 pr-10 py-1.5 text-xs font-bold border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white" placeholder="Contoh: 500">
+                                                    <span class="absolute inset-y-0 right-0 pr-2 flex items-center text-[10px] font-bold text-blue-500 pointer-events-none">Meter</span>
+                                                </div>
+                                            </div>
+
+                                            <div v-if="(Number(form.meter_per_roll) || 0) * (Number(initialRolls) || 0) >= 10000" class="mt-3 p-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-800 font-medium flex items-start gap-2">
+                                                <span class="text-base leading-none">⚠️</span>
+                                                <div>
+                                                    <strong class="text-amber-900">Perhatian Angka Stok Sangat Besar:</strong>
+                                                    <p class="text-[11px] mt-0.5">Total stok terhitung <b>{{ formatNum((Number(form.meter_per_roll) || 0) * (Number(initialRolls) || 0)) }} Meter</b> (setara <b>{{ initialRolls }} Roll</b>). Pastikan Anda tidak salah memasukkan panjang meter ke kolom "Jumlah Roll".</p>
+                                                </div>
+                                            </div>
+
                                             <div class="flex items-center justify-between rounded-xl bg-white border border-blue-200 px-4 py-2.5 mt-5">
                                                 <span class="text-sm text-gray-600">Total Stok:</span>
-                                                <span class="text-base font-black text-blue-700">{{ formatNum((Number(form.meter_per_roll) || 0) * (Number(initialRolls) || 0)) }} Meter</span>
+                                                <div class="text-right">
+                                                    <span class="text-base font-black text-blue-700">{{ formatNum(form.stock) }} Meter</span>
+                                                    <span class="text-xs text-blue-500 font-bold ml-1.5">(~{{ initialRolls }} Roll)</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -632,6 +653,20 @@ const isNewCategory = ref(false);
 const initialRolls = ref(0);
 const initialPacks = ref(0);
 const initialBungkus = ref(0);
+
+const recalcCableFromRolls = () => {
+    const mpr = Number(form.meter_per_roll) || 0;
+    const rolls = Number(initialRolls.value) || 0;
+    form.stock = parseFloat((mpr * rolls).toFixed(2));
+};
+
+const recalcCableFromMeters = () => {
+    const mpr = Number(form.meter_per_roll) || 0;
+    const meters = Number(form.stock) || 0;
+    if (mpr > 0) {
+        initialRolls.value = parseFloat((meters / mpr).toFixed(2));
+    }
+};
 
 const categoriesWithSpecial = computed(() => {
     let cats = [...props.categories];
@@ -904,7 +939,9 @@ const submitForm = () => {
     // If it's a cable and we are setting initial rolls, calculate the stock
     if (['Kabel', 'Patchcord'].includes(form.category)) {
         form.unit = 'meter';
-        if (Number(initialRolls.value) >= 0 && Number(form.meter_per_roll) > 0) {
+        if (Number(form.stock) >= 0 && Number(form.meter_per_roll) > 0) {
+            // Sudah tersinkronisasi via input meter / rolls
+        } else if (Number(initialRolls.value) >= 0 && Number(form.meter_per_roll) > 0) {
             form.stock = parseFloat(initialRolls.value) * parseFloat(form.meter_per_roll);
         }
     }
