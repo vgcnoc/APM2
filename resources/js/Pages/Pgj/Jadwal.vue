@@ -341,9 +341,10 @@
                                     <div class="mt-2 text-xs">
                                         <div class="text-[10px] text-gray-400 font-bold uppercase">Material FO Disiapkan:</div>
                                         <div v-if="ticket.materials && ticket.materials.length > 0" class="space-y-1 mt-1">
-                                            <div v-for="m in ticket.materials" :key="m.id" class="text-[11px] bg-gray-50 px-2 py-0.5 rounded border border-gray-100 flex justify-between items-center gap-1">
+                                            <div v-for="m in ticket.materials" :key="m.id" class="text-[11px] px-2 py-0.5 rounded border flex justify-between items-center gap-1" :class="isApprovedExtra(m) ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50 border-gray-100'">
                                                 <div class="flex items-center gap-1.5 truncate">
                                                     <span class="font-medium text-gray-700 truncate">{{ m.material?.name }}</span>
+                                                    <span v-if="isApprovedExtra(m)" class="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1 py-0.5 rounded border border-emerald-200">+ Tambahan</span>
                                                     <span v-if="m.trx_number" class="text-[9px] font-mono font-bold text-amber-700 bg-amber-100 px-1 py-0.5 rounded border border-amber-200">PO: {{ m.trx_number }}</span>
                                                 </div>
                                                 <span class="font-bold text-gray-900 shrink-0">{{ parseFloat(m.quantity_prepared) }} {{ m.unit || m.material?.unit }}</span>
@@ -351,11 +352,40 @@
                                         </div>
                                         <div v-else class="text-gray-400 italic text-xs mt-0.5">Belum ada material disiapkan</div>
                                     </div>
+
+                                    <!-- Notifikasi Permintaan Material Lapangan -->
+                                    <div v-if="pendingRequestCount(ticket) > 0" class="mt-2 p-2 rounded-xl bg-amber-100 border border-amber-300 text-amber-900 text-xs flex items-center justify-between gap-2 shadow-sm animate-pulse">
+                                        <div class="font-bold flex items-center gap-1">
+                                            <span>🔔</span>
+                                            <span>Ada {{ pendingRequestCount(ticket) }} Permintaan Material Lapangan!</span>
+                                        </div>
+                                        <button
+                                            v-if="can('pgj_btn_assign')"
+                                            type="button"
+                                            @click="openMaterialReviewModal(ticket)"
+                                            class="px-2 py-0.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[10px] font-bold shrink-0"
+                                        >
+                                            Review
+                                        </button>
+                                    </div>
+                                    <div v-else-if="ticket.material_requests && ticket.material_requests.length > 0" class="mt-2 pt-2 border-t border-gray-100">
+                                        <div class="text-[10px] text-gray-400 font-bold uppercase">Permintaan Lapangan:</div>
+                                        <div class="flex flex-wrap gap-1 mt-1">
+                                            <span
+                                                v-for="mr in ticket.material_requests"
+                                                :key="'row-mr-' + mr.id"
+                                                class="px-1.5 py-0.5 rounded text-[10px] font-bold border"
+                                                :class="mr.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'"
+                                            >
+                                                {{ mr.status === 'approved' ? '✓' : '✗' }} {{ mr.material?.name || mr.item_name }} ({{ parseFloat(mr.quantity) }} {{ mr.unit }})
+                                            </span>
+                                        </div>
+                                    </div>
                                 </td>
 
                                 <!-- 5. Aksi Ka. Teknisi -->
                                 <td class="p-4 text-center">
-                                    <div class="flex items-center justify-center gap-2">
+                                    <div class="flex items-center justify-center gap-2 flex-wrap">
                                         <button 
                                             v-if="can('pgj_btn_assign')"
                                             @click="openScheduleModal(ticket)" 
@@ -363,6 +393,17 @@
                                         >
                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
                                             <span>{{ ticket.status === 'scheduled' ? 'Ubah Jadwal' : 'Atur Jadwal & Tim' }}</span>
+                                        </button>
+
+                                        <button
+                                            v-if="ticket.material_requests && ticket.material_requests.length > 0 && can('pgj_btn_assign')"
+                                            type="button"
+                                            @click="openMaterialReviewModal(ticket)"
+                                            class="px-3 py-1.5 font-bold text-xs rounded-xl border transition-all flex items-center gap-1.5"
+                                            :class="pendingRequestCount(ticket) > 0 ? 'bg-orange-600 hover:bg-orange-700 text-white border-orange-600 shadow-md animate-pulse' : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200'"
+                                        >
+                                            <span>📦 Review Material</span>
+                                            <span v-if="pendingRequestCount(ticket) > 0" class="px-1.5 rounded-full bg-white text-orange-700 font-mono text-[10px]">{{ pendingRequestCount(ticket) }}</span>
                                         </button>
 
                                         <a :href="`/pgj/${ticket.id}/print`" target="_blank" title="Cetak SPK Restorasi Jalur" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
@@ -610,6 +651,46 @@
                         </div>
                     </div>
 
+                    <!-- Permintaan Tambahan Material Lapangan (Jika Ada) -->
+                    <div v-if="selectedTicket?.material_requests && selectedTicket.material_requests.length > 0" class="p-4 rounded-2xl bg-amber-50/90 border border-amber-300 space-y-3">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <div class="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                                <span class="text-base">🔔</span>
+                                <span>Permintaan Tambahan Material Lapangan ({{ selectedTicket.material_requests.length }})</span>
+                            </div>
+                            <button
+                                type="button"
+                                @click="openMaterialReviewModal(selectedTicket)"
+                                class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[10px] font-bold shadow-xs cursor-pointer flex items-center gap-1"
+                            >
+                                <span>📦 Buka Panel Review & Approval</span>
+                            </button>
+                        </div>
+                        <div class="space-y-1.5">
+                            <div
+                                v-for="mr in selectedTicket.material_requests"
+                                :key="'sched-mr-' + mr.id"
+                                class="p-2.5 rounded-xl bg-white border border-gray-200 text-xs flex items-center justify-between gap-2"
+                            >
+                                <div>
+                                    <div class="font-bold text-gray-900 flex items-center gap-1.5">
+                                        <span>{{ mr.material?.name || mr.item_name }}</span>
+                                        <span class="px-1.5 py-0.5 rounded bg-gray-100 font-mono font-bold text-gray-800 text-[10px]">
+                                            {{ parseFloat(mr.quantity) }} {{ mr.unit }}
+                                        </span>
+                                    </div>
+                                    <div class="text-[11px] text-gray-600 mt-0.5">"{{ mr.notes }}"</div>
+                                </div>
+                                <span
+                                    class="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase shrink-0"
+                                    :class="mr.status === 'pending' ? 'bg-amber-100 text-amber-800 border border-amber-300 animate-pulse' : (mr.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800')"
+                                >
+                                    {{ mr.status === 'pending' ? '⏳ Menunggu Approval' : (mr.status === 'approved' ? '✅ Disetujui' : '❌ Ditolak') }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="pt-3 border-t flex justify-end gap-2">
                         <button type="button" @click="showScheduleModal = false" class="px-4 py-2 border rounded-xl text-gray-600 text-sm font-semibold hover:bg-gray-50">Batal</button>
                         <button 
@@ -620,6 +701,176 @@
                             {{ scheduleForm.processing ? 'Menyimpan...' : 'Simpan Jadwal & Berangkatkan Tim' }}
                         </button>
                     </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- ════════════ MODAL REVIEW PERMINTAAN TAMBAHAN MATERIAL PGJ ════════════ -->
+        <div v-if="showMaterialReviewModal" class="fixed inset-0 z-50 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-gray-100 overflow-hidden animate-fade-in-up">
+                <div class="px-6 py-5 bg-gradient-to-r from-amber-500 to-orange-600 text-white flex justify-between items-center">
+                    <div>
+                        <h3 class="font-black text-lg flex items-center gap-2">
+                            <span>📦</span> Review Permintaan Tambahan Material PGJ #{{ reviewTicket?.ticket_number }}
+                        </h3>
+                        <p class="text-xs text-amber-100 mt-0.5">Permintaan material lapangan yang diajukan oleh tim teknisi penanganan jalur</p>
+                    </div>
+                    <button @click="showMaterialReviewModal = false" class="text-white/80 hover:text-white text-2xl font-bold cursor-pointer">&times;</button>
+                </div>
+
+                <div class="p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+                    <!-- Info Lokasi & Jalur -->
+                    <div class="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-100 text-xs text-amber-900 space-y-1">
+                        <div class="font-bold flex justify-between">
+                            <span>Titik: {{ reviewTicket?.location_name }}</span>
+                            <span class="uppercase">Segmen: {{ reviewTicket?.segment_type }}</span>
+                        </div>
+                        <div class="text-gray-600">Teknisi Lapangan: <b>{{ reviewTicket?.technicians?.map(t => t.name).join(', ') || 'Belum ada teknisi' }}</b></div>
+                    </div>
+
+                    <!-- Daftar Permintaan Material -->
+                    <div class="space-y-4">
+                        <div 
+                            v-for="mr in reviewTicket?.material_requests" 
+                            :key="'rev-pgj-' + mr.id"
+                            class="p-4 rounded-2xl border transition-all text-xs space-y-3"
+                            :class="{
+                                'bg-amber-50/70 border-amber-300 shadow-sm': mr.status === 'pending',
+                                'bg-emerald-50/70 border-emerald-300': mr.status === 'approved',
+                                'bg-rose-50/70 border-rose-300': mr.status === 'rejected'
+                            }"
+                        >
+                            <!-- Header Info Permintaan Teknisi -->
+                            <div class="flex items-start justify-between gap-2 flex-wrap">
+                                <div>
+                                    <div class="font-bold text-gray-900 text-sm flex items-center gap-2">
+                                        <span>📦 Kebutuhan: {{ mr.item_name || mr.material?.name || 'Material Tambahan' }}</span>
+                                        <span class="px-2.5 py-0.5 rounded-lg bg-white border font-mono font-black text-amber-700">
+                                            {{ parseFloat(mr.quantity) }} {{ mr.unit || mr.material?.unit }}
+                                        </span>
+                                    </div>
+                                    <div class="text-[11px] text-gray-500 mt-0.5">
+                                        Diajukan oleh: <b>{{ mr.requester?.name || 'Teknisi Lapangan' }}</b> · {{ formatDate(mr.created_at) }}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <span v-if="mr.status === 'pending'" class="px-3 py-1 rounded-full text-xs font-bold bg-amber-200 text-amber-900 border border-amber-300 flex items-center gap-1.5 animate-pulse">
+                                        <span class="w-2 h-2 rounded-full bg-amber-600"></span>
+                                        <span>Menunggu Persetujuan Ka. Teknisi</span>
+                                    </span>
+                                    <span v-else-if="mr.status === 'approved'" class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-200 text-emerald-900 border border-emerald-300">
+                                        ✅ Telah Disetujui & Masuk Bekal
+                                    </span>
+                                    <span v-else class="px-3 py-1 rounded-full text-xs font-bold bg-rose-200 text-rose-900 border border-rose-300">
+                                        ❌ Ditolak
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Alasan Kebutuhan Teknisi di Lapangan -->
+                            <div class="bg-white/90 p-3 rounded-xl border border-gray-200 text-xs">
+                                <div class="font-bold text-gray-500 text-[10px] uppercase mb-0.5">Keterangan / Kondisi Lapangan dari Teknisi:</div>
+                                <div class="text-gray-800 font-medium">"{{ mr.notes }}"</div>
+                            </div>
+
+                            <!-- Form Alokasi Material Gudang oleh Ka. Teknisi jika Status PENDING -->
+                            <div v-if="mr.status === 'pending'" class="p-3.5 rounded-xl bg-white border border-amber-300 space-y-3">
+                                <div class="flex items-center justify-between text-xs font-bold text-amber-950">
+                                    <span class="flex items-center gap-1.5">
+                                        <span>⚙️</span> Tentukan Material Gudang untuk Dialokasikan:
+                                    </span>
+                                    <span v-if="allocationForms[mr.id]?.material_id" class="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                                        ✓ Material Terpilih
+                                    </span>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                                    <!-- Dropdown Material Gudang -->
+                                    <div class="sm:col-span-8">
+                                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">Pilih Material dari Gudang *</label>
+                                        <select 
+                                            v-model="allocationForms[mr.id].material_id" 
+                                            class="w-full rounded-xl border-gray-300 text-xs py-1.5 focus:border-emerald-500 bg-white font-medium"
+                                        >
+                                            <option value="">-- Pilih Material Gudang yang Sesuai --</option>
+                                            <option v-for="mat in getAvailableMaterialsForTicket(reviewTicket)" :key="mat.id" :value="mat.id">
+                                                {{ mat.name }} (Stok Area: {{ mat.display_stock }} {{ mat.unit }})
+                                            </option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Approved Qty -->
+                                    <div class="sm:col-span-4">
+                                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">
+                                            Jumlah Alokasi ({{ getSelectedMaterial(allocationForms[mr.id]?.material_id)?.unit || mr.unit }}) *
+                                        </label>
+                                        <input 
+                                            type="number" 
+                                            step="0.01" 
+                                            min="0.01" 
+                                            v-model="allocationForms[mr.id].quantity" 
+                                            class="w-full rounded-xl border-gray-300 text-xs py-1.5 text-center font-black focus:border-emerald-500 bg-white"
+                                            placeholder="Jumlah"
+                                        />
+                                    </div>
+                                </div>
+
+                                <!-- Status Ketersediaan Stok Gudang -->
+                                <div v-if="allocationForms[mr.id]?.material_id" class="flex items-center justify-between text-xs px-3 py-2 rounded-xl border" :class="isStockSufficient(mr, reviewTicket) ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900' : 'bg-red-50 border-red-200 text-red-900'">
+                                    <div class="flex items-center gap-1.5">
+                                        <span>📦 Stok Gudang:</span>
+                                        <b class="font-mono text-sm">{{ getSelectedMaterialStock(allocationForms[mr.id].material_id, reviewTicket) }} {{ getSelectedMaterial(allocationForms[mr.id].material_id)?.unit }}</b>
+                                    </div>
+                                    <div v-if="!isStockSufficient(mr, reviewTicket)" class="text-[11px] font-bold text-red-700 animate-pulse">
+                                        ⚠️ Stok gudang kurang untuk jumlah alokasi ini!
+                                    </div>
+                                    <div v-else class="text-[11px] font-semibold text-emerald-700">
+                                        ✓ Stok mencukupi
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Reviewer info if resolved -->
+                            <div v-if="mr.status === 'approved'" class="text-emerald-800 text-[11px] font-semibold flex items-center gap-1 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+                                <span>🏷️ Dialokasikan dari gudang sebagai <b>{{ mr.material?.name }}</b> ({{ parseFloat(mr.quantity) }} {{ mr.unit }}) oleh <b>{{ mr.reviewer?.name || 'Ka. Teknisi' }}</b> pada {{ formatDate(mr.reviewed_at) }}. Stok gudang otomatis terpotong & dialokasikan ke bekal tiket.</span>
+                            </div>
+                            <div v-else-if="mr.status === 'rejected'" class="text-rose-800 text-[11px] font-semibold flex items-center gap-1 bg-rose-50 p-2.5 rounded-xl border border-rose-200">
+                                <span>✗ Ditolak oleh <b>{{ mr.reviewer?.name || 'Ka. Teknisi' }}</b>: "{{ mr.rejection_reason || '-' }}"</span>
+                            </div>
+
+                            <!-- Tombol Aksi Persetujuan jika Status PENDING -->
+                            <div v-if="mr.status === 'pending'" class="pt-2 flex items-center justify-end gap-2 border-t border-amber-200/80">
+                                <button 
+                                    type="button" 
+                                    @click="rejectRequest(reviewTicket, mr)" 
+                                    :disabled="processingRequest[mr.id]"
+                                    class="px-3.5 py-1.5 rounded-xl border border-rose-300 bg-white hover:bg-rose-50 text-rose-700 text-xs font-bold transition-all shadow-sm disabled:opacity-50 cursor-pointer"
+                                >
+                                    ✗ Tolak Permintaan
+                                </button>
+                                <button 
+                                    type="button" 
+                                    @click="approveRequest(reviewTicket, mr)" 
+                                    :disabled="processingRequest[mr.id] || !allocationForms[mr.id]?.material_id"
+                                    class="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center gap-1.5 cursor-pointer"
+                                >
+                                    <svg v-if="processingRequest[mr.id]" class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <span>{{ processingRequest[mr.id] ? 'Memproses...' : '✓ Setujui & Keluarkan Stok Gudang' }}</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-3 border-t flex justify-end">
+                        <button type="button" @click="showMaterialReviewModal = false" class="px-5 py-2 border rounded-xl text-gray-700 text-xs font-bold hover:bg-gray-50 cursor-pointer">
+                            Tutup
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
                 </form>
             </div>
         </div>
@@ -687,6 +938,199 @@ const resetFilters = () => {
 
 const showScheduleModal = ref(false);
 const selectedTicket = ref(null);
+const showMaterialReviewModal = ref(false);
+const reviewTicket = ref(null);
+const allocationForms = ref({});
+const processingRequest = ref({});
+
+const isApprovedExtra = (m) => {
+    return !!(m && m.notes && m.notes.includes('Tambahan disetujui'));
+};
+
+const pendingRequestCount = (ticket) => {
+    if (!ticket?.material_requests || !Array.isArray(ticket.material_requests)) return 0;
+    return ticket.material_requests.filter(r => r.status === 'pending').length;
+};
+
+const initAllocationForm = (mr) => {
+    if (!allocationForms.value[mr.id]) {
+        let matchedMaterialId = mr.material_id || '';
+        if (!matchedMaterialId && (mr.item_name || mr.material?.name) && props.materials?.length > 0) {
+            const searchStr = (mr.item_name || mr.material?.name || '').toLowerCase();
+            const found = props.materials.find(m => {
+                const mName = m.name.toLowerCase();
+                if (mName.includes(searchStr) || searchStr.includes(mName)) return true;
+                const keywords = ['dropcore', 'closure', 'kabel', 'core', 'sleeve', 'clamp', 'klem', 'patchcord', 'adapter'];
+                for (const kw of keywords) {
+                    if (searchStr.includes(kw) && mName.includes(kw)) return true;
+                }
+                return false;
+            });
+            if (found) {
+                matchedMaterialId = found.id;
+            }
+        }
+        allocationForms.value[mr.id] = {
+            material_id: matchedMaterialId,
+            quantity: parseFloat(mr.quantity) || 1,
+            notes: '',
+        };
+    }
+    return allocationForms.value[mr.id];
+};
+
+const getSelectedMaterial = (materialId) => {
+    if (!materialId || !props.materials) return null;
+    return props.materials.find(m => m.id == materialId) || null;
+};
+
+const getAvailableMaterialsForTicket = (ticket) => {
+    const areaId = ticket?.area_id || null;
+    return (props.materials || []).map(m => {
+        let areaStock = parseFloat(m.stock) || 0;
+        if (m.stocks && areaId) {
+            const st = m.stocks.find(s => s.area_id == areaId);
+            if (st) areaStock = parseFloat(st.stock) || 0;
+        }
+        return {
+            ...m,
+            display_stock: areaStock,
+        };
+    });
+};
+
+const getSelectedMaterialStock = (materialId, ticket = null) => {
+    const mat = getSelectedMaterial(materialId);
+    if (!mat) return 0;
+    const targetTicket = ticket || reviewTicket.value || selectedTicket.value;
+    const areaId = targetTicket?.area_id || null;
+    if (mat.stocks && areaId) {
+        const st = mat.stocks.find(s => s.area_id == areaId);
+        if (st) return parseFloat(st.stock) || 0;
+    }
+    return parseFloat(mat.stock) || 0;
+};
+
+const isStockSufficient = (mr, ticket = null) => {
+    const form = allocationForms.value[mr.id];
+    if (!form || !form.material_id) return true;
+    const stock = getSelectedMaterialStock(form.material_id, ticket);
+    return stock >= (parseFloat(form.quantity) || 0);
+};
+
+const openMaterialReviewModal = (ticket) => {
+    reviewTicket.value = ticket;
+    if (ticket.material_requests) {
+        ticket.material_requests.forEach(mr => {
+            initAllocationForm(mr);
+        });
+    }
+    showMaterialReviewModal.value = true;
+};
+
+const approveRequest = (ticket, req) => {
+    const form = allocationForms.value[req.id];
+    if (!form || !form.material_id) {
+        alert('Silakan pilih material gudang yang akan dialokasikan untuk permintaan ini.');
+        return;
+    }
+    if (!form.quantity || form.quantity <= 0) {
+        alert('Jumlah material yang disetujui harus lebih dari 0.');
+        return;
+    }
+
+    const selectedMat = getSelectedMaterial(form.material_id);
+    const matName = selectedMat ? selectedMat.name : 'Material Gudang';
+
+    if (!confirm(`Setujui alokasi ${form.quantity} ${selectedMat?.unit || 'satuan'} '${matName}' untuk kebutuhan lapangan (${req.item_name || req.material?.name || 'Material'})?\n\nStok gudang akan otomatis dipotong dan dialokasikan ke bekal tiket ini.`)) {
+        return;
+    }
+
+    processingRequest.value[req.id] = true;
+
+    router.post(`/pgj/${ticket.id}/material-requests/${req.id}/approve`, {
+        material_id: form.material_id,
+        quantity: form.quantity,
+        notes: form.notes || '',
+    }, {
+        preserveScroll: true,
+        onSuccess: (page) => {
+            if (page.props.flash?.error) {
+                alert('Peringatan: ' + page.props.flash.error);
+                return;
+            }
+            if (page.props.flash?.success) {
+                alert(page.props.flash.success);
+            }
+            const freshTickets = page.props.tickets?.data || props.tickets?.data || [];
+            const updated = freshTickets.find(t => t.id === ticket.id);
+            if (updated) {
+                reviewTicket.value = updated;
+                if (updated.material_requests) {
+                    updated.material_requests.forEach(mr => {
+                        initAllocationForm(mr);
+                    });
+                }
+                if (selectedTicket.value?.id === ticket.id) {
+                    selectedTicket.value = updated;
+                }
+            }
+        },
+        onError: (errors) => {
+            const msg = Object.values(errors).flat().join('\n');
+            alert('Gagal menyetujui permintaan: ' + msg);
+        },
+        onFinish: () => {
+            processingRequest.value[req.id] = false;
+        }
+    });
+};
+
+const rejectRequest = (ticket, req) => {
+    const reason = prompt('Masukkan alasan penolakan permintaan material ini:');
+    if (reason === null) return;
+    if (!reason.trim()) {
+        alert('Mohon tulis alasan penolakan.');
+        return;
+    }
+
+    processingRequest.value[req.id] = true;
+
+    router.post(`/pgj/${ticket.id}/material-requests/${req.id}/reject`, {
+        rejection_reason: reason.trim()
+    }, {
+        preserveScroll: true,
+        onSuccess: (page) => {
+            if (page.props.flash?.error) {
+                alert('Peringatan: ' + page.props.flash.error);
+                return;
+            }
+            if (page.props.flash?.success) {
+                alert(page.props.flash.success);
+            }
+            const freshTickets = page.props.tickets?.data || props.tickets?.data || [];
+            const updated = freshTickets.find(t => t.id === ticket.id);
+            if (updated) {
+                reviewTicket.value = updated;
+                if (updated.material_requests) {
+                    updated.material_requests.forEach(mr => {
+                        initAllocationForm(mr);
+                    });
+                }
+                if (selectedTicket.value?.id === ticket.id) {
+                    selectedTicket.value = updated;
+                }
+            }
+        },
+        onError: (errors) => {
+            const msg = Object.values(errors).flat().join('\n');
+            alert('Gagal menolak permintaan: ' + msg);
+        },
+        onFinish: () => {
+            processingRequest.value[req.id] = false;
+        }
+    });
+};
 
 const customerAreaId = computed(() => {
     return selectedTicket.value?.area_id || null;
@@ -837,7 +1281,9 @@ const openScheduleModal = (ticket) => {
     scheduleForm.technician_ids = ticket.technicians ? ticket.technicians.map(t => t.id) : [];
 
     if (ticket.materials && ticket.materials.length > 0) {
-        scheduleForm.materials = ticket.materials.map(m => {
+        scheduleForm.materials = ticket.materials
+            .filter(m => !isApprovedExtra(m))
+            .map(m => {
             const matchedOrder = availableMaterialItems.value.find(
                 i => i.id === m.material_transaction_item_id || (i.material_id === m.material_id && (!m.trx_number || i.trx_number === m.trx_number))
             );

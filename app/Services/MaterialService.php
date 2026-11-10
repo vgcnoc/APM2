@@ -13,6 +13,7 @@ use App\Models\MaterialTransaction;
 use App\Models\MaterialTransactionItem;
 use App\Models\NetworkMaintenanceMaterial;
 use App\Models\PgjMaterial;
+use App\Models\PgjMaterialRequest;
 use App\Models\PgkMaterial;
 use App\Models\PgkMaterialRequest;
 use App\Models\PgsMaterial;
@@ -200,6 +201,9 @@ class MaterialService
             PgjMaterial::where('material_id', $source->id)->update(['material_id' => $target->id]);
             PgkMaterialRequest::where('material_id', $source->id)->update(['material_id' => $target->id]);
             PgsMaterialRequest::where('material_id', $source->id)->update(['material_id' => $target->id]);
+            if (Schema::hasTable('pgj_material_requests')) {
+                PgjMaterialRequest::where('material_id', $source->id)->update(['material_id' => $target->id]);
+            }
             InfrastructureWorkOrderMaterial::where('material_id', $source->id)->update(['material_id' => $target->id]);
             InfrastructureWorkOrderMaterialRequest::where('material_id', $source->id)->update(['material_id' => $target->id]);
             NetworkMaintenanceMaterial::where('material_id', $source->id)->update(['material_id' => $target->id]);

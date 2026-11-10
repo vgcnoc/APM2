@@ -567,14 +567,192 @@
 
                     <!-- ════════ SECTION 4: REKONSILIASI MATERIAL FO TERPAKAI CANGGIH ════════ -->
                     <div class="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/80 space-y-4">
-                        <div class="flex items-center justify-between">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
                             <div>
                                 <label class="block text-xs font-black text-amber-950 uppercase tracking-wider flex items-center gap-1.5">
                                     <span>📦</span> Rekonsiliasi Material FO Terpakai & Pengembalian
                                 </label>
                                 <p class="text-[11px] text-amber-800">
-                                    Catat jumlah material terpakai. Sisa material otomatis dikembalikan ke stok gudang.
+                                    Catat jumlah material terpakai. Jika butuh tambahan dadakan di lapangan, ajukan ke Ka. Teknisi.
                                 </p>
+                            </div>
+                            <button
+                                type="button"
+                                @click="showMaterialRequestForm = !showMaterialRequestForm"
+                                class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                            >
+                                <span>{{ showMaterialRequestForm ? '✕ Tutup Form Request' : '📢 + Butuh Tambahan Dadakan?' }}</span>
+                            </button>
+                        </div>
+
+                        <!-- Form Pengajuan Tambahan Material Dadakan ke Ka. Teknisi -->
+                        <div v-if="showMaterialRequestForm" class="p-3.5 bg-amber-50 border border-amber-300 rounded-xl space-y-3 shadow-xs">
+                            <div class="flex items-center justify-between border-b border-amber-200 pb-2">
+                                <span class="text-xs font-black text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
+                                    <span>📢</span> Permintaan Tambahan Material Dadakan (Ke Ka. Teknisi)
+                                </span>
+                                <div class="flex items-center gap-2">
+                                    <button type="button" @click="addMaterialRequestRow" class="px-2 py-0.5 bg-amber-600 hover:bg-amber-700 text-white rounded-md text-[10px] font-bold cursor-pointer">
+                                        + Tambah Baris
+                                    </button>
+                                    <span class="text-[10px] font-bold bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full">Persetujuan Ka. Teknisi</span>
+                                </div>
+                            </div>
+                            <p class="text-[11px] text-amber-800 leading-relaxed">
+                                Pilih atau ketik material jalur dan jumlah yang dibutuhkan. Kepala Teknisi akan menyiapkan dan mengeluarkan material dari stok gudang.
+                            </p>
+
+                            <div class="space-y-2">
+                                <div
+                                    v-for="(reqItem, rIdx) in materialRequestForm.requests"
+                                    :key="'pgj-req-' + rIdx"
+                                    class="p-2.5 bg-white rounded-xl border border-amber-200 space-y-2"
+                                >
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-[10px] font-bold text-amber-900 uppercase">Item Request #{{ rIdx + 1 }}</span>
+                                        <button
+                                            v-if="materialRequestForm.requests.length > 1"
+                                            type="button"
+                                            @click="removeMaterialRequestRow(rIdx)"
+                                            class="text-rose-500 hover:text-rose-700 text-[11px] font-bold cursor-pointer"
+                                        >
+                                            ✕ Hapus
+                                        </button>
+                                    </div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                                        <div class="sm:col-span-6">
+                                            <label class="block text-[10px] font-bold text-amber-900 uppercase mb-1">Nama Material yang Dibutuhkan *</label>
+                                            <input
+                                                type="text"
+                                                v-model="reqItem.item_name"
+                                                placeholder="Ketik: Kabel FO 12C, Joint Closure, Protection Sleeve..."
+                                                class="w-full text-xs rounded-lg border-amber-300 bg-white focus:border-amber-500 focus:ring-amber-200"
+                                            />
+                                            <div class="flex flex-wrap gap-1 mt-1.5">
+                                                <button
+                                                    v-for="quickMat in [
+                                                        { name: 'Kabel FO Dropcore 1 Core', unit: 'meter' },
+                                                        { name: 'Kabel FO Distribusi 4 Core', unit: 'meter' },
+                                                        { name: 'Kabel FO Feeder 12 Core', unit: 'meter' },
+                                                        { name: 'Protection Sleeve Splicing', unit: 'pcs' },
+                                                        { name: 'Joint Closure Dome', unit: 'pcs' },
+                                                        { name: 'Patchcord SC-UPC', unit: 'pcs' },
+                                                        { name: 'Fast Connector SC-UPC', unit: 'pcs' },
+                                                        { name: 'S-Clamp / Dead End', unit: 'pcs' }
+                                                    ]"
+                                                    :key="quickMat.name"
+                                                    type="button"
+                                                    @click="reqItem.item_name = quickMat.name; reqItem.unit = quickMat.unit"
+                                                    class="px-2 py-0.5 text-[10px] font-semibold rounded-md border transition-all cursor-pointer"
+                                                    :class="reqItem.item_name === quickMat.name ? 'bg-amber-600 text-white border-amber-600' : 'bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100'"
+                                                >
+                                                    + {{ quickMat.name }}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="sm:col-span-3">
+                                            <label class="block text-[10px] font-bold text-amber-900 uppercase mb-1">Jumlah *</label>
+                                            <input
+                                                type="number"
+                                                step="0.1"
+                                                min="0.1"
+                                                v-model="reqItem.quantity"
+                                                placeholder="Jml"
+                                                class="w-full text-xs rounded-lg border-amber-300 bg-white text-center font-bold focus:border-amber-500 focus:ring-amber-200"
+                                            />
+                                        </div>
+                                        <div class="sm:col-span-3">
+                                            <label class="block text-[10px] font-bold text-amber-900 uppercase mb-1">Satuan *</label>
+                                            <select
+                                                v-model="reqItem.unit"
+                                                class="w-full text-xs rounded-lg border-amber-300 bg-white font-semibold focus:border-amber-500 focus:ring-amber-200"
+                                            >
+                                                <option value="meter">meter</option>
+                                                <option value="pcs">pcs</option>
+                                                <option value="unit">unit</option>
+                                                <option value="roll">roll</option>
+                                                <option value="pack">pack</option>
+                                                <option value="batang">batang</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-[10px] font-bold text-amber-900 uppercase mb-1">Alasan Kebutuhan Darurat di Lapangan *</label>
+                                <input
+                                    type="text"
+                                    v-model="materialRequestForm.notes"
+                                    placeholder="Contoh: Kabel putus 2 titik butuh tarik ulang 150m, closure lama pecah..."
+                                    class="w-full text-xs rounded-lg border-amber-300 bg-white focus:border-amber-500 focus:ring-amber-200"
+                                />
+                                <div class="flex flex-wrap gap-1 mt-1.5">
+                                    <button
+                                        v-for="reason in ['Kabel jalur putus butuh tarik ulang', 'Bekal kabel kurang panjang', 'Closure / ODP rusak pecah', 'Butuh splicing ulang banyak core']"
+                                        :key="reason"
+                                        type="button"
+                                        @click="materialRequestForm.notes = reason"
+                                        class="px-2 py-0.5 text-[10px] bg-amber-50 hover:bg-amber-100 text-amber-800 rounded border border-amber-200 cursor-pointer"
+                                    >
+                                        {{ reason }}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end gap-2 pt-1">
+                                <button
+                                    type="button"
+                                    @click="showMaterialRequestForm = false"
+                                    class="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-50 cursor-pointer"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="button"
+                                    @click="submitMaterialRequest"
+                                    :disabled="materialRequestForm.processing"
+                                    class="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold shadow-xs disabled:opacity-50 cursor-pointer"
+                                >
+                                    {{ materialRequestForm.processing ? 'Mengirim...' : '🚀 Kirim Permintaan ke Ka. Teknisi' }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Riwayat & Status Permintaan Material Tambahan ke Ka. Teknisi -->
+                        <div v-if="selectedTicket?.material_requests && selectedTicket.material_requests.length > 0" class="p-3 rounded-xl bg-white border border-amber-200 space-y-2 shadow-2xs">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[11px] font-bold text-amber-900 uppercase flex items-center gap-1.5">
+                                    <span>📋</span> Status Permintaan Material Tambahan ({{ selectedTicket.material_requests.length }})
+                                </span>
+                                <span class="text-[10px] text-gray-500">Otomatis masuk ke daftar bekal saat disetujui Ka. Teknisi</span>
+                            </div>
+                            <div class="space-y-1.5">
+                                <div
+                                    v-for="mr in selectedTicket.material_requests"
+                                    :key="'mr-lap-' + mr.id"
+                                    class="p-2.5 rounded-lg border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                                    :class="mr.status === 'pending' ? 'bg-amber-50/70 border-amber-300' : (mr.status === 'approved' ? 'bg-emerald-50/60 border-emerald-200' : 'bg-rose-50/60 border-rose-200')"
+                                >
+                                    <div>
+                                        <div class="font-bold text-gray-900 flex items-center gap-1.5 flex-wrap">
+                                            <span>{{ mr.material?.name || mr.item_name }}</span>
+                                            <span class="px-1.5 py-0.5 rounded bg-white border border-gray-200 text-[11px] font-black text-indigo-700">
+                                                {{ parseFloat(mr.quantity) }} {{ mr.unit }}
+                                            </span>
+                                        </div>
+                                        <div class="text-[11px] text-gray-600 mt-0.5">
+                                            Alasan: "{{ mr.notes }}"
+                                            <span v-if="mr.rejection_reason" class="text-rose-700 font-semibold"> • Ditolak: "{{ mr.rejection_reason }}"</span>
+                                        </div>
+                                    </div>
+                                    <span
+                                        class="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase shrink-0 self-start sm:self-center"
+                                        :class="mr.status === 'pending' ? 'bg-amber-200 text-amber-900 animate-pulse' : (mr.status === 'approved' ? 'bg-emerald-200 text-emerald-900' : 'bg-rose-200 text-rose-900')"
+                                    >
+                                        {{ mr.status === 'pending' ? '⏳ Menunggu Ka. Teknisi' : (mr.status === 'approved' ? '✅ Disetujui & Disiapkan' : '❌ Ditolak') }}
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
@@ -678,66 +856,6 @@
                         </div>
 
                         
-                        <!-- Material Tambahan di Lapangan (Extra Materials Lapangan) -->
-                        <div class="p-4 rounded-2xl bg-blue-50/60 border border-blue-200/80 space-y-3 shadow-2xs">
-                            <div class="flex items-center justify-between flex-wrap gap-2">
-                                <div>
-                                    <div class="text-xs font-black text-blue-950 uppercase tracking-wider flex items-center gap-1.5">
-                                        <span>➕</span> Material Tambahan Lapangan ({{ additionalMaterials.length }} Item)
-                                    </div>
-                                    <p class="text-[11px] text-blue-800">
-                                        Gunakan ini jika saat penanganan jalur membutuhkan material ekstra di luar bekal jadwal (kabel FO, protection sleeve, clamp, dll.).
-                                    </p>
-                                </div>
-                                <button 
-                                    type="button" 
-                                    @click="addAdditionalMaterial" 
-                                    class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-sm transition-all flex items-center gap-1 shrink-0 cursor-pointer"
-                                >
-                                    <span>+ Tambah Material Lapangan</span>
-                                </button>
-                            </div>
-
-                            <div v-if="additionalMaterials.length === 0" class="p-3 rounded-xl bg-white border border-dashed border-blue-200 text-xs text-gray-400 italic text-center">
-                                Tidak ada material tambahan di lapangan. Klik tombol di atas jika ada material tambahan yang dipasang di jalur.
-                            </div>
-
-                            <div v-else class="space-y-2">
-                                <div 
-                                    v-for="(am, aIdx) in additionalMaterials" 
-                                    :key="'am-' + aIdx" 
-                                    class="p-3 bg-white rounded-xl border border-blue-200 shadow-2xs space-y-2"
-                                >
-                                    <div class="flex items-center justify-between gap-2">
-                                        <span class="text-xs font-bold text-blue-950">Item Tambahan #{{ aIdx + 1 }}</span>
-                                        <button type="button" @click="removeAdditionalMaterial(aIdx)" class="text-rose-500 hover:text-rose-700 text-xs font-bold cursor-pointer">✕ Hapus</button>
-                                    </div>
-                                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 text-xs">
-                                        <div class="sm:col-span-6">
-                                            <label class="block text-[10px] font-bold text-gray-600 uppercase mb-0.5">Pilih Material *</label>
-                                            <select v-model="am.material_id" @change="onAdditionalMaterialSelected(am)" class="w-full text-xs rounded-lg border-gray-300 py-1.5 px-2" required>
-                                                <option value="">-- Pilih Material dari Master --</option>
-                                                <option v-for="mat in props.materials" :key="'mat-' + mat.id" :value="mat.id">
-                                                    {{ mat.name }} ({{ mat.unit }})
-                                                </option>
-                                            </select>
-                                        </div>
-                                        <div class="sm:col-span-3">
-                                            <label class="block text-[10px] font-bold text-gray-600 uppercase mb-0.5">Jumlah *</label>
-                                            <div class="flex items-center gap-1">
-                                                <input type="number" step="0.01" min="0.01" v-model="am.quantity" class="w-full text-xs rounded-lg border-gray-300 font-bold text-center py-1.5" required />
-                                                <span class="text-gray-500 font-bold text-xs">{{ am.unit || 'pcs' }}</span>
-                                            </div>
-                                        </div>
-                                        <div class="sm:col-span-3">
-                                            <label class="block text-[10px] font-bold text-gray-600 uppercase mb-0.5">Catatan</label>
-                                            <input type="text" v-model="am.notes" placeholder="Alasan penambahan..." class="w-full text-xs rounded-lg border-gray-300 py-1.5 px-2" />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
                         <!-- Banner Rincian Pengembalian Kelebihan Material (Retur Gudang) -->
                         <div v-if="returnedMaterialsList.length > 0" class="p-3.5 rounded-2xl bg-blue-50/90 border border-blue-200 text-xs text-blue-950 space-y-2">
                             <div class="flex items-center justify-between">
@@ -1407,29 +1525,43 @@ const props = defineProps({
     },
 });
 
-const additionalMaterials = ref([]);
+// ── Form Permintaan Tambahan Material Dadakan (Ke Ka. Teknisi) ──
+const showMaterialRequestForm = ref(false);
+const materialRequestForm = useForm({
+    requests: [{ item_name: '', material_id: '', quantity: 1, unit: 'meter' }],
+    notes: '',
+});
 
-const addAdditionalMaterial = () => {
-    additionalMaterials.value.push({
-        material_id: '',
-        quantity: 1,
-        unit: 'pcs',
-        notes: '',
-    });
-    saveDraft();
+const addMaterialRequestRow = () => {
+    materialRequestForm.requests.push({ item_name: '', material_id: '', quantity: 1, unit: 'meter' });
 };
 
-const removeAdditionalMaterial = (index) => {
-    additionalMaterials.value.splice(index, 1);
-    saveDraft();
-};
-
-const onAdditionalMaterialSelected = (item) => {
-    const mat = (props.materials || []).find(m => m.id == item.material_id);
-    if (mat) {
-        item.unit = mat.unit || 'pcs';
+const removeMaterialRequestRow = (idx) => {
+    if (materialRequestForm.requests.length > 1) {
+        materialRequestForm.requests.splice(idx, 1);
     }
-    saveDraft();
+};
+
+const submitMaterialRequest = () => {
+    if (!selectedTicket.value) return;
+    const validItems = materialRequestForm.requests.filter(r => r.item_name && r.item_name.trim() !== '' && parseFloat(r.quantity) > 0);
+    if (validItems.length === 0) {
+        alert('Pilih atau ketik minimal 1 nama material dan jumlah yang valid.');
+        return;
+    }
+    if (!materialRequestForm.notes || !materialRequestForm.notes.trim()) {
+        alert('Tuliskan alasan kebutuhan material tambahan di lapangan.');
+        return;
+    }
+    materialRequestForm.requests = validItems;
+    materialRequestForm.post(`/pgj/${selectedTicket.value.id}/request-material`, {
+        preserveScroll: true,
+        onSuccess: () => {
+            materialRequestForm.reset();
+            materialRequestForm.requests = [{ item_name: '', material_id: '', quantity: 1, unit: 'meter' }];
+            showMaterialRequestForm.value = false;
+        },
+    });
 };
 
 const search = ref(props.filters?.search || '');
@@ -1784,7 +1916,7 @@ const openReportModal = (ticket, ignoreDraft = false) => {
     selectedTicket.value = ticket;
     stopLiveTimer();
     reportForm.reset();
-    additionalMaterials.value = [];
+    showMaterialRequestForm.value = false;
     hasSavedDraft.value = false;
     photoBeforePreview.value = ticket.photo_before ? `/storage/${ticket.photo_before}` : null;
     photoAfterPreview.value = ticket.photo_after ? `/storage/${ticket.photo_after}` : null;
@@ -2015,6 +2147,39 @@ const onPhotoAfterChange = (e) => {
     }
 };
 
+// Sinkronisasi otomatis selectedTicket & daftar material saat Ka. Teknisi menyetujui request material atau setelah kirim request
+watch(() => props.tickets, (newTickets) => {
+    if (selectedTicket.value && newTickets?.data) {
+        const updated = newTickets.data.find(t => t.id === selectedTicket.value.id);
+        if (updated) {
+            selectedTicket.value = updated;
+            // Tambahkan material baru yang baru disetujui Ka. Teknisi ke reportForm.materials tanpa mereset input yang sudah diisi
+            if (Array.isArray(updated.materials)) {
+                updated.materials.forEach(m => {
+                    const existing = reportForm.materials.find(rm => rm.pgj_material_id === m.id);
+                    const prep = parseFloat(m.quantity_prepared) || 0;
+                    const used = m.quantity_used !== null ? parseFloat(m.quantity_used) : prep;
+                    if (!existing) {
+                        reportForm.materials.push({
+                            pgj_material_id: m.id,
+                            material_id: m.material_id,
+                            name: m.material?.name || 'Material FO',
+                            unit: m.unit || m.material?.unit || '',
+                            quantity_prepared: prep,
+                            quantity_used: used,
+                            quantity_returned: Math.max(0, parseFloat((prep - used).toFixed(2))),
+                        });
+                    } else if (existing.quantity_prepared !== prep) {
+                        existing.quantity_prepared = prep;
+                        existing.quantity_used = used;
+                        existing.quantity_returned = Math.max(0, parseFloat((prep - used).toFixed(2)));
+                    }
+                });
+            }
+        }
+    }
+}, { deep: true });
+
 // ── Submit Report ──────────────────────────────────────────────
 const submitReport = () => {
     if (!selectedTicket.value) return;
@@ -2037,7 +2202,6 @@ const submitReport = () => {
     reportForm.transform((data) => ({
         ...data,
         incident_coordinates: validCoords,
-        additional_materials: additionalMaterials.value,
         existing_handling_photos: JSON.stringify(existingPhotos),
         handling_photos_files: newPhotoFiles,
         handling_photos_captions: newPhotoCaptions,

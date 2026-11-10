@@ -971,7 +971,7 @@
                                             class="w-full rounded-xl border-gray-300 text-xs py-1.5 focus:border-emerald-500 bg-white font-medium"
                                         >
                                             <option value="">-- Pilih Material Gudang yang Sesuai --</option>
-                                            <option v-for="mat in getAvailableMaterialsForTicket(selectedTicket)" :key="mat.id" :value="mat.id">
+                                            <option v-for="mat in getAvailableMaterialsForTicket(reviewTicket || selectedTicket)" :key="mat.id" :value="mat.id">
                                                 {{ mat.name }} (Stok Area: {{ mat.display_stock }} {{ mat.unit }})
                                             </option>
                                         </select>
@@ -994,12 +994,12 @@
                                 </div>
 
                                 <!-- Status Ketersediaan Stok Gudang -->
-                                <div v-if="allocationForms[mr.id]?.material_id" class="flex items-center justify-between text-xs px-3 py-2 rounded-xl border" :class="isStockSufficient(mr) ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900' : 'bg-red-50 border-red-200 text-red-900'">
+                                <div v-if="allocationForms[mr.id]?.material_id" class="flex items-center justify-between text-xs px-3 py-2 rounded-xl border" :class="isStockSufficient(mr, reviewTicket || selectedTicket) ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900' : 'bg-red-50 border-red-200 text-red-900'">
                                     <div class="flex items-center gap-1.5">
                                         <span>📦 Stok Gudang:</span>
-                                        <b class="font-mono text-sm">{{ parseFloat(getSelectedMaterial(allocationForms[mr.id].material_id)?.stock || 0) }} {{ getSelectedMaterial(allocationForms[mr.id].material_id)?.unit }}</b>
+                                        <b class="font-mono text-sm">{{ getSelectedMaterialStock(allocationForms[mr.id].material_id, reviewTicket || selectedTicket) }} {{ getSelectedMaterial(allocationForms[mr.id].material_id)?.unit }}</b>
                                     </div>
-                                    <div v-if="!isStockSufficient(mr)" class="text-[11px] font-bold text-red-700 animate-pulse">
+                                    <div v-if="!isStockSufficient(mr, reviewTicket || selectedTicket)" class="text-[11px] font-bold text-red-700 animate-pulse">
                                         ⚠️ Stok gudang kurang untuk jumlah alokasi ini!
                                     </div>
                                     <div v-else class="text-[11px] font-semibold text-emerald-700">
@@ -1599,9 +1599,11 @@ const openScheduleModal = (ticket) => {
     scheduleForm.technician_ids = [...techIds];
     scheduleForm.technicians = [...techIds];
 
-    // Muat data material yang sudah disiapkan sebelumnya jika ada
+    // Muat data material yang sudah disiapkan sebelumnya jika ada (kecuali tambahan yang disetujui terpisah)
     if (ticket.materials && ticket.materials.length > 0) {
-        scheduleForm.materials = ticket.materials.map(m => {
+        scheduleForm.materials = ticket.materials
+            .filter(m => !isApprovedExtra(m))
+            .map(m => {
             const matchedOrder = availableMaterialItems.value.find(
                 i => i.id === m.material_transaction_item_id || (i.material_id === m.material_id && (!m.trx_number || i.trx_number === m.trx_number))
             );
@@ -1731,17 +1733,47 @@ const initAllocationForm = (mr) => {
     return allocationForms.value[mr.id];
 };
 
+const isApprovedExtra = (m) => {
+    return !!(m && m.notes && m.notes.includes('Tambahan disetujui'));
+};
+
 const getSelectedMaterial = (materialId) => {
     if (!materialId || !props.materials) return null;
     return props.materials.find(m => m.id == materialId) || null;
 };
 
-const isStockSufficient = (mr) => {
+const getAvailableMaterialsForTicket = (ticket) => {
+    const areaId = ticket?.area_id || ticket?.customer?.area_id || null;
+    return (props.materials || []).map(m => {
+        let areaStock = parseFloat(m.stock) || 0;
+        if (m.stocks && areaId) {
+            const st = m.stocks.find(s => s.area_id == areaId);
+            if (st) areaStock = parseFloat(st.stock) || 0;
+        }
+        return {
+            ...m,
+            display_stock: areaStock,
+        };
+    });
+};
+
+const getSelectedMaterialStock = (materialId, ticket = null) => {
+    const mat = getSelectedMaterial(materialId);
+    if (!mat) return 0;
+    const targetTicket = ticket || reviewTicket.value || selectedTicket.value;
+    const areaId = targetTicket?.area_id || targetTicket?.customer?.area_id || null;
+    if (mat.stocks && areaId) {
+        const st = mat.stocks.find(s => s.area_id == areaId);
+        if (st) return parseFloat(st.stock) || 0;
+    }
+    return parseFloat(mat.stock) || 0;
+};
+
+const isStockSufficient = (mr, ticket = null) => {
     const form = allocationForms.value[mr.id];
     if (!form || !form.material_id) return true;
-    const mat = getSelectedMaterial(form.material_id);
-    if (!mat) return true;
-    return parseFloat(mat.stock || 0) >= (parseFloat(form.quantity) || 0);
+    const stock = getSelectedMaterialStock(form.material_id, ticket);
+    return stock >= (parseFloat(form.quantity) || 0);
 };
 
 const openMaterialReviewModal = (ticket) => {

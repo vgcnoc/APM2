@@ -1256,87 +1256,6 @@ class PgsController extends Controller
             }
         }
 
-        // 2. Handle Permintaan / Material Tambahan di Lapangan (Extra Materials)
-        if (!empty($request->additional_materials) && is_array($request->additional_materials)) {
-            $extraItems = array_filter($request->additional_materials, function ($item) {
-                return !empty($item['material_id']) && (float) ($item['quantity'] ?? 0) > 0;
-            });
-
-            if (!empty($extraItems)) {
-                $extraTrxNum = \App\Services\MaterialService::generateTransactionNumber('OUT-PGS-EXTRA');
-                $outTrans = MaterialTransaction::create([
-                    'transaction_number' => $extraTrxNum,
-                    'type' => 'out',
-                    'status' => 'approved',
-                    'date' => now(),
-                    'technician_name' => auth()->user()->name,
-                    'purpose' => 'Material Tambahan Lapangan PGS: ' . $pgs->ticket_number . ' (' . ($pgs->customer?->name ?? '') . ')',
-                    'source_type' => 'pgs',
-                    'source_id' => $pgs->id,
-                    'source_reference' => $pgs->ticket_number,
-                    'request_type' => 'additional_material',
-                    'user_id' => auth()->id(),
-                    'customer_id' => $pgs->customer_id,
-                    'area_id' => $areaId,
-                ]);
-
-                $extraTotalCost = 0;
-                foreach ($extraItems as $extra) {
-                    $matId = $extra['material_id'];
-                    $extraQty = (float) $extra['quantity'];
-                    $material = Material::find($matId);
-                    if (!$material) continue;
-
-                    $unit = $extra['unit'] ?? $material->unit;
-                    $notes = !empty($extra['notes']) ? 'Tambahan: ' . $extra['notes'] : 'Material Tambahan di Lapangan';
-
-                    $stockRes = \App\Services\MaterialService::deductOperationalStock($material, $extraQty, $areaId, $unit);
-
-                    // Catat ke PgsMaterial agar tampil di riwayat dan cetak SPK
-                    PgsMaterial::create([
-                        'pgs_ticket_id' => $pgs->id,
-                        'material_id' => $material->id,
-                        'quantity_prepared' => $extraQty,
-                        'quantity_used' => $extraQty,
-                        'quantity_returned' => 0,
-                        'unit' => $unit,
-                        'notes' => $notes,
-                    ]);
-
-                    $ppu = \App\Services\MaterialService::calculateUnitPrice($material, $unit);
-                    $itemTotal = $ppu * $extraQty;
-                    $extraTotalCost += $itemTotal;
-
-                    MaterialTransactionItem::create([
-                        'material_transaction_id' => $outTrans->id,
-                        'material_id' => $material->id,
-                        'quantity' => $extraQty,
-                        'unit' => $unit,
-                        'price_per_unit' => $ppu,
-                        'total_price' => $itemTotal,
-                        'stock_before' => $stockRes['stock_before'],
-                        'stock_after' => $stockRes['stock_after'],
-                    ]);
-
-                    // Sinkronisasi otomatis ke CustomerInstalledMaterial
-                    if ($pgs->customer_id) {
-                        \App\Models\CustomerInstalledMaterial::create([
-                            'customer_id' => $pgs->customer_id,
-                            'material_id' => $material->id,
-                            'item_name' => $material->name,
-                            'quantity' => $extraQty,
-                            'unit' => $unit,
-                            'installed_at' => now(),
-                            'installation_source' => 'pgs_additional',
-                            'status' => 'installed',
-                            'notes' => "Material tambahan lapangan pada tiket PGS #{$pgs->ticket_number}" . (!empty($extra['notes']) ? ": {$extra['notes']}" : ''),
-                        ]);
-                    }
-                }
-                $outTrans->update(['total_cost' => $extraTotalCost]);
-            }
-        }
-
         $oldStatus = $pgs->status;
 
         // 3. Handle Eksekusi Pergantian ONT (Jadi vs Tidak Jadi/Retur Gudang)
@@ -1847,9 +1766,10 @@ class PgsController extends Controller
                 'stock_after' => $stockRes['stock_after'],
             ]);
 
-            // Tambahkan ke pgs_materials (jika sudah ada, tambahkan quantity_prepared, jika belum buat baru)
+            // Tambahkan ke pgs_materials (gabungkan hanya jika sudah ada baris tambahan disetujui untuk material yang sama)
             $existingPgsMat = PgsMaterial::where('pgs_ticket_id', $pgs->id)
                 ->where('material_id', $material->id)
+                ->where('notes', 'like', '%Tambahan disetujui%')
                 ->first();
 
             if ($existingPgsMat) {

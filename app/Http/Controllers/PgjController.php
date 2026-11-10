@@ -6,6 +6,7 @@ use App\Services\RestockStockService;
 
 use App\Models\PgjTicket;
 use App\Models\PgjMaterial;
+use App\Models\PgjMaterialRequest;
 use App\Models\Area;
 use App\Models\Odc;
 use App\Models\Odp;
@@ -60,6 +61,9 @@ class PgjController extends Controller
             'leadTechnician',
             'technicians',
             'materials.material',
+            'materialRequests.material',
+            'materialRequests.requester',
+            'materialRequests.reviewer',
             'resolvedByUser'
         ]);
 
@@ -270,6 +274,9 @@ class PgjController extends Controller
             'leadTechnician',
             'technicians',
             'materials.material',
+            'materialRequests.material',
+            'materialRequests.requester',
+            'materialRequests.reviewer',
         ]);
 
         if ($status === 'waiting') {
@@ -424,6 +431,9 @@ class PgjController extends Controller
             'leadTechnician',
             'technicians',
             'materials.material',
+            'materialRequests.material',
+            'materialRequests.requester',
+            'materialRequests.reviewer',
             'resolvedByUser'
         ]);
 
@@ -839,13 +849,15 @@ class PgjController extends Controller
         $techIds = $request->technician_ids ?? $request->technicians ?? [];
         $pgj->technicians()->sync($techIds);
 
-        // Kelola alokasi material gudang jalur (pulihkan alokasi jadwal sebelumnya terlebih dahulu secara simetris)
+        // Kelola alokasi material gudang jalur (pulihkan alokasi jadwal sebelumnya terlebih dahulu secara simetris, jangan hapus tambahan yang sudah disetujui)
         $restoredScheduleMats = [];
         $prevScheduleOuts = MaterialTransaction::with('items.material')
             ->where('source_type', 'pgj')
             ->where('source_id', $pgj->id)
             ->where('type', 'out')
             ->where('transaction_number', 'like', 'OUT-PGJ-%')
+            ->where('transaction_number', 'not like', 'OUT-PGJ-REQ-%')
+            ->where('transaction_number', 'not like', 'OUT-PGJ-EXTRA-%')
             ->where('transaction_number', 'not like', 'OUT-PGJ-OVERAGE-%')
             ->get();
 
@@ -869,7 +881,11 @@ class PgjController extends Controller
             $prevOut->delete();
         }
 
-        $previousMaterials = $pgj->materials()->get();
+        $previousMaterials = $pgj->materials()
+            ->where(function ($q) {
+                $q->whereNull('notes')->orWhere('notes', 'not like', '%Tambahan disetujui%');
+            })
+            ->get();
         foreach ($previousMaterials as $prevMat) {
             $prevQty = (float) $prevMat->quantity_prepared;
             if ($prevQty > 0 && $prevMat->material_id && empty($restoredScheduleMats[(int) $prevMat->material_id])) {
@@ -880,7 +896,11 @@ class PgjController extends Controller
             }
         }
 
-        $pgj->materials()->delete();
+        $pgj->materials()
+            ->where(function ($q) {
+                $q->whereNull('notes')->orWhere('notes', 'not like', '%Tambahan disetujui%');
+            })
+            ->delete();
 
         if (!empty($validated['materials'])) {
             $techNames = User::whereIn('id', $techIds)->pluck('name')->join(', ');
@@ -1016,11 +1036,6 @@ class PgjController extends Controller
             'materials' => 'nullable|array',
             'materials.*.pgj_material_id' => 'required|exists:pgj_materials,id',
             'materials.*.quantity_used' => 'required|numeric|min:0',
-            'additional_materials' => 'nullable|array',
-            'additional_materials.*.material_id' => 'nullable|exists:materials,id',
-            'additional_materials.*.quantity' => 'nullable|numeric|min:0',
-            'additional_materials.*.unit' => 'nullable|string',
-            'additional_materials.*.notes' => 'nullable|string',
         ]);
 
         // 1. Tangani incident_coordinates (bisa lebih dari 1)
@@ -1224,71 +1239,6 @@ class PgjController extends Controller
             }
         }
 
-        // Handle Permintaan / Material Tambahan di Lapangan untuk Penanganan Jalur PGJ (Extra Materials)
-        if (!empty($request->additional_materials) && is_array($request->additional_materials)) {
-            $extraItems = array_filter($request->additional_materials, function ($item) {
-                return !empty($item['material_id']) && (float) ($item['quantity'] ?? 0) > 0;
-            });
-
-            if (!empty($extraItems)) {
-                $extraTrxNum = \App\Services\MaterialService::generateTransactionNumber('OUT-PGJ-EXTRA');
-                $outTrans = MaterialTransaction::create([
-                    'transaction_number' => $extraTrxNum,
-                    'type' => 'out',
-                    'status' => 'approved',
-                    'date' => now(),
-                    'technician_name' => auth()->user()->name,
-                    'purpose' => 'Material Tambahan Lapangan Jalur PGJ #' . $pgj->ticket_number,
-                    'source_type' => 'pgj',
-                    'source_id' => $pgj->id,
-                    'source_reference' => $pgj->ticket_number,
-                    'request_type' => 'additional_material',
-                    'user_id' => auth()->id(),
-                    'area_id' => $pgj->area_id,
-                ]);
-
-                $extraTotalCost = 0;
-                foreach ($extraItems as $extra) {
-                    $matId = $extra['material_id'];
-                    $extraQty = (float) $extra['quantity'];
-                    $material = Material::find($matId);
-                    if (!$material) continue;
-
-                    $unit = $extra['unit'] ?? $material->unit;
-                    $notes = !empty($extra['notes']) ? 'Tambahan: ' . $extra['notes'] : 'Material Tambahan di Lapangan';
-
-                    $stockRes = \App\Services\MaterialService::deductOperationalStock($material, $extraQty, $pgj->area_id, $unit);
-
-                    // Catat ke PgjMaterial agar tercatat di riwayat penggunaan jalur
-                    \App\Models\PgjMaterial::create([
-                        'pgj_ticket_id' => $pgj->id,
-                        'material_id' => $material->id,
-                        'quantity_prepared' => $extraQty,
-                        'quantity_used' => $extraQty,
-                        'quantity_returned' => 0,
-                        'unit' => $unit,
-                        'notes' => $notes,
-                    ]);
-
-                    $ppu = \App\Services\MaterialService::calculateUnitPrice($material, $unit);
-                    $itemTotal = $ppu * $extraQty;
-                    $extraTotalCost += $itemTotal;
-
-                    MaterialTransactionItem::create([
-                        'material_transaction_id' => $outTrans->id,
-                        'material_id' => $material->id,
-                        'quantity' => $extraQty,
-                        'unit' => $unit,
-                        'price_per_unit' => $ppu,
-                        'total_price' => $itemTotal,
-                        'stock_before' => $stockRes['stock_before'],
-                        'stock_after' => $stockRes['stock_after'],
-                    ]);
-                }
-                $outTrans->update(['total_cost' => $extraTotalCost]);
-            }
-        }
-
         $oldStatus = $pgj->status;
         $pgj->update([
             'status' => 'completed',
@@ -1333,12 +1283,296 @@ class PgjController extends Controller
             'leadTechnician',
             'technicians',
             'materials.material',
+            'materialRequests.material',
+            'materialRequests.requester',
+            'materialRequests.reviewer',
             'resolvedByUser',
         ]);
 
         return view('print.pgj-report', [
             'ticket' => $pgj,
         ]);
+    }
+
+    /**
+     * Teknisi mengajukan permintaan tambahan material saat di lapangan (ke Kepala Teknisi)
+     */
+    public function requestMaterial(Request $request, PgjTicket $pgj)
+    {
+        $user = $request->user();
+        $canRequest = $user && (
+            $user->can('pgj_btn_request_material') ||
+            $user->can('pgj_btn_report') ||
+            $user->can('pgj_manage') ||
+            $user->hasAnyRole(['admin', 'kepala teknisi', 'teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'teknisi', 'teknisi tim serbu', 'tim serbu', 'maintenance']) ||
+            str_contains(strtolower($user->role ?? ''), 'teknisi') ||
+            str_contains(strtolower($user->role ?? ''), 'serbu')
+        );
+        if (!$canRequest) {
+            abort(403, 'Anda tidak memiliki hak akses untuk mengajukan tambahan material PGJ.');
+        }
+
+        // Jika scope 'own', verifikasi bahwa user memang ditugaskan pada PGJ ini
+        if ($user && \App\Services\DataScopeService::getScopeLevel($user, 'pgj') === 'own') {
+            $isAssigned = $pgj->technicians()->where('users.id', $user->id)->exists()
+                || $pgj->created_by === $user->id
+                || $pgj->lead_technician_id === $user->id;
+            if (!$isAssigned) {
+                abort(403, 'Anda hanya dapat mengajukan material pada tugas PGJ yang ditugaskan kepada Anda.');
+            }
+        }
+
+        // Support both single-item and multi-item array formats
+        if ($request->has('requests') && is_array($request->requests)) {
+            $validated = $request->validate([
+                'requests' => 'required|array|min:1',
+                'requests.*.item_name' => 'required|string|max:255',
+                'requests.*.material_id' => 'nullable|exists:materials,id',
+                'requests.*.quantity' => 'required|numeric|min:0.1',
+                'requests.*.unit' => 'required|string|max:50',
+                'requests.*.notes' => 'nullable|string',
+                'notes' => 'required|string',
+            ]);
+
+            $itemsLog = [];
+            foreach ($validated['requests'] as $reqItem) {
+                PgjMaterialRequest::create([
+                    'pgj_ticket_id' => $pgj->id,
+                    'item_name' => $reqItem['item_name'],
+                    'material_id' => $reqItem['material_id'] ?? null,
+                    'requested_by' => auth()->id(),
+                    'quantity' => $reqItem['quantity'],
+                    'unit' => $reqItem['unit'],
+                    'notes' => $reqItem['notes'] ?? $validated['notes'],
+                    'status' => 'pending',
+                ]);
+                $itemsLog[] = "{$reqItem['quantity']} {$reqItem['unit']} {$reqItem['item_name']}";
+            }
+
+            AuditLog::createLog(
+                'Permintaan Tambahan Material PGJ',
+                $pgj,
+                $pgj->status,
+                $pgj->status,
+                "Teknisi mengajukan tambahan material jalur (" . implode(', ', $itemsLog) . ") ke Ka. Teknisi: {$validated['notes']}"
+            );
+
+            return redirect()->back()->with('success', "Permintaan tambahan material jalur (" . implode(', ', $itemsLog) . ") berhasil dikirim ke Kepala Teknisi.");
+        }
+
+        $validated = $request->validate([
+            'item_name' => 'required|string|max:255',
+            'material_id' => 'nullable|exists:materials,id',
+            'quantity' => 'required|numeric|min:0.1',
+            'unit' => 'required|string|max:50',
+            'notes' => 'required|string',
+        ]);
+
+        PgjMaterialRequest::create([
+            'pgj_ticket_id' => $pgj->id,
+            'item_name' => $validated['item_name'],
+            'material_id' => $validated['material_id'] ?? null,
+            'requested_by' => auth()->id(),
+            'quantity' => $validated['quantity'],
+            'unit' => $validated['unit'],
+            'notes' => $validated['notes'],
+            'status' => 'pending',
+        ]);
+
+        AuditLog::createLog(
+            'Permintaan Tambahan Material PGJ',
+            $pgj,
+            $pgj->status,
+            $pgj->status,
+            "Teknisi mengajukan tambahan material jalur ({$validated['quantity']} {$validated['unit']} {$validated['item_name']}) ke Ka. Teknisi: {$validated['notes']}"
+        );
+
+        return redirect()->back()->with('success', "Permintaan tambahan {$validated['quantity']} {$validated['unit']} {$validated['item_name']} berhasil dikirim ke Kepala Teknisi.");
+    }
+
+    /**
+     * Kepala Teknisi menyetujui permintaan tambahan material lapangan & memotong stok gudang
+     */
+    public function approveMaterialRequest(Request $request, PgjTicket $pgj, PgjMaterialRequest $materialRequest)
+    {
+        $user = $request->user();
+        $canApprove = $user && (
+            $user->can('pgj_btn_assign') ||
+            $user->can('pgj_manage') ||
+            $user->hasRole(['admin', 'kepala teknisi', 'dispatcher']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'dispatcher'])
+        );
+        if (!$canApprove) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menyetujui permintaan material PGJ.');
+        }
+
+        if ((int) $materialRequest->pgj_ticket_id !== (int) $pgj->id) {
+            abort(404, 'Permintaan material tidak ditemukan pada tiket PGJ ini.');
+        }
+
+        $validated = $request->validate([
+            'material_id' => 'required|exists:materials,id',
+            'material_transaction_item_id' => 'nullable',
+            'trx_number' => 'nullable|string|max:100',
+            'quantity' => 'required|numeric|min:0.01',
+        ]);
+
+        return DB::transaction(function () use ($pgj, $materialRequest, $validated) {
+            // Kunci baris permintaan agar tidak bisa disetujui dua kali (double click / 2 admin bersamaan)
+            $lockedReq = PgjMaterialRequest::where('id', $materialRequest->id)->lockForUpdate()->first();
+            if (!$lockedReq || $lockedReq->status !== 'pending') {
+                return redirect()->back()->with('error', 'Permintaan material ini sudah pernah diproses sebelumnya.');
+            }
+            $materialRequest = $lockedReq;
+
+            $material = Material::find($validated['material_id']);
+            if (!$material) {
+                return redirect()->back()->with('error', 'Data material gudang tidak ditemukan.');
+            }
+
+            $qty = (float) $validated['quantity'];
+            $unit = $material->unit ?: 'pcs';
+            $areaId = $pgj->area_id;
+
+            // Validasi stok gudang (area jika ada, jika tidak gudang pusat) dalam satuan dasar
+            $baseQty = \App\Services\MaterialService::convertToBaseQuantity($material, $qty, $unit);
+            $availBase = $areaId
+                ? (float) (\App\Models\MaterialStock::where('material_id', $material->id)->where('area_id', $areaId)->value('stock') ?? 0)
+                : (float) ($material->stock ?? 0);
+            if ($availBase + 0.0001 < $baseQty) {
+                return redirect()->back()->with('error', "Stok {$material->name} di gudang tidak mencukupi (Tersedia: " . round($availBase, 2) . ", Diminta: {$qty} {$unit}). Lakukan restock / mutasi stok terlebih dahulu.");
+            }
+
+            // Potong stok gudang (Area & Master) dengan konversi satuan otomatis
+            $stockRes = \App\Services\MaterialService::deductOperationalStock($material, $qty, $areaId, $unit);
+
+            // Buat transaksi pengeluaran material (OUT)
+            $requesterName = $materialRequest->requester?->name ?? 'Teknisi Lapangan';
+            $trxNumber = \App\Services\MaterialService::generateTransactionNumber('OUT-PGJ-REQ');
+            $ppu = \App\Services\MaterialService::calculateUnitPrice($material, $unit);
+            $itemTotal = $ppu * $qty;
+
+            $orderRefStr = !empty($validated['trx_number']) ? " (Ref Order/SJ: {$validated['trx_number']})" : '';
+            $transaction = MaterialTransaction::create([
+                'transaction_number' => $trxNumber,
+                'user_id' => auth()->id(),
+                'type' => 'out',
+                'status' => 'approved',
+                'request_type' => 'additional_material',
+                'technician_name' => $requesterName,
+                'purpose' => "Tambahan Material Lapangan PGJ #{$pgj->ticket_number} ({$pgj->location_name}){$orderRefStr} - Catatan: {$materialRequest->notes}",
+                'source_type' => 'pgj',
+                'source_id' => $pgj->id,
+                'source_reference' => $pgj->ticket_number,
+                'date' => now(),
+                'total_cost' => $itemTotal,
+                'area_id' => $areaId,
+            ]);
+
+            MaterialTransactionItem::create([
+                'material_transaction_id' => $transaction->id,
+                'material_id' => $material->id,
+                'quantity' => $qty,
+                'unit' => $unit,
+                'price_per_unit' => $ppu,
+                'total_price' => $itemTotal,
+                'stock_before' => $stockRes['stock_before'],
+                'stock_after' => $stockRes['stock_after'],
+            ]);
+
+            // Tambahkan ke daftar material PGJ (gabungkan hanya jika sudah ada baris tambahan disetujui untuk material yang sama)
+            $existingExtraMat = PgjMaterial::where('pgj_ticket_id', $pgj->id)
+                ->where('material_id', $material->id)
+                ->where('notes', 'like', '%Tambahan disetujui%')
+                ->first();
+
+            if ($existingExtraMat) {
+                $existingExtraMat->update([
+                    'quantity_prepared' => (float) $existingExtraMat->quantity_prepared + $qty,
+                    'quantity_used' => (float) $existingExtraMat->quantity_used + $qty,
+                    'notes' => trim($existingExtraMat->notes . " | Tambahan disetujui (+{$qty} {$unit}): {$materialRequest->notes}"),
+                ]);
+            } else {
+                PgjMaterial::create([
+                    'pgj_ticket_id' => $pgj->id,
+                    'material_id' => $material->id,
+                    'material_transaction_item_id' => is_numeric($validated['material_transaction_item_id'] ?? null) ? (int) $validated['material_transaction_item_id'] : null,
+                    'trx_number' => $validated['trx_number'] ?? null,
+                    'quantity_prepared' => $qty,
+                    'quantity_used' => $qty,
+                    'quantity_returned' => 0,
+                    'unit' => $unit,
+                    'notes' => 'Tambahan disetujui Ka. Teknisi (Kebutuhan: ' . ($materialRequest->item_name ?: $material->name) . '): ' . ($materialRequest->notes ?? '-'),
+                ]);
+            }
+
+            $materialRequest->update([
+                'material_id' => $material->id,
+                'quantity' => $qty,
+                'unit' => $unit,
+                'status' => 'approved',
+                'reviewed_by' => auth()->id(),
+                'reviewed_at' => now(),
+            ]);
+
+            AuditLog::createLog(
+                'Setujui Tambahan Material PGJ',
+                $pgj,
+                $pgj->status,
+                $pgj->status,
+                "Ka. Teknisi menyetujui & menyiapkan tambahan material lapangan ({$qty} {$unit} {$material->name}) untuk {$requesterName}."
+            );
+
+            return redirect()->back()->with('success', "Permintaan tambahan {$qty} {$unit} {$material->name} disetujui dan stok gudang telah dikeluarkan untuk teknisi.");
+        });
+    }
+
+    /**
+     * Kepala Teknisi menolak permintaan tambahan material lapangan
+     */
+    public function rejectMaterialRequest(Request $request, PgjTicket $pgj, PgjMaterialRequest $materialRequest)
+    {
+        $user = $request->user();
+        $canReject = $user && (
+            $user->can('pgj_btn_assign') ||
+            $user->can('pgj_manage') ||
+            $user->hasRole(['admin', 'kepala teknisi', 'dispatcher']) ||
+            in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'dispatcher'])
+        );
+        if (!$canReject) {
+            abort(403, 'Anda tidak memiliki hak akses untuk menolak permintaan material PGJ.');
+        }
+
+        if ((int) $materialRequest->pgj_ticket_id !== (int) $pgj->id) {
+            abort(404, 'Permintaan material tidak ditemukan pada tiket PGJ ini.');
+        }
+
+        if ($materialRequest->status !== 'pending') {
+            return redirect()->back()->with('error', 'Permintaan material ini sudah pernah diproses sebelumnya.');
+        }
+
+        $validated = $request->validate([
+            'rejection_reason' => 'required|string',
+        ]);
+
+        $materialRequest->update([
+            'status' => 'rejected',
+            'reviewed_by' => auth()->id(),
+            'reviewed_at' => now(),
+            'rejection_reason' => $validated['rejection_reason'],
+        ]);
+
+        $matName = $materialRequest->material?->name ?? $materialRequest->item_name ?? 'Material';
+        AuditLog::createLog(
+            'Tolak Tambahan Material PGJ',
+            $pgj,
+            $pgj->status,
+            $pgj->status,
+            "Ka. Teknisi menolak permintaan tambahan {$materialRequest->quantity} {$materialRequest->unit} {$matName}: {$validated['rejection_reason']}"
+        );
+
+        return redirect()->back()->with('success', "Permintaan tambahan material {$matName} telah ditolak.");
     }
 
     /**
@@ -1481,6 +1715,7 @@ class PgjController extends Controller
 
         $pgj->technicians()->detach();
         $pgj->materials()->delete();
+        $pgj->materialRequests()->delete();
         AuditLog::where('entity_type', PgjTicket::class)->where('entity_id', $pgj->id)->delete();
         $pgj->delete();
     }

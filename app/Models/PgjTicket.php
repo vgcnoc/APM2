@@ -135,4 +135,9 @@ class PgjTicket extends Model
     {
         return $this->hasMany(PgjMaterial::class, 'pgj_ticket_id');
     }
+
+    public function materialRequests(): HasMany
+    {
+        return $this->hasMany(PgjMaterialRequest::class, 'pgj_ticket_id');
+    }
 }
