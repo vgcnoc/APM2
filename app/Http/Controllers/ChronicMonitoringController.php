@@ -30,7 +30,7 @@ use Inertia\Inertia;
 
 class ChronicMonitoringController extends Controller
 {
-    public function index(Request $request)
+    private function buildMonitoringData(Request $request): array
     {
         $period = $request->input('period', '90_days'); // 7_days, 30_days, 90_days, this_month, all
         $areaId = $request->input('area_id');
@@ -826,6 +826,62 @@ class ChronicMonitoringController extends Controller
             ];
         }
 
+        // Ringkasan KPI Global
+        $kpiSummary = [
+            'chronic_customers_critical' => collect($chronicCustomers)->where('severity', 'critical')->count(),
+            'chronic_customers_warning' => collect($chronicCustomers)->where('severity', 'warning')->count(),
+            'total_customers_with_issues' => count($chronicCustomers),
+            'unvisited_repeat_customers' => collect($chronicCustomers)->where('total_tickets', '>=', 2)->where('socialization_status', 'unvisited')->count(),
+            'chronic_paths_critical' => collect($chronicPaths)->where('severity', 'critical')->count(),
+            'total_paths_with_issues' => count($chronicPaths),
+            'visits_completed' => $visitSummary['completed'],
+            'visits_pending' => $visitSummary['scheduled'] + $visitSummary['in_progress'] + $visitSummary['rescheduled'],
+        ];
+
+        $periodLabel = match ($period) {
+            '7_days' => '7 Hari Terakhir',
+            '30_days' => '30 Hari Terakhir',
+            '90_days' => '90 Hari Terakhir (3 Bulan)',
+            'this_month' => 'Bulan Ini (' . Carbon::now()->locale('id')->isoFormat('MMMM Y') . ')',
+            'all' => 'Semua Riwayat Waktu',
+            default => '90 Hari Terakhir (3 Bulan)',
+        };
+
+        $areaLabel = 'Semua Wilayah';
+        if ($areaId) {
+            $foundArea = collect($areas)->firstWhere('id', (int) $areaId) ?? Area::find($areaId);
+            if ($foundArea) {
+                $areaLabel = $foundArea->name ?? ($foundArea['name'] ?? 'Wilayah Spesifik');
+            }
+        }
+
+        return [
+            'chronicCustomers' => $chronicCustomers,
+            'chronicPaths' => $chronicPaths,
+            'socializationVisits' => $socializationVisits,
+            'visitSummary' => $visitSummary,
+            'kpiSummary' => $kpiSummary,
+            'areas' => $areas,
+            'targetAreaIds' => $targetAreaIds,
+            'periodLabel' => $periodLabel,
+            'areaLabel' => $areaLabel,
+            'filters' => [
+                'period' => $period,
+                'area_id' => $areaId ? (int) $areaId : null,
+                'min_tickets' => $minTickets,
+                'search' => $search,
+                'visit_status' => $visitStatus,
+                'my_tasks' => $myTasksOnly,
+            ],
+        ];
+    }
+
+    public function index(Request $request)
+    {
+        $user = auth()->user();
+        $data = $this->buildMonitoringData($request);
+        $targetAreaIds = $data['targetAreaIds'];
+
         // ── 4. DAFTAR PETUGAS SOSIALISASI & TEKNISI ───────────────────────────
         $rawUsers = User::forAssignment()->with('roles')->orderBy('name')->get(['id', 'name', 'phone', 'area_id', 'role']);
         $employees = Employee::select('id', 'name', 'position')->get()->keyBy(fn ($e) => mb_strtolower(trim((string) $e->name)));
@@ -841,18 +897,6 @@ class ChronicMonitoringController extends Controller
                 'role_label' => ucwords((string) $pos),
             ];
         })->values();
-
-        // Ringkasan KPI Global
-        $kpiSummary = [
-            'chronic_customers_critical' => collect($chronicCustomers)->where('severity', 'critical')->count(),
-            'chronic_customers_warning' => collect($chronicCustomers)->where('severity', 'warning')->count(),
-            'total_customers_with_issues' => count($chronicCustomers),
-            'unvisited_repeat_customers' => collect($chronicCustomers)->where('total_tickets', '>=', 2)->where('socialization_status', 'unvisited')->count(),
-            'chronic_paths_critical' => collect($chronicPaths)->where('severity', 'critical')->count(),
-            'total_paths_with_issues' => count($chronicPaths),
-            'visits_completed' => $visitSummary['completed'],
-            'visits_pending' => $visitSummary['scheduled'] + $visitSummary['in_progress'] + $visitSummary['rescheduled'],
-        ];
 
         // Lightweight customer options for manual socialization visit creation
         $customerOptionsQuery = Customer::select('id', 'customer_code', 'name', 'phone', 'address', 'area_id')
@@ -875,24 +919,17 @@ class ChronicMonitoringController extends Controller
         $materialTransactions = fn () => RestockStockService::getRestockTransactions();
 
         return Inertia::render('Operational/ChronicMonitoring', [
-            'chronicCustomers' => $chronicCustomers,
-            'chronicPaths' => $chronicPaths,
-            'socializationVisits' => $socializationVisits,
-            'visitSummary' => $visitSummary,
-            'kpiSummary' => $kpiSummary,
-            'areas' => $areas,
+            'chronicCustomers' => $data['chronicCustomers'],
+            'chronicPaths' => $data['chronicPaths'],
+            'socializationVisits' => $data['socializationVisits'],
+            'visitSummary' => $data['visitSummary'],
+            'kpiSummary' => $data['kpiSummary'],
+            'areas' => $data['areas'],
             'availableOfficers' => $availableOfficers,
             'customerOptions' => $customerOptions,
             'materials' => $materials,
             'materialTransactions' => $materialTransactions,
-            'filters' => [
-                'period' => $period,
-                'area_id' => $areaId ? (int) $areaId : null,
-                'min_tickets' => $minTickets,
-                'search' => $search,
-                'visit_status' => $visitStatus,
-                'my_tasks' => $myTasksOnly,
-            ],
+            'filters' => $data['filters'],
             'canManage' => (bool) ($user && (
                 $user->hasRole('admin') ||
                 $user->hasRole('super admin') ||
@@ -900,6 +937,176 @@ class ChronicMonitoringController extends Controller
                 $user->can('chronic_socialization_manage')
             )),
         ]);
+    }
+
+    /**
+     * Cetak (Print) atau Download PDF Laporan Monitoring Rawan Gangguan & Sosialisasi
+     */
+    public function exportReport(Request $request)
+    {
+        $mode = $request->input('mode', 'print') === 'pdf' ? 'pdf' : 'print';
+        $scope = $request->input('scope', 'all'); // all, customers, paths, visits
+        if (!in_array($scope, ['all', 'customers', 'paths', 'visits'], true)) {
+            $scope = 'all';
+        }
+
+        $data = $this->buildMonitoringData($request);
+
+        // Optional single-item filter (when printing from Customer or Path Timeline Modal)
+        $specificCustomerId = $request->input('customer_id');
+        if ($specificCustomerId) {
+            $data['chronicCustomers'] = array_values(array_filter(
+                $data['chronicCustomers'],
+                fn ($c) => (int) $c['id'] === (int) $specificCustomerId
+            ));
+            $scope = 'customers';
+        }
+
+        $specificNodeKey = $request->input('node_key');
+        if ($specificNodeKey) {
+            $data['chronicPaths'] = array_values(array_filter(
+                $data['chronicPaths'],
+                fn ($p) => (string) $p['node_key'] === (string) $specificNodeKey
+            ));
+            $scope = 'paths';
+        }
+
+        $scopeTitle = match ($scope) {
+            'customers' => 'Laporan Monitoring Pelanggan Rawan / Sering Gangguan',
+            'paths' => 'Laporan Monitoring Jalur Distribusi (ODP / ODC) Rawan Gangguan',
+            'visits' => 'Laporan Penugasan & Kunjungan Sosialisasi Rumah Pelanggan',
+            default => 'Laporan Lengkap Monitoring Rawan Gangguan & Sosialisasi Pelanggan',
+        };
+
+        $viewData = [
+            'mode' => $mode,
+            'scope' => $scope,
+            'scopeTitle' => $scopeTitle,
+            'chronicCustomers' => $data['chronicCustomers'],
+            'chronicPaths' => $data['chronicPaths'],
+            'socializationVisits' => $data['socializationVisits'],
+            'visitSummary' => $data['visitSummary'],
+            'kpiSummary' => $data['kpiSummary'],
+            'filters' => $data['filters'],
+            'periodLabel' => $data['periodLabel'],
+            'areaLabel' => $data['areaLabel'],
+            'specificCustomerId' => $specificCustomerId,
+            'specificNodeKey' => $specificNodeKey,
+            'printedBy' => auth()->user()?->name ?? 'Admin Operasional',
+            'printedAt' => Carbon::now()->locale('id')->isoFormat('dddd, D MMMM Y HH:mm') . ' WIB',
+        ];
+
+        if ($mode === 'pdf') {
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('print.chronic-monitoring-report', $viewData)
+                ->setPaper('a4', 'landscape')
+                ->setOptions([
+                    'isHtml5ParserEnabled' => true,
+                    'isRemoteEnabled' => true,
+                    'defaultFont' => 'sans-serif',
+                ]);
+
+            $slugScope = strtoupper($scope);
+            $dateSlug = Carbon::now()->format('Ymd_His');
+            return $pdf->download("Laporan_Rawan_Gangguan_Sosialisasi_{$slugScope}_{$dateSlug}.pdf");
+        }
+
+        return view('print.chronic-monitoring-report', $viewData);
+    }
+
+    /**
+     * Cetak (Print) atau Download PDF Surat Tugas (SPK) & Berita Acara Kunjungan Sosialisasi Pelanggan
+     */
+    public function exportVisitSpk(Request $request, CustomerSocializationVisit $visit)
+    {
+        $mode = $request->input('mode', 'print') === 'pdf' ? 'pdf' : 'print';
+
+        $visit->load([
+            'customer.areaModel',
+            'customer.package',
+            'customer.ont.odp.odc',
+            'area',
+            'odp.odc',
+            'officers',
+            'creator',
+            'completedByUser',
+        ]);
+
+        $customer = $visit->customer;
+        $recentTickets = [];
+        if ($customer) {
+            $pgk = PgkTicket::with(['technicians', 'leadTechnician'])
+                ->where('customer_id', $customer->id)
+                ->orderByDesc('created_at')
+                ->limit(10)
+                ->get();
+            $pgs = PgsTicket::with(['technicians', 'leadTechnician'])
+                ->where('customer_id', $customer->id)
+                ->orderByDesc('created_at')
+                ->limit(10)
+                ->get();
+
+            foreach ($pgk as $t) {
+                $recentTickets[] = [
+                    'type' => 'PGK',
+                    'ticket_number' => $t->ticket_number,
+                    'category' => $t->category ?: 'Gangguan Umum',
+                    'reported_issue' => $t->reported_issue ?: '-',
+                    'action_taken' => $t->action_taken ?: ($t->resolution_notes ?: '-'),
+                    'status' => $t->status,
+                    'created_at' => $t->created_at ? Carbon::parse($t->created_at)->format('d/m/Y H:i') : '-',
+                ];
+            }
+            foreach ($pgs as $t) {
+                $recentTickets[] = [
+                    'type' => 'PGS',
+                    'ticket_number' => $t->ticket_number,
+                    'category' => $t->category ?: 'Gangguan Spesifik',
+                    'reported_issue' => $t->reported_issue ?: '-',
+                    'action_taken' => $t->action_taken ?: ($t->resolution_notes ?: '-'),
+                    'status' => $t->status,
+                    'created_at' => $t->created_at ? Carbon::parse($t->created_at)->format('d/m/Y H:i') : '-',
+                ];
+            }
+        }
+
+        // Prepare Base64 image for DomPDF compatibility if visit photo exists on disk
+        $photoBase64 = null;
+        if (!empty($visit->photo_visit)) {
+            $rawPhotos = is_array($visit->photo_visit) ? $visit->photo_visit : [$visit->photo_visit];
+            $firstPath = $rawPhotos[0] ?? null;
+            if ($firstPath && !str_starts_with($firstPath, 'http')) {
+                $fullDiskPath = storage_path('app/public/' . ltrim($firstPath, '/'));
+                if (file_exists($fullDiskPath)) {
+                    $mime = mime_content_type($fullDiskPath) ?: 'image/jpeg';
+                    $photoBase64 = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($fullDiskPath));
+                }
+            }
+        }
+
+        $viewData = [
+            'mode' => $mode,
+            'visit' => $visit,
+            'customer' => $customer,
+            'recentTickets' => array_slice($recentTickets, 0, 8),
+            'photoBase64' => $photoBase64,
+            'printedBy' => auth()->user()?->name ?? 'Admin Operasional',
+            'printedAt' => Carbon::now()->locale('id')->isoFormat('dddd, D MMMM Y HH:mm') . ' WIB',
+        ];
+
+        if ($mode === 'pdf') {
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('print.chronic-visit-spk', $viewData)
+                ->setPaper('a4', 'portrait')
+                ->setOptions([
+                    'isHtml5ParserEnabled' => true,
+                    'isRemoteEnabled' => true,
+                    'defaultFont' => 'sans-serif',
+                ]);
+
+            $safeNo = preg_replace('/[^A-Za-z0-9\-_]/', '_', (string) $visit->visit_number);
+            return $pdf->download("SPK_Sosialisasi_{$safeNo}.pdf");
+        }
+
+        return view('print.chronic-visit-spk', $viewData);
     }
 
     /**

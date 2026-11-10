@@ -32,6 +32,10 @@ const canReportVisit = computed(() => can('chronic_socialization_report') || can
 const canDeleteVisit = computed(() => can('chronic_socialization_delete'));
 const canScheduleMaint = computed(() => can('chronic_monitoring_schedule_maintenance') || can('network_maintenance_create'));
 const canWhatsapp = computed(() => can('chronic_monitoring_whatsapp'));
+const canExport = computed(() => can('chronic_monitoring_export') || can('menu_chronic_monitoring'));
+
+// Print & PDF Scope ('active' = sesuai tab aktif, 'all' = semua modul, 'customers', 'paths', 'visits')
+const exportScope = ref('active');
 
 const defaultTab = can('chronic_monitoring_tab_customers')
     ? 'customers'
@@ -743,6 +747,40 @@ const openPathTimeline = (pathNode) => {
 // Photo Lightbox
 const lightboxUrl = ref(null);
 
+// ── PRINT & PDF EXPORT HELPERS ──────────────────────────────────────────────
+const buildExportUrl = (mode = 'print', customScope = null, extraParams = {}) => {
+    const resolvedScope =
+        customScope || (exportScope.value === 'active' ? activeTab.value : exportScope.value);
+
+    const params = new URLSearchParams();
+    params.set('mode', mode);
+    params.set('scope', resolvedScope);
+    if (period.value) params.set('period', period.value);
+    if (areaId.value) params.set('area_id', areaId.value);
+    if (minTickets.value) params.set('min_tickets', minTickets.value);
+    if (search.value) params.set('search', search.value);
+    if (visitStatus.value && visitStatus.value !== 'all') params.set('visit_status', visitStatus.value);
+    if (myTasks.value) params.set('my_tasks', '1');
+
+    Object.entries(extraParams || {}).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== '') {
+            params.set(k, String(v));
+        }
+    });
+
+    return `/operational/chronic-monitoring/export?${params.toString()}`;
+};
+
+const openExportReport = (mode = 'print', customScope = null, extraParams = {}) => {
+    const url = buildExportUrl(mode, customScope, extraParams);
+    window.open(url, '_blank');
+};
+
+const openVisitSpk = (visit, mode = 'print') => {
+    if (!visit?.id) return;
+    window.open(`/operational/chronic-monitoring/visits/${visit.id}/spk?mode=${mode}`, '_blank');
+};
+
 const formatWaUrl = (phone, customText = '') => {
     if (!phone) return '#';
     let clean = String(phone).replace(/[^0-9]/g, '');
@@ -967,12 +1005,48 @@ const formatWaUrl = (phone, customText = '') => {
                         </div>
                     </div>
 
-                    <!-- Tombol Utus Petugas Sosialisasi Manual -->
-                    <div v-if="canManageVisit" class="flex items-center gap-2 shrink-0 pt-2 lg:pt-4">
+                    <!-- Tombol Print, PDF & Utus Petugas Sosialisasi Manual -->
+                    <div class="flex flex-wrap items-center gap-2 shrink-0 pt-2 lg:pt-4">
+                        <div
+                            v-if="canExport"
+                            class="flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700"
+                        >
+                            <select
+                                v-model="exportScope"
+                                class="rounded-lg border-0 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-[11px] font-bold py-1.5 pl-2.5 pr-6 focus:ring-1 focus:ring-rose-500 cursor-pointer"
+                                title="Pilih cakupan data yang ingin dicetak / diunduh PDF"
+                            >
+                                <option value="active">Tab Aktif Saat Ini</option>
+                                <option value="all">Semua Modul (Lengkap)</option>
+                                <option value="customers">1. Pelanggan Rawan</option>
+                                <option value="paths">2. Jalur ODP/ODC Rawan</option>
+                                <option value="visits">3. Kunjungan Sosialisasi</option>
+                            </select>
+                            <button
+                                type="button"
+                                @click="openExportReport('print')"
+                                class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition"
+                                title="Buka halaman cetak (Print) sesuai filter & pilihan modul"
+                            >
+                                <span>🖨️</span>
+                                <span>Print</span>
+                            </button>
+                            <button
+                                type="button"
+                                @click="openExportReport('pdf')"
+                                class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition"
+                                title="Download file PDF sesuai filter & pilihan modul"
+                            >
+                                <span>📄</span>
+                                <span>PDF</span>
+                            </button>
+                        </div>
+
                         <button
+                            v-if="canManageVisit"
                             type="button"
                             @click="openCreateVisitManual"
-                            class="w-full lg:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-orange-600 hover:from-rose-500 hover:to-orange-500 text-white text-xs font-bold shadow-md shadow-rose-500/20 flex items-center justify-center gap-2 cursor-pointer"
+                            class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-orange-600 hover:from-rose-500 hover:to-orange-500 text-white text-xs font-bold shadow-md shadow-rose-500/20 flex items-center justify-center gap-2 cursor-pointer"
                         >
                             <span>🤝</span>
                             <span>+ Jadwalkan Petugas Sosialisasi</span>
@@ -1750,7 +1824,7 @@ const formatWaUrl = (phone, customText = '') => {
                         </div>
 
                         <!-- Right Action Buttons -->
-                        <div class="flex flex-row lg:flex-col gap-2 shrink-0">
+                        <div class="flex flex-wrap lg:flex-col gap-2 shrink-0">
                             <button
                                 v-if="canReportVisit"
                                 type="button"
@@ -1760,6 +1834,27 @@ const formatWaUrl = (phone, customText = '') => {
                                 <span>📝</span>
                                 <span>{{ visit.is_done ? 'Edit Laporan Sosialisasi' : 'Isi Laporan Kunjungan' }}</span>
                             </button>
+
+                            <div v-if="canExport" class="flex items-center gap-1.5">
+                                <button
+                                    type="button"
+                                    @click="openVisitSpk(visit, 'print')"
+                                    class="flex-1 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-bold flex items-center justify-center gap-1 cursor-pointer"
+                                    title="Cetak SPK & Berita Acara Kunjungan Sosialisasi Pelanggan"
+                                >
+                                    <span>🖨️</span>
+                                    <span>Print SPK</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    @click="openVisitSpk(visit, 'pdf')"
+                                    class="flex-1 px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-bold flex items-center justify-center gap-1 cursor-pointer"
+                                    title="Download PDF SPK & Berita Acara Kunjungan Sosialisasi Pelanggan"
+                                >
+                                    <span>📄</span>
+                                    <span>PDF</span>
+                                </button>
+                            </div>
 
                             <button
                                 v-if="canWhatsapp"
@@ -2612,22 +2707,50 @@ const formatWaUrl = (phone, customText = '') => {
                     </div>
                 </div>
 
-                <div class="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
-                    <button
-                        v-if="timelineTarget.type === 'customer' && timelineTarget.customer"
-                        type="button"
-                        @click="showTimelineModal = false; openCreateVisitForCustomer(timelineTarget.customer)"
-                        class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold cursor-pointer"
-                    >
-                        🤝 Utus Petugas Sosialisasi ke Rumah Pelanggan Ini
-                    </button>
-                    <button
-                        type="button"
-                        @click="showTimelineModal = false"
-                        class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold cursor-pointer"
-                    >
-                        Tutup
-                    </button>
+                <div class="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                    <div v-if="canExport" class="flex items-center gap-2">
+                        <button
+                            type="button"
+                            @click="
+                                timelineTarget.type === 'customer' && timelineTarget.customer
+                                    ? openExportReport('print', 'customers', { customer_id: timelineTarget.customer.id })
+                                    : openExportReport('print', 'paths', { node_key: timelineTarget.pathNode?.node_key })
+                            "
+                            class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                        >
+                            <span>🖨️</span>
+                            <span>Print Riwayat</span>
+                        </button>
+                        <button
+                            type="button"
+                            @click="
+                                timelineTarget.type === 'customer' && timelineTarget.customer
+                                    ? openExportReport('pdf', 'customers', { customer_id: timelineTarget.customer.id })
+                                    : openExportReport('pdf', 'paths', { node_key: timelineTarget.pathNode?.node_key })
+                            "
+                            class="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                        >
+                            <span>📄</span>
+                            <span>Download PDF</span>
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2 ml-auto">
+                        <button
+                            v-if="timelineTarget.type === 'customer' && timelineTarget.customer && canManageVisit"
+                            type="button"
+                            @click="showTimelineModal = false; openCreateVisitForCustomer(timelineTarget.customer)"
+                            class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold cursor-pointer"
+                        >
+                            🤝 Utus Petugas Sosialisasi ke Rumah Pelanggan Ini
+                        </button>
+                        <button
+                            type="button"
+                            @click="showTimelineModal = false"
+                            class="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold cursor-pointer"
+                        >
+                            Tutup
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

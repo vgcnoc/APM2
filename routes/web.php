@@ -587,6 +587,8 @@ Route::middleware(['auth'])->group(function () {
     // ── Monitoring Rawan Gangguan (Pelanggan & Jalur) + Kunjungan Sosialisasi ──
     Route::middleware(['role_or_permission:admin|super admin|menu_chronic_monitoring'])->prefix('operational/chronic-monitoring')->name('operational.chronic-monitoring.')->group(function () {
         Route::get('/', [\App\Http\Controllers\ChronicMonitoringController::class, 'index'])->name('index');
+        Route::get('/export', [\App\Http\Controllers\ChronicMonitoringController::class, 'exportReport'])->name('export');
+        Route::get('/visits/{visit}/spk', [\App\Http\Controllers\ChronicMonitoringController::class, 'exportVisitSpk'])->name('visits.spk');
         Route::post('/visits', [\App\Http\Controllers\ChronicMonitoringController::class, 'storeVisit'])->middleware('role_or_permission:admin|super admin|chronic_socialization_manage|menu_chronic_monitoring')->name('visits.store');
         Route::post('/visits/{visit}/report', [\App\Http\Controllers\ChronicMonitoringController::class, 'updateVisitReport'])->middleware('role_or_permission:admin|super admin|chronic_socialization_report|chronic_socialization_manage|menu_chronic_monitoring')->name('visits.report');
         Route::post('/visits/{visit}/notify-wa', [\App\Http\Controllers\ChronicMonitoringController::class, 'notifyOfficerWa'])->middleware('role_or_permission:admin|super admin|chronic_monitoring_whatsapp|chronic_socialization_manage|menu_chronic_monitoring')->name('visits.notify-wa');
