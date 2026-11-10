@@ -44,9 +44,12 @@ class ChronicMonitoringController extends Controller
             $user->hasRole('admin') ||
             $user->hasRole('super admin') ||
             $user->role === 'admin' ||
-            $user->can('operational_progress_view_all') ||
-            $user->can('pgk_view_all') ||
-            $user->can('pgs_view_all')
+            $user->can('chronic_monitoring_view_all') ||
+            (!$user->can('chronic_monitoring_view_area') && (
+                $user->can('operational_progress_view_all') ||
+                $user->can('pgk_view_all') ||
+                $user->can('pgs_view_all')
+            ))
         );
         $accessibleAreaIds = (!$isGlobal && $user) ? $user->getAccessibleAreaIds() : null;
 
@@ -69,7 +72,7 @@ class ChronicMonitoringController extends Controller
             $targetAreaIds = [(int) $areaId];
         }
 
-        $areas = DataScopeService::getScopedAreas($user, 'operational_progress');
+        $areas = DataScopeService::getScopedAreas($user, 'chronic_monitoring');
 
         // Determine start date from period
         $startDate = match ($period) {
@@ -890,7 +893,12 @@ class ChronicMonitoringController extends Controller
                 'visit_status' => $visitStatus,
                 'my_tasks' => $myTasksOnly,
             ],
-            'canManage' => true,
+            'canManage' => (bool) ($user && (
+                $user->hasRole('admin') ||
+                $user->hasRole('super admin') ||
+                $user->role === 'admin' ||
+                $user->can('chronic_socialization_manage')
+            )),
         ]);
     }
 

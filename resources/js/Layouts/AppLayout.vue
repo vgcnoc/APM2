@@ -1058,7 +1058,7 @@ const menuItems = [
         label: 'Rawan Gangguan & Sosialisasi',
         theme: 'rose',
         active: (url) => (url || '').startsWith('/operational/chronic-monitoring'),
-        permission: ['menu_chronic_monitoring', 'menu_network_maintenance', 'menu_operational_progress', 'menu_pgk', 'menu_pgs', 'menu_pgj', 'menu_monitoring_pelanggan', 'pgk_btn_report', 'pgs_btn_report'],
+        permission: 'menu_chronic_monitoring',
     },
     {
         type: 'link',

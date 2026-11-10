@@ -1138,8 +1138,6 @@ class PermissionRegistry
                 'permissions' => [
                     ['name' => 'menu_operational_progress', 'type' => 'menu', 'label' => 'Akses Menu Progress Harian Operasional'],
                     ['name' => 'menu_network_maintenance', 'type' => 'menu', 'label' => 'Akses Menu Pemeliharaan Jalur (ODP/ODC)'],
-                    ['name' => 'menu_chronic_monitoring', 'type' => 'menu', 'label' => 'Akses Menu Monitoring Rawan Gangguan & Sosialisasi Pelanggan'],
-                    ['name' => 'chronic_socialization_manage', 'type' => 'button', 'label' => 'Jadwalkan & Input Laporan Kunjungan Sosialisasi Pelanggan'],
                     ['name' => 'operational_progress_view', 'type' => 'feature', 'label' => 'Lihat Laporan Progress Harian'],
                     ['name' => 'operational_progress_filter_area', 'type' => 'filter', 'label' => 'Filter Wilayah / Area Operasional'],
                     ['name' => 'operational_progress_filter_date', 'type' => 'filter', 'label' => 'Filter Tanggal Laporan Operasional'],
@@ -1150,6 +1148,29 @@ class PermissionRegistry
                     ['name' => 'network_maintenance_delete', 'type' => 'button', 'label' => 'Hapus Data Perapihan & Pengecekan Jalur'],
                     ['name' => 'operational_progress_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Wilayah (All Area)'],
                     ['name' => 'operational_progress_view_area', 'type' => 'feature', 'label' => 'Scope: Karyawan Hanya Bisa Lihat Data Per Area'],
+                ],
+            ],
+
+            // ── 24B. MONITORING RAWAN GANGGUAN & SOSIALISASI PELANGGAN ──
+            [
+                'group' => 'Monitoring Rawan Gangguan & Sosialisasi',
+                'category' => 'tiket',
+                'icon' => 'alert-circle',
+                'menu_parent' => 'menu_chronic_monitoring',
+                'permissions' => [
+                    ['name' => 'menu_chronic_monitoring', 'type' => 'menu', 'label' => 'Akses Menu Rawan Gangguan & Sosialisasi Pelanggan'],
+                    ['name' => 'chronic_monitoring_card_stats', 'type' => 'card', 'label' => 'Card Statistik Pelanggan Kronis, Jalur Rawan & Kunjungan Sosialisasi'],
+                    ['name' => 'chronic_monitoring_tab_customers', 'type' => 'tab', 'label' => 'Tab Pelanggan Sering Gangguan'],
+                    ['name' => 'chronic_monitoring_tab_paths', 'type' => 'tab', 'label' => 'Tab Jalur / ODP / ODC Sering Gangguan'],
+                    ['name' => 'chronic_monitoring_tab_visits', 'type' => 'tab', 'label' => 'Tab Kunjungan Sosialisasi Rumah Pelanggan'],
+                    ['name' => 'chronic_monitoring_filter', 'type' => 'filter', 'label' => 'Filter Periode, Wilayah, Frekuensi Gangguan & Pencarian'],
+                    ['name' => 'chronic_socialization_manage', 'type' => 'button', 'label' => 'Tombol Jadwalkan & Utus Petugas Sosialisasi ke Rumah Pelanggan'],
+                    ['name' => 'chronic_socialization_report', 'type' => 'button', 'label' => 'Tombol Isi & Simpan Laporan Kunjungan Sosialisasi di Rumah Pelanggan'],
+                    ['name' => 'chronic_socialization_delete', 'type' => 'button', 'label' => 'Tombol Hapus Jadwal Kunjungan Sosialisasi'],
+                    ['name' => 'chronic_monitoring_schedule_maintenance', 'type' => 'button', 'label' => 'Tombol Jadwalkan Perbaikan / Peremajaan Jalur (ODP/ODC) & Bekal Material'],
+                    ['name' => 'chronic_monitoring_whatsapp', 'type' => 'button', 'label' => 'Tombol Sapa Pelanggan & Kirim WA Tugas Petugas'],
+                    ['name' => 'chronic_monitoring_view_all', 'type' => 'feature', 'label' => 'Scope: Tampilkan Semua Wilayah (All Area)'],
+                    ['name' => 'chronic_monitoring_view_area', 'type' => 'feature', 'label' => 'Scope: Batasi Data Sesuai Wilayah / Area Akun'],
                 ],
             ],
 
@@ -1188,7 +1209,7 @@ class PermissionRegistry
      */
     public static function getDefaultRolePresets(): array
     {
-        return [
+        $presets = [
             'admin' => self::allNames(),
             'noc' => [
                 'menu_dashboard', 'menu_dashboard_realtime', 'dashboard_card_realtime', 'dashboard_realtime_btn_unpaid', 'dashboard_realtime_btn_isolir', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_infra', 'dashboard_filter_area', 'dashboard_btn_refresh',
@@ -1220,12 +1241,13 @@ class PermissionRegistry
                 'menu_tickets', 'tickets_card_summary', 'tickets_filter_priority', 'tickets_create', 'tickets_edit', 'tickets_delete', 'tickets_assign', 'tickets_close', 'tickets_btn_whatsapp', 'tickets_view_all',
                 'menu_cbp', 'menu_cbp_jadwal', 'menu_cbp_laporan', 'cbp_card_stats', 'cbp_filter', 'cbp_btn_request', 'cbp_btn_dispatch', 'cbp_btn_assign', 'cbp_btn_report', 'cbp_btn_cancel', 'cbp_btn_delete', 'cbp_btn_delete_all', 'cbp_manage', 'cbp_view_all',
                 'menu_pgk', 'menu_pgk_jadwal', 'menu_pgk_laporan', 'pgk_card_summary', 'pgk_tab_flow', 'pgk_filter', 'pgk_btn_create', 'pgk_btn_resolve_admin', 'pgk_btn_escalate', 'pgk_btn_assign', 'pgk_btn_request_material', 'pgk_btn_report', 'pgk_btn_audit', 'pgk_manage', 'pgk_view_all',
-                'menu_pgj', 'menu_pgj_jadwal', 'menu_pgj_laporan', 'pgj_card_summary', 'pgj_card_stats', 'pgj_tab_flow', 'pgj_filter', 'pgj_btn_create', 'pgj_btn_resolve', 'pgj_btn_escalate', 'pgj_btn_assign', 'pgj_btn_request_material', 'pgj_btn_report', 'pgj_btn_view', 'pgj_btn_delete', 'pgj_btn_delete_all', 'pgj_manage', 'pgj_view_all',
+                'menu_pgj', 'menu_pgj_jadwal', 'pgj_card_summary', 'pgj_card_stats', 'pgj_tab_flow', 'pgj_filter', 'pgj_btn_create', 'pgj_btn_resolve', 'pgj_btn_escalate', 'pgj_btn_assign', 'pgj_btn_request_material', 'pgj_btn_report', 'pgj_btn_view', 'pgj_btn_delete', 'pgj_btn_delete_all', 'pgj_manage', 'pgj_view_all',
                 'menu_pgs', 'menu_pgs_jadwal', 'menu_pgs_laporan', 'pgs_card_summary', 'pgs_tab_flow', 'pgs_filter', 'pgs_btn_create', 'pgs_btn_resolve', 'pgs_btn_escalate', 'pgs_btn_assign', 'pgs_btn_report', 'pgs_manage', 'pgs_view_all',
                 'menu_customers_booking', 'customers_booking_card_stats', 'customers_booking_filter_area', 'customers_booking_create', 'customers_booking_view', 'customers_booking_edit', 'customers_booking_print', 'customers_booking_whatsapp', 'customers_booking_view_all',
                 'menu_whatsapp_blast', 'whatsapp_card_gateway_status', 'whatsapp_card_blast_summary', 'whatsapp_tab_device', 'whatsapp_btn_scan_qr', 'whatsapp_btn_restart',
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_btn_export', 'monitoring_teknisi_view_all',
                 'menu_operational_progress', 'menu_network_maintenance', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'operational_progress_send_wa', 'network_maintenance_create', 'network_maintenance_update', 'operational_progress_view_area',
+                'menu_chronic_monitoring', 'chronic_monitoring_card_stats', 'chronic_monitoring_tab_customers', 'chronic_monitoring_tab_paths', 'chronic_monitoring_tab_visits', 'chronic_monitoring_filter', 'chronic_socialization_manage', 'chronic_socialization_report', 'chronic_socialization_delete', 'chronic_monitoring_schedule_maintenance', 'chronic_monitoring_whatsapp', 'chronic_monitoring_view_all',
                 'menu_vouchers_free', 'voucher_free_card_stats', 'voucher_free_tab_generated', 'voucher_free_tab_customers', 'vouchers_free_create', 'vouchers_free_print', 'vouchers_free_delete', 'vouchers_free_toggle', 'vouchers_free_sync_customer', 'voucher_free_filter_connection', 'voucher_free_color_indicator',
                 'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
             ],
@@ -1290,6 +1312,7 @@ class PermissionRegistry
                 'menu_payroll', 'payroll_view_own', 'payroll_btn_print_slip',
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_area', 'monitoring_teknisi_view_own',
                 'menu_operational_progress', 'menu_network_maintenance', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'network_maintenance_create', 'network_maintenance_update', 'operational_progress_view_area',
+                'menu_chronic_monitoring', 'chronic_monitoring_card_stats', 'chronic_monitoring_tab_customers', 'chronic_monitoring_tab_paths', 'chronic_monitoring_tab_visits', 'chronic_monitoring_filter', 'chronic_socialization_manage', 'chronic_socialization_report', 'chronic_socialization_delete', 'chronic_monitoring_schedule_maintenance', 'chronic_monitoring_whatsapp', 'chronic_monitoring_view_area',
                 'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
             ],
             'kepala teknisi' => [
@@ -1370,6 +1393,7 @@ class PermissionRegistry
                 'menu_monitoring_pelanggan', 'monitoring_pelanggan_card_stats', 'monitoring_pelanggan_tab_menunggak', 'monitoring_pelanggan_tab_janji_bayar', 'monitoring_pelanggan_tab_stop_sementara', 'monitoring_pelanggan_filter', 'monitoring_pelanggan_btn_whatsapp', 'monitoring_pelanggan_btn_action',
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_all',
                 'menu_operational_progress', 'menu_network_maintenance', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'network_maintenance_create', 'network_maintenance_update', 'operational_progress_view_area',
+                'menu_chronic_monitoring', 'chronic_monitoring_card_stats', 'chronic_monitoring_tab_customers', 'chronic_monitoring_tab_paths', 'chronic_monitoring_tab_visits', 'chronic_monitoring_filter', 'chronic_socialization_manage', 'chronic_socialization_report', 'chronic_socialization_delete', 'chronic_monitoring_schedule_maintenance', 'chronic_monitoring_whatsapp', 'chronic_monitoring_view_all',
             ],
             'admin cs' => [
                 'menu_dashboard', 'menu_dashboard_realtime', 'dashboard_card_realtime', 'dashboard_realtime_btn_unpaid', 'dashboard_realtime_btn_isolir', 'dashboard_card_stats', 'dashboard_card_tickets', 'dashboard_card_revenue', 'dashboard_filter_area', 'dashboard_btn_quick_action', 'dashboard_btn_refresh',
@@ -1480,6 +1504,8 @@ class PermissionRegistry
                 'menu_whatsapp_blast', 'whatsapp_card_gateway_status', 'whatsapp_card_blast_summary',
                 'menu_monitoring_pelanggan', 'monitoring_pelanggan_card_stats', 'monitoring_pelanggan_tab_menunggak', 'monitoring_pelanggan_tab_janji_bayar', 'monitoring_pelanggan_tab_stop_sementara', 'monitoring_pelanggan_filter', 'monitoring_pelanggan_btn_whatsapp', 'monitoring_pelanggan_btn_action',
                 'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_export', 'monitoring_teknisi_view_all',
+                'menu_operational_progress', 'menu_network_maintenance', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'operational_progress_send_wa', 'network_maintenance_create', 'network_maintenance_update', 'operational_progress_view_all',
+                'menu_chronic_monitoring', 'chronic_monitoring_card_stats', 'chronic_monitoring_tab_customers', 'chronic_monitoring_tab_paths', 'chronic_monitoring_tab_visits', 'chronic_monitoring_filter', 'chronic_socialization_manage', 'chronic_socialization_report', 'chronic_socialization_delete', 'chronic_monitoring_schedule_maintenance', 'chronic_monitoring_whatsapp', 'chronic_monitoring_view_all',
                 'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view', 'internet_packages_create', 'internet_packages_edit', 'internet_packages_delete',
             ],
             'hrd' => [
@@ -1576,6 +1602,7 @@ class PermissionRegistry
             'menu_payroll', 'payroll_view_own', 'payroll_btn_print_slip',
             'menu_monitoring_teknisi', 'monitoring_teknisi_card_stats', 'monitoring_teknisi_tab_gangguan', 'monitoring_teknisi_tab_instalasi', 'monitoring_teknisi_tab_leaderboard', 'monitoring_teknisi_filter_period', 'monitoring_teknisi_btn_whatsapp', 'monitoring_teknisi_view_area', 'monitoring_teknisi_view_own',
             'menu_operational_progress', 'menu_network_maintenance', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'network_maintenance_create', 'network_maintenance_update',
+            'menu_chronic_monitoring', 'chronic_monitoring_card_stats', 'chronic_monitoring_tab_customers', 'chronic_monitoring_tab_paths', 'chronic_monitoring_tab_visits', 'chronic_monitoring_filter', 'chronic_socialization_manage', 'chronic_socialization_report', 'chronic_socialization_delete', 'chronic_monitoring_schedule_maintenance', 'chronic_monitoring_whatsapp', 'chronic_monitoring_view_area',
             'menu_internet_packages', 'internet_packages_card_stats', 'internet_packages_filter', 'internet_packages_view',
         ];
 
@@ -1609,12 +1636,32 @@ class PermissionRegistry
             'menu_operational_progress', 'menu_network_maintenance', 'operational_progress_view', 'operational_progress_filter_area', 'operational_progress_filter_date', 'operational_progress_copy_wa', 'network_maintenance_create', 'network_maintenance_update',
         ];
 
+        // Preset khusus Infrastruktur (Pembangunan, Peremajaan Jalur & Monitoring Rawan Gangguan)
+        $presets['infrastruktur'] = array_values(array_unique(array_merge($presets['teknisi tim serbu'], [
+            'menu_chronic_monitoring',
+            'chronic_monitoring_card_stats',
+            'chronic_monitoring_tab_customers',
+            'chronic_monitoring_tab_paths',
+            'chronic_monitoring_tab_visits',
+            'chronic_monitoring_filter',
+            'chronic_socialization_manage',
+            'chronic_socialization_report',
+            'chronic_socialization_delete',
+            'chronic_monitoring_schedule_maintenance',
+            'chronic_monitoring_whatsapp',
+            'chronic_monitoring_view_area',
+        ])));
+
         // Role alias / turunan jabatan agar sinkron otomatis saat sinkronisasi izin
         $presets['Maintenance-1'] = $presets['maintenance-1'];
+        $presets['Maintenance'] = $presets['maintenance'];
+        $presets['Manager'] = $presets['manager'];
+        $presets['NOC'] = $presets['noc'];
+        $presets['CS'] = $presets['cs'];
+        $presets['Infrastruktur'] = $presets['infrastruktur'];
         $presets['Teknisi Tim Serbu'] = $presets['teknisi tim serbu'];
         $presets['tim serbu'] = $presets['teknisi tim serbu'];
         $presets['Tim Serbu'] = $presets['teknisi tim serbu'];
-        $presets['infrastruktur'] = $presets['teknisi tim serbu'];
         $presets['teknisi-2'] = $presets['teknisi'];
         $presets['logistik'] = $presets['gudang'];
         $presets['staff gudang'] = $presets['gudang'];

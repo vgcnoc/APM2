@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { usePermission } from '@/Composables/usePermission';
 import axios from 'axios';
 
 const props = defineProps({
@@ -19,7 +20,26 @@ const props = defineProps({
     canManage: { type: Boolean, default: true },
 });
 
-const activeTab = ref('customers'); // 'customers' | 'paths' | 'visits'
+const { can } = usePermission();
+
+const canViewStats = computed(() => can('chronic_monitoring_card_stats'));
+const canFilter = computed(() => can('chronic_monitoring_filter'));
+const canTabCustomers = computed(() => can('chronic_monitoring_tab_customers'));
+const canTabPaths = computed(() => can('chronic_monitoring_tab_paths'));
+const canTabVisits = computed(() => can('chronic_monitoring_tab_visits'));
+const canManageVisit = computed(() => can('chronic_socialization_manage'));
+const canReportVisit = computed(() => can('chronic_socialization_report') || can('chronic_socialization_manage'));
+const canDeleteVisit = computed(() => can('chronic_socialization_delete'));
+const canScheduleMaint = computed(() => can('chronic_monitoring_schedule_maintenance') || can('network_maintenance_create'));
+const canWhatsapp = computed(() => can('chronic_monitoring_whatsapp'));
+
+const defaultTab = can('chronic_monitoring_tab_customers')
+    ? 'customers'
+    : can('chronic_monitoring_tab_paths')
+      ? 'paths'
+      : 'visits';
+
+const activeTab = ref(defaultTab); // 'customers' | 'paths' | 'visits'
 
 // Filter state
 const period = ref(props.filters.period || '90_days');
@@ -741,10 +761,10 @@ const formatWaUrl = (phone, customText = '') => {
     >
         <div class="space-y-6">
             <!-- 1. KPI CARDS -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div v-if="canViewStats" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <!-- Card 1: Pelanggan Sering Gangguan -->
                 <div
-                    @click="activeTab = 'customers'"
+                    @click="canTabCustomers && (activeTab = 'customers')"
                     class="cursor-pointer bg-white dark:bg-slate-900 rounded-2xl p-4 border border-rose-200/80 dark:border-rose-900/50 shadow-sm hover:shadow-md transition"
                 >
                     <div class="flex items-center justify-between">
@@ -870,8 +890,8 @@ const formatWaUrl = (phone, customText = '') => {
 
             <!-- 2. FILTER BAR & QUICK ACTION -->
             <div class="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm">
-                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 flex-1">
+                <div v-if="canFilter || canManageVisit" class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                    <div v-if="canFilter" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 flex-1">
                         <!-- Periode -->
                         <div>
                             <label class="block text-[11px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
@@ -948,7 +968,7 @@ const formatWaUrl = (phone, customText = '') => {
                     </div>
 
                     <!-- Tombol Utus Petugas Sosialisasi Manual -->
-                    <div class="flex items-center gap-2 shrink-0 pt-2 lg:pt-4">
+                    <div v-if="canManageVisit" class="flex items-center gap-2 shrink-0 pt-2 lg:pt-4">
                         <button
                             type="button"
                             @click="openCreateVisitManual"
@@ -964,6 +984,7 @@ const formatWaUrl = (phone, customText = '') => {
                 <div class="flex flex-wrap items-center justify-between gap-3 mt-4 pt-4 border-t border-slate-200/70 dark:border-slate-800">
                     <div class="flex flex-wrap items-center gap-2">
                         <button
+                            v-if="canTabCustomers"
                             type="button"
                             @click="activeTab = 'customers'"
                             :class="[
@@ -980,6 +1001,7 @@ const formatWaUrl = (phone, customText = '') => {
                         </button>
 
                         <button
+                            v-if="canTabPaths"
                             type="button"
                             @click="activeTab = 'paths'"
                             :class="[
@@ -996,6 +1018,7 @@ const formatWaUrl = (phone, customText = '') => {
                         </button>
 
                         <button
+                            v-if="canTabVisits"
                             type="button"
                             @click="activeTab = 'visits'"
                             :class="[
@@ -1192,6 +1215,7 @@ const formatWaUrl = (phone, customText = '') => {
                         <!-- Right Action Buttons -->
                         <div class="flex flex-row lg:flex-col gap-2 shrink-0">
                             <button
+                                v-if="canManageVisit"
                                 type="button"
                                 @click="openCreateVisitForCustomer(cust)"
                                 class="flex-1 lg:flex-none px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
@@ -1210,7 +1234,7 @@ const formatWaUrl = (phone, customText = '') => {
                             </button>
 
                             <a
-                                v-if="cust.phone"
+                                v-if="cust.phone && canWhatsapp"
                                 :href="formatWaUrl(cust.phone, `Halo Bapak/Ibu ${cust.name}, kami dari tim layanan pelanggan ingin menanyakan apakah koneksi internet Bapak/Ibu saat ini sudah berjalan lancar dan stabil?`)"
                                 target="_blank"
                                 class="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-bold flex items-center justify-center gap-1.5"
@@ -1429,6 +1453,7 @@ const formatWaUrl = (phone, customText = '') => {
                         <!-- Right Action Buttons -->
                         <div class="flex flex-row lg:flex-col gap-2 shrink-0">
                             <button
+                                v-if="canScheduleMaint"
                                 type="button"
                                 @click="openScheduleMaintenanceModal(pathNode)"
                                 class="flex-1 lg:flex-none px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
@@ -1438,7 +1463,7 @@ const formatWaUrl = (phone, customText = '') => {
                             </button>
 
                             <button
-                                v-if="pathNode.latest_maintenance"
+                                v-if="pathNode.latest_maintenance && canScheduleMaint"
                                 type="button"
                                 @click="openNetworkMaintenancePage(pathNode.latest_maintenance)"
                                 class="flex-1 lg:flex-none px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
@@ -1448,7 +1473,7 @@ const formatWaUrl = (phone, customText = '') => {
                             </button>
 
                             <button
-                                v-if="pathNode.affected_customers && pathNode.affected_customers.length > 0"
+                                v-if="pathNode.affected_customers && pathNode.affected_customers.length > 0 && canManageVisit"
                                 type="button"
                                 @click="openBatchVisitForPath(pathNode)"
                                 class="flex-1 lg:flex-none px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
@@ -1727,6 +1752,7 @@ const formatWaUrl = (phone, customText = '') => {
                         <!-- Right Action Buttons -->
                         <div class="flex flex-row lg:flex-col gap-2 shrink-0">
                             <button
+                                v-if="canReportVisit"
                                 type="button"
                                 @click="openReportModal(visit)"
                                 class="flex-1 lg:flex-none px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
@@ -1736,6 +1762,7 @@ const formatWaUrl = (phone, customText = '') => {
                             </button>
 
                             <button
+                                v-if="canWhatsapp"
                                 type="button"
                                 @click="resendOfficerWa(visit)"
                                 class="flex-1 lg:flex-none px-3.5 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
@@ -1745,6 +1772,7 @@ const formatWaUrl = (phone, customText = '') => {
                             </button>
 
                             <button
+                                v-if="canDeleteVisit"
                                 type="button"
                                 @click="deleteVisitItem(visit)"
                                 class="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-xs font-bold cursor-pointer"

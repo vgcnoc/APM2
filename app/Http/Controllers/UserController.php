@@ -53,13 +53,13 @@ class UserController extends Controller
             'active' => User::where('is_active', true)->count(),
             'inactive' => User::where('is_active', false)->count(),
             'on_duty' => User::where('is_on_duty', true)->count(),
-            'teknisi' => User::whereIn('role', ['teknisi', 'maintenance'])->count(),
+            'teknisi' => User::whereIn('role', ['teknisi', 'maintenance', 'maintenance-1', 'infrastruktur'])->count(),
             'admin' => User::whereIn('role', ['admin', 'super admin', 'manager'])->count(),
         ];
 
         // Fetch roles from Spatie with fallback presets
         $spatieRoles = \Spatie\Permission\Models\Role::orderBy('name')->pluck('name')->toArray();
-        $presetRoles = ['admin', 'teknisi', 'noc', 'cs', 'sales', 'affiliate', 'finance', 'maintenance', 'reseller', 'manager', 'hrd'];
+        $presetRoles = ['admin', 'teknisi', 'noc', 'cs', 'sales', 'affiliate', 'finance', 'maintenance', 'maintenance-1', 'infrastruktur', 'reseller', 'manager', 'hrd'];
         $allRoles = array_values(array_unique(array_merge($spatieRoles, $presetRoles)));
         sort($allRoles);
 

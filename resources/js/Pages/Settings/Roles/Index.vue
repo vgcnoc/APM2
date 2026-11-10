@@ -800,6 +800,8 @@ const categoryMap = {
         'Cabut Perangkat (CBP)',
         'Penanganan Khusus (PGK, PGJ, PGS)',
         'Monitoring Kinerja Teknisi',
+        'Progress Harian Operasional',
+        'Monitoring Rawan Gangguan & Sosialisasi',
     ],
     'gudang': [
         'Data Material & Stok',
@@ -1066,7 +1068,13 @@ const availablePresets = [
         key: 'maintenance-1',
         emoji: '🛠️',
         title: 'Maintenance-1 (Persiapan & Penugasan)',
-        desc: 'Persiapan rollout ODC/ODP (spesifikasi, auto GPS, titik rute, Auto-BOM material) & penugasan tim serbu, alokasi material gudang serta surat jalan.',
+        desc: 'Persiapan rollout ODC/ODP, penugasan tim, alokasi material gudang, pemeliharaan jalur & monitoring rawan gangguan.',
+    },
+    {
+        key: 'infrastruktur',
+        emoji: '🏗️',
+        title: 'Infrastruktur (Pembangunan & Peremajaan Jalur)',
+        desc: 'Pembangunan ODC/ODP, peremajaan jalur distribusi, QC redaman optik, serta monitoring rawan gangguan & sosialisasi.',
     },
     {
         key: 'teknisi tim serbu',
@@ -1190,9 +1198,10 @@ const applyPreset = (presetName) => {
     
     let matchingKey = Object.keys(presets).find(k => k.toLowerCase() === key);
     if (!matchingKey) {
-        if (key.includes('serbu')) matchingKey = 'teknisi tim serbu';
+        if (key.includes('infrastruktur') || key.includes('infra')) matchingKey = 'infrastruktur';
+        else if (key.includes('serbu')) matchingKey = 'teknisi tim serbu';
         else if (key.includes('maintenance-1') || key.includes('maintenance 1')) matchingKey = 'maintenance-1';
-        else if (key.includes('maintenance')) matchingKey = 'maintenance-1';
+        else if (key.includes('maintenance')) matchingKey = 'maintenance';
         else if (key.includes('teknisi')) matchingKey = 'teknisi';
         else if (key.includes('cs') || key.includes('customer')) matchingKey = 'cs';
         else if (key.includes('marketing') || key.includes('komunikasi') || key.includes('marcom')) matchingKey = 'marketing';

@@ -574,7 +574,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ── Progress Harian Operasional & Pemeliharaan Jalur ──
-    Route::middleware(['permission:menu_operational_progress|operational_progress_view|menu_network_maintenance|network_maintenance_update'])->group(function () {
+    Route::middleware(['permission:menu_operational_progress|operational_progress_view|menu_network_maintenance|network_maintenance_update|menu_chronic_monitoring|chronic_monitoring_schedule_maintenance'])->group(function () {
         Route::get('/operational/daily-progress', [\App\Http\Controllers\OperationalDailyProgressController::class, 'index'])->name('operational.daily-progress.index');
         Route::get('/operational/network-maintenance', [\App\Http\Controllers\NetworkMaintenanceController::class, 'index'])->name('operational.network-maintenance.index');
         Route::post('/operational/daily-progress/send-wa', [\App\Http\Controllers\OperationalDailyProgressController::class, 'sendWa'])->name('operational.daily-progress.send-wa');
@@ -585,12 +585,12 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ── Monitoring Rawan Gangguan (Pelanggan & Jalur) + Kunjungan Sosialisasi ──
-    Route::prefix('operational/chronic-monitoring')->name('operational.chronic-monitoring.')->group(function () {
+    Route::middleware(['role_or_permission:admin|super admin|menu_chronic_monitoring'])->prefix('operational/chronic-monitoring')->name('operational.chronic-monitoring.')->group(function () {
         Route::get('/', [\App\Http\Controllers\ChronicMonitoringController::class, 'index'])->name('index');
-        Route::post('/visits', [\App\Http\Controllers\ChronicMonitoringController::class, 'storeVisit'])->name('visits.store');
-        Route::post('/visits/{visit}/report', [\App\Http\Controllers\ChronicMonitoringController::class, 'updateVisitReport'])->name('visits.report');
-        Route::post('/visits/{visit}/notify-wa', [\App\Http\Controllers\ChronicMonitoringController::class, 'notifyOfficerWa'])->name('visits.notify-wa');
-        Route::delete('/visits/{visit}', [\App\Http\Controllers\ChronicMonitoringController::class, 'destroyVisit'])->name('visits.destroy');
+        Route::post('/visits', [\App\Http\Controllers\ChronicMonitoringController::class, 'storeVisit'])->middleware('role_or_permission:admin|super admin|chronic_socialization_manage|menu_chronic_monitoring')->name('visits.store');
+        Route::post('/visits/{visit}/report', [\App\Http\Controllers\ChronicMonitoringController::class, 'updateVisitReport'])->middleware('role_or_permission:admin|super admin|chronic_socialization_report|chronic_socialization_manage|menu_chronic_monitoring')->name('visits.report');
+        Route::post('/visits/{visit}/notify-wa', [\App\Http\Controllers\ChronicMonitoringController::class, 'notifyOfficerWa'])->middleware('role_or_permission:admin|super admin|chronic_monitoring_whatsapp|chronic_socialization_manage|menu_chronic_monitoring')->name('visits.notify-wa');
+        Route::delete('/visits/{visit}', [\App\Http\Controllers\ChronicMonitoringController::class, 'destroyVisit'])->middleware('role_or_permission:admin|super admin|chronic_socialization_delete|chronic_socialization_manage')->name('visits.destroy');
     });
 
     // ── Customer Billing (Terima Setoran Lapangan) ─────────────────────
