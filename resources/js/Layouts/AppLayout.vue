@@ -1022,12 +1022,13 @@ const menuItems = [
         icon: 'chart-pie',
         label: 'Laporan Keuangan',
         theme: 'green',
-        active: (url) => ['/financial-reports', '/customer-reports', '/tax-reports'].some(path => (url || '').startsWith(path)),
+        active: (url) => ['/financial-reports', '/customer-reports', '/tax-reports', '/profit-sharing'].some(path => (url || '').startsWith(path)),
         permission: 'menu_financial_reports',
         children: [
             { href: '/financial-reports', label: 'Buku Kas Global', active: (url) => (url || '').startsWith('/financial-reports'), permission: 'menu_financial_reports' },
             { href: '/customer-reports', label: 'Laporan Pelanggan', active: (url) => (url || '').startsWith('/customer-reports'), permission: 'menu_financial_reports' },
             { href: '/tax-reports', label: 'Laporan Pajak', active: (url) => (url || '').startsWith('/tax-reports'), permission: 'menu_financial_reports' },
+            { href: '/profit-sharing', label: 'Bagi Hasil & Kemitraan', active: (url) => (url || '').startsWith('/profit-sharing'), permission: 'menu_financial_reports' },
         ]
     },
 

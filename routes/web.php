@@ -623,6 +623,19 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/customer-reports', [\App\Http\Controllers\CustomerReportController::class, 'index'])->name('customer-reports.index');
     });
 
+    // ── Kemitraan & Bagi Hasil (Profit Sharing) ────────────────────
+    Route::prefix('profit-sharing')->name('profit-sharing.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\ProfitSharingController::class, 'index'])->name('index');
+        Route::post('/schemes', [\App\Http\Controllers\ProfitSharingController::class, 'storeScheme'])->name('schemes.store');
+        Route::delete('/schemes/{scheme}', [\App\Http\Controllers\ProfitSharingController::class, 'deleteScheme'])->name('schemes.destroy');
+        Route::post('/partnerships', [\App\Http\Controllers\ProfitSharingController::class, 'storePartnership'])->name('partnerships.store');
+        Route::delete('/partnerships/{partnership}', [\App\Http\Controllers\ProfitSharingController::class, 'deletePartnership'])->name('partnerships.destroy');
+        Route::post('/settlement', [\App\Http\Controllers\ProfitSharingController::class, 'saveSettlement'])->name('settlement.store');
+        Route::post('/settlement/{settlement}/status', [\App\Http\Controllers\ProfitSharingController::class, 'updateSettlementStatus'])->name('settlement.status');
+        Route::get('/settlement/{settlement}/print', [\App\Http\Controllers\ProfitSharingController::class, 'printSettlement'])->name('settlement.print');
+        Route::post('/simulate', [\App\Http\Controllers\ProfitSharingController::class, 'quickSimulate'])->name('simulate');
+    });
+
     // ── Ticketing & Gangguan ───────────────────────────────────
     Route::resource('tickets', TicketController::class);
 
