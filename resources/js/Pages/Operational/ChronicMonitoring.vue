@@ -27,7 +27,59 @@ const search = ref(props.filters.search || '');
 const visitStatus = ref(props.filters.visit_status || 'all');
 const myTasks = ref(Boolean(props.filters.my_tasks));
 
+// ── PAGINATION STATE (UNTUK 3 TAB) ─────────────────────────────────────────
+const perPage = ref(10);
+const custPage = ref(1);
+const pathPage = ref(1);
+const visitPage = ref(1);
+
+const resetPages = () => {
+    custPage.value = 1;
+    pathPage.value = 1;
+    visitPage.value = 1;
+};
+
+const custTotalPages = computed(() => Math.max(1, Math.ceil(props.chronicCustomers.length / perPage.value)));
+const pathTotalPages = computed(() => Math.max(1, Math.ceil(props.chronicPaths.length / perPage.value)));
+const visitTotalPages = computed(() => Math.max(1, Math.ceil(props.socializationVisits.length / perPage.value)));
+
+const paginatedCustomers = computed(() => {
+    const p = Math.min(custPage.value, custTotalPages.value);
+    const start = (p - 1) * perPage.value;
+    return props.chronicCustomers.slice(start, start + perPage.value);
+});
+
+const paginatedPaths = computed(() => {
+    const p = Math.min(pathPage.value, pathTotalPages.value);
+    const start = (p - 1) * perPage.value;
+    return props.chronicPaths.slice(start, start + perPage.value);
+});
+
+const paginatedVisits = computed(() => {
+    const p = Math.min(visitPage.value, visitTotalPages.value);
+    const start = (p - 1) * perPage.value;
+    return props.socializationVisits.slice(start, start + perPage.value);
+});
+
+const getVisiblePages = (current, total) => {
+    if (total <= 7) {
+        return Array.from({ length: total }, (_, i) => i + 1);
+    }
+    const pages = [];
+    pages.push(1);
+    if (current > 3) pages.push('...');
+    const start = Math.max(2, current - 1);
+    const end = Math.min(total - 1, current + 1);
+    for (let i = start; i <= end; i++) {
+        pages.push(i);
+    }
+    if (current < total - 2) pages.push('...');
+    pages.push(total);
+    return pages;
+};
+
 const applyFilters = () => {
+    resetPages();
     router.get(
         route('operational.chronic-monitoring.index'),
         {
@@ -700,55 +752,72 @@ const formatWaUrl = (phone, customText = '') => {
                     </div>
                 </div>
 
-                <!-- 3. NAVIGATION TABS -->
-                <div class="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-slate-200/70 dark:border-slate-800">
-                    <button
-                        type="button"
-                        @click="activeTab = 'customers'"
-                        :class="[
-                            'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer',
-                            activeTab === 'customers'
-                                ? 'bg-rose-600 text-white shadow-sm'
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-                        ]"
-                    >
-                        <span>👥 Pelanggan Sering Gangguan</span>
-                        <span class="px-2 py-0.5 rounded-full text-[10px]" :class="activeTab === 'customers' ? 'bg-white/25 text-white' : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'">
-                            {{ chronicCustomers.length }}
-                        </span>
-                    </button>
+                <!-- 3. NAVIGATION TABS & PER-PAGE SELECTOR -->
+                <div class="flex flex-wrap items-center justify-between gap-3 mt-4 pt-4 border-t border-slate-200/70 dark:border-slate-800">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button
+                            type="button"
+                            @click="activeTab = 'customers'"
+                            :class="[
+                                'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer',
+                                activeTab === 'customers'
+                                    ? 'bg-rose-600 text-white shadow-sm'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                            ]"
+                        >
+                            <span>👥 Pelanggan Sering Gangguan</span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px]" :class="activeTab === 'customers' ? 'bg-white/25 text-white' : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'">
+                                {{ chronicCustomers.length }}
+                            </span>
+                        </button>
 
-                    <button
-                        type="button"
-                        @click="activeTab = 'paths'"
-                        :class="[
-                            'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer',
-                            activeTab === 'paths'
-                                ? 'bg-purple-600 text-white shadow-sm'
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-                        ]"
-                    >
-                        <span>🔌 Jalur / ODP / ODC Sering Gangguan</span>
-                        <span class="px-2 py-0.5 rounded-full text-[10px]" :class="activeTab === 'paths' ? 'bg-white/25 text-white' : 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300'">
-                            {{ chronicPaths.length }}
-                        </span>
-                    </button>
+                        <button
+                            type="button"
+                            @click="activeTab = 'paths'"
+                            :class="[
+                                'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer',
+                                activeTab === 'paths'
+                                    ? 'bg-purple-600 text-white shadow-sm'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                            ]"
+                        >
+                            <span>🔌 Jalur / ODP / ODC Sering Gangguan</span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px]" :class="activeTab === 'paths' ? 'bg-white/25 text-white' : 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300'">
+                                {{ chronicPaths.length }}
+                            </span>
+                        </button>
 
-                    <button
-                        type="button"
-                        @click="activeTab = 'visits'"
-                        :class="[
-                            'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer',
-                            activeTab === 'visits'
-                                ? 'bg-emerald-600 text-white shadow-sm'
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-                        ]"
-                    >
-                        <span>🏠 Kunjungan Sosialisasi Rumah Pelanggan</span>
-                        <span class="px-2 py-0.5 rounded-full text-[10px]" :class="activeTab === 'visits' ? 'bg-white/25 text-white' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'">
-                            {{ socializationVisits.length }}
-                        </span>
-                    </button>
+                        <button
+                            type="button"
+                            @click="activeTab = 'visits'"
+                            :class="[
+                                'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer',
+                                activeTab === 'visits'
+                                    ? 'bg-emerald-600 text-white shadow-sm'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                            ]"
+                        >
+                            <span>🏠 Kunjungan Sosialisasi Rumah Pelanggan</span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px]" :class="activeTab === 'visits' ? 'bg-white/25 text-white' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'">
+                                {{ socializationVisits.length }}
+                            </span>
+                        </button>
+                    </div>
+
+                    <!-- Per-Page Selector -->
+                    <div class="flex items-center gap-2 text-xs">
+                        <span class="text-slate-500 dark:text-slate-400 font-semibold">Tampilkan:</span>
+                        <select
+                            v-model="perPage"
+                            @change="resetPages"
+                            class="rounded-xl border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white text-xs font-bold py-1.5 px-2.5"
+                        >
+                            <option :value="10">10 / halaman</option>
+                            <option :value="20">20 / halaman</option>
+                            <option :value="50">50 / halaman</option>
+                            <option :value="100">100 / halaman</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -762,7 +831,7 @@ const formatWaUrl = (phone, customText = '') => {
                 </div>
 
                 <div
-                    v-for="cust in chronicCustomers"
+                    v-for="cust in paginatedCustomers"
                     :key="cust.id"
                     class="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border shadow-sm transition hover:shadow-md"
                     :class="{
@@ -944,6 +1013,56 @@ const formatWaUrl = (phone, customText = '') => {
                         </div>
                     </div>
                 </div>
+
+                <!-- PAGINATION TAB 1: PELANGGAN -->
+                <div
+                    v-if="chronicCustomers.length > 0"
+                    class="bg-white dark:bg-slate-900 rounded-2xl px-4 py-3.5 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm"
+                >
+                    <p class="text-xs text-slate-600 dark:text-slate-400 font-semibold">
+                        Menampilkan
+                        <span class="font-extrabold text-slate-900 dark:text-white">{{ (custPage - 1) * perPage + 1 }}</span>
+                        -
+                        <span class="font-extrabold text-slate-900 dark:text-white">{{ Math.min(custPage * perPage, chronicCustomers.length) }}</span>
+                        dari
+                        <span class="font-extrabold text-slate-900 dark:text-white">{{ chronicCustomers.length }}</span>
+                        pelanggan
+                    </p>
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        <button
+                            type="button"
+                            :disabled="custPage <= 1"
+                            @click="custPage = Math.max(1, custPage - 1)"
+                            class="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                        >
+                            ‹ Sebelumnya
+                        </button>
+                        <template v-for="(p, idx) in getVisiblePages(custPage, custTotalPages)" :key="idx">
+                            <span v-if="p === '...'" class="px-2 text-xs text-slate-400">...</span>
+                            <button
+                                v-else
+                                type="button"
+                                @click="custPage = p"
+                                :class="[
+                                    'w-8 h-8 rounded-xl text-xs font-extrabold transition cursor-pointer',
+                                    custPage === p
+                                        ? 'bg-rose-600 text-white shadow-sm'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                                ]"
+                            >
+                                {{ p }}
+                            </button>
+                        </template>
+                        <button
+                            type="button"
+                            :disabled="custPage >= custTotalPages"
+                            @click="custPage = Math.min(custTotalPages, custPage + 1)"
+                            class="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                        >
+                            Berikutnya ›
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- ========================================================= -->
@@ -956,7 +1075,7 @@ const formatWaUrl = (phone, customText = '') => {
                 </div>
 
                 <div
-                    v-for="pathNode in chronicPaths"
+                    v-for="pathNode in paginatedPaths"
                     :key="pathNode.node_key"
                     class="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border shadow-sm transition hover:shadow-md"
                     :class="{
@@ -1094,6 +1213,56 @@ const formatWaUrl = (phone, customText = '') => {
                         </div>
                     </div>
                 </div>
+
+                <!-- PAGINATION TAB 2: JALUR / ODP / ODC -->
+                <div
+                    v-if="chronicPaths.length > 0"
+                    class="bg-white dark:bg-slate-900 rounded-2xl px-4 py-3.5 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm"
+                >
+                    <p class="text-xs text-slate-600 dark:text-slate-400 font-semibold">
+                        Menampilkan
+                        <span class="font-extrabold text-slate-900 dark:text-white">{{ (pathPage - 1) * perPage + 1 }}</span>
+                        -
+                        <span class="font-extrabold text-slate-900 dark:text-white">{{ Math.min(pathPage * perPage, chronicPaths.length) }}</span>
+                        dari
+                        <span class="font-extrabold text-slate-900 dark:text-white">{{ chronicPaths.length }}</span>
+                        titik distribusi (ODP/ODC)
+                    </p>
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        <button
+                            type="button"
+                            :disabled="pathPage <= 1"
+                            @click="pathPage = Math.max(1, pathPage - 1)"
+                            class="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                        >
+                            ‹ Sebelumnya
+                        </button>
+                        <template v-for="(p, idx) in getVisiblePages(pathPage, pathTotalPages)" :key="idx">
+                            <span v-if="p === '...'" class="px-2 text-xs text-slate-400">...</span>
+                            <button
+                                v-else
+                                type="button"
+                                @click="pathPage = p"
+                                :class="[
+                                    'w-8 h-8 rounded-xl text-xs font-extrabold transition cursor-pointer',
+                                    pathPage === p
+                                        ? 'bg-purple-600 text-white shadow-sm'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                                ]"
+                            >
+                                {{ p }}
+                            </button>
+                        </template>
+                        <button
+                            type="button"
+                            :disabled="pathPage >= pathTotalPages"
+                            @click="pathPage = Math.min(pathTotalPages, pathPage + 1)"
+                            class="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                        >
+                            Berikutnya ›
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- ========================================================= -->
@@ -1150,7 +1319,7 @@ const formatWaUrl = (phone, customText = '') => {
                 </div>
 
                 <div
-                    v-for="visit in socializationVisits"
+                    v-for="visit in paginatedVisits"
                     :key="visit.id"
                     class="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border shadow-sm transition hover:shadow-md"
                     :class="visit.is_done ? 'border-emerald-200 dark:border-emerald-900/50' : 'border-sky-200 dark:border-sky-900/50'"
@@ -1328,6 +1497,56 @@ const formatWaUrl = (phone, customText = '') => {
                                 🗑️ Hapus
                             </button>
                         </div>
+                    </div>
+                </div>
+
+                <!-- PAGINATION TAB 3: KUNJUNGAN SOSIALISASI -->
+                <div
+                    v-if="socializationVisits.length > 0"
+                    class="bg-white dark:bg-slate-900 rounded-2xl px-4 py-3.5 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm"
+                >
+                    <p class="text-xs text-slate-600 dark:text-slate-400 font-semibold">
+                        Menampilkan
+                        <span class="font-extrabold text-slate-900 dark:text-white">{{ (visitPage - 1) * perPage + 1 }}</span>
+                        -
+                        <span class="font-extrabold text-slate-900 dark:text-white">{{ Math.min(visitPage * perPage, socializationVisits.length) }}</span>
+                        dari
+                        <span class="font-extrabold text-slate-900 dark:text-white">{{ socializationVisits.length }}</span>
+                        kunjungan sosialisasi
+                    </p>
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        <button
+                            type="button"
+                            :disabled="visitPage <= 1"
+                            @click="visitPage = Math.max(1, visitPage - 1)"
+                            class="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                        >
+                            ‹ Sebelumnya
+                        </button>
+                        <template v-for="(p, idx) in getVisiblePages(visitPage, visitTotalPages)" :key="idx">
+                            <span v-if="p === '...'" class="px-2 text-xs text-slate-400">...</span>
+                            <button
+                                v-else
+                                type="button"
+                                @click="visitPage = p"
+                                :class="[
+                                    'w-8 h-8 rounded-xl text-xs font-extrabold transition cursor-pointer',
+                                    visitPage === p
+                                        ? 'bg-emerald-600 text-white shadow-sm'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                                ]"
+                            >
+                                {{ p }}
+                            </button>
+                        </template>
+                        <button
+                            type="button"
+                            :disabled="visitPage >= visitTotalPages"
+                            @click="visitPage = Math.min(visitTotalPages, visitPage + 1)"
+                            class="px-3 py-1.5 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                        >
+                            Berikutnya ›
+                        </button>
                     </div>
                 </div>
             </div>
