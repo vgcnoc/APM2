@@ -624,7 +624,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ── Kemitraan & Bagi Hasil (Profit Sharing) ────────────────────
-    Route::prefix('profit-sharing')->name('profit-sharing.')->group(function () {
+    Route::middleware(['role_or_permission:admin|super admin|noc|finance|hrd & finance|hrd & keuangan|hrd|menu_profit_sharing|profit_sharing_manage'])->prefix('profit-sharing')->name('profit-sharing.')->group(function () {
         Route::get('/', [\App\Http\Controllers\ProfitSharingController::class, 'index'])->name('index');
         Route::post('/schemes', [\App\Http\Controllers\ProfitSharingController::class, 'storeScheme'])->name('schemes.store');
         Route::delete('/schemes/{scheme}', [\App\Http\Controllers\ProfitSharingController::class, 'deleteScheme'])->name('schemes.destroy');
