@@ -1330,6 +1330,7 @@ class PgsController extends Controller
         // 3. Handle Eksekusi Pergantian ONT (Jadi vs Tidak Jadi/Retur Gudang)
         $ontAction = $request->input('ont_replacement_action');
         $preparedOnt = $pgs->prepared_ont_id ? Ont::find($pgs->prepared_ont_id) : null;
+        $oldOnt = null;
         $ontSwapped = false;
         $ontReturned = false;
 
@@ -1523,8 +1524,8 @@ class PgsController extends Controller
 
         // 4. Handle Pergantian Material Terpasang di Pelanggan (Seluruhnya vs Sebagian)
         $replacementCount = 0;
-        if (!empty($request->material_replacements) && is_array($request->material_replacements)) {
-            $replacedOntId = $oldOnt?->id ?: $pgs->old_ont_id;
+        if (!empty($request->material_replacements) && is_array($request->material_replacements) && $pgs->customer) {
+            $replacedOntId = ($oldOnt ?? null)?->id ?: $pgs->old_ont_id;
             foreach ($request->material_replacements as $rep) {
                 if (!empty($rep['item_name']) && (float) ($rep['quantity'] ?? 0) > 0) {
                     if ($replacedOntId && empty($rep['ont_id']) && (stripos($rep['item_name'], 'ont') !== false || stripos($rep['item_name'], 'modem') !== false)) {
