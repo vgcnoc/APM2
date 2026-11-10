@@ -1069,6 +1069,7 @@
                                             <div v-if="materialReplacements.some(r => r.installed_material_id === inst.id)" class="mt-1">
                                                 <span v-if="findMatchingPreparedMaterial(inst)" class="inline-flex items-center gap-1 text-[9px] text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded font-bold border border-emerald-300">
                                                     ✓ Pengganti: Diambil dari Bekal Bagian A ({{ findMatchingPreparedMaterial(inst).name }})
+                                                    <span v-if="getMaterialCategory(inst)" class="ml-1 px-1 py-0.5 bg-emerald-200/60 text-emerald-900 rounded text-[8px]">Kategori: {{ getMaterialCategory(inst) }}</span>
                                                 </span>
                                                 <span v-else class="inline-flex items-center gap-1 text-[9px] text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded font-bold border border-amber-300">
                                                     ⚠️ Belum ada bekal cocok di Bagian A
@@ -1150,6 +1151,7 @@
                                             <div v-if="findMatchingPreparedMaterial(rep)" class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                                 <div class="text-[11px] text-emerald-800">
                                                     <span>✓ <b>Unit Baru Pengganti:</b> Diambil dari <b>Bekal Ka. Teknisi (Bagian A)</b> &rarr; <b>{{ findMatchingPreparedMaterial(rep).name }}</b> (Tercatat terpakai: {{ findMatchingPreparedMaterial(rep).quantity_used }} {{ findMatchingPreparedMaterial(rep).unit }})</span>
+                                                    <span v-if="getMaterialCategory(rep)" class="ml-1 px-1 py-0.5 bg-emerald-200/60 text-emerald-900 rounded text-[8px] font-bold">Kategori: {{ getMaterialCategory(rep) }}</span>
                                                 </div>
                                                 <button type="button" @click="syncReplacementToPrepared(rep, findMatchingPreparedMaterial(rep))" class="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded text-[10px] shadow-sm flex items-center gap-1 cursor-pointer shrink-0">
                                                     <span>⚡ Sinkron Terpakai Bekal (Sync Bagian A)</span>
@@ -2146,18 +2148,55 @@ const quickDamageChips = [
     'Penggantian Jalur / Sambung Ulang'
 ];
 
+// ── Helper Deteksi Kategori & Satuan Cerdas Material ───────────────────
+const getMaterialCategory = (item) => {
+    if (!item) return '';
+    if (item.category && String(item.category).trim()) return String(item.category).trim();
+    if (item.material?.category && String(item.material.category).trim()) return String(item.material.category).trim();
+    const matId = item.material_id || item.id;
+    if (matId && Array.isArray(props.materials)) {
+        const found = props.materials.find(m => m.id == matId);
+        if (found?.category && String(found.category).trim()) return String(found.category).trim();
+    }
+    const name = (item.item_name || item.name || '').toLowerCase();
+    if (name.includes('frecon') || name.includes('precon') || name.includes('dropcore') || name.includes('kabel') || name.includes('patchcord') || name.includes('pigtail')) return 'Kabel';
+    if (name.includes('fast connector') || name.includes('frecon connector') || name.includes('konektor') || name.includes('adapter') || name.includes('soc') || name.includes('sc/upc') || name.includes('sc/apc')) return 'Konektor';
+    if (name.includes('ont') || name.includes('modem') || name.includes('router') || name.includes('onu')) return 'ONT';
+    if (name.includes('roset') || name.includes('s-clamp') || name.includes('klem') || name.includes('protection sleeve') || name.includes('isolas')) return 'Aksesoris';
+    return '';
+};
+
+const getMaterialUnit = (item) => {
+    if (!item) return '';
+    if (item.unit && String(item.unit).trim()) return String(item.unit).toLowerCase().trim();
+    if (item.material?.unit && String(item.material.unit).trim()) return String(item.material.unit).toLowerCase().trim();
+    const matId = item.material_id || item.id;
+    if (matId && Array.isArray(props.materials)) {
+        const found = props.materials.find(m => m.id == matId);
+        if (found?.unit && String(found.unit).trim()) return String(found.unit).toLowerCase().trim();
+    }
+    const cat = getMaterialCategory(item).toLowerCase();
+    if (cat === 'kabel') return 'meter';
+    if (cat === 'ont') return 'unit';
+    return 'pcs';
+};
+
 const initReplacementForInstalledMaterial = (installedItem) => {
     const existing = materialReplacements.value.find(r => r.installed_material_id === installedItem.id);
     if (existing) return;
 
     const name = (installedItem.item_name || '').toLowerCase();
-    const isOnt = name.includes('ont') || name.includes('modem');
+    const isOnt = name.includes('ont') || name.includes('modem') || getMaterialCategory(installedItem) === 'ONT';
 
-    // Cek kecocokan otomatis dengan bekal di Bagian A
-    const dummyRep = { item_name: installedItem.item_name, material_id: installedItem.material_id || null };
+    const dummyRep = {
+        item_name: installedItem.item_name,
+        material_id: installedItem.material_id || null,
+        material: installedItem.material || null,
+        category: getMaterialCategory(installedItem),
+        unit: getMaterialUnit(installedItem)
+    };
     const matched = findMatchingPreparedMaterial(dummyRep);
 
-    // Jika ada di bekal dan kuantitas terpakai masih 0, otomatis sinkronkan terpakai
     if (matched && (!matched.quantity_used || parseFloat(matched.quantity_used) === 0)) {
         const qtyToUse = Math.min(parseFloat(matched.quantity_prepared) || 0, parseFloat(installedItem.quantity) || 0);
         if (qtyToUse > 0) {
@@ -2171,6 +2210,7 @@ const initReplacementForInstalledMaterial = (installedItem) => {
         item_name: installedItem.item_name,
         serial_number: installedItem.serial_number || '',
         material_id: installedItem.material_id || null,
+        category: getMaterialCategory(installedItem),
         replacement_type: 'full',
         total_installed_qty: parseFloat(installedItem.quantity) || 1,
         quantity: parseFloat(installedItem.quantity) || 1,
@@ -2190,16 +2230,42 @@ const removeReplacement = (index) => {
 
 const findMatchingPreparedMaterial = (rep) => {
     if (!rep || !reportForm.materials || reportForm.materials.length === 0) return null;
-    const repNameLower = (rep.item_name || '').toLowerCase();
-    
+
     // 1. Direct match by material_id
     if (rep.material_id) {
-        const found = reportForm.materials.find(m => m.material_id == rep.material_id);
-        if (found) return found;
+        const directMatch = reportForm.materials.find(m => m.material_id == rep.material_id);
+        if (directMatch) return directMatch;
     }
 
-    // 2. Keyword match
-    const keywords = ['dropcore', 'fast connector', 'patchcord', 'roset', 'ont', 'modem', 'adapter', 'klem', 's-clamp', 'protection sleeve'];
+    const repCat = getMaterialCategory(rep);
+    const repUnit = getMaterialUnit(rep);
+    const repNameLower = (rep.item_name || rep.name || '').toLowerCase();
+
+    // 2. Deteksi Cerdas Berdasarkan Kategori & Satuan
+    if (repCat) {
+        const categoryMatches = reportForm.materials.filter(m => {
+            const mCat = getMaterialCategory(m);
+            if (!mCat || mCat.toLowerCase() !== repCat.toLowerCase()) return false;
+            const mUnit = getMaterialUnit(m);
+            if (repUnit && mUnit && repUnit !== mUnit) {
+                const isBothCableUnit = (repUnit === 'meter' || repUnit === 'rol') && (mUnit === 'meter' || mUnit === 'rol');
+                if (!isBothCableUnit) return false;
+            }
+            return true;
+        });
+
+        if (categoryMatches.length === 1) return categoryMatches[0];
+        if (categoryMatches.length > 1) {
+            const bestSubMatch = categoryMatches.find(m => {
+                const mName = (m.name || '').toLowerCase();
+                return mName.includes(repNameLower) || repNameLower.includes(mName);
+            });
+            return bestSubMatch || categoryMatches[0];
+        }
+    }
+
+    // 3. Fallback Keyword Match
+    const keywords = ['dropcore', 'frecon', 'precon', 'fast connector', 'patchcord', 'roset', 'ont', 'modem', 'adapter', 'klem', 's-clamp', 'protection sleeve'];
     for (const kw of keywords) {
         if (repNameLower.includes(kw)) {
             const found = reportForm.materials.find(m => (m.name || '').toLowerCase().includes(kw));
@@ -2207,9 +2273,9 @@ const findMatchingPreparedMaterial = (rep) => {
         }
     }
 
-    // 3. Fallback match by first word
+    // 4. Fallback first word
     const firstWord = repNameLower.split(' ')[0];
-    if (firstWord && firstWord.length >= 3) {
+    if (firstWord && firstWord.length >= 3 && !['kabel', 'unit', 'set'].includes(firstWord.toLowerCase())) {
         const found = reportForm.materials.find(m => (m.name || '').toLowerCase().includes(firstWord.toLowerCase()));
         if (found) return found;
     }
@@ -2220,9 +2286,9 @@ const findMatchingPreparedMaterial = (rep) => {
 const syncReplacementToPrepared = (rep, matched) => {
     if (!matched) return;
     rep.replacement_material_id = matched.material_id;
-    // Set kuantitas terpakai pada bekal agar sesuai dengan yang dibongkar/diganti
     const qtyToUse = Math.min(parseFloat(matched.quantity_prepared) || 0, parseFloat(rep.quantity) || 0);
     matched.quantity_used = qtyToUse;
+    rep.replacement_quantity = qtyToUse;
     calculateReturned(matched);
     saveDraft();
 };
@@ -2635,11 +2701,13 @@ const initPreparedMaterials = (ticket) => {
         reportForm.materials = ticket.materials.map(m => {
             const prep = parseFloat(m.quantity_prepared) || 0;
             const used = m.quantity_used !== null ? parseFloat(m.quantity_used) : prep;
+            const cat = m.material?.category || (props.materials?.find(mat => mat.id == m.material_id)?.category) || '';
             return {
                 pgs_material_id: m.id,
                 material_id: m.material_id,
                 name: m.material?.name || 'Material',
                 unit: m.unit || m.material?.unit || '',
+                category: cat,
                 quantity_prepared: prep,
                 quantity_used: used,
                 quantity_returned: Math.max(0, prep - used),
@@ -2856,11 +2924,13 @@ watch(() => props.tickets, (newVal) => {
                         calculateReturned(existing);
                     } else {
                         const used = fm.quantity_used !== null ? parseFloat(fm.quantity_used) : prep;
+                        const cat = fm.material?.category || (props.materials?.find(mat => mat.id == fm.material_id)?.category) || '';
                         reportForm.materials.push({
                             pgs_material_id: fm.id,
                             material_id: fm.material_id,
                             name: fm.material?.name || 'Material',
                             unit: fm.unit || fm.material?.unit || '',
+                            category: cat,
                             quantity_prepared: prep,
                             quantity_used: used,
                             quantity_returned: Math.max(0, prep - used),

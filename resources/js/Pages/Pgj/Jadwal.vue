@@ -871,9 +871,6 @@
                 </div>
             </div>
         </div>
-                </form>
-            </div>
-        </div>
     </AppLayout>
 </template>
 
