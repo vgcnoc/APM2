@@ -15,8 +15,8 @@ const commands = [
   'php artisan view:cache',
   'php artisan queue:restart',
   'chown -R www-data:www-data /var/www/APM2/storage /var/www/APM2/bootstrap/cache',
-  'systemctl is-active php8.5-fpm && systemctl reload php8.5-fpm || systemctl is-active php8.2-fpm && systemctl reload php8.2-fpm || true',
-  'systemctl is-active nginx && systemctl reload nginx || true',
+  '(systemctl reload php8.5-fpm 2>/dev/null || systemctl reload php8.3-fpm 2>/dev/null || systemctl reload php8.2-fpm 2>/dev/null || true)',
+  '(systemctl reload nginx 2>/dev/null || true)',
   'echo "DEPLOYMENT_SUCCESSFUL"'
 ].join(' && ');
 
