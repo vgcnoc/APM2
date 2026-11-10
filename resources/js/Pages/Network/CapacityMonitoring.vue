@@ -424,7 +424,7 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100 text-slate-700">
-                                <tr v-for="odp in odps" :key="odp.id" class="hover:bg-slate-50/60 transition-colors">
+                                <tr v-for="odp in paginatedOdps" :key="odp.id" class="hover:bg-slate-50/60 transition-colors">
                                     <td class="py-3 px-4">
                                         <div class="font-black text-slate-900 text-sm flex items-center gap-1.5">
                                             <span>{{ odp.name }}</span>
@@ -538,7 +538,7 @@
                 <!-- Grid Card View -->
                 <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div
-                        v-for="odp in odps"
+                        v-for="odp in paginatedOdps"
                         :key="odp.id"
                         class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
                     >
@@ -629,6 +629,58 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Pagination Footer Tab ODP -->
+                <div v-if="odps.length > 0" class="mt-4 px-5 py-3.5 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                        <div>
+                            Menampilkan <span class="font-bold text-slate-700">{{ (odpPage - 1) * odpPerPage + 1 }}</span>
+                            sampai <span class="font-bold text-slate-700">{{ Math.min(odpPage * odpPerPage, odps.length) }}</span>
+                            dari <span class="font-bold text-slate-700">{{ odps.length }}</span> ODP
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-slate-400">Baris:</span>
+                            <select v-model.number="odpPerPage" class="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg px-2 py-1 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <option :value="10">10</option>
+                                <option :value="15">15</option>
+                                <option :value="25">25</option>
+                                <option :value="50">50</option>
+                                <option :value="100">100</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div v-if="odpTotalPages > 1" class="flex items-center gap-1 flex-wrap justify-center">
+                        <button
+                            type="button"
+                            @click="odpPage = Math.max(1, odpPage - 1)"
+                            :disabled="odpPage === 1"
+                            class="px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                        >
+                            &laquo; Prev
+                        </button>
+                        <template v-for="(p, idx) in odpVisiblePages" :key="'odp-p-' + idx">
+                            <span v-if="p === '...'" class="px-2 py-1 text-xs text-slate-400 font-bold">...</span>
+                            <button
+                                v-else
+                                type="button"
+                                @click="odpPage = p"
+                                :class="odpPage === p ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'"
+                                class="min-w-[32px] px-2.5 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer"
+                            >
+                                {{ p }}
+                            </button>
+                        </template>
+                        <button
+                            type="button"
+                            @click="odpPage = Math.min(odpTotalPages, odpPage + 1)"
+                            :disabled="odpPage === odpTotalPages"
+                            class="px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                        >
+                            Next &raquo;
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- ── TAB 2: MONITORING SLOT ODC ────────────────────────── -->
@@ -651,7 +703,7 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100 text-slate-700">
-                                <tr v-for="odc in odcs" :key="odc.id" class="hover:bg-slate-50/60 transition-colors">
+                                <tr v-for="odc in paginatedOdcs" :key="odc.id" class="hover:bg-slate-50/60 transition-colors">
                                     <td class="py-3 px-4">
                                         <div class="font-black text-slate-900 text-sm flex items-center gap-1.5">
                                             <span>{{ odc.name }}</span>
@@ -746,7 +798,7 @@
                 <!-- Grid Card View -->
                 <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div
-                        v-for="odc in odcs"
+                        v-for="odc in paginatedOdcs"
                         :key="odc.id"
                         class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
                     >
@@ -831,6 +883,58 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Pagination Footer Tab ODC -->
+                <div v-if="odcs.length > 0" class="mt-4 px-5 py-3.5 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                        <div>
+                            Menampilkan <span class="font-bold text-slate-700">{{ (odcPage - 1) * odcPerPage + 1 }}</span>
+                            sampai <span class="font-bold text-slate-700">{{ Math.min(odcPage * odcPerPage, odcs.length) }}</span>
+                            dari <span class="font-bold text-slate-700">{{ odcs.length }}</span> ODC
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-slate-400">Baris:</span>
+                            <select v-model.number="odcPerPage" class="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg px-2 py-1 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <option :value="10">10</option>
+                                <option :value="15">15</option>
+                                <option :value="25">25</option>
+                                <option :value="50">50</option>
+                                <option :value="100">100</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div v-if="odcTotalPages > 1" class="flex items-center gap-1 flex-wrap justify-center">
+                        <button
+                            type="button"
+                            @click="odcPage = Math.max(1, odcPage - 1)"
+                            :disabled="odcPage === 1"
+                            class="px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                        >
+                            &laquo; Prev
+                        </button>
+                        <template v-for="(p, idx) in odcVisiblePages" :key="'odc-p-' + idx">
+                            <span v-if="p === '...'" class="px-2 py-1 text-xs text-slate-400 font-bold">...</span>
+                            <button
+                                v-else
+                                type="button"
+                                @click="odcPage = p"
+                                :class="odcPage === p ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'"
+                                class="min-w-[32px] px-2.5 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer"
+                            >
+                                {{ p }}
+                            </button>
+                        </template>
+                        <button
+                            type="button"
+                            @click="odcPage = Math.min(odcTotalPages, odcPage + 1)"
+                            :disabled="odcPage === odcTotalPages"
+                            class="px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                        >
+                            Next &raquo;
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- ── TAB 3: SMART EXPANSION MATRIX (PER AREA) ──────────── -->
@@ -847,7 +951,7 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div
-                        v-for="matrix in expansion_matrix"
+                        v-for="matrix in paginatedExpansionMatrix"
                         :key="matrix.area_id"
                         :class="[
                             'bg-white rounded-2xl border p-5 shadow-xs flex flex-col justify-between transition-all',
@@ -929,6 +1033,57 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Pagination Footer Tab Expansion Matrix -->
+                <div v-if="expansion_matrix.length > 0" class="mt-4 px-5 py-3.5 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                        <div>
+                            Menampilkan <span class="font-bold text-slate-700">{{ (expansionPage - 1) * expansionPerPage + 1 }}</span>
+                            sampai <span class="font-bold text-slate-700">{{ Math.min(expansionPage * expansionPerPage, expansion_matrix.length) }}</span>
+                            dari <span class="font-bold text-slate-700">{{ expansion_matrix.length }}</span> Area
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-slate-400">Baris:</span>
+                            <select v-model.number="expansionPerPage" class="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg px-2 py-1 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <option :value="6">6</option>
+                                <option :value="12">12</option>
+                                <option :value="24">24</option>
+                                <option :value="48">48</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div v-if="expansionTotalPages > 1" class="flex items-center gap-1 flex-wrap justify-center">
+                        <button
+                            type="button"
+                            @click="expansionPage = Math.max(1, expansionPage - 1)"
+                            :disabled="expansionPage === 1"
+                            class="px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                        >
+                            &laquo; Prev
+                        </button>
+                        <template v-for="(p, idx) in expansionVisiblePages" :key="'exp-p-' + idx">
+                            <span v-if="p === '...'" class="px-2 py-1 text-xs text-slate-400 font-bold">...</span>
+                            <button
+                                v-else
+                                type="button"
+                                @click="expansionPage = p"
+                                :class="expansionPage === p ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'"
+                                class="min-w-[32px] px-2.5 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer"
+                            >
+                                {{ p }}
+                            </button>
+                        </template>
+                        <button
+                            type="button"
+                            @click="expansionPage = Math.min(expansionTotalPages, expansionPage + 1)"
+                            :disabled="expansionPage === expansionTotalPages"
+                            class="px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                        >
+                            Next &raquo;
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </AppLayout>
@@ -961,6 +1116,65 @@ const selectedArea = ref(props.filters.area_id || '');
 const selectedOlt = ref(props.filters.olt_id || '');
 const selectedStatus = ref(props.filters.status || 'all');
 const selectedFeasibility = ref(props.filters.feasibility || 'all');
+
+// ── Pagination State & Helpers ──────────────────────────────────────────
+const odpPage = ref(1);
+const odpPerPage = ref(15);
+
+const odcPage = ref(1);
+const odcPerPage = ref(15);
+
+const expansionPage = ref(1);
+const expansionPerPage = ref(12);
+
+const buildVisiblePages = (currentPage, totalPages) => {
+    const pages = [];
+    if (totalPages <= 7) {
+        for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+        pages.push(1);
+        if (currentPage > 3) pages.push('...');
+        const start = Math.max(2, currentPage - 1);
+        const end = Math.min(totalPages - 1, currentPage + 1);
+        for (let i = start; i <= end; i++) pages.push(i);
+        if (currentPage < totalPages - 2) pages.push('...');
+        pages.push(totalPages);
+    }
+    return pages;
+};
+
+const odpTotalPages = computed(() => Math.max(1, Math.ceil((props.odps?.length || 0) / odpPerPage.value)));
+const paginatedOdps = computed(() => {
+    const start = (odpPage.value - 1) * odpPerPage.value;
+    return (props.odps || []).slice(start, start + odpPerPage.value);
+});
+const odpVisiblePages = computed(() => buildVisiblePages(odpPage.value, odpTotalPages.value));
+
+const odcTotalPages = computed(() => Math.max(1, Math.ceil((props.odcs?.length || 0) / odcPerPage.value)));
+const paginatedOdcs = computed(() => {
+    const start = (odcPage.value - 1) * odcPerPage.value;
+    return (props.odcs || []).slice(start, start + odcPerPage.value);
+});
+const odcVisiblePages = computed(() => buildVisiblePages(odcPage.value, odcTotalPages.value));
+
+const expansionTotalPages = computed(() => Math.max(1, Math.ceil((props.expansion_matrix?.length || 0) / expansionPerPage.value)));
+const paginatedExpansionMatrix = computed(() => {
+    const start = (expansionPage.value - 1) * expansionPerPage.value;
+    return (props.expansion_matrix || []).slice(start, start + expansionPerPage.value);
+});
+const expansionVisiblePages = computed(() => buildVisiblePages(expansionPage.value, expansionTotalPages.value));
+
+watch([() => props.odps, odpPerPage], () => {
+    odpPage.value = 1;
+});
+
+watch([() => props.odcs, odcPerPage], () => {
+    odcPage.value = 1;
+});
+
+watch([() => props.expansion_matrix, expansionPerPage], () => {
+    expansionPage.value = 1;
+});
 
 watch(() => props.filters, (newFilters) => {
     if (newFilters) {
