@@ -452,7 +452,29 @@ class Customer extends Model
         };
     }
 
-    // ── Scopes ─────────────────────────────────────────────────
+    // ── Scopes & Helpers Reseller / Hybrid ─────────────────────
+
+    /**
+     * Apakah pelanggan ini Khusus Reseller Voucher Murni (Tanpa Paket Internet)?
+     */
+    public function isPureReseller(): bool
+    {
+        return (bool) ($this->is_reseller && empty($this->package_id));
+    }
+
+    /**
+     * Scope untuk menyaring pelanggan yang memiliki layanan internet
+     * (Pelanggan Internet Biasa MAUPUN Pelanggan Internet + Reseller Voucher),
+     * dan mengecualikan Khusus Reseller Voucher Murni (tanpa paket internet).
+     */
+    public function scopeNotPureReseller($query)
+    {
+        return $query->where(function ($q) {
+            $q->where('is_reseller', false)
+              ->orWhereNull('is_reseller')
+              ->orWhereNotNull('package_id');
+        });
+    }
 
     /**
      * Scope pelanggan aktif terhitung program afiliasi & marketing (aktivasi mulai Oktober 2026).
@@ -460,10 +482,7 @@ class Customer extends Model
     public function scopeActiveOct2026($query)
     {
         return $query->where('status', 'active')
-            ->where(function ($q) {
-                $q->where('is_reseller', false)
-                  ->orWhereNull('is_reseller');
-            })
+            ->notPureReseller()
             ->where(function ($q) {
                 $q->whereDate('activation_date', '>=', '2026-10-01')
                   ->orWhere(function ($sub) {

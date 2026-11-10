@@ -245,8 +245,8 @@
                                     </select>
                                 </div>
                                 
-                                <div v-if="registration_type === 'reseller'" class="md:col-span-2 space-y-4">
-                                    <div class="px-4 py-3 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border border-amber-200 rounded-xl text-sm text-amber-900 font-semibold flex items-start gap-3 shadow-sm">
+                                <div v-if="registration_type === 'reseller' || registration_type === 'both'" class="md:col-span-2 space-y-4">
+                                    <div v-if="registration_type === 'reseller'" class="px-4 py-3 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border border-amber-200 rounded-xl text-sm text-amber-900 font-semibold flex items-start gap-3 shadow-sm">
                                         <div class="w-9 h-9 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm text-base">
                                             🎟️
                                         </div>
@@ -258,6 +258,20 @@
                                             <p class="text-xs text-amber-800 mt-1 leading-relaxed">
                                                 Mitra Reseller ini akan dipasangkan perangkat <strong>ONT Hotspot</strong> di rumah/lokasi reseller. Pendaftaran akan diproses melalui alur PSB resmi: 
                                                 <strong>📋 Booking ➔ 🔍 Survey ➔ 📅 Jadwal Penugasan ➔ 🔧 Instalasi ONT ➔ ⚡ Aktivasi</strong>.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div v-else class="px-4 py-3 bg-gradient-to-r from-indigo-50 via-purple-50 to-amber-50 border border-indigo-200 rounded-xl text-sm text-indigo-950 font-semibold flex items-start gap-3 shadow-sm">
+                                        <div class="w-9 h-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm text-base">
+                                            🌐+🎟️
+                                        </div>
+                                        <div>
+                                            <p class="font-bold text-indigo-950 flex items-center gap-2">
+                                                Mode Hybrid: Pelanggan Internet + Mitra Reseller Voucher
+                                                <span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-200 text-indigo-900 uppercase font-black tracking-wider">Internet &amp; Reseller</span>
+                                            </p>
+                                            <p class="text-xs text-indigo-800 mt-1 leading-relaxed">
+                                                Pelanggan berlangganan <strong>Paket Internet Bulanan</strong> (terdata di Data Pelanggan &amp; diterbitkan Invoice bulanan) sekaligus terdaftar sebagai <strong>Mitra Reseller Voucher</strong> (otomatis aktif di Data Reseller saat ONT diaktivasi).
                                             </p>
                                         </div>
                                     </div>
@@ -323,7 +337,7 @@
                                     </div>
                                 </div>
                                 
-                                <template v-else>
+                                <template v-if="registration_type !== 'reseller'">
                                     <!-- Pilih Paket Langganan (Ditiadakan jika Free Home) -->
                                     <div v-if="form.service_status !== 'free_home'">
                                         <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Pilih Paket Langganan <span class="text-red-500">*</span></label>

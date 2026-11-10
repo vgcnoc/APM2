@@ -53,11 +53,20 @@ class HandleInertiaRequests extends Middleware
                             ];
                         }
                     } elseif ($user->role === 'reseller' || $loginPortal === 'reseller') {
-                        $hasReseller = \App\Models\Reseller::where('user_id', $user->id)->exists();
-                        if ($hasReseller) {
+                        $resellerRec = \App\Models\Reseller::where('user_id', $user->id)->first();
+                        $customer = \App\Models\Customer::where('user_id', $user->id)
+                            ->orWhere(function ($q) use ($resellerRec) {
+                                if ($resellerRec && $resellerRec->customer_id) {
+                                    $q->where('id', $resellerRec->customer_id);
+                                } else {
+                                    $q->whereRaw('1 = 0');
+                                }
+                            })
+                            ->first(['id', 'is_reseller', 'package_id']);
+                        if ($resellerRec || $customer) {
                             $customerData = [
                                 'is_reseller' => true,
-                                'has_package' => false,
+                                'has_package' => (bool) ($customer && !empty($customer->package_id)),
                             ];
                         }
                     }

@@ -223,9 +223,14 @@
                     <span v-else-if="row.is_reseller && !row.package" class="inline-flex items-center gap-1 px-2 py-1 bg-amber-50 text-amber-800 rounded-md text-xs font-bold border border-amber-200 shadow-2xs">
                         <span>🎟️</span> Reseller Voucher
                     </span>
-                    <span v-else-if="row.package" class="inline-flex px-2 py-1 bg-purple-50 text-purple-600 rounded-md text-xs font-medium border border-purple-100">
-                        {{ row.package.name }}
-                    </span>
+                    <div v-else-if="row.package" class="flex items-center gap-1 flex-wrap">
+                        <span class="inline-flex px-2 py-1 bg-purple-50 text-purple-600 rounded-md text-xs font-medium border border-purple-100">
+                            {{ row.package.name }}
+                        </span>
+                        <span v-if="row.is_reseller" class="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-100 text-amber-900 rounded text-[10px] font-bold border border-amber-300">
+                            🎟️ + Reseller
+                        </span>
+                    </div>
                     <span v-else class="text-xs text-gray-400 italic">-</span>
                 </td>
                 <td class="text-xs text-gray-700 font-medium">

@@ -55,10 +55,7 @@ class AffiliatePortalController extends Controller
         // - Pelanggan hasil migrasi: status active DAN aktivasi mulai bulan Oktober 2026
         $activeEligibleCustomerFilter = function ($q) {
             $q->where('status', 'active')
-              ->where(function ($subQ) {
-                  $subQ->where('is_reseller', false)
-                       ->orWhereNull('is_reseller');
-              })
+              ->notPureReseller()
               ->where(function ($sq) {
                   $sq->where(function ($sub) {
                       $sub->where('is_migrated', false)

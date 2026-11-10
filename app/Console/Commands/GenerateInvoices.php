@@ -48,10 +48,7 @@ class GenerateInvoices extends Command
             ->setTimezone($billingTimezone);
 
         $customers = Customer::whereIn('status', ['active', 'suspended'])
-            ->where(function ($q) {
-                $q->where('is_reseller', false)
-                  ->orWhereNull('is_reseller');
-            })
+            ->notPureReseller()
             ->whereNotIn('service_status', ['gratis', 'free_home'])
             ->with('package')
             ->get();

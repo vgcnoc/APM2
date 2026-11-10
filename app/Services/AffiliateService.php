@@ -25,7 +25,7 @@ class AffiliateService
      */
     public static function isMonthlyCommissionEligible(Customer $customer): bool
     {
-        if (!empty($customer->is_reseller)) {
+        if ($customer->isPureReseller()) {
             return false;
         }
         return self::isEligibleFrom($customer, self::MONTHLY_COMMISSION_START_DATE);
@@ -38,7 +38,7 @@ class AffiliateService
      */
     public static function isOperationalFeeEligible(Customer $customer): bool
     {
-        if (!empty($customer->is_reseller)) {
+        if ($customer->isPureReseller()) {
             return false;
         }
         if ($customer->is_migrated) {
@@ -844,10 +844,7 @@ class AffiliateService
         $todayEnd = now()->endOfDay();
 
         return Customer::where('sales_id', $user->id)
-            ->where(function ($q) {
-                $q->where('is_reseller', false)
-                  ->orWhereNull('is_reseller');
-            })
+            ->notPureReseller()
             ->whereHas('invoices', function ($q) use ($overdueOnly, $todayEnd) {
                 $q->whereIn('status', ['unpaid', 'partial']);
                 if ($overdueOnly) {

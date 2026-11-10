@@ -189,6 +189,10 @@
                                 </span>
                                 <span v-else class="text-xs font-bold text-slate-800">{{ row.package?.name || '-' }}</span>
 
+                                <span v-if="row.is_reseller && row.package" class="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded text-[10px] font-bold whitespace-nowrap" title="Pelanggan Internet sekaligus Mitra Reseller Voucher">
+                                    🎟️ + Reseller
+                                </span>
+
                                 <span v-if="!(row.is_reseller && !row.package) && row.service_status !== 'free_home'" :class="['px-1.5 py-0.5 rounded text-[10px] font-semibold border', row.billing_type === 'pascabayar' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-blue-50 text-blue-700 border-blue-200']">
                                     {{ row.billing_type === 'pascabayar' ? 'Pascabayar' : 'Prabayar' }}
                                 </span>
@@ -2703,7 +2707,7 @@ function openActivationModal(customer) {
     activationForm.reset();
     activationForm.activation_date = new Date().toISOString().split('T')[0];
 
-    const isReseller = currentTab.value === 'reseller' || isCustomerResellerVoucher(customer);
+    const isReseller = isCustomerResellerVoucher(customer);
     if (isReseller) {
         activationForm.service_status = 'gratis';
         activationForm.billing_type = 'prabayar';

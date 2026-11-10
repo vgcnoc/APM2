@@ -19,10 +19,7 @@ class SuspendOverdueCustomers extends Command
         }
         $count = 0;
         $limit = max(0, (int) $this->option('limit'));
-        Customer::where(function ($q) {
-            $q->where('is_reseller', false)
-              ->orWhereNull('is_reseller');
-        })->where(function ($q) {
+        Customer::notPureReseller()->where(function ($q) {
             $q->where(function ($active) {
                 $active->where('status', 'active')->whereHas('invoices', function ($invoice) {
                     $invoice->whereIn('status', ['unpaid', 'partial', 'overdue'])->where('is_reseller_balance', false)

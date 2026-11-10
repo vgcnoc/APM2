@@ -239,7 +239,12 @@
                     <span v-else-if="row.is_reseller && !row.package" class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded text-[10px] font-bold whitespace-nowrap">
                         <span>🎟️</span> Reseller Voucher
                     </span>
-                    <span v-else class="text-xs text-blue-600 font-bold whitespace-nowrap">{{ row.package?.name || '-' }}</span>
+                    <div v-else class="flex items-center gap-1 flex-wrap">
+                        <span class="text-xs text-blue-600 font-bold whitespace-nowrap">{{ row.package?.name || '-' }}</span>
+                        <span v-if="row.is_reseller && row.package" class="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded text-[10px] font-bold whitespace-nowrap">
+                            🎟️ + Reseller
+                        </span>
+                    </div>
                 </td>
                 <td>
                     <StatusBadge :status="getCustomerProgressStatus(row)" />

@@ -212,6 +212,9 @@
                                 <span v-if="row.is_reseller && !row.package" class="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.2 bg-amber-50 text-amber-800 border border-amber-200 rounded whitespace-nowrap">
                                     <span>🎟️</span> Reseller
                                 </span>
+                                <span v-else-if="row.is_reseller && row.package" class="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.2 bg-amber-100 text-amber-900 border border-amber-300 rounded whitespace-nowrap">
+                                    <span>🌐+🎟️</span> {{ row.package.name }} + Reseller
+                                </span>
                             </div>
                             <p class="text-xs text-gray-500 line-clamp-2 mt-0.5 leading-snug break-words" :title="row.address">
                                 {{ row.address }}

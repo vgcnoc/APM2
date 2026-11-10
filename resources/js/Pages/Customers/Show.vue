@@ -1440,7 +1440,7 @@
                                 </div>
                             </div>
                             <!-- Banner Khusus Reseller Voucher -->
-                            <div v-if="isCustomerResellerVoucher || customer.is_reseller" class="p-4 bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 border border-blue-200 rounded-xl space-y-2">
+                            <div v-if="isCustomerResellerVoucher" class="p-4 bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 border border-blue-200 rounded-xl space-y-2">
                                 <div class="flex items-center gap-2">
                                     <span class="text-xl">🎟️</span>
                                     <div>
@@ -1452,10 +1452,20 @@
                                     Mitra Reseller hanya menjual voucher hotspot. Sistem otomatis membebaskan reseller dari invoice tagihan bulanan dan tidak ada insentif karyawan internal.
                                 </p>
                             </div>
+                            <!-- Banner Hybrid: Pelanggan Internet + Reseller Voucher -->
+                            <div v-else-if="customer.is_reseller" class="p-4 bg-gradient-to-r from-indigo-50 via-purple-50 to-amber-50 border border-indigo-200 rounded-xl space-y-1.5">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xl">🌐+🎟️</span>
+                                    <div>
+                                        <h4 class="text-xs font-bold text-indigo-950 uppercase tracking-wider">Pelanggan Internet + Mitra Reseller Voucher</h4>
+                                        <p class="text-[11px] text-indigo-800">Siklus tagihan internet berjalan normal &amp; akun kemitraan Reseller Voucher otomatis diaktifkan.</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Siklus Penagihan Invoice -->
-                        <div v-if="!isCustomerResellerVoucher && !customer.is_reseller && activationForm.service_status !== 'free_home'" class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
+                        <div v-if="!isCustomerResellerVoucher && activationForm.service_status !== 'free_home'" class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
                             <div class="flex items-center justify-between">
                                 <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
                                     <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
@@ -1515,7 +1525,7 @@
                         </div>
 
                         <!-- Simulasi Tagihan Invoice Pertama -->
-                        <div v-if="!isCustomerResellerVoucher && !customer.is_reseller && invoiceSimulation && activationForm.service_status !== 'free_home'" class="bg-gradient-to-br from-slate-50 via-amber-50/40 to-slate-50 p-4 rounded-xl border border-amber-200/90 shadow-sm space-y-3">
+                        <div v-if="!isCustomerResellerVoucher && invoiceSimulation && activationForm.service_status !== 'free_home'" class="bg-gradient-to-br from-slate-50 via-amber-50/40 to-slate-50 p-4 rounded-xl border border-amber-200/90 shadow-sm space-y-3">
                             <div class="flex items-center justify-between border-b border-amber-100 pb-2.5">
                                 <div class="flex items-center gap-2">
                                     <div class="w-7 h-7 rounded-lg bg-amber-600 text-white flex items-center justify-center text-sm shadow-sm font-bold">
@@ -3681,7 +3691,7 @@ const isLaporanPasang = computed(() => {
 });
 
 const isCustomerPppoe = computed(() => {
-    if (props.customer?.is_reseller) return false;
+    if (isCustomerResellerVoucher.value) return false;
     if (props.customer?.service_status === 'free_home' || props.customer?.service_status === 'gratis') return false;
     const pkgMode = (props.customer?.package?.access_mode || '').toUpperCase().trim();
     const ontMode = (props.customer?.ont?.access_mode || '').toUpperCase().trim();

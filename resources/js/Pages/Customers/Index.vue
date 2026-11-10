@@ -291,6 +291,9 @@
                                 <span v-if="row.service_status === 'gratis'" class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200" title="Pelanggan Gratis (Non-Invoice)">
                                     🎁 Gratis
                                 </span>
+                                <span v-if="row.is_reseller" class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300" title="Pelanggan Internet sekaligus Mitra Reseller Voucher">
+                                    🎟️ Reseller Voucher
+                                </span>
                             </div>
                             <div class="flex items-center gap-2 mt-0.5">
                                 <span :class="row.ont?.pppoe_user && onlineUsernames?.includes(row.ont.pppoe_user) ? 'text-emerald-700/80 font-medium' : 'text-gray-500'" class="text-[10px] font-mono">{{ row.customer_code }}</span>

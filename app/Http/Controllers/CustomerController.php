@@ -66,10 +66,7 @@ class CustomerController extends Controller
         }
         $baseQuery = Customer::query()
             ->where('status', '!=', 'terminated')
-            ->where(function ($q) {
-                $q->where('is_reseller', false)
-                  ->orWhereNull('is_reseller');
-            })
+            ->notPureReseller()
             ->when($isolirOnly, fn ($q) => $q->where('status', 'suspended'))
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function($q) {
                 if (auth()->user()->can('customers_all_view_area')) {
@@ -1068,10 +1065,7 @@ class CustomerController extends Controller
         $baseQuery = Customer::query()
             ->where('service_status', 'gratis')
             ->where('status', '!=', 'terminated')
-            ->where(function ($q) {
-                $q->where('is_reseller', false)
-                  ->orWhereNull('is_reseller');
-            })
+            ->notPureReseller()
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function($q) {
                 if (auth()->user()->can('customers_all_view_area')) {
                     $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
@@ -1364,7 +1358,7 @@ class CustomerController extends Controller
         $isReseller = ($tab === 'reseller');
 
         // Calculate statistics based on regular vs reseller (1x query agregasi per kategori)
-        $bAggRegular = (clone $query)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'))->selectRaw("
+        $bAggRegular = (clone $query)->notPureReseller()->selectRaw("
             COUNT(*) as total_all,
             COALESCE(SUM(CASE WHEN status = 'booking' THEN 1 ELSE 0 END), 0) as baru_all,
             COALESCE(SUM(CASE WHEN status = 'survey' THEN 1 ELSE 0 END), 0) as survey_all
@@ -1389,7 +1383,7 @@ class CustomerController extends Controller
             ->when($isReseller, function ($q) {
                 $q->where('is_reseller', true);
             }, function ($q) {
-                $q->where(fn($sub) => $sub->where('is_reseller', false)->orWhereNull('is_reseller'));
+                $q->notPureReseller();
             })
             ->with(['package', 'sales.employee'])
             ->orderByRaw('COALESCE(registration_date, created_at) DESC, id DESC')
@@ -1612,15 +1606,15 @@ class CustomerController extends Controller
             ->when($request->area || $request->area_id, fn($q) => $this->applyAreaFilter($q, $request->area_id ?: $request->area))
             ->search($request->search);
 
-        // Calculate statistics based on the base query (pisahkan reguler vs khusus reseller)
+        // Calculate statistics based on the base query (pisahkan reguler/hybrid internet vs khusus reseller)
         $stats = [
-            'total' => (clone $baseQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'))->count(),
-            'jadwalkan' => (clone $baseQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'))->where('status', 'survey')->doesntHave('surveys')->whereDoesntHave('technicianSchedules', fn($q) => $q->where('type', 'survey'))->count(),
-            'laporan' => (clone $baseQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'))->where('status', 'survey')->doesntHave('surveys')->whereHas('technicianSchedules', fn($q) => $q->where('type', 'survey'))->count(),
-            'ready' => (clone $baseQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'))->where('status', 'survey')->whereHas('surveys', function ($sq) {
+            'total' => (clone $baseQuery)->notPureReseller()->count(),
+            'jadwalkan' => (clone $baseQuery)->notPureReseller()->where('status', 'survey')->doesntHave('surveys')->whereDoesntHave('technicianSchedules', fn($q) => $q->where('type', 'survey'))->count(),
+            'laporan' => (clone $baseQuery)->notPureReseller()->where('status', 'survey')->doesntHave('surveys')->whereHas('technicianSchedules', fn($q) => $q->where('type', 'survey'))->count(),
+            'ready' => (clone $baseQuery)->notPureReseller()->where('status', 'survey')->whereHas('surveys', function ($sq) {
                 $sq->where('feasibility', 'feasible');
             })->count(),
-            'unfeasible' => (clone $baseQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'))->whereHas('surveys', function ($sq) {
+            'unfeasible' => (clone $baseQuery)->notPureReseller()->whereHas('surveys', function ($sq) {
                 $sq->where('feasibility', 'not_feasible');
             })->count(),
             'reseller' => (clone $baseQuery)->where('is_reseller', true)->count(),
@@ -1630,7 +1624,7 @@ class CustomerController extends Controller
             ->when($tab === 'reseller', function ($q) {
                 $q->where('is_reseller', true);
             }, function ($q) use ($tab) {
-                $q->where(fn($sub) => $sub->where('is_reseller', false)->orWhereNull('is_reseller'));
+                $q->notPureReseller();
                 $q->when($tab === 'jadwalkan', function ($sq) {
                     $sq->where('status', 'survey')->doesntHave('surveys')->whereDoesntHave('technicianSchedules', fn($ts) => $ts->where('type', 'survey'));
                 })
@@ -1818,16 +1812,16 @@ class CustomerController extends Controller
         }
 
         $stats = [
-            'semua' => (clone $filteredBaseQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'))->count(),
-            'jadwal_pasang' => (clone $filteredBaseQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'))
+            'semua' => (clone $filteredBaseQuery)->notPureReseller()->count(),
+            'jadwal_pasang' => (clone $filteredBaseQuery)->notPureReseller()
                 ->where('status', 'installing')
                 ->whereDoesntHave('technicianSchedules', fn($q) => $q->where('type', 'installation')->where('status', '!=', 'cancelled'))->count(),
-            'laporan_pasang' => (clone $filteredBaseQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'))
+            'laporan_pasang' => (clone $filteredBaseQuery)->notPureReseller()
                 ->where('status', 'installing')
                 ->whereHas('technicianSchedules', function($q) {
                     $q->where('type', 'installation')->whereIn('status', ['scheduled', 'on_the_way', 'working']);
                 })->count(),
-            'audit' => (clone $filteredBaseQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'))
+            'audit' => (clone $filteredBaseQuery)->notPureReseller()
                 ->where('status', 'installing')
                 ->where('is_audited', false)
                 ->whereDoesntHave('technicianSchedules', function($q) {
@@ -1836,7 +1830,7 @@ class CustomerController extends Controller
                 ->whereHas('ont', function ($q) {
                     $q->whereNotNull('rx_power');
                 })->count(),
-            'selesai_instalasi' => (clone $filteredBaseQuery)->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'))
+            'selesai_instalasi' => (clone $filteredBaseQuery)->notPureReseller()
                 ->where(function($q) {
                     $q->where('status', 'installing')->where('is_audited', true)
                       ->orWhere('status', 'active');
@@ -1852,7 +1846,7 @@ class CustomerController extends Controller
         if ($currentTab === 'reseller') {
             $customerQuery->where('is_reseller', true);
         } else {
-            $customerQuery->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'));
+            $customerQuery->notPureReseller();
             if ($currentTab) {
                 if ($currentTab === 'jadwal_pasang') {
                     $customerQuery->where('status', 'installing')->whereDoesntHave('technicianSchedules', fn($q) => $q->where('type', 'installation')->where('status', '!=', 'cancelled'));
@@ -1950,7 +1944,7 @@ class CustomerController extends Controller
         $waitingQuery = Customer::query()
             ->where('status', 'installing')
             ->where('is_audited', true)
-            ->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'));
+            ->notPureReseller();
         $applyAreaScope($waitingQuery);
 
         // 2. Riwayat Aktivasi Reguler (pelanggan yang sudah diaktivasi dan bukan berhenti/dibatalkan)
@@ -1960,7 +1954,7 @@ class CustomerController extends Controller
                   ->orWhere('status', 'active');
             })
             ->whereNotIn('status', ['installing', 'terminated', 'canceled'])
-            ->where(fn($q) => $q->where('is_reseller', false)->orWhereNull('is_reseller'));
+            ->notPureReseller();
         $applyAreaScope($historyQuery);
 
         // 3. Khusus Reseller Voucher (menunggu aktivasi atau riwayat aktivasi reseller)
@@ -3436,7 +3430,7 @@ class CustomerController extends Controller
             }
         }
 
-        DB::transaction(function () use ($customer, $validated) {
+        DB::transaction(function () use ($customer, $validated, $request) {
             $customer->update($validated);
             
             // Sync email login if account exists and email changed
@@ -3452,10 +3446,36 @@ class CustomerController extends Controller
             }
             
             if (!empty($validated['is_reseller']) && $validated['is_reseller']) {
-                $customer->reseller()->firstOrCreate([
-                    'balance' => 0,
-                    'is_active' => true,
-                ]);
+                $tier = $request->input('reseller_tier', $customer->reseller?->tier ?? 'regular');
+                $isActiveNow = $customer->status === 'active';
+                $reseller = $customer->reseller()->firstOrCreate(
+                    ['customer_id' => $customer->id],
+                    [
+                        'user_id' => $customer->user_id,
+                        'balance' => (float) ($request->input('reseller_balance', 0)),
+                        'is_active' => $isActiveNow,
+                        'status' => $isActiveNow ? 'active' : 'pending_installation',
+                        'tier' => $tier,
+                        'can_sell_vouchers' => true,
+                        'can_pay_bills' => true,
+                        'referral_code' => $tier === 'master' ? \App\Models\Reseller::generateReferralCode() : null,
+                    ]
+                );
+
+                if (!$reseller->wasRecentlyCreated) {
+                    $resUpdates = [
+                        'can_sell_vouchers' => true,
+                        'can_pay_bills' => true,
+                    ];
+                    if ($isActiveNow && !$reseller->is_active) {
+                        $resUpdates['is_active'] = true;
+                        $resUpdates['status'] = 'active';
+                    }
+                    if ($customer->user_id && !$reseller->user_id) {
+                        $resUpdates['user_id'] = $customer->user_id;
+                    }
+                    $reseller->update($resUpdates);
+                }
             } else {
                 if ($customer->reseller) {
                     $customer->reseller()->delete();
@@ -4365,8 +4385,9 @@ class CustomerController extends Controller
                 $dueDateTime = app(\App\Services\BillingIsolationSchedule::class)->forIssueDate($invoiceIssuedDate)
                     ->setTimezone(config('billing.timezone', 'Asia/Jakarta'));
 
-                // RESELLER TIDAK BOLEH ADA INVOICE PELANGGAN (BEGITUPUN STATUS GRATIS, FREE HOME, ATAU NOMINAL <= 0)
-                if (!$customer->is_reseller && empty($customer->is_reseller) && !$isResellerVoucher && !in_array($serviceStatus, ['gratis', 'free_home']) && $amount > 0) {
+                // RESELLER VOUCHER MURNI TIDAK BOLEH ADA INVOICE PELANGGAN (BEGITUPUN STATUS GRATIS, FREE HOME, ATAU NOMINAL <= 0)
+                // Pelanggan Hybrid (Pelanggan Internet + Reseller Voucher) TETAP diterbitkan invoice langganan internet
+                if (!$isResellerVoucher && !in_array($serviceStatus, ['gratis', 'free_home']) && $amount > 0) {
                     if ($taxPpn > 0) {
                         $amount = $amount + ($amount * ($taxPpn / 100));
                     }
@@ -4414,7 +4435,7 @@ class CustomerController extends Controller
                     ? " ({$customer->customer_code})"
                     : '';
 
-                $isOperationalFeeEligible = !$customer->is_reseller && !$isResellerVoucher && \App\Services\AffiliateService::isOperationalFeeEligible($customer);
+                $isOperationalFeeEligible = !$isResellerVoucher && \App\Services\AffiliateService::isOperationalFeeEligible($customer);
 
                 // 1. Fee Booking (Sales / Referral)
                 if ($customer->sales_id) {
@@ -4593,6 +4614,18 @@ class CustomerController extends Controller
                         $customer->reseller->update([
                             'is_active' => true,
                             'status' => 'active',
+                            'can_sell_vouchers' => true,
+                            'can_pay_bills' => true,
+                        ]);
+                    } else {
+                        $customer->reseller()->create([
+                            'user_id' => $customer->user_id,
+                            'balance' => 0,
+                            'is_active' => true,
+                            'status' => 'active',
+                            'tier' => 'regular',
+                            'can_sell_vouchers' => true,
+                            'can_pay_bills' => true,
                         ]);
                     }
                     if ($customer->user) {
