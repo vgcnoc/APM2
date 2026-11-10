@@ -377,25 +377,47 @@
                                 <!-- 5. Aksi Teknisi -->
                                 <td class="p-4 text-center">
                                     <div class="flex items-center justify-center gap-1.5">
-                                        <!-- View Detail Button -->
-                                        <button 
-                                            v-if="can('pgs_btn_view')"
-                                            @click="openDetailModal(ticket)" 
-                                            class="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors cursor-pointer"
-                                            title="Lihat Detail Laporan Lengkap"
-                                        >
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                                        </button>
+                                        <!-- Jika BELUM selesai: Tombol Lihat Detail + Tombol Input Laporan -->
+                                        <template v-if="ticket.status !== 'completed'">
+                                            <button 
+                                                v-if="can(['pgs_btn_view', 'pgs_btn_report'])"
+                                                @click="openDetailModal(ticket)" 
+                                                class="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors cursor-pointer"
+                                                title="Lihat Detail Laporan Lengkap"
+                                            >
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                            </button>
 
-                                        <!-- Input / Edit Laporan Button -->
-                                        <button 
-                                            v-if="can('pgs_btn_report')"
-                                            @click="openReportModal(ticket)" 
-                                            class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-500/20 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
-                                        >
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                            <span>{{ ticket.status === 'completed' ? 'Edit Laporan' : 'Input Laporan' }}</span>
-                                        </button>
+                                            <button 
+                                                v-if="can('pgs_btn_report')"
+                                                @click="openReportModal(ticket)" 
+                                                class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-500/20 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                                            >
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                                <span>Input Laporan</span>
+                                            </button>
+                                        </template>
+
+                                        <!-- Jika SUDAH selesai: Tombol Lihat Laporan (Read-Only) + Revisi khusus Admin/Ka. Teknisi -->
+                                        <template v-else>
+                                            <button 
+                                                @click="openDetailModal(ticket)" 
+                                                class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                                                title="Lihat Detail Hasil Laporan Penanganan"
+                                            >
+                                                <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                <span>Lihat Laporan</span>
+                                            </button>
+
+                                            <button 
+                                                v-if="can('pgs_manage')"
+                                                @click="openReportModal(ticket)" 
+                                                class="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-colors cursor-pointer"
+                                                title="Revisi / Koreksi Laporan (Admin / Ka. Teknisi)"
+                                            >
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                            </button>
+                                        </template>
 
                                         <!-- Cetak SPK Button -->
                                         <a :href="`/pgs/${ticket.id}/print`" target="_blank" title="Cetak Berita Acara & SPK" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors">
@@ -1749,12 +1771,20 @@
 
                     <div class="flex items-center gap-2">
                         <button 
-                            v-if="can('pgs_btn_report')"
+                            v-if="detailTicket?.status !== 'completed' && can('pgs_btn_report')"
                             @click="closeDetailModal(); openReportModal(detailTicket)"
                             class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
                         >
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                            <span>{{ detailTicket?.status === 'completed' ? 'Edit Laporan' : 'Input Laporan' }}</span>
+                            <span>Input Laporan</span>
+                        </button>
+                        <button 
+                            v-else-if="detailTicket?.status === 'completed' && can('pgs_manage')"
+                            @click="closeDetailModal(); openReportModal(detailTicket)"
+                            class="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                            <span>Revisi Laporan</span>
                         </button>
                         <button @click="closeDetailModal" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl text-xs font-bold cursor-pointer">
                             Tutup

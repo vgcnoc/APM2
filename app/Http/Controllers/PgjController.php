@@ -975,6 +975,18 @@ class PgjController extends Controller
             abort(403, 'Anda tidak memiliki hak akses untuk melaporkan hasil restorasi PGJ.');
         }
 
+        // Jika laporan sudah selesai, hanya Admin / Kepala Teknisi (pgj_manage) yang boleh merevisi
+        if ($pgj->status === 'completed') {
+            $canRevise = $user && (
+                $user->can('pgj_manage') ||
+                $user->hasAnyRole(['admin', 'kepala teknisi', 'noc', 'admin cs']) ||
+                in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'noc', 'admin cs'])
+            );
+            if (!$canRevise) {
+                return redirect()->back()->with('error', 'Laporan restorasi jalur ini sudah selesai dikerjakan dan terkunci. Hubungi Kepala Teknisi atau Admin jika diperlukan revisi data.');
+            }
+        }
+
         // Jika scope 'own' (teknisi biasa), verifikasi bahwa user memang ditugaskan pada PGJ ini
         if ($user && \App\Services\DataScopeService::getScopeLevel($user, 'pgj') === 'own') {
             $isAssigned = $pgj->technicians()->where('users.id', $user->id)->exists()

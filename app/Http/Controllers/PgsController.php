@@ -1029,6 +1029,18 @@ class PgsController extends Controller
             abort(403, 'Anda tidak memiliki hak akses untuk melaporkan hasil penanganan PGS.');
         }
 
+        // Jika laporan sudah selesai, hanya Admin / Kepala Teknisi (pgs_manage) yang boleh merevisi
+        if ($pgs->status === 'completed') {
+            $canRevise = $user && (
+                $user->can('pgs_manage') ||
+                $user->hasAnyRole(['admin', 'kepala teknisi', 'noc', 'admin cs']) ||
+                in_array(strtolower($user->role ?? ''), ['admin', 'kepala teknisi', 'noc', 'admin cs'])
+            );
+            if (!$canRevise) {
+                return redirect()->back()->with('error', 'Laporan penanganan PGS ini sudah selesai dikerjakan dan terkunci. Hubungi Kepala Teknisi atau Admin jika diperlukan revisi data.');
+            }
+        }
+
         // Jika scope 'own' (teknisi biasa), verifikasi bahwa user memang ditugaskan pada tiket PGS ini
         if ($user && \App\Services\DataScopeService::getScopeLevel($user, 'pgs') === 'own') {
             $isAssigned = $pgs->technicians()->where('users.id', $user->id)->exists()

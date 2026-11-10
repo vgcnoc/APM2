@@ -322,17 +322,50 @@
 
                                 <!-- 5. Aksi Teknisi -->
                                 <td class="p-4 text-center">
-                                    <div class="flex items-center justify-center gap-2">
-                                        <button 
-                                            v-if="can('pgj_btn_report')"
-                                            @click="openReportModal(ticket)" 
-                                            class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-500/20 transition-all flex items-center gap-1.5"
-                                        >
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                            <span>{{ ticket.status === 'completed' ? 'Edit Laporan' : 'Input Laporan' }}</span>
-                                        </button>
+                                    <div class="flex items-center justify-center gap-1.5">
+                                        <!-- Jika BELUM selesai: Tombol Lihat Detail + Tombol Input Laporan -->
+                                        <template v-if="ticket.status !== 'completed'">
+                                            <button 
+                                                v-if="can(['pgj_btn_view', 'pgj_btn_report'])"
+                                                @click="openDetailModal(ticket)" 
+                                                class="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors cursor-pointer"
+                                                title="Lihat Detail Tugas Jalur"
+                                            >
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                            </button>
 
-                                        <a :href="`/pgj/${ticket.id}/print`" target="_blank" title="Cetak Berita Acara & SPK Jalur" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                                            <button 
+                                                v-if="can('pgj_btn_report')"
+                                                @click="openReportModal(ticket)" 
+                                                class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-500/20 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                                            >
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                                <span>Input Laporan</span>
+                                            </button>
+                                        </template>
+
+                                        <!-- Jika SUDAH selesai: Tombol Lihat Laporan (Read-Only) + Revisi khusus Admin/Ka. Teknisi -->
+                                        <template v-else>
+                                            <button 
+                                                @click="openDetailModal(ticket)" 
+                                                class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                                                title="Lihat Detail Hasil Laporan Restorasi"
+                                            >
+                                                <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                <span>Lihat Laporan</span>
+                                            </button>
+
+                                            <button 
+                                                v-if="can('pgj_manage')"
+                                                @click="openReportModal(ticket)" 
+                                                class="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-colors cursor-pointer"
+                                                title="Revisi / Koreksi Laporan (Admin / Ka. Teknisi)"
+                                            >
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                            </button>
+                                        </template>
+
+                                        <a :href="`/pgj/${ticket.id}/print`" target="_blank" title="Cetak Berita Acara & SPK Jalur" class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                                         </a>
                                     </div>
@@ -1057,6 +1090,287 @@
             </div>
         </div>
 
+        <!-- ════════════ MODAL VIEW DETAIL LAPORAN RESTORASI JALUR (PGJ) READ-ONLY ════════════ -->
+        <div v-if="showDetailModal" class="fixed inset-0 z-50 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center overflow-y-auto transition-all" :class="isDetailModalMaximized ? 'p-0' : 'p-3 sm:p-4'">
+            <div 
+                class="bg-white shadow-2xl border border-gray-100 flex flex-col overflow-hidden transition-all duration-200"
+                :class="isDetailModalMaximized ? 'w-full h-full max-w-none max-h-none rounded-none' : 'rounded-3xl max-w-4xl w-full max-h-[92vh] my-auto animate-fade-in-up'"
+            >
+                <!-- Modal Header -->
+                <div class="px-6 py-4 bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 text-white flex justify-between items-center shrink-0">
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="px-2.5 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 font-mono text-xs font-bold border border-emerald-500/30">
+                                #{{ detailTicket?.ticket_number }}
+                            </span>
+                            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider" :class="detailTicket?.priority === 'critical' ? 'bg-red-500 text-white' : 'bg-slate-700 text-gray-200'">
+                                {{ detailTicket?.priority }}
+                            </span>
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold" :class="detailTicket?.status === 'completed' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'">
+                                {{ detailTicket?.status === 'completed' ? '✅ RESTORASI SELESAI' : '⏳ SIAP DITANGANI' }}
+                            </span>
+                        </div>
+                        <h3 class="font-black text-lg text-white mt-1">Detail Laporan Restorasi Jalur (PGJ)</h3>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <button 
+                            type="button" 
+                            @click="isDetailModalMaximized = !isDetailModalMaximized" 
+                            class="p-2 text-gray-400 hover:text-white rounded-xl hover:bg-white/10 transition-colors cursor-pointer flex items-center justify-center"
+                            :title="isDetailModalMaximized ? 'Perkecil Ukuran Modal' : 'Perbesar Layar Penuh'"
+                        >
+                            <svg v-if="isDetailModalMaximized" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 14h6m0 0v6m0-6L3 21m17-7h-6m0 0v6m0-6l7 7m-7-17v6m0 0h6m-6 0L21 3M10 3v6m0 0H4m0 0L3 3" />
+                            </svg>
+                            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                            </svg>
+                        </button>
+                        <button @click="closeDetailModal" class="p-2 text-gray-400 hover:text-white rounded-xl hover:bg-white/10 transition-colors cursor-pointer">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Modal Body (Scrollable) -->
+                <div class="p-6 overflow-y-auto space-y-6 flex-1">
+                    <!-- 1. Informasi Lokasi & Segmen Jaringan -->
+                    <div class="p-4 rounded-2xl bg-gradient-to-br from-gray-50 to-slate-50 border border-gray-200/80 shadow-2xs">
+                        <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Informasi Lokasi & Segmen Jaringan</div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                            <div>
+                                <span class="text-gray-500">Titik / Lokasi Insiden:</span>
+                                <div class="font-bold text-gray-900 text-sm mt-0.5">{{ detailTicket?.location_name || '-' }}</div>
+                                <div class="mt-1">
+                                    <span class="font-extrabold text-[10px] px-2 py-0.5 rounded uppercase border" :class="getSegmentBadgeClass(detailTicket?.segment_type)">
+                                        {{ getSegmentLabel(detailTicket?.segment_type) }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Perangkat Jaringan (OLT / ODC / ODP):</span>
+                                <div class="font-bold text-emerald-700 mt-0.5 space-y-0.5">
+                                    <div v-if="detailTicket?.olt">OLT: {{ detailTicket.olt.name }}</div>
+                                    <div v-if="detailTicket?.odc">ODC: {{ detailTicket.odc.name }}</div>
+                                    <div v-if="detailTicket?.odp">ODP: {{ detailTicket.odp.name }}</div>
+                                    <div v-if="detailTicket?.provider_name">ISP Upstream: {{ detailTicket.provider_name }}</div>
+                                    <div v-if="!detailTicket?.olt && !detailTicket?.odc && !detailTicket?.odp && !detailTicket?.provider_name">-</div>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Wilayah & Estimasi Dampak:</span>
+                                <div class="font-bold text-gray-900 mt-0.5">{{ detailTicket?.area?.name || 'Semua Area / Global' }}</div>
+                                <div class="text-[11px] font-bold text-red-600 mt-0.5">
+                                    🚨 {{ detailTicket?.affected_customers_count || 0 }} Pelanggan Terdampak
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Jadwal, Waktu Pengerjaan & Tim Teknisi -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100">
+                            <div class="text-[11px] font-bold text-indigo-900 uppercase tracking-wider mb-2">Jadwal & Waktu Kerja</div>
+                            <div class="space-y-1.5 text-xs">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Tanggal Jadwal:</span>
+                                    <span class="font-bold text-gray-900">{{ formatDate(detailTicket?.scheduled_date) }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Jam Jadwal:</span>
+                                    <span class="font-bold text-gray-900">{{ detailTicket?.scheduled_time || 'Segera' }}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">Waktu Pengerjaan:</span>
+                                    <span class="font-bold text-emerald-700">{{ detailTicket?.start_time || '-' }} s/d {{ detailTicket?.end_time || '-' }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-4 rounded-2xl bg-slate-50 border border-gray-200">
+                            <div class="text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Tim Teknisi yang Bertugas</div>
+                            <div class="space-y-1 text-xs">
+                                <div v-if="detailTicket?.lead_technician" class="text-gray-700">
+                                    <span class="text-gray-500">Ka. Teknisi:</span> <b>{{ detailTicket.lead_technician.name }}</b>
+                                </div>
+                                <div class="text-gray-700">
+                                    <span class="text-gray-500">Teknisi Lapangan:</span>
+                                    <div v-if="detailTicket?.technicians && detailTicket.technicians.length > 0" class="flex flex-wrap gap-1 mt-1">
+                                        <span v-for="tech in detailTicket.technicians" :key="tech.id" class="px-2 py-0.5 rounded-md bg-white border border-gray-200 text-gray-800 font-medium text-[11px]">
+                                            👤 {{ tech.name }}
+                                        </span>
+                                    </div>
+                                    <span v-else class="text-gray-400 italic">Belum ada teknisi di-assign</span>
+                                </div>
+                                <div v-if="detailTicket?.resolved_by_user" class="text-gray-700 pt-1">
+                                    <span class="text-gray-500">Dilaporkan Selesai Oleh:</span> <b class="text-emerald-700">{{ detailTicket.resolved_by_user.name }}</b>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Temuan Kerusakan, Instruksi & Hasil Tindakan Restorasi -->
+                    <div class="space-y-3">
+                        <div class="p-4 rounded-2xl bg-amber-50/60 border border-amber-200">
+                            <div class="text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">Temuan Kerusakan & Instruksi</div>
+                            <div class="text-xs text-amber-950 font-semibold">"{{ detailTicket?.reported_issue }}"</div>
+                            <div v-if="detailTicket?.lead_notes" class="mt-2 text-xs text-amber-800 bg-white/70 p-2 rounded-xl border border-amber-200">
+                                <span class="font-bold">Instruksi Ka. Teknisi:</span> {{ detailTicket.lead_notes }}
+                            </div>
+                        </div>
+
+                        <div class="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200 space-y-2">
+                            <div class="text-[11px] font-bold text-emerald-900 uppercase tracking-wider">Hasil Tindakan Restorasi & Splicing Core FO</div>
+                            <div class="text-xs text-emerald-950 font-bold whitespace-pre-line">{{ detailTicket?.action_taken || 'Belum dilaporkan' }}</div>
+                            <div v-if="detailTicket?.core_details" class="text-xs text-indigo-900 bg-indigo-50/80 p-2 rounded-xl border border-indigo-200 font-semibold">
+                                <span class="font-bold">Detail Core / Tube FO:</span> {{ detailTicket.core_details }}
+                            </div>
+                            <div v-if="detailTicket?.resolution_notes" class="text-xs text-emerald-800 bg-white/70 p-2 rounded-xl border border-emerald-200">
+                                <span class="font-bold">Catatan Akhir Restorasi:</span> {{ detailTicket.resolution_notes }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. Pengukuran Optical Loss -->
+                    <div class="p-4 rounded-2xl bg-white border border-gray-200 shadow-2xs space-y-3">
+                        <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                            <span>⚡</span> Pengukuran Optical Loss / Redaman Jalur (OPM / OTDR)
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                            <div class="p-3 rounded-xl bg-rose-50/60 border border-rose-200 text-center">
+                                <div class="text-[10px] text-rose-600 uppercase font-bold">⚠️ Optical Loss Sebelum Restorasi</div>
+                                <div class="text-lg font-mono font-bold text-rose-800 mt-1">
+                                    {{ detailTicket?.optical_loss_before || '-' }}
+                                </div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-center shadow-2xs">
+                                <div class="text-[10px] text-emerald-700 uppercase font-bold">✅ Optical Loss Sesudah Restorasi</div>
+                                <div class="text-lg font-mono font-bold text-emerald-700 mt-1">
+                                    {{ detailTicket?.optical_loss_after || '-' }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5. Titik Koordinat Insiden (Tikor GPS Multi) -->
+                    <div v-if="(detailTicket?.incident_coordinates && detailTicket.incident_coordinates.length > 0) || (detailTicket?.latitude && detailTicket?.longitude)" class="p-4 rounded-2xl bg-purple-50/50 border border-purple-200">
+                        <div class="text-[11px] font-bold text-purple-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                            <span>📍</span> Titik Koordinat Insiden / Lokasi Perbaikan Jalur
+                        </div>
+                        <div v-if="detailTicket?.incident_coordinates && detailTicket.incident_coordinates.length > 0" class="space-y-2">
+                            <div v-for="(tikor, tIdx) in detailTicket.incident_coordinates" :key="'tikor-' + tIdx" class="p-2.5 rounded-xl bg-white border border-purple-100 flex items-center justify-between gap-2 text-xs">
+                                <div>
+                                    <div class="font-bold text-purple-950">{{ tikor.name || tikor.label || ('Titik #' + (tIdx + 1)) }}</div>
+                                    <div class="font-mono text-[11px] text-gray-600">{{ tikor.latitude }}, {{ tikor.longitude }}</div>
+                                    <div v-if="tikor.notes" class="text-[10px] text-gray-500 italic mt-0.5">"{{ tikor.notes }}"</div>
+                                </div>
+                                <a 
+                                    v-if="tikor.latitude && tikor.longitude"
+                                    :href="`https://www.google.com/maps?q=${tikor.latitude},${tikor.longitude}`" 
+                                    target="_blank" 
+                                    class="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition-colors shrink-0 flex items-center gap-1"
+                                >
+                                    <span>🗺️ Buka Maps</span>
+                                </a>
+                            </div>
+                        </div>
+                        <div v-else class="p-2.5 rounded-xl bg-white border border-purple-100 flex items-center justify-between gap-2 text-xs">
+                            <div>
+                                <div class="font-bold text-purple-950">{{ detailTicket?.location_name || 'Titik Lokasi Tiket' }}</div>
+                                <div class="font-mono text-[11px] text-gray-600">{{ detailTicket?.latitude }}, {{ detailTicket?.longitude }}</div>
+                            </div>
+                            <a 
+                                :href="`https://www.google.com/maps?q=${detailTicket.latitude},${detailTicket.longitude}`" 
+                                target="_blank" 
+                                class="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition-colors shrink-0 flex items-center gap-1"
+                            >
+                                <span>🗺️ Buka Maps</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- 6. Dokumentasi Foto Penanganan -->
+                    <div class="p-4 rounded-2xl bg-gray-50 border border-gray-200">
+                        <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Foto Dokumentasi Penanganan Jalur</div>
+                        <div v-if="detailPhotosList.length > 0" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                            <div v-for="(p, pIdx) in detailPhotosList" :key="'dp-' + pIdx" class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-2xs">
+                                <div class="relative group aspect-video bg-gray-900 cursor-pointer" @click="openPhotoZoom(p.url)">
+                                    <img :src="p.url" :alt="p.caption" class="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold">
+                                        🔍 Klik untuk perbesar
+                                    </div>
+                                </div>
+                                <div class="p-2 text-xs">
+                                    <div class="font-semibold text-gray-800 truncate">{{ p.caption || `Foto #${pIdx + 1}` }}</div>
+                                    <div v-if="p.uploaded_at" class="text-[10px] text-gray-400">{{ p.uploaded_at }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-else class="h-24 rounded-xl border border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-xs italic bg-white">
+                            Belum ada foto dokumentasi penanganan yang diunggah
+                        </div>
+                    </div>
+
+                    <!-- 7. Rekonsiliasi Material FO -->
+                    <div v-if="detailTicket?.materials && detailTicket.materials.length > 0" class="p-4 rounded-2xl bg-white border border-gray-200 shadow-2xs">
+                        <div class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Rincian Material FO Dibawa vs Terpakai vs Sisa Retur</div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs text-left">
+                                <thead class="bg-gray-50 border-b text-[10px] uppercase text-gray-500 font-bold">
+                                    <tr>
+                                        <th class="p-2">Material FO</th>
+                                        <th class="p-2 text-center">Dibawa</th>
+                                        <th class="p-2 text-center">Terpakai</th>
+                                        <th class="p-2 text-center">Sisa (Retur)</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    <tr v-for="m in detailTicket.materials" :key="m.id">
+                                        <td class="p-2 font-medium text-gray-900">{{ m.material?.name || '-' }}</td>
+                                        <td class="p-2 text-center font-bold text-gray-700">{{ parseFloat(m.quantity_prepared) }} {{ m.unit || m.material?.unit }}</td>
+                                        <td class="p-2 text-center font-bold text-emerald-600">{{ parseFloat(m.quantity_used || 0) }} {{ m.unit || m.material?.unit }}</td>
+                                        <td class="p-2 text-center font-bold text-blue-700 font-mono">
+                                            {{ parseFloat(m.quantity_returned || 0) > 0 ? ('+' + parseFloat(m.quantity_returned) + ' ' + (m.unit || m.material?.unit)) : '-' }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="px-6 py-3.5 bg-gray-50 border-t border-gray-200 flex items-center justify-between shrink-0">
+                    <a :href="`/pgj/${detailTicket?.id}/print`" target="_blank" class="px-4 py-2 bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                        <span>Cetak Berita Acara / SPK</span>
+                    </a>
+
+                    <div class="flex items-center gap-2">
+                        <button 
+                            v-if="detailTicket?.status !== 'completed' && can('pgj_btn_report')"
+                            @click="closeDetailModal(); openReportModal(detailTicket)"
+                            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                            <span>Input Laporan</span>
+                        </button>
+                        <button 
+                            v-else-if="detailTicket?.status === 'completed' && can('pgj_manage')"
+                            @click="closeDetailModal(); openReportModal(detailTicket)"
+                            class="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                            <span>Revisi Laporan</span>
+                        </button>
+                        <button @click="closeDetailModal" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl text-xs font-bold cursor-pointer">
+                            Tutup
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- ════════════ LIGHTBOX MODAL (ZOOM FOTO PENANGANAN) ════════════ -->
         <div v-if="previewModalImage" class="fixed inset-0 z-[60] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in" @click.self="previewModalImage = null">
             <div class="relative max-w-4xl max-h-[90vh] flex flex-col items-center">
@@ -1085,6 +1399,7 @@ const { can } = usePermission();
 const props = defineProps({
     tickets: Object,
     areas: Array,
+    materials: Array,
     filters: Object,
     counts: {
         type: Object,
@@ -1154,6 +1469,53 @@ const resetFilters = () => {
 const showReportModal = ref(false);
 const selectedTicket = ref(null);
 const hasSavedDraft = ref(false);
+
+const showDetailModal = ref(false);
+const detailTicket = ref(null);
+const isDetailModalMaximized = ref(false);
+
+const openDetailModal = (ticket) => {
+    detailTicket.value = ticket;
+    showDetailModal.value = true;
+};
+
+const closeDetailModal = () => {
+    showDetailModal.value = false;
+    detailTicket.value = null;
+};
+
+const detailPhotosList = computed(() => {
+    const t = detailTicket.value;
+    if (!t) return [];
+    const list = [];
+    if (Array.isArray(t.handling_photos) && t.handling_photos.length > 0) {
+        t.handling_photos.forEach((hp) => {
+            if (hp?.path) {
+                list.push({
+                    url: `/storage/${hp.path}`,
+                    caption: hp.caption || 'Dokumentasi Penanganan Lapangan',
+                    uploaded_at: hp.uploaded_at || '',
+                });
+            }
+        });
+    } else {
+        if (t.photo_before) {
+            list.push({
+                url: `/storage/${t.photo_before}`,
+                caption: 'Foto Bukti Kerusakan Fisik (Sebelum)',
+                uploaded_at: '',
+            });
+        }
+        if (t.photo_after) {
+            list.push({
+                url: `/storage/${t.photo_after}`,
+                caption: 'Foto Hasil Restorasi / Splicing (Sesudah)',
+                uploaded_at: '',
+            });
+        }
+    }
+    return list;
+});
 
 // Timer & Stopwatch State
 const startedAt = ref(null);
@@ -1422,6 +1784,7 @@ const openReportModal = (ticket, ignoreDraft = false) => {
     selectedTicket.value = ticket;
     stopLiveTimer();
     reportForm.reset();
+    additionalMaterials.value = [];
     hasSavedDraft.value = false;
     photoBeforePreview.value = ticket.photo_before ? `/storage/${ticket.photo_before}` : null;
     photoAfterPreview.value = ticket.photo_after ? `/storage/${ticket.photo_after}` : null;
@@ -1674,6 +2037,7 @@ const submitReport = () => {
     reportForm.transform((data) => ({
         ...data,
         incident_coordinates: validCoords,
+        additional_materials: additionalMaterials.value,
         existing_handling_photos: JSON.stringify(existingPhotos),
         handling_photos_files: newPhotoFiles,
         handling_photos_captions: newPhotoCaptions,
