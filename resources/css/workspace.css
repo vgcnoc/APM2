@@ -53,6 +53,319 @@
         -webkit-font-smoothing: antialiased;
     }
 
+    /* ── VELVET VIOLET 3D RIBBON THEME (Sesuai Corak Pilihan User) ── */
+    html[data-bg-pattern="violet-wave"] .workspace-ui, 
+    html[data-bg-pattern="violet-wave"] body.workspace-ui-page {
+        --ws-canvas: #faf5ff;
+        --ws-surface: #ffffff;
+        --ws-subtle: #f4ebfc;
+        --ws-raised: #ebd4f9;
+        --ws-border: #e1c4f6;
+        --ws-heading: #24083d;
+        --ws-text: #451b6a;
+        --ws-muted: #7b4ea3;
+        --ws-accent: #9333ea;
+        --ws-accent-soft: #f3e8ff;
+        --ws-accent-text: #7e22ce;
+        --ws-shadow: 0 2px 4px -2px rgb(50 10 70 / .06), 0 8px 24px -10px rgb(50 10 70 / .09);
+        --ws-focus: 0 0 0 3px rgb(147 51 234 / .20);
+        --apm-canvas: var(--ws-canvas);
+        --apm-surface: var(--ws-surface);
+        --apm-recessed: var(--ws-subtle);
+        --apm-raised: var(--ws-raised);
+        --apm-border: var(--ws-border);
+        --apm-text: var(--ws-heading);
+        --apm-secondary: var(--ws-text);
+        --apm-muted: var(--ws-muted);
+    }
+    html.dark[data-bg-pattern="violet-wave"] .workspace-ui, 
+    html.dark[data-bg-pattern="violet-wave"] body.workspace-ui-page {
+        --ws-canvas: #0d0417;
+        --ws-surface: #18092a;
+        --ws-subtle: #130622;
+        --ws-raised: #240e3f;
+        --ws-border: #381561;
+        --ws-heading: #faf5ff;
+        --ws-text: #e9d5ff;
+        --ws-muted: #a885d8;
+        --ws-accent: #a855f7;
+        --ws-accent-soft: #2e0854;
+        --ws-accent-text: #c084fc;
+        --ws-shadow: 0 4px 22px -8px rgb(0 0 0 / .65);
+        --ws-focus: 0 0 0 3px rgb(168 85 247 / .30);
+        --apm-canvas: var(--ws-canvas);
+        --apm-surface: var(--ws-surface);
+        --apm-recessed: var(--ws-subtle);
+        --apm-raised: var(--ws-raised);
+        --apm-border: var(--ws-border);
+        --apm-text: var(--ws-heading);
+        --apm-secondary: var(--ws-text);
+        --apm-muted: var(--ws-muted);
+    }
+
+    /* ── AZURE OCEAN WAVES 3D THEME (Sesuai Corak Pilihan User) ── */
+    html[data-bg-pattern="azure-stream"] .workspace-ui, 
+    html[data-bg-pattern="azure-stream"] body.workspace-ui-page {
+        --ws-canvas: #f0f8ff;
+        --ws-surface: #ffffff;
+        --ws-subtle: #e5f3fd;
+        --ws-raised: #d2e9fa;
+        --ws-border: #b9dcf7;
+        --ws-heading: #08253e;
+        --ws-text: #1b3d60;
+        --ws-muted: #4e7399;
+        --ws-accent: #0284c7;
+        --ws-accent-soft: #e0f2fe;
+        --ws-accent-text: #0369a1;
+        --ws-shadow: 0 2px 4px -2px rgb(10 40 70 / .06), 0 8px 24px -10px rgb(10 40 70 / .09);
+        --ws-focus: 0 0 0 3px rgb(2 132 199 / .20);
+        --apm-canvas: var(--ws-canvas);
+        --apm-surface: var(--ws-surface);
+        --apm-recessed: var(--ws-subtle);
+        --apm-raised: var(--ws-raised);
+        --apm-border: var(--ws-border);
+        --apm-text: var(--ws-heading);
+        --apm-secondary: var(--ws-text);
+        --apm-muted: var(--ws-muted);
+    }
+    html.dark[data-bg-pattern="azure-stream"] .workspace-ui, 
+    html.dark[data-bg-pattern="azure-stream"] body.workspace-ui-page {
+        --ws-canvas: #030d17;
+        --ws-surface: #081829;
+        --ws-subtle: #051221;
+        --ws-raised: #0f2742;
+        --ws-border: #163a5f;
+        --ws-heading: #e0f2fe;
+        --ws-text: #bae6fd;
+        --ws-muted: #6ba1cc;
+        --ws-accent: #38bdf8;
+        --ws-accent-soft: #082f49;
+        --ws-accent-text: #7dd3fc;
+        --ws-shadow: 0 4px 22px -8px rgb(0 0 0 / .65);
+        --ws-focus: 0 0 0 3px rgb(56 189 248 / .30);
+        --apm-canvas: var(--ws-canvas);
+        --apm-surface: var(--ws-surface);
+        --apm-recessed: var(--ws-subtle);
+        --apm-raised: var(--ws-raised);
+        --apm-border: var(--ws-border);
+        --apm-text: var(--ws-heading);
+        --apm-secondary: var(--ws-text);
+        --apm-muted: var(--ws-muted);
+    }
+
+    /* ── EMERALD JADE LUXURY THEME ── */
+    html[data-bg-pattern="emerald-jade"] .workspace-ui, 
+    html[data-bg-pattern="emerald-jade"] body.workspace-ui-page {
+        --ws-canvas: #f2fbf6;
+        --ws-surface: #ffffff;
+        --ws-subtle: #e3f7ec;
+        --ws-raised: #d0f0de;
+        --ws-border: #b7e7cb;
+        --ws-heading: #062b16;
+        --ws-text: #134629;
+        --ws-muted: #417a58;
+        --ws-accent: #059669;
+        --ws-accent-soft: #d1fae5;
+        --ws-accent-text: #047857;
+        --ws-shadow: 0 2px 4px -2px rgb(6 43 22 / .06), 0 8px 24px -10px rgb(6 43 22 / .09);
+        --ws-focus: 0 0 0 3px rgb(5 150 105 / .20);
+        --apm-canvas: var(--ws-canvas);
+        --apm-surface: var(--ws-surface);
+        --apm-recessed: var(--ws-subtle);
+        --apm-raised: var(--ws-raised);
+        --apm-border: var(--ws-border);
+        --apm-text: var(--ws-heading);
+        --apm-secondary: var(--ws-text);
+        --apm-muted: var(--ws-muted);
+    }
+    html.dark[data-bg-pattern="emerald-jade"] .workspace-ui, 
+    html.dark[data-bg-pattern="emerald-jade"] body.workspace-ui-page {
+        --ws-canvas: #02140a;
+        --ws-surface: #062414;
+        --ws-subtle: #041a0e;
+        --ws-raised: #0b3820;
+        --ws-border: #11502e;
+        --ws-heading: #ecfdf5;
+        --ws-text: #d1fae5;
+        --ws-muted: #6ee7b7;
+        --ws-accent: #10b981;
+        --ws-accent-soft: #064e3b;
+        --ws-accent-text: #34d399;
+        --ws-shadow: 0 4px 22px -8px rgb(0 0 0 / .65);
+        --ws-focus: 0 0 0 3px rgb(168 85 247 / .30);
+        --apm-canvas: var(--ws-canvas);
+        --apm-surface: var(--ws-surface);
+        --apm-recessed: var(--ws-subtle);
+        --apm-raised: var(--ws-raised);
+        --apm-border: var(--ws-border);
+        --apm-text: var(--ws-heading);
+        --apm-secondary: var(--ws-text);
+        --apm-muted: var(--ws-muted);
+    }
+
+    /* ── SUNSET CORAL GLOW THEME ── */
+    html[data-bg-pattern="sunset-coral"] .workspace-ui, 
+    html[data-bg-pattern="sunset-coral"] body.workspace-ui-page {
+        --ws-canvas: #fdf6f4;
+        --ws-surface: #ffffff;
+        --ws-subtle: #fbe7e4;
+        --ws-raised: #f7d3cc;
+        --ws-border: #f1bdb4;
+        --ws-heading: #3b1411;
+        --ws-text: #5e2823;
+        --ws-muted: #955650;
+        --ws-accent: #e11d48;
+        --ws-accent-soft: #ffe4e6;
+        --ws-accent-text: #be123c;
+        --ws-shadow: 0 2px 4px -2px rgb(60 20 18 / .06), 0 8px 24px -10px rgb(60 20 18 / .09);
+        --ws-focus: 0 0 0 3px rgb(225 29 72 / .20);
+        --apm-canvas: var(--ws-canvas);
+        --apm-surface: var(--ws-surface);
+        --apm-recessed: var(--ws-subtle);
+        --apm-raised: var(--ws-raised);
+        --apm-border: var(--ws-border);
+        --apm-text: var(--ws-heading);
+        --apm-secondary: var(--ws-text);
+        --apm-muted: var(--ws-muted);
+    }
+    html.dark[data-bg-pattern="sunset-coral"] .workspace-ui, 
+    html.dark[data-bg-pattern="sunset-coral"] body.workspace-ui-page {
+        --ws-canvas: #180708;
+        --ws-surface: #280d10;
+        --ws-subtle: #20090c;
+        --ws-raised: #3f1519;
+        --ws-border: #5a1c22;
+        --ws-heading: #fff1f2;
+        --ws-text: #fecdd3;
+        --ws-muted: #c97b84;
+        --ws-accent: #f43f5e;
+        --ws-accent-soft: #4c0519;
+        --ws-accent-text: #fb7185;
+        --ws-shadow: 0 4px 22px -8px rgb(0 0 0 / .65);
+        --ws-focus: 0 0 0 3px rgb(244 63 94 / .30);
+        --apm-canvas: var(--ws-canvas);
+        --apm-surface: var(--ws-surface);
+        --apm-recessed: var(--ws-subtle);
+        --apm-raised: var(--ws-raised);
+        --apm-border: var(--ws-border);
+        --apm-text: var(--ws-heading);
+        --apm-secondary: var(--ws-text);
+        --apm-muted: var(--ws-muted);
+    }
+
+    /* ── OBSIDIAN CARBON FIBER (NOC Pro) THEME ── */
+    html[data-bg-pattern="carbon-stealth"] .workspace-ui, 
+    html[data-bg-pattern="carbon-stealth"] body.workspace-ui-page {
+        --ws-canvas: #f3f4f6;
+        --ws-surface: #ffffff;
+        --ws-subtle: #e9ebef;
+        --ws-raised: #dadee5;
+        --ws-border: #c8ced8;
+        --ws-heading: #0f172a;
+        --ws-text: #334155;
+        --ws-muted: #64748b;
+        --ws-accent: #475569;
+        --ws-accent-soft: #e2e8f0;
+        --ws-accent-text: #1e293b;
+        --ws-shadow: 0 2px 4px -2px rgb(15 23 42 / .06), 0 8px 24px -10px rgb(15 23 42 / .09);
+        --ws-focus: 0 0 0 3px rgb(71 85 105 / .20);
+        --apm-canvas: var(--ws-canvas);
+        --apm-surface: var(--ws-surface);
+        --apm-recessed: var(--ws-subtle);
+        --apm-raised: var(--ws-raised);
+        --apm-border: var(--ws-border);
+        --apm-text: var(--ws-heading);
+        --apm-secondary: var(--ws-text);
+        --apm-muted: var(--ws-muted);
+    }
+    html.dark[data-bg-pattern="carbon-stealth"] .workspace-ui, 
+    html.dark[data-bg-pattern="carbon-stealth"] body.workspace-ui-page {
+        --ws-canvas: #0c0e11;
+        --ws-surface: #14171d;
+        --ws-subtle: #0f1217;
+        --ws-raised: #1d222b;
+        --ws-border: #2c3341;
+        --ws-heading: #f9fafb;
+        --ws-text: #e5e7eb;
+        --ws-muted: #9ca3af;
+        --ws-accent: #94a3b8;
+        --ws-accent-soft: #1e2430;
+        --ws-accent-text: #cbd5e1;
+        --ws-shadow: 0 4px 22px -8px rgb(0 0 0 / .65);
+        --ws-focus: 0 0 0 3px rgb(148 163 184 / .25);
+        --apm-canvas: var(--ws-canvas);
+        --apm-surface: var(--ws-surface);
+        --apm-recessed: var(--ws-subtle);
+        --apm-raised: var(--ws-raised);
+        --apm-border: var(--ws-border);
+        --apm-text: var(--ws-heading);
+        --apm-secondary: var(--ws-text);
+        --apm-muted: var(--ws-muted);
+    }
+
+    /* ── CYBERPUNK TERMINAL THEME ── */
+    html[data-bg-pattern="neon-cyber"] .workspace-ui, 
+    html[data-bg-pattern="neon-cyber"] body.workspace-ui-page {
+        --ws-canvas: #f0fdfa;
+        --ws-surface: #ffffff;
+        --ws-subtle: #defaf3;
+        --ws-raised: #c4f5ea;
+        --ws-border: #a3eddc;
+        --ws-heading: #02261e;
+        --ws-text: #054233;
+        --ws-muted: #277768;
+        --ws-accent: #0d9488;
+        --ws-accent-soft: #ccfbf1;
+        --ws-accent-text: #0f766e;
+        --ws-shadow: 0 2px 4px -2px rgb(2 38 30 / .06), 0 8px 24px -10px rgb(2 38 30 / .09);
+        --ws-focus: 0 0 0 3px rgb(13 148 136 / .20);
+        --apm-canvas: var(--ws-canvas);
+        --apm-surface: var(--ws-surface);
+        --apm-recessed: var(--ws-subtle);
+        --apm-raised: var(--ws-raised);
+        --apm-border: var(--ws-border);
+        --apm-text: var(--ws-heading);
+        --apm-secondary: var(--ws-text);
+        --apm-muted: var(--ws-muted);
+    }
+    html.dark[data-bg-pattern="neon-cyber"] .workspace-ui, 
+    html.dark[data-bg-pattern="neon-cyber"] body.workspace-ui-page {
+        --ws-canvas: #020f0c;
+        --ws-surface: #051f18;
+        --ws-subtle: #031712;
+        --ws-raised: #082d23;
+        --ws-border: #0e4537;
+        --ws-heading: #5eead4;
+        --ws-text: #99f6e4;
+        --ws-muted: #2dd4bf;
+        --ws-accent: #14b8a6;
+        --ws-accent-soft: #042f2e;
+        --ws-accent-text: #2dd4bf;
+        --ws-shadow: 0 4px 22px -8px rgb(0 0 0 / .65);
+        --ws-focus: 0 0 0 3px rgb(20 184 166 / .30);
+        --apm-canvas: var(--ws-canvas);
+        --apm-surface: var(--ws-surface);
+        --apm-recessed: var(--ws-subtle);
+        --apm-raised: var(--ws-raised);
+        --apm-border: var(--ws-border);
+        --apm-text: var(--ws-heading);
+        --apm-secondary: var(--ws-text);
+        --apm-muted: var(--ws-muted);
+    }
+
+    /* Universal Font, Table & Surface adaptation for ALL active patterns */
+    html[data-bg-pattern] .workspace-ui :is(h1, h2, h3, h4, h5, h6) { color: var(--ws-heading); }
+    html[data-bg-pattern] .workspace-ui :is(.text-gray-900, .text-slate-900, .text-gray-800, .text-slate-800) { color: var(--ws-heading) !important; }
+    html[data-bg-pattern] .workspace-ui :is(.text-gray-700, .text-slate-700, .text-gray-600, .text-slate-600) { color: var(--ws-text) !important; }
+    html[data-bg-pattern] .workspace-ui :is(.text-gray-500, .text-slate-500, .text-gray-400, .text-slate-400) { color: var(--ws-muted) !important; }
+    html[data-bg-pattern] .workspace-ui :is(.border-gray-200, .border-slate-200, .border-gray-100, .border-slate-100) { border-color: var(--ws-border) !important; }
+    html[data-bg-pattern] .workspace-ui :is(.bg-gray-50, .bg-slate-50) { background-color: var(--ws-subtle) !important; }
+    html[data-bg-pattern] .workspace-ui :is(.data-table thead, table thead) { background-color: var(--ws-subtle) !important; border-color: var(--ws-border) !important; }
+    html[data-bg-pattern] .workspace-ui :is(.data-table, table) thead th { color: var(--ws-muted) !important; border-color: var(--ws-border) !important; }
+    html[data-bg-pattern] .workspace-ui :is(.data-table, table) tbody tr { border-color: var(--ws-border) !important; }
+    html[data-bg-pattern] .workspace-ui :is(.data-table, table) tbody td { color: var(--ws-text) !important; }
+    html[data-bg-pattern] .workspace-ui :is(.data-table, table) tbody tr:hover { background-color: var(--ws-subtle) !important; }
+
     /* Preserve the chosen pattern, with quieter canvas and solid reading surfaces. */
     
     /* ── ROYAL TERRACOTTA BATIK THEME OVERRIDE (Sesuai Permintaan Corak & Warna User) ── */

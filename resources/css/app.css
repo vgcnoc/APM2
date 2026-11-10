@@ -679,6 +679,162 @@ html.dark [role="dialog"] {
 }
 
 
+/* ── CORAK: VELVET VIOLET 3D RIBBON (Pilihan User) ── */
+html[data-bg-pattern="violet-wave"] .apm-shell::before {
+    background-color: #faf5ff !important;
+    background-image:
+        radial-gradient(1200px 700px at 50% -5%, rgba(147, 51, 234, 0.18), transparent 60%),
+        radial-gradient(1000px 600px at 85% -5%, rgba(192, 38, 211, 0.14), transparent 55%),
+        radial-gradient(1200px 800px at 50% 100%, rgba(107, 33, 168, 0.12), transparent 65%),
+        linear-gradient(rgba(250, 245, 255, 0.82), rgba(250, 245, 255, 0.88)),
+        url('/images/patterns/violet-wave.jpg') !important;
+    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, cover !important;
+    background-position: center top, center top, center top, center top, center top !important;
+    background-attachment: fixed !important;
+    background-repeat: no-repeat !important;
+}
+
+html.dark[data-bg-pattern="violet-wave"] .apm-shell::before {
+    background-color: #0d0417 !important;
+    background-image:
+        radial-gradient(1200px 700px at 50% -5%, rgba(168, 85, 247, 0.32), transparent 60%),
+        radial-gradient(1000px 600px at 85% -5%, rgba(217, 70, 239, 0.22), transparent 55%),
+        radial-gradient(1200px 800px at 50% 100%, rgba(88, 28, 135, 0.45), transparent 65%),
+        linear-gradient(rgba(13, 4, 23, 0.65), rgba(13, 4, 23, 0.84)),
+        url('/images/patterns/violet-wave.jpg') !important;
+    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, cover !important;
+    background-position: center top, center top, center top, center top, center top !important;
+    background-attachment: fixed !important;
+    background-repeat: no-repeat !important;
+}
+
+/* ── CORAK: AZURE OCEAN WAVES 3D (Pilihan User) ── */
+html[data-bg-pattern="azure-stream"] .apm-shell::before {
+    background-color: #f0f8ff !important;
+    background-image:
+        radial-gradient(1200px 700px at 50% -5%, rgba(2, 132, 199, 0.16), transparent 60%),
+        radial-gradient(1000px 600px at 85% -5%, rgba(14, 165, 233, 0.14), transparent 55%),
+        radial-gradient(1200px 800px at 50% 100%, rgba(3, 105, 161, 0.10), transparent 65%),
+        linear-gradient(rgba(240, 248, 255, 0.80), rgba(240, 248, 255, 0.88)),
+        url('/images/patterns/azure-stream.png') !important;
+    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, cover !important;
+    background-position: center top, center top, center top, center top, center top !important;
+    background-attachment: fixed !important;
+    background-repeat: no-repeat !important;
+}
+
+html.dark[data-bg-pattern="azure-stream"] .apm-shell::before {
+    background-color: #030d17 !important;
+    background-image:
+        radial-gradient(1200px 700px at 50% -5%, rgba(14, 165, 233, 0.30), transparent 60%),
+        radial-gradient(1000px 600px at 85% -5%, rgba(56, 189, 248, 0.20), transparent 55%),
+        radial-gradient(1200px 800px at 50% 100%, rgba(3, 41, 74, 0.50), transparent 65%),
+        linear-gradient(rgba(3, 13, 23, 0.62), rgba(3, 13, 23, 0.82)),
+        url('/images/patterns/azure-stream.png') !important;
+    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, cover !important;
+    background-position: center top, center top, center top, center top, center top !important;
+    background-attachment: fixed !important;
+    background-repeat: no-repeat !important;
+}
+
+/* ── CORAK: EMERALD JADE LUXURY ── */
+html[data-bg-pattern="emerald-jade"] .apm-shell::before {
+    background-color: #f2fbf6 !important;
+    background-image:
+        radial-gradient(1200px 700px at 50% -5%, rgba(16, 185, 129, 0.16), transparent 60%),
+        radial-gradient(1000px 600px at 85% -5%, rgba(5, 150, 105, 0.12), transparent 55%),
+        radial-gradient(1200px 800px at 50% 100%, rgba(4, 120, 87, 0.08), transparent 65%),
+        radial-gradient(rgba(16, 185, 129, 0.18) 1.5px, transparent 1.5px) !important;
+    background-size: 100% 100%, 100% 100%, 100% 100%, 28px 28px !important;
+    background-position: center top, center top, center top, 0 0 !important;
+    background-attachment: fixed !important;
+}
+
+html.dark[data-bg-pattern="emerald-jade"] .apm-shell::before {
+    background-color: #02140a !important;
+    background-image:
+        radial-gradient(1200px 700px at 50% -5%, rgba(16, 185, 129, 0.28), transparent 60%),
+        radial-gradient(1000px 600px at 85% -5%, rgba(52, 211, 153, 0.18), transparent 55%),
+        radial-gradient(1200px 800px at 50% 100%, rgba(6, 78, 59, 0.50), transparent 65%),
+        radial-gradient(rgba(52, 211, 153, 0.10) 1.5px, transparent 1.5px) !important;
+    background-size: 100% 100%, 100% 100%, 100% 100%, 28px 28px !important;
+    background-position: center top, center top, center top, 0 0 !important;
+    background-attachment: fixed !important;
+}
+
+/* ── CORAK: SUNSET CORAL GLOW ── */
+html[data-bg-pattern="sunset-coral"] .apm-shell::before {
+    background-color: #fdf6f4 !important;
+    background-image:
+        radial-gradient(1200px 700px at 20% -5%, rgba(225, 29, 72, 0.14), transparent 60%),
+        radial-gradient(1000px 600px at 85% -5%, rgba(244, 63, 94, 0.12), transparent 55%),
+        radial-gradient(1200px 800px at 50% 100%, rgba(251, 146, 60, 0.10), transparent 65%),
+        linear-gradient(135deg, rgba(225, 29, 72, 0.04) 0%, rgba(251, 146, 60, 0.04) 100%) !important;
+    background-size: 100% 100% !important;
+    background-attachment: fixed !important;
+}
+
+html.dark[data-bg-pattern="sunset-coral"] .apm-shell::before {
+    background-color: #180708 !important;
+    background-image:
+        radial-gradient(1200px 700px at 20% -5%, rgba(244, 63, 94, 0.30), transparent 60%),
+        radial-gradient(1000px 600px at 85% -5%, rgba(251, 113, 133, 0.18), transparent 55%),
+        radial-gradient(1200px 800px at 50% 100%, rgba(76, 5, 25, 0.55), transparent 65%),
+        linear-gradient(135deg, rgba(225, 29, 72, 0.08) 0%, rgba(251, 146, 60, 0.06) 100%) !important;
+    background-size: 100% 100% !important;
+    background-attachment: fixed !important;
+}
+
+/* ── CORAK: OBSIDIAN CARBON FIBER (NOC Pro) ── */
+html[data-bg-pattern="carbon-stealth"] .apm-shell::before {
+    background-color: #f3f4f6 !important;
+    background-image:
+        radial-gradient(1200px 700px at 50% -5%, rgba(71, 85, 105, 0.12), transparent 60%),
+        linear-gradient(27deg, #e5e7eb 5px, transparent 5px),
+        linear-gradient(207deg, #e5e7eb 5px, transparent 5px),
+        linear-gradient(117deg, #d1d5db 5px, transparent 5px),
+        linear-gradient(297deg, #d1d5db 5px, transparent 5px) !important;
+    background-size: 100% 100%, 16px 16px, 16px 16px, 16px 16px, 16px 16px !important;
+    background-position: center top, 0 0, 8px 8px, 0 0, 8px 8px !important;
+    background-attachment: fixed, scroll, scroll, scroll, scroll !important;
+}
+
+html.dark[data-bg-pattern="carbon-stealth"] .apm-shell::before {
+    background-color: #0c0e11 !important;
+    background-image:
+        radial-gradient(1200px 700px at 50% -5%, rgba(148, 163, 184, 0.15), transparent 60%),
+        linear-gradient(27deg, #15181e 5px, transparent 5px),
+        linear-gradient(207deg, #15181e 5px, transparent 5px),
+        linear-gradient(117deg, #1b2028 5px, transparent 5px),
+        linear-gradient(297deg, #1b2028 5px, transparent 5px) !important;
+    background-size: 100% 100%, 16px 16px, 16px 16px, 16px 16px, 16px 16px !important;
+    background-position: center top, 0 0, 8px 8px, 0 0, 8px 8px !important;
+    background-attachment: fixed, scroll, scroll, scroll, scroll !important;
+}
+
+/* ── CORAK: CYBERPUNK TERMINAL ── */
+html[data-bg-pattern="neon-cyber"] .apm-shell::before {
+    background-color: #f0fdfa !important;
+    background-image:
+        radial-gradient(1200px 700px at 50% -5%, rgba(13, 148, 136, 0.16), transparent 60%),
+        radial-gradient(1000px 600px at 85% -5%, rgba(20, 184, 166, 0.12), transparent 55%),
+        linear-gradient(rgba(13, 148, 136, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(13, 148, 136, 0.08) 1px, transparent 1px) !important;
+    background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px !important;
+    background-attachment: fixed !important;
+}
+
+html.dark[data-bg-pattern="neon-cyber"] .apm-shell::before {
+    background-color: #020f0c !important;
+    background-image:
+        radial-gradient(1200px 700px at 50% -5%, rgba(20, 184, 166, 0.28), transparent 60%),
+        radial-gradient(1000px 600px at 85% -5%, rgba(94, 234, 212, 0.16), transparent 55%),
+        linear-gradient(rgba(45, 212, 191, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(45, 212, 191, 0.06) 1px, transparent 1px) !important;
+    background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px !important;
+    background-attachment: fixed !important;
+}
+
 /* ── CORAK ROYAL: ROYAL TERRACOTTA BATIK (Sesuai Corak & Warna Pilihan User) ──
    Motif ornamen damask batik terracotta mewah dipadu spotlight hangat & kontras teks optimal */
 html[data-bg-pattern="royal-batik"] .apm-shell::before {
