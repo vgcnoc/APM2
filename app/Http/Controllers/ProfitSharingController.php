@@ -71,7 +71,7 @@ class ProfitSharingController extends Controller
 
         $areas = Area::select('id', 'name')->orderBy('name')->get();
         $users = User::select('id', 'name', 'email', 'role')->orderBy('name')->get();
-        $packages = InternetPackage::select('id', 'name', 'current_price')->orderBy('name')->get();
+        $packages = InternetPackage::select('id', 'name', 'price')->orderBy('name')->get();
 
         // Agregasi Ringkasan Bulan Ini
         $totalGrossRevenue = (float) $liveCalculations->sum('total_gross_revenue');

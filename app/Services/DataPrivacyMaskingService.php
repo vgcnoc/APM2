@@ -142,13 +142,13 @@ class DataPrivacyMaskingService
                 break;
             case 'price_asc':
                 $query->leftJoin('internet_packages', 'customers.package_id', '=', 'internet_packages.id')
-                    ->orderBy('internet_packages.current_price', 'asc')
+                    ->orderBy('internet_packages.price', 'asc')
                     ->orderBy('customers.id', 'asc')
                     ->select('customers.*');
                 break;
             case 'price_desc':
                 $query->leftJoin('internet_packages', 'customers.package_id', '=', 'internet_packages.id')
-                    ->orderBy('internet_packages.current_price', 'desc')
+                    ->orderBy('internet_packages.price', 'desc')
                     ->orderBy('customers.id', 'asc')
                     ->select('customers.*');
                 break;
