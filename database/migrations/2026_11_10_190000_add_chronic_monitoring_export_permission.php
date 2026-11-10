@@ -53,3 +53,4 @@ return new class extends Migration
         Cache::put('inertia_rbac_ver', time(), 86400);
     }
 };
+

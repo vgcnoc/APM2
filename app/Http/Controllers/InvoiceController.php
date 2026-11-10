@@ -975,7 +975,7 @@ class InvoiceController extends Controller
 
     public function print(Invoice $invoice, Request $request)
     {
-        $invoice->load('customer.package', 'payments.collector');
+        $invoice->load(['customer.package', 'customer.areaModel', 'payments.collector']);
         
         $company = [
             'name' => \App\Models\Setting::get('company_name', config('app.name', 'ISP Management')),
@@ -988,6 +988,19 @@ class InvoiceController extends Controller
 
         $banks = json_decode(\App\Models\Setting::get('payment_banks', '[]'), true) ?: [];
 
+        if ($request->query('mode') === 'pdf') {
+            $logoBase64 = $this->resolveCompanyLogoBase64($company['logo'] ?? null);
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('print.invoice-pdf', [
+                'invoice' => $invoice,
+                'company' => $company,
+                'banks' => $banks,
+                'logoBase64' => $logoBase64,
+            ])->setPaper('a4', 'portrait');
+
+            $prefix = $invoice->status === 'paid' ? 'Kwitansi' : 'Invoice';
+            return $pdf->download($prefix . '_' . ($invoice->invoice_number ?: $invoice->id) . '.pdf');
+        }
+
         $template = $request->query('template', \App\Models\Setting::get('invoice_template', 'modern'));
 
         return view('print.invoice', compact('invoice', 'company', 'banks', 'template'));
@@ -996,7 +1009,7 @@ class InvoiceController extends Controller
     /**
      * Cetak Surat Pernyataan Komitmen Janji Bayar
      */
-    public function printPromise(Invoice $invoice)
+    public function printPromise(Invoice $invoice, Request $request)
     {
         $invoice->load(['customer.package', 'customer.areaModel', 'payments']);
 
@@ -1010,8 +1023,36 @@ class InvoiceController extends Controller
         ];
 
         $customer = $invoice->customer;
+        $logoBase64 = $this->resolveCompanyLogoBase64($company['logo'] ?? null);
+        $isPdf = ($request->query('mode') === 'pdf');
 
-        return view('print.janji-bayar', compact('invoice', 'customer', 'company'));
+        if ($isPdf) {
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('print.janji-bayar', compact('invoice', 'customer', 'company', 'logoBase64', 'isPdf'))
+                ->setPaper('a4', 'portrait');
+            return $pdf->download('Surat_Janji_Bayar_' . ($invoice->invoice_number ?: $invoice->id) . '.pdf');
+        }
+
+        return view('print.janji-bayar', compact('invoice', 'customer', 'company', 'logoBase64', 'isPdf'));
+    }
+
+    private function resolveCompanyLogoBase64(?string $logoPath): ?string
+    {
+        if (empty($logoPath)) {
+            return null;
+        }
+        $clean = ltrim(preg_replace('#^/?storage/#', '', $logoPath), '/');
+        $candidates = [
+            storage_path('app/public/' . $clean),
+            public_path('storage/' . $clean),
+            public_path($logoPath),
+        ];
+        foreach ($candidates as $file) {
+            if (is_file($file) && is_readable($file)) {
+                $mime = @mime_content_type($file) ?: 'image/png';
+                return 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($file));
+            }
+        }
+        return null;
     }
 
     /**
@@ -1440,12 +1481,23 @@ class InvoiceController extends Controller
         $this->applyFlexibleDateFilter($query, $request);
 
         $invoices = $query->latest('id')->get();
-
-        return view('print.invoices-list', [
+        $isPdf = ($request->query('mode') === 'pdf');
+        $companyName = \App\Models\Setting::get('company_name', 'VIZBILL ISP BILLING SYSTEM');
+        $viewData = [
             'invoices' => $invoices,
             'filters' => $request->all(),
             'printDate' => now()->format('d F Y H:i'),
-        ]);
+            'isPdf' => $isPdf,
+            'companyName' => $companyName,
+        ];
+
+        if ($isPdf) {
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('print.invoices-list', $viewData)
+                ->setPaper('a4', 'landscape');
+            return $pdf->download('Daftar_Tagihan_Invoice_' . now()->format('Ymd_His') . '.pdf');
+        }
+
+        return view('print.invoices-list', $viewData);
     }
 
     /**

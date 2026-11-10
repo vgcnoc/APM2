@@ -220,11 +220,39 @@
                             class="block w-full text-xs rounded-xl border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-1.5 transition-colors"
                         />
                     </div>
-                    <div class="sm:col-span-2 xl:col-span-4 flex items-center justify-start xl:justify-end text-xs text-gray-500 pt-1 xl:pt-4">
+                    <div class="sm:col-span-2 xl:col-span-4 flex flex-wrap items-center justify-start xl:justify-end gap-2 text-xs text-gray-500 pt-1 xl:pt-4">
                         <span v-if="hasActiveFilters" class="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 px-3 py-1 rounded-xl border border-amber-200 font-bold text-xs">
                             <span class="w-2 h-2 rounded-full bg-amber-500"></span>
                             Filter sedang aktif
                         </span>
+
+                        <select
+                            v-model="exportScope"
+                            class="text-xs font-bold rounded-xl border-gray-300 bg-gray-50/80 text-gray-800 py-1.5 pl-3 pr-7 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer"
+                        >
+                            <option value="active">Tab Aktif Saat Ini</option>
+                            <option value="pending">Menunggu Validasi</option>
+                            <option value="verified">Sudah Tervalidasi</option>
+                            <option value="all">Semua Setoran (Lengkap)</option>
+                        </select>
+
+                        <button
+                            type="button"
+                            @click="openExportSettlements('print')"
+                            class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white shadow-xs transition-all cursor-pointer whitespace-nowrap"
+                            title="Cetak (Print) Daftar Setoran Penagih"
+                        >
+                            <span>🖨️ Print</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            @click="openExportSettlements('pdf')"
+                            class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition-all cursor-pointer whitespace-nowrap"
+                            title="Download PDF Daftar Setoran Penagih"
+                        >
+                            <span>📄 PDF</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -341,32 +369,53 @@
 
                                 <!-- Aksi -->
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <div v-if="pay.status === 'pending'" class="flex items-center justify-end gap-2">
-                                        <button 
-                                            @click="approve(pay.id)" 
-                                            class="inline-flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white px-3.5 py-2 rounded-xl shadow-sm transition-all hover:shadow text-xs font-bold ring-1 ring-green-600/50 cursor-pointer"
+                                    <div class="flex items-center justify-end gap-1.5 flex-wrap">
+                                        <a
+                                            v-if="pay.invoice?.id"
+                                            :href="`/customer-billing/${pay.invoice.id}/print?mode=print`"
+                                            target="_blank"
+                                            class="inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs"
+                                            title="Cetak Kwitansi / Nota Tagihan"
                                         >
-                                            ✓ Validasi
-                                        </button>
-                                        <button 
-                                            @click="cancel(pay.id, pay.amount)" 
-                                            class="inline-flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 px-3.5 py-2 rounded-xl border border-rose-200 transition-all text-xs font-bold shadow-sm cursor-pointer"
+                                            <span>🖨️ Kwitansi</span>
+                                        </a>
+                                        <a
+                                            v-if="pay.invoice?.id"
+                                            :href="`/customer-billing/${pay.invoice.id}/print?mode=pdf`"
+                                            target="_blank"
+                                            class="inline-flex items-center gap-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs"
+                                            title="Download PDF Kwitansi / Nota Tagihan"
                                         >
-                                            ✕ Cancel
-                                        </button>
-                                    </div>
-                                    <div v-else class="flex items-center justify-end gap-2">
-                                        <span class="inline-flex items-center gap-1.5 text-green-700 font-bold text-xs bg-green-50 px-3 py-1.5 rounded-lg border border-green-200">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                            Tervalidasi
-                                        </span>
-                                        <button 
-                                            @click="cancel(pay.id, pay.amount)" 
-                                            title="Batalkan validasi setoran ini" 
-                                            class="inline-flex items-center gap-1 bg-gray-50 hover:bg-rose-50 text-gray-500 hover:text-rose-600 px-2.5 py-1.5 rounded-lg border border-gray-200 hover:border-rose-200 text-xs font-semibold transition-all cursor-pointer"
-                                        >
-                                            ✕ Cancel
-                                        </button>
+                                            <span>📄 PDF</span>
+                                        </a>
+
+                                        <template v-if="pay.status === 'pending'">
+                                            <button 
+                                                @click="approve(pay.id)" 
+                                                class="inline-flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white px-3.5 py-2 rounded-xl shadow-sm transition-all hover:shadow text-xs font-bold ring-1 ring-green-600/50 cursor-pointer"
+                                            >
+                                                ✓ Validasi
+                                            </button>
+                                            <button 
+                                                @click="cancel(pay.id, pay.amount)" 
+                                                class="inline-flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 px-3.5 py-2 rounded-xl border border-rose-200 transition-all text-xs font-bold shadow-sm cursor-pointer"
+                                            >
+                                                ✕ Cancel
+                                            </button>
+                                        </template>
+                                        <template v-else>
+                                            <span class="inline-flex items-center gap-1.5 text-green-700 font-bold text-xs bg-green-50 px-3 py-1.5 rounded-lg border border-green-200">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                                Tervalidasi
+                                            </span>
+                                            <button 
+                                                @click="cancel(pay.id, pay.amount)" 
+                                                title="Batalkan validasi setoran ini" 
+                                                class="inline-flex items-center gap-1 bg-gray-50 hover:bg-rose-50 text-gray-500 hover:text-rose-600 px-2.5 py-1.5 rounded-lg border border-gray-200 hover:border-rose-200 text-xs font-semibold transition-all cursor-pointer"
+                                            >
+                                                ✕ Cancel
+                                            </button>
+                                        </template>
                                     </div>
                                 </td>
                             </tr>
@@ -420,7 +469,7 @@
 </template>
 
 <script setup>
-import { reactive, computed } from 'vue';
+import { ref, reactive, computed } from 'vue';
 import { router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
@@ -492,6 +541,22 @@ const resetFilters = () => {
     filterForm.start_date = '';
     filterForm.end_date = '';
     applyFilters();
+};
+
+const exportScope = ref('active');
+
+const openExportSettlements = (mode = 'print') => {
+    const resolvedScope = exportScope.value === 'active' ? (filterForm.tab || props.activeTab || 'pending') : exportScope.value;
+    const params = new URLSearchParams();
+    params.set('mode', mode);
+    params.set('scope', resolvedScope);
+    if (filterForm.search) params.set('search', filterForm.search);
+    if (filterForm.collector_id) params.set('collector_id', filterForm.collector_id);
+    if (filterForm.payment_method) params.set('payment_method', filterForm.payment_method);
+    if (filterForm.start_date) params.set('start_date', filterForm.start_date);
+    if (filterForm.end_date) params.set('end_date', filterForm.end_date);
+
+    window.open(`/customer-settlements/export?${params.toString()}`, '_blank');
 };
 
 const formatRupiah = (number) => {

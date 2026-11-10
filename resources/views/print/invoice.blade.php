@@ -1497,11 +1497,14 @@
                 <button class="btn-print" onclick="window.print()">
                     🖨️ Cetak Invoice
                 </button>
-                @if(!empty($isPreview))
-                    <button onclick="window.close()" class="tpl-btn" style="background: #e2e8f0; font-weight: 700;">
-                        Tutup
-                    </button>
+                @if(empty($isPreview) && !empty($invoice->id))
+                    <a href="{{ request()->fullUrlWithQuery(['mode' => 'pdf']) }}" class="btn-print" style="background: #dc2626; text-decoration: none;">
+                        📄 Download PDF
+                    </a>
                 @endif
+                <button onclick="window.close()" class="tpl-btn" style="background: #e2e8f0; font-weight: 700;">
+                    Tutup
+                </button>
             </div>
         </div>
     </div>

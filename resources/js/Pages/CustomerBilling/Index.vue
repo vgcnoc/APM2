@@ -410,6 +410,46 @@
                     </div>
 
                 </div>
+
+                <!-- ── BAR CETAK (PRINT) & DOWNLOAD PDF CERDAS ── -->
+                <div class="mt-3 pt-3 border-t border-gray-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+                    <div class="flex items-center gap-2 text-xs text-gray-600">
+                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-indigo-50 text-indigo-600 font-bold border border-indigo-100 shrink-0">🖨️</span>
+                        <span class="font-semibold text-gray-700">Cetak & Export PDF Penagihan:</span>
+                        <span class="hidden md:inline text-gray-400">Otomatis mengikuti wilayah, desa, tanggal & tab aktif</span>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <select
+                            v-model="exportScope"
+                            class="text-xs font-bold rounded-xl border-gray-300 bg-gray-50/80 text-gray-800 py-1.5 pl-3 pr-8 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer"
+                            title="Pilih jenis laporan yang ingin dicetak atau diunduh sebagai PDF"
+                        >
+                            <option value="active">📋 Daftar Tagihan (Tab Aktif Saat Ini)</option>
+                            <option value="collector_sheet">📝 Lembar Kerja Kolektor Lapangan (Form Tagih)</option>
+                            <option value="my_collections">💰 Rekap & Berita Acara Setoran Saya</option>
+                            <option value="all_summary">📊 Semua Modul & Ringkasan Lengkap</option>
+                        </select>
+
+                        <button
+                            type="button"
+                            @click="openExportReport('print')"
+                            class="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white shadow-xs transition-all cursor-pointer whitespace-nowrap"
+                            title="Buka pratinjau cetak (Print) sesuai filter & cakupan"
+                        >
+                            <span>🖨️ Print</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            @click="openExportReport('pdf')"
+                            class="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition-all cursor-pointer whitespace-nowrap"
+                            title="Download file PDF resmi sesuai filter & cakupan"
+                        >
+                            <span>📄 Download PDF</span>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- ── TABLE SECTION ── -->
@@ -616,16 +656,45 @@
                                             <span>{{ inv.promise_date ? 'Ubah Janji' : 'Janji Bayar' }}</span>
                                         </button>
 
-                                        <!-- Tombol Cetak Surat Janji Bayar -->
+                                        <!-- Tombol Cetak & PDF Nota / Kwitansi -->
+                                        <a
+                                            :href="`/customer-billing/${inv.id}/print?mode=print`"
+                                            target="_blank"
+                                            class="inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs"
+                                            :title="inv.status === 'paid' ? 'Cetak Kwitansi Pembayaran' : 'Cetak Nota Tagihan Invoice'"
+                                        >
+                                            <span>🖨️</span>
+                                            <span>{{ inv.status === 'paid' ? 'Kwitansi' : 'Nota' }}</span>
+                                        </a>
+                                        <a
+                                            :href="`/customer-billing/${inv.id}/print?mode=pdf`"
+                                            target="_blank"
+                                            class="inline-flex items-center gap-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs"
+                                            :title="inv.status === 'paid' ? 'Download PDF Kwitansi Pembayaran' : 'Download PDF Nota Tagihan Invoice'"
+                                        >
+                                            <span>📄</span>
+                                            <span>PDF</span>
+                                        </a>
+
+                                        <!-- Tombol Cetak & PDF Surat Janji Bayar -->
                                         <a 
                                             v-if="inv.promise_date"
-                                            :href="'/invoices/' + inv.id + '/print-promise'" 
+                                            :href="'/customer-billing/' + inv.id + '/print-promise'" 
                                             target="_blank"
                                             class="inline-flex items-center gap-1 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs"
                                             title="Cetak Surat Komitmen Janji Bayar"
                                         >
                                             <svg class="w-3.5 h-3.5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                             <span>Surat</span>
+                                        </a>
+                                        <a 
+                                            v-if="inv.promise_date"
+                                            :href="'/customer-billing/' + inv.id + '/print-promise?mode=pdf'" 
+                                            target="_blank"
+                                            class="inline-flex items-center gap-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 px-2 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs"
+                                            title="Download PDF Surat Komitmen Janji Bayar"
+                                        >
+                                            <span>📄 PDF Surat</span>
                                         </a>
 
                                         <!-- Status Lunas jika Paid -->
@@ -965,12 +1034,20 @@
                                 </button>
                                 <a 
                                     v-if="promiseInvoice?.promise_date"
-                                    :href="'/invoices/' + promiseInvoice?.id + '/print-promise'" 
+                                    :href="'/customer-billing/' + promiseInvoice?.id + '/print-promise'" 
                                     target="_blank" 
                                     class="px-3.5 py-2 text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-xl transition-colors border border-amber-300 inline-flex items-center gap-1.5 whitespace-nowrap"
                                 >
                                     <svg class="w-3.5 h-3.5 text-amber-700 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                     <span>Cetak Surat</span>
+                                </a>
+                                <a 
+                                    v-if="promiseInvoice?.promise_date"
+                                    :href="'/customer-billing/' + promiseInvoice?.id + '/print-promise?mode=pdf'" 
+                                    target="_blank" 
+                                    class="px-3.5 py-2 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl transition-colors border border-rose-200 inline-flex items-center gap-1.5 whitespace-nowrap"
+                                >
+                                    <span>📄 PDF Surat</span>
                                 </a>
                             </div>
                             <div class="flex flex-wrap items-center gap-2 ml-auto">
@@ -1129,6 +1206,25 @@ const resetFilters = () => {
     executeFilter();
 };
 
+// ── Print & PDF Export State & Handler ──
+const exportScope = ref('active');
+
+const openExportReport = (mode = 'print', overrideScope = null) => {
+    const scopeVal = overrideScope || exportScope.value || 'active';
+    const params = new URLSearchParams();
+    params.set('mode', mode);
+    params.set('scope', scopeVal);
+    params.set('tab', filterForm.tab || props.activeTab || 'unpaid');
+    if (filterForm.area_id) params.set('area_id', filterForm.area_id);
+    if (filterForm.desa) params.set('desa', filterForm.desa);
+    if (filterForm.start_date) params.set('start_date', filterForm.start_date);
+    if (filterForm.end_date) params.set('end_date', filterForm.end_date);
+    if (filterForm.search) params.set('search', filterForm.search);
+
+    const url = `/customer-billing/export?${params.toString()}`;
+    window.open(url, '_blank');
+};
+
 // ── Collect Modal State ──
 const showModal = ref(false);
 const selectedInvoice = ref(null);
@@ -1209,7 +1305,7 @@ const submitCollection = () => {
 // ── Rollback Action ──
 const rollbackInvoice = (inv) => {
     if (confirm(`Yakin ingin melakukan rollback (membatalkan pembayaran) untuk tagihan #${inv.invoice_number}? Status tagihan akan dikembalikan menjadi belum lunas dan riwayat pembayaran terkait akan dibatalkan.`)) {
-        router.post(`/invoices/${inv.id}/rollback`, {}, {
+        router.post(`/customer-billing/${inv.id}/rollback`, {}, {
             preserveScroll: true,
         });
     }
@@ -1243,12 +1339,12 @@ const submitPromise = () => {
     if (!promiseInvoice.value) return;
     const targetInvoice = promiseInvoice.value;
     const shouldPrint = printPromiseAfterSave.value;
-    promiseForm.post(`/invoices/${targetInvoice.id}/promise`, {
+    promiseForm.post(`/customer-billing/${targetInvoice.id}/promise`, {
         preserveScroll: true,
         onSuccess: () => {
             closePromiseModal();
             if (shouldPrint && targetInvoice?.id) {
-                window.open(`/invoices/${targetInvoice.id}/print-promise`, '_blank');
+                window.open(`/customer-billing/${targetInvoice.id}/print-promise`, '_blank');
             }
         }
     });
@@ -1257,7 +1353,7 @@ const submitPromise = () => {
 const removePromise = () => {
     if (!promiseInvoice.value) return;
     if (confirm(`Hapus tanggal janji bayar untuk tagihan #${promiseInvoice.value.invoice_number}?`)) {
-        router.post(`/invoices/${promiseInvoice.value.id}/promise`, {
+        router.post(`/customer-billing/${promiseInvoice.value.id}/promise`, {
             promise_date: null,
             notes: promiseInvoice.value.notes || null,
         }, {

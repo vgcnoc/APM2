@@ -596,15 +596,20 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ── Customer Billing (Terima Setoran Lapangan) ─────────────────────
-    Route::middleware(['permission:menu_customer_billing'])->group(function () {
+    Route::middleware(['permission:menu_customer_billing|menu_invoices'])->group(function () {
         Route::get('/customer-billing', [\App\Http\Controllers\CustomerBillingController::class, 'index'])->name('customer-billing.index');
-        Route::post('/customer-billing/{invoice}/collect', [\App\Http\Controllers\CustomerBillingController::class, 'collect'])->name('customer-billing.collect');
+        Route::get('/customer-billing/export', [\App\Http\Controllers\CustomerBillingController::class, 'exportReport'])->name('customer-billing.export');
+        Route::get('/customer-billing/{invoice}/print', [\App\Http\Controllers\CustomerBillingController::class, 'printInvoice'])->name('customer-billing.print');
         Route::get('/customer-billing/{invoice}/print-promise', [\App\Http\Controllers\InvoiceController::class, 'printPromise'])->name('customer-billing.print-promise');
+        Route::post('/customer-billing/{invoice}/collect', [\App\Http\Controllers\CustomerBillingController::class, 'collect'])->name('customer-billing.collect');
+        Route::post('/customer-billing/{invoice}/promise', [\App\Http\Controllers\InvoiceController::class, 'promise'])->name('customer-billing.promise');
+        Route::post('/customer-billing/{invoice}/rollback', [\App\Http\Controllers\InvoiceController::class, 'rollback'])->name('customer-billing.rollback');
     });
 
     // ── Validasi Setoran Lapangan (Kasir / Admin) ─────────────────
-    Route::middleware(['permission:menu_customer_settlements|customer_settlements_approve'])->group(function () {
+    Route::middleware(['permission:menu_customer_settlements|customer_settlements_approve|menu_customer_billing'])->group(function () {
         Route::get('/customer-settlements', [\App\Http\Controllers\CustomerBillingController::class, 'settlements'])->name('customer-settlements.index');
+        Route::get('/customer-settlements/export', [\App\Http\Controllers\CustomerBillingController::class, 'exportSettlements'])->name('customer-settlements.export');
         Route::post('/customer-settlements/{payment}/approve', [\App\Http\Controllers\CustomerBillingController::class, 'approve'])->name('customer-settlements.approve');
         Route::post('/customer-settlements/{payment}/cancel', [\App\Http\Controllers\CustomerBillingController::class, 'cancel'])->name('customer-settlements.cancel');
     });
