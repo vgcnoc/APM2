@@ -1331,8 +1331,10 @@ class CustomerController extends Controller
      */
     public function booking(Request $request): Response
     {
-        $query = Customer::booking()
-            ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_booking_view_all'), function($q) {
+        $query = Customer::booking();
+        \App\Services\DataPrivacyMaskingService::applyCustomerFilter($query, 'customers.id', null, 'booking');
+
+        $query->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_booking_view_all'), function($q) {
                 if (auth()->user()->can('customers_booking_view_area')) {
                     $accessibleAreas = auth()->user()->getAccessibleAreaIds();
                     $q->where(function($sub) use ($accessibleAreas) {
@@ -1549,8 +1551,10 @@ class CustomerController extends Controller
     {
         $tab = $request->tab ?? 'semua';
         
-        $baseQuery = Customer::survey()
-            ->with(['package', 'surveys.odp', 'surveys.surveyor', 'technicianSchedules' => function ($q) {
+        $baseQuery = Customer::survey();
+        \App\Services\DataPrivacyMaskingService::applyCustomerFilter($baseQuery, 'customers.id', null, 'survey');
+
+        $baseQuery->with(['package', 'surveys.odp', 'surveys.surveyor', 'technicianSchedules' => function ($q) {
                 $q->where('type', 'survey')->with('technician');
             }])
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_survey_view_all'), function($q) {
@@ -1747,6 +1751,7 @@ class CustomerController extends Controller
     public function installed(Request $request): Response
     {
         $baseQuery = Customer::whereIn('status', ['installing', 'active']);
+        \App\Services\DataPrivacyMaskingService::applyCustomerFilter($baseQuery, 'customers.id', null, 'installed');
         
         if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_installed_view_all')) {
             if (auth()->user()->can('customers_installed_view_area')) {
@@ -1950,6 +1955,7 @@ class CustomerController extends Controller
             ->where('is_audited', true)
             ->notPureReseller();
         $applyAreaScope($waitingQuery);
+        \App\Services\DataPrivacyMaskingService::applyCustomerFilter($waitingQuery, 'customers.id', null, 'activation');
 
         // 2. Riwayat Aktivasi Reguler (pelanggan yang sudah diaktivasi dan bukan berhenti/dibatalkan)
         $historyQuery = Customer::query()
@@ -1960,12 +1966,14 @@ class CustomerController extends Controller
             ->whereNotIn('status', ['installing', 'terminated', 'canceled'])
             ->notPureReseller();
         $applyAreaScope($historyQuery);
+        \App\Services\DataPrivacyMaskingService::applyCustomerFilter($historyQuery, 'customers.id', null, 'activation');
 
         // 3. Khusus Reseller Voucher (menunggu aktivasi atau riwayat aktivasi reseller)
         $resellerQuery = Customer::query()
             ->where('is_reseller', true)
             ->whereIn('status', ['installing', 'active']);
         $applyAreaScope($resellerQuery);
+        \App\Services\DataPrivacyMaskingService::applyCustomerFilter($resellerQuery, 'customers.id', null, 'activation');
 
         // Terapkan filter Area, Rentang Tanggal, dan Pencarian secara konsisten ke seluruh query & statistik
         if ($request->area || $request->area_id) {

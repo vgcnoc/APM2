@@ -322,33 +322,92 @@
                             </div>
                         </div>
 
-                        <!-- 5. Cakupan Modul -->
-                        <div class="space-y-4 pt-4 border-t border-gray-100">
-                            <div class="flex items-center gap-2.5">
-                                <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm">5</div>
-                                <h3 class="text-base font-bold text-gray-900">Modul yang Disembunyikan</h3>
+                        <!-- 5. Cakupan Modul yang Disembunyikan / Dibatasi -->
+                        <div class="space-y-5 pt-5 border-t border-gray-100">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm">5</div>
+                                    <div>
+                                        <h3 class="text-base font-bold text-gray-900">Modul yang Disembunyikan & Disamarkan</h3>
+                                        <p class="text-xs text-gray-500">Pilih modul apa saja yang datanya disembunyikan/disamarkan saat mode privasi aktif.</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Quick Select Buttons -->
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <button 
+                                        type="button" 
+                                        @click="selectAllModules" 
+                                        class="px-3 py-1.5 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-colors">
+                                        ✓ Pilih Semua ({{ allModuleKeys.length }})
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        @click="deselectAllModules" 
+                                        class="px-3 py-1.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 text-xs font-bold transition-colors">
+                                        ✕ Kosongkan
+                                    </button>
+                                </div>
                             </div>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                                <label class="p-3 rounded-xl border border-gray-200 flex items-center gap-2.5 cursor-pointer hover:bg-gray-50">
-                                    <input type="checkbox" value="tax_report" v-model="form.modules" class="rounded text-indigo-600">
-                                    <span class="text-xs font-bold text-gray-800">Laporan Pajak & Cetak PDF</span>
+
+                            <!-- Opsi Sembunyikan Menu Sidebar -->
+                            <div class="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100 flex items-start gap-3.5">
+                                <input 
+                                    type="checkbox" 
+                                    id="hide_sidebar_menu" 
+                                    v-model="form.hide_sidebar_menu" 
+                                    class="mt-1 rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer">
+                                <label for="hide_sidebar_menu" class="cursor-pointer text-xs space-y-0.5">
+                                    <span class="font-bold text-indigo-950 block">Sembunyikan juga item menu dari navigasi sidebar & mobile (Mode Steril)</span>
+                                    <span class="text-indigo-700/80 block leading-relaxed">
+                                        Bila dicentang, menu-menu yang dipilih di bawah tidak akan muncul sama sekali di sidebar navigasi akun target. Akun Super Admin tetap melihat menu secara normal.
+                                    </span>
                                 </label>
-                                <label class="p-3 rounded-xl border border-gray-200 flex items-center gap-2.5 cursor-pointer hover:bg-gray-50">
-                                    <input type="checkbox" value="customers" v-model="form.modules" class="rounded text-indigo-600">
-                                    <span class="text-xs font-bold text-gray-800">Data Pelanggan (/customers)</span>
-                                </label>
-                                <label class="p-3 rounded-xl border border-gray-200 flex items-center gap-2.5 cursor-pointer hover:bg-gray-50">
-                                    <input type="checkbox" value="invoices" v-model="form.modules" class="rounded text-indigo-600">
-                                    <span class="text-xs font-bold text-gray-800">Invoice Pelanggan (/invoices)</span>
-                                </label>
-                                <label class="p-3 rounded-xl border border-gray-200 flex items-center gap-2.5 cursor-pointer hover:bg-gray-50">
-                                    <input type="checkbox" value="billing" v-model="form.modules" class="rounded text-indigo-600">
-                                    <span class="text-xs font-bold text-gray-800">Ruang Penagihan (/customer-billing)</span>
-                                </label>
-                                <label class="p-3 rounded-xl border border-gray-200 flex items-center gap-2.5 cursor-pointer hover:bg-gray-50 sm:col-span-2">
-                                    <input type="checkbox" value="financial_reports" v-model="form.modules" class="rounded text-indigo-600">
-                                    <span class="text-xs font-bold text-gray-800">Laporan Pelanggan & Buku Kas Global</span>
-                                </label>
+                            </div>
+
+                            <!-- Modul Terkategori -->
+                            <div class="space-y-4">
+                                <div 
+                                    v-for="cat in moduleCategories" 
+                                    :key="cat.key" 
+                                    class="p-4 rounded-2xl border border-gray-200/80 bg-gray-50/40 space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-base">{{ cat.icon }}</span>
+                                            <h4 class="text-xs font-bold text-gray-900 tracking-tight">{{ cat.title }}</h4>
+                                            <span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-bold">
+                                                {{ cat.modules.filter(m => form.modules.includes(m.key)).length }} / {{ cat.modules.length }} Aktif
+                                            </span>
+                                        </div>
+                                        <button 
+                                            type="button" 
+                                            @click="toggleCategory(cat)" 
+                                            class="text-[11px] text-indigo-600 hover:text-indigo-800 font-bold">
+                                            {{ isCategoryFullySelected(cat) ? 'Batal Pilih' : 'Pilih Kategori Ini' }}
+                                        </button>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                        <label 
+                                            v-for="mod in cat.modules" 
+                                            :key="mod.key" 
+                                            class="p-3 rounded-xl border transition-all flex items-start gap-3 cursor-pointer"
+                                            :class="form.modules.includes(mod.key) ? 'border-indigo-500 bg-white shadow-2xs ring-1 ring-indigo-500/10' : 'border-gray-200 bg-white hover:border-gray-300'">
+                                            <input 
+                                                type="checkbox" 
+                                                :value="mod.key" 
+                                                v-model="form.modules" 
+                                                class="rounded text-indigo-600 focus:ring-indigo-500 mt-0.5 shrink-0">
+                                            <div class="space-y-0.5 min-w-0">
+                                                <div class="flex items-center gap-1.5">
+                                                    <span class="text-xs font-bold text-gray-900 truncate">{{ mod.label }}</span>
+                                                    <span class="text-[10px] px-1.5 py-0.2 rounded font-mono bg-gray-100 text-gray-500 shrink-0">{{ mod.badge }}</span>
+                                                </div>
+                                                <p class="text-[11px] text-gray-500 leading-snug">{{ mod.desc }}</p>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -503,8 +562,92 @@ const form = ref({
     scope: props.settings.scope || 'all_except_super_admin',
     target_roles: props.settings.target_roles || [],
     target_users: props.settings.target_users || [],
-    modules: props.settings.modules || ['tax_report', 'customers', 'invoices', 'billing', 'financial_reports'],
+    hide_sidebar_menu: props.settings.hide_sidebar_menu !== false,
+    modules: props.settings.modules || [
+        'tax_report', 'customers', 'invoices', 'billing', 'financial_reports',
+        'booking', 'survey', 'installed', 'activation', 'monitoring_pelanggan',
+        'network_data', 'onts', 'network_map', 'pgk_tickets', 'technician_monitoring'
+    ],
 });
+
+const moduleCategories = [
+    {
+        key: 'psb',
+        title: 'Siklus Pemasangan Baru (PSB)',
+        icon: '📋',
+        modules: [
+            { key: 'booking', label: '1. Booking Baru', badge: '/customers/booking', desc: 'Sembunyikan antrean booking & prospek pasang baru.' },
+            { key: 'survey', label: '2. Survey Lokasi', badge: '/customers/survey', desc: 'Sembunyikan jadwal survey & kelayakan teknis ODP.' },
+            { key: 'installed', label: '3. Instalasi Jaringan', badge: '/customers/installed', desc: 'Sembunyikan jadwal pasang & progres teknisi lapangan.' },
+            { key: 'activation', label: '4. Aktivasi Layanan', badge: '/customers/activation', desc: 'Sembunyikan antrean aktivasi akun PPPoE/Hotspot.' },
+        ]
+    },
+    {
+        key: 'customers',
+        title: 'Data Pelanggan & Pantauan',
+        icon: '👥',
+        modules: [
+            { key: 'customers', label: 'Semua Pelanggan Aktif', badge: '/customers', desc: 'Batasi jumlah data pelanggan sesuai kalkulator omset.' },
+            { key: 'monitoring_pelanggan', label: 'Pantauan Pelanggan (Isolir & Tunggakan)', badge: '/monitoring-pelanggan', desc: 'Batasi data menunggak, janji bayar, dan isolir.' },
+        ]
+    },
+    {
+        key: 'billing',
+        title: 'Billing & Keuangan',
+        icon: '💵',
+        modules: [
+            { key: 'invoices', label: 'Invoice Pelanggan', badge: '/invoices', desc: 'Hanya tampilkan tagihan yang masuk kuota omset.' },
+            { key: 'billing', label: 'Ruang Penagihan & Setoran', badge: '/customer-billing', desc: 'Sembunyikan antrean tagihan penagih lapangan.' },
+            { key: 'tax_report', label: 'Laporan Pajak & Cetak PDF', badge: '/tax-reports', desc: 'Laporan pajak resmi, PPN, dan BHP/USO sesuai omset.' },
+            { key: 'financial_reports', label: 'Laporan Pelanggan & Buku Kas', badge: '/financial-reports', desc: 'Sinkronkan mutasi kas & rekapitulasi pelanggan.' },
+        ]
+    },
+    {
+        key: 'network',
+        title: 'Infrastruktur & Jaringan',
+        icon: '🌐',
+        modules: [
+            { key: 'network_data', label: 'Data Jaringan & Port ODP', badge: '/network-data', desc: 'Samarkan nama pelanggan pada port ODP & ODC.' },
+            { key: 'onts', label: 'Data Perangkat Modem ONT', badge: '/onts', desc: 'Sembunyikan modem yang terpasang di luar kuota tersamar.' },
+            { key: 'network_map', label: 'Peta GIS & Radar Jaringan', badge: '/network-map', desc: 'Sembunyikan titik koordinat & rute pelanggan di peta.' },
+        ]
+    },
+    {
+        key: 'support',
+        title: 'Layanan & Operasional',
+        icon: '🎫',
+        modules: [
+            { key: 'pgk_tickets', label: 'Komplain Pelanggan (PGK)', badge: '/pgk', desc: 'Sembunyikan tiket gangguan dan aduan pelanggan.' },
+            { key: 'technician_monitoring', label: 'Monitoring Kinerja Teknisi', badge: '/monitoring-teknisi', desc: 'Samarkan riwayat pekerjaan teknisi di pelanggan.' },
+        ]
+    }
+];
+
+const allModuleKeys = computed(() => {
+    return moduleCategories.flatMap(c => c.modules.map(m => m.key));
+});
+
+const selectAllModules = () => {
+    form.value.modules = [...allModuleKeys.value];
+};
+
+const deselectAllModules = () => {
+    form.value.modules = [];
+};
+
+const isCategoryFullySelected = (cat) => {
+    return cat.modules.every(m => form.value.modules.includes(m.key));
+};
+
+const toggleCategory = (cat) => {
+    const catKeys = cat.modules.map(m => m.key);
+    if (isCategoryFullySelected(cat)) {
+        form.value.modules = form.value.modules.filter(k => !catKeys.includes(k));
+    } else {
+        const set = new Set([...form.value.modules, ...catKeys]);
+        form.value.modules = Array.from(set);
+    }
+};
 
 const saving = ref(false);
 const calculating = ref(false);
@@ -594,3 +737,4 @@ onMounted(() => {
     runSimulation();
 });
 </script>
+

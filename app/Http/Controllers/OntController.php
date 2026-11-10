@@ -22,6 +22,14 @@ class OntController extends Controller
         $baseQuery = Ont::query();
         DataScopeService::applyOntScope($baseQuery, $user);
 
+        if (\App\Services\DataPrivacyMaskingService::isEnabledForUser($user, 'onts')) {
+            $maskedCustomerIds = \App\Services\DataPrivacyMaskingService::getMaskedCustomerIds();
+            $baseQuery->where(function($q) use ($maskedCustomerIds) {
+                $q->whereNull('customer_id')
+                  ->orWhereIn('customer_id', !empty($maskedCustomerIds) ? $maskedCustomerIds : [0]);
+            });
+        }
+
         // Stats kontekstual yang cerdas & sinkron dengan filter Cabang (Area)
         $statsQuery = (clone $baseQuery)->when($request->area_id, fn ($q, $id) => $q->where('area_id', $id));
 

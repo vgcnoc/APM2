@@ -26,9 +26,15 @@ class NetworkMapController extends Controller
 
     private function mapCustomers(User $user): Builder
     {
-        return DataScopeService::applyCustomerScope(Customer::query(), $user)
+        $mapQuery = DataScopeService::applyCustomerScope(Customer::query(), $user)
             ->whereNotNull('latitude')->whereNotNull('longitude')
             ->where('latitude', '!=', 0)->where('longitude', '!=', 0);
+
+        if (\App\Services\DataPrivacyMaskingService::isEnabledForUser($user, 'network_map')) {
+            \App\Services\DataPrivacyMaskingService::applyCustomerFilter($mapQuery, 'customers.id', $user, 'network_map');
+        }
+
+        return $mapQuery;
     }
 
     public function connections(Request $request, CustomerConnectionService $connections)

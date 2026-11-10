@@ -86,6 +86,17 @@ class NetworkDataController extends Controller
         $expandedOdcFilterIds = $odcId ? $this->expandSplitOdcIds([(int) $odcId]) : [];
         $expandedOdpFilterIds = $odpId ? $this->expandSplitOdpIds([(int) $odpId]) : [];
 
+        if (\App\Services\DataPrivacyMaskingService::isEnabledForUser($user, 'network_data')) {
+            $maskedCustomerIds = \App\Services\DataPrivacyMaskingService::getMaskedCustomerIds();
+            $odpRelations = array_values(array_filter($odpRelations, fn($r) => is_string($r) && $r !== 'onts.customer.latestCbpRequest.technicians'));
+            $odpRelations['onts'] = function($oq) use ($maskedCustomerIds) {
+                $oq->where(function($q) use ($maskedCustomerIds) {
+                    $q->whereNull('customer_id')
+                      ->orWhereIn('customer_id', !empty($maskedCustomerIds) ? $maskedCustomerIds : [0]);
+                })->with('customer.latestCbpRequest.technicians');
+            };
+        }
+
         // Base ODP query with relations
         $odpQuery = Odp::with($odpRelations);
         DataScopeService::applyOdpScope($odpQuery, $user);

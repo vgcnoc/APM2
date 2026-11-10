@@ -28,8 +28,14 @@ class CustomerMonitoringController extends Controller
         $isAreaRestricted = $isRestricted;
         $userAreaIds = auth()->check() ? auth()->user()->getAccessibleAreaIds() : [];
 
+        $isMasked = \App\Services\DataPrivacyMaskingService::isEnabledForUser(null, 'monitoring_pelanggan');
+        $maskedCustomerIds = $isMasked ? \App\Services\DataPrivacyMaskingService::getMaskedCustomerIds() : [];
+
         // Scoping closures (all, area, own)
-        $scopeCustomerArea = function ($query) use ($isRestricted, $userAreaIds) {
+        $scopeCustomerArea = function ($query) use ($isRestricted, $userAreaIds, $isMasked, $maskedCustomerIds) {
+            if ($isMasked) {
+                $query->whereIn('customers.id', !empty($maskedCustomerIds) ? $maskedCustomerIds : [0]);
+            }
             if ($isRestricted) {
                 if (auth()->user()->can('monitoring_pelanggan_view_area') || auth()->user()->can('customers_all_view_area')) {
                     $query->whereIn('area_id', $userAreaIds);
@@ -39,7 +45,10 @@ class CustomerMonitoringController extends Controller
             }
         };
 
-        $scopeInvoiceArea = function ($query) use ($isRestricted, $userAreaIds) {
+        $scopeInvoiceArea = function ($query) use ($isRestricted, $userAreaIds, $isMasked, $maskedCustomerIds) {
+            if ($isMasked) {
+                $query->whereIn('invoices.customer_id', !empty($maskedCustomerIds) ? $maskedCustomerIds : [0]);
+            }
             if ($isRestricted) {
                 if (auth()->user()->can('monitoring_pelanggan_view_area') || auth()->user()->can('customers_all_view_area')) {
                     $query->whereHas('customer', function($cq) use ($userAreaIds) {

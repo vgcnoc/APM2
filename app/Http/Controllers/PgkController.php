@@ -68,6 +68,10 @@ class PgkController extends Controller
         // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
         DataScopeService::applyPgkScope($query);
 
+        if (\App\Services\DataPrivacyMaskingService::isEnabledForUser(null, 'pgk_tickets')) {
+            \App\Services\DataPrivacyMaskingService::applyCustomerFilter($query, 'customer_id', null, 'pgk_tickets');
+        }
+
         // Filter pencarian
         if ($request->filled('search')) {
             $search = strtolower($request->search);
@@ -270,6 +274,10 @@ class PgkController extends Controller
 
         // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
         DataScopeService::applyPgkScope($query);
+
+        if (\App\Services\DataPrivacyMaskingService::isEnabledForUser(null, 'pgk_tickets')) {
+            \App\Services\DataPrivacyMaskingService::applyCustomerFilter($query, 'customer_id', null, 'pgk_tickets');
+        }
 
         // Filter: Pencarian Cerdas
         if ($request->filled('search')) {
@@ -478,6 +486,10 @@ class PgkController extends Controller
 
         // Terapkan cakupan hak akses (all area, per area, karyawan sendiri)
         DataScopeService::applyPgkScope($query);
+
+        if (\App\Services\DataPrivacyMaskingService::isEnabledForUser(null, 'pgk_tickets')) {
+            \App\Services\DataPrivacyMaskingService::applyCustomerFilter($query, 'customer_id', null, 'pgk_tickets');
+        }
 
         // Filter: Pencarian Pintar
         if ($request->filled('search')) {

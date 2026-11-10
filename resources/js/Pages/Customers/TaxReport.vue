@@ -488,7 +488,12 @@ const modalForm = ref({
     scope: props.masking_settings?.scope || 'all_except_super_admin',
     target_roles: props.masking_settings?.target_roles || [],
     target_users: props.masking_settings?.target_users || [],
-    modules: props.masking_settings?.modules || ['tax_report', 'customers', 'invoices', 'billing', 'financial_reports'],
+    hide_sidebar_menu: props.masking_settings?.hide_sidebar_menu !== false,
+    modules: props.masking_settings?.modules || [
+        'tax_report', 'customers', 'invoices', 'billing', 'financial_reports',
+        'booking', 'survey', 'installed', 'activation', 'monitoring_pelanggan',
+        'network_data', 'onts', 'network_map', 'pgk_tickets', 'technician_monitoring'
+    ],
 });
 
 const modalFormattedOmset = computed(() => {

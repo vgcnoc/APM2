@@ -1375,6 +1375,38 @@ const menuItems = [
     }
 ];
 
+const isPathHiddenByMasking = (hrefOrPath) => {
+    try {
+        const dm = page.props?.dataMasking;
+        if (!dm || !dm.is_masked || !dm.hide_sidebar_menu || !Array.isArray(dm.masked_modules) || dm.masked_modules.length === 0) {
+            return false;
+        }
+
+        const path = (hrefOrPath || '').toLowerCase();
+        const masked = dm.masked_modules;
+
+        if (masked.includes('booking') && path.includes('/customers/booking')) return true;
+        if (masked.includes('survey') && path.includes('/customers/survey')) return true;
+        if (masked.includes('installed') && path.includes('/customers/installed')) return true;
+        if (masked.includes('activation') && path.includes('/customers/activation')) return true;
+        if (masked.includes('monitoring_pelanggan') && path.includes('/monitoring-pelanggan')) return true;
+        if (masked.includes('customers') && (path === '/customers' || path.startsWith('/customers?') || path.startsWith('/customers/paid') || path.startsWith('/customers/online') || path.startsWith('/customers/isolir'))) return true;
+        if (masked.includes('invoices') && (path === '/invoices' || path.startsWith('/invoices?'))) return true;
+        if (masked.includes('billing') && (path.includes('/customer-billing') || path.includes('/customer-settlements'))) return true;
+        if (masked.includes('tax_report') && path.includes('/tax-reports')) return true;
+        if (masked.includes('financial_reports') && (path.includes('/financial-reports') || path.includes('/customer-reports'))) return true;
+        if (masked.includes('network_data') && path.includes('/network-data')) return true;
+        if (masked.includes('onts') && path.includes('/onts')) return true;
+        if (masked.includes('network_map') && (path.includes('/network-map') || path.includes('/network-radar') || path.includes('/network-topology'))) return true;
+        if (masked.includes('pgk_tickets') && path.includes('/pgk')) return true;
+        if (masked.includes('technician_monitoring') && path.includes('/monitoring-teknisi')) return true;
+
+        return false;
+    } catch (e) {
+        return false;
+    }
+};
+
 const filteredMenuItems = computed(() => {
     try {
         const filtered = [];
@@ -1386,11 +1418,25 @@ const filteredMenuItems = computed(() => {
             } else {
                 let isAllowed = false;
                 if (item.type === 'dropdown' && item.children) {
-                    const hasChildAccess = item.children.some(c => !c.permission || hasPermission(c.permission));
+                    const allowedChildren = item.children.filter(c => {
+                        const hasChildAccess = !c.permission || hasPermission(c.permission);
+                        const isHidden = isPathHiddenByMasking(c.href);
+                        return hasChildAccess && !isHidden;
+                    });
                     const hasParentAccess = !item.permission || hasPermission(item.permission);
-                    isAllowed = hasParentAccess && hasChildAccess;
+                    isAllowed = hasParentAccess && allowedChildren.length > 0;
+                    if (isAllowed) {
+                        if (currentGroup) {
+                            filtered.push(currentGroup);
+                            currentGroup = null;
+                        }
+                        filtered.push({ ...item, children: allowedChildren });
+                        return;
+                    }
                 } else {
-                    isAllowed = !item.permission || hasPermission(item.permission);
+                    const hasPerm = !item.permission || hasPermission(item.permission);
+                    const isHidden = isPathHiddenByMasking(item.href);
+                    isAllowed = hasPerm && !isHidden;
                 }
 
                 if (isAllowed) {

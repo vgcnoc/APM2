@@ -31,7 +31,12 @@ class DataPrivacyMaskingService
             'scope' => Setting::get('data_masking_scope', 'all_except_super_admin'), // 'all_except_super_admin', 'specific_accounts', 'everyone'
             'target_roles' => json_decode(Setting::get('data_masking_target_roles', '[]'), true) ?: [],
             'target_users' => json_decode(Setting::get('data_masking_target_users', '[]'), true) ?: [],
-            'modules' => json_decode(Setting::get('data_masking_modules', '["tax_report", "customers", "invoices", "billing", "financial_reports"]'), true) ?: ['tax_report', 'customers', 'invoices', 'billing', 'financial_reports'],
+            'hide_sidebar_menu' => Setting::get('data_masking_hide_sidebar_menu', '1') === '1',
+            'modules' => json_decode(Setting::get('data_masking_modules', '["tax_report", "customers", "invoices", "billing", "financial_reports", "booking", "survey", "installed", "activation", "monitoring_pelanggan", "network_data", "onts", "network_map", "pgk_tickets", "technician_monitoring"]'), true) ?: [
+                'tax_report', 'customers', 'invoices', 'billing', 'financial_reports',
+                'booking', 'survey', 'installed', 'activation', 'monitoring_pelanggan',
+                'network_data', 'onts', 'network_map', 'pgk_tickets', 'technician_monitoring'
+            ],
             'summary' => json_decode(Setting::get('data_masking_cached_summary', '{}'), true) ?: [],
         ];
     }
@@ -66,6 +71,9 @@ class DataPrivacyMaskingService
         }
         if (isset($data['target_users'])) {
             Setting::set('data_masking_target_users', json_encode(array_map('intval', array_values($data['target_users']))));
+        }
+        if (isset($data['hide_sidebar_menu'])) {
+            Setting::set('data_masking_hide_sidebar_menu', $data['hide_sidebar_menu'] ? '1' : '0');
         }
         if (isset($data['modules'])) {
             Setting::set('data_masking_modules', json_encode(array_values($data['modules'])));
@@ -286,16 +294,12 @@ class DataPrivacyMaskingService
     }
 
     /**
-     * Check if masking should apply for a given user & module
+     * Check if masking is active for a given user regardless of module
      */
-    public static function isEnabledForUser(?User $user = null, string $module = 'tax_report'): bool
+    public static function isMaskingActiveForUser(?User $user = null): bool
     {
         $settings = self::getSettings();
         if (!$settings['enabled']) {
-            return false;
-        }
-
-        if (!empty($settings['modules']) && !in_array($module, $settings['modules'])) {
             return false;
         }
 
@@ -344,6 +348,23 @@ class DataPrivacyMaskingService
         }
 
         return false;
+    }
+
+    /**
+     * Check if masking should apply for a given user & module
+     */
+    public static function isEnabledForUser(?User $user = null, string $module = 'tax_report'): bool
+    {
+        if (!self::isMaskingActiveForUser($user)) {
+            return false;
+        }
+
+        $settings = self::getSettings();
+        if (!empty($settings['modules']) && !in_array($module, $settings['modules'])) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -405,6 +426,50 @@ class DataPrivacyMaskingService
     }
 
     /**
+     * Check if a route/path should be hidden from sidebar for current user
+     */
+    public static function shouldHideFromSidebar(string $path, ?User $user = null): bool
+    {
+        $settings = self::getSettings();
+        if (!$settings['hide_sidebar_menu']) {
+            return false;
+        }
+
+        if (!self::isMaskingActiveForUser($user)) {
+            return false;
+        }
+
+        $moduleMap = [
+            '/customers/booking' => 'booking',
+            '/customers/survey' => 'survey',
+            '/customers/installed' => 'installed',
+            '/customers/activation' => 'activation',
+            '/customers' => 'customers',
+            '/monitoring-pelanggan' => 'monitoring_pelanggan',
+            '/invoices' => 'invoices',
+            '/customer-billing' => 'billing',
+            '/customer-settlements' => 'billing',
+            '/tax-reports' => 'tax_report',
+            '/financial-reports' => 'financial_reports',
+            '/customer-reports' => 'financial_reports',
+            '/network-data' => 'network_data',
+            '/onts' => 'onts',
+            '/network-map' => 'network_map',
+            '/network-radar' => 'network_map',
+            '/pgk' => 'pgk_tickets',
+            '/monitoring-teknisi' => 'technician_monitoring',
+        ];
+
+        foreach ($moduleMap as $prefix => $mod) {
+            if (str_contains($path, $prefix) && in_array($mod, $settings['modules'])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Get Masking Info for current user/UI
      */
     public static function getMaskingInfoForUser(?User $user = null): array
@@ -416,7 +481,7 @@ class DataPrivacyMaskingService
         $settings = self::getSettings();
         $isSuperAdmin = self::isSuperAdmin($user);
         $previewMode = (bool) session('data_masking_preview_mode', false);
-        $isMasked = self::isEnabledForUser($user, 'tax_report');
+        $isMasked = self::isMaskingActiveForUser($user);
 
         return [
             'is_masked' => $isMasked,
@@ -429,6 +494,10 @@ class DataPrivacyMaskingService
             'is_super_admin' => $isSuperAdmin,
             'preview_mode' => $previewMode,
             'summary' => $settings['summary'],
+            'modules' => $settings['modules'],
+            'hide_sidebar_menu' => $settings['hide_sidebar_menu'],
+            'masked_modules' => $isMasked ? $settings['modules'] : [],
         ];
     }
 }
+

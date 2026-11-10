@@ -136,6 +136,7 @@ class HandleInertiaRequests extends Middleware
                 'isolated_customer' => fn () => $request->session()->get('isolated_customer'),
                 'client_account_created' => fn () => $request->session()->get('client_account_created'),
             ],
+            'dataMasking' => fn () => \App\Services\DataPrivacyMaskingService::getMaskingInfoForUser($request->user()),
             'billingSettings' => fn () => [
                 'billing_cycle' => \App\Models\Setting::get('billing_cycle', 'anniversary'),
                 'billing_type' => \App\Models\Setting::get('billing_type', 'prabayar'),

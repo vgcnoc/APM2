@@ -46,6 +46,7 @@ class DataMaskingController extends Controller
             'target_roles.*' => 'string',
             'target_users' => 'nullable|array',
             'target_users.*' => 'integer',
+            'hide_sidebar_menu' => 'nullable|boolean',
             'modules' => 'nullable|array',
             'modules.*' => 'string',
         ]);
@@ -94,3 +95,4 @@ class DataMaskingController extends Controller
             : 'Mode simulasi dinonaktifkan. Menampilkan data riil 100%.');
     }
 }
+
