@@ -17,7 +17,7 @@ return new class extends Migration
 
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // 1. Pastikan seluruh permission dari PermissionRegistry terdaftar di DB
+        // 1. Pastikan permission terdaftar di DB
         foreach (PermissionRegistry::allNames() as $permName) {
             Permission::firstOrCreate([
                 'name' => $permName,
@@ -25,11 +25,11 @@ return new class extends Migration
             ]);
         }
 
-        // 2. Role yang HANYA diizinkan mengakses Bagi Hasil & Kemitraan:
+        // 2. Role yang HANYA diizinkan secara EKSKLUSIF:
         //    - noc
         //    - finance & hrd (finance, hrd, hrd & finance, hrd & keuangan)
-        //    - administrator (admin, super admin)
-        $allowedRolesForProfitSharing = [
+        //    - administrator (admin, super admin, administrator)
+        $exactAllowedRoles = [
             'admin',
             'super admin',
             'administrator',
@@ -46,19 +46,11 @@ return new class extends Migration
         foreach ($roles as $role) {
             $normalizedRole = strtolower(trim($role->name));
 
-            $isAllowed = false;
-            foreach ($allowedRolesForProfitSharing as $allowed) {
-                if ($normalizedRole === $allowed || str_contains($normalizedRole, $allowed)) {
-                    $isAllowed = true;
-                    break;
-                }
-            }
-
-            if ($isAllowed) {
+            if (in_array($normalizedRole, $exactAllowedRoles, true)) {
                 // Berikan hak akses Bagi Hasil & Kemitraan
                 $role->givePermissionTo($profitSharingPermissions);
             } else {
-                // Pastikan role lain TIDAK dicentang untuk Bagi Hasil & Kemitraan
+                // Cabut hak akses Bagi Hasil & Kemitraan
                 foreach ($profitSharingPermissions as $perm) {
                     if ($role->hasPermissionTo($perm)) {
                         $role->revokePermissionTo($perm);
@@ -80,4 +72,3 @@ return new class extends Migration
         // Safe rollback
     }
 };
-
