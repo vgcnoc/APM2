@@ -1016,6 +1016,32 @@ class PgjController extends Controller
                 abort(403, 'Anda hanya dapat melaporkan tugas PGJ yang ditugaskan kepada Anda.');
             }
         }
+        // Smart fallback jika action_taken kosong namun resolution_notes atau core_details terisi
+        if (!$request->filled('action_taken')) {
+            if ($request->filled('resolution_notes')) {
+                $request->merge(['action_taken' => trim((string) $request->input('resolution_notes'))]);
+            } elseif ($request->filled('core_details')) {
+                $request->merge(['action_taken' => trim((string) $request->input('core_details'))]);
+            }
+        }
+
+        // Normalisasi incident_coordinates sebelum validasi agar string kosong / koma tidak menyebabkan 422
+        if ($request->has('incident_coordinates') && is_array($request->incident_coordinates)) {
+            $cleanedCoords = [];
+            foreach ($request->incident_coordinates as $coord) {
+                if (!is_array($coord)) continue;
+                $latRaw = isset($coord['latitude']) ? trim(str_replace(',', '.', (string) $coord['latitude'])) : '';
+                $lngRaw = isset($coord['longitude']) ? trim(str_replace(',', '.', (string) $coord['longitude'])) : '';
+                $cleanedCoords[] = [
+                    'name' => $coord['name'] ?? null,
+                    'latitude' => ($latRaw !== '' && $latRaw !== 'null' && is_numeric($latRaw)) ? (float) $latRaw : null,
+                    'longitude' => ($lngRaw !== '' && $lngRaw !== 'null' && is_numeric($lngRaw)) ? (float) $lngRaw : null,
+                    'notes' => $coord['notes'] ?? null,
+                ];
+            }
+            $request->merge(['incident_coordinates' => $cleanedCoords]);
+        }
+
         $validated = $request->validate([
             'action_taken' => 'required|string',
             'core_details' => 'nullable|string|max:255',
@@ -1034,8 +1060,9 @@ class PgjController extends Controller
             'incident_coordinates.*.longitude' => 'nullable|numeric',
             'incident_coordinates.*.notes' => 'nullable|string',
             'materials' => 'nullable|array',
-            'materials.*.pgj_material_id' => 'required|exists:pgj_materials,id',
-            'materials.*.quantity_used' => 'required|numeric|min:0',
+            'materials.*.pgj_material_id' => 'nullable',
+            'materials.*.material_id' => 'nullable',
+            'materials.*.quantity_used' => 'nullable|numeric|min:0',
         ]);
 
         // 1. Tangani incident_coordinates (bisa lebih dari 1)
@@ -1156,9 +1183,15 @@ class PgjController extends Controller
             $overageItems = [];
 
             foreach ($validated['materials'] as $matItem) {
-                $pgjMat = PgjMaterial::find($matItem['pgj_material_id']);
+                $pgjMat = null;
+                if (!empty($matItem['pgj_material_id'])) {
+                    $pgjMat = PgjMaterial::where('pgj_ticket_id', $pgj->id)->where('id', $matItem['pgj_material_id'])->first();
+                }
+                if (!$pgjMat && !empty($matItem['material_id'])) {
+                    $pgjMat = PgjMaterial::where('pgj_ticket_id', $pgj->id)->where('material_id', $matItem['material_id'])->first();
+                }
                 if ($pgjMat) {
-                    $qtyUsed = (float) $matItem['quantity_used'];
+                    $qtyUsed = (float) ($matItem['quantity_used'] ?? 0);
                     $qtyPrepared = (float) $pgjMat->quantity_prepared;
                     $qtyReturned = max(0, $qtyPrepared - $qtyUsed);
 

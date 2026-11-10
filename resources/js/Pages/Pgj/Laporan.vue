@@ -424,7 +424,18 @@
                     </div>
                 </div>
 
-                <form @submit.prevent="submitReport" class="p-6 space-y-6 overflow-y-auto flex-1">
+                <form @submit.prevent="submitReport" novalidate class="p-6 space-y-6 overflow-y-auto flex-1">
+                    <!-- Alert Error Validasi -->
+                    <div v-if="Object.keys(reportForm.errors).length > 0" class="p-3.5 rounded-2xl bg-rose-50 border border-rose-300 text-rose-900 text-xs space-y-1">
+                        <div class="font-bold flex items-center gap-1.5 text-rose-800">
+                            <span>⚠️</span>
+                            <span>Mohon periksa kembali isian formulir:</span>
+                        </div>
+                        <ul class="list-disc list-inside space-y-0.5 text-rose-700">
+                            <li v-for="(errMsg, errKey) in reportForm.errors" :key="errKey">{{ errMsg }}</li>
+                        </ul>
+                    </div>
+
                     <!-- Alert Draft Restored -->
                     <div v-if="hasSavedDraft" class="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-center justify-between text-xs">
                         <div class="flex items-center gap-2">
@@ -491,7 +502,6 @@
                                         v-model="reportForm.start_time" 
                                         :readonly="isWorking"
                                         class="flex-1 rounded-xl border-gray-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-sm font-semibold text-gray-800 bg-white" 
-                                        required
                                     />
                                     <button 
                                         type="button" 
@@ -522,11 +532,11 @@
                                 Tindakan Restorasi Fisik Lapangan <span class="text-red-500">*</span>
                             </label>
                             <textarea 
+                                id="pgj-action-taken-input"
                                 v-model="reportForm.action_taken" 
                                 rows="2" 
                                 placeholder="Contoh: Penarikan span kabel FO 24 core baru sepanjang 65 meter, penggantian closure dome di tiang no 12, dan penyambungan (splicing) seluruh core."
                                 class="w-full rounded-xl border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 text-sm" 
-                                required
                             ></textarea>
                         </div>
 
@@ -804,13 +814,11 @@
                                                     </button>
                                                     <input 
                                                         type="number" 
-                                                        step="0.01" 
+                                                        step="any" 
                                                         min="0" 
-                                                        
                                                         v-model="m.quantity_used" 
                                                         @input="calculateReturned(m)"
                                                         class="w-16 border-0 text-xs py-1 text-center font-black text-emerald-700 focus:ring-0 p-0" 
-                                                        required
                                                     />
                                                     <button 
                                                         type="button" 
@@ -1154,7 +1162,6 @@
                                         type="time" 
                                         v-model="reportForm.end_time" 
                                         class="flex-1 rounded-xl border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-sm font-semibold text-gray-800 bg-white" 
-                                        required
                                     />
                                     <button 
                                         type="button" 
@@ -1196,8 +1203,8 @@
                             </button>
                             <button 
                                 type="submit" 
-                                :disabled="reportForm.processing || !reportForm.action_taken" 
-                                class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-black shadow-lg shadow-emerald-600/20 disabled:opacity-50 transition-all flex items-center gap-2"
+                                :disabled="reportForm.processing" 
+                                class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-black shadow-lg shadow-emerald-600/20 disabled:opacity-50 transition-all flex items-center gap-2 cursor-pointer"
                             >
                                 <svg v-if="reportForm.processing" class="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                 <span>{{ reportForm.processing ? 'Menyimpan...' : 'Simpan Restorasi & Nyatakan Pulih' }}</span>
@@ -1948,8 +1955,24 @@ const openReportModal = (ticket, ignoreDraft = false) => {
                 initHandlingPhotos(ticket);
             }
 
-            if (Array.isArray(draft.materials) && draft.materials.length > 0) {
-                reportForm.materials = draft.materials;
+            if (Array.isArray(draft.materials) && draft.materials.length > 0 && Array.isArray(ticket.materials) && ticket.materials.length > 0) {
+                reportForm.materials = ticket.materials.map(m => {
+                    const prep = parseFloat(m.quantity_prepared) || 0;
+                    const draftMat = draft.materials.find(dm => dm.pgj_material_id === m.id || dm.material_id === m.material_id);
+                    let used = m.quantity_used !== null ? parseFloat(m.quantity_used) : prep;
+                    if (draftMat && draftMat.quantity_used !== undefined && draftMat.quantity_used !== null && draftMat.quantity_used !== '') {
+                        used = Math.min(prep, Math.max(0, parseFloat(draftMat.quantity_used) || 0));
+                    }
+                    return {
+                        pgj_material_id: m.id,
+                        material_id: m.material_id,
+                        name: m.material?.name || 'Material FO',
+                        unit: m.unit || m.material?.unit || '',
+                        quantity_prepared: prep,
+                        quantity_used: used,
+                        quantity_returned: Math.max(0, parseFloat((prep - used).toFixed(2))),
+                    };
+                });
             } else {
                 initPreparedMaterials(ticket);
             }
@@ -2182,10 +2205,61 @@ watch(() => props.tickets, (newTickets) => {
 
 // ── Submit Report ──────────────────────────────────────────────
 const submitReport = () => {
-    if (!selectedTicket.value) return;
+    if (!selectedTicket.value || reportForm.processing) return;
 
-    // Filter valid coordinate points
-    const validCoords = (reportForm.incident_coordinates || []).filter(c => c.latitude || c.longitude || c.name);
+    // Smart fallback: jika Tindakan Restorasi di atas belum diisi namun Catatan Akhir Restorasi / Detail Core sudah diisi, otomatis gunakan isian tersebut
+    if (!reportForm.action_taken || !String(reportForm.action_taken).trim()) {
+        if (reportForm.resolution_notes && String(reportForm.resolution_notes).trim()) {
+            reportForm.action_taken = String(reportForm.resolution_notes).trim();
+        } else if (reportForm.core_details && String(reportForm.core_details).trim()) {
+            reportForm.action_taken = String(reportForm.core_details).trim();
+        }
+    }
+
+    if (!reportForm.action_taken || !String(reportForm.action_taken).trim()) {
+        alert('Mohon isi Tindakan Restorasi Fisik Lapangan atau Catatan Akhir Restorasi terlebih dahulu.');
+        const el = document.getElementById('pgj-action-taken-input');
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => el.focus(), 250);
+        }
+        return;
+    }
+
+    // Otomatis lengkapi jam mulai / selesai bila masih kosong
+    const now = new Date();
+    const currentTimeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    if (!reportForm.end_time) {
+        reportForm.end_time = currentTimeStr;
+    }
+    if (!reportForm.start_time) {
+        reportForm.start_time = reportForm.end_time || currentTimeStr;
+    }
+
+    // Filter dan bersihkan titik koordinat agar tidak gagal validasi numeric di backend
+    const parseCoordVal = (val) => {
+        if (val === null || val === undefined || val === '') return '';
+        const cleaned = String(val).trim().replace(',', '.');
+        const num = parseFloat(cleaned);
+        return !isNaN(num) && isFinite(num) ? num : '';
+    };
+
+    const validCoords = (reportForm.incident_coordinates || [])
+        .map(c => ({
+            name: c.name ? String(c.name).trim() : '',
+            latitude: parseCoordVal(c.latitude),
+            longitude: parseCoordVal(c.longitude),
+            notes: c.notes ? String(c.notes).trim() : '',
+        }))
+        .filter(c => c.latitude !== '' || c.longitude !== '' || (c.name !== '' && c.name !== 'Titik Putus / Kerusakan Fisik'));
+
+    const validMaterials = (reportForm.materials || [])
+        .filter(m => m && m.pgj_material_id)
+        .map(m => ({
+            pgj_material_id: m.pgj_material_id,
+            material_id: m.material_id,
+            quantity_used: Math.max(0, parseFloat(m.quantity_used) || 0),
+        }));
 
     // Filter existing photos vs new files
     const existingPhotos = handlingPhotosList.value
@@ -2201,12 +2275,17 @@ const submitReport = () => {
 
     reportForm.transform((data) => ({
         ...data,
+        action_taken: String(reportForm.action_taken).trim(),
+        start_time: reportForm.start_time,
+        end_time: reportForm.end_time,
+        materials: validMaterials,
         incident_coordinates: validCoords,
         existing_handling_photos: JSON.stringify(existingPhotos),
         handling_photos_files: newPhotoFiles,
         handling_photos_captions: newPhotoCaptions,
     })).post(`/pgj/${selectedTicket.value.id}/report`, {
         forceFormData: true,
+        preserveScroll: true,
         onSuccess: () => {
             if (selectedTicket.value) {
                 localStorage.removeItem(getDraftKey(selectedTicket.value.id));
@@ -2216,6 +2295,12 @@ const submitReport = () => {
             selectedTicket.value = null;
             handlingPhotosList.value = [];
             previewModalImage.value = null;
+        },
+        onError: (errors) => {
+            const firstErr = Object.values(errors || {})[0];
+            if (firstErr) {
+                alert('Gagal menyimpan laporan: ' + firstErr);
+            }
         }
     });
 };
