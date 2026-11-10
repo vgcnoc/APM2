@@ -584,6 +584,15 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/operational/network-maintenance/assets', [\App\Http\Controllers\NetworkMaintenanceController::class, 'getAssets'])->name('operational.network-maintenance.assets');
     });
 
+    // ── Monitoring Rawan Gangguan (Pelanggan & Jalur) + Kunjungan Sosialisasi ──
+    Route::prefix('operational/chronic-monitoring')->name('operational.chronic-monitoring.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\ChronicMonitoringController::class, 'index'])->name('index');
+        Route::post('/visits', [\App\Http\Controllers\ChronicMonitoringController::class, 'storeVisit'])->name('visits.store');
+        Route::post('/visits/{visit}/report', [\App\Http\Controllers\ChronicMonitoringController::class, 'updateVisitReport'])->name('visits.report');
+        Route::post('/visits/{visit}/notify-wa', [\App\Http\Controllers\ChronicMonitoringController::class, 'notifyOfficerWa'])->name('visits.notify-wa');
+        Route::delete('/visits/{visit}', [\App\Http\Controllers\ChronicMonitoringController::class, 'destroyVisit'])->name('visits.destroy');
+    });
+
     // ── Customer Billing (Terima Setoran Lapangan) ─────────────────────
     Route::middleware(['permission:menu_customer_billing'])->group(function () {
         Route::get('/customer-billing', [\App\Http\Controllers\CustomerBillingController::class, 'index'])->name('customer-billing.index');

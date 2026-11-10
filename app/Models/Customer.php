@@ -330,6 +330,11 @@ class Customer extends Model
         return $this->hasMany(PgkTicket::class);
     }
 
+    public function socializationVisits(): HasMany
+    {
+        return $this->hasMany(CustomerSocializationVisit::class);
+    }
+
     public function installedMaterials(): HasMany
     {
         return $this->hasMany(CustomerInstalledMaterial::class);

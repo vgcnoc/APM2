@@ -1138,6 +1138,8 @@ class PermissionRegistry
                 'permissions' => [
                     ['name' => 'menu_operational_progress', 'type' => 'menu', 'label' => 'Akses Menu Progress Harian Operasional'],
                     ['name' => 'menu_network_maintenance', 'type' => 'menu', 'label' => 'Akses Menu Pemeliharaan Jalur (ODP/ODC)'],
+                    ['name' => 'menu_chronic_monitoring', 'type' => 'menu', 'label' => 'Akses Menu Monitoring Rawan Gangguan & Sosialisasi Pelanggan'],
+                    ['name' => 'chronic_socialization_manage', 'type' => 'button', 'label' => 'Jadwalkan & Input Laporan Kunjungan Sosialisasi Pelanggan'],
                     ['name' => 'operational_progress_view', 'type' => 'feature', 'label' => 'Lihat Laporan Progress Harian'],
                     ['name' => 'operational_progress_filter_area', 'type' => 'filter', 'label' => 'Filter Wilayah / Area Operasional'],
                     ['name' => 'operational_progress_filter_date', 'type' => 'filter', 'label' => 'Filter Tanggal Laporan Operasional'],
