@@ -7,12 +7,36 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Services\CustomerBillingPrice;
 use App\Services\DataPrivacyMaskingService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
 
 class TaxReportController extends Controller
 {
+    private function getPaidInvoiceScope(int $month, int $year, Carbon $selectedPeriodEnd): \Closure
+    {
+        return function($q) use ($month, $year, $selectedPeriodEnd) {
+            $q->where('is_reseller_balance', false)
+              ->where('invoice_number', 'not like', 'INV-MIG-%')
+              ->where('status', 'paid')
+              ->where(function($invQ) use ($month, $year, $selectedPeriodEnd) {
+                  $invQ->where(function($sub) use ($month, $year, $selectedPeriodEnd) {
+                      $sub->where('period_month', $month)
+                          ->where('period_year', $year)
+                          ->where(function($dateQ) use ($selectedPeriodEnd) {
+                              $dateQ->whereNull('issued_date')
+                                    ->orWhereDate('issued_date', '<=', $selectedPeriodEnd);
+                          });
+                  })->orWhere(function($sub) use ($month, $year) {
+                      $sub->where('is_prorata', true)
+                          ->whereYear('issued_date', $year)
+                          ->whereMonth('issued_date', $month);
+                  });
+              });
+        };
+    }
+
     public function index(Request $request)
     {
         $month = (int) $request->input('month', now()->month);
@@ -20,11 +44,13 @@ class TaxReportController extends Controller
         if ($month < 1 || $month > 12) $month = now()->month;
         if ($year < 2020 || $year > 2050) $year = now()->year;
 
-        $query = Customer::with(['package', 'invoices' => fn($q) => $q->where('is_reseller_balance', false)
-            ->where('period_month', $month)
-            ->where('period_year', $year)
-            ->latest('id')])
-            ->where('status', 'active')
+        $selectedPeriodEnd = Carbon::createFromDate($year, $month, 1)->endOfMonth();
+        $paidInvoiceScope = $this->getPaidInvoiceScope($month, $year, $selectedPeriodEnd);
+
+        // Hanya tampilkan pelanggan yang sudah bayar (lunas / paid) di periode bulan terpilih
+        $query = Customer::with(['package', 'invoices' => fn($q) => $paidInvoiceScope($q)->latest('id')])
+            ->whereHas('invoices', $paidInvoiceScope)
+            ->whereNotIn('service_status', ['gratis', 'free_home'])
             ->orderBy('name');
 
         // Apply Data Privacy Masking filter if active for this account
@@ -46,12 +72,11 @@ class TaxReportController extends Controller
             return $this->resolveCustomerTaxData($customer, $globalTaxPpn, $globalBhp, $globalUso, $month, $year);
         });
         
-        // Aggregate totals for scoped active customers in this period
-        $activeCustomersQuery = Customer::with(['package', 'invoices' => fn($q) => $q->where('is_reseller_balance', false)
-            ->where('period_month', $month)
-            ->where('period_year', $year)
-            ->latest('id')])
-            ->where('status', 'active');
+        // Aggregate totals for scoped paid customers in this period
+        $activeCustomersQuery = Customer::with(['package', 'invoices' => fn($q) => $paidInvoiceScope($q)->latest('id')])
+            ->whereHas('invoices', $paidInvoiceScope)
+            ->whereNotIn('service_status', ['gratis', 'free_home']);
+
         DataPrivacyMaskingService::applyCustomerFilter($activeCustomersQuery, 'customers.id', null, 'tax_report');
         $activeCustomers = $activeCustomersQuery->get();
 
@@ -107,11 +132,12 @@ class TaxReportController extends Controller
         if ($month < 1 || $month > 12) $month = now()->month;
         if ($year < 2020 || $year > 2050) $year = now()->year;
 
-        $query = Customer::with(['package', 'invoices' => fn($q) => $q->where('is_reseller_balance', false)
-            ->where('period_month', $month)
-            ->where('period_year', $year)
-            ->latest('id')])
-            ->where('status', 'active')
+        $selectedPeriodEnd = Carbon::createFromDate($year, $month, 1)->endOfMonth();
+        $paidInvoiceScope = $this->getPaidInvoiceScope($month, $year, $selectedPeriodEnd);
+
+        $query = Customer::with(['package', 'invoices' => fn($q) => $paidInvoiceScope($q)->latest('id')])
+            ->whereHas('invoices', $paidInvoiceScope)
+            ->whereNotIn('service_status', ['gratis', 'free_home'])
             ->orderBy('name');
 
         // Apply Data Privacy Masking filter to print view as well
@@ -194,8 +220,8 @@ class TaxReportController extends Controller
             $uso_percent = 0.0;
         }
 
-        // Cari invoice khusus untuk periode (bulan & tahun) yang sedang dilihat
-        $invoice = $customer->invoices->where('period_month', $month)->where('period_year', $year)->first();
+        // Ambil invoice lunas untuk periode yang sedang dilihat
+        $invoice = $customer->invoices->first();
 
         $isProrata = $invoice ? ($invoice->is_prorata || $invoice->billing_type === 'prorata') : false;
 
@@ -204,7 +230,7 @@ class TaxReportController extends Controller
             $ppn_amount = 0;
             $total_price = 0;
         } elseif ($invoice && $invoice->amount > 0) {
-            // Jika ada invoice terbit di periode ini, DPP dihitung dari nominal invoice
+            // DPP dihitung dari nominal invoice yang sudah lunas
             if ($ppn_percent > 0) {
                 $basePrice = (int) round((float) $invoice->amount / (1 + ($ppn_percent / 100)));
                 $ppn_amount = (int) ($invoice->amount - $basePrice);
@@ -214,7 +240,7 @@ class TaxReportController extends Controller
             }
             $total_price = (int) $invoice->amount;
         } else {
-            // Jika belum terbit invoice untuk periode ini, ambil nilai paket bulanan normal aktif
+            // Fallback jika tidak ada invoice
             $basePrice = (int) round(CustomerBillingPrice::monthly($customer));
             if ($ppn_percent > 0) {
                 $ppn_amount = (int) round($basePrice * ($ppn_percent / 100));

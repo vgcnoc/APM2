@@ -107,7 +107,7 @@
                         </div>
                     </div>
                     <div class="mt-4 text-xs font-medium text-indigo-200">
-                        {{ masking_info?.is_masked ? 'Omset Pelanggan Terpilih' : 'Estimasi Tagihan Aktif' }}
+                        {{ masking_info?.is_masked ? 'Omset Pelanggan Terpilih' : 'Total Tagihan Lunas (Terbayar)' }}
                     </div>
                 </div>
             </div>
@@ -123,7 +123,7 @@
                                 Mode Privasi ({{ customers.total }} Data)
                             </span>
                         </div>
-                        <p class="text-sm text-gray-500 mt-1">Data kalkulasi pajak berdasarkan paket dan profil pelanggan aktif.</p>
+                        <p class="text-sm text-gray-500 mt-1">Data kalkulasi pajak berdasarkan pelanggan yang sudah bayar (lunas).</p>
                     </div>
 
                     <div class="flex flex-wrap sm:flex-nowrap items-center gap-2.5 w-full sm:w-auto">

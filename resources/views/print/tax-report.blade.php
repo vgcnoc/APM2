@@ -41,7 +41,7 @@
 
     <h1>Laporan Pajak Pelanggan</h1>
     <div class="meta">
-        Periode: <b>{{ \Carbon\Carbon::createFromDate($year ?? now()->year, $month ?? now()->month, 1)->locale('id')->isoFormat('MMMM Y') }}</b> &middot; Dicetak: {{ now()->format('d/m/Y H:i') }} &middot; Jumlah pelanggan aktif: {{ $rows->count() }}
+        Periode: <b>{{ \Carbon\Carbon::createFromDate($year ?? now()->year, $month ?? now()->month, 1)->locale('id')->isoFormat('MMMM Y') }}</b> &middot; Dicetak: {{ now()->format('d/m/Y H:i') }} &middot; Jumlah pelanggan (lunas): {{ $rows->count() }}
         @if($search) &middot; Filter: "{{ $search }}" @endif
     </div>
 
