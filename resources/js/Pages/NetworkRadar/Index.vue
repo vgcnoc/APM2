@@ -1320,12 +1320,143 @@ watch(showConnections, (val) => {
     }
 });
 
-watch(showMapTiles, (val) => {
-    if (!map || !tileLayer) return;
-    if (val) {
-        tileLayer.addTo(map);
-    } else {
+// ═══ BASEMAP CONFIGURATIONS (GOOGLE HYBRID, SATELIT, OSM, GOOGLE STREET, DARK, TOPO) ═══
+const basemaps = [
+    {
+        id: 'google_hybrid',
+        label: 'Google Satelit (Hybrid)',
+        shortLabel: 'Satelit',
+        description: 'Citra satelit foto Google + nama jalan & tempat lengkap',
+        icon: '🛰️',
+        badge: 'Rekomendasi',
+        previewClass: 'from-emerald-700 via-sky-800 to-slate-900 text-white',
+        url: 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+        attribution: '&copy; Google Maps Satelit',
+        maxZoom: 22,
+        maxNativeZoom: 20,
+    },
+    {
+        id: 'google_sat',
+        label: 'Google Satelit (Murni)',
+        shortLabel: 'Satelit Polos',
+        description: 'Citra foto satelit jernih tanpa label nama jalan',
+        icon: '🌍',
+        previewClass: 'from-emerald-950 via-teal-950 to-slate-950 text-white',
+        url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+        attribution: '&copy; Google Maps',
+        maxZoom: 22,
+        maxNativeZoom: 20,
+    },
+    {
+        id: 'google_streets',
+        label: 'Google Maps (Jalan)',
+        shortLabel: 'Google Maps',
+        description: 'Peta jalan standar resmi Google Maps',
+        icon: '🛣️',
+        previewClass: 'from-sky-100 via-emerald-100 to-blue-200 text-slate-800',
+        url: 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+        attribution: '&copy; Google Maps',
+        maxZoom: 22,
+        maxNativeZoom: 20,
+    },
+    {
+        id: 'osm',
+        label: 'OpenStreetMap (Standar)',
+        shortLabel: 'Peta Jalan',
+        description: 'Peta jalan umum OpenStreetMap standar',
+        icon: '🗺️',
+        previewClass: 'from-amber-100 via-emerald-100 to-sky-200 text-slate-800',
+        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 19,
+        maxNativeZoom: 19,
+        subdomains: ['a', 'b', 'c'],
+    },
+    {
+        id: 'carto_dark',
+        label: 'Mode Gelap (Dark)',
+        shortLabel: 'Mode Gelap',
+        description: 'Peta kontras tinggi, elegan & fokus di malam hari',
+        icon: '🌑',
+        previewClass: 'from-slate-900 via-black to-slate-950 text-white',
+        url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
+        maxZoom: 20,
+        maxNativeZoom: 19,
+        subdomains: ['a', 'b', 'c', 'd'],
+    },
+    {
+        id: 'topo',
+        label: 'Topografi (Medan)',
+        shortLabel: 'Topografi',
+        description: 'Peta kontur elevasi & bentang alam pegunungan',
+        icon: '⛰️',
+        previewClass: 'from-amber-200 via-lime-200 to-emerald-300 text-slate-800',
+        url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+        attribution: '&copy; OpenStreetMap &copy; OpenTopoMap',
+        maxZoom: 17,
+        maxNativeZoom: 17,
+        subdomains: ['a', 'b', 'c'],
+    },
+];
+
+const activeBasemap = ref('google_hybrid');
+const isMapTypeMenuOpen = ref(false);
+
+const currentBasemap = computed(() => {
+    return basemaps.find(b => b.id === activeBasemap.value) || basemaps[0];
+});
+
+const quickBasemaps = computed(() => [
+    basemaps.find(b => b.id === 'google_hybrid'),
+    basemaps.find(b => b.id === 'osm'),
+    basemaps.find(b => b.id === 'google_streets'),
+    basemaps.find(b => b.id === 'carto_dark'),
+].filter(Boolean));
+
+const changeBasemap = (basemapId) => {
+    const selected = basemaps.find(b => b.id === basemapId) || basemaps[0];
+    activeBasemap.value = selected.id;
+    try {
+        localStorage.setItem('apm_radar_basemap', selected.id);
+    } catch (e) {}
+
+    if (!map || !L) return;
+
+    if (tileLayer) {
         map.removeLayer(tileLayer);
+        tileLayer = null;
+    }
+
+    if (showMapTiles.value) {
+        tileLayer = L.tileLayer(selected.url, {
+            attribution: selected.attribution,
+            maxZoom: selected.maxZoom || 22,
+            maxNativeZoom: selected.maxNativeZoom || 19,
+            subdomains: selected.subdomains || ['a', 'b', 'c'],
+        });
+        tileLayer.addTo(map);
+        if (typeof tileLayer.bringToBack === 'function') {
+            tileLayer.bringToBack();
+        }
+    }
+};
+
+watch(showMapTiles, (val) => {
+    if (!map) return;
+    if (val) {
+        if (!tileLayer) {
+            changeBasemap(activeBasemap.value);
+        } else {
+            tileLayer.addTo(map);
+            if (typeof tileLayer.bringToBack === 'function') {
+                tileLayer.bringToBack();
+            }
+        }
+    } else {
+        if (tileLayer) {
+            map.removeLayer(tileLayer);
+        }
     }
 });
 
@@ -1344,9 +1475,18 @@ watch(searchRadiusMeters, (newVal) => {
     }, 400);
 });
 
+const handleDocumentClick = (e) => {
+    if (!e.target.closest('.basemap-menu-container')) {
+        isMapTypeMenuOpen.value = false;
+    }
+};
+
 // Map Initialization
 onMounted(async () => {
     await nextTick();
+
+    // Close basemap dropdown on click outside
+    window.addEventListener('click', handleDocumentClick);
 
     // Expose route helper to popup buttons
     window.drawRadarRoute = (lat, lng, name) => {
@@ -1373,16 +1513,22 @@ onMounted(async () => {
         center: [defaultLat, defaultLng],
         zoom: 13,
         zoomControl: true,
+        maxZoom: 22,
     });
 
-    // Tile layer: OpenStreetMap
-    tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
-        maxZoom: 19,
-    });
+    // Determine initial basemap: from localStorage or default to 'google_hybrid'
+    let savedBasemap = 'google_hybrid';
+    try {
+        const stored = localStorage.getItem('apm_radar_basemap');
+        if (stored && basemaps.some(b => b.id === stored)) {
+            savedBasemap = stored;
+        }
+    } catch (e) {}
+    activeBasemap.value = savedBasemap;
 
+    // Load active tile layer
     if (showMapTiles.value) {
-        tileLayer.addTo(map);
+        changeBasemap(savedBasemap);
     }
 
     // Connections layer
@@ -1421,10 +1567,15 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+    window.removeEventListener('click', handleDocumentClick);
     if (window.drawRadarRoute) delete window.drawRadarRoute;
     if (closestLineLayer.value && map) {
         map.removeLayer(closestLineLayer.value);
         closestLineLayer.value = null;
+    }
+    if (tileLayer && map) {
+        map.removeLayer(tileLayer);
+        tileLayer = null;
     }
     if (map) {
         map.remove();
@@ -1671,8 +1822,8 @@ onUnmounted(() => {
                             <span class="text-xs font-bold text-rose-700 dark:text-rose-300">Hanya Belum Lunas</span>
                         </label>
                     </div>
-                    <!-- Row 2: Tampilkan Peta, Tampilkan Koneksi -->
-                    <div class="flex flex-wrap items-center gap-4">
+                    <!-- Row 2: Tampilkan Peta, Tampilkan Koneksi, Model Tampilan Peta -->
+                    <div class="flex flex-wrap items-center gap-3 sm:gap-4">
                         <label class="inline-flex items-center gap-2 cursor-pointer select-none">
                             <input type="checkbox" v-model="showMapTiles" class="rounded text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-slate-700 dark:bg-slate-800 w-4 h-4">
                             <svg class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1687,6 +1838,20 @@ onUnmounted(() => {
                             </svg>
                             <span class="text-xs font-semibold text-gray-700 dark:text-slate-300">Tampilkan Koneksi</span>
                         </label>
+
+                        <!-- Pilihan Tampilan Maps -->
+                        <div v-if="showMapTiles" class="inline-flex items-center gap-1.5 pl-2 sm:pl-3 border-l border-gray-200 dark:border-slate-700">
+                            <span class="text-xs text-gray-500 dark:text-slate-400 font-medium">Model Maps:</span>
+                            <select
+                                :value="activeBasemap"
+                                @change="changeBasemap($event.target.value)"
+                                class="px-2.5 py-1 text-xs font-bold rounded-lg border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
+                            >
+                                <option v-for="b in basemaps" :key="b.id" :value="b.id">
+                                    {{ b.icon }} {{ b.label }}
+                                </option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -2273,8 +2438,8 @@ onUnmounted(() => {
 
             <!-- ═══ CARD 3: PETA RADAR ═══ -->
             <div class="bg-white dark:bg-slate-900/90 rounded-2xl border border-gray-200/80 dark:border-slate-800 p-5 shadow-xs">
-                <!-- Header with Point Badge -->
-                <div class="flex items-center justify-between mb-2">
+                <!-- Header with Point Badge & Quick Map Selector -->
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
                     <div class="flex items-center gap-2">
                         <svg class="w-4 h-4 text-gray-700 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
@@ -2282,10 +2447,31 @@ onUnmounted(() => {
                         <h3 class="text-sm font-bold text-gray-800 dark:text-slate-200">
                             {{ activeTab === 'karyawan' ? 'Peta Aktivitas Karyawan' : 'Peta Radar' }}
                         </h3>
+                        <span class="px-2.5 py-0.5 text-xs font-semibold text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-800 rounded-full">
+                            {{ totalVisiblePoints }} titik
+                        </span>
                     </div>
-                    <span class="px-2.5 py-0.5 text-xs font-semibold text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-800 rounded-full">
-                        {{ totalVisiblePoints }} titik
-                    </span>
+
+                    <!-- Quick Map Switcher Pills in Header -->
+                    <div class="flex items-center gap-1 bg-gray-100 dark:bg-slate-800/90 p-1 rounded-xl">
+                        <span class="text-[11px] font-semibold text-gray-500 dark:text-slate-400 px-1.5 hidden md:inline">Peta:</span>
+                        <button
+                            v-for="b in quickBasemaps"
+                            :key="b.id"
+                            type="button"
+                            @click="changeBasemap(b.id)"
+                            :class="[
+                                'px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer',
+                                activeBasemap === b.id
+                                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs font-bold ring-1 ring-black/5 dark:ring-white/10'
+                                    : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
+                            ]"
+                            :title="b.description"
+                        >
+                            <span>{{ b.icon }}</span>
+                            <span>{{ b.shortLabel }}</span>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Static Legend Row Above Map -->
@@ -2360,9 +2546,71 @@ onUnmounted(() => {
                     </template>
                 </div>
 
-                <!-- Leaflet Map Container with Floating HUD Legend -->
+                <!-- Leaflet Map Container with Floating HUD Legend & Map Type Switcher -->
                 <div class="w-full h-[640px] rounded-xl overflow-hidden border border-gray-200 dark:border-slate-800 relative bg-gray-50 dark:bg-slate-950">
                     <div ref="mapEl" class="w-full h-full z-0" id="radar-map"></div>
+
+                    <!-- ═══ FLOATING ON-MAP BASEMAP SWITCHER (GOOGLE MAPS STYLE) ═══ -->
+                    <div class="basemap-menu-container absolute top-3 left-14 sm:top-4 sm:left-14 z-[400] transition-all duration-200">
+                        <div class="relative">
+                            <button
+                                type="button"
+                                @click="isMapTypeMenuOpen = !isMapTypeMenuOpen"
+                                class="px-3 py-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-xl border border-gray-200 dark:border-slate-700/80 rounded-xl text-xs font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2 hover:bg-white dark:hover:bg-slate-800 transition-all hover:scale-105 cursor-pointer"
+                                title="Pilih Model Tampilan Maps"
+                            >
+                                <span class="text-sm">{{ currentBasemap.icon }}</span>
+                                <span class="hidden sm:inline">{{ currentBasemap.label }}</span>
+                                <span class="sm:hidden">{{ currentBasemap.shortLabel }}</span>
+                                <svg class="w-3.5 h-3.5 text-gray-500 transition-transform duration-200" :class="{ 'rotate-180': isMapTypeMenuOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+
+                            <!-- Dropdown Menu -->
+                            <div
+                                v-if="isMapTypeMenuOpen"
+                                class="absolute left-0 mt-2 w-64 sm:w-72 bg-white/98 dark:bg-slate-900/98 backdrop-blur-md shadow-2xl border border-gray-200 dark:border-slate-700/80 rounded-2xl p-2.5 z-50 select-none animate-in fade-in zoom-in-95 duration-150"
+                            >
+                                <div class="text-[10px] uppercase font-extrabold tracking-wider text-gray-400 dark:text-slate-400 px-2 py-1 mb-1 flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-1.5">
+                                    <span>PILIH TAMPILAN MAPS</span>
+                                    <span class="text-blue-600 dark:text-blue-400 font-bold">6 Pilihan</span>
+                                </div>
+                                <div class="space-y-1 mt-1.5 max-h-[380px] overflow-y-auto">
+                                    <button
+                                        v-for="b in basemaps"
+                                        :key="b.id"
+                                        type="button"
+                                        @click="changeBasemap(b.id); isMapTypeMenuOpen = false"
+                                        :class="[
+                                            'w-full flex items-center gap-2.5 p-2 rounded-xl text-left transition-all cursor-pointer group',
+                                            activeBasemap === b.id
+                                                ? 'bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300'
+                                                : 'hover:bg-gray-100 dark:hover:bg-slate-800/80 text-gray-700 dark:text-slate-200 border border-transparent'
+                                        ]"
+                                    >
+                                        <div class="w-8 h-8 rounded-lg flex items-center justify-center text-base shadow-xs flex-shrink-0 bg-gradient-to-br" :class="b.previewClass || 'from-gray-100 to-gray-200'">
+                                            {{ b.icon }}
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center gap-1.5">
+                                                <span class="text-xs font-bold truncate">{{ b.label }}</span>
+                                                <span v-if="b.badge" class="px-1.5 py-0.2 rounded-full text-[9px] font-extrabold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                                                    {{ b.badge }}
+                                                </span>
+                                            </div>
+                                            <p class="text-[10px] text-gray-500 dark:text-slate-400 truncate mt-0.5 leading-tight">
+                                                {{ b.description }}
+                                            </p>
+                                        </div>
+                                        <div v-if="activeBasemap === b.id" class="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center flex-shrink-0">
+                                            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- ═══ FLOATING ON-MAP LEGEND HUD ═══ -->
                     <div class="absolute top-3 right-3 sm:top-4 sm:right-4 z-[400] transition-all duration-200">
