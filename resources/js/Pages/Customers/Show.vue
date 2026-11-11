@@ -1699,8 +1699,13 @@
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">VLAN ID Hotspot (Opsional)</label>
-                                    <input v-model="activationForm.hotspot_vlan_id" type="text" class="w-full border rounded-lg px-4 py-2.5 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white border-gray-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500'" placeholder="Misal: 200" :readonly="!isEditingOnt" />
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="block text-sm font-medium text-gray-700">VLAN ID Hotspot (Opsional)</label>
+                                        <button v-if="resolveDefaultHotspotVlan(customer)" type="button" @click="activationForm.hotspot_vlan_id = resolveDefaultHotspotVlan(customer)" class="text-[10px] text-amber-800 hover:text-amber-950 bg-amber-100 hover:bg-amber-200 px-1.5 py-0.5 rounded font-bold transition-all flex items-center gap-0.5 cursor-pointer" title="Sinkronkan dengan VLAN Hotspot OLT PON">
+                                            <span>⚡ OLT: {{ resolveDefaultHotspotVlan(customer) }}</span>
+                                        </button>
+                                    </div>
+                                    <input v-model="activationForm.hotspot_vlan_id" type="text" class="w-full border rounded-lg px-4 py-2.5 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white border-gray-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500'" :placeholder="resolveDefaultHotspotVlan(customer) ? `Auto: ${resolveDefaultHotspotVlan(customer)}` : 'Misal: 200'" :readonly="!isEditingOnt" />
                                 </div>
                             </div>
                         </div>
@@ -1984,8 +1989,13 @@
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">VLAN ID Hotspot (Opsional)</label>
-                                    <input v-model="activeConfigForm.hotspot_vlan_id" type="text" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all" placeholder="Misal: 200" />
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="block text-sm font-medium text-gray-700">VLAN ID Hotspot (Opsional)</label>
+                                        <button v-if="resolveDefaultHotspotVlan(customer)" type="button" @click="activeConfigForm.hotspot_vlan_id = resolveDefaultHotspotVlan(customer)" class="text-[10px] text-amber-800 hover:text-amber-950 bg-amber-100 hover:bg-amber-200 px-1.5 py-0.5 rounded font-bold transition-all flex items-center gap-0.5 cursor-pointer" title="Sinkronkan dengan VLAN Hotspot OLT PON">
+                                            <span>⚡ OLT: {{ resolveDefaultHotspotVlan(customer) }}</span>
+                                        </button>
+                                    </div>
+                                    <input v-model="activeConfigForm.hotspot_vlan_id" type="text" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all" :placeholder="resolveDefaultHotspotVlan(customer) ? `Auto: ${resolveDefaultHotspotVlan(customer)}` : 'Misal: 200'" />
                                 </div>
                             </div>
                         </div>
@@ -3542,8 +3552,13 @@
                                     <input v-model="editActivationForm.hotspot_password" type="text" class="w-full text-sm border-amber-300 rounded-lg focus:ring-amber-500" />
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-semibold text-gray-600 mb-1">VLAN ID (Opsional)</label>
-                                    <input v-model="editActivationForm.hotspot_vlan_id" type="text" class="w-full text-sm border-amber-300 rounded-lg focus:ring-amber-500" />
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="block text-xs font-semibold text-gray-600">VLAN ID (Opsional)</label>
+                                        <button v-if="resolveDefaultHotspotVlan(customer)" type="button" @click="editActivationForm.hotspot_vlan_id = resolveDefaultHotspotVlan(customer)" class="text-[9px] text-amber-800 hover:text-amber-950 bg-amber-100 hover:bg-amber-200 px-1 py-0.2 rounded font-bold transition-all flex items-center gap-0.5 cursor-pointer" title="Sinkronkan dengan VLAN Hotspot OLT PON">
+                                            <span>⚡ {{ resolveDefaultHotspotVlan(customer) }}</span>
+                                        </button>
+                                    </div>
+                                    <input v-model="editActivationForm.hotspot_vlan_id" type="text" class="w-full text-sm border-amber-300 rounded-lg focus:ring-amber-500" :placeholder="resolveDefaultHotspotVlan(customer) ? `Auto: ${resolveDefaultHotspotVlan(customer)}` : 'Misal: 200'" />
                                 </div>
                             </div>
                         </div>
@@ -4801,6 +4816,102 @@ if (!canToggleTax.value) {
     initialTaxEnabled = (globalPpn > 0);
 }
 
+// Resolusi otomatis VLAN dari topologi ODP -> ODC -> OLT
+function resolveDefaultHotspotVlan(customer) {
+    if (!customer) return '';
+    if (customer.ont?.hotspot_vlan_id) return String(customer.ont.hotspot_vlan_id);
+    if (customer.ont?.resolved_hotspot_vlan_id) return String(customer.ont.resolved_hotspot_vlan_id);
+
+    const ont = customer.ont;
+    const odp = ont?.odp || (customer.surveys && customer.surveys[0]?.odp);
+    const odc = odp?.odc;
+    const olt = odc?.olt;
+    const ponPort = odc?.pon_port;
+
+    if (olt && olt.pon_vlans) {
+        let vlans = olt.pon_vlans;
+        if (typeof vlans === 'string') {
+            try { vlans = JSON.parse(vlans); } catch (e) { vlans = []; }
+        }
+        if (Array.isArray(vlans)) {
+            if (ponPort) {
+                const portData = vlans.find(p => String(p.port) === String(ponPort));
+                if (portData && Array.isArray(portData.vlans)) {
+                    const hsVlan = portData.vlans.find(v => {
+                        const mode = (v.access_mode || '').toUpperCase();
+                        const name = (v.name || '').toLowerCase();
+                        return mode === 'HOTSPOT' || name.includes('hotspot');
+                    });
+                    if (hsVlan && hsVlan.vlan_id) {
+                        return String(hsVlan.vlan_id);
+                    }
+                }
+            }
+            for (const p of vlans) {
+                if (Array.isArray(p.vlans)) {
+                    const hs = p.vlans.find(v => {
+                        const mode = (v.access_mode || '').toUpperCase();
+                        const name = (v.name || '').toLowerCase();
+                        return (mode === 'HOTSPOT' || name.includes('hotspot')) && v.vlan_id;
+                    });
+                    if (hs && hs.vlan_id) return String(hs.vlan_id);
+                }
+            }
+        }
+    }
+
+    return '';
+}
+
+function resolveDefaultPppoeVlan(customer) {
+    if (!customer) return '';
+    if (customer.ont?.vlan_id) return String(customer.ont.vlan_id);
+    if (customer.ont?.resolved_vlan_id) return String(customer.ont.resolved_vlan_id);
+
+    const ont = customer.ont;
+    const odp = ont?.odp || (customer.surveys && customer.surveys[0]?.odp);
+    const odc = odp?.odc;
+    const olt = odc?.olt;
+    const ponPort = odc?.pon_port;
+
+    if (olt && olt.pon_vlans) {
+        let vlans = olt.pon_vlans;
+        if (typeof vlans === 'string') {
+            try { vlans = JSON.parse(vlans); } catch (e) { vlans = []; }
+        }
+        if (Array.isArray(vlans)) {
+            if (ponPort) {
+                const portData = vlans.find(p => String(p.port) === String(ponPort));
+                if (portData && Array.isArray(portData.vlans)) {
+                    const pppoeVlan = portData.vlans.find(v => {
+                        const mode = (v.access_mode || '').toUpperCase();
+                        const name = (v.name || '').toLowerCase();
+                        return mode === 'PPPOE' || name.includes('pppoe');
+                    });
+                    if (pppoeVlan && pppoeVlan.vlan_id) {
+                        return String(pppoeVlan.vlan_id);
+                    }
+                }
+            }
+            for (const p of vlans) {
+                if (Array.isArray(p.vlans)) {
+                    const pv = p.vlans.find(v => {
+                        const mode = (v.access_mode || '').toUpperCase();
+                        const name = (v.name || '').toLowerCase();
+                        return (mode === 'PPPOE' || name.includes('pppoe')) && v.vlan_id;
+                    });
+                    if (pv && pv.vlan_id) return String(pv.vlan_id);
+                }
+            }
+        }
+    }
+
+    return olt?.default_vlan ? String(olt.default_vlan) : '';
+}
+
+const defaultPppoeVlanCust = resolveDefaultPppoeVlan(props.customer);
+const defaultHsVlanCust = resolveDefaultHotspotVlan(props.customer);
+
 const activationForm = useForm({
     activation_date: new Date().toISOString().split('T')[0],
     billing_type: props.customer?.billing_type || defaultBillingType.value || 'prabayar',
@@ -4811,13 +4922,13 @@ const activationForm = useForm({
     wifi_password: props.customer?.ont?.wifi_password || props.customer?.wifi_password || '',
     pppoe_user: props.customer?.ont?.pppoe_user || props.customer?.ont?.hotspot_user || props.customer?.pppoe_username || '',
     pppoe_password: props.customer?.ont?.pppoe_password || props.customer?.ont?.hotspot_password || props.customer?.pppoe_password || '',
-    vlan_mode: props.customer?.ont?.vlan_mode || '',
-    vlan_id: props.customer?.ont?.vlan_id || '',
+    vlan_mode: props.customer?.ont?.vlan_mode || (props.customer?.ont?.vlan_id || defaultPppoeVlanCust ? 'VLAN' : ''),
+    vlan_id: props.customer?.ont?.vlan_id || defaultPppoeVlanCust || '',
     access_mode: props.customer?.ont?.access_mode || 'PPPOE',
     free_hotspot: props.customer?.ont?.free_hotspot || false,
     hotspot_user: props.customer?.ont?.hotspot_user || '',
     hotspot_password: props.customer?.ont?.hotspot_password || '',
-    hotspot_vlan_id: props.customer?.ont?.hotspot_vlan_id || '',
+    hotspot_vlan_id: props.customer?.ont?.hotspot_vlan_id || defaultHsVlanCust || '',
     ip_login: props.customer?.ont?.ip_login || '192.168.1.1',
     login_user: props.customer?.ont?.login_user || 'admin',
     login_password: props.customer?.ont?.login_password || 'admin',
@@ -5035,16 +5146,33 @@ function openEditActiveModal() {
         activeConfigForm.wifi_password = props.customer.ont?.wifi_password || props.customer.wifi_password || '';
         activeConfigForm.pppoe_user = props.customer.ont?.pppoe_user || props.customer.ont?.hotspot_user || props.customer.pppoe_username || '';
         activeConfigForm.pppoe_password = props.customer.ont?.pppoe_password || props.customer.ont?.hotspot_password || props.customer.pppoe_password || '';
-        activeConfigForm.vlan_mode = props.customer.ont?.vlan_mode || '';
-        activeConfigForm.vlan_id = props.customer.ont?.vlan_id || '';
+        const defPppoe = resolveDefaultPppoeVlan(props.customer);
+        const defHs = resolveDefaultHotspotVlan(props.customer);
+
+        activeConfigForm.vlan_mode = props.customer.ont?.vlan_mode || (props.customer.ont?.vlan_id || defPppoe ? 'VLAN' : '');
+        activeConfigForm.vlan_id = props.customer.ont?.vlan_id || defPppoe || '';
         activeConfigForm.access_mode = props.customer.ont?.access_mode || 'PPPOE';
         activeConfigForm.free_hotspot = props.customer.ont?.free_hotspot || false;
         activeConfigForm.hotspot_user = props.customer.ont?.hotspot_user || props.customer.ont?.pppoe_user || props.customer.pppoe_username || '';
         activeConfigForm.hotspot_password = props.customer.ont?.hotspot_password || props.customer.ont?.pppoe_password || props.customer.pppoe_password || '';
-        activeConfigForm.hotspot_vlan_id = props.customer.ont?.hotspot_vlan_id || '';
+        activeConfigForm.hotspot_vlan_id = props.customer.ont?.hotspot_vlan_id || defHs || '';
     }
     showEditActiveModal.value = true;
 }
+
+watch(() => activeConfigForm.free_hotspot, (val) => {
+    if (val && props.customer) {
+        if (!activeConfigForm.hotspot_vlan_id) {
+            activeConfigForm.hotspot_vlan_id = resolveDefaultHotspotVlan(props.customer) || '';
+        }
+        if (!activeConfigForm.hotspot_user) {
+            const cleanName = (props.customer.name || 'USER').replace(/[^a-zA-Z0-9]/g, '').slice(0, 8).toUpperCase();
+            const randSuffix = Math.floor(10 + Math.random() * 90);
+            activeConfigForm.hotspot_user = cleanName + randSuffix;
+            activeConfigForm.hotspot_password = cleanName + randSuffix;
+        }
+    }
+});
 
 function submitEditActive() {
     const isHs = ['HOTSPOT/MEMBER', 'HOTSPOT', 'MEMBER'].includes((activeConfigForm.access_mode || '').toUpperCase());
@@ -5952,21 +6080,38 @@ function openEditActivationModal() {
     }
     editActivationForm.access_mode = mode;
 
+    const defPppoe = resolveDefaultPppoeVlan(cust);
+    const defHs = resolveDefaultHotspotVlan(cust);
+
     editActivationForm.wifi_ssid = ont?.wifi_ssid || cust?.wifi_ssid || '';
     editActivationForm.wifi_password = ont?.wifi_password || cust?.wifi_password || '';
     editActivationForm.pppoe_user = ont?.pppoe_user || ont?.hotspot_user || '';
     editActivationForm.pppoe_password = ont?.pppoe_password || ont?.hotspot_password || '';
-    editActivationForm.vlan_mode = ont?.vlan_mode || '';
-    editActivationForm.vlan_id = ont?.vlan_id || '';
+    editActivationForm.vlan_mode = ont?.vlan_mode || (ont?.vlan_id || defPppoe ? 'VLAN' : '');
+    editActivationForm.vlan_id = ont?.vlan_id || defPppoe || '';
     editActivationForm.ip_login = ont?.ip_login || '192.168.1.1';
     editActivationForm.login_user = ont?.login_user || 'admin';
     editActivationForm.login_password = ont?.login_password || 'admin';
     editActivationForm.free_hotspot = Boolean(ont?.free_hotspot);
     editActivationForm.hotspot_user = ont?.hotspot_user || '';
     editActivationForm.hotspot_password = ont?.hotspot_password || '';
-    editActivationForm.hotspot_vlan_id = ont?.hotspot_vlan_id || '';
+    editActivationForm.hotspot_vlan_id = ont?.hotspot_vlan_id || defHs || '';
     showEditActivationModal.value = true;
 }
+
+watch(() => editActivationForm.free_hotspot, (val) => {
+    if (val && props.customer) {
+        if (!editActivationForm.hotspot_vlan_id) {
+            editActivationForm.hotspot_vlan_id = resolveDefaultHotspotVlan(props.customer) || '';
+        }
+        if (!editActivationForm.hotspot_user) {
+            const cleanName = (props.customer.name || 'USER').replace(/[^a-zA-Z0-9]/g, '').slice(0, 8).toUpperCase();
+            const randSuffix = Math.floor(10 + Math.random() * 90);
+            editActivationForm.hotspot_user = cleanName + randSuffix;
+            editActivationForm.hotspot_password = cleanName + randSuffix;
+        }
+    }
+});
 
 function submitEditActivation() {
     const isHs = ['HOTSPOT/MEMBER', 'HOTSPOT', 'MEMBER'].includes((editActivationForm.access_mode || '').toUpperCase());

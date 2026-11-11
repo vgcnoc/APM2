@@ -55,6 +55,11 @@ class Ont extends Model
         'last_rx_notes',
     ];
 
+    protected $appends = [
+        'resolved_hotspot_vlan_id',
+        'resolved_vlan_id',
+    ];
+
     protected function casts(): array
     {
         return [
@@ -697,5 +702,111 @@ class Ont extends Model
         }
 
         return $res;
+    }
+
+    /**
+     * Dapatkan VLAN ID Hotspot otomatis dari konfigurasi OLT PON topologi jaringan
+     */
+    public function resolveHotspotVlanId(): ?string
+    {
+        if (!empty($this->hotspot_vlan_id)) {
+            return (string) $this->hotspot_vlan_id;
+        }
+
+        $odp = $this->relationLoaded('odp') ? $this->odp : null;
+        if (!$odp && $this->relationLoaded('customer') && $this->customer) {
+            $odp = $this->customer->relationLoaded('surveys') ? $this->customer->surveys?->first()?->odp : null;
+        }
+        if (!$odp && $this->odp_id) {
+            $odp = $this->odp;
+        }
+
+        if ($odp) {
+            $odc = $odp->relationLoaded('odc') ? $odp->odc : $odp->odc;
+            if ($odc) {
+                $olt = $odc->relationLoaded('olt') ? $odc->olt : $odc->olt;
+                $ponPort = $odc->pon_port;
+
+                if ($olt && $ponPort && !empty($olt->pon_vlans)) {
+                    $ponVlans = is_string($olt->pon_vlans) ? json_decode($olt->pon_vlans, true) : $olt->pon_vlans;
+                    if (is_array($ponVlans)) {
+                        $portConfig = collect($ponVlans)->first(fn($p) => ($p['port'] ?? null) == $ponPort);
+                        if ($portConfig && !empty($portConfig['vlans']) && is_array($portConfig['vlans'])) {
+                            foreach ($portConfig['vlans'] as $vlan) {
+                                $mode = strtoupper($vlan['access_mode'] ?? '');
+                                $name = strtolower($vlan['name'] ?? '');
+                                if ($mode === 'HOTSPOT' || str_contains($name, 'hotspot')) {
+                                    if (!empty($vlan['vlan_id'])) {
+                                        return (string) $vlan['vlan_id'];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Dapatkan VLAN ID PPPoE otomatis dari konfigurasi OLT PON topologi jaringan
+     */
+    public function resolvePppoeVlanId(): ?string
+    {
+        if (!empty($this->vlan_id)) {
+            return (string) $this->vlan_id;
+        }
+
+        $odp = $this->relationLoaded('odp') ? $this->odp : null;
+        if (!$odp && $this->relationLoaded('customer') && $this->customer) {
+            $odp = $this->customer->relationLoaded('surveys') ? $this->customer->surveys?->first()?->odp : null;
+        }
+        if (!$odp && $this->odp_id) {
+            $odp = $this->odp;
+        }
+
+        if ($odp) {
+            $odc = $odp->relationLoaded('odc') ? $odp->odc : $odp->odc;
+            if ($odc) {
+                $olt = $odc->relationLoaded('olt') ? $odc->olt : $odc->olt;
+                $ponPort = $odc->pon_port;
+
+                if ($olt && $ponPort && !empty($olt->pon_vlans)) {
+                    $ponVlans = is_string($olt->pon_vlans) ? json_decode($olt->pon_vlans, true) : $olt->pon_vlans;
+                    if (is_array($ponVlans)) {
+                        $portConfig = collect($ponVlans)->first(fn($p) => ($p['port'] ?? null) == $ponPort);
+                        if ($portConfig && !empty($portConfig['vlans']) && is_array($portConfig['vlans'])) {
+                            foreach ($portConfig['vlans'] as $vlan) {
+                                $mode = strtoupper($vlan['access_mode'] ?? '');
+                                $name = strtolower($vlan['name'] ?? '');
+                                if ($mode === 'PPPOE' || str_contains($name, 'pppoe')) {
+                                    if (!empty($vlan['vlan_id'])) {
+                                        return (string) $vlan['vlan_id'];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if ($olt && !empty($olt->default_vlan)) {
+                    return (string) $olt->default_vlan;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public function getResolvedHotspotVlanIdAttribute(): ?string
+    {
+        return $this->resolveHotspotVlanId();
+    }
+
+    public function getResolvedVlanIdAttribute(): ?string
+    {
+        return $this->resolvePppoeVlanId();
     }
 }

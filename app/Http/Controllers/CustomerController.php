@@ -4336,18 +4336,29 @@ class CustomerController extends Controller
                     }
                 }
 
+                $isFreeHotspot = !empty($validated['free_hotspot']);
+                $hotspotVlan = $validated['hotspot_vlan_id'] ?? null;
+                if (empty($hotspotVlan) && ($isFreeHotspot || $isHotspot)) {
+                    $hotspotVlan = $customer->ont->resolveHotspotVlanId();
+                }
+
+                $vlanId = $validated['vlan_id'] ?? $customer->ont->vlan_id;
+                if (empty($vlanId)) {
+                    $vlanId = $customer->ont->resolvePppoeVlanId();
+                }
+
                 $customer->ont->update([
                     'wifi_ssid' => $validated['wifi_ssid'] ?? $customer->ont->wifi_ssid,
                     'wifi_password' => $validated['wifi_password'] ?? $customer->ont->wifi_password,
                     'pppoe_user' => $pppoeUser,
                     'pppoe_password' => $pppoePassword,
                     'vlan_mode' => $validated['vlan_mode'] ?? $customer->ont->vlan_mode,
-                    'vlan_id' => $validated['vlan_id'] ?? $customer->ont->vlan_id,
+                    'vlan_id' => $vlanId,
                     'access_mode' => $accessMode,
-                    'free_hotspot' => !empty($validated['free_hotspot']),
+                    'free_hotspot' => $isFreeHotspot,
                     'hotspot_user' => $hotspotUser,
                     'hotspot_password' => $hotspotPassword,
-                    'hotspot_vlan_id' => $validated['hotspot_vlan_id'] ?? null,
+                    'hotspot_vlan_id' => $hotspotVlan,
                     'ip_login' => $validated['ip_login'] ?? $customer->ont->ip_login,
                     'login_user' => $validated['login_user'] ?? $customer->ont->login_user,
                     'login_password' => $validated['login_password'] ?? $customer->ont->login_password,
@@ -5933,21 +5944,32 @@ class CustomerController extends Controller
                 }
             }
 
+            $isFreeHotspot = $request->boolean('free_hotspot', false);
+            $hotspotVlan = $validated['hotspot_vlan_id'] ?? null;
+            if (empty($hotspotVlan) && ($isFreeHotspot || $isHotspot)) {
+                $hotspotVlan = $ont->resolveHotspotVlanId();
+            }
+
+            $vlanId = $validated['vlan_id'] ?? $ont->vlan_id;
+            if (empty($vlanId)) {
+                $vlanId = $ont->resolvePppoeVlanId();
+            }
+
             $ont->update([
                 'wifi_ssid' => $validated['wifi_ssid'] ?? $ont->wifi_ssid,
                 'wifi_password' => $validated['wifi_password'] ?? $ont->wifi_password,
                 'pppoe_user' => $pppoeUser,
                 'pppoe_password' => $pppoePassword,
                 'vlan_mode' => $validated['vlan_mode'],
-                'vlan_id' => $validated['vlan_id'],
+                'vlan_id' => $vlanId,
                 'access_mode' => $accessMode,
                 'ip_login' => $validated['ip_login'],
                 'login_user' => $validated['login_user'],
                 'login_password' => $validated['login_password'],
-                'free_hotspot' => $request->boolean('free_hotspot', false),
+                'free_hotspot' => $isFreeHotspot,
                 'hotspot_user' => $hotspotUser,
                 'hotspot_password' => $hotspotPassword,
-                'hotspot_vlan_id' => $validated['hotspot_vlan_id'],
+                'hotspot_vlan_id' => $hotspotVlan,
             ]);
 
             if (!empty($pppoeUser)) {
