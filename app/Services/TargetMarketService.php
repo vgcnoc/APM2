@@ -13,6 +13,38 @@ use Illuminate\Support\Facades\DB;
 class TargetMarketService
 {
     /**
+     * Tentukan karyawan yang berhak menerima reward closing dari pelanggan.
+     */
+    public static function resolveCustomerEmployee(Customer $customer, ?string $targetRole = null): ?User
+    {
+        $candidateId = $customer->sales_id;
+
+        // Fallback cerdas jika sales_id tidak terisi
+        if (!$candidateId) {
+            if ($targetRole === 'teknisi' && !empty($customer->psb_received_by)) {
+                $candidateId = $customer->psb_received_by;
+            } elseif (!empty($customer->user_id)) {
+                $candidateId = $customer->user_id;
+            }
+        }
+
+        if (!$candidateId) {
+            return null;
+        }
+
+        $employee = User::find($candidateId);
+        if (!$employee || $employee->isExemptFromAttendanceAndPayroll()) {
+            return null;
+        }
+
+        if (!empty($targetRole) && $targetRole !== 'all' && $employee->role !== $targetRole) {
+            return null;
+        }
+
+        return $employee;
+    }
+
+    /**
      * Hitung dan catat bonus target market untuk sebuah aktivasi pelanggan.
      */
     public static function processCustomerActivation(Customer $customer): void
@@ -26,74 +58,80 @@ class TargetMarketService
             return;
         }
 
-        if (!$customer->sales_id) {
-            return;
-        }
-        $activationDateStr = $activationDate->toDateString();
         $month = $activationDate->month;
         $year = $activationDate->year;
 
-        // Ambil program aktif untuk periode ini (berdasarkan rentang tanggal aktif atau period_month/year)
-        $programs = TargetMarketProgram::where('is_active', true)
-            ->where(function ($q) use ($activationDateStr, $month, $year) {
-                $q->where(function ($sub) use ($activationDateStr) {
-                    $sub->whereNotNull('start_date')
-                        ->where('start_date', '<=', $activationDateStr)
-                        ->where(function ($endSub) use ($activationDateStr) {
-                            $endSub->whereNull('end_date')
-                                   ->orWhere('end_date', '>=', $activationDateStr);
-                        });
-                })->orWhere(function ($sub) use ($month, $year) {
-                    $sub->whereNull('start_date')
-                        ->where('period_month', $month)
-                        ->where('period_year', $year);
-                });
-            })
-            ->get();
+        // Jalankan recalculatePeriod untuk bulan ini agar seluruh urutan kronologis dan target bonus selalu konsisten
+        self::recalculatePeriod($month, $year);
+    }
 
-        if ($programs->isEmpty()) {
+    /**
+     * Tangani pembatalan, deaktifasi, atau penghapusan pelanggan agar bonus tidak cair fiktif.
+     */
+    public static function handleCustomerDeactivation(Customer $customer): void
+    {
+        $logs = TargetMarketLog::where('customer_id', $customer->id)->get();
+        if ($logs->isEmpty()) {
             return;
         }
 
-        $employee = User::find($customer->sales_id);
-        if (!$employee || $employee->isExemptFromAttendanceAndPayroll()) {
-            return;
+        $periodsToRecalculate = [];
+
+        foreach ($logs as $log) {
+            $periodsToRecalculate[$log->period_year . '_' . $log->period_month] = [
+                'month' => $log->period_month,
+                'year' => $log->period_year,
+            ];
+
+            // Jika belum disinkronkan ke payroll atau insentifnya masih pending, hapus log
+            if ($log->status !== 'synced_payroll' || !$log->incentive_id) {
+                $log->delete();
+            } else {
+                $inc = Incentive::find($log->incentive_id);
+                if ($inc && $inc->status === 'pending') {
+                    $log->delete();
+                }
+            }
         }
 
-        foreach ($programs as $program) {
-            // Filter role jika ditentukan
-            if (!empty($program->target_role) && $program->target_role !== 'all' && $employee->role !== $program->target_role) {
-                continue;
-            }
-
-            // Filter wilayah/area jika program ditargetkan khusus untuk area tertentu
-            if (!empty($program->target_area_id) && (int) $customer->area_id !== (int) $program->target_area_id) {
-                continue;
-            }
-
-            self::calculateAndLog($program, $customer, $employee, $month, $year);
-        }
-
-        // Auto-sync langsung ke modul Insentif Payroll
-        try {
-            self::syncToPayroll($month, $year);
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning("[TargetMarket Auto-Sync] " . $e->getMessage());
+        foreach ($periodsToRecalculate as $period) {
+            self::recalculatePeriod($period['month'], $period['year']);
         }
     }
 
     /**
-     * Kalkulasi bonus per customer per program.
+     * Kalkulasi bonus per customer per program dengan urutan kronologis deterministik.
      */
-    public static function calculateAndLog(TargetMarketProgram $program, Customer $customer, User $employee, int $month, int $year): ?TargetMarketLog
-    {
-        // Hitung urutan closing karyawan ini di periode berjalan
-        $previousCount = TargetMarketLog::where('program_id', $program->id)
-            ->where('user_id', $employee->id)
-            ->where('customer_id', '!=', $customer->id)
-            ->count();
+    public static function calculateAndLog(
+        TargetMarketProgram $program,
+        Customer $customer,
+        User $employee,
+        int $month,
+        int $year,
+        ?int $explicitClosingNumber = null
+    ): ?TargetMarketLog {
+        if ($explicitClosingNumber !== null) {
+            $currentClosingNumber = $explicitClosingNumber;
+        } else {
+            // Hitung urutan kronologis aktivasi pelanggan karyawan ini di periode berjalan
+            $custDate = $customer->activation_date ? Carbon::parse($customer->activation_date)->toDateString() : ($customer->created_at ? $customer->created_at->toDateString() : now()->toDateString());
 
-        $currentClosingNumber = $previousCount + 1;
+            $priorCount = TargetMarketLog::where('program_id', $program->id)
+                ->where('user_id', $employee->id)
+                ->where('customer_id', '!=', $customer->id)
+                ->whereHas('customer', function ($q) use ($custDate, $customer) {
+                    $q->where(function ($sub) use ($custDate, $customer) {
+                        $sub->whereDate('activation_date', '<', $custDate)
+                            ->orWhere(function ($eq) use ($custDate, $customer) {
+                                $eq->whereDate('activation_date', '=', $custDate)
+                                   ->where('id', '<', $customer->id);
+                            });
+                    });
+                })
+                ->count();
+
+            $currentClosingNumber = $priorCount + 1;
+        }
 
         $baseReward = (float) $program->reward_flat;
         $tierReward = 0.0;
@@ -114,6 +152,7 @@ class TargetMarketService
                     $breakdown['tier'] = [
                         'tier_name' => "Tier ($min - " . ($max === PHP_INT_MAX ? 'keatas' : $max) . ")",
                         'reward' => $tierReward,
+                        'closing_seq' => $currentClosingNumber,
                     ];
                     break;
                 }
@@ -148,16 +187,32 @@ class TargetMarketService
             }
         }
 
-        // 4. Bonus Pencapaian Target Kuota (Lump Sum Reward saat target tercapai)
+        // 4. Bonus Pencapaian Target Kuota (Lump Sum Reward saat target tercapai tepat pada urutan ke-target_quota)
         if ($program->reward_bonus_target > 0 && $currentClosingNumber === (int) $program->target_quota) {
             $targetAchievedReward = (float) $program->reward_bonus_target;
             $breakdown['target_achieved'] = [
                 'target_quota' => $program->target_quota,
                 'lump_sum_bonus' => $targetAchievedReward,
+                'closing_seq' => $currentClosingNumber,
             ];
         }
 
         $totalReward = $baseReward + $tierReward + $areaReward + $packageReward + $targetAchievedReward;
+
+        $existingLog = TargetMarketLog::where('program_id', $program->id)
+            ->where('customer_id', $customer->id)
+            ->first();
+
+        // Lindungi status synced_payroll agar tidak ditimpa kembali menjadi approved jika sudah tercatat di payroll
+        $status = 'approved';
+        $incentiveId = null;
+
+        if ($existingLog) {
+            if ($existingLog->status === 'synced_payroll') {
+                $status = 'synced_payroll';
+                $incentiveId = $existingLog->incentive_id;
+            }
+        }
 
         $log = TargetMarketLog::updateOrCreate(
             [
@@ -175,7 +230,8 @@ class TargetMarketService
                 'concept_breakdown' => $breakdown,
                 'period_month' => $month,
                 'period_year' => $year,
-                'status' => 'approved',
+                'status' => $status,
+                'incentive_id' => $incentiveId,
             ]
         );
 
@@ -183,16 +239,10 @@ class TargetMarketService
     }
 
     /**
-     * Hitung ulang seluruh data untuk bulan & tahun tertentu.
+     * Hitung ulang seluruh data untuk bulan & tahun tertentu secara deterministik & sinkron.
      */
     public static function recalculatePeriod(int $month, int $year): array
     {
-        // Hapus log lama yang belum synced payroll untuk periode ini terlebih dahulu
-        TargetMarketLog::where('period_month', $month)
-            ->where('period_year', $year)
-            ->where('status', '!=', 'synced_payroll')
-            ->delete();
-
         $monthStart = Carbon::create($year, $month, 1)->startOfMonth()->toDateString();
         $monthEnd = Carbon::create($year, $month, 1)->endOfMonth()->toDateString();
 
@@ -213,11 +263,28 @@ class TargetMarketService
             })
             ->get();
 
+        // Lindungi log yang insentifnya SUDAH PAID (sudah cair saat payroll).
+        // Log yang belum paid (masih pending atau approved) aman untuk dibersihkan dan dihitung ulang.
+        $paidIncentiveIds = Incentive::where('status', 'paid')
+            ->where('reference_id', 'like', "target_market_%_{$year}_{$month}%")
+            ->pluck('id');
+
+        TargetMarketLog::where('period_month', $month)
+            ->where('period_year', $year)
+            ->where(function ($q) use ($paidIncentiveIds) {
+                $q->where('status', '!=', 'synced_payroll')
+                  ->orWhereNotIn('incentive_id', $paidIncentiveIds)
+                  ->orWhereNull('incentive_id');
+            })
+            ->delete();
+
         if ($programs->isEmpty()) {
+            // Sinkronkan ke payroll untuk membersihkan sisa pending incentive jika tidak ada program aktif
+            self::syncToPayroll($month, $year);
             return ['processed' => 0, 'total_bonus' => 0];
         }
 
-        // Cari pelanggan aktif di periode ini yang memiliki sales_id
+        // Ambil pelanggan berstatus aktif di periode ini
         $customers = Customer::where('status', 'active')
             ->where(function ($q) {
                 $q->where('is_migrated', false)
@@ -226,7 +293,6 @@ class TargetMarketService
                           ->whereDate('activation_date', '>=', '2026-10-01');
                   });
             })
-            ->whereNotNull('sales_id')
             ->where(function ($q) use ($month, $year) {
                 $q->where(function ($sub) use ($month, $year) {
                     $sub->whereNotNull('activation_date')
@@ -239,37 +305,69 @@ class TargetMarketService
                 });
             })
             ->with(['package', 'areaModel', 'sales'])
-            ->orderBy('activation_date')
-            ->orderBy('id')
             ->get();
 
         $processedCount = 0;
         $totalBonusSum = 0;
 
-        foreach ($customers as $cust) {
-            $employee = $cust->sales;
-            if (!$employee || $employee->isExemptFromAttendanceAndPayroll()) continue;
-
-            $custDateStr = $cust->activation_date ? Carbon::parse($cust->activation_date)->toDateString() : ($cust->created_at ? $cust->created_at->toDateString() : null);
-
-            foreach ($programs as $prog) {
+        foreach ($programs as $prog) {
+            // Saring customer yang memenuhi syarat rentang tanggal & area program
+            $eligibleCustomers = $customers->filter(function ($cust) use ($prog) {
+                $custDateStr = $cust->activation_date ? Carbon::parse($cust->activation_date)->toDateString() : ($cust->created_at ? $cust->created_at->toDateString() : null);
                 if ($custDateStr) {
-                    if ($prog->start_date && $custDateStr < Carbon::parse($prog->start_date)->toDateString()) continue;
-                    if ($prog->end_date && $custDateStr > Carbon::parse($prog->end_date)->toDateString()) continue;
-                }
-                if (!empty($prog->target_role) && $prog->target_role !== 'all' && $employee->role !== $prog->target_role) {
-                    continue;
+                    if ($prog->start_date && $custDateStr < Carbon::parse($prog->start_date)->toDateString()) return false;
+                    if ($prog->end_date && $custDateStr > Carbon::parse($prog->end_date)->toDateString()) return false;
                 }
                 if (!empty($prog->target_area_id) && (int) $cust->area_id !== (int) $prog->target_area_id) {
-                    continue;
+                    return false;
                 }
+                return true;
+            });
 
-                $log = self::calculateAndLog($prog, $cust, $employee, $month, $year);
-                if ($log) {
-                    $processedCount++;
-                    $totalBonusSum += (float) $log->total_reward;
+            // Kelompokkan per karyawan
+            $custsByEmployee = [];
+            foreach ($eligibleCustomers as $cust) {
+                $employee = self::resolveCustomerEmployee($cust, $prog->target_role);
+                if (!$employee) continue;
+
+                $custTimestamp = $cust->activation_date
+                    ? Carbon::parse($cust->activation_date)->timestamp
+                    : ($cust->created_at ? $cust->created_at->timestamp : 0);
+
+                $custsByEmployee[$employee->id][] = [
+                    'customer' => $cust,
+                    'employee' => $employee,
+                    'timestamp' => $custTimestamp,
+                    'id' => $cust->id,
+                ];
+            }
+
+            // Loop per karyawan dan urutkan secara kronologis untuk kalkulasi urutan closing yang presisi
+            foreach ($custsByEmployee as $empId => $items) {
+                usort($items, function ($a, $b) {
+                    if ($a['timestamp'] === $b['timestamp']) {
+                        return $a['id'] <=> $b['id'];
+                    }
+                    return $a['timestamp'] <=> $b['timestamp'];
+                });
+
+                $closingIndex = 1;
+                foreach ($items as $item) {
+                    $log = self::calculateAndLog($prog, $item['customer'], $item['employee'], $month, $year, $closingIndex);
+                    if ($log) {
+                        $processedCount++;
+                        $totalBonusSum += (float) $log->total_reward;
+                    }
+                    $closingIndex++;
                 }
             }
+        }
+
+        // Sinkronkan ke modul Insentif Payroll untuk memperbarui nominal pending
+        try {
+            self::syncToPayroll($month, $year);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("[TargetMarket Auto-Sync] " . $e->getMessage());
         }
 
         return [
@@ -279,7 +377,7 @@ class TargetMarketService
     }
 
     /**
-     * Sinkronkan akumulasi bonus ke modul Insentif Payroll.
+     * Sinkronkan akumulasi bonus ke modul Insentif Payroll secara aman.
      */
     public static function syncToPayroll(int $month, int $year): array
     {
@@ -308,7 +406,7 @@ class TargetMarketService
             foreach ($userIdsWithLogs as $userId) {
                 $userLogs = $userSums->get($userId, collect());
                 $sum = (float) $userLogs->sum('total_reward');
-                $count = $userLogs->count();
+                $count = $userLogs->pluck('customer_id')->unique()->count();
 
                 $user = User::find($userId);
                 if (!$user || $user->isExemptFromAttendanceAndPayroll()) continue;

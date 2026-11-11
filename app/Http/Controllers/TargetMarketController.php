@@ -15,8 +15,26 @@ use Inertia\Response;
 
 class TargetMarketController extends Controller
 {
+    /**
+     * Periksa otorisasi hak akses pengguna secara ketat.
+     */
+    private function checkAccess(?Request $request = null, string $permission = 'menu_target_market'): void
+    {
+        $user = $request ? $request->user() : auth()->user();
+        if (!$user) {
+            abort(401, 'Silakan login terlebih dahulu.');
+        }
+
+        $isSuperAdmin = $user->is_admin || $user->hasRole('super-admin') || $user->hasRole('admin');
+        if (!$isSuperAdmin && !$user->can($permission) && !$user->can('target_market_manage')) {
+            abort(403, 'Anda tidak memiliki hak akses untuk fitur Target Market ini.');
+        }
+    }
+
     public function index(Request $request): Response
     {
+        $this->checkAccess($request, 'menu_target_market');
+
         $month = (int) $request->query('month', now()->month);
         $year = (int) $request->query('year', now()->year);
         $tab = $request->query('tab', 'leaderboard'); // leaderboard, programs, transactions
@@ -49,9 +67,9 @@ class TargetMarketController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        // Ringkasan KPI Global
+        // Ringkasan KPI Global (Gunakan pelanggan unik agar tidak double-count saat multi-program)
         $totalBonusPeriod = (float) $logs->sum('total_reward');
-        $totalClosings = $logs->count();
+        $totalClosings = $logs->pluck('customer_id')->unique()->count();
         $totalEmployeesParticipating = $logs->pluck('user_id')->unique()->count();
         $activeProgramsCount = $programs->where('is_active', true)->count();
 
@@ -62,7 +80,8 @@ class TargetMarketController extends Controller
         $userGroups = $logs->groupBy('user_id');
         $leaderboard = $userGroups->map(function ($items, $userId) use ($targetQuota) {
             $user = $items->first()->user;
-            $count = $items->count();
+            // Gunakan unique customer_id agar closing tidak berlipat ganda saat ada banyak program aktif
+            $count = $items->pluck('customer_id')->unique()->count();
             $percentage = $targetQuota > 0 ? min(100, round(($count / $targetQuota) * 100)) : 0;
             $isAchieved = $count >= $targetQuota;
 
@@ -115,6 +134,8 @@ class TargetMarketController extends Controller
 
     public function storeProgram(Request $request)
     {
+        $this->checkAccess($request, 'target_market_program_create');
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'concept' => 'required|in:milestone_volume,area_expansion,package_tier,hybrid',
@@ -128,6 +149,9 @@ class TargetMarketController extends Controller
             'reward_flat' => 'required|numeric|min:0',
             'reward_bonus_target' => 'nullable|numeric|min:0',
             'rules' => 'nullable|array',
+            'rules.tiers' => 'nullable|array',
+            'rules.target_areas' => 'nullable|array',
+            'rules.target_packages' => 'nullable|array',
             'description' => 'nullable|string',
             'auto_disburse' => 'boolean',
         ]);
@@ -160,6 +184,8 @@ class TargetMarketController extends Controller
 
     public function updateProgram(Request $request, TargetMarketProgram $program)
     {
+        $this->checkAccess($request, 'target_market_program_create');
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'concept' => 'required|in:milestone_volume,area_expansion,package_tier,hybrid',
@@ -173,6 +199,9 @@ class TargetMarketController extends Controller
             'reward_flat' => 'required|numeric|min:0',
             'reward_bonus_target' => 'nullable|numeric|min:0',
             'rules' => 'nullable|array',
+            'rules.tiers' => 'nullable|array',
+            'rules.target_areas' => 'nullable|array',
+            'rules.target_packages' => 'nullable|array',
             'description' => 'nullable|string',
             'auto_disburse' => 'boolean',
         ]);
@@ -193,6 +222,8 @@ class TargetMarketController extends Controller
 
     public function toggleProgram(TargetMarketProgram $program)
     {
+        $this->checkAccess(request(), 'target_market_program_toggle');
+
         $program->is_active = !$program->is_active;
         $program->save();
 
@@ -204,21 +235,24 @@ class TargetMarketController extends Controller
 
     public function destroyProgram(TargetMarketProgram $program)
     {
+        $this->checkAccess(request(), 'target_market_program_delete');
+
         try {
             $title = $program->title;
             $month = $program->period_month;
             $year = $program->period_year;
 
-            // Cek apakah ada logs yang sudah disinkronkan ke payroll
+            // Cek apakah ada logs yang sudah disinkronkan ke payroll dan sudah dibayarkan (paid)
             $syncedLogsCount = TargetMarketLog::where('program_id', $program->id)
                 ->where('status', 'synced_payroll')
+                ->whereHas('incentive', fn($q) => $q->where('status', 'paid'))
                 ->count();
 
             if ($syncedLogsCount > 0) {
-                return back()->with('error', "Program '{$title}' tidak dapat dihapus karena sebagian bonusnya sudah disinkronkan ke Payroll. Anda dapat menonaktifkan program ini jika sudah tidak berlaku.");
+                return back()->with('error', "Program '{$title}' tidak dapat dihapus karena sebagian bonusnya sudah dicairkan pada Slip Penggajian (Paid). Anda dapat menonaktifkan program ini jika sudah tidak berlaku.");
             }
 
-            // Hapus log terkait yang belum disinkronkan ke payroll
+            // Hapus log terkait yang belum dibayarkan
             TargetMarketLog::where('program_id', $program->id)->delete();
 
             $program->delete();
@@ -234,6 +268,8 @@ class TargetMarketController extends Controller
 
     public function recalculate(Request $request)
     {
+        $this->checkAccess($request, 'target_market_recalculate');
+
         $month = (int) $request->input('month', now()->month);
         $year = (int) $request->input('year', now()->year);
 
@@ -245,6 +281,8 @@ class TargetMarketController extends Controller
 
     public function syncToPayroll(Request $request)
     {
+        $this->checkAccess($request, 'target_market_sync_payroll');
+
         $month = (int) $request->input('month', now()->month);
         $year = (int) $request->input('year', now()->year);
 

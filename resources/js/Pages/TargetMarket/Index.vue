@@ -170,8 +170,44 @@
                     </div>
                 </div>
 
-                <!-- Podium Top 3 (jika 2 orang atau lebih) -->
-                <div v-else-if="leaderboard.length >= 2" class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                <!-- Podium 2 Orang (Juara 1 & Juara 2 Seimbang) -->
+                <div v-else-if="leaderboard.length === 2" class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 max-w-4xl mx-auto">
+                    <!-- Juara 1 (Champion) -->
+                    <div class="bg-gradient-to-b from-amber-50/80 via-white to-white rounded-3xl p-6 border-2 border-amber-300 shadow-md flex flex-col items-center text-center relative order-1">
+                        <div class="absolute -top-3 px-3 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 text-white font-extrabold text-[10px] uppercase tracking-wider shadow-sm">
+                            👑 TOP PERFORMER
+                        </div>
+                        <span class="w-10 h-10 rounded-full bg-amber-400 text-white font-black text-base flex items-center justify-center mb-2 shadow-sm mt-1">1</span>
+                        <h4 class="font-bold text-gray-900 text-lg">{{ leaderboard[0].user_name }}</h4>
+                        <span class="text-xs text-gray-500 capitalize mb-3">{{ leaderboard[0].user_role }}</span>
+                        <div class="text-3xl font-black text-amber-600 font-mono">{{ leaderboard[0].closings_count }} <span class="text-xs text-gray-400">Closing</span></div>
+                        <div class="text-sm font-extrabold text-emerald-600 mt-1 font-mono">Rp {{ formatCurrency(leaderboard[0].total_reward) }}</div>
+                        <span v-if="leaderboard[0].is_achieved" class="mt-2 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800">
+                            🎯 TARGET TERCAPAI
+                        </span>
+                        <span v-else class="mt-2 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700">
+                            🚀 ON PROGRESS ({{ leaderboard[0].percentage }}%)
+                        </span>
+                    </div>
+
+                    <!-- Juara 2 -->
+                    <div class="bg-gradient-to-b from-slate-50 to-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col items-center text-center relative order-2">
+                        <span class="w-10 h-10 rounded-full bg-slate-200 text-slate-700 font-black text-base flex items-center justify-center mb-2 shadow-xs mt-1">2</span>
+                        <h4 class="font-bold text-gray-900 text-lg">{{ leaderboard[1].user_name }}</h4>
+                        <span class="text-xs text-gray-500 capitalize mb-3">{{ leaderboard[1].user_role }}</span>
+                        <div class="text-3xl font-black text-indigo-600 font-mono">{{ leaderboard[1].closings_count }} <span class="text-xs text-gray-400">Closing</span></div>
+                        <div class="text-sm font-extrabold text-emerald-600 mt-1 font-mono">Rp {{ formatCurrency(leaderboard[1].total_reward) }}</div>
+                        <span v-if="leaderboard[1].is_achieved" class="mt-2 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800">
+                            🎯 TARGET TERCAPAI
+                        </span>
+                        <span v-else class="mt-2 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
+                            🚀 ON PROGRESS ({{ leaderboard[1].percentage }}%)
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Podium Top 3 (jika 3 orang atau lebih) -->
+                <div v-else-if="leaderboard.length >= 3" class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
                     <!-- Juara 2 -->
                     <div v-if="leaderboard[1]" class="bg-gradient-to-b from-slate-50 to-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col items-center text-center relative order-2 md:order-1">
                         <span class="w-8 h-8 rounded-full bg-slate-200 text-slate-700 font-black text-sm flex items-center justify-center mb-2 shadow-xs">2</span>
@@ -353,6 +389,14 @@
                                     <div class="flex flex-wrap gap-1">
                                         <span v-for="(ta, taIdx) in prog.rules.target_areas" :key="taIdx" class="text-[10px] px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded-md border border-purple-200 font-medium">
                                             📍 {{ getAreaName(ta.area_id) }}: +Rp {{ formatCurrency(ta.bonus) }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div v-if="prog.rules?.target_packages && prog.rules.target_packages.length > 0" class="pt-1.5 border-t border-gray-200/50">
+                                    <span class="text-[10px] font-bold text-cyan-700 block mb-1">Bonus Paket Target:</span>
+                                    <div class="flex flex-wrap gap-1">
+                                        <span v-for="(tp, tpIdx) in prog.rules.target_packages" :key="tpIdx" class="text-[10px] px-1.5 py-0.5 bg-cyan-50 text-cyan-700 rounded-md border border-cyan-200 font-medium">
+                                            💎 {{ getPackageName(tp.package_id) }}: +Rp {{ formatCurrency(tp.bonus) }}
                                         </span>
                                     </div>
                                 </div>
@@ -651,6 +695,42 @@
                         </div>
                     </div>
 
+                    <!-- Kustomisasi Aturan Konsep Paket (Package Tier / Hybrid) -->
+                    <div v-if="form.concept === 'package_tier' || form.concept === 'hybrid'" class="p-3.5 bg-cyan-50/50 rounded-2xl border border-cyan-100 space-y-2.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-cyan-950 flex items-center gap-1.5">
+                                <span>💎</span> Aturan Bonus Tipe / Paket Internet Ekstra
+                            </span>
+                            <button type="button" @click="addPackageRow" class="text-[11px] text-cyan-700 font-bold hover:underline cursor-pointer flex items-center gap-1">
+                                <span>+</span> Tambah Paket Target
+                            </button>
+                        </div>
+                        <p class="text-[11px] text-cyan-800/80">
+                            Berikan bonus ekstra bagi karyawan yang closing paket internet berkecepatan / bernilai tinggi.
+                        </p>
+                        <div v-if="form.rules.target_packages && form.rules.target_packages.length > 0" class="space-y-2">
+                            <div v-for="(tPkg, pIdx) in form.rules.target_packages" :key="pIdx" class="flex items-center gap-2 flex-wrap sm:flex-nowrap bg-white p-2 rounded-xl border border-cyan-200/60 shadow-2xs">
+                                <div class="flex-1 min-w-[160px]">
+                                    <label class="block text-[10px] text-gray-400 font-semibold mb-0.5">Pilih Paket Internet</label>
+                                    <select v-model="tPkg.package_id" class="w-full text-xs rounded-lg border-gray-200 p-1.5 font-semibold focus:ring-cyan-500 focus:border-cyan-500">
+                                        <option value="">-- Pilih Paket Internet Target --</option>
+                                        <option v-for="pkg in master.packages" :key="pkg.id" :value="pkg.id">
+                                            💎 {{ pkg.name }} (Rp {{ formatCurrency(pkg.price) }} / {{ pkg.speed_mbps }} Mbps)
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="w-full sm:w-36">
+                                    <label class="block text-[10px] text-gray-400 font-semibold mb-0.5">Bonus Ekstra (Rp)</label>
+                                    <input v-model.number="tPkg.bonus" type="number" min="0" placeholder="Rp Bonus" class="w-full text-xs rounded-lg border-gray-200 p-1.5 text-right font-bold focus:ring-cyan-500 focus:border-cyan-500" />
+                                </div>
+                                <button type="button" @click="removePackageRow(pIdx)" class="text-red-400 hover:text-red-600 p-1.5 text-xs font-bold self-end" title="Hapus Paket">✕</button>
+                            </div>
+                        </div>
+                        <div v-else class="text-[11px] text-gray-400 italic bg-white/60 p-2.5 rounded-xl border border-dashed border-cyan-200 text-center">
+                            Belum ada paket dengan bonus ekstra. Klik "+ Tambah Paket Target" untuk menambahkan bonus paket.
+                        </div>
+                    </div>
+
                     <!-- Keterangan -->
                     <div>
                         <label class="block text-xs font-bold text-gray-700 mb-1">Catatan / Deskripsi Program</label>
@@ -878,6 +958,7 @@ function editProgram(prog) {
     form.reward_bonus_target = Number(prog.reward_bonus_target);
     form.rules = prog.rules || { tiers: [], target_areas: [], target_packages: [] };
     if (!form.rules.target_areas) form.rules.target_areas = [];
+    if (!form.rules.target_packages) form.rules.target_packages = [];
     if (!form.rules.tiers) form.rules.tiers = [];
     form.description = prog.description || '';
     form.auto_disburse = prog.auto_disburse;
@@ -975,6 +1056,21 @@ function getAreaName(areaId) {
     if (!areaId) return '-';
     const found = (props.master?.areas || []).find(a => a.id == areaId);
     return found ? found.name : `Area #${areaId}`;
+}
+
+function addPackageRow() {
+    if (!form.rules.target_packages) form.rules.target_packages = [];
+    form.rules.target_packages.push({ package_id: '', bonus: 25000 });
+}
+
+function removePackageRow(idx) {
+    form.rules.target_packages.splice(idx, 1);
+}
+
+function getPackageName(pkgId) {
+    if (!pkgId) return '-';
+    const found = (props.master?.packages || []).find(p => p.id == pkgId);
+    return found ? found.name : `Paket #${pkgId}`;
 }
 
 function onStartDateChange() {

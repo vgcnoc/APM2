@@ -740,15 +740,17 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/insentif-potongan/disburse', [\App\Http\Controllers\IncentiveDeductionController::class, 'disburseIncentive'])->name('insentif-potongan.disburse');
 
         // Bonus Target Market
-        Route::get('/bonus-target-market', [\App\Http\Controllers\TargetMarketController::class, 'index'])->name('bonus-target-market.index');
-        Route::post('/bonus-target-market/programs', [\App\Http\Controllers\TargetMarketController::class, 'storeProgram'])->name('bonus-target-market.programs.store');
-        Route::post('/bonus-target-market/programs/{program}/update', [\App\Http\Controllers\TargetMarketController::class, 'updateProgram'])->name('bonus-target-market.programs.update');
-        Route::post('/bonus-target-market/programs/{program}/toggle', [\App\Http\Controllers\TargetMarketController::class, 'toggleProgram'])->name('bonus-target-market.programs.toggle');
-        Route::delete('/bonus-target-market/programs/{program}', [\App\Http\Controllers\TargetMarketController::class, 'destroyProgram'])->name('bonus-target-market.programs.destroy');
-        Route::post('/bonus-target-market/programs/{program}/destroy', [\App\Http\Controllers\TargetMarketController::class, 'destroyProgram'])->name('bonus-target-market.programs.destroy.post');
-        Route::post('/bonus-target-market/programs/{program}/delete', [\App\Http\Controllers\TargetMarketController::class, 'destroyProgram'])->name('bonus-target-market.programs.delete.post');
-        Route::post('/bonus-target-market/recalculate', [\App\Http\Controllers\TargetMarketController::class, 'recalculate'])->name('bonus-target-market.recalculate');
-        Route::post('/bonus-target-market/sync-payroll', [\App\Http\Controllers\TargetMarketController::class, 'syncToPayroll'])->name('bonus-target-market.sync-payroll');
+        Route::middleware(['permission:menu_target_market|target_market_manage'])->group(function () {
+            Route::get('/bonus-target-market', [\App\Http\Controllers\TargetMarketController::class, 'index'])->name('bonus-target-market.index');
+            Route::post('/bonus-target-market/programs', [\App\Http\Controllers\TargetMarketController::class, 'storeProgram'])->name('bonus-target-market.programs.store');
+            Route::post('/bonus-target-market/programs/{program}/update', [\App\Http\Controllers\TargetMarketController::class, 'updateProgram'])->name('bonus-target-market.programs.update');
+            Route::post('/bonus-target-market/programs/{program}/toggle', [\App\Http\Controllers\TargetMarketController::class, 'toggleProgram'])->name('bonus-target-market.programs.toggle');
+            Route::delete('/bonus-target-market/programs/{program}', [\App\Http\Controllers\TargetMarketController::class, 'destroyProgram'])->name('bonus-target-market.programs.destroy');
+            Route::post('/bonus-target-market/programs/{program}/destroy', [\App\Http\Controllers\TargetMarketController::class, 'destroyProgram'])->name('bonus-target-market.programs.destroy.post');
+            Route::post('/bonus-target-market/programs/{program}/delete', [\App\Http\Controllers\TargetMarketController::class, 'destroyProgram'])->name('bonus-target-market.programs.delete.post');
+            Route::post('/bonus-target-market/recalculate', [\App\Http\Controllers\TargetMarketController::class, 'recalculate'])->name('bonus-target-market.recalculate');
+            Route::post('/bonus-target-market/sync-payroll', [\App\Http\Controllers\TargetMarketController::class, 'syncToPayroll'])->name('bonus-target-market.sync-payroll');
+        });
         
         // Master Insentif & Potongan
         Route::resource('settings/payroll-categories', \App\Http\Controllers\PayrollCategoryController::class);

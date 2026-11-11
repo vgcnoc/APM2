@@ -659,6 +659,14 @@ class Customer extends Model
                 }
             }
 
+            if ($customer->wasChanged('status') && $customer->status !== 'active' && $customer->getOriginal('status') === 'active' && !static::$isMigrating) {
+                try {
+                    \App\Services\TargetMarketService::handleCustomerDeactivation($customer);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[TargetMarket Deactivation Hook] ' . $e->getMessage());
+                }
+            }
+
             // 2. Sinkronisasi Menyeluruh Area ke ONT, Jadwal Teknisi, Survey, PGS, PGK, Transaksi Material, Reseller, & User
             if ($customer->wasChanged('area_id') || $customer->wasChanged('area')) {
                 try {
@@ -788,6 +796,11 @@ class Customer extends Model
 
         static::deleting(function (Customer $customer) {
             static::$isPurging = true;
+            try {
+                \App\Services\TargetMarketService::handleCustomerDeactivation($customer);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[TargetMarket Delete Hook] ' . $e->getMessage());
+            }
             try {
                 $customer->purgeConnectedData();
             } finally {
