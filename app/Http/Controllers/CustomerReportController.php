@@ -48,7 +48,12 @@ class CustomerReportController extends Controller
 
         // 2. Total Piutang Berjalan (HANYA Pelanggan Aktif/Reguler, TIDAK termasuk yang sudah Stop Permanen)
         $piutangActiveQuery = Invoice::where('is_reseller_balance', false)
+            ->where('invoice_number', 'not like', 'INV-MIG-%')
             ->whereIn('status', ['unpaid', 'partial'])
+            ->where(function($q) use ($endDate) {
+                $q->whereNull('issued_date')
+                  ->orWhereDate('issued_date', '<=', $endDate);
+            })
             ->whereHas('customer', function($q) {
                 $q->whereNotIn('status', ['terminated', 'canceled'])
                   ->whereNotIn('service_status', ['gratis', 'free_home']);
@@ -63,7 +68,12 @@ class CustomerReportController extends Controller
 
         // 3. Piutang Pelanggan Stop Permanen (Bad Debt / Piutang Macet)
         $piutangTerminatedQuery = Invoice::where('is_reseller_balance', false)
+            ->where('invoice_number', 'not like', 'INV-MIG-%')
             ->whereIn('status', ['unpaid', 'partial'])
+            ->where(function($q) use ($endDate) {
+                $q->whereNull('issued_date')
+                  ->orWhereDate('issued_date', '<=', $endDate);
+            })
             ->whereHas('customer', function($q) {
                 $q->where('status', 'terminated')
                   ->whereNotIn('service_status', ['gratis', 'free_home']);

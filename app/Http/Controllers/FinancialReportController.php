@@ -85,9 +85,14 @@ class FinancialReportController extends Controller
         // Piutang Keseluruhan (Tunggakan Aktif + Kasbon yang belum lunas) - Eager load payments to prevent N+1 queries!
         $piutangCustomer = (float) Invoice::with(['payments' => fn($q) => $q->where('status', 'verified')])
             ->where('is_reseller_balance', false)
+            ->where('invoice_number', 'not like', 'INV-MIG-%')
             ->whereIn('status', ['unpaid', 'partial'])
+            ->where(function($q) use ($endDate) {
+                $q->whereNull('issued_date')
+                  ->orWhereDate('issued_date', '<=', $endDate);
+            })
             ->whereHas('customer', function($q) {
-                $q->where('status', '!=', 'terminated')
+                $q->whereNotIn('status', ['terminated', 'canceled'])
                   ->whereNotIn('service_status', ['gratis', 'free_home']);
             })
             ->get()
@@ -109,7 +114,12 @@ class FinancialReportController extends Controller
         // Piutang Pelanggan Stop Permanen (Bad Debt)
         $piutangTerminated = (float) Invoice::with(['payments' => fn($q) => $q->where('status', 'verified')])
             ->where('is_reseller_balance', false)
+            ->where('invoice_number', 'not like', 'INV-MIG-%')
             ->whereIn('status', ['unpaid', 'partial'])
+            ->where(function($q) use ($endDate) {
+                $q->whereNull('issued_date')
+                  ->orWhereDate('issued_date', '<=', $endDate);
+            })
             ->whereHas('customer', function($q) {
                 $q->where('status', 'terminated')
                   ->whereNotIn('service_status', ['gratis', 'free_home']);
