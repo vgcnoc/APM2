@@ -166,26 +166,85 @@
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">Kecamatan</label>
-                                    <input v-model="form.district" type="text" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="Contoh: Sukasari" />
+                                    <div class="flex items-center justify-between mb-2">
+                                        <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider">Kecamatan</label>
+                                        <span v-if="isOfficialDistrict" class="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shadow-2xs">
+                                            ✓ Terverifikasi
+                                        </span>
+                                    </div>
+                                    <div class="relative">
+                                        <input 
+                                            v-model="form.district" 
+                                            list="district-suggestions" 
+                                            @change="handleDistrictChange"
+                                            @blur="handleDistrictBlur"
+                                            type="text" 
+                                            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" 
+                                            placeholder="Pilih atau ketik kecamatan (cth: Warungkiara)" 
+                                        />
+                                        <datalist id="district-suggestions">
+                                            <option v-for="d in availableDistricts" :key="d" :value="d" />
+                                        </datalist>
+                                    </div>
+                                    <!-- Quick selection pills for Kecamatan -->
+                                    <div class="flex flex-wrap gap-1 mt-1.5">
+                                        <button 
+                                            type="button"
+                                            v-for="d in quickDistricts" 
+                                            :key="d"
+                                            @click="selectDistrict(d)"
+                                            :class="[
+                                                'px-2 py-0.5 text-[10px] rounded-md border transition-all cursor-pointer select-none active:scale-95',
+                                                form.district && form.district.toLowerCase() === d.toLowerCase()
+                                                    ? 'bg-indigo-600 text-white border-indigo-600 font-bold shadow-2xs'
+                                                    : 'bg-white hover:bg-indigo-50 text-slate-700 border-slate-200 hover:border-indigo-300'
+                                            ]"
+                                        >
+                                            {{ d }}
+                                        </button>
+                                    </div>
                                 </div>
                                 <div>
-                                    <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2 flex items-center justify-between">
-                                        <span>Desa / Kelurahan</span>
-                                        <span v-if="suggestedVillages.length > 0" class="text-[9px] font-semibold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
-                                            {{ suggestedVillages.length }} Sesuai Area
+                                    <div class="flex items-center justify-between mb-2">
+                                        <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider">Desa / Kelurahan</label>
+                                        <span v-if="isOfficialVillage" class="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shadow-2xs">
+                                            ✓ Terverifikasi
                                         </span>
-                                    </label>
-                                    <input 
-                                        v-model="form.village" 
-                                        list="village-suggestions" 
-                                        type="text" 
-                                        class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" 
-                                        placeholder="Pilih atau ketik desa..." 
-                                    />
-                                    <datalist id="village-suggestions">
-                                        <option v-for="v in suggestedVillages" :key="v" :value="v" />
-                                    </datalist>
+                                        <span v-else-if="suggestedVillages.length > 0" class="text-[9px] font-semibold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                                            {{ suggestedVillages.length }} Sesuai Wilayah
+                                        </span>
+                                    </div>
+                                    <div class="relative">
+                                        <input 
+                                            v-model="form.village" 
+                                            list="village-suggestions" 
+                                            @change="handleVillageChange"
+                                            @blur="handleVillageBlur"
+                                            type="text" 
+                                            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-800 placeholder-gray-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" 
+                                            placeholder="Pilih atau ketik desa (cth: Sirnajaya)" 
+                                        />
+                                        <datalist id="village-suggestions">
+                                            <option v-for="v in suggestedVillages" :key="v" :value="v" />
+                                        </datalist>
+                                    </div>
+                                    <!-- Quick selection pills for Desa -->
+                                    <div v-if="suggestedVillages.length > 0" class="flex flex-wrap gap-1 mt-1.5 max-h-16 overflow-y-auto">
+                                        <button 
+                                            type="button"
+                                            v-for="v in suggestedVillages.slice(0, 8)" 
+                                            :key="v"
+                                            @click="applyVillageSuggestion(v)"
+                                            :class="[
+                                                'px-2 py-0.5 text-[10px] rounded-md border transition-all cursor-pointer select-none active:scale-95',
+                                                form.village && form.village.toLowerCase() === v.toLowerCase()
+                                                    ? 'bg-indigo-600 text-white border-indigo-600 font-bold shadow-2xs'
+                                                    : 'bg-white hover:bg-indigo-50 text-slate-700 border-slate-200 hover:border-indigo-300'
+                                            ]"
+                                        >
+                                            {{ v }}
+                                        </button>
+                                    </div>
                                 </div>
                                 <div>
                                     <label class="block text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2">RT / RW</label>
@@ -875,38 +934,278 @@ const guideAreaCoverageList = computed(() => {
     }));
 });
 
-// Rekomendasi desa sesuai area yang dipilih (Prioritaskan desa resmi)
-const selectedAreaVillages = computed(() => {
-    if (!form.area) return [];
-    const clean = form.area.toLowerCase().trim();
+// ── MASTER DIREKTORI KECAMATAN & DESA/KELURAHAN RESMI (KAB. SUKABUMI) ──
+const defaultMasterDistricts = {
+    'Warungkiara': {
+        name: 'Warungkiara',
+        default_area: 'BC 3',
+        villages: ['Sirnajaya', 'Bantarkalong', 'Hegarmanah', 'Warungkiara', 'Tarisi', 'Ubrug', 'Damarraja', 'Kertamukti', 'Sukaharja', 'Bojongkerta', 'Girijaya', 'Mekarjaya'],
+    },
+    'Cikembar': {
+        name: 'Cikembar',
+        default_area: 'BC 2',
+        villages: ['Cikembar', 'Cimanggu', 'Bojongkembar', 'Bojongraharja', 'Kertaraharja', 'Cibatu', 'Parakanlima', 'Sukamaju', 'Sukamulya', 'Bojong'],
+    },
+    'Bantargadung': {
+        name: 'Bantargadung',
+        default_area: 'BC 3',
+        villages: ['Bantargadung', 'Boyongsari', 'Mangunjaya', 'Buanajaya', 'Bantargebang', 'Limusnunggal'],
+    },
+    'Cibadak': {
+        name: 'Cibadak',
+        default_area: 'BC 4',
+        villages: ['Cibadak', 'Karangtengah', 'Sukasirna', 'Sekarwangi', 'Batununggal', 'Ciheulang Tonggoh', 'Neglasari', 'Pamuruyan', 'Tenjojaya', 'Warnajati'],
+    },
+    'Cicantayan': {
+        name: 'Cicantayan',
+        default_area: 'BC 2',
+        villages: ['Cicantayan', 'Cimanggis', 'Cijalingan', 'Cimahi', 'Cisande', 'Lembursawah', 'Sikareumbi', 'Sukadamai'],
+    },
+    'Parungkuda': {
+        name: 'Parungkuda',
+        default_area: 'BC 4',
+        villages: ['Parungkuda', 'Bojongkokosan', 'Kompa', 'Langkensari', 'Palasarihilir', 'Sundawenang'],
+    },
+    'Nagrak': {
+        name: 'Nagrak',
+        default_area: 'BC 4',
+        villages: ['Nagrak Selatan', 'Nagrak Utara', 'Cihanjawar', 'Cisarua'],
+    },
+};
 
-    // 1. Cek dari data coverage resmi
-    const found = (props.area_coverage || []).find(a => (a.name || '').toLowerCase().trim() === clean);
-    if (found) {
-        const vOfficial = found.villages || found.coverage_villages_list || [];
-        if (Array.isArray(vOfficial) && vOfficial.length > 0) {
-            // Gabungkan dengan saran desa dari riwayat jika ada
-            const historyList = (props.area_villages && props.area_villages[form.area]) || [];
-            const merged = [...vOfficial];
-            for (const h of historyList) {
-                if (!merged.some(m => m.toLowerCase().trim() === h.toLowerCase().trim())) {
-                    merged.push(h);
-                }
+const defaultVillageLookup = {
+    'Sirnajaya': { district: 'Warungkiara', area: 'BC 1' },
+    'Bantarkalong': { district: 'Warungkiara', area: 'BC 1' },
+    'Hegarmanah': { district: 'Warungkiara', area: 'BC 1' },
+    'Warungkiara': { district: 'Warungkiara', area: 'BC 3' },
+    'Tarisi': { district: 'Warungkiara', area: 'BC 3' },
+    'Ubrug': { district: 'Warungkiara', area: 'BC 3' },
+    'Damarraja': { district: 'Warungkiara', area: 'BC 3' },
+    'Kertamukti': { district: 'Warungkiara', area: 'BC 3' },
+    'Sukaharja': { district: 'Warungkiara', area: 'BC 3' },
+    'Bojongkerta': { district: 'Warungkiara', area: 'BC 3' },
+    'Girijaya': { district: 'Warungkiara', area: 'BC 3' },
+    'Mekarjaya': { district: 'Warungkiara', area: 'BC 3' },
+    'Cikembar': { district: 'Cikembar', area: 'BC 2' },
+    'Cimanggu': { district: 'Cikembar', area: 'BC 2' },
+    'Bojongkembar': { district: 'Cikembar', area: 'BC 2' },
+    'Bojongraharja': { district: 'Cikembar', area: 'BC 2' },
+    'Kertaraharja': { district: 'Cikembar', area: 'BC 2' },
+    'Cibatu': { district: 'Cikembar', area: 'BC 2' },
+    'Parakanlima': { district: 'Cikembar', area: 'BC 2' },
+    'Sukamaju': { district: 'Cikembar', area: 'BC 2' },
+    'Sukamulya': { district: 'Cikembar', area: 'BC 2' },
+    'Bojong': { district: 'Cikembar', area: 'BC 2' },
+    'Bantargadung': { district: 'Bantargadung', area: 'BC 3' },
+    'Boyongsari': { district: 'Bantargadung', area: 'BC 3' },
+    'Mangunjaya': { district: 'Bantargadung', area: 'BC 3' },
+    'Buanajaya': { district: 'Bantargadung', area: 'BC 3' },
+    'Bantargebang': { district: 'Bantargadung', area: 'BC 3' },
+    'Limusnunggal': { district: 'Bantargadung', area: 'BC 3' },
+    'Cibadak': { district: 'Cibadak', area: 'BC 4' },
+    'Karangtengah': { district: 'Cibadak', area: 'BC 4' },
+    'Sukasirna': { district: 'Cibadak', area: 'BC 4' },
+    'Sekarwangi': { district: 'Cibadak', area: 'BC 4' },
+    'Batununggal': { district: 'Cibadak', area: 'BC 4' },
+    'Ciheulang Tonggoh': { district: 'Cibadak', area: 'BC 4' },
+    'Neglasari': { district: 'Cibadak', area: 'BC 4' },
+    'Pamuruyan': { district: 'Cibadak', area: 'BC 4' },
+    'Tenjojaya': { district: 'Cibadak', area: 'BC 4' },
+    'Warnajati': { district: 'Cibadak', area: 'BC 4' },
+    'Cicantayan': { district: 'Cicantayan', area: 'BC 2' },
+    'Cimanggis': { district: 'Cicantayan', area: 'BC 2' },
+    'Cijalingan': { district: 'Cicantayan', area: 'BC 2' },
+    'Cimahi': { district: 'Cicantayan', area: 'BC 2' },
+    'Cisande': { district: 'Cicantayan', area: 'BC 2' },
+    'Lembursawah': { district: 'Cicantayan', area: 'BC 2' },
+    'Sikareumbi': { district: 'Cicantayan', area: 'BC 2' },
+    'Sukadamai': { district: 'Cicantayan', area: 'BC 2' },
+    'Parungkuda': { district: 'Parungkuda', area: 'BC 4' },
+    'Bojongkokosan': { district: 'Parungkuda', area: 'BC 4' },
+    'Kompa': { district: 'Parungkuda', area: 'BC 4' },
+    'Nagrak Selatan': { district: 'Nagrak', area: 'BC 4' },
+    'Nagrak Utara': { district: 'Nagrak', area: 'BC 4' },
+};
+
+// Fungsi Normalisasi Cerdas Typo Kecamatan & Desa
+const normalizeDistrictName = (raw) => {
+    if (!raw) return '';
+    const clean = raw.toLowerCase().replace(/^(?:kecamatan|kec\.?|matan)\s*/i, '').replace(/[^a-z0-9]/g, '');
+    if (['warungkiara', 'warkir', 'waeungkiara', 'wwarungkiara', 'wrkiara', 'warubgkiara', 'warungnyakiara', 'warungkir', 'wr'].includes(clean)) {
+        return 'Warungkiara';
+    }
+    if (['cikembar', 'cikemba', 'cikrmbar', 'cikembang', 'ckembar'].includes(clean)) {
+        return 'Cikembar';
+    }
+    if (['bantargadung', 'bantargadug', 'bantar'].includes(clean)) {
+        return 'Bantargadung';
+    }
+    if (['cibadak', 'cbadak'].includes(clean)) {
+        return 'Cibadak';
+    }
+    if (['cicantayan', 'cantayan'].includes(clean)) {
+        return 'Cicantayan';
+    }
+    if (['parungkuda', 'pkuda'].includes(clean)) {
+        return 'Parungkuda';
+    }
+    if (['nagrak'].includes(clean)) {
+        return 'Nagrak';
+    }
+    for (const d of Object.keys(defaultMasterDistricts)) {
+        const dClean = d.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (clean === dClean || clean.includes(dClean) || dClean.includes(clean)) return d;
+    }
+    return raw.trim().replace(/\b\w/g, l => l.toUpperCase());
+};
+
+const normalizeVillageName = (raw) => {
+    if (!raw) return '';
+    const clean = raw.toLowerCase().replace(/^(?:desa|kelurahan|kel\.?)\s*/i, '').replace(/[^a-z0-9]/g, '');
+    const map = {
+        'sinarjaya': 'Sirnajaya',
+        'sirnjaya': 'Sirnajaya',
+        'sirnajaya': 'Sirnajaya',
+        'bantarkalong': 'Bantarkalong',
+        'hegarmanah': 'Hegarmanah',
+        'damaraja': 'Damarraja',
+        'damarraja': 'Damarraja',
+        'warungkiara': 'Warungkiara',
+        'tarisi': 'Tarisi',
+        'ubrug': 'Ubrug',
+        'kertamukti': 'Kertamukti',
+        'sukaharja': 'Sukaharja',
+        'cikembar': 'Cikembar',
+        'cimanggu': 'Cimanggu',
+        'bojongkembar': 'Bojongkembar',
+        'bojongraharja': 'Bojongraharja',
+        'kertaraharja': 'Kertaraharja',
+        'bantargadung': 'Bantargadung',
+        'boyongsari': 'Boyongsari',
+        'mangunjaya': 'Mangunjaya',
+        'cibadak': 'Cibadak',
+        'karangtengah': 'Karangtengah',
+        'sukasirna': 'Sukasirna',
+        'sekarwangi': 'Sekarwangi',
+        'cimanggis': 'Cimanggis',
+        'cicantayan': 'Cicantayan',
+    };
+    if (map[clean]) return map[clean];
+    for (const v of Object.keys(defaultVillageLookup)) {
+        const vClean = v.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (clean === vClean) return v;
+    }
+    return raw.trim().replace(/\b\w/g, l => l.toUpperCase());
+};
+
+const availableDistricts = computed(() => {
+    return Object.keys(defaultMasterDistricts);
+});
+
+const quickDistricts = ['Warungkiara', 'Cikembar', 'Bantargadung', 'Cibadak', 'Cicantayan'];
+
+const isOfficialDistrict = computed(() => {
+    if (!form.district) return false;
+    const clean = form.district.toLowerCase().trim();
+    return availableDistricts.value.some(d => d.toLowerCase().trim() === clean);
+});
+
+const isOfficialVillage = computed(() => {
+    if (!form.village) return false;
+    const clean = form.village.toLowerCase().trim();
+    return Object.keys(defaultVillageLookup).some(v => v.toLowerCase().trim() === clean);
+});
+
+// Rekomendasi desa sesuai area dan kecamatan yang dipilih
+const selectedAreaVillages = computed(() => {
+    let result = [];
+
+    // 1. Jika ada kecamatan yang dipilih, ambil desa dari kecamatan tersebut
+    const curDistrict = normalizeDistrictName(form.district);
+    if (curDistrict && defaultMasterDistricts[curDistrict]) {
+        result = [...defaultMasterDistricts[curDistrict].villages];
+    }
+
+    // 2. Jika ada area yang dipilih, sesuaikan prioritas desa untuk area tersebut
+    if (form.area) {
+        const clean = form.area.toLowerCase().trim();
+        const found = (props.area_coverage || []).find(a => (a.name || '').toLowerCase().trim() === clean);
+        if (found) {
+            const vOfficial = found.villages || found.coverage_villages_list || [];
+            if (Array.isArray(vOfficial) && vOfficial.length > 0) {
+                // Taruh desa resmi area di depan
+                result = [...vOfficial, ...result.filter(x => !vOfficial.some(v => v.toLowerCase() === x.toLowerCase()))];
             }
-            return merged;
         }
     }
 
-    // 2. Fallback ke area_villages map
-    if (props.area_villages && props.area_villages[form.area]) {
-        return props.area_villages[form.area];
+    // Fallback jika belum memilih kecamatan maupun area
+    if (result.length === 0) {
+        result = Object.keys(defaultVillageLookup);
     }
-    return [];
+
+    return Array.from(new Set(result));
 });
 
 const suggestedVillages = computed(() => {
     return selectedAreaVillages.value;
 });
+
+// Auto-sync: Ketika Area dipilih, auto-pilih Kecamatan utama
+watch(() => form.area, (newArea) => {
+    if (!newArea || newArea === 'new') return;
+    const clean = newArea.toUpperCase().trim();
+    if (clean.includes('BC 1') || clean.includes('BC-1') || clean.includes('SIRNAJAYA')) {
+        form.district = 'Warungkiara';
+    } else if (clean.includes('BC 2') || clean.includes('BC-2') || clean.includes('CIKEMBAR')) {
+        form.district = 'Cikembar';
+    } else if (clean.includes('BC 3') || clean.includes('BC-3') || clean.includes('WARUNGKIARA')) {
+        form.district = 'Warungkiara';
+    } else if (clean.includes('BC 4') || clean.includes('BC-4') || clean.includes('CIBADAK')) {
+        form.district = 'Cibadak';
+    }
+});
+
+function selectDistrict(d) {
+    form.district = d;
+}
+
+function handleDistrictChange() {
+    form.district = normalizeDistrictName(form.district);
+}
+
+function handleDistrictBlur() {
+    form.district = normalizeDistrictName(form.district);
+}
+
+function handleVillageChange() {
+    handleVillageSelection(form.village);
+}
+
+function handleVillageBlur() {
+    handleVillageSelection(form.village);
+}
+
+function handleVillageSelection(rawVillage) {
+    if (!rawVillage) return;
+    const clean = normalizeVillageName(rawVillage);
+    form.village = clean;
+
+    // Deteksi cerdas Kecamatan & Area untuk desa ini
+    const info = defaultVillageLookup[clean];
+    if (info) {
+        if (!form.district || form.district !== info.district) {
+            form.district = info.district;
+        }
+        if (!form.area && info.area) {
+            form.area = info.area;
+        }
+    }
+}
+
+function applyVillageSuggestion(villageName) {
+    handleVillageSelection(villageName);
+}
 
 // Deteksi cerdas jika desa/alamat yang diketik termasuk dalam cakupan BC lain
 const mismatchedAreaWarning = computed(() => {
@@ -939,10 +1238,6 @@ const mismatchedAreaWarning = computed(() => {
     }
     return null;
 });
-
-function applyVillageSuggestion(villageName) {
-    form.village = villageName;
-}
 
 function switchArea(areaName) {
     form.area = areaName;

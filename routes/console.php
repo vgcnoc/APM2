@@ -8,6 +8,11 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote')->hourly();
 
+Artisan::command('geo:clean-addresses', function () {
+    $res = \App\Services\GeoLocationMasterService::cleanDatabaseAddresses();
+    $this->info("Database addresses cleaned successfully. Total scanned: {$res['total_scanned']}, updated customers: {$res['updated_customers']}.");
+})->purpose('Clean and standardize customer addresses and area coverage');
+
 $billingTimezone = config('billing.timezone', 'Asia/Jakarta');
 
 // Issue invoices at 00:00 WIB and re-check every 15 minutes so missed midnight windows or same-day setting changes self-heal automatically.

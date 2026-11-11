@@ -705,3 +705,4 @@ class AreaMonitoringController extends Controller
         ]);
     }
 }
+

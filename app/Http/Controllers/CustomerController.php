@@ -2574,6 +2574,9 @@ class CustomerController extends Controller
             'areas' => $areas,
             'area_villages' => $areaVillagesMap,
             'area_coverage' => $areaCoverageList,
+            'master_districts' => \App\Services\GeoLocationMasterService::getMasterDirectory(),
+            'districts_list' => \App\Services\GeoLocationMasterService::getDistrictsList(),
+            'village_lookup' => \App\Services\GeoLocationMasterService::getVillageLookupMap(),
             'isAffiliate' => $isAffiliate,
             'affiliatePortal' => $isAffiliatePortal || $isAffiliate,
             'taxSettings' => [
@@ -2699,6 +2702,19 @@ class CustomerController extends Controller
             $areaModel = \App\Models\Area::findOrCreateFlexible($validated['area']);
             $validated['area_id'] = $areaModel->id;
             $validated['area'] = $areaModel->name;
+        }
+
+        // Normalisasi cerdas format alamat agar nama Kecamatan dan Kelurahan/Desa selalu baku & tanpa salah ketik
+        if (!empty($validated['address'])) {
+            $validated['address'] = preg_replace_callback('/(?:Kec\.?|Kecamatan|matan)\s*([a-zA-Z0-9\s]+?)(?=[,\n\r\.\-]|$)/i', function($m) {
+                $norm = \App\Services\GeoLocationMasterService::normalizeDistrict($m[1]);
+                return "Kec. " . ($norm ?: trim($m[1]));
+            }, $validated['address']);
+
+            $validated['address'] = preg_replace_callback('/(?:Kel\.?|Kelurahan|Desa)\s*([a-zA-Z0-9\s]+?)(?=\s+(?:Kec|Kab|RT|RW|No|\d)|[,\n\r\.\-]|$)/i', function($m) {
+                $norm = \App\Services\GeoLocationMasterService::normalizeVillage($m[1]);
+                return "Kel. " . ($norm ?: trim($m[1]));
+            }, $validated['address']);
         }
 
         $user = auth()->user();
@@ -3279,12 +3295,28 @@ class CustomerController extends Controller
 
         $isAffiliate = !$isInternalStaff && ($userRole === 'affiliate' || $userRole === 'reseller');
 
+        $areaModels = \App\Models\Area::whereIn('name', $areas)->orderBy('name')->get();
+        $areaCoverageList = $areaModels->map(function ($a) {
+            return [
+                'id' => $a->id,
+                'name' => $a->name,
+                'description' => $a->description,
+                'address' => $a->address,
+                'coverage_villages' => $a->coverage_villages,
+                'villages' => $a->coverage_villages_list,
+            ];
+        })->all();
+
         return Inertia::render('Customers/Edit', [
             'customer' => $customer,
             'packages' => InternetPackage::active()->get(),
             'availableOdps' => Odp::active()->with('odc.olt')->get(),
             'sales' => $sales,
             'areas' => $areas,
+            'area_coverage' => $areaCoverageList,
+            'master_districts' => \App\Services\GeoLocationMasterService::getMasterDirectory(),
+            'districts_list' => \App\Services\GeoLocationMasterService::getDistrictsList(),
+            'village_lookup' => \App\Services\GeoLocationMasterService::getVillageLookupMap(),
             'isAffiliate' => $isAffiliate,
             'taxSettings' => [
                 'tax_ppn' => (float) \App\Models\Setting::get('tax_ppn', '0'),
@@ -3386,6 +3418,19 @@ class CustomerController extends Controller
             $areaModel = \App\Models\Area::findOrCreateFlexible($validated['area']);
             $validated['area_id'] = $areaModel->id;
             $validated['area'] = $areaModel->name;
+        }
+
+        // Normalisasi cerdas format alamat agar nama Kecamatan dan Kelurahan/Desa selalu baku & tanpa salah ketik
+        if (!empty($validated['address'])) {
+            $validated['address'] = preg_replace_callback('/(?:Kec\.?|Kecamatan|matan)\s*([a-zA-Z0-9\s]+?)(?=[,\n\r\.\-]|$)/i', function($m) {
+                $norm = \App\Services\GeoLocationMasterService::normalizeDistrict($m[1]);
+                return "Kec. " . ($norm ?: trim($m[1]));
+            }, $validated['address']);
+
+            $validated['address'] = preg_replace_callback('/(?:Kel\.?|Kelurahan|Desa)\s*([a-zA-Z0-9\s]+?)(?=\s+(?:Kec|Kab|RT|RW|No|\d)|[,\n\r\.\-]|$)/i', function($m) {
+                $norm = \App\Services\GeoLocationMasterService::normalizeVillage($m[1]);
+                return "Kel. " . ($norm ?: trim($m[1]));
+            }, $validated['address']);
         }
 
         // Jika status berubah ke 'active', set activation_date
