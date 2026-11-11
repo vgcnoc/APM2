@@ -497,16 +497,26 @@ class AreaMonitoringController extends Controller
                       });
                   });
         } elseif ($category === 'total_pelanggan') {
-            // Seluruh pelanggan operasional (mengabaikan calon pelanggan survey/booking yang belum diaktivasi)
+            // Seluruh pelanggan operasional (mengabaikan calon pelanggan survey/booking/canceled yang belum pernah diaktivasi)
             $query->where(function ($q) use ($month, $year) {
-                $q->whereNotIn('status', ['booking', 'survey', 'installing', 'pending'])
-                  ->orWhere(function ($sub) use ($month, $year) {
-                      $sub->whereMonth('activation_date', $month)
-                          ->whereYear('activation_date', $year);
-                  });
+                $q->where(function ($sub) {
+                    $sub->whereNotIn('status', ['booking', 'survey', 'installing', 'pending'])
+                        ->where(function ($cq) {
+                            $cq->where('status', '!=', 'canceled')
+                               ->orWhereNotNull('activation_date');
+                        });
+                })->orWhere(function ($sub) use ($month, $year) {
+                    $sub->whereMonth('activation_date', $month)
+                        ->whereYear('activation_date', $year);
+                });
             });
         } elseif ($category === 'stop_permanen') {
-            $query->whereIn('status', ['terminated', 'canceled', 'berhenti']);
+            $query->where(function ($q) {
+                $q->whereIn('status', ['terminated', 'berhenti'])
+                  ->orWhere(function ($sub) {
+                      $sub->where('status', 'canceled')->whereNotNull('activation_date');
+                  });
+            });
         } elseif ($category === 'stop_sementara') {
             $query->where(function ($q) {
                 $q->whereIn('status', ['suspended', 'isolir'])
@@ -780,8 +790,9 @@ class AreaMonitoringController extends Controller
         $status = strtolower($c->status ?? 'active');
         $serviceStatus = strtolower($c->service_status ?? 'berbayar');
 
-        // 1. Calon pelanggan yang belum diaktivasi (booking, survey, installing, pending)
-        if (in_array($status, ['booking', 'survey', 'installing', 'pending'])) {
+        // 1. Calon pelanggan yang belum pernah diaktivasi / batal sebelum aktivasi (booking, survey, installing, pending, atau canceled tanpa tgl aktivasi)
+        $isCancelledBeforeActivation = ($status === 'canceled' && empty($c->activation_date));
+        if (in_array($status, ['booking', 'survey', 'installing', 'pending']) || $isCancelledBeforeActivation) {
             // Jika teknisi sudah mengisi tgl aktivasi pada periode berjalan, masuk PSB
             if (!empty($c->activation_date)) {
                 $act = Carbon::parse($c->activation_date);
@@ -789,11 +800,11 @@ class AreaMonitoringController extends Controller
                     return 'psb';
                 }
             }
-            return null; // Belum diaktivasi, tidak dihitung di matrix operasional
+            return null; // Belum/tidak pernah diaktivasi, tidak dihitung di matrix operasional
         }
 
-        // 2. Stop Permanen (Berhenti / Dibatalkan / Terminated)
-        if (in_array($status, ['terminated', 'canceled', 'berhenti'])) {
+        // 2. Stop Permanen (Berhenti / Terminated yang memang pelanggan riil / pernah aktif)
+        if (in_array($status, ['terminated', 'berhenti']) || ($status === 'canceled' && !empty($c->activation_date))) {
             return 'stop_permanen';
         }
 
