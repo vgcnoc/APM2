@@ -163,20 +163,6 @@ class InvoiceController extends Controller
 
         $query->where('invoice_number', 'not like', 'INV-MIG-%')
            ->where('status', '!=', 'cancelled')
-           ->where(function($q) {
-               $q->where('period_year', '>', 2026)
-                 ->orWhere(function($sub) {
-                     $sub->where('period_year', 2026)->where('period_month', '>', 10);
-                 })
-                 ->orWhere(function($sub) {
-                     $sub->where('is_prorata', true)
-                         ->orWhere('billing_type', 'prorata');
-                 });
-           })
-           ->where(function($q) use ($cycleEnd) {
-               $q->whereNull('issued_date')
-                 ->orWhereDate('issued_date', '<=', $cycleEnd);
-           })
            ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
 
         $isAreaRestricted = auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('invoices_view_all');
@@ -199,7 +185,7 @@ class InvoiceController extends Controller
         $scopedAreaFilter($query);
 
         $tab = $request->query('tab', 'semua');
-        $this->applyTabFilter($query, $tab, $today);
+        $this->applyTabFilter($query, $tab, $today, $cycleEnd);
 
         if ($request->filled('search')) {
             $search = strtolower($request->search);
@@ -278,6 +264,25 @@ class InvoiceController extends Controller
         // Active base excludes terminated customers for regular operational cards
         $activeBaseQuery = (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', '!=', 'terminated'));
 
+        // Query khusus tab Prorata: Pelanggan prorata yang BELUM terbit invoice (issued_date di masa depan / belum terbit)
+        $prorataBaseQuery = Invoice::where('is_reseller_balance', false)
+            ->where('invoice_number', 'not like', 'INV-MIG-%')
+            ->where('status', '!=', 'cancelled')
+            ->where(function($q) {
+                $q->where('is_prorata', true)
+                  ->orWhere('billing_type', 'prorata');
+            })
+            ->whereDate('issued_date', '>', $cycleEnd)
+            ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
+        $scopedAreaFilter($prorataBaseQuery);
+        if ($request->filled('area_id')) {
+            $prorataBaseQuery->whereHas('customer', fn($q) => $q->where('area_id', $request->area_id));
+        }
+        if ($request->filled('package_id')) {
+            $prorataBaseQuery->whereHas('customer', fn($q) => $q->where('package_id', $request->package_id));
+        }
+        $this->applyBillingTypeFilter($prorataBaseQuery, $request);
+
         // Paid query respects area, package, billing_type, and date filter
         $paidQuery = \App\Models\Payment::where('status', 'verified')
             ->whereHas('invoice', function($q) use ($request, $scopedAreaFilter) {
@@ -321,10 +326,7 @@ class InvoiceController extends Controller
             'jatuh_tempo' => (clone $overdueActiveQuery)->whereIn('status', ['unpaid', 'partial', 'overdue'])->count(),
             'piutang' => (clone $activeBaseQuery)->where('status', 'partial')->count(),
             'lunas' => (clone $baseQuery)->where('status', 'paid')->count(),
-            'prorata' => (clone $baseQuery)->where(function($q) {
-                $q->where('is_prorata', true)
-                  ->orWhere('billing_type', 'prorata');
-            })->whereIn('status', ['unpaid', 'partial', 'overdue'])->count(),
+            'prorata' => (clone $prorataBaseQuery)->count(),
             'upgrade' => (clone $baseQuery)->where(function($q) {
                 $q->whereIn('billing_type', ['upgrade', 'downgrade'])
                   ->orWhere('notes', 'like', '%Upgrade%')
@@ -1323,20 +1325,6 @@ class InvoiceController extends Controller
             ->where('is_reseller_balance', false)
             ->where('invoice_number', 'not like', 'INV-MIG-%')
             ->where('status', '!=', 'cancelled')
-            ->where(function($q) {
-                $q->where('period_year', '>', 2026)
-                  ->orWhere(function($sub) {
-                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
-                  })
-                  ->orWhere(function($sub) {
-                      $sub->where('is_prorata', true)
-                          ->orWhere('billing_type', 'prorata');
-                  });
-            })
-           ->where(function($q) use ($cycleEnd) {
-               $q->whereNull('issued_date')
-                 ->orWhereDate('issued_date', '<=', $cycleEnd);
-           })
             ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
 
         $isAreaRestricted = auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('invoices_view_all');
@@ -1351,7 +1339,7 @@ class InvoiceController extends Controller
         }
 
         $tab = $request->query('tab', 'semua');
-        $this->applyTabFilter($query, $tab, $today);
+        $this->applyTabFilter($query, $tab, $today, $cycleEnd);
 
         if ($request->filled('search')) {
             $search = strtolower($request->search);
@@ -1466,20 +1454,6 @@ class InvoiceController extends Controller
             ->where('is_reseller_balance', false)
             ->where('invoice_number', 'not like', 'INV-MIG-%')
             ->where('status', '!=', 'cancelled')
-            ->where(function($q) {
-                $q->where('period_year', '>', 2026)
-                  ->orWhere(function($sub) {
-                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
-                  })
-                  ->orWhere(function($sub) {
-                      $sub->where('is_prorata', true)
-                          ->orWhere('billing_type', 'prorata');
-                  });
-            })
-           ->where(function($q) use ($cycleEnd) {
-               $q->whereNull('issued_date')
-                 ->orWhereDate('issued_date', '<=', $cycleEnd);
-           })
             ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
 
         $isAreaRestricted = auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('invoices_view_all');
@@ -1494,7 +1468,7 @@ class InvoiceController extends Controller
         }
 
         $tab = $request->query('tab', 'semua');
-        $this->applyTabFilter($query, $tab, $today);
+        $this->applyTabFilter($query, $tab, $today, $cycleEnd);
 
         if ($request->filled('search')) {
             $search = strtolower($request->search);
@@ -1550,36 +1524,58 @@ class InvoiceController extends Controller
     /**
      * Filter tab invoice yang 100% sinkron dengan penghitungan badge $stats.
      */
-    private function applyTabFilter($targetQuery, string $tab, $today): void
+    private function applyTabFilter($targetQuery, string $tab, $today, $cycleEnd = null): void
     {
-        if ($tab === 'jatuh_tempo') {
-            $this->applyOverdueCondition($targetQuery, $today);
-            $targetQuery->whereIn('status', ['unpaid', 'partial', 'overdue'])
-                ->whereHas('customer', fn($q) => $q->where('status', '!=', 'terminated'));
-        } elseif ($tab === 'piutang') {
-            $targetQuery->where('status', 'partial')
-                ->whereHas('customer', fn($q) => $q->where('status', '!=', 'terminated'));
-        } elseif ($tab === 'lunas') {
-            $targetQuery->where('status', 'paid');
-        } elseif ($tab === 'prorata') {
+        $cycleEnd = $cycleEnd ?: now()->endOfMonth();
+
+        if ($tab === 'prorata') {
+            // Tab Prorata: Khusus pelanggan prorata yang BELUM terbit invoice (issued_date di masa depan / belum terbit)
             $targetQuery->where(function($q) {
                 $q->where('is_prorata', true)
                   ->orWhere('billing_type', 'prorata');
-            })->whereIn('status', ['unpaid', 'partial', 'overdue']);
-        } elseif ($tab === 'upgrade') {
-            $targetQuery->where(function($q) {
-                $q->whereIn('billing_type', ['upgrade', 'downgrade'])
-                  ->orWhere('notes', 'like', '%Upgrade%')
-                  ->orWhere('notes', 'like', '%Downgrade%');
+            })->whereDate('issued_date', '>', $cycleEnd);
+        } else {
+            // Tab Selain Prorata (Daftar Tagihan, Lunas, Jatuh Tempo, dll):
+            // HANYA tagihan yang SUDAH terbit (issued_date <= cycleEnd).
+            // Tagihan prorata yang SUDAH terbit otomatis masuk ke Daftar Tagihan di sini.
+            $targetQuery->where(function($q) use ($cycleEnd) {
+                $q->whereNull('issued_date')
+                  ->orWhereDate('issued_date', '<=', $cycleEnd);
+            })->where(function($q) {
+                $q->where('period_year', '>', 2026)
+                  ->orWhere(function($sub) {
+                      $sub->where('period_year', 2026)->where('period_month', '>', 10);
+                  })
+                  ->orWhere(function($sub) {
+                      $sub->where('is_prorata', true)
+                          ->orWhere('billing_type', 'prorata');
+                  });
             });
-        } elseif ($tab === 'janji_bayar') {
-            $targetQuery->whereNotNull('promise_date')
-                ->whereIn('status', ['unpaid', 'partial', 'overdue'])
-                ->whereHas('customer', fn($q) => $q->where('status', '!=', 'terminated'));
-        } elseif ($tab === 'stop_sementara') {
-            $targetQuery->whereHas('customer', fn($q) => $q->where('status', 'suspended'));
-        } elseif ($tab === 'stop_permanen') {
-            $targetQuery->whereHas('customer', fn($q) => $q->where('status', 'terminated'));
+
+            if ($tab === 'jatuh_tempo') {
+                $this->applyOverdueCondition($targetQuery, $today);
+                $targetQuery->whereIn('status', ['unpaid', 'partial', 'overdue'])
+                    ->whereHas('customer', fn($q) => $q->where('status', '!=', 'terminated'));
+            } elseif ($tab === 'piutang') {
+                $targetQuery->where('status', 'partial')
+                    ->whereHas('customer', fn($q) => $q->where('status', '!=', 'terminated'));
+            } elseif ($tab === 'lunas') {
+                $targetQuery->where('status', 'paid');
+            } elseif ($tab === 'upgrade') {
+                $targetQuery->where(function($q) {
+                    $q->whereIn('billing_type', ['upgrade', 'downgrade'])
+                      ->orWhere('notes', 'like', '%Upgrade%')
+                      ->orWhere('notes', 'like', '%Downgrade%');
+                });
+            } elseif ($tab === 'janji_bayar') {
+                $targetQuery->whereNotNull('promise_date')
+                    ->whereIn('status', ['unpaid', 'partial', 'overdue'])
+                    ->whereHas('customer', fn($q) => $q->where('status', '!=', 'terminated'));
+            } elseif ($tab === 'stop_sementara') {
+                $targetQuery->whereHas('customer', fn($q) => $q->where('status', 'suspended'));
+            } elseif ($tab === 'stop_permanen') {
+                $targetQuery->whereHas('customer', fn($q) => $q->where('status', 'terminated'));
+            }
         }
     }
 
