@@ -441,4 +441,117 @@ class NetworkRadarController extends Controller
             ],
         ]);
     }
+
+    /**
+     * Hitung Rute Jalan (OSRM driving) dengan fallback cerdas ke garis lurus
+     */
+    public function calculateRoute(Request $request)
+    {
+        $request->validate([
+            'origin_lat' => 'required|numeric|between:-90,90',
+            'origin_lng' => 'required|numeric|between:-180,180',
+            'dest_lat' => 'required|numeric|between:-90,90',
+            'dest_lng' => 'required|numeric|between:-180,180',
+        ]);
+
+        $oLat = (float)$request->origin_lat;
+        $oLng = (float)$request->origin_lng;
+        $dLat = (float)$request->dest_lat;
+        $dLng = (float)$request->dest_lng;
+
+        $endpoint = rtrim(config('services.osrm.url', 'https://router.project-osrm.org'), '/');
+        $cacheKey = 'radar-route:v1:' . hash('sha256', "{$endpoint}:{$oLat},{$oLng};{$dLat},{$dLng}");
+
+        if ($cached = \Illuminate\Support\Facades\Cache::get($cacheKey)) {
+            return response()->json(array_merge($cached, ['cached' => true]));
+        }
+
+        $url = "{$endpoint}/route/v1/driving/{$oLng},{$oLat};{$dLng},{$dLat}?overview=full&geometries=geojson&steps=false";
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'User-Agent' => 'VIZBILL-RADAR/1.0',
+                'Referer' => config('app.url')
+            ])->timeout(4)->get($url);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                if (($data['code'] ?? '') === 'Ok' && !empty($data['routes'][0]['geometry'])) {
+                    $route = $data['routes'][0];
+                    $distMeters = (float)$route['distance'];
+                    $durSec = (float)$route['duration'];
+
+                    $result = [
+                        'success' => true,
+                        'status' => 'success',
+                        'source' => 'osrm',
+                        'distance' => $distMeters,
+                        'duration' => $durSec,
+                        'formatted_distance' => $this->formatDistanceMeters($distMeters),
+                        'formatted_duration' => $this->formatDurationSeconds($durSec),
+                        'geometry' => $route['geometry'],
+                        'legs' => $route['legs'] ?? [],
+                    ];
+                    \Illuminate\Support\Facades\Cache::put($cacheKey, $result, now()->addHours(24));
+                    return response()->json($result);
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Radar OSRM route error: ' . $e->getMessage());
+        }
+
+        // Fallback: Haversine straight line jika OSRM unreachable atau titik berada di jalan setapak/gang belum terpetakan
+        $distance = $this->calculateHaversineDistance($oLat, $oLng, $dLat, $dLng);
+        $estDuration = max(60, ($distance / 30000) * 3600); // estimasi 30 km/h untuk kecepatan motor di gang/desa
+
+        $fallbackResult = [
+            'success' => true,
+            'status' => 'fallback',
+            'source' => 'straight_line',
+            'distance' => $distance,
+            'duration' => $estDuration,
+            'formatted_distance' => $this->formatDistanceMeters($distance),
+            'formatted_duration' => $this->formatDurationSeconds($estDuration),
+            'geometry' => [
+                'type' => 'LineString',
+                'coordinates' => [
+                    [$oLng, $oLat],
+                    [$dLng, $dLat]
+                ]
+            ],
+            'legs' => [],
+        ];
+
+        return response()->json($fallbackResult);
+    }
+
+    private function calculateHaversineDistance(float $lat1, float $lon1, float $lat2, float $lon2): float
+    {
+        $earthRadius = 6371000; // meters
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+        $a = sin($dLat / 2) * sin($dLat / 2) +
+             cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+             sin($dLon / 2) * sin($dLon / 2);
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+        return round($earthRadius * $c, 1);
+    }
+
+    private function formatDistanceMeters(float $m): string
+    {
+        if ($m >= 1000) {
+            return number_format($m / 1000, 2, ',', '.') . ' km';
+        }
+        return number_format($m, 0, ',', '.') . ' m';
+    }
+
+    private function formatDurationSeconds(float $sec): string
+    {
+        $min = round($sec / 60);
+        if ($min < 1) return '< 1 menit';
+        if ($min < 60) return $min . ' menit';
+        $hr = floor($min / 60);
+        $remMin = $min % 60;
+        return $hr . ' jam ' . ($remMin > 0 ? $remMin . ' mnt' : '');
+    }
 }

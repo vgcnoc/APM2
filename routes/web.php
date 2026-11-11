@@ -269,6 +269,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('network-topology', [NetworkTopologyController::class, 'index'])->name('network-topology.index');
     Route::get('network-radar', [\App\Http\Controllers\NetworkRadarController::class, 'index'])->name('network-radar.index');
     Route::post('network-radar/nearby', [\App\Http\Controllers\NetworkRadarController::class, 'nearby'])->name('network-radar.nearby');
+    Route::post('network-radar/route', [\App\Http\Controllers\NetworkRadarController::class, 'calculateRoute'])->name('network-radar.route');
 
     Route::post('odcs/bulk-destroy', [OdcController::class, 'bulkDestroy'])->name('odcs.bulk-destroy');
     Route::resource('odcs', OdcController::class);

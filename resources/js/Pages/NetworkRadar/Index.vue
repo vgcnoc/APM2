@@ -125,8 +125,9 @@ let clusterGroup = null;
 let myLocationMarker = null;
 let myLocationCircle = null;
 let connectionsLayerGroup = null;
-let routeLayer = null;
-let routeBadge = null;
+let routeLayerGroup = null;
+const isCalculatingRoute = ref(false);
+const activeRoute = ref(null);
 
 // Helper: Haversine distance in meters
 const calculateDistanceMeters = (lat1, lon1, lat2, lon2) => {
@@ -158,7 +159,27 @@ const formatTime = (seconds) => {
     return `${hr}j ${m}m`;
 };
 
-const getGoogleMapsUrl = (lat, lng) => `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+const getGoogleMapsUrl = (lat, lng) => {
+    const cLat = parseCoordinate(lat);
+    const cLng = parseCoordinate(lng);
+    if (cLat === null || cLng === null) return '#';
+    let sLat = myLocation.value ? parseCoordinate(myLocation.value.lat) : null;
+    let sLng = myLocation.value ? parseCoordinate(myLocation.value.lng) : null;
+    if (sLat === null || sLng === null) {
+        sLat = parseCoordinate(inputLat.value);
+        sLng = parseCoordinate(inputLng.value);
+    }
+    if (sLat !== null && sLng !== null) {
+        return `https://www.google.com/maps/dir/?api=1&origin=${sLat},${sLng}&destination=${cLat},${cLng}&travelmode=driving`;
+    }
+    return `https://www.google.com/maps/dir/?api=1&destination=${cLat},${cLng}&travelmode=driving`;
+};
+
+const scrollToMap = () => {
+    if (mapEl.value) {
+        mapEl.value.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+};
 
 // Parse Coordinates (handle comma or dot)
 const parseCoordinate = (val) => {
@@ -661,14 +682,25 @@ const drawDirectLineToClosestOdp = () => {
 
 // Focus map to specific Item (ODP / ODC / Pelanggan)
 const focusToItem = (item) => {
-    if (!map || !item || !item.latitude || !item.longitude) return;
-    const lat = parseFloat(item.latitude);
-    const lng = parseFloat(item.longitude);
-    if (!isFinite(lat) || !isFinite(lng)) return;
+    if (!map || !item) return;
+    const lat = parseCoordinate(item.latitude);
+    const lng = parseCoordinate(item.longitude);
+    if (lat === null || lng === null) return;
 
+    // Auto-enable map tiles and category layer if hidden
+    if (!showMapTiles.value) showMapTiles.value = true;
+    const rawType = item._type || 'odp';
+    if (['customer', 'reseller', 'booking'].includes(rawType) && !checkPelanggan.value) {
+        checkPelanggan.value = true;
+    } else if (rawType === 'odp' && !checkOdp.value) {
+        checkOdp.value = true;
+    } else if (rawType === 'odc' && !checkOdc.value) {
+        checkOdc.value = true;
+    }
+
+    scrollToMap();
     map.flyTo([lat, lng], 18, { duration: 1.2 });
 
-    const rawType = item._type || 'odp';
     const normalizedType = ['customer', 'reseller', 'booking'].includes(rawType) ? 'customer' : rawType;
     const key = `${normalizedType}-${item.id}`;
 
@@ -851,67 +883,148 @@ const updateUserMarkerAndCircle = (lat, lng, flyTo = false) => {
     }
 };
 
-// Real Road Route (OSRM)
+// Clear active route
+const clearRoute = () => {
+    activeRoute.value = null;
+    if (routeLayerGroup && map) {
+        routeLayerGroup.clearLayers();
+    }
+};
+
+// Real Road Route (OSRM with Resilient Fallback)
 const drawRoadRoute = async (targetLat, targetLng, targetName) => {
     if (!map || !L) return;
 
-    if (!myLocation.value) {
-        const lat = parseCoordinate(inputLat.value);
-        const lng = parseCoordinate(inputLng.value);
-        if (lat !== null && lng !== null) {
-            myLocation.value = { lat, lng, accuracy: 50 };
-            updateUserMarkerAndCircle(lat, lng, false);
+    const dLat = parseCoordinate(targetLat);
+    const dLng = parseCoordinate(targetLng);
+    if (dLat === null || dLng === null) {
+        alert('Koordinat titik tujuan tidak valid.');
+        return;
+    }
+
+    // Determine starting location (user location or manual coordinates)
+    let sLat = myLocation.value ? parseCoordinate(myLocation.value.lat) : null;
+    let sLng = myLocation.value ? parseCoordinate(myLocation.value.lng) : null;
+
+    if (sLat === null || sLng === null) {
+        sLat = parseCoordinate(inputLat.value);
+        sLng = parseCoordinate(inputLng.value);
+        if (sLat !== null && sLng !== null) {
+            myLocation.value = { lat: sLat, lng: sLng, accuracy: 50 };
+            updateUserMarkerAndCircle(sLat, sLng, false);
         } else {
             getMyLocation();
             return;
         }
     }
 
-    const start = `${myLocation.value.lng},${myLocation.value.lat}`;
-    const end = `${targetLng},${targetLat}`;
+    // Smoothly scroll to map container immediately
+    scrollToMap();
+    isCalculatingRoute.value = true;
+
+    if (!routeLayerGroup) {
+        routeLayerGroup = L.layerGroup().addTo(map);
+    }
+    routeLayerGroup.clearLayers();
 
     try {
-        const res = await axios.get(
-            `https://router.project-osrm.org/route/v1/driving/${start};${end}?overview=full&geometries=geojson`
-        );
-        if (res.data.code !== 'Ok' || !res.data.routes.length) return;
+        let routeData = null;
 
-        const route = res.data.routes[0];
-        const distKm = route.distance / 1000;
-        const durSec = route.duration;
+        // 1. Try server-side route calculation (OSRM + backend cache)
+        try {
+            const res = await axios.post('/network-radar/route', {
+                origin_lat: sLat,
+                origin_lng: sLng,
+                dest_lat: dLat,
+                dest_lng: dLng,
+            });
+            if (res.data && res.data.success) {
+                routeData = res.data;
+            }
+        } catch (apiErr) {
+            console.warn('Backend route API warning, will use fallback:', apiErr);
+        }
 
-        if (routeLayer) map.removeLayer(routeLayer);
-        if (routeBadge) map.removeLayer(routeBadge);
+        // 2. Client-side fallback if backend unavailable or network interrupted
+        if (!routeData) {
+            const dist = calculateDistanceMeters(sLat, sLng, dLat, dLng);
+            const dur = Math.max(60, (dist / 30000) * 3600);
+            routeData = {
+                success: true,
+                status: 'fallback',
+                source: 'straight_line',
+                distance: dist,
+                duration: dur,
+                formatted_distance: formatDistance(dist),
+                formatted_duration: formatTime(dur),
+                geometry: {
+                    type: 'LineString',
+                    coordinates: [
+                        [sLng, sLat],
+                        [dLng, dLat]
+                    ]
+                }
+            };
+        }
 
-        routeLayer = L.geoJSON(route.geometry, {
+        // Update active route state
+        activeRoute.value = {
+            ...routeData,
+            targetName: targetName || 'Titik Tujuan',
+            targetLat: dLat,
+            targetLng: dLng,
+            originLat: sLat,
+            originLng: sLng,
+        };
+
+        // Multi-layer Route Polyline for Razor-Sharp Visibility on Satellite & Road
+        // Layer 1: Contrast Outline (White)
+        L.geoJSON(routeData.geometry, {
             style: {
-                color: '#64748b',
-                weight: 4,
-                opacity: 0.85,
-                dashArray: '8, 8',
+                color: '#ffffff',
+                weight: 7,
+                opacity: 0.95,
                 lineCap: 'round',
                 lineJoin: 'round',
-            },
-        }).addTo(map);
+            }
+        }).addTo(routeLayerGroup);
 
-        routeBadge = L.marker([targetLat, targetLng], {
+        // Layer 2: Main vivid line (Blue for OSRM road, Purple for direct fallback)
+        const mainPoly = L.geoJSON(routeData.geometry, {
+            style: {
+                color: routeData.source === 'osrm' ? '#2563eb' : '#9333ea',
+                weight: 4.5,
+                opacity: 0.95,
+                dashArray: routeData.source === 'osrm' ? null : '6, 8',
+                lineCap: 'round',
+                lineJoin: 'round',
+            }
+        }).addTo(routeLayerGroup);
+
+        // Destination Badge on Map
+        L.marker([dLat, dLng], {
             icon: L.divIcon({
-                className: 'route-distance-badge',
+                className: 'route-target-badge',
                 html: `
-                    <div class="px-2.5 py-1 bg-white dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-lg shadow-md text-center transform -translate-y-12">
-                        <div class="text-[11px] font-black text-gray-800 dark:text-white">${formatDistance(route.distance)}</div>
-                        <div class="text-[9px] font-semibold text-gray-500 dark:text-slate-400">🚗 ${formatTime(durSec)}</div>
+                    <div class="px-2.5 py-1 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-blue-500/80 rounded-xl shadow-xl text-center transform -translate-y-12 select-none min-w-[90px]">
+                        <div class="text-[11px] font-black text-gray-900 dark:text-white truncate">${escapeHtmlAttr(targetName || 'Tujuan')}</div>
+                        <div class="text-[10px] font-bold text-blue-600 dark:text-blue-400">${routeData.formatted_distance} • 🚗 ${routeData.formatted_duration}</div>
                     </div>
                 `,
-                iconSize: [80, 36],
-                iconAnchor: [40, 18],
+                iconSize: [110, 40],
+                iconAnchor: [55, 20],
             }),
-            zIndexOffset: 1000,
-        }).addTo(map);
+            zIndexOffset: 2000,
+        }).addTo(routeLayerGroup);
 
-        map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
+        // Fit map bounds smoothly
+        if (mainPoly.getBounds && mainPoly.getBounds().isValid()) {
+            map.fitBounds(mainPoly.getBounds(), { padding: [70, 70], maxZoom: 18 });
+        }
     } catch (err) {
-        console.error('OSRM route failed:', err);
+        console.error('Fatal route calculation error:', err);
+    } finally {
+        isCalculatingRoute.value = false;
     }
 };
 
@@ -1573,6 +1686,11 @@ onUnmounted(() => {
         map.removeLayer(closestLineLayer.value);
         closestLineLayer.value = null;
     }
+    if (routeLayerGroup && map) {
+        routeLayerGroup.clearLayers();
+        map.removeLayer(routeLayerGroup);
+        routeLayerGroup = null;
+    }
     if (tileLayer && map) {
         map.removeLayer(tileLayer);
         tileLayer = null;
@@ -2042,9 +2160,14 @@ onUnmounted(() => {
                             <button
                                 type="button"
                                 @click="drawRoadRoute(filteredActiveTabItems[0].latitude, filteredActiveTabItems[0].longitude, filteredActiveTabItems[0].name)"
-                                class="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+                                :disabled="isCalculatingRoute"
+                                class="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
                             >
-                                <span>🚗 Rute Jalan</span>
+                                <svg v-if="isCalculatingRoute" class="w-3.5 h-3.5 animate-spin text-white" viewBox="0 0 24 24" fill="none">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                </svg>
+                                <span>{{ isCalculatingRoute ? 'Menghitung...' : '🚗 Rute Jalan' }}</span>
                             </button>
                             <a
                                 :href="getGoogleMapsUrl(filteredActiveTabItems[0].latitude, filteredActiveTabItems[0].longitude)"
@@ -2767,7 +2890,7 @@ onUnmounted(() => {
                                     <div class="text-[10px] uppercase font-bold text-gray-400 dark:text-slate-400 tracking-wider mb-1.5">Aktivitas Karyawan</div>
                                     <div class="space-y-2 pl-1">
                                         <div class="flex items-center gap-2">
-                                            <span class="w-3 h-3 rounded-full bg-pink-500 border border-white shadow-xs inline-block shrink-0"></span>
+                                            <span class="w-3 hand-3 rounded-full bg-pink-500 border border-white shadow-xs inline-block shrink-0"></span>
                                             <div>
                                                 <div class="text-[11px] font-bold text-gray-800 dark:text-gray-200">Posisi Karyawan</div>
                                                 <div class="text-[10px] text-gray-400 dark:text-slate-400">Absensi GPS & Tugas Lapangan Hari Ini</div>
@@ -2776,6 +2899,54 @@ onUnmounted(() => {
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- ═══ FLOATING ON-MAP ROUTE INFO HUD ═══ -->
+                    <div
+                        v-if="activeRoute"
+                        class="absolute bottom-4 left-4 right-4 sm:right-auto sm:w-84 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-2xl border border-blue-200 dark:border-blue-800/80 rounded-2xl p-3.5 z-[450] animate-in fade-in slide-in-from-bottom-2 select-none"
+                    >
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center gap-1.5 text-xs font-extrabold text-gray-900 dark:text-white">
+                                    <span class="text-sm">🚗</span>
+                                    <span class="truncate">Rute ke: {{ activeRoute.targetName }}</span>
+                                </div>
+                                <div class="flex items-baseline gap-2 mt-1">
+                                    <span class="text-lg font-black text-blue-600 dark:text-blue-400 tracking-tight">{{ activeRoute.formatted_distance }}</span>
+                                    <span class="text-xs font-bold text-gray-600 dark:text-slate-300">• {{ activeRoute.formatted_duration }}</span>
+                                </div>
+                                <div class="text-[10px] text-gray-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full shrink-0" :class="activeRoute.source === 'osrm' ? 'bg-blue-500' : 'bg-purple-500'"></span>
+                                    <span class="truncate">{{ activeRoute.source === 'osrm' ? 'Mengikuti kontur jalan raya' : 'Jalur langsung desa / gang' }}</span>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                @click="clearRoute"
+                                class="p-1 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                                title="Tutup & Hapus Rute"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                        <div class="mt-2.5 pt-2 border-t border-gray-100 dark:border-slate-800 flex items-center gap-2">
+                            <a
+                                :href="getGoogleMapsUrl(activeRoute.targetLat, activeRoute.targetLng)"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                            >
+                                <span>🗺️ Buka di Google Maps</span>
+                            </a>
+                            <button
+                                type="button"
+                                @click="clearRoute"
+                                class="px-2.5 py-1.5 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                            >
+                                ✕ Tutup
+                            </button>
                         </div>
                     </div>
                 </div>
