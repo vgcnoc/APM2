@@ -6,6 +6,7 @@ const commands = [
   'git reset --hard HEAD',
   'git clean -fd public/build',
   'git pull origin main',
+  'php artisan geo:clean-addresses',
   'php artisan migrate --force',
   'php artisan permissions:sync --roles="finance,hrd,hrd & finance,teknisi,teknisi-2,tim serbu,teknisi tim serbu"',
   'php artisan optimize:clear',

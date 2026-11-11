@@ -325,22 +325,25 @@ class GeoLocationMasterService
             $orig = $c->address;
             $newAddr = $orig;
 
-            // 1. Perbaiki typo Kecamatan
-            $newAddr = preg_replace_callback('/(?:Kec\.?|Kecamatan|matan)\s*([a-zA-Z0-9\s]+?)(?=[,\n\r\.\-]|$)/i', function($m) {
+            // 1. Perbaiki typo Kecamatan (misal: Kec. Warkir, Kec. cikemba, Kec warkir)
+            $newAddr = preg_replace_callback('/\b(?:Kec\.?|Kecamatan)\s*([a-zA-Z0-9]+)/i', function($m) {
                 $normalized = self::normalizeDistrict($m[1]);
                 return "Kec. " . ($normalized ?: trim($m[1]));
             }, $newAddr);
 
-            // 2. Perbaiki typo Kelurahan / Desa
-            $newAddr = preg_replace_callback('/(?:Kel\.?|Kelurahan|Desa)\s*([a-zA-Z0-9\s]+?)(?=\s+(?:Kec|Kab|RT|RW|No|\d)|[,\n\r\.\-]|$)/i', function($m) {
+            // 2. Perbaiki typo Kelurahan / Desa (misal: Kel. sinarjaya, Ds.sinarjaya, Desa damaraja)
+            $newAddr = preg_replace_callback('/\b(?:Kel\.?|Kelurahan|Ds\.?|Desa)\s*([a-zA-Z0-9]+)/i', function($m) {
                 $normalized = self::normalizeVillage($m[1]);
                 return "Kel. " . ($normalized ?: trim($m[1]));
             }, $newAddr);
 
-            // 3. Bersihkan spasi ganda atau koma berlebih
+            // 3. Bersihkan sisa tanda hubung atau koma di akhir penulisan kecamatan
+            $newAddr = preg_replace('/Kec\.\s*([a-zA-Z\s]+?)\s*-\s*(?=,|$)/i', 'Kec. $1', $newAddr);
+
+            // 4. Bersihkan spasi ganda atau koma berlebih
             $newAddr = preg_replace('/\s*,\s*/', ', ', $newAddr);
             $newAddr = preg_replace('/\s+/', ' ', $newAddr);
-            $newAddr = trim($newAddr, " ,\t\n\r\0\x0B");
+            $newAddr = trim($newAddr, " ,\t\n\r\0\x0B-");
 
             if ($newAddr !== $orig) {
                 $c->update(['address' => $newAddr]);
