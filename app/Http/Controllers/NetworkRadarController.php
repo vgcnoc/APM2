@@ -147,7 +147,46 @@ class NetworkRadarController extends Controller
                 return $this->formatCustomerRadarData($customer, $today);
             });
 
-        $areas = \App\Models\Area::select('id', 'name')->orderBy('name')->get();
+        $areas = \App\Models\Area::select('id', 'name')
+            ->orderBy('name')
+            ->get()
+            ->map(function ($a) {
+                $odpAvg = Odp::where('area_id', $a->id)
+                    ->whereNotNull('latitude')
+                    ->whereNotNull('longitude')
+                    ->selectRaw('AVG(latitude) as avg_lat, AVG(longitude) as avg_lng, COUNT(*) as cnt')
+                    ->first();
+
+                $custCount = Customer::where(function ($q) use ($a) {
+                    $q->where('area_id', $a->id)->orWhere('area', $a->name);
+                })->count();
+
+                $odcCount = Odc::where('area_id', $a->id)->count();
+
+                $lat = $odpAvg && $odpAvg->avg_lat ? (float) $odpAvg->avg_lat : null;
+                $lng = $odpAvg && $odpAvg->avg_lng ? (float) $odpAvg->avg_lng : null;
+
+                if (!$lat) {
+                    $custAvg = Customer::where(function ($q) use ($a) {
+                        $q->where('area_id', $a->id)->orWhere('area', $a->name);
+                    })->whereNotNull('latitude')->whereNotNull('longitude')
+                      ->selectRaw('AVG(latitude) as avg_lat, AVG(longitude) as avg_lng')
+                      ->first();
+                    $lat = $custAvg && $custAvg->avg_lat ? (float) $custAvg->avg_lat : null;
+                    $lng = $custAvg && $custAvg->avg_lng ? (float) $custAvg->avg_lng : null;
+                }
+
+                return [
+                    'id' => $a->id,
+                    'name' => $a->name,
+                    'odc_count' => $odcCount,
+                    'odp_count' => (int) ($odpAvg->cnt ?? 0),
+                    'customer_count' => $custCount,
+                    'total_devices' => $odcCount + (int) ($odpAvg->cnt ?? 0) + $custCount,
+                    'center_lat' => $lat,
+                    'center_lng' => $lng,
+                ];
+            });
 
         // Aktivitas Karyawan (Absensi GPS & Tugas Luar Hari Ini / Terkini)
         $employeeActivities = collect();
@@ -240,6 +279,7 @@ class NetworkRadarController extends Controller
         // Radius dikirim dalam satuan meter dari frontend
         $radiusKm = max(0.01, $rawRadius / 1000);
         $areaId = $request->area_id ? (int) $request->area_id : null;
+        $targetArea = $areaId ? \App\Models\Area::find($areaId) : null;
 
         // Tentukan jenis target yang ingin dicek (ODP, ODC, Pelanggan)
         $typesInput = $request->input('types');
@@ -272,7 +312,9 @@ class NetworkRadarController extends Controller
                 ->limit(1000)
                 ->with(['odc:id,name', 'area:id,name']);
 
-            if ($areaId) {
+            if ($targetArea) {
+                $odpQuery->where('area_id', $targetArea->id);
+            } elseif ($areaId) {
                 $odpQuery->where('area_id', $areaId);
             }
 
@@ -304,7 +346,9 @@ class NetworkRadarController extends Controller
                 ->with(['area:id,name'])
                 ->withCount('odps');
 
-            if ($areaId) {
+            if ($targetArea) {
+                $odcQuery->where('area_id', $targetArea->id);
+            } elseif ($areaId) {
                 $odcQuery->where('area_id', $areaId);
             }
 
@@ -349,7 +393,12 @@ class NetworkRadarController extends Controller
                     }
                 ]);
 
-            if ($areaId) {
+            if ($targetArea) {
+                $customerQuery->where(function ($cq) use ($targetArea) {
+                    $cq->where('area_id', $targetArea->id)
+                       ->orWhere('area', $targetArea->name);
+                });
+            } elseif ($areaId) {
                 $customerQuery->where('area_id', $areaId);
             }
 

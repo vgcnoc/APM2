@@ -79,16 +79,33 @@ const getWhatsAppUrl = (phone, customerName, totalUnpaid, dueDate) => {
     return `https://wa.me/${cleanPhone}?text=${message}`;
 };
 
-// Filter options
+// Filter options & Area Helper
+const selectedAreaInfo = computed(() => {
+    if (!filterCabang.value) return null;
+    return props.areas.find(a => String(a.id) === String(filterCabang.value)) || null;
+});
+
+const matchesAreaFilter = (item) => {
+    if (!filterCabang.value) return true;
+    if (String(item.area_id) === String(filterCabang.value)) return true;
+    const selected = props.areas.find(a => String(a.id) === String(filterCabang.value));
+    if (selected && item.area_name && String(item.area_name).trim().toLowerCase() === String(selected.name).trim().toLowerCase()) return true;
+    return false;
+};
+
+const setQuickArea = (areaId) => {
+    filterCabang.value = areaId ? String(areaId) : '';
+};
+
 const filteredOdcOptions = computed(() => {
     if (!filterCabang.value) return props.odcs;
-    return props.odcs.filter(o => o.area_id == filterCabang.value);
+    return props.odcs.filter(o => matchesAreaFilter(o));
 });
 
 const filteredOdpOptions = computed(() => {
     let list = props.odps;
     if (filterCabang.value) {
-        list = list.filter(o => o.area_id == filterCabang.value);
+        list = list.filter(o => matchesAreaFilter(o));
     }
     if (filterOdc.value) {
         list = list.filter(o => o.odc_id == filterOdc.value);
@@ -279,7 +296,7 @@ const visibleOdcs = computed(() => {
 
     return sourceList.filter(item => {
         if (!item.latitude || !item.longitude) return false;
-        if (filterCabang.value && item.area_id != filterCabang.value) return false;
+        if (!matchesAreaFilter(item)) return false;
         if (filterOdc.value && item.id != filterOdc.value) return false;
 
         // Radius filter if user location is set
@@ -301,7 +318,7 @@ const visibleOdps = computed(() => {
 
     return sourceList.filter(item => {
         if (!item.latitude || !item.longitude) return false;
-        if (filterCabang.value && item.area_id != filterCabang.value) return false;
+        if (!matchesAreaFilter(item)) return false;
         if (filterOdc.value && item.odc_id != filterOdc.value) return false;
         if (filterOdp.value && item.id != filterOdp.value) return false;
 
@@ -323,7 +340,7 @@ const visibleCustomers = computed(() => {
 
     return sourceList.filter(item => {
         if (!item.latitude || !item.longitude) return false;
-        if (filterCabang.value && item.area_id != filterCabang.value) return false;
+        if (!matchesAreaFilter(item)) return false;
         if (filterOdc.value && item.odc_id != filterOdc.value) return false;
         if (filterOdp.value && item.odp_id != filterOdp.value) return false;
 
@@ -410,7 +427,7 @@ const nearbyOdpsList = computed(() => {
     })
     .filter(item => {
         if (!item) return false;
-        if (filterCabang.value && item.area_id != filterCabang.value) return false;
+        if (!matchesAreaFilter(item)) return false;
         if (filterOdc.value && item.odc_id != filterOdc.value) return false;
         if (filterOdp.value && item.id != filterOdp.value) return false;
         if (searchRadiusMeters.value && item.distance_meters > searchRadiusMeters.value) return false;
@@ -448,7 +465,7 @@ const nearbyOdcsList = computed(() => {
     })
     .filter(item => {
         if (!item) return false;
-        if (filterCabang.value && item.area_id != filterCabang.value) return false;
+        if (!matchesAreaFilter(item)) return false;
         if (filterOdc.value && item.id != filterOdc.value) return false;
         if (searchRadiusMeters.value && item.distance_meters > searchRadiusMeters.value) return false;
         return true;
@@ -494,7 +511,7 @@ const nearbyCustomersList = computed(() => {
     })
     .filter(item => {
         if (!item) return false;
-        if (filterCabang.value && item.area_id != filterCabang.value) return false;
+        if (!matchesAreaFilter(item)) return false;
         if (filterOdc.value && item.odc_id != filterOdc.value) return false;
         if (filterOdp.value && item.odp_id != filterOdp.value) return false;
 
@@ -1242,9 +1259,20 @@ watch([checkOdp, checkOdc, checkPelanggan], () => {
     }
 });
 
-watch(filterCabang, () => {
+watch(filterCabang, (newVal) => {
     filterOdc.value = '';
     filterOdp.value = '';
+
+    if (newVal) {
+        const selected = props.areas.find(a => String(a.id) === String(newVal));
+        if (selected && selected.center_lat && selected.center_lng) {
+            setLocationCoordinates(selected.center_lat, selected.center_lng, false);
+            if (map) {
+                map.flyTo([selected.center_lat, selected.center_lng], 15, { duration: 0.8 });
+            }
+        }
+    }
+
     if (myLocation.value) {
         handleSearchNearby();
     } else {
@@ -1510,16 +1538,111 @@ onUnmounted(() => {
                     <p v-if="gpsError" class="text-[11px] text-red-500 font-medium mt-1">{{ gpsError }}</p>
                 </div>
 
-                <!-- Radius Pencarian (meter) -->
-                <div class="mb-3.5">
-                    <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1.5">Radius Pencarian (meter)</label>
-                    <input
-                        type="number"
-                        v-model.number="searchRadiusMeters"
-                        @keydown.enter="handleSearchNearby"
-                        placeholder="5000"
-                        class="w-full sm:w-72 px-3.5 py-2 text-xs rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
-                    />
+                <!-- ═══ AREA / WILAYAH & RADIUS PENCARIAN ═══ -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <!-- Kolom 1: Filter Area / Wilayah -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="text-xs font-bold text-gray-800 dark:text-slate-200 flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <span>Area / Wilayah</span>
+                            </label>
+                            <span v-if="selectedAreaInfo" class="text-[10px] font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-md border border-blue-200/60 dark:border-blue-800/40">
+                                {{ selectedAreaInfo.customer_count ?? 0 }} Cust &bull; {{ selectedAreaInfo.odp_count ?? 0 }} ODP
+                            </span>
+                        </div>
+                        <div class="relative">
+                            <select
+                                v-model="filterCabang"
+                                class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800 text-gray-900 dark:text-white font-medium focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors cursor-pointer"
+                            >
+                                <option value="">Semua Area / Wilayah</option>
+                                <option v-for="area in areas" :key="area.id" :value="area.id">
+                                    {{ area.name }} {{ area.customer_count !== undefined ? `(${area.customer_count} Pelanggan • ${area.odp_count} ODP)` : '' }}
+                                </option>
+                            </select>
+                        </div>
+                        <!-- Quick Area Pills -->
+                        <div class="flex flex-wrap items-center gap-1.5 mt-2">
+                            <button
+                                type="button"
+                                @click="setQuickArea('')"
+                                :class="[
+                                    'px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer',
+                                    !filterCabang
+                                        ? 'bg-blue-900 text-white shadow-2xs'
+                                        : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'
+                                ]"
+                            >
+                                Semua
+                            </button>
+                            <button
+                                type="button"
+                                v-for="area in areas"
+                                :key="area.id"
+                                @click="setQuickArea(area.id)"
+                                :class="[
+                                    'px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1',
+                                    filterCabang == area.id
+                                        ? 'bg-blue-900 text-white shadow-2xs'
+                                        : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'
+                                ]"
+                            >
+                                <span>{{ area.name }}</span>
+                                <span v-if="area.customer_count !== undefined" class="text-[9px] opacity-80 font-normal">
+                                    ({{ area.customer_count }})
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Kolom 2: Radius Pencarian (meter) -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="text-xs font-bold text-gray-800 dark:text-slate-200 flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <circle cx="12" cy="12" r="9" stroke-width="2"/>
+                                    <circle cx="12" cy="12" r="4" stroke-width="2"/>
+                                </svg>
+                                <span>Radius Pencarian</span>
+                            </label>
+                            <span class="text-[11px] text-blue-600 dark:text-blue-400 font-extrabold">
+                                {{ formatDistance(searchRadiusMeters) }}
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input
+                                type="number"
+                                v-model.number="searchRadiusMeters"
+                                @keydown.enter="handleSearchNearby"
+                                placeholder="5000"
+                                class="flex-1 px-3.5 py-2.5 text-xs rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                            />
+                            <!-- Quick Radius Presets -->
+                            <div class="flex items-center gap-1 shrink-0">
+                                <button
+                                    type="button"
+                                    v-for="r in [300, 1000, 5000]"
+                                    :key="r"
+                                    @click="searchRadiusMeters = r; handleSearchNearby()"
+                                    :class="[
+                                        'px-2.5 py-2 text-[11px] font-bold rounded-xl border transition-all cursor-pointer',
+                                        searchRadiusMeters === r
+                                            ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                                            : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700'
+                                    ]"
+                                >
+                                    {{ r < 1000 ? r + 'm' : (r / 1000) + 'km' }}
+                                </button>
+                            </div>
+                        </div>
+                        <p class="text-[11px] text-gray-400 dark:text-slate-500 mt-2">
+                            Pencarian radar akan memindai seluruh perangkat & pelanggan di dalam radius ini dari titik koordinat.
+                        </p>
+                    </div>
                 </div>
 
                 <!-- Apa yang ingin dicek? -->
@@ -1591,11 +1714,19 @@ onUnmounted(() => {
                 <!-- Header Card & Category Filter Tabs -->
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-slate-800">
                     <div>
-                        <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <h3 class="text-sm font-bold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
                             <span class="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse"></span>
                             <span>Hasil Radar Terdekat</span>
                             <span class="text-[11px] font-medium text-gray-500 dark:text-slate-400">
                                 (Radius: {{ formatDistance(searchRadiusMeters) }})
+                            </span>
+                            <span v-if="selectedAreaInfo" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                <svg class="w-3 h-3 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /></svg>
+                                <span>Area: {{ selectedAreaInfo.name }}</span>
+                                <button type="button" @click.stop="setQuickArea('')" class="hover:text-red-500 font-black ml-1 text-xs cursor-pointer" title="Hapus filter area">&times;</button>
+                            </span>
+                            <span v-if="onlyUnpaidCustomers" class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900">
+                                Hanya Belum Lunas
                             </span>
                         </h3>
                         <p class="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
@@ -2033,15 +2164,22 @@ onUnmounted(() => {
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                    <!-- Cabang -->
+                    <!-- Area / Wilayah -->
                     <div>
-                        <label class="block text-[11px] font-semibold text-gray-500 dark:text-slate-400 mb-1">Cabang</label>
+                        <label class="block text-[11px] font-semibold text-gray-500 dark:text-slate-400 mb-1 flex items-center gap-1">
+                            <svg class="w-3 h-3 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            </svg>
+                            <span>Area / Wilayah</span>
+                        </label>
                         <select
                             v-model="filterCabang"
-                            class="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800 text-gray-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                            class="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800 text-gray-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors cursor-pointer"
                         >
-                            <option value="">Semua Cabang</option>
-                            <option v-for="area in areas" :key="area.id" :value="area.id">{{ area.name }}</option>
+                            <option value="">Semua Area / Wilayah</option>
+                            <option v-for="area in areas" :key="area.id" :value="area.id">
+                                {{ area.name }} {{ area.customer_count !== undefined ? `(${area.customer_count} Pelanggan • ${area.odp_count} ODP)` : '' }}
+                            </option>
                         </select>
                     </div>
 
