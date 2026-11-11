@@ -478,6 +478,24 @@
                                         <label class="block text-xs font-bold text-gray-700 mb-1">Deskripsi Singkat</label>
                                         <input v-model="form.description" type="text" class="input-text" placeholder="Keterangan singkat paket ini...">
                                     </div>
+
+                                    <div class="md:col-span-2">
+                                        <label class="block text-xs font-bold text-gray-700 mb-1.5">Warna Aksen Paket (Tema Kartu & Preview)</label>
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <button 
+                                                v-for="c in ['#4f46e5', '#2563eb', '#0284c7', '#0d9488', '#059669', '#d97706', '#e11d48', '#7c3aed']" 
+                                                :key="c"
+                                                type="button" 
+                                                @click="form.color = c"
+                                                class="w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 flex items-center justify-center cursor-pointer shadow-xs"
+                                                :class="form.color === c ? 'border-gray-900 scale-110 ring-2 ring-indigo-400' : 'border-white'"
+                                                :style="{ backgroundColor: c }"
+                                            >
+                                                <span v-if="form.color === c" class="text-white text-xs font-bold leading-none">✓</span>
+                                            </button>
+                                            <input v-model="form.color" type="color" class="w-8 h-8 rounded-lg cursor-pointer border border-gray-200 p-0.5" title="Pilih warna kustom">
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -501,7 +519,7 @@
                                                     <div class="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1 w-48 p-2 bg-gray-800 text-white text-[10px] rounded shadow-lg z-10 font-normal">Format limitasi bandwidth MikroTik. Kosongkan untuk pakai default profil.</div>
                                                 </span>
                                             </label>
-                                            <button type="button" @click="openRateLimitGen" class="text-[10px] bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-2.5 py-1.5 rounded flex items-center gap-1.5 transition-colors border border-indigo-200 shadow-sm">
+                                            <button type="button" @click="openRateLimitGen" class="text-[10px] bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-2.5 py-1.5 rounded flex items-center gap-1.5 transition-colors border border-indigo-200 shadow-sm cursor-pointer">
                                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                                                 Advanced Generator
                                             </button>
@@ -512,9 +530,32 @@
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                                             </button>
                                         </div>
+                                        <p class="text-[11px] text-gray-500 mt-1">
+                                            <span v-if="form.rate_limit">Format aktif: <code class="bg-gray-100 px-1 py-0.5 rounded text-indigo-700 font-bold">{{ form.rate_limit }}</code></span>
+                                            <span v-else>💡 Jika dikosongkan, FreeRADIUS otomatis menerapkan <strong>{{ form.speed_mbps ? form.speed_mbps + 'M/' + form.speed_mbps + 'M' : 'Default Profil' }}</strong>.</span>
+                                        </p>
                                     </div>
 
+                                    <!-- Kustom MikroTik Group / Profil & Address List -->
+                                    <div class="pt-3 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div class="p-3 rounded-lg border bg-gray-50/60 transition-colors" :class="form.is_mikrotik_group_custom ? 'border-indigo-200 bg-indigo-50/20' : 'border-gray-200'">
+                                            <label class="flex items-center justify-between cursor-pointer mb-2">
+                                                <span class="text-xs font-bold text-gray-700">MikroTik Group / Profil Khusus</span>
+                                                <input type="checkbox" v-model="form.is_mikrotik_group_custom" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                            </label>
+                                            <input v-if="form.is_mikrotik_group_custom" v-model="form.mikrotik_group" type="text" class="input-text w-full text-xs font-mono" placeholder="Nama Group / Profile di MikroTik">
+                                            <p class="text-[10px] text-gray-500 mt-1">Default otomatis: Menggunakan nama paket / profil standar MikroTik.</p>
+                                        </div>
 
+                                        <div class="p-3 rounded-lg border bg-gray-50/60 transition-colors" :class="form.is_mikrotik_address_list_custom ? 'border-indigo-200 bg-indigo-50/20' : 'border-gray-200'">
+                                            <label class="flex items-center justify-between cursor-pointer mb-2">
+                                                <span class="text-xs font-bold text-gray-700">MikroTik Address List (Opsional)</span>
+                                                <input type="checkbox" v-model="form.is_mikrotik_address_list_custom" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                            </label>
+                                            <input v-if="form.is_mikrotik_address_list_custom" v-model="form.mikrotik_address_list" type="text" class="input-text w-full text-xs font-mono" placeholder="Contoh: pelanggan-pppoe">
+                                            <p class="text-[10px] text-gray-500 mt-1">Untuk aturan firewall mangle / routing khusus pelanggan.</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -848,9 +889,9 @@
                                             <div class="p-1 rounded-full bg-orange-50 text-orange-500"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg></div>
                                             <span>Maks. <strong>{{ form.shared_device }}</strong> Perangkat (Simultan)</span>
                                         </li>
-                                        <li v-if="form.rate_limit" class="flex items-center gap-3 text-sm text-gray-700">
+                                        <li class="flex items-center gap-3 text-sm text-gray-700">
                                             <div class="p-1 rounded-full bg-purple-50 text-purple-500"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg></div>
-                                            <span class="font-mono text-xs">{{ form.rate_limit }}</span>
+                                            <span class="font-mono text-xs">{{ form.rate_limit || (form.speed_mbps ? form.speed_mbps + 'M/' + form.speed_mbps + 'M (Otomatis)' : 'Default Profil') }}</span>
                                         </li>
                                     </ul>
 
@@ -1505,7 +1546,7 @@ const openRateLimitGen = () => {
         }
     } else {
         rlGen.value.maxDl = form.speed_mbps ? `${form.speed_mbps}M` : '10M';
-        rlGen.value.maxUl = form.speed_mbps ? `${Math.floor(form.speed_mbps/2)}M` : '5M';
+        rlGen.value.maxUl = form.speed_mbps ? `${form.speed_mbps}M` : '10M';
         rlGen.value.useBurst = false;
         rlGen.value.useLimitAt = false;
         rlGen.value.priority = 8;
@@ -1695,6 +1736,9 @@ const submitForm = () => {
             onSuccess: () => {
                 showSummaryModal.value = false;
                 closeModal();
+            },
+            onError: () => {
+                showSummaryModal.value = false;
             }
         });
     } else {
@@ -1703,6 +1747,9 @@ const submitForm = () => {
             onSuccess: () => {
                 showSummaryModal.value = false;
                 closeModal();
+            },
+            onError: () => {
+                showSummaryModal.value = false;
             }
         });
     }

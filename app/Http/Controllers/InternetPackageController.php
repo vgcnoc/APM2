@@ -176,7 +176,13 @@ class InternetPackageController extends Controller
 
         $validated = $this->cleanAreaInstallationFees($validated);
 
-        InternetPackage::create($validated);
+        $package = InternetPackage::create($validated);
+
+        try {
+            app(\App\Services\RadiusService::class)->syncPackage($package);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Failed to sync package {$package->id} to FreeRADIUS: " . $e->getMessage());
+        }
 
         return redirect()->back()->with('success', 'Paket internet berhasil ditambahkan.');
     }
@@ -193,6 +199,12 @@ class InternetPackageController extends Controller
 
         $internetPackage->update($validated);
 
+        try {
+            app(\App\Services\RadiusService::class)->syncPackage($internetPackage);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Failed to update package {$internetPackage->id} in FreeRADIUS: " . $e->getMessage());
+        }
+
         return redirect()->back()->with('success', 'Paket internet berhasil diperbarui.');
     }
 
@@ -202,7 +214,14 @@ class InternetPackageController extends Controller
             return redirect()->back()->with('error', 'Paket internet tidak dapat dihapus karena masih digunakan oleh pelanggan.');
         }
 
+        $packageId = $internetPackage->id;
         $internetPackage->delete();
+
+        try {
+            app(\App\Services\RadiusService::class)->removePackageGroup($packageId);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Failed to remove package {$packageId} from FreeRADIUS: " . $e->getMessage());
+        }
 
         return redirect()->back()->with('success', 'Paket internet berhasil dihapus.');
     }
