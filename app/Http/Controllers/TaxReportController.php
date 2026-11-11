@@ -48,7 +48,10 @@ class TaxReportController extends Controller
         $paidInvoiceScope = $this->getPaidInvoiceScope($month, $year, $selectedPeriodEnd);
 
         // Hanya tampilkan pelanggan yang sudah bayar (lunas / paid) di periode bulan terpilih
-        $query = Customer::with(['package', 'invoices' => fn($q) => $paidInvoiceScope($q)->latest('id')])
+        $query = Customer::with(['package', 'invoices' => function($q) use ($paidInvoiceScope) {
+                $paidInvoiceScope($q);
+                $q->latest('id');
+            }])
             ->whereHas('invoices', $paidInvoiceScope)
             ->whereNotIn('service_status', ['gratis', 'free_home'])
             ->orderBy('name');
@@ -73,7 +76,10 @@ class TaxReportController extends Controller
         });
         
         // Aggregate totals for scoped paid customers in this period
-        $activeCustomersQuery = Customer::with(['package', 'invoices' => fn($q) => $paidInvoiceScope($q)->latest('id')])
+        $activeCustomersQuery = Customer::with(['package', 'invoices' => function($q) use ($paidInvoiceScope) {
+                $paidInvoiceScope($q);
+                $q->latest('id');
+            }])
             ->whereHas('invoices', $paidInvoiceScope)
             ->whereNotIn('service_status', ['gratis', 'free_home']);
 
@@ -135,7 +141,10 @@ class TaxReportController extends Controller
         $selectedPeriodEnd = Carbon::createFromDate($year, $month, 1)->endOfMonth();
         $paidInvoiceScope = $this->getPaidInvoiceScope($month, $year, $selectedPeriodEnd);
 
-        $query = Customer::with(['package', 'invoices' => fn($q) => $paidInvoiceScope($q)->latest('id')])
+        $query = Customer::with(['package', 'invoices' => function($q) use ($paidInvoiceScope) {
+                $paidInvoiceScope($q);
+                $q->latest('id');
+            }])
             ->whereHas('invoices', $paidInvoiceScope)
             ->whereNotIn('service_status', ['gratis', 'free_home'])
             ->orderBy('name');
