@@ -39,7 +39,13 @@ class AreaMonitoringController extends Controller
 
         // 1. Ambil Invoices pada periode bulan & tahun yang dipilih (sinkron dengan siklus penagihan pelanggan)
         $invoiceQuery = Invoice::query()
-            ->with(['customer:id,customer_code,name,phone,address,area_id,area,status,service_status,package_id', 'customer.package:id,name,price'])
+            ->with([
+                'customer:id,customer_code,name,phone,address,area_id,area,status,service_status,package_id',
+                'customer.package:id,name,price',
+                'payments' => function ($pq) {
+                    $pq->where('status', 'verified')->select('id', 'invoice_id', 'amount', 'status');
+                }
+            ])
             ->where(function ($q) use ($month, $year, $endOfMonth) {
                 $q->where(function ($sub) use ($month, $year, $endOfMonth) {
                     $sub->where('period_month', $month)
@@ -167,20 +173,33 @@ class AreaMonitoringController extends Controller
             $dueDate = $inv->due_date ? Carbon::parse($inv->due_date)->toDateString() : null;
             $isOverdue = $dueDate && $dueDate < $today;
 
+            $paid = $inv->payments ? (float) $inv->payments->where('status', 'verified')->sum('amount') : 0.0;
+            $remaining = max(0.0, $amount - $paid);
+
             if ($status === 'paid') {
                 $category = 'lunas';
-            } elseif ($hasPromise) {
-                $category = 'janji_bayar';
-            } elseif ($status === 'partial') {
-                $category = 'bayar_sebagian';
-            } elseif ($isOverdue) {
-                $category = 'nunggak';
+                $ref['billing']['lunas']['count']++;
+                $ref['billing']['lunas']['amount'] += $amount;
             } else {
-                $category = 'belum_bayar';
+                if ($hasPromise) {
+                    $category = 'janji_bayar';
+                } elseif ($status === 'partial') {
+                    $category = 'bayar_sebagian';
+                } elseif ($isOverdue) {
+                    $category = 'nunggak';
+                } else {
+                    $category = 'belum_bayar';
+                }
+
+                $ref['billing'][$category]['count']++;
+                $ref['billing'][$category]['amount'] += $remaining;
+
+                // Alokasikan nominal pembayaran yang telah diverifikasi (uang masuk) ke kas Lunas
+                if ($paid > 0) {
+                    $ref['billing']['lunas']['amount'] += $paid;
+                }
             }
 
-            $ref['billing'][$category]['count']++;
-            $ref['billing'][$category]['amount'] += $amount;
             $ref['billing']['total']['count']++;
             $ref['billing']['total']['amount'] += $amount;
             unset($ref);
@@ -370,7 +389,10 @@ class AreaMonitoringController extends Controller
                 ->with([
                     'customer:id,customer_code,name,phone,address,area_id,area,status,service_status,package_id,notes',
                     'customer.package:id,name,price',
-                    'customer.areaModel:id,name'
+                    'customer.areaModel:id,name',
+                    'payments' => function ($pq) {
+                        $pq->where('status', 'verified')->select('id', 'invoice_id', 'amount', 'status');
+                    }
                 ])
                 ->where(function ($q) use ($month, $year, $endOfMonth) {
                     $q->where(function ($sub) use ($month, $year, $endOfMonth) {
@@ -434,12 +456,24 @@ class AreaMonitoringController extends Controller
                 });
             }
 
-            $totalAmount = (float) (clone $query)->sum('amount');
+            if ($category === 'bayar_sebagian') {
+                // Untuk bayar sebagian, total nominal modal adalah akumulasi sisa piutang riil
+                $totalAmount = (float) (clone $query)->with('payments')->get()->sum(function ($inv) {
+                    $paid = $inv->payments ? (float) $inv->payments->where('status', 'verified')->sum('amount') : 0.0;
+                    return max(0.0, (float) $inv->amount - $paid);
+                });
+            } else {
+                $totalAmount = (float) (clone $query)->sum('amount');
+            }
             $paginator = $query->latest('due_date')->paginate(20)->withQueryString();
 
             // Transform data agar seragam dan mudah dipakai di modal
-            $items = collect($paginator->items())->map(function ($inv) {
+            $items = collect($paginator->items())->map(function ($inv) use ($category) {
                 $cust = $inv->customer;
+                $paid = $inv->payments ? (float) $inv->payments->where('status', 'verified')->sum('amount') : 0.0;
+                $remaining = max(0.0, (float) $inv->amount - $paid);
+                $displayAmount = ($category === 'bayar_sebagian') ? $remaining : (float) $inv->amount;
+
                 return [
                     'id' => $inv->id,
                     'customer_id' => $cust?->id,
@@ -450,7 +484,10 @@ class AreaMonitoringController extends Controller
                     'area_name' => $cust?->areaModel?->name ?? $cust?->area ?? '-',
                     'package_name' => $cust?->package?->name ?? '-',
                     'invoice_number' => $inv->invoice_number,
-                    'amount' => (float) $inv->amount,
+                    'amount' => $displayAmount,
+                    'original_amount' => (float) $inv->amount,
+                    'total_paid' => $paid,
+                    'remaining' => $remaining,
                     'due_date' => $inv->due_date ? Carbon::parse($inv->due_date)->format('d/m/Y') : '-',
                     'promise_date' => $inv->promise_date ? Carbon::parse($inv->promise_date)->format('d/m/Y') : null,
                     'status' => $inv->status,

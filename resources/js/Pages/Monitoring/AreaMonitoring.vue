@@ -977,6 +977,9 @@
                                 <span v-if="showNominal" class="text-sm font-black text-slate-800 dark:text-slate-100">
                                     {{ formatRupiah(item.amount) }}
                                 </span>
+                                <span v-if="showNominal && item.total_paid > 0" class="text-[10px] text-slate-500 font-medium">
+                                    Terbayar: Rp {{ formatRupiah(item.total_paid) }} &bull; Total: Rp {{ formatRupiah(item.original_amount) }}
+                                </span>
 
                                 <a 
                                     v-if="item.phone"
@@ -1182,6 +1185,8 @@ const getWhatsAppUrl = (item) => {
     let text = '';
     if (drillDownModal.categoryKey === 'janji_bayar' && item.promise_date) {
         text = `Halo Kak *${item.name}*,\n\nKami dari Bagian Billing ISP mengonfirmasi komitmen janji bayar tagihan internet periode *${currentMonthName} ${filterYear.value}* sebesar *${formatRupiah(item.amount)}* yang dijadwalkan pada tanggal *${item.promise_date}*.\n\nMohon konfirmasi jika pembayaran telah dilakukan. Terima kasih atas kerja samanya! 🙏`;
+    } else if (item.total_paid && item.total_paid > 0) {
+        text = `Halo Kak *${item.name}* (ID: ${item.customer_code}),\n\nKami mengonfirmasi pembayaran tagihan internet *${item.package_name}* periode *${currentMonthName} ${filterYear.value}* (No: *${item.invoice_number || '-'}*) telah kami terima sebesar *Rp ${formatRupiah(item.total_paid)}*.\n\nSisa tagihan yang belum terlunasi adalah sebesar *Rp ${formatRupiah(item.amount)}* dari total tagihan *Rp ${formatRupiah(item.original_amount)}*.\n\nMohon kesediaannya untuk menyelesaikan sisa pembayaran. Terima kasih banyak! 🙏`;
     } else {
         text = `Halo Kak *${item.name}* (ID: ${item.customer_code}),\n\nKami mengingatkan tagihan internet *${item.package_name}* periode *${currentMonthName} ${filterYear.value}* sebesar *${formatRupiah(item.amount)}* dengan no invoice *${item.invoice_number || '-'}* saat ini belum terlunasi.\n\nMohon kesediaannya untuk melakukan pembayaran agar layanan tetap aktif lancar. Jika sudah membayar, abaikan pesan ini. Terima kasih! 🙏`;
     }
