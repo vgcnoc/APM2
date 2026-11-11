@@ -307,6 +307,19 @@
                 <!-- Kolom Aksi di Depan Nama Pelanggan -->
                 <td class="whitespace-nowrap">
                     <div class="flex items-center justify-start gap-1.5 whitespace-nowrap">
+                        <!-- Quick Tombol Buka Isolir jika pelanggan berstatus suspended -->
+                        <button
+                            v-can="'customers_active_suspend'"
+                            v-if="row.status === 'suspended'"
+                            type="button"
+                            @click.stop="openUnsuspendModal(row)"
+                            class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-lg transition-all text-xs font-bold shadow-2xs hover:shadow-xs cursor-pointer"
+                            title="Buka Isolir Layanan Pelanggan"
+                        >
+                            <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
+                            <span>Buka Isolir</span>
+                        </button>
+
                         <!-- Tombol Dropdown Menu Aksi -->
                         <button 
                             type="button" 
@@ -558,6 +571,41 @@
                         <button v-can="'customers_active_suspend'" v-if="activeDropdownRow.connection_access_pending" type="button" :disabled="connectionAccessBusy"
                             @click="changeConnectionAccess(activeDropdownRow, !!activeDropdownRow.connection_disabled, true); closeDropdown()"
                             class="w-full px-3.5 py-2 text-left text-xs font-semibold text-amber-600 hover:bg-amber-50 disabled:opacity-50">Sinkronkan Ulang Koneksi</button>
+
+                        <!-- Buka Isolir Layanan (jika sedang suspended) -->
+                        <button
+                            v-can="'customers_active_suspend'"
+                            v-if="activeDropdownRow.status === 'suspended'"
+                            type="button"
+                            @click="openUnsuspendModal(activeDropdownRow); closeDropdown()"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-emerald-50/80 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+                                <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-emerald-600">Buka Isolir Layanan</span>
+                                <p class="text-[10px] text-slate-400 font-normal leading-tight">Aktifkan kembali internet & toleransi</p>
+                            </div>
+                        </button>
+
+                        <!-- Isolir Layanan Manual (jika sedang active) -->
+                        <button
+                            v-can="'customers_active_suspend'"
+                            v-if="activeDropdownRow.status === 'active'"
+                            type="button"
+                            @click="confirmSuspend(activeDropdownRow); closeDropdown()"
+                            class="w-full px-3.5 py-2 text-left flex items-center gap-2.5 text-slate-700 hover:bg-rose-50/80 transition-colors font-medium group cursor-pointer"
+                        >
+                            <div class="w-6 h-6 rounded-lg bg-rose-50 flex items-center justify-center shrink-0">
+                                <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zM10 11V7a2 2 0 114 0v4H10z"/></svg>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <span class="font-semibold text-xs block text-rose-600">Isolir Layanan</span>
+                                <p class="text-[10px] text-slate-400 font-normal leading-tight">Alihkan ke profil isolir & putus sesi</p>
+                            </div>
+                        </button>
+
                         <!-- Stop Permanen -->
                         <button 
                             v-can="'customers_active_terminate'"
@@ -1206,6 +1254,53 @@
             </div>
         </Teleport>
 
+        <!-- Buka Isolir Modal -->
+        <Teleport to="body">
+            <div v-if="showUnsuspendModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-pointer" @click="showUnsuspendModal = false"></div>
+                <div class="relative bg-white border border-emerald-200 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up">
+                    <div class="p-5 border-b border-emerald-100 flex items-center justify-between bg-emerald-50/50">
+                        <h3 class="text-base font-bold text-emerald-900 flex items-center gap-2">
+                            <span class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center text-sm font-bold">🔓</span> Buka Isolir Pelanggan
+                        </h3>
+                        <button @click="showUnsuspendModal = false" class="text-gray-400 hover:text-gray-700">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                    <form @submit.prevent="submitUnsuspend">
+                        <div class="p-6 space-y-4 text-xs">
+                            <div class="bg-emerald-50 text-emerald-900 p-3.5 rounded-xl border border-emerald-200 shadow-sm leading-relaxed">
+                                Aktifkan kembali layanan internet untuk pelanggan <strong>{{ unsuspendingCustomer?.name }}</strong> ({{ unsuspendingCustomer?.customer_code }}). Profil koneksi akan dikembalikan ke paket langganan dan sesi dial-up baru akan diaktifkan seketika.
+                            </div>
+
+                            <!-- Input Batas Dispensasi / Janji Bayar -->
+                            <div class="bg-amber-50/80 border border-amber-200 rounded-xl p-3.5 space-y-2">
+                                <label class="block font-bold text-amber-900">
+                                    Batas Dispensasi / Janji Bayar
+                                </label>
+                                <p class="text-[11px] text-amber-700 leading-tight">
+                                    Tentukan batas toleransi internet aktif jika pelanggan masih memiliki tagihan jatuh tempo. Jika melewati batas ini dan belum lunas, sistem akan otomatis mengisolir kembali.
+                                </p>
+                                <input
+                                    type="date"
+                                    v-model="unsuspendForm.promise_date"
+                                    :min="todayDate"
+                                    class="w-full text-xs font-semibold rounded-lg border-amber-300 focus:border-amber-500 focus:ring-amber-500 bg-white"
+                                />
+                            </div>
+                        </div>
+                        <div class="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-2">
+                            <button type="button" @click="showUnsuspendModal = false" class="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-900 bg-white border border-gray-300 rounded-lg">Batal</button>
+                            <button type="submit" :disabled="unsuspendBusy" class="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm disabled:opacity-50 flex items-center gap-1.5">
+                                <span v-if="unsuspendBusy">Memproses...</span>
+                                <span v-else>Ya, Buka Isolir</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </Teleport>
+
         <!-- Stop Permanen Modal -->
         <Teleport to="body">
             <div v-if="showTerminateModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -1816,6 +1911,44 @@ function submitTerminate() {
         onSuccess: () => {
             showTerminateModal.value = false;
         }
+    });
+}
+
+// ── Buka Isolir & Isolir Manual Logic ─────────────────────────────
+const showUnsuspendModal = ref(false);
+const unsuspendingCustomer = ref(null);
+const unsuspendBusy = ref(false);
+const todayDate = new Date().toISOString().split('T')[0];
+const unsuspendForm = ref({
+    promise_date: todayDate,
+});
+
+function openUnsuspendModal(customer) {
+    unsuspendingCustomer.value = customer;
+    unsuspendForm.value.promise_date = new Date().toISOString().split('T')[0];
+    showUnsuspendModal.value = true;
+}
+
+function submitUnsuspend() {
+    if (!unsuspendingCustomer.value || unsuspendBusy.value) return;
+    unsuspendBusy.value = true;
+    router.post(`/customers/${unsuspendingCustomer.value.id}/unsuspend`, {
+        promise_date: unsuspendForm.value.promise_date || undefined,
+    }, {
+        preserveScroll: true,
+        onFinish: () => {
+            unsuspendBusy.value = false;
+            showUnsuspendModal.value = false;
+            unsuspendingCustomer.value = null;
+        }
+    });
+}
+
+function confirmSuspend(customer) {
+    if (!customer) return;
+    if (!window.confirm(`Isolir layanan internet pelanggan ${customer.name} (${customer.customer_code})? Koneksi akan dialihkan ke profil isolir dan sesi aktif akan diputus.`)) return;
+    router.post(`/customers/${customer.id}/suspend`, {}, {
+        preserveScroll: true,
     });
 }
 

@@ -6976,6 +6976,8 @@ class CustomerController extends Controller
             'status' => 'suspended',
             'suspend_start' => now()->toDateString(),
             'suspend_end' => null,
+            'billing_isolated_at' => now(),
+            'billing_isolation_pending' => false,
         ]);
 
         try {
@@ -7002,21 +7004,54 @@ class CustomerController extends Controller
             return redirect()->back()->with('info', 'Pelanggan tidak dalam status isolir.');
         }
 
+        $request->validate([
+            'promise_date' => 'nullable|date',
+        ]);
+
+        $hasDue = app(\App\Services\BillingIsolationService::class)->hasDueBalance($customer);
+        $promiseDate = $request->input('promise_date');
+
+        // Jika pelanggan masih memiliki tunggakan, berikan dispensasi janji bayar
+        // (default hari ini sampai 23:59 WIB jika tidak ditentukan) agar tidak langsung terisolir ulang oleh cron scheduler 1 menit kemudian
+        if ($hasDue) {
+            $promiseDate = $promiseDate ?: now()->toDateString();
+            \App\Models\Invoice::where('customer_id', $customer->id)
+                ->where('is_reseller_balance', false)
+                ->where('invoice_number', 'not like', 'INV-MIG-%')
+                ->whereIn('status', ['unpaid', 'partial', 'overdue'])
+                ->update(['promise_date' => $promiseDate]);
+        }
+
         $customer->update([
             'status' => 'active',
             'suspend_start' => null,
             'suspend_end' => null,
+            'billing_isolated_at' => null,
+            'billing_isolation_pending' => false,
         ]);
 
         try {
             $radius->syncCustomer($customer);
+            $accounts = $radius->customerAccounts($customer);
+            foreach (array_keys($accounts) as $username) {
+                $radius->disconnect($username);
+            }
         } catch (\Throwable $e) {
             \Log::warning('[RADIUS] Unsuspend sync error: ' . $e->getMessage());
         }
 
-        \App\Models\AuditLog::createLog('Buka Isolir', $customer, 'suspended', 'active', 'Membuka isolir pelanggan');
+        $notes = 'Membuka isolir pelanggan';
+        if ($hasDue && $promiseDate) {
+            $notes .= " dengan dispensasi s/d {$promiseDate}";
+        }
+        \App\Models\AuditLog::createLog('Buka Isolir', $customer, 'suspended', 'active', $notes);
 
-        return redirect()->back()->with('success', "Isolir pelanggan {$customer->name} berhasil dibuka.");
+        $msg = "Isolir pelanggan {$customer->name} berhasil dibuka.";
+        if ($hasDue && $promiseDate) {
+            $msg .= " Dispensasi janji bayar aktif hingga {$promiseDate}.";
+        }
+
+        return redirect()->back()->with('success', $msg);
     }
 
     /**

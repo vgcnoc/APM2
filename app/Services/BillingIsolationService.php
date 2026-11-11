@@ -58,9 +58,10 @@ class BillingIsolationService
         DB::transaction(function () use ($customer) {
             $customer = Customer::whereKey($customer->id)->lockForUpdate()->firstOrFail();
             if ($customer->status !== 'suspended') return;
-            // Old automatic suspensions had no reason. Dated manual suspensions stay manual.
-            $automatic = !$customer->suspend_start && !$customer->suspend_end;
-            if (!$automatic || $this->hasDueBalance($customer)) return;
+            // Suspensi otomatis atau isolir manual tanpa batas akhir diaktifkan kembali jika seluruh tunggakan sudah lunas.
+            // Jika ada tanggal batas akhir cuti/stop sementara (suspend_end) di masa depan, tetap ditangguhkan.
+            $hasFutureEnd = $customer->suspend_end && \Carbon\Carbon::parse($customer->suspend_end)->isFuture();
+            if ($hasFutureEnd || $this->hasDueBalance($customer)) return;
             $customer->forceFill(['status' => 'active', 'suspend_start' => null, 'suspend_end' => null,
                 'billing_isolated_at' => null, 'billing_isolation_pending' => true])->saveQuietly();
             // Never reopen access for a payment transaction that may still roll back.

@@ -159,9 +159,26 @@
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
                     </div>
                     <h3 class="text-lg font-bold text-gray-900 text-center mb-2">Buka Isolir Pelanggan</h3>
-                    <p class="text-sm text-gray-500 text-center mb-6">
+                    <p class="text-sm text-gray-500 text-center mb-4">
                         Aktifkan kembali layanan internet untuk pelanggan <strong class="text-gray-900">{{ selectedCustomer?.name }}</strong>? Akun RADIUS akan disinkronkan kembali.
                     </p>
+
+                    <!-- Input Dispensasi / Janji Bayar -->
+                    <div class="bg-amber-50/70 border border-amber-200/90 rounded-xl p-3.5 mb-5 text-left">
+                        <label class="block text-xs font-semibold text-amber-900 mb-1">
+                            Batas Dispensasi / Janji Bayar
+                        </label>
+                        <p class="text-[11px] text-amber-700 mb-2 leading-tight">
+                            Tentukan batas toleransi internet aktif. Jika melewati batas ini dan tagihan belum lunas, sistem akan otomatis mengisolir kembali.
+                        </p>
+                        <input
+                            type="date"
+                            v-model="unsuspendPromiseDate"
+                            :min="todayDate"
+                            class="w-full text-xs font-medium rounded-lg border-amber-300 focus:border-amber-500 focus:ring-amber-500 bg-white"
+                        />
+                    </div>
+
                     <div class="flex gap-3">
                         <button @click="showUnsuspendModal = false" class="flex-1 py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-colors">
                             Batal
@@ -278,16 +295,21 @@ const columns = [
 const showUnsuspendModal = ref(false);
 const selectedCustomer = ref(null);
 const isProcessing = ref(false);
+const todayDate = new Date().toISOString().split('T')[0];
+const unsuspendPromiseDate = ref(todayDate);
 
 function openUnsuspendModal(customer) {
     selectedCustomer.value = customer;
+    unsuspendPromiseDate.value = new Date().toISOString().split('T')[0];
     showUnsuspendModal.value = true;
 }
 
 function executeUnsuspend() {
     if (!selectedCustomer.value) return;
     isProcessing.value = true;
-    router.post(`/customers/${selectedCustomer.value.id}/unsuspend`, {}, {
+    router.post(`/customers/${selectedCustomer.value.id}/unsuspend`, {
+        promise_date: unsuspendPromiseDate.value || undefined,
+    }, {
         preserveScroll: true,
         onSuccess: () => {
             showUnsuspendModal.value = false;

@@ -349,7 +349,7 @@ class CustomerMonitoringController extends Controller
     /**
      * Buka Isolir / Aktifkan Kembali Layanan Pelanggan
      */
-    public function unsuspend(Customer $customer, RadiusService $radius)
+    public function unsuspend(Request $request, Customer $customer, RadiusService $radius)
     {
         if (auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all')) {
             if (!in_array($customer->area_id, auth()->user()->getAccessibleAreaIds())) {
@@ -357,14 +357,52 @@ class CustomerMonitoringController extends Controller
             }
         }
 
+        $request->validate([
+            'promise_date' => 'nullable|date',
+        ]);
+
+        $hasDue = app(\App\Services\BillingIsolationService::class)->hasDueBalance($customer);
+        $promiseDate = $request->input('promise_date');
+
+        if ($hasDue) {
+            $promiseDate = $promiseDate ?: now()->toDateString();
+            Invoice::where('customer_id', $customer->id)
+                ->where('is_reseller_balance', false)
+                ->where('invoice_number', 'not like', 'INV-MIG-%')
+                ->whereIn('status', ['unpaid', 'partial', 'overdue'])
+                ->update(['promise_date' => $promiseDate]);
+        }
+
         $customer->update([
             'status' => 'active',
             'suspend_start' => null,
             'suspend_end' => null,
+            'billing_isolated_at' => null,
+            'billing_isolation_pending' => false,
         ]);
 
-        // CustomerObserver akan auto-sync RADIUS dan disconnect agar user re-login aktif
-        return back()->with('success', "Layanan untuk {$customer->name} ({$customer->customer_code}) berhasil diaktifkan kembali.");
+        try {
+            $radius->syncCustomer($customer);
+            $accounts = $radius->customerAccounts($customer);
+            foreach (array_keys($accounts) as $username) {
+                $radius->disconnect($username);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('[RADIUS] Unsuspend sync error in CustomerMonitoring: ' . $e->getMessage());
+        }
+
+        $notes = 'Membuka isolir pelanggan';
+        if ($hasDue && $promiseDate) {
+            $notes .= " dengan dispensasi s/d {$promiseDate}";
+        }
+        \App\Models\AuditLog::createLog('Buka Isolir', $customer, 'suspended', 'active', $notes);
+
+        $msg = "Layanan untuk {$customer->name} ({$customer->customer_code}) berhasil diaktifkan kembali.";
+        if ($hasDue && $promiseDate) {
+            $msg .= " Dispensasi janji bayar aktif hingga {$promiseDate}.";
+        }
+
+        return back()->with('success', $msg);
     }
 
     /**
@@ -390,9 +428,21 @@ class CustomerMonitoringController extends Controller
             'status' => 'suspended',
             'suspend_start' => $startDate,
             'suspend_end' => $request->end_date ?: null,
+            'billing_isolated_at' => now(),
+            'billing_isolation_pending' => false,
         ]);
 
-        return back()->with('success', "Pelanggan {$customer->name} ({$customer->customer_code}) berhasil di-Stop Sementara.");
+        try {
+            $radius->syncCustomer($customer);
+            $accounts = $radius->customerAccounts($customer);
+            foreach (array_keys($accounts) as $username) {
+                $radius->disconnect($username);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('[RADIUS] Suspend sync error in CustomerMonitoring: ' . $e->getMessage());
+        }
+
+        return back()->with('success', "Pelanggan {$customer->name} ({$customer->customer_code}) berhasil di-Stop Sementara / Isolir.");
     }
 
     /**
@@ -412,21 +462,53 @@ class CustomerMonitoringController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        $invoice->update([
-            'promise_date' => $request->promise_date,
-            'notes' => $request->notes ? ($invoice->notes ? $invoice->notes . ' | ' . $request->notes : $request->notes) : $invoice->notes,
-        ]);
-
-        // Jika pelanggan sedang di-isolir dan admin mengatur janji bayar,
-        // buka isolirnya sementara agar bisa beraktivitas hingga tanggal janji bayar
+        $promiseDate = $request->promise_date;
         $customer = $invoice->customer;
-        if ($customer && $customer->status === 'suspended' && $request->boolean('auto_unsuspend', true)) {
-            $customer->update([
-                'status' => 'active',
+
+        // Terapkan janji bayar ke SEMUA invoice overdue/unpaid milik pelanggan ini
+        // agar tagihan bulan lain tidak memicu isolir ulang dalam 1 menit
+        if ($customer) {
+            Invoice::where('customer_id', $customer->id)
+                ->where('is_reseller_balance', false)
+                ->where('invoice_number', 'not like', 'INV-MIG-%')
+                ->whereIn('status', ['unpaid', 'partial', 'overdue'])
+                ->update(['promise_date' => $promiseDate]);
+        } else {
+            $invoice->update(['promise_date' => $promiseDate]);
+        }
+
+        if ($request->notes) {
+            $invoice->update([
+                'notes' => $invoice->notes ? $invoice->notes . ' | ' . $request->notes : $request->notes,
             ]);
         }
 
-        return back()->with('success', "Janji bayar untuk invoice {$invoice->invoice_number} berhasil disimpan.");
+        // Jika pelanggan sedang di-isolir dan admin mengatur janji bayar,
+        // buka isolirnya sementara agar bisa beraktivitas hingga tanggal janji bayar
+        if ($customer && $customer->status === 'suspended' && $request->boolean('auto_unsuspend', true)) {
+            $customer->update([
+                'status' => 'active',
+                'suspend_start' => null,
+                'suspend_end' => null,
+                'billing_isolated_at' => null,
+                'billing_isolation_pending' => false,
+            ]);
+
+            try {
+                $radius = app(\App\Services\RadiusService::class);
+                $radius->syncCustomer($customer);
+                $accounts = $radius->customerAccounts($customer);
+                foreach (array_keys($accounts) as $username) {
+                    $radius->disconnect($username);
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('[RADIUS] Auto-unsuspend on setPromise error: ' . $e->getMessage());
+            }
+
+            \App\Models\AuditLog::createLog('Buka Isolir (Janji Bayar)', $customer, 'suspended', 'active', "Buka isolir otomatis s/d {$promiseDate} melalui penetapan janji bayar");
+        }
+
+        return back()->with('success', "Janji bayar untuk invoice {$invoice->invoice_number} berhasil disimpan dan diterapkan ke seluruh tagihan aktif pelanggan.");
     }
 
     /**
