@@ -4364,13 +4364,6 @@ class CustomerController extends Controller
                     'login_password' => $validated['login_password'] ?? $customer->ont->login_password,
                 ]);
 
-                if (!empty($pppoeUser)) {
-                    $customer->update([
-                        'pppoe_username' => $pppoeUser,
-                        'pppoe_password' => $pppoePassword,
-                    ]);
-                }
-
                 if (isset($validated['wifi_ssid']) || isset($validated['wifi_password'])) {
                     $customer->update(array_filter([
                         'wifi_ssid' => $validated['wifi_ssid'] ?? $customer->wifi_ssid,
@@ -4790,12 +4783,6 @@ class CustomerController extends Controller
                 }
             }
             $customer->ont->update($validated);
-            if (!empty($validated['pppoe_user'])) {
-                $customer->update([
-                    'pppoe_username' => $validated['pppoe_user'],
-                    'pppoe_password' => $validated['pppoe_password'] ?? null,
-                ]);
-            }
             if (isset($validated['wifi_ssid']) || isset($validated['wifi_password'])) {
                 $customer->update(array_filter([
                     'wifi_ssid' => $validated['wifi_ssid'] ?? $customer->wifi_ssid,
@@ -5971,13 +5958,6 @@ class CustomerController extends Controller
                 'hotspot_password' => $hotspotPassword,
                 'hotspot_vlan_id' => $hotspotVlan,
             ]);
-
-            if (!empty($pppoeUser)) {
-                $customer->update([
-                    'pppoe_username' => $pppoeUser,
-                    'pppoe_password' => $pppoePassword,
-                ]);
-            }
 
             if (isset($validated['wifi_ssid']) || isset($validated['wifi_password'])) {
                 $customer->update(array_filter([

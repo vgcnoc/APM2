@@ -3578,6 +3578,7 @@
 <script setup>
 import { ref, h, computed, watch, onMounted } from 'vue';
 import { Link, useForm, router, usePage } from '@inertiajs/vue3';
+import axios from 'axios';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 import Swal from 'sweetalert2';
@@ -6135,13 +6136,19 @@ function submitEditActivation() {
     });
 }
 
-function generateShowPppoe() {
-    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    let user = '';
-    let pass = '';
-    for (let i = 0; i < 6; i++) user += chars.charAt(Math.floor(Math.random() * chars.length));
-    for (let i = 0; i < 8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
-    editActivationForm.pppoe_user = 'user_' + user;
-    editActivationForm.pppoe_password = pass;
+async function generateShowPppoe() {
+    try {
+        const res = await axios.get('/onts/generate-pppoe');
+        if (res.data && res.data.success) {
+            editActivationForm.pppoe_user = res.data.pppoe_user || res.data.user;
+            editActivationForm.pppoe_password = res.data.pppoe_password || res.data.password;
+            return;
+        }
+    } catch (err) {
+        console.error('Error generating PPPoE:', err);
+    }
+    const ontId = props.customer?.ont?.ont_id || ('V' + Math.floor(1000 + Math.random() * 9000));
+    editActivationForm.pppoe_user = `${ontId}@vnet.id`;
+    editActivationForm.pppoe_password = String(Math.floor(10000000 + Math.random() * 90000000));
 }
 </script>

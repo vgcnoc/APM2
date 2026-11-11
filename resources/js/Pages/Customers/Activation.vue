@@ -963,12 +963,27 @@
                                         <label class="block text-sm font-medium text-gray-700">
                                             {{ activationForm.access_mode === 'HOTSPOT/MEMBER' ? 'Username Hotspot / Member' : 'PPPoE / Member Username' }}
                                         </label>
-                                        <button type="button" @click="generateActivationPppoe" class="text-[11px] text-purple-600 hover:text-purple-800 font-semibold flex items-center gap-1 cursor-pointer">
-                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                                            Generate
+                                        <button type="button" @click="generateActivationPppoe" :disabled="isGeneratingActivationPppoe" class="text-[11px] text-purple-600 hover:text-purple-800 font-semibold flex items-center gap-1 cursor-pointer disabled:opacity-50">
+                                            <svg :class="{'animate-spin': isGeneratingActivationPppoe}" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                            {{ isGeneratingActivationPppoe ? 'Generating...' : 'Generate' }}
                                         </button>
                                     </div>
-                                    <input v-model="activationForm.pppoe_user" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all text-sm font-mono" :placeholder="activationForm.access_mode === 'HOTSPOT/MEMBER' ? 'username_member' : 'user@isp'" />
+                                    <div class="relative">
+                                        <input v-model="activationForm.pppoe_user" type="text" class="w-full bg-white border rounded-lg px-4 py-2.5 focus:ring-2 shadow-sm transition-all text-sm font-mono pr-8"
+                                            :class="activationPppoeStatus === 'duplicate' ? 'border-rose-400 focus:ring-rose-500 focus:border-rose-500 bg-rose-50/30' : activationPppoeStatus === 'available' ? 'border-emerald-400 focus:ring-emerald-500 focus:border-emerald-500' : 'border-gray-200 focus:ring-purple-500 focus:border-purple-500'"
+                                            :placeholder="activationForm.access_mode === 'HOTSPOT/MEMBER' ? 'username_member' : 'user@isp'" />
+                                        <span v-if="activationPppoeStatus === 'checking'" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">
+                                            <svg class="w-4 h-4 animate-spin inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                        </span>
+                                        <span v-else-if="activationPppoeStatus === 'available'" class="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500 text-sm font-bold" title="Tersedia & Bebas Bentrok">✓</span>
+                                        <span v-else-if="activationPppoeStatus === 'duplicate'" class="absolute right-3 top-1/2 -translate-y-1/2 text-rose-500 text-sm font-bold" title="Username Duplikat">⚠️</span>
+                                    </div>
+                                    <p v-if="activationPppoeStatus === 'duplicate'" class="text-[11px] text-rose-600 font-medium mt-1">
+                                        {{ activationPppoeConflictMessage }}
+                                    </p>
+                                    <p v-else-if="activationPppoeStatus === 'available'" class="text-[11px] text-emerald-600 font-medium mt-1">
+                                        ✓ Akun PPPoE / Member tersedia & bebas bentrok.
+                                    </p>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -1554,12 +1569,27 @@
                                             <label class="block text-sm font-medium text-gray-700">
                                                 {{ editForm.access_mode === 'HOTSPOT/MEMBER' ? 'Username Hotspot / Member' : 'PPPoE / Member Username' }}
                                             </label>
-                                            <button type="button" @click="generateEditPppoe" class="text-[11px] text-purple-600 hover:text-purple-800 font-semibold flex items-center gap-1 cursor-pointer">
-                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                                                Generate
+                                            <button type="button" @click="generateEditPppoe" :disabled="isGeneratingEditPppoe" class="text-[11px] text-purple-600 hover:text-purple-800 font-semibold flex items-center gap-1 cursor-pointer disabled:opacity-50">
+                                                <svg :class="{'animate-spin': isGeneratingEditPppoe}" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                                {{ isGeneratingEditPppoe ? 'Generating...' : 'Generate' }}
                                             </button>
                                         </div>
-                                        <input v-model="editForm.pppoe_user" type="text" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all text-sm font-mono" :placeholder="editForm.access_mode === 'HOTSPOT/MEMBER' ? 'username_member' : 'user@isp'" />
+                                        <div class="relative">
+                                            <input v-model="editForm.pppoe_user" type="text" class="w-full bg-white border rounded-lg px-4 py-2.5 focus:ring-2 shadow-sm transition-all text-sm font-mono pr-8"
+                                                :class="editPppoeStatus === 'duplicate' ? 'border-rose-400 focus:ring-rose-500 focus:border-rose-500 bg-rose-50/30' : editPppoeStatus === 'available' ? 'border-emerald-400 focus:ring-emerald-500 focus:border-emerald-500' : 'border-gray-200 focus:ring-purple-500 focus:border-purple-500'"
+                                                :placeholder="editForm.access_mode === 'HOTSPOT/MEMBER' ? 'username_member' : 'user@isp'" />
+                                            <span v-if="editPppoeStatus === 'checking'" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">
+                                                <svg class="w-4 h-4 animate-spin inline" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                            </span>
+                                            <span v-else-if="editPppoeStatus === 'available'" class="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500 text-sm font-bold" title="Tersedia & Bebas Bentrok">✓</span>
+                                            <span v-else-if="editPppoeStatus === 'duplicate'" class="absolute right-3 top-1/2 -translate-y-1/2 text-rose-500 text-sm font-bold" title="Username Duplikat">⚠️</span>
+                                        </div>
+                                        <p v-if="editPppoeStatus === 'duplicate'" class="text-[11px] text-rose-600 font-medium mt-1">
+                                            {{ editPppoeConflictMessage }}
+                                        </p>
+                                        <p v-else-if="editPppoeStatus === 'available'" class="text-[11px] text-emerald-600 font-medium mt-1">
+                                            ✓ Akun PPPoE / Member tersedia & bebas bentrok.
+                                        </p>
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -2005,6 +2035,8 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { Link, router, useForm , usePage} from '@inertiajs/vue3';
+import axios from 'axios';
+import Swal from 'sweetalert2';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import PipelineGuideCard from '@/Components/Customers/PipelineGuideCard.vue';
 import DataTable from '@/Components/DataTable.vue';
@@ -2341,6 +2373,10 @@ function resolveDefaultPppoeVlan(customer) {
 // Edit Activation Modal State
 const showEditModal = ref(false);
 const editCustomer = ref(null);
+const isGeneratingEditPppoe = ref(false);
+const editPppoeStatus = ref('idle'); // 'idle' | 'checking' | 'available' | 'duplicate'
+const editPppoeConflictMessage = ref('');
+let editPppoeTimeout = null;
 const isEditResellerVoucher = computed(() => {
     const cust = editCustomer.value;
     if (!cust) return false;
@@ -2419,7 +2455,45 @@ function openEditActivationModal(customer) {
     editForm.hotspot_user = customer.ont?.hotspot_user || '';
     editForm.hotspot_password = customer.ont?.hotspot_password || '';
     editForm.hotspot_vlan_id = customer.ont?.hotspot_vlan_id || defaultHsVlan || '';
+    editPppoeStatus.value = 'idle';
+    editPppoeConflictMessage.value = '';
     showEditModal.value = true;
+}
+
+watch(() => editForm.pppoe_user, () => {
+    if (showEditModal.value) {
+        checkEditPppoeAvailability();
+    }
+});
+
+function checkEditPppoeAvailability() {
+    clearTimeout(editPppoeTimeout);
+    const val = String(editForm.pppoe_user || '').trim();
+    if (!val) {
+        editPppoeStatus.value = 'idle';
+        editPppoeConflictMessage.value = '';
+        return;
+    }
+    editPppoeStatus.value = 'checking';
+    editPppoeTimeout = setTimeout(async () => {
+        try {
+            const res = await axios.get('/onts/check-pppoe-user', {
+                params: {
+                    user: val,
+                    ignore_ont_id: editCustomer.value?.ont?.id || null
+                }
+            });
+            if (res.data && res.data.available) {
+                editPppoeStatus.value = 'available';
+                editPppoeConflictMessage.value = '';
+            } else if (res.data) {
+                editPppoeStatus.value = 'duplicate';
+                editPppoeConflictMessage.value = res.data.message || 'Akun PPPoE sudah digunakan oleh pelanggan lain!';
+            }
+        } catch (e) {
+            editPppoeStatus.value = 'idle';
+        }
+    }, 350);
 }
 
 watch(() => editForm.free_hotspot, (val) => {
@@ -2440,8 +2514,19 @@ const defaultBillingCycle = computed(() => {
     return page.props.billingSettings?.billing_cycle || 'anniversary';
 });
 
-function submitEditActivation() {
+async function submitEditActivation() {
     if (!editCustomer.value) return;
+
+    if (editPppoeStatus.value === 'duplicate') {
+        Swal.fire({
+            icon: 'error',
+            title: 'Akun PPPoE Duplikat Ditolak!',
+            html: `<p class="text-sm text-gray-700">${editPppoeConflictMessage.value}</p><p class="mt-2 text-xs font-semibold text-rose-600">Sistem otomatis menolak duplikasi akun. Silakan ganti username atau klik tombol <strong>Generate</strong>.</p>`,
+            confirmButtonColor: '#e11d48'
+        });
+        return;
+    }
+
     if (editForm.access_mode === 'HOTSPOT/MEMBER') {
         editForm.hotspot_user = editForm.pppoe_user;
         editForm.hotspot_password = editForm.pppoe_password;
@@ -2454,15 +2539,34 @@ function submitEditActivation() {
     });
 }
 
-function generateEditPppoe() {
-    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    let user = '';
-    let pass = '';
-    for (let i = 0; i < 6; i++) user += chars.charAt(Math.floor(Math.random() * chars.length));
-    for (let i = 0; i < 8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
-    const prefix = editForm.access_mode === 'HOTSPOT/MEMBER' ? 'hs_' : 'user_';
-    editForm.pppoe_user = prefix + user;
-    editForm.pppoe_password = pass;
+async function generateEditPppoe() {
+    if (editForm.access_mode === 'HOTSPOT/MEMBER') {
+        const cleanName = (editCustomer.value?.name || 'MEMBER').replace(/[^a-zA-Z0-9]/g, '').slice(0, 8).toUpperCase();
+        const randSuffix = Math.floor(100 + Math.random() * 900);
+        editForm.pppoe_user = 'HS_' + cleanName + randSuffix;
+        editForm.pppoe_password = String(Math.floor(100000 + Math.random() * 900000));
+        checkEditPppoeAvailability();
+        return;
+    }
+
+    isGeneratingEditPppoe.value = true;
+    try {
+        const res = await axios.get('/onts/generate-pppoe');
+        if (res.data && res.data.success) {
+            editForm.pppoe_user = res.data.pppoe_user || res.data.user;
+            editForm.pppoe_password = res.data.pppoe_password || res.data.password;
+            editPppoeStatus.value = 'available';
+            editPppoeConflictMessage.value = '';
+        }
+    } catch (err) {
+        console.error('Error generating PPPoE:', err);
+        const ontId = editCustomer.value?.ont?.ont_id || ('V' + Math.floor(1000 + Math.random() * 9000));
+        editForm.pppoe_user = `${ontId}@vnet.id`;
+        editForm.pppoe_password = String(Math.floor(10000000 + Math.random() * 90000000));
+        checkEditPppoeAvailability();
+    } finally {
+        isGeneratingEditPppoe.value = false;
+    }
 }
 
 const defaultBillingType = computed(() => {
@@ -2501,6 +2605,10 @@ function signalClass(rx) {
 
 const activeCustomer = ref(null);
 const showActivationModal = ref(false);
+const isGeneratingActivationPppoe = ref(false);
+const activationPppoeStatus = ref('idle'); // 'idle' | 'checking' | 'available' | 'duplicate'
+const activationPppoeConflictMessage = ref('');
+let activationPppoeTimeout = null;
 const activationForm = useForm({
     activation_date: '',
     billing_type: (page.props.billingSettings?.billing_type === 'pascabayar') ? 'pascabayar' : 'prabayar',
@@ -2920,18 +3028,75 @@ function openActivationModal(customer) {
         }
     }
 
+    activationPppoeStatus.value = 'idle';
+    activationPppoeConflictMessage.value = '';
     showActivationModal.value = true;
 }
 
-function generateActivationPppoe() {
-    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    let user = '';
-    let pass = '';
-    for (let i = 0; i < 6; i++) user += chars.charAt(Math.floor(Math.random() * chars.length));
-    for (let i = 0; i < 8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
-    const prefix = activationForm.access_mode === 'HOTSPOT/MEMBER' ? 'hs_' : 'user_';
-    activationForm.pppoe_user = prefix + user;
-    activationForm.pppoe_password = pass;
+watch(() => activationForm.pppoe_user, () => {
+    if (showActivationModal.value) {
+        checkActivationPppoeAvailability();
+    }
+});
+
+function checkActivationPppoeAvailability() {
+    clearTimeout(activationPppoeTimeout);
+    const val = String(activationForm.pppoe_user || '').trim();
+    if (!val) {
+        activationPppoeStatus.value = 'idle';
+        activationPppoeConflictMessage.value = '';
+        return;
+    }
+    activationPppoeStatus.value = 'checking';
+    activationPppoeTimeout = setTimeout(async () => {
+        try {
+            const res = await axios.get('/onts/check-pppoe-user', {
+                params: {
+                    user: val,
+                    ignore_ont_id: activeCustomer.value?.ont?.id || null
+                }
+            });
+            if (res.data && res.data.available) {
+                activationPppoeStatus.value = 'available';
+                activationPppoeConflictMessage.value = '';
+            } else if (res.data) {
+                activationPppoeStatus.value = 'duplicate';
+                activationPppoeConflictMessage.value = res.data.message || 'Akun PPPoE sudah digunakan oleh pelanggan lain!';
+            }
+        } catch (e) {
+            activationPppoeStatus.value = 'idle';
+        }
+    }, 350);
+}
+
+async function generateActivationPppoe() {
+    if (activationForm.access_mode === 'HOTSPOT/MEMBER') {
+        const cleanName = (activeCustomer.value?.name || 'MEMBER').replace(/[^a-zA-Z0-9]/g, '').slice(0, 8).toUpperCase();
+        const randSuffix = Math.floor(100 + Math.random() * 900);
+        activationForm.pppoe_user = 'HS_' + cleanName + randSuffix;
+        activationForm.pppoe_password = String(Math.floor(100000 + Math.random() * 900000));
+        checkActivationPppoeAvailability();
+        return;
+    }
+
+    isGeneratingActivationPppoe.value = true;
+    try {
+        const res = await axios.get('/onts/generate-pppoe');
+        if (res.data && res.data.success) {
+            activationForm.pppoe_user = res.data.pppoe_user || res.data.user;
+            activationForm.pppoe_password = res.data.pppoe_password || res.data.password;
+            activationPppoeStatus.value = 'available';
+            activationPppoeConflictMessage.value = '';
+        }
+    } catch (err) {
+        console.error('Error generating PPPoE:', err);
+        const ontId = activeCustomer.value?.ont?.ont_id || ('V' + Math.floor(1000 + Math.random() * 9000));
+        activationForm.pppoe_user = `${ontId}@vnet.id`;
+        activationForm.pppoe_password = String(Math.floor(10000000 + Math.random() * 90000000));
+        checkActivationPppoeAvailability();
+    } finally {
+        isGeneratingActivationPppoe.value = false;
+    }
 }
 
 watch(() => activationForm.access_mode, (newMode, oldMode) => {
@@ -2958,6 +3123,16 @@ watch(() => activationForm.free_hotspot, (val) => {
 });
 
 function submitActivation() {
+    if (activationPppoeStatus.value === 'duplicate') {
+        Swal.fire({
+            icon: 'error',
+            title: 'Akun PPPoE Duplikat Ditolak!',
+            html: `<p class="text-sm text-gray-700">${activationPppoeConflictMessage.value}</p><p class="mt-2 text-xs font-semibold text-rose-600">Sistem otomatis menolak duplikasi akun. Silakan ganti username atau klik tombol <strong>Generate</strong>.</p>`,
+            confirmButtonColor: '#e11d48'
+        });
+        return;
+    }
+
     if (activationForm.access_mode === 'HOTSPOT/MEMBER') {
         activationForm.hotspot_user = activationForm.pppoe_user;
         activationForm.hotspot_password = activationForm.pppoe_password;
