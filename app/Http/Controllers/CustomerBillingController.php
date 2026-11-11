@@ -42,6 +42,15 @@ class CustomerBillingController extends Controller
                 })
                 ->whereHas('customer', fn($c) => $c->where('status', '!=', 'terminated')->whereNotIn('service_status', ['gratis', 'free_home']));
 
+            // Tagihan belum lunas yang tanggal terbitnya masih di masa depan (bulan depan, misal pascabayar terbit 1 Des 2026)
+            // tidak boleh muncul di daftar kerja penagih lapangan sebelum tanggal terbit resminya tiba
+            if ($tabType !== 'paid') {
+                $q->where(function($sq) {
+                    $sq->whereNull('issued_date')
+                       ->orWhereDate('issued_date', '<=', Carbon::today());
+                });
+            }
+
             // Terapkan penyamaran data penagihan jika aktif untuk akun ini
             \App\Services\DataPrivacyMaskingService::applyInvoiceFilter($q, 'invoices.customer_id', null, 'billing');
 
@@ -729,6 +738,14 @@ class CustomerBillingController extends Controller
                         });
                 })
                 ->whereHas('customer', fn ($c) => $c->where('status', '!=', 'terminated')->whereNotIn('service_status', ['gratis', 'free_home']));
+
+            // Tagihan belum lunas yang tanggal terbitnya masih di masa depan tidak boleh muncul di lembar kerja kolektor
+            if ($tabType !== 'paid') {
+                $q->where(function ($sq) {
+                    $sq->whereNull('issued_date')
+                       ->orWhereDate('issued_date', '<=', Carbon::today());
+                });
+            }
 
             if (!empty($userAccessibleAreaIds)) {
                 $q->whereHas('customer', fn ($c) => $c->whereIn('area_id', $userAccessibleAreaIds));
