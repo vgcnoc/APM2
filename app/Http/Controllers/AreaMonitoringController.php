@@ -53,7 +53,7 @@ class AreaMonitoringController extends Controller
         // 2. Ambil Pelanggan untuk Lifecycle Status
         $customerQuery = Customer::query()
             ->with(['package:id,name,price', 'areaModel:id,name'])
-            ->select('id', 'customer_code', 'name', 'phone', 'address', 'area_id', 'area', 'package_id', 'status', 'service_status', 'billing_type');
+            ->select('id', 'customer_code', 'name', 'phone', 'address', 'area_id', 'area', 'package_id', 'status', 'service_status', 'billing_type', 'activation_date', 'registration_date', 'billing_isolated_at', 'suspend_start');
 
         if ($isAreaRestricted && !empty($userAreaIds)) {
             $customerQuery->whereIn('area_id', $userAreaIds);
@@ -180,22 +180,7 @@ class AreaMonitoringController extends Controller
                 $ref = &$unassignedArea;
             }
 
-            $status = strtolower($c->status ?? 'active');
-            $serviceStatus = strtolower($c->service_status ?? 'berbayar');
-
-            if ($serviceStatus === 'free_home') {
-                $category = 'free_home';
-            } elseif ($serviceStatus === 'gratis') {
-                $category = 'gratis';
-            } elseif (in_array($status, ['booking', 'survey', 'installing', 'pending'])) {
-                $category = 'psb';
-            } elseif ($status === 'terminated') {
-                $category = 'stop_permanen';
-            } elseif ($status === 'suspended') {
-                $category = 'stop_sementara';
-            } else {
-                $category = 'aktif';
-            }
+            $category = self::classifyCustomerLifecycle($c, $month, $year);
 
             $ref['customer'][$category]['count']++;
             $ref['customer']['total']['count']++;
@@ -474,21 +459,56 @@ class AreaMonitoringController extends Controller
         }
 
         // Filter Kategori Lifecycle
-        if ($category === 'free_home') {
-            $query->where('service_status', 'free_home');
-        } elseif ($category === 'gratis') {
-            $query->where('service_status', 'gratis');
-        } elseif ($category === 'psb') {
-            $query->whereIn('status', ['booking', 'survey', 'installing', 'pending']);
+        if ($category === 'psb') {
+            $query->where(function ($q) use ($month, $year) {
+                $q->whereIn('status', ['booking', 'survey', 'installing', 'pending'])
+                  ->orWhere(function ($sub) use ($month, $year) {
+                      $sub->whereMonth('activation_date', $month)
+                          ->whereYear('activation_date', $year);
+                  })
+                  ->orWhere(function ($sub) use ($month, $year) {
+                      $sub->whereNull('activation_date')
+                          ->where('status', 'active')
+                          ->whereMonth('registration_date', $month)
+                          ->whereYear('registration_date', $year);
+                  });
+            });
         } elseif ($category === 'stop_permanen') {
-            $query->where('status', 'terminated');
+            $query->whereIn('status', ['terminated', 'canceled', 'berhenti']);
         } elseif ($category === 'stop_sementara') {
-            $query->where('status', 'suspended');
+            $query->where(function ($q) {
+                $q->whereIn('status', ['suspended', 'isolir'])
+                  ->orWhereNotNull('billing_isolated_at')
+                  ->orWhereNotNull('suspend_start');
+            });
+        } elseif ($category === 'free_home') {
+            $query->where('service_status', 'free_home')
+                  ->whereNotIn('status', ['booking', 'survey', 'installing', 'pending', 'terminated', 'canceled', 'berhenti'])
+                  ->where(function ($sub) use ($month, $year) {
+                      $sub->whereNull('activation_date')
+                          ->orWhereMonth('activation_date', '!=', $month)
+                          ->orWhereYear('activation_date', '!=', $year);
+                  });
+        } elseif ($category === 'gratis') {
+            $query->where('service_status', 'gratis')
+                  ->whereNotIn('status', ['booking', 'survey', 'installing', 'pending', 'terminated', 'canceled', 'berhenti'])
+                  ->where(function ($sub) use ($month, $year) {
+                      $sub->whereNull('activation_date')
+                          ->orWhereMonth('activation_date', '!=', $month)
+                          ->orWhereYear('activation_date', '!=', $year);
+                  });
         } elseif ($category === 'aktif') {
             $query->where('status', 'active')
                   ->where(function ($sub) {
                       $sub->whereNull('service_status')->orWhereNotIn('service_status', ['gratis', 'free_home']);
-                  });
+                  })
+                  ->where(function ($sub) use ($month, $year) {
+                      $sub->whereNull('activation_date')
+                          ->orWhereMonth('activation_date', '!=', $month)
+                          ->orWhereYear('activation_date', '!=', $year);
+                  })
+                  ->whereNull('billing_isolated_at')
+                  ->whereNull('suspend_start');
         }
 
         // Search
@@ -558,7 +578,7 @@ class AreaMonitoringController extends Controller
             ->where('invoice_number', 'not like', 'INV-MIG-%')
             ->get();
 
-        $customers = Customer::select('id', 'area_id', 'area', 'status', 'service_status')->get();
+        $customers = Customer::select('id', 'area_id', 'area', 'status', 'service_status', 'activation_date', 'registration_date', 'billing_isolated_at', 'suspend_start')->get();
 
         $areaMap = [];
         foreach ($areas as $a) {
@@ -620,15 +640,16 @@ class AreaMonitoringController extends Controller
             $aId = $findAreaId($c);
             if (!isset($data[$aId])) continue;
 
-            $st = strtolower($c->status ?? 'active');
-            $srv = strtolower($c->service_status ?? 'berbayar');
-
-            if ($srv === 'free_home') $cat = 'FREE HOME';
-            elseif ($srv === 'gratis') $cat = 'GRATIS';
-            elseif (in_array($st, ['booking', 'survey', 'installing', 'pending'])) $cat = 'PSB';
-            elseif ($st === 'terminated') $cat = 'STOP PERMANEN';
-            elseif ($st === 'suspended') $cat = 'STOP SEMENTARA';
-            else $cat = 'AKTIF';
+            $catKey = self::classifyCustomerLifecycle($c, $month, $year);
+            $catMap = [
+                'aktif' => 'AKTIF',
+                'stop_sementara' => 'STOP SEMENTARA',
+                'stop_permanen' => 'STOP PERMANEN',
+                'psb' => 'PSB',
+                'gratis' => 'GRATIS',
+                'free_home' => 'FREE HOME',
+            ];
+            $cat = $catMap[$catKey] ?? 'AKTIF';
 
             $data[$aId]['customer'][$cat]++;
             $data[$aId]['customer']['TOTAL']++;
@@ -703,6 +724,62 @@ class AreaMonitoringController extends Controller
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
+    }
+
+    /**
+     * Klasifikasi Cerdas Lifecycle Pelanggan:
+     * - psb: Pelanggan dalam proses pemasangan (booking, survey, installing, pending) ATAU aktif yang dipasang/diaktivasi pada bulan berjalan
+     * - stop_permanen: terminated, canceled, berhenti
+     * - stop_sementara: suspended, isolir, atau memiliki billing_isolated_at / suspend_start
+     * - free_home: service_status === 'free_home' (dan bukan PSB bulan berjalan)
+     * - gratis: service_status === 'gratis' (dan bukan PSB bulan berjalan)
+     * - aktif: seluruh pelanggan aktif berbayar lainnya
+     */
+    public static function classifyCustomerLifecycle($c, int $month, int $year): string
+    {
+        $status = strtolower($c->status ?? 'active');
+        $serviceStatus = strtolower($c->service_status ?? 'berbayar');
+
+        // 1. Pelanggan dalam proses instalasi baru (Pipeline PSB)
+        if (in_array($status, ['booking', 'survey', 'installing', 'pending'])) {
+            return 'psb';
+        }
+
+        // 2. Pelanggan baru yang dipasang/diaktivasi pada bulan berjalan periode laporan
+        if (!empty($c->activation_date)) {
+            $act = Carbon::parse($c->activation_date);
+            if ($act->month == $month && $act->year == $year) {
+                return 'psb';
+            }
+        } elseif (!empty($c->registration_date) && $status === 'active') {
+            $reg = Carbon::parse($c->registration_date);
+            if ($reg->month == $month && $reg->year == $year) {
+                return 'psb';
+            }
+        }
+
+        // 3. Stop Permanen (Berhenti / Dibatalkan / Terminated)
+        if (in_array($status, ['terminated', 'canceled', 'berhenti'])) {
+            return 'stop_permanen';
+        }
+
+        // 4. Stop Sementara (Isolir / Suspended)
+        if (in_array($status, ['suspended', 'isolir']) || !empty($c->billing_isolated_at) || !empty($c->suspend_start)) {
+            return 'stop_sementara';
+        }
+
+        // 5. Free Home
+        if ($serviceStatus === 'free_home') {
+            return 'free_home';
+        }
+
+        // 6. Gratis / CSR
+        if ($serviceStatus === 'gratis') {
+            return 'gratis';
+        }
+
+        // 7. Aktif Berbayar
+        return 'aktif';
     }
 }
 

@@ -56,6 +56,28 @@
                         </select>
                     </div>
 
+                    <!-- Tombol Tampilkan / Sembunyikan Nominal -->
+                    <button 
+                        type="button"
+                        @click="toggleNominal"
+                        :class="[
+                            'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-sm border',
+                            showNominal
+                                ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700 hover:bg-amber-100'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-200'
+                        ]"
+                        :title="showNominal ? 'Klik untuk menyembunyikan kolom nominal tagihan' : 'Klik untuk menampilkan kolom nominal tagihan'"
+                    >
+                        <svg v-if="showNominal" class="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        <svg v-else class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                        </svg>
+                        <span>{{ showNominal ? 'Sembunyikan Nominal' : 'Tampilkan Nominal' }}</span>
+                    </button>
+
                     <!-- Export Excel / CSV -->
                     <a 
                         :href="exportUrl" 
@@ -121,7 +143,7 @@
                     </div>
                 </div>
                 <div class="flex items-baseline gap-1.5">
-                    <span class="text-2xl font-black text-emerald-600 dark:text-emerald-400">{{ formatRupiah(kpis.total_paid_amount) }}</span>
+                    <span class="text-2xl font-black text-emerald-600 dark:text-emerald-400">{{ showNominal ? formatRupiah(kpis.total_paid_amount) : 'Rp ••••••' }}</span>
                 </div>
                 <div class="mt-3 text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
                     <span>Jumlah Invoice:</span>
@@ -145,7 +167,7 @@
                     </div>
                 </div>
                 <div class="flex items-baseline gap-1.5">
-                    <span class="text-2xl font-black text-rose-600 dark:text-rose-400">{{ formatRupiah(kpis.total_unpaid_amount) }}</span>
+                    <span class="text-2xl font-black text-rose-600 dark:text-rose-400">{{ showNominal ? formatRupiah(kpis.total_unpaid_amount) : 'Rp ••••••' }}</span>
                 </div>
                 <div class="mt-3 text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
                     <span>Nunggak / Janji:</span>
@@ -214,6 +236,23 @@
                     </svg>
                     Tampilan Kartu Wilayah
                 </button>
+                <!-- Quick Toggle Nominal in Toolbar -->
+                <button 
+                    @click="toggleNominal"
+                    :class="[
+                        'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border',
+                        showNominal 
+                            ? 'bg-amber-100/70 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700' 
+                            : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                    ]"
+                    :title="showNominal ? 'Sembunyikan kolom nominal rupiah' : 'Tampilkan kolom nominal rupiah'"
+                >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    <span>{{ showNominal ? 'Sembunyikan Nominal' : 'Tampilkan Nominal' }}</span>
+                </button>
             </div>
 
             <!-- Petunjuk Interaktif -->
@@ -233,7 +272,7 @@
                             <th rowspan="2" class="py-3 px-4 font-black uppercase text-center align-middle border border-slate-700 tracking-wider w-36">
                                 AREA / WILAYAH
                             </th>
-                            <th colspan="4" class="py-2.5 px-4 font-black uppercase text-center border border-slate-700 bg-slate-800 tracking-wider">
+                            <th :colspan="showNominal ? 4 : 3" class="py-2.5 px-4 font-black uppercase text-center border border-slate-700 bg-slate-800 tracking-wider">
                                 STATUS TAGIHAN & PEMBAYARAN (KIRI)
                             </th>
                             <th colspan="3" class="py-2.5 px-4 font-black uppercase text-center border border-slate-700 bg-slate-800 tracking-wider">
@@ -244,7 +283,7 @@
                             <!-- Tagihan subheaders -->
                             <th class="py-2 px-3 font-bold uppercase bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-center w-40">Status Tagihan</th>
                             <th class="py-2 px-3 font-bold uppercase bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-center w-20">Jumlah</th>
-                            <th class="py-2 px-3 font-bold uppercase bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-center w-28">Nominal (Rp)</th>
+                            <th v-if="showNominal" class="py-2 px-3 font-bold uppercase bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-center w-28">Nominal (Rp)</th>
                             <th class="py-2 px-3 font-black uppercase bg-amber-200 dark:bg-amber-900/60 text-amber-900 dark:text-amber-100 border border-amber-300 dark:border-amber-700 text-center w-28 shadow-sm">
                                 PERSENTASE (%)
                             </th>
@@ -288,7 +327,7 @@
                                     {{ row.billing.lunas.count }}
                                 </button>
                             </td>
-                            <td class="py-2 px-3 text-right font-medium text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-800">
+                            <td v-if="showNominal" class="py-2 px-3 text-right font-medium text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-800">
                                 {{ formatRupiah(row.billing.lunas.amount) }}
                             </td>
                             <td class="py-2 px-3 text-center font-bold bg-amber-50 dark:bg-amber-950/30 text-slate-800 dark:text-amber-200 border border-amber-200 dark:border-amber-900/60">
@@ -332,7 +371,7 @@
                                     {{ row.billing.belum_bayar.count }}
                                 </button>
                             </td>
-                            <td class="py-2 px-3 text-right font-medium text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-800">
+                            <td v-if="showNominal" class="py-2 px-3 text-right font-medium text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-800">
                                 {{ formatRupiah(row.billing.belum_bayar.amount) }}
                             </td>
                             <td class="py-2 px-3 text-center font-bold bg-amber-50 dark:bg-amber-950/30 text-slate-800 dark:text-amber-200 border border-amber-200 dark:border-amber-900/60">
@@ -370,7 +409,7 @@
                                     {{ row.billing.bayar_sebagian.count }}
                                 </button>
                             </td>
-                            <td class="py-2 px-3 text-right font-medium text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-800">
+                            <td v-if="showNominal" class="py-2 px-3 text-right font-medium text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-800">
                                 {{ formatRupiah(row.billing.bayar_sebagian.amount) }}
                             </td>
                             <td class="py-2 px-3 text-center font-bold bg-amber-50 dark:bg-amber-950/30 text-slate-800 dark:text-amber-200 border border-amber-200 dark:border-amber-900/60">
@@ -408,7 +447,7 @@
                                     {{ row.billing.janji_bayar.count }}
                                 </button>
                             </td>
-                            <td class="py-2 px-3 text-right font-medium text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-800">
+                            <td v-if="showNominal" class="py-2 px-3 text-right font-medium text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-800">
                                 {{ formatRupiah(row.billing.janji_bayar.amount) }}
                             </td>
                             <td class="py-2 px-3 text-center font-bold bg-amber-50 dark:bg-amber-950/30 text-slate-800 dark:text-amber-200 border border-amber-200 dark:border-amber-900/60">
@@ -446,7 +485,7 @@
                                     {{ row.billing.nunggak.count }}
                                 </button>
                             </td>
-                            <td class="py-2 px-3 text-right font-medium text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-800">
+                            <td v-if="showNominal" class="py-2 px-3 text-right font-medium text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-800">
                                 {{ formatRupiah(row.billing.nunggak.amount) }}
                             </td>
                             <td class="py-2 px-3 text-center font-bold bg-amber-50 dark:bg-amber-950/30 text-slate-800 dark:text-amber-200 border border-amber-200 dark:border-amber-900/60">
@@ -474,12 +513,12 @@
                         <tr class="divide-x divide-slate-200 dark:divide-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
                             <td class="py-2 px-3 bg-slate-50/50 dark:bg-slate-800/20 border border-slate-300 dark:border-slate-800"></td>
                             <td class="py-2 px-3 bg-slate-50/50 dark:bg-slate-800/20 border border-slate-300 dark:border-slate-800"></td>
-                            <td class="py-2 px-3 bg-slate-50/50 dark:bg-slate-800/20 border border-slate-300 dark:border-slate-800"></td>
+                            <td v-if="showNominal" class="py-2 px-3 bg-slate-50/50 dark:bg-slate-800/20 border border-slate-300 dark:border-slate-800"></td>
                             <td class="py-2 px-3 bg-amber-50/30 dark:bg-amber-950/10 border border-amber-200 dark:border-amber-900/60"></td>
 
                             <!-- FREE HOME -->
                             <td class="py-2 px-3 font-medium text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-800">
-                                FREE HOME (Karyawan)
+                                FREE HOME
                             </td>
                             <td class="py-2 px-3 text-center border border-slate-300 dark:border-slate-800">
                                 <button 
@@ -508,7 +547,7 @@
                                     {{ row.billing.total.count }}
                                 </button>
                             </td>
-                            <td class="py-2.5 px-3 text-right font-black text-purple-900 dark:text-purple-200 border border-slate-300 dark:border-slate-800">
+                            <td v-if="showNominal" class="py-2.5 px-3 text-right font-black text-purple-900 dark:text-purple-200 border border-slate-300 dark:border-slate-800">
                                 {{ formatRupiah(row.billing.total.amount) }}
                             </td>
                             <td class="py-2.5 px-3 text-center font-black bg-amber-100 dark:bg-amber-900/50 text-amber-950 dark:text-amber-100 border border-amber-300 dark:border-amber-700">
@@ -558,7 +597,7 @@
                                     {{ summary.billing.lunas.count }}
                                 </button>
                             </td>
-                            <td class="py-2.5 px-3 text-right border border-slate-700 text-emerald-300">
+                            <td v-if="showNominal" class="py-2.5 px-3 text-right border border-slate-700 text-emerald-300">
                                 {{ formatRupiah(summary.billing.lunas.amount) }}
                             </td>
                             <td class="py-2.5 px-3 text-center font-black bg-amber-400 text-slate-950 border border-amber-300">
@@ -585,7 +624,7 @@
                                     {{ summary.billing.belum_bayar.count }}
                                 </button>
                             </td>
-                            <td class="py-2 px-3 text-right border border-slate-700 text-slate-300">
+                            <td v-if="showNominal" class="py-2 px-3 text-right border border-slate-700 text-slate-300">
                                 {{ formatRupiah(summary.billing.belum_bayar.amount) }}
                             </td>
                             <td class="py-2 px-3 text-center font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
@@ -611,7 +650,7 @@
                                     {{ summary.billing.bayar_sebagian.count }}
                                 </button>
                             </td>
-                            <td class="py-2 px-3 text-right border border-slate-700 text-slate-300">
+                            <td v-if="showNominal" class="py-2 px-3 text-right border border-slate-700 text-slate-300">
                                 {{ formatRupiah(summary.billing.bayar_sebagian.amount) }}
                             </td>
                             <td class="py-2 px-3 text-center font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
@@ -637,7 +676,7 @@
                                     {{ summary.billing.janji_bayar.count }}
                                 </button>
                             </td>
-                            <td class="py-2 px-3 text-right border border-slate-700 text-slate-300">
+                            <td v-if="showNominal" class="py-2 px-3 text-right border border-slate-700 text-slate-300">
                                 {{ formatRupiah(summary.billing.janji_bayar.amount) }}
                             </td>
                             <td class="py-2 px-3 text-center font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
@@ -663,7 +702,7 @@
                                     {{ summary.billing.nunggak.count }}
                                 </button>
                             </td>
-                            <td class="py-2 px-3 text-right border border-slate-700 text-slate-300">
+                            <td v-if="showNominal" class="py-2 px-3 text-right border border-slate-700 text-slate-300">
                                 {{ formatRupiah(summary.billing.nunggak.amount) }}
                             </td>
                             <td class="py-2 px-3 text-center font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
@@ -685,10 +724,10 @@
                         <tr class="divide-x divide-slate-700">
                             <td class="py-2 px-3 border border-slate-700"></td>
                             <td class="py-2 px-3 border border-slate-700"></td>
-                            <td class="py-2 px-3 border border-slate-700"></td>
+                            <td v-if="showNominal" class="py-2 px-3 border border-slate-700"></td>
                             <td class="py-2 px-3 border border-slate-700"></td>
 
-                            <td class="py-2 px-3 border border-slate-700 text-cyan-300">FREE HOME (Karyawan)</td>
+                            <td class="py-2 px-3 border border-slate-700 text-cyan-300">FREE HOME</td>
                             <td class="py-2 px-3 text-center border border-slate-700">
                                 <button @click="openDrillDown('all', 'free_home')" class="font-bold text-cyan-400 hover:underline">
                                     {{ summary.customer.free_home.count }}
@@ -707,7 +746,7 @@
                                     {{ summary.billing.total.count }}
                                 </button>
                             </td>
-                            <td class="py-3 px-3 text-right border border-slate-700 text-amber-300">
+                            <td v-if="showNominal" class="py-3 px-3 text-right border border-slate-700 text-amber-300">
                                 {{ formatRupiah(summary.billing.total.amount) }}
                             </td>
                             <td class="py-3 px-3 text-center font-black bg-amber-400 text-slate-950 border border-amber-300">
@@ -767,7 +806,7 @@
                                 Lunas ({{ row.billing.lunas.percentage }}%)
                             </span>
                             <button @click="openDrillDown(row.area_id, 'lunas')" class="font-bold text-emerald-600 hover:underline">
-                                {{ row.billing.lunas.count }} ({{ formatRupiah(row.billing.lunas.amount) }})
+                                {{ row.billing.lunas.count }} <span v-if="showNominal">({{ formatRupiah(row.billing.lunas.amount) }})</span>
                             </button>
                         </div>
                         <div class="flex items-center justify-between text-xs">
@@ -776,7 +815,7 @@
                                 Belum Bayar ({{ row.billing.belum_bayar.percentage }}%)
                             </span>
                             <button @click="openDrillDown(row.area_id, 'belum_bayar')" class="font-bold text-rose-600 hover:underline">
-                                {{ row.billing.belum_bayar.count }} ({{ formatRupiah(row.billing.belum_bayar.amount) }})
+                                {{ row.billing.belum_bayar.count }} <span v-if="showNominal">({{ formatRupiah(row.billing.belum_bayar.amount) }})</span>
                             </button>
                         </div>
                         <div class="flex items-center justify-between text-xs">
@@ -785,7 +824,7 @@
                                 Nunggak ({{ row.billing.nunggak.percentage }}%)
                             </span>
                             <button @click="openDrillDown(row.area_id, 'nunggak')" class="font-bold text-rose-700 hover:underline">
-                                {{ row.billing.nunggak.count }} ({{ formatRupiah(row.billing.nunggak.amount) }})
+                                {{ row.billing.nunggak.count }} <span v-if="showNominal">({{ formatRupiah(row.billing.nunggak.amount) }})</span>
                             </button>
                         </div>
                         <div class="flex items-center justify-between text-xs">
@@ -847,7 +886,7 @@
                             <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">
                                 {{ drillDownModal.areaTitle }}
                             </span>
-                            <span v-if="drillDownModal.totalAmount > 0" class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
+                            <span v-if="showNominal && drillDownModal.totalAmount > 0" class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
                                 {{ formatRupiah(drillDownModal.totalAmount) }}
                             </span>
                         </div>
@@ -935,7 +974,7 @@
 
                             <!-- Right actions: Nominal & WA button -->
                             <div class="text-right flex flex-col items-end gap-1.5 shrink-0">
-                                <span class="text-sm font-black text-slate-800 dark:text-slate-100">
+                                <span v-if="showNominal" class="text-sm font-black text-slate-800 dark:text-slate-100">
                                     {{ formatRupiah(item.amount) }}
                                 </span>
 
@@ -1003,6 +1042,18 @@ const filterMonth = ref(props.filters.month || new Date().getMonth() + 1);
 const filterYear = ref(props.filters.year || new Date().getFullYear());
 const filterArea = ref(props.filters.area_id || 'all');
 const viewMode = ref('matrix'); // 'matrix' or 'cards'
+
+// State Tampilkan / Sembunyikan Nominal (Persistensi LocalStorage)
+const showNominal = ref(typeof window !== 'undefined' ? localStorage.getItem('apm_monitoring_show_nominal') !== 'false' : true);
+
+const toggleNominal = () => {
+    showNominal.value = !showNominal.value;
+    try {
+        localStorage.setItem('apm_monitoring_show_nominal', showNominal.value ? 'true' : 'false');
+    } catch (e) {
+        // Ignore storage errors
+    }
+};
 
 // URL export Excel / CSV
 const exportUrl = computed(() => {
