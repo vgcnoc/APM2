@@ -12,6 +12,7 @@ class InvoiceController extends Controller
     public function index(Request $request): Response
     {
         $today = now()->startOfDay();
+        $cycleEnd = $request->filled('end_date') ? \Carbon\Carbon::parse($request->end_date)->endOfDay() : now()->endOfMonth();
 
         // Sinkronisasi otomatis status invoice jika total pembayaran terverifikasi sudah mencapai nominal tagihan
         Invoice::whereIn('status', ['unpaid', 'partial', 'overdue'])
@@ -19,9 +20,9 @@ class InvoiceController extends Controller
             ->whereRaw('(SELECT COALESCE(SUM(payments.amount), 0) FROM payments WHERE payments.invoice_id = invoices.id AND payments.status = ?) >= invoices.amount', ['verified'])
             ->update(['status' => 'paid']);
 
-        $query = Invoice::with(['customer' => function($q) use ($today) {
+        $query = Invoice::with(['customer' => function($q) use ($today, $cycleEnd) {
             $q->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'package_id', 'billing_type', 'tax_ppn', 'created_at', 'status', 'registration_date', 'activation_date')
-              ->withCount(['invoices as unpaid_invoices_count' => function ($query) {
+              ->withCount(['invoices as unpaid_invoices_count' => function ($query) use ($cycleEnd) {
                   $query->whereIn('status', ['unpaid', 'partial', 'overdue'])
                         ->where('invoice_number', 'not like', 'INV-MIG-%')
            ->where('status', '!=', 'cancelled')
@@ -35,9 +36,13 @@ class InvoiceController extends Controller
                          ->orWhere('billing_type', 'prorata');
                  });
            })
+           ->where(function($q) use ($cycleEnd) {
+               $q->whereNull('issued_date')
+                 ->orWhereDate('issued_date', '<=', $cycleEnd);
+           })
                         ->where('is_reseller_balance', false);
               }])
-              ->withCount(['invoices as overdue_invoices_count' => function ($query) use ($today) {
+              ->withCount(['invoices as overdue_invoices_count' => function ($query) use ($today, $cycleEnd) {
                   $query->whereIn('status', ['unpaid', 'partial', 'overdue'])
                         ->where('invoice_number', 'not like', 'INV-MIG-%')
            ->where('status', '!=', 'cancelled')
@@ -50,11 +55,15 @@ class InvoiceController extends Controller
                      $sub->where('is_prorata', true)
                          ->orWhere('billing_type', 'prorata');
                  });
+           })
+           ->where(function($q) use ($cycleEnd) {
+               $q->whereNull('issued_date')
+                 ->orWhereDate('issued_date', '<=', $cycleEnd);
            })
                         ->where('is_reseller_balance', false);
                   $this->applyOverdueCondition($query, $today);
               }])
-              ->withSum(['invoices as total_unpaid_amount' => function ($query) {
+              ->withSum(['invoices as total_unpaid_amount' => function ($query) use ($cycleEnd) {
                   $query->whereIn('status', ['unpaid', 'partial', 'overdue'])
                         ->where('invoice_number', 'not like', 'INV-MIG-%')
            ->where('status', '!=', 'cancelled')
@@ -68,9 +77,13 @@ class InvoiceController extends Controller
                          ->orWhere('billing_type', 'prorata');
                  });
            })
+           ->where(function($q) use ($cycleEnd) {
+               $q->whereNull('issued_date')
+                 ->orWhereDate('issued_date', '<=', $cycleEnd);
+           })
                         ->where('is_reseller_balance', false);
               }], 'amount')
-              ->withSum(['invoices as total_overdue_amount' => function ($query) use ($today) {
+              ->withSum(['invoices as total_overdue_amount' => function ($query) use ($today, $cycleEnd) {
                   $query->whereIn('status', ['unpaid', 'partial', 'overdue'])
                         ->where('invoice_number', 'not like', 'INV-MIG-%')
            ->where('status', '!=', 'cancelled')
@@ -83,13 +96,17 @@ class InvoiceController extends Controller
                      $sub->where('is_prorata', true)
                          ->orWhere('billing_type', 'prorata');
                  });
+           })
+           ->where(function($q) use ($cycleEnd) {
+               $q->whereNull('issued_date')
+                 ->orWhereDate('issued_date', '<=', $cycleEnd);
            })
                         ->where('is_reseller_balance', false);
                   $this->applyOverdueCondition($query, $today);
               }], 'amount')
-              ->withSum(['payments as partial_paid_amount' => function ($query) {
+              ->withSum(['payments as partial_paid_amount' => function ($query) use ($cycleEnd) {
                   $query->where('status', 'verified')
-                        ->whereHas('invoice', function ($iq) {
+                        ->whereHas('invoice', function ($iq) use ($cycleEnd) {
                             $iq->whereIn('status', ['unpaid', 'partial', 'overdue'])
                                ->where('invoice_number', 'not like', 'INV-MIG-%')
                                ->where('status', '!=', 'cancelled')
@@ -103,12 +120,16 @@ class InvoiceController extends Controller
                                              ->orWhere('billing_type', 'prorata');
                                      });
                                })
+           ->where(function($q) use ($cycleEnd) {
+               $q->whereNull('issued_date')
+                 ->orWhereDate('issued_date', '<=', $cycleEnd);
+           })
                                ->where('is_reseller_balance', false);
                         });
               }], 'amount')
-              ->withSum(['payments as overdue_partial_paid_amount' => function ($query) use ($today) {
+              ->withSum(['payments as overdue_partial_paid_amount' => function ($query) use ($today, $cycleEnd) {
                   $query->where('status', 'verified')
-                        ->whereHas('invoice', function ($iq) use ($today) {
+                        ->whereHas('invoice', function ($iq) use ($today, $cycleEnd) {
                             $iq->whereIn('status', ['unpaid', 'partial', 'overdue'])
                                ->where('invoice_number', 'not like', 'INV-MIG-%')
                                ->where('status', '!=', 'cancelled')
@@ -122,6 +143,10 @@ class InvoiceController extends Controller
                                              ->orWhere('billing_type', 'prorata');
                                      });
                                })
+           ->where(function($q) use ($cycleEnd) {
+               $q->whereNull('issued_date')
+                 ->orWhereDate('issued_date', '<=', $cycleEnd);
+           })
                                ->where('is_reseller_balance', false);
                             $this->applyOverdueCondition($iq, $today);
                         });
@@ -147,6 +172,10 @@ class InvoiceController extends Controller
                      $sub->where('is_prorata', true)
                          ->orWhere('billing_type', 'prorata');
                  });
+           })
+           ->where(function($q) use ($cycleEnd) {
+               $q->whereNull('issued_date')
+                 ->orWhereDate('issued_date', '<=', $cycleEnd);
            })
            ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
 
@@ -222,6 +251,10 @@ class InvoiceController extends Controller
                      $sub->where('is_prorata', true)
                          ->orWhere('billing_type', 'prorata');
                  });
+           })
+           ->where(function($q) use ($cycleEnd) {
+               $q->whereNull('issued_date')
+                 ->orWhereDate('issued_date', '<=', $cycleEnd);
            })
             ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
         $scopedAreaFilter($baseQuery);
@@ -1285,6 +1318,7 @@ class InvoiceController extends Controller
     public function export(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $today = now()->startOfDay();
+        $cycleEnd = $request->filled('end_date') ? \Carbon\Carbon::parse($request->end_date)->endOfDay() : now()->endOfMonth();
         $query = Invoice::with(['customer.areaModel', 'customer.package', 'payments.collector'])
             ->where('is_reseller_balance', false)
             ->where('invoice_number', 'not like', 'INV-MIG-%')
@@ -1299,6 +1333,10 @@ class InvoiceController extends Controller
                           ->orWhere('billing_type', 'prorata');
                   });
             })
+           ->where(function($q) use ($cycleEnd) {
+               $q->whereNull('issued_date')
+                 ->orWhereDate('issued_date', '<=', $cycleEnd);
+           })
             ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
 
         $isAreaRestricted = auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('invoices_view_all');
@@ -1423,6 +1461,7 @@ class InvoiceController extends Controller
     public function printList(Request $request)
     {
         $today = now()->startOfDay();
+        $cycleEnd = $request->filled('end_date') ? \Carbon\Carbon::parse($request->end_date)->endOfDay() : now()->endOfMonth();
         $query = Invoice::with(['customer.areaModel', 'customer.package', 'payments.collector'])
             ->where('is_reseller_balance', false)
             ->where('invoice_number', 'not like', 'INV-MIG-%')
@@ -1437,6 +1476,10 @@ class InvoiceController extends Controller
                           ->orWhere('billing_type', 'prorata');
                   });
             })
+           ->where(function($q) use ($cycleEnd) {
+               $q->whereNull('issued_date')
+                 ->orWhereDate('issued_date', '<=', $cycleEnd);
+           })
             ->whereHas('customer', fn($q) => $q->whereNotIn('service_status', ['gratis', 'free_home']));
 
         $isAreaRestricted = auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('invoices_view_all');
