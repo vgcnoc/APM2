@@ -50,7 +50,7 @@ class CustomerReportController extends Controller
         $piutangActiveQuery = Invoice::where('is_reseller_balance', false)
             ->whereIn('status', ['unpaid', 'partial'])
             ->whereHas('customer', function($q) {
-                $q->where('status', '!=', 'terminated')
+                $q->whereNotIn('status', ['terminated', 'canceled'])
                   ->whereNotIn('service_status', ['gratis', 'free_home']);
             });
         $applyAreaFilter($piutangActiveQuery, 'customer');

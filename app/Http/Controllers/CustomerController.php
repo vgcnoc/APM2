@@ -65,7 +65,7 @@ class CustomerController extends Controller
             $request->merge(['status' => 'suspended']);
         }
         $baseQuery = Customer::query()
-            ->where('status', '!=', 'terminated')
+            ->whereNotIn('status', ['terminated', 'canceled'])
             ->notPureReseller();
 
         // Terapkan pembatasan data pelanggan jika mode penyamaran data aktif untuk akun ini
@@ -717,13 +717,13 @@ class CustomerController extends Controller
         $selectedMonth = (int) ($request->period_month ?: now()->month);
         $selectedYear = (int) ($request->period_year ?: now()->year);
 
-        // Base Query Pelanggan Berbayar (Bukan Gratis & Bukan Free Home, Tidak Terminated)
+        // Base Query Pelanggan Berbayar (Bukan Gratis & Bukan Free Home, Tidak Terminated & Tidak Canceled)
         $baseQuery = Customer::query()
             ->where(function($q) {
                 $q->whereNull('service_status')
                   ->orWhereNotIn('service_status', ['gratis', 'free_home']);
             })
-            ->where('status', '!=', 'terminated')
+            ->whereNotIn('status', ['terminated', 'canceled'])
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function($q) {
                 if (auth()->user()->can('customers_all_view_area')) {
                     $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
@@ -1068,7 +1068,7 @@ class CustomerController extends Controller
     {
         $baseQuery = Customer::query()
             ->where('service_status', 'gratis')
-            ->where('status', '!=', 'terminated')
+            ->whereNotIn('status', ['terminated', 'canceled'])
             ->notPureReseller()
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function($q) {
                 if (auth()->user()->can('customers_all_view_area')) {
@@ -1174,7 +1174,7 @@ class CustomerController extends Controller
     {
         $baseQuery = Customer::query()
             ->where('service_status', 'free_home')
-            ->where('status', '!=', 'terminated')
+            ->whereNotIn('status', ['terminated', 'canceled'])
             ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function($q) {
                 if (auth()->user()->can('customers_all_view_area')) {
                     $q->whereIn('area_id', auth()->user()->getAccessibleAreaIds());
