@@ -568,7 +568,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ── Monitoring Belum Bayar Per Area / Wilayah & Rekapitulasi All Area ──────
-    Route::middleware(['permission:menu_monitoring_area|menu_monitoring_pelanggan|menu_customers_all|menu_invoices'])->group(function () {
+    Route::middleware(['permission:menu_monitoring_area'])->group(function () {
         Route::get('/monitoring-area', [\App\Http\Controllers\AreaMonitoringController::class, 'index'])->name('monitoring-area.index');
         Route::get('/monitoring-area/customers', [\App\Http\Controllers\AreaMonitoringController::class, 'customers'])->name('monitoring-area.customers');
         Route::get('/monitoring-area/export', [\App\Http\Controllers\AreaMonitoringController::class, 'export'])->name('monitoring-area.export');

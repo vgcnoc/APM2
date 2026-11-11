@@ -985,7 +985,7 @@ const menuItems = [
         label: 'Monitoring Belum Bayar Area',
         theme: 'blue',
         active: (url) => (url || '').startsWith('/monitoring-area'),
-        permission: ['menu_monitoring_area', 'menu_monitoring_pelanggan', 'menu_customers_all'],
+        permission: 'menu_monitoring_area',
     },
     {
         type: 'dropdown',
