@@ -743,25 +743,22 @@ class MaterialService
               ->orWhere('category', 'like', '%modem%');
         });
 
-        // 1. Cek model spesifik F660
-        $combinedText = strtolower($brand . ' ' . $model);
-        if (str_contains($combinedText, '660')) {
-            $f660Mat = (clone $baseQuery)->where('name', 'like', '%660%')
-                ->orderByRaw('CASE WHEN id > 260 THEN 0 ELSE 1 END')
-                ->first();
-            if ($f660Mat) {
-                return $f660Mat;
-            }
-        }
-
         if ($brand !== '' && $model !== '' && stripos($brand, $model) === false) {
             $exact = (clone $baseQuery)
                 ->where('name', 'like', "%{$brand}%")
                 ->where('name', 'like', "%{$model}%")
-                ->orderByRaw('CASE WHEN id > 260 THEN 0 ELSE 1 END')
                 ->first();
             if ($exact) {
                 return $exact;
+            }
+        }
+
+        if ($model !== '') {
+            $byModel = (clone $baseQuery)
+                ->where('name', 'like', "%{$model}%")
+                ->first();
+            if ($byModel) {
+                return $byModel;
             }
         }
 
@@ -772,7 +769,6 @@ class MaterialService
                       ->orWhere('name', 'like', "%{$brand}%");
                 })
                 ->orderByRaw('CASE WHEN LOWER(TRIM(name)) = ? THEN 0 ELSE 1 END', [strtolower($brand)])
-                ->orderByRaw('CASE WHEN id > 260 THEN 0 ELSE 1 END')
                 ->first();
             if ($byBrand) {
                 return $byBrand;
