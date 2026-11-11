@@ -9,9 +9,94 @@ use App\Models\Odp;
 use App\Models\Customer;
 use App\Models\Ont;
 use App\Services\DataScopeService;
+use Carbon\Carbon;
 
 class NetworkRadarController extends Controller
 {
+    /**
+     * Helper seragam untuk memformat data pelanggan beserta status tagihan & paket
+     */
+    private function formatCustomerRadarData($item, string $today, $distanceMeters = null): array
+    {
+        $subType = 'customer';
+        if ($item->is_reseller) {
+            $subType = 'reseller';
+        } elseif ($item->status === 'booking') {
+            $subType = 'booking';
+        }
+
+        $odp = $item->ont ? $item->ont->odp : null;
+        $areaName = $item->areaModel ? $item->areaModel->name : ($item->area ?: '-');
+
+        // Kalkulasi tagihan belum lunas
+        $unpaidInvoices = $item->invoices ?? collect();
+        $totalUnpaid = 0;
+        $unpaidCount = 0;
+        $earliestDueDate = null;
+        $latestPromiseDate = null;
+        $isOverdue = false;
+
+        foreach ($unpaidInvoices as $inv) {
+            $paid = $inv->payments ? (float) $inv->payments->where('status', 'verified')->sum('amount') : 0;
+            $remaining = max(0, (float) $inv->amount - $paid);
+            if ($remaining > 0) {
+                $totalUnpaid += $remaining;
+                $unpaidCount++;
+
+                if ($inv->due_date) {
+                    $dueDateStr = is_string($inv->due_date) ? substr($inv->due_date, 0, 10) : $inv->due_date->format('Y-m-d');
+                    if (!$earliestDueDate || $dueDateStr < $earliestDueDate) {
+                        $earliestDueDate = $dueDateStr;
+                    }
+                    if ($dueDateStr < $today) {
+                        $isOverdue = true;
+                    }
+                }
+
+                if ($inv->promise_date) {
+                    $promiseDateStr = is_string($inv->promise_date) ? substr($inv->promise_date, 0, 10) : $inv->promise_date->format('Y-m-d');
+                    if (!$latestPromiseDate || $promiseDateStr > $latestPromiseDate) {
+                        $latestPromiseDate = $promiseDateStr;
+                    }
+                }
+            }
+        }
+
+        $isUnpaid = $totalUnpaid > 0;
+
+        return [
+            'id' => $item->id,
+            'name' => $item->name,
+            'customer_code' => $item->customer_code,
+            'phone' => $item->phone,
+            'latitude' => (float) $item->latitude,
+            'longitude' => (float) $item->longitude,
+            'address' => $item->address ?: 'Tanpa Alamat',
+            'status' => $item->status,
+            'service_status' => $item->service_status,
+            'is_reseller' => (bool) $item->is_reseller,
+            '_type' => $subType,
+            'package_id' => $item->package_id,
+            'package_name' => $item->package?->name ?? '-',
+            'package_price' => (int) ($item->package?->price ?? 0),
+            'is_unpaid' => $isUnpaid,
+            'status_tagihan' => $isUnpaid ? 'belum_lunas' : 'lunas',
+            'total_unpaid' => (int) round($totalUnpaid),
+            'unpaid_invoices_count' => $unpaidCount,
+            'due_date' => $earliestDueDate,
+            'promise_date' => $latestPromiseDate,
+            'is_overdue' => $isOverdue,
+            'odp' => $odp ? ['id' => $odp->id, 'name' => $odp->name, 'odc_id' => $odp->odc_id] : null,
+            'odp_id' => $odp ? $odp->id : null,
+            'odc_id' => $odp ? $odp->odc_id : null,
+            'odp_name' => $odp ? $odp->name : '-',
+            'area_id' => $item->area_id,
+            'area_name' => $areaName,
+            'distance_meters' => $distanceMeters !== null ? (int) $distanceMeters : null,
+            'distance_km' => $distanceMeters !== null ? round($distanceMeters / 1000, 3) : null,
+        ];
+    }
+
     public function index()
     {
         $user = auth()->user();
@@ -32,20 +117,34 @@ class NetworkRadarController extends Controller
             ->with(['odc:id,name', 'area:id,name']);
         $odps = $odpQuery->get();
 
-        $customerQuery = Customer::select('id', 'name', 'customer_code', 'latitude', 'longitude', 'address', 'is_reseller', 'status', 'service_status', 'area_id', 'area')
+        $cycleEnd = Carbon::now()->endOfMonth();
+        $today = Carbon::today()->toDateString();
+
+        $customerQuery = Customer::select('id', 'name', 'customer_code', 'phone', 'latitude', 'longitude', 'address', 'is_reseller', 'status', 'service_status', 'area_id', 'area', 'package_id')
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
-            ->with(['ont.odp:id,name,odc_id', 'areaModel:id,name']);
+            ->with([
+                'ont.odp:id,name,odc_id',
+                'areaModel:id,name',
+                'package:id,name,price',
+                'invoices' => function($q) use ($cycleEnd) {
+                    $q->whereIn('status', ['unpaid', 'partial', 'overdue'])
+                      ->where('invoice_number', 'not like', 'INV-MIG-%')
+                      ->where('is_reseller_balance', false)
+                      ->where(function($sq) use ($cycleEnd) {
+                          $sq->whereNull('issued_date')
+                             ->orWhereDate('issued_date', '<=', $cycleEnd);
+                      })
+                      ->with(['payments' => function($pq) {
+                          $pq->where('status', 'verified')->select('id', 'invoice_id', 'amount', 'status');
+                      }])
+                      ->orderBy('due_date', 'asc');
+                }
+            ]);
 
         $customers = $customerQuery->get()
-            ->map(function ($customer) {
-                $arr = $customer->toArray();
-                $arr['odp'] = $customer->ont ? $customer->ont->odp : null;
-                $arr['odp_id'] = $customer->ont && $customer->ont->odp ? $customer->ont->odp->id : null;
-                $arr['odc_id'] = $customer->ont && $customer->ont->odp ? $customer->ont->odp->odc_id : null;
-                $arr['area_name'] = $customer->areaModel ? $customer->areaModel->name : ($customer->area ?: null);
-                unset($arr['ont']);
-                return $arr;
+            ->map(function ($customer) use ($today) {
+                return $this->formatCustomerRadarData($customer, $today);
             });
 
         $areas = \App\Models\Area::select('id', 'name')->orderBy('name')->get();
@@ -221,34 +320,42 @@ class NetworkRadarController extends Controller
         }
 
         if ($checkCustomer) {
-            $customerQuery = Customer::select('id', 'name', 'customer_code', 'latitude', 'longitude', 'address', 'is_reseller', 'status', 'service_status', 'area_id', 'area')
+            $cycleEnd = Carbon::now()->endOfMonth();
+            $today = Carbon::today()->toDateString();
+
+            $customerQuery = Customer::select('id', 'name', 'customer_code', 'phone', 'latitude', 'longitude', 'address', 'is_reseller', 'status', 'service_status', 'area_id', 'area', 'package_id')
                 ->selectRaw("$haversine AS distance_km", [$lat, $lng, $lat])
                 ->whereNotNull('latitude')
                 ->whereNotNull('longitude')
                 ->having('distance_km', '<=', $radiusKm)
                 ->orderBy('distance_km')
                 ->limit(2500)
-                ->with(['areaModel:id,name', 'ont.odp:id,name,odc_id']);
+                ->with([
+                    'ont.odp:id,name,odc_id',
+                    'areaModel:id,name',
+                    'package:id,name,price',
+                    'invoices' => function($q) use ($cycleEnd) {
+                        $q->whereIn('status', ['unpaid', 'partial', 'overdue'])
+                          ->where('invoice_number', 'not like', 'INV-MIG-%')
+                          ->where('is_reseller_balance', false)
+                          ->where(function($sq) use ($cycleEnd) {
+                              $sq->whereNull('issued_date')
+                                 ->orWhereDate('issued_date', '<=', $cycleEnd);
+                          })
+                          ->with(['payments' => function($pq) {
+                              $pq->where('status', 'verified')->select('id', 'invoice_id', 'amount', 'status');
+                          }])
+                          ->orderBy('due_date', 'asc');
+                    }
+                ]);
 
             if ($areaId) {
                 $customerQuery->where('area_id', $areaId);
             }
 
-            $customers = $customerQuery->get()->map(function ($item) {
-                $subType = 'customer';
-                if ($item->is_reseller) $subType = 'reseller';
-                elseif ($item->status === 'booking') $subType = 'booking';
-                $arr = $item->toArray();
-                $arr['_type'] = $subType;
-                $arr['distance_meters'] = round($item->distance_km * 1000);
-                $odp = $item->ont ? $item->ont->odp : null;
-                $arr['odp'] = $odp ? ['id' => $odp->id, 'name' => $odp->name, 'odc_id' => $odp->odc_id] : null;
-                $arr['odp_id'] = $odp ? $odp->id : null;
-                $arr['odc_id'] = $odp ? $odp->odc_id : null;
-                $arr['odp_name'] = $odp ? $odp->name : '-';
-                $arr['area_name'] = $item->areaModel ? $item->areaModel->name : ($item->area ?: '-');
-                unset($arr['ont']);
-                return $arr;
+            $customers = $customerQuery->get()->map(function ($item) use ($today) {
+                $distMeters = round($item->distance_km * 1000);
+                return $this->formatCustomerRadarData($item, $today, $distMeters);
             });
             $customersList = $customers->values()->toArray();
             $results = array_merge($results, $customersList);
@@ -260,6 +367,9 @@ class NetworkRadarController extends Controller
         $closestOdp = !empty($odpsList) ? $odpsList[0] : null;
         $closestOdc = !empty($odcsList) ? $odcsList[0] : null;
         $closestCustomer = !empty($customersList) ? $customersList[0] : null;
+
+        $unpaidCustomersCount = count(array_filter($customersList, fn($c) => !empty($c['is_unpaid'])));
+        $totalNominalUnpaid = (int) array_sum(array_column($customersList, 'total_unpaid'));
 
         return response()->json([
             'results' => array_slice($results, 0, 3000),
@@ -277,6 +387,8 @@ class NetworkRadarController extends Controller
                 'odp' => count($odpsList),
                 'pelanggan' => count($customersList),
                 'total' => count($results),
+                'pelanggan_belum_lunas' => $unpaidCustomersCount,
+                'total_nominal_belum_lunas' => $totalNominalUnpaid,
             ],
         ]);
     }

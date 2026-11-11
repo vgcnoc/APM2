@@ -33,6 +33,7 @@ const searchRadiusMeters = ref(5000);
 const checkOdc = ref(true);
 const checkOdp = ref(true);
 const checkPelanggan = ref(true);
+const onlyUnpaidCustomers = ref(false);
 const showMapTiles = ref(true);
 const showConnections = ref(true);
 
@@ -44,6 +45,39 @@ const filterCabang = ref('');
 const filterOdc = ref('');
 const filterOdp = ref('');
 const filterStatusPelanggan = ref('');
+
+// Formatters & WhatsApp Link Helper
+const formatRupiah = (val) => {
+    const num = Number(val) || 0;
+    return new Intl.NumberFormat('id-ID').format(Math.round(num));
+};
+
+const formatDateIndo = (dateStr) => {
+    if (!dateStr) return '-';
+    try {
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return String(dateStr).substring(0, 10);
+        return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
+    } catch (e) {
+        return String(dateStr).substring(0, 10);
+    }
+};
+
+const getWhatsAppUrl = (phone, customerName, totalUnpaid, dueDate) => {
+    if (!phone) return null;
+    let cleanPhone = String(phone).replace(/\D/g, '');
+    if (cleanPhone.startsWith('0')) {
+        cleanPhone = '62' + cleanPhone.substring(1);
+    } else if (!cleanPhone.startsWith('62')) {
+        cleanPhone = '62' + cleanPhone;
+    }
+    const amountStr = totalUnpaid ? `Rp ${formatRupiah(totalUnpaid)}` : '';
+    const dueStr = dueDate ? formatDateIndo(dueDate) : '';
+    const message = encodeURIComponent(
+        `Halo Bapak/Ibu ${customerName},\n\nKami dari tim VIZBILL ingin menginformasikan perihal tagihan internet Anda sebesar ${amountStr}${dueStr ? ' dengan jatuh tempo ' + dueStr : ''}. Mohon untuk melakukan pembayaran tepat waktu agar koneksi internet tetap aktif dan lancar. Terima kasih! 🙏`
+    );
+    return `https://wa.me/${cleanPhone}?text=${message}`;
+};
 
 // Filter options
 const filteredOdcOptions = computed(() => {
@@ -293,8 +327,19 @@ const visibleCustomers = computed(() => {
         if (filterOdc.value && item.odc_id != filterOdc.value) return false;
         if (filterOdp.value && item.odp_id != filterOdp.value) return false;
 
+        // Filter checkbox: Hanya Belum Lunas
+        if (onlyUnpaidCustomers.value && !item.is_unpaid) return false;
+
         if (filterStatusPelanggan.value) {
-            if (filterStatusPelanggan.value === 'gratis') {
+            if (filterStatusPelanggan.value === 'belum_lunas') {
+                if (!item.is_unpaid) return false;
+            } else if (filterStatusPelanggan.value === 'lunas') {
+                if (item.is_unpaid) return false;
+            } else if (filterStatusPelanggan.value === 'jatuh_tempo') {
+                if (!item.is_unpaid || !item.is_overdue) return false;
+            } else if (filterStatusPelanggan.value === 'janji_bayar') {
+                if (!item.is_unpaid || !item.promise_date) return false;
+            } else if (filterStatusPelanggan.value === 'gratis') {
                 if (item.service_status !== 'gratis') return false;
             } else if (filterStatusPelanggan.value === 'free_home') {
                 if (item.service_status !== 'free_home') return false;
@@ -436,6 +481,15 @@ const nearbyCustomersList = computed(() => {
             area_name: item.area_name || item.areaModel?.name || item.area || '-',
             address: item.address || 'Tanpa Alamat',
             status: item.status || 'active',
+            is_unpaid: !!item.is_unpaid,
+            total_unpaid: Number(item.total_unpaid) || 0,
+            unpaid_invoices_count: Number(item.unpaid_invoices_count) || 0,
+            due_date: item.due_date || null,
+            promise_date: item.promise_date || null,
+            is_overdue: !!item.is_overdue,
+            package_name: item.package_name || '-',
+            package_price: Number(item.package_price) || 0,
+            phone: item.phone || '',
         };
     })
     .filter(item => {
@@ -443,8 +497,20 @@ const nearbyCustomersList = computed(() => {
         if (filterCabang.value && item.area_id != filterCabang.value) return false;
         if (filterOdc.value && item.odc_id != filterOdc.value) return false;
         if (filterOdp.value && item.odp_id != filterOdp.value) return false;
+
+        // Filter checkbox: Hanya Belum Lunas
+        if (onlyUnpaidCustomers.value && !item.is_unpaid) return false;
+
         if (filterStatusPelanggan.value) {
-            if (filterStatusPelanggan.value === 'gratis') {
+            if (filterStatusPelanggan.value === 'belum_lunas') {
+                if (!item.is_unpaid) return false;
+            } else if (filterStatusPelanggan.value === 'lunas') {
+                if (item.is_unpaid) return false;
+            } else if (filterStatusPelanggan.value === 'jatuh_tempo') {
+                if (!item.is_unpaid || !item.is_overdue) return false;
+            } else if (filterStatusPelanggan.value === 'janji_bayar') {
+                if (!item.is_unpaid || !item.promise_date) return false;
+            } else if (filterStatusPelanggan.value === 'gratis') {
                 if (item.service_status !== 'gratis') return false;
             } else if (filterStatusPelanggan.value === 'free_home') {
                 if (item.service_status !== 'free_home') return false;
@@ -458,6 +524,11 @@ const nearbyCustomersList = computed(() => {
         return true;
     })
     .sort((a, b) => a.distance_meters - b.distance_meters);
+});
+
+// Unpaid count among nearby customers
+const nearbyCustomersUnpaidCount = computed(() => {
+    return nearbyCustomersList.value.filter(c => c.is_unpaid).length;
 });
 
 // Total count across all active checked categories
@@ -506,10 +577,15 @@ const displayedNearbyItems = computed(() => {
 
 // Stats Counts
 const stats = computed(() => {
+    const unpaidList = visibleCustomers.value.filter(c => c.is_unpaid);
+    const totalUnpaidNominal = unpaidList.reduce((sum, c) => sum + (Number(c.total_unpaid) || 0), 0);
+
     return {
         odc: visibleOdcs.value.length,
         odp: visibleOdps.value.length,
         pelanggan: visibleCustomers.value.length,
+        pelanggan_belum_lunas: unpaidList.length,
+        total_nominal_belum_lunas: totalUnpaidNominal,
     };
 });
 
@@ -1016,10 +1092,21 @@ const refreshMapMarkers = () => {
         const lng = parseFloat(c.longitude);
         if (isNaN(lat) || isNaN(lng) || !isFinite(lat) || !isFinite(lng)) return;
 
-        let dotColor = '#16a34a'; // default Aktif (green)
+        let dotColor = '#16a34a'; // default Aktif & Lunas (green)
         let labelStatus = 'Aktif';
 
-        if (c.service_status === 'gratis') {
+        if (c.is_unpaid) {
+            if (c.is_overdue) {
+                dotColor = '#dc2626'; // Overdue / Jatuh tempo (red)
+                labelStatus = 'Lewat Jatuh Tempo';
+            } else if (c.promise_date) {
+                dotColor = '#d97706'; // Promise date (amber)
+                labelStatus = 'Janji Bayar';
+            } else {
+                dotColor = '#e11d48'; // Belum lunas regular (rose)
+                labelStatus = 'Belum Lunas';
+            }
+        } else if (c.service_status === 'gratis') {
             dotColor = '#06b6d4'; // Cyan
             labelStatus = 'Gratis';
         } else if (c.service_status === 'free_home') {
@@ -1037,31 +1124,85 @@ const refreshMapMarkers = () => {
         }
 
         const marker = L.marker([lat, lng], {
-            icon: createDotIcon(dotColor, 11),
+            icon: createDotIcon(dotColor, c.is_unpaid ? 12 : 11),
         });
 
+        // WhatsApp direct link
+        const waUrl = c.phone ? getWhatsAppUrl(c.phone, c.name, c.total_unpaid, c.due_date) : null;
+
+        // Billing status card HTML
+        const billingBoxHtml = c.is_unpaid ? `
+            <div class="p-2 mb-2 rounded-lg bg-rose-50 dark:bg-rose-950/70 border border-rose-200 dark:border-rose-900/60">
+                <div class="flex items-center justify-between text-[11px] font-bold text-rose-700 dark:text-rose-300">
+                    <span class="flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-rose-600 inline-block animate-pulse"></span>
+                        BELUM LUNAS (${c.unpaid_invoices_count || 1} Inv)
+                    </span>
+                    <span class="font-extrabold text-xs">Rp ${formatRupiah(c.total_unpaid)}</span>
+                </div>
+                ${c.due_date ? `
+                    <div class="text-[10px] text-rose-600 dark:text-rose-400 mt-1 flex items-center justify-between">
+                        <span>Jatuh Tempo: <strong>${formatDateIndo(c.due_date)}</strong></span>
+                        ${c.is_overdue ? '<span class="px-1 py-0.2 rounded bg-red-200 dark:bg-red-900 text-red-800 dark:text-red-200 font-extrabold text-[9px]">OVERDUE</span>' : ''}
+                    </div>
+                ` : ''}
+                ${c.promise_date ? `
+                    <div class="text-[10px] text-amber-700 dark:text-amber-400 mt-0.5">
+                        🤝 Janji Bayar: <strong>${formatDateIndo(c.promise_date)}</strong>
+                    </div>
+                ` : ''}
+            </div>
+        ` : `
+            <div class="px-2 py-1 mb-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-900/60 flex items-center justify-between text-[10px] text-emerald-700 dark:text-emerald-300 font-bold">
+                <span>Status Tagihan:</span>
+                <span>✅ LUNAS</span>
+            </div>
+        `;
+
+        // Package info HTML
+        const packageInfoHtml = (c.package_name && c.package_name !== '-') ? `
+            <div class="text-[10px] text-gray-600 dark:text-slate-300 mb-2 flex items-center justify-between bg-gray-50 dark:bg-slate-800/60 px-2 py-1 rounded">
+                <span>📦 Paket: <strong>${escapeHtmlAttr(c.package_name)}</strong></span>
+                <span class="font-bold text-gray-700 dark:text-slate-200">${c.package_price ? 'Rp ' + formatRupiah(c.package_price) : ''}</span>
+            </div>
+        ` : '';
+
+        // WA Button HTML
+        const waButtonHtml = waUrl ? `
+            <a href="${waUrl}" target="_blank" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold inline-flex items-center gap-1 shadow-2xs" title="Kirim WA Penagihan">
+                💬 WA
+            </a>
+        ` : '';
+
         marker.bindPopup(`
-            <div class="font-sans text-xs min-w-[210px]">
-                <div class="flex items-center justify-between mb-1">
+            <div class="font-sans text-xs min-w-[220px]">
+                <div class="flex items-center justify-between mb-1.5">
                     <span class="text-[10px] font-bold uppercase tracking-wider" style="color: ${dotColor}">Pelanggan</span>
                     <span class="text-[10px] px-1.5 py-0.5 rounded font-bold" style="background-color: ${dotColor}20; color: ${dotColor}">
                         ${labelStatus}
                     </span>
                 </div>
                 <h4 class="font-bold text-gray-900 dark:text-white text-sm mb-0.5">${c.name}</h4>
-                <p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono mb-1">${c.customer_code || '-'}</p>
-                <p class="text-[10px] text-gray-500 dark:text-slate-400 font-medium mb-1.5">ODP: ${c.odp_name || c.odp?.name || '-'}</p>
+                <p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono mb-1.5">${c.customer_code || '-'}</p>
+
+                ${billingBoxHtml}
+                ${packageInfoHtml}
+
+                <div class="text-[10px] text-gray-500 dark:text-slate-400 font-medium mb-1">🔌 ODP: ${c.odp_name || c.odp?.name || '-'}</div>
                 <p class="text-xs text-gray-500 dark:text-slate-400 mb-2">${c.address || 'Tanpa Alamat'}</p>
                 <div class="text-[11px] bg-gray-50 dark:bg-slate-800/80 p-1.5 rounded border border-gray-100 dark:border-slate-700 font-mono text-gray-600 dark:text-slate-300 mb-2.5">
                     📍 ${lat.toFixed(6)}, ${lng.toFixed(6)}
                 </div>
-                <div class="flex items-center justify-between pt-1 border-t border-gray-100 dark:border-slate-800">
-                    <a href="${getGoogleMapsUrl(lat, lng)}" target="_blank" class="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline">
-                        🗺️ Navigasi
-                    </a>
-                    <button type="button" class="text-[11px] font-bold text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 route-btn cursor-pointer" onclick="window.drawRadarRoute(${lat}, ${lng}, '${escapeHtmlAttr(c.name)}')">
-                        🚗 Rute Jalan
-                    </button>
+                <div class="flex items-center justify-between pt-1 border-t border-gray-100 dark:border-slate-800 gap-1.5">
+                    <div class="flex items-center gap-2">
+                        <a href="${getGoogleMapsUrl(lat, lng)}" target="_blank" class="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline">
+                            🗺️ Navigasi
+                        </a>
+                        <button type="button" class="text-[11px] font-bold text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 route-btn cursor-pointer" onclick="window.drawRadarRoute(${lat}, ${lng}, '${escapeHtmlAttr(c.name)}')">
+                            🚗 Rute
+                        </button>
+                    </div>
+                    ${waButtonHtml}
                 </div>
             </div>
         `);
@@ -1074,8 +1215,14 @@ const refreshMapMarkers = () => {
 };
 
 // Watchers
-watch([checkOdc, checkOdp, checkPelanggan, filterOdp, filterStatusPelanggan, activeTab], () => {
+watch([checkOdc, checkOdp, checkPelanggan, onlyUnpaidCustomers, filterOdp, filterStatusPelanggan, activeTab], () => {
     refreshMapMarkers();
+});
+
+watch(onlyUnpaidCustomers, (val) => {
+    if (val && !checkPelanggan.value) {
+        checkPelanggan.value = true;
+    }
 });
 
 // Auto-switch resultActiveTab if the selected category is disabled
@@ -1131,6 +1278,7 @@ const resetAllFilters = () => {
     filterOdc.value = '';
     filterOdp.value = '';
     filterStatusPelanggan.value = '';
+    onlyUnpaidCustomers.value = false;
     resultsSearchQuery.value = '';
     refreshMapMarkers();
 };
@@ -1377,8 +1525,8 @@ onUnmounted(() => {
                 <!-- Apa yang ingin dicek? -->
                 <div class="mb-4">
                     <label class="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-2">Apa yang ingin dicek?</label>
-                    <!-- Row 1: ODC, ODP, Pelanggan -->
-                    <div class="flex flex-wrap items-center gap-4 mb-2.5">
+                    <!-- Row 1: ODC, ODP, Pelanggan, Hanya Belum Lunas -->
+                    <div class="flex flex-wrap items-center gap-3 sm:gap-4 mb-2.5">
                         <label class="inline-flex items-center gap-2 cursor-pointer select-none">
                             <input type="checkbox" v-model="checkOdc" class="rounded text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-slate-700 dark:bg-slate-800 w-4 h-4">
                             <span class="w-2.5 h-2.5 rounded-full bg-blue-600 inline-block"></span>
@@ -1393,6 +1541,11 @@ onUnmounted(() => {
                             <input type="checkbox" v-model="checkPelanggan" class="rounded text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-slate-700 dark:bg-slate-800 w-4 h-4">
                             <span class="w-2.5 h-2.5 rounded-full bg-purple-600 inline-block"></span>
                             <span class="text-xs font-semibold text-gray-700 dark:text-slate-300">Pelanggan</span>
+                        </label>
+                        <label class="inline-flex items-center gap-2 cursor-pointer select-none px-2.5 py-1 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 hover:bg-rose-100/70 dark:hover:bg-rose-900/40 transition-colors">
+                            <input type="checkbox" v-model="onlyUnpaidCustomers" class="rounded text-rose-600 focus:ring-rose-500 border-rose-300 dark:border-rose-700 dark:bg-slate-800 w-4 h-4">
+                            <span class="w-2.5 h-2.5 rounded-full bg-rose-600 inline-block animate-pulse"></span>
+                            <span class="text-xs font-bold text-rose-700 dark:text-rose-300">Hanya Belum Lunas</span>
                         </label>
                     </div>
                     <!-- Row 2: Tampilkan Peta, Tampilkan Koneksi -->
@@ -1499,6 +1652,9 @@ onUnmounted(() => {
                             <span class="px-1.5 py-0.2 rounded-full text-[10px] bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 font-bold">
                                 {{ nearbyCustomersList.length }}
                             </span>
+                            <span v-if="nearbyCustomersUnpaidCount > 0" class="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 font-extrabold animate-pulse" title="Pelanggan Belum Lunas">
+                                {{ nearbyCustomersUnpaidCount }} Blm Lunas
+                            </span>
                         </button>
                         <button
                             type="button"
@@ -1530,7 +1686,7 @@ onUnmounted(() => {
                                        ['customer', 'reseller', 'booking'].includes(filteredActiveTabItems[0]._type) ? 'Pelanggan Terdekat Ditemukan (#1)' : 'Posisi Terdekat (#1)' }}
                                 </span>
                             </div>
-                            <h3 class="text-xl font-extrabold tracking-tight flex items-center gap-2">
+                            <h3 class="text-xl font-extrabold tracking-tight flex items-center gap-2 flex-wrap">
                                 <span>{{ filteredActiveTabItems[0].name }}</span>
                                 <span v-if="filteredActiveTabItems[0]._type === 'odp'" class="text-xs px-2.5 py-0.5 rounded-md font-bold bg-emerald-500/25 text-emerald-300 border border-emerald-500/40">
                                     {{ filteredActiveTabItems[0].available_ports }} Port Kosong
@@ -1538,21 +1694,44 @@ onUnmounted(() => {
                                 <span v-else-if="filteredActiveTabItems[0]._type === 'odc'" class="text-xs px-2.5 py-0.5 rounded-md font-bold bg-blue-500/25 text-blue-300 border border-blue-500/40">
                                     {{ filteredActiveTabItems[0].odps_count || 0 }} ODP Terhubung
                                 </span>
-                                <span v-else-if="['customer', 'reseller', 'booking'].includes(filteredActiveTabItems[0]._type)" class="text-xs px-2.5 py-0.5 rounded-md font-bold bg-purple-500/25 text-purple-300 border border-purple-500/40">
-                                    {{ filteredActiveTabItems[0].service_status === 'gratis' ? 'Gratis' : filteredActiveTabItems[0].service_status === 'free_home' ? 'Freehome' : (filteredActiveTabItems[0].status || 'Aktif') }}
-                                </span>
+                                <template v-else-if="['customer', 'reseller', 'booking'].includes(filteredActiveTabItems[0]._type)">
+                                    <span
+                                        :class="[
+                                            'text-xs px-2.5 py-0.5 rounded-md font-bold border',
+                                            filteredActiveTabItems[0].is_unpaid
+                                                ? 'bg-rose-500/30 text-rose-200 border-rose-400/50'
+                                                : 'bg-emerald-500/25 text-emerald-300 border-emerald-500/40'
+                                        ]"
+                                    >
+                                        {{ filteredActiveTabItems[0].is_unpaid ? `⚠️ Belum Lunas: Rp ${formatRupiah(filteredActiveTabItems[0].total_unpaid)} (${filteredActiveTabItems[0].unpaid_invoices_count || 1} Inv)` : '✅ Tagihan Lunas' }}
+                                    </span>
+                                    <span class="text-xs px-2.5 py-0.5 rounded-md font-bold bg-purple-500/25 text-purple-300 border border-purple-500/40">
+                                        {{ filteredActiveTabItems[0].service_status === 'gratis' ? 'Gratis' : filteredActiveTabItems[0].service_status === 'free_home' ? 'Freehome' : (filteredActiveTabItems[0].status || 'Aktif') }}
+                                    </span>
+                                </template>
                             </h3>
                             <div class="text-xs text-blue-200 flex flex-wrap items-center gap-x-4 gap-y-1 font-medium">
                                 <span>📍 Jarak: <strong class="text-white font-black">{{ formatDistance(filteredActiveTabItems[0].distance_meters) }}</strong></span>
                                 <span v-if="filteredActiveTabItems[0]._type === 'odp'">🏢 ODC: <strong class="text-white">{{ filteredActiveTabItems[0].odc_name || '-' }}</strong></span>
                                 <span v-if="filteredActiveTabItems[0]._type === 'odp'">🔌 Terpakai: <strong class="text-white">{{ filteredActiveTabItems[0].used_ports || 0 }} / {{ filteredActiveTabItems[0].total_ports || 0 }}</strong></span>
                                 <span v-if="['customer', 'reseller', 'booking'].includes(filteredActiveTabItems[0]._type)">🔌 ODP: <strong class="text-white">{{ filteredActiveTabItems[0].odp_name || '-' }}</strong></span>
+                                <span v-if="['customer', 'reseller', 'booking'].includes(filteredActiveTabItems[0]._type) && filteredActiveTabItems[0].package_name && filteredActiveTabItems[0].package_name !== '-'">📦 Paket: <strong class="text-white">{{ filteredActiveTabItems[0].package_name }}</strong> {{ filteredActiveTabItems[0].package_price ? '(Rp ' + formatRupiah(filteredActiveTabItems[0].package_price) + ')' : '' }}</span>
+                                <span v-if="['customer', 'reseller', 'booking'].includes(filteredActiveTabItems[0]._type) && filteredActiveTabItems[0].due_date">📅 JT: <strong class="text-white">{{ formatDateIndo(filteredActiveTabItems[0].due_date) }}</strong></span>
                                 <span>🌐 Cabang: <strong class="text-white">{{ filteredActiveTabItems[0].area_name || '-' }}</strong></span>
                                 <span>🏠 Alamat: <span class="text-slate-300">{{ filteredActiveTabItems[0].address || '-' }}</span></span>
                             </div>
                         </div>
 
                         <div class="flex flex-wrap items-center gap-2">
+                            <a
+                                v-if="['customer', 'reseller', 'booking'].includes(filteredActiveTabItems[0]._type) && filteredActiveTabItems[0].phone"
+                                :href="getWhatsAppUrl(filteredActiveTabItems[0].phone, filteredActiveTabItems[0].name, filteredActiveTabItems[0].total_unpaid, filteredActiveTabItems[0].due_date)"
+                                target="_blank"
+                                class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
+                                title="Chat penagihan WhatsApp"
+                            >
+                                <span>💬 Chat WA</span>
+                            </a>
                             <button
                                 type="button"
                                 @click="focusToItem(filteredActiveTabItems[0])"
@@ -1696,7 +1875,7 @@ onUnmounted(() => {
 
                                 <!-- Detail Khusus Pelanggan -->
                                 <div v-else-if="['customer', 'reseller', 'booking'].includes(item._type)" class="space-y-1 mb-2.5">
-                                    <div class="flex items-center justify-between text-[11px]">
+                                    <div class="flex items-center justify-between text-[11px] mb-1">
                                         <span class="font-mono text-gray-500 dark:text-slate-400 text-[10px]">
                                             {{ item.customer_code || '-' }}
                                         </span>
@@ -1704,6 +1883,35 @@ onUnmounted(() => {
                                             {{ item.service_status === 'gratis' ? 'Gratis' : item.service_status === 'free_home' ? 'Freehome' : item.status || 'Aktif' }}
                                         </span>
                                     </div>
+
+                                    <!-- Status Tagihan: Belum Lunas vs Lunas -->
+                                    <div v-if="item.is_unpaid" class="p-2 mb-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/70 border border-rose-200 dark:border-rose-900/60 text-xs">
+                                        <div class="flex items-center justify-between font-bold text-rose-700 dark:text-rose-300">
+                                            <span class="flex items-center gap-1">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-rose-600 inline-block animate-pulse"></span>
+                                                Belum Lunas ({{ item.unpaid_invoices_count || 1 }} Inv)
+                                            </span>
+                                            <span class="font-extrabold text-sm">Rp {{ formatRupiah(item.total_unpaid) }}</span>
+                                        </div>
+                                        <div v-if="item.due_date" class="flex items-center justify-between text-[10px] text-rose-600 dark:text-rose-400 mt-1">
+                                            <span>Jatuh Tempo: <strong>{{ formatDateIndo(item.due_date) }}</strong></span>
+                                            <span v-if="item.is_overdue" class="px-1 py-0.2 rounded bg-red-200 dark:bg-red-900 text-red-800 dark:text-red-200 font-extrabold text-[9px]">OVERDUE</span>
+                                        </div>
+                                        <div v-if="item.promise_date" class="text-[10px] text-amber-700 dark:text-amber-400 mt-0.5 font-medium">
+                                            🤝 Janji Bayar: <strong>{{ formatDateIndo(item.promise_date) }}</strong>
+                                        </div>
+                                    </div>
+                                    <div v-else class="px-2 py-1 mb-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-900/40 flex items-center justify-between text-[10px] text-emerald-700 dark:text-emerald-300 font-semibold">
+                                        <span>Status Tagihan:</span>
+                                        <span class="font-bold">✅ Lunas</span>
+                                    </div>
+
+                                    <!-- Info Paket Internet -->
+                                    <div v-if="item.package_name && item.package_name !== '-'" class="text-[10px] text-gray-500 dark:text-slate-400 mb-1 flex items-center justify-between">
+                                        <span>📦 Paket: <strong class="text-gray-700 dark:text-slate-200">{{ item.package_name }}</strong></span>
+                                        <span v-if="item.package_price" class="font-semibold text-gray-600 dark:text-slate-300">Rp {{ formatRupiah(item.package_price) }}</span>
+                                    </div>
+
                                     <div class="text-[10px] text-gray-500 dark:text-slate-400 flex flex-wrap gap-x-2">
                                         <span>🔌 ODP: <strong class="text-gray-700 dark:text-slate-300">{{ item.odp_name || '-' }}</strong></span>
                                         <span>🌐 Cabang: <strong class="text-gray-700 dark:text-slate-300">{{ item.area_name || '-' }}</strong></span>
@@ -1745,6 +1953,15 @@ onUnmounted(() => {
                                     title="Buka rute navigasi di Google Maps"
                                 >
                                     <span>🗺️ Maps</span>
+                                </a>
+                                <a
+                                    v-if="['customer', 'reseller', 'booking'].includes(item._type) && item.phone"
+                                    :href="getWhatsAppUrl(item.phone, item.name, item.total_unpaid, item.due_date)"
+                                    target="_blank"
+                                    class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors shadow-2xs"
+                                    title="Kirim pesan penagihan via WhatsApp"
+                                >
+                                    <span>💬 WA</span>
                                 </a>
                             </div>
                         </div>
@@ -1860,19 +2077,23 @@ onUnmounted(() => {
                             class="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-800 text-gray-900 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
                         >
                             <option value="">Semua Status</option>
+                            <option value="belum_lunas">⚠️ Belum Lunas / Menunggak</option>
+                            <option value="lunas">✅ Lunas (Tanpa Tunggakan)</option>
+                            <option value="jatuh_tempo">⏰ Sudah Lewat Jatuh Tempo</option>
+                            <option value="janji_bayar">🤝 Ada Janji Bayar</option>
                             <option value="active">Aktif</option>
+                            <option value="suspended">Isolir</option>
+                            <option value="booking">Booking</option>
                             <option value="gratis">Gratis</option>
                             <option value="free_home">Freehome</option>
                             <option value="terminated">Stop Permanen</option>
-                            <option value="suspended">Isolir</option>
-                            <option value="booking">Booking</option>
                         </select>
                     </div>
                 </div>
             </div>
 
-            <!-- ═══ STAT CARDS (3 COLS) ═══ -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <!-- ═══ STAT CARDS (4 COLS) ═══ -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                 <!-- ODC Card -->
                 <div class="bg-white dark:bg-slate-900/90 rounded-2xl border border-gray-200/80 dark:border-slate-800 p-4 shadow-xs">
                     <div class="w-2.5 h-2.5 rounded-full bg-blue-600 mb-2"></div>
@@ -1891,7 +2112,24 @@ onUnmounted(() => {
                 <div class="bg-white dark:bg-slate-900/90 rounded-2xl border border-gray-200/80 dark:border-slate-800 p-4 shadow-xs">
                     <div class="w-2.5 h-2.5 rounded-full bg-purple-600 mb-2"></div>
                     <div class="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">{{ stats.pelanggan }}</div>
-                    <div class="text-[11px] font-medium text-gray-500 dark:text-slate-400 mt-0.5">Pelanggan</div>
+                    <div class="text-[11px] font-medium text-gray-500 dark:text-slate-400 mt-0.5">Pelanggan Terdeteksi</div>
+                </div>
+
+                <!-- Tunggakan Belum Lunas Card -->
+                <div class="bg-white dark:bg-slate-900/90 rounded-2xl border border-rose-200 dark:border-rose-900/60 p-4 shadow-xs bg-gradient-to-br from-rose-50/40 via-white to-white dark:from-rose-950/20 dark:via-slate-900 dark:to-slate-900">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-rose-600 inline-block animate-pulse"></span>
+                            <span class="text-[10px] font-extrabold uppercase tracking-wider text-rose-600 dark:text-rose-400">Tunggakan</span>
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300">
+                            {{ stats.pelanggan_belum_lunas }} Pelanggan
+                        </span>
+                    </div>
+                    <div class="text-xl sm:text-2xl font-black text-rose-600 dark:text-rose-400 tracking-tight">
+                        Rp {{ formatRupiah(stats.total_nominal_belum_lunas) }}
+                    </div>
+                    <div class="text-[11px] font-medium text-gray-500 dark:text-slate-400 mt-0.5">Belum Lunas di Radius</div>
                 </div>
             </div>
 
@@ -1928,15 +2166,27 @@ onUnmounted(() => {
                             <span>ODP</span>
                         </div>
                         <div class="flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-rose-600 animate-pulse"></span>
+                            <span class="font-bold text-rose-600 dark:text-rose-400">Belum Lunas</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-red-600"></span>
+                            <span>Lewat JT</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-amber-600"></span>
+                            <span>Janji Bayar</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
                             <span class="w-2.5 h-2.5 rounded-full bg-green-600"></span>
-                            <span>Aktif</span>
+                            <span>Lunas</span>
                         </div>
                         <div class="flex items-center gap-1.5">
                             <span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
                             <span>Isolir</span>
                         </div>
                         <div class="flex items-center gap-1.5">
-                            <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                            <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
                             <span>Booking</span>
                         </div>
                         <div class="flex items-center gap-1.5">
@@ -2051,23 +2301,35 @@ onUnmounted(() => {
                                     </div>
                                 </div>
 
-                                <!-- 2. Status Pelanggan -->
+                                <!-- 2. Status Pelanggan & Tagihan -->
                                 <div class="pt-2 border-t border-gray-100 dark:border-slate-800">
                                     <div class="text-[10px] uppercase font-bold text-gray-400 dark:text-slate-400 tracking-wider mb-1.5 flex items-center justify-between">
-                                        <span>Status Pelanggan</span>
+                                        <span>Status Tagihan & Pelanggan</span>
                                         <span class="text-[10px] text-purple-600 dark:text-purple-400 font-bold">{{ stats.pelanggan }} total</span>
                                     </div>
                                     <div class="grid grid-cols-2 gap-x-2 gap-y-1.5 pl-1">
                                         <div class="flex items-center gap-1.5">
+                                            <span class="w-2.5 h-2.5 rounded-full bg-rose-600 shrink-0 animate-pulse"></span>
+                                            <span class="text-[11px] font-bold text-rose-600 dark:text-rose-400">Belum Lunas</span>
+                                        </div>
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="w-2.5 h-2.5 rounded-full bg-red-600 shrink-0"></span>
+                                            <span class="text-[11px] text-red-600 dark:text-red-400">Lewat JT</span>
+                                        </div>
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="w-2.5 h-2.5 rounded-full bg-amber-600 shrink-0"></span>
+                                            <span class="text-[11px] text-amber-600 dark:text-amber-400">Janji Bayar</span>
+                                        </div>
+                                        <div class="flex items-center gap-1.5">
                                             <span class="w-2.5 h-2.5 rounded-full bg-green-600 shrink-0"></span>
-                                            <span class="text-[11px] text-gray-700 dark:text-gray-300">Aktif</span>
+                                            <span class="text-[11px] text-gray-700 dark:text-gray-300">Lunas / Aktif</span>
                                         </div>
                                         <div class="flex items-center gap-1.5">
                                             <span class="w-2.5 h-2.5 rounded-full bg-orange-500 shrink-0"></span>
                                             <span class="text-[11px] text-gray-700 dark:text-gray-300">Isolir</span>
                                         </div>
                                         <div class="flex items-center gap-1.5">
-                                            <span class="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>
+                                            <span class="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0"></span>
                                             <span class="text-[11px] text-gray-700 dark:text-gray-300">Booking</span>
                                         </div>
                                         <div class="flex items-center gap-1.5">
