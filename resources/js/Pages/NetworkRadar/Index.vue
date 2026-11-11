@@ -328,7 +328,7 @@ const visibleEmployees = computed(() => {
 
 // ─── DAFTAR PERANGKAT & PELANGGAN TERDEKAT (SORTED BY DISTANCE) ───
 const nearbyOdpsList = computed(() => {
-    if (!myLocation.value) return [];
+    if (!myLocation.value || !checkOdp.value) return [];
     const source = (nearbyResults.value && nearbyResults.value.odps && nearbyResults.value.odps.length > 0)
         ? nearbyResults.value.odps
         : props.odps;
@@ -375,7 +375,7 @@ const nearbyOdpsList = computed(() => {
 });
 
 const nearbyOdcsList = computed(() => {
-    if (!myLocation.value) return [];
+    if (!myLocation.value || !checkOdc.value) return [];
     const source = (nearbyResults.value && nearbyResults.value.odcs && nearbyResults.value.odcs.length > 0)
         ? nearbyResults.value.odcs
         : props.odcs;
@@ -412,7 +412,7 @@ const nearbyOdcsList = computed(() => {
 });
 
 const nearbyCustomersList = computed(() => {
-    if (!myLocation.value) return [];
+    if (!myLocation.value || !checkPelanggan.value) return [];
     const source = (nearbyResults.value && nearbyResults.value.customers && nearbyResults.value.customers.length > 0)
         ? nearbyResults.value.customers
         : props.customers;
@@ -428,7 +428,7 @@ const nearbyCustomersList = computed(() => {
 
         return {
             ...item,
-            _type: 'customer',
+            _type: item._type || (item.is_reseller ? 'reseller' : (item.status === 'booking' ? 'booking' : 'customer')),
             latitude: lat,
             longitude: lng,
             distance_meters: dist,
@@ -460,17 +460,27 @@ const nearbyCustomersList = computed(() => {
     .sort((a, b) => a.distance_meters - b.distance_meters);
 });
 
+// Total count across all active checked categories
+const totalNearbyCount = computed(() => {
+    return (checkOdp.value ? nearbyOdpsList.value.length : 0) +
+           (checkOdc.value ? nearbyOdcsList.value.length : 0) +
+           (checkPelanggan.value ? nearbyCustomersList.value.length : 0);
+});
+
 // Item yang aktif ditampilkan di card Hasil Radar
 const activeTabItems = computed(() => {
     let list = [];
     if (resultActiveTab.value === 'odp') {
-        list = nearbyOdpsList.value;
+        list = checkOdp.value ? nearbyOdpsList.value : [];
     } else if (resultActiveTab.value === 'odc') {
-        list = nearbyOdcsList.value;
+        list = checkOdc.value ? nearbyOdcsList.value : [];
     } else if (resultActiveTab.value === 'customer') {
-        list = nearbyCustomersList.value;
+        list = checkPelanggan.value ? nearbyCustomersList.value : [];
     } else {
-        list = [...nearbyOdpsList.value, ...nearbyOdcsList.value, ...nearbyCustomersList.value]
+        const odps = checkOdp.value ? nearbyOdpsList.value : [];
+        const odcs = checkOdc.value ? nearbyOdcsList.value : [];
+        const custs = checkPelanggan.value ? nearbyCustomersList.value : [];
+        list = [...odps, ...odcs, ...custs]
             .sort((a, b) => a.distance_meters - b.distance_meters);
     }
     return list;
@@ -565,12 +575,18 @@ const focusToItem = (item) => {
 
     map.flyTo([lat, lng], 18, { duration: 1.2 });
 
-    const type = item._type || 'odp';
-    const key = `${type}-${item.id}`;
+    const rawType = item._type || 'odp';
+    const normalizedType = ['customer', 'reseller', 'booking'].includes(rawType) ? 'customer' : rawType;
+    const key = `${normalizedType}-${item.id}`;
 
     setTimeout(() => {
-        if (markersMap.has(key)) {
-            const marker = markersMap.get(key);
+        const marker = markersMap.get(key)
+            || markersMap.get(`customer-${item.id}`)
+            || markersMap.get(`cust-${item.id}`)
+            || markersMap.get(`odp-${item.id}`)
+            || markersMap.get(`odc-${item.id}`);
+
+        if (marker) {
             if (clusterGroup && clusterGroup.hasLayer(marker)) {
                 clusterGroup.zoomToShowLayer(marker, () => {
                     marker.openPopup();
@@ -630,11 +646,17 @@ const handleSearchNearby = async () => {
 
     isSearchingNearby.value = true;
     try {
+        const types = [];
+        if (checkOdp.value) types.push('odp');
+        if (checkOdc.value) types.push('odc');
+        if (checkPelanggan.value) types.push('customer');
+
         const response = await axios.post('/network-radar/nearby', {
             lat,
             lng,
             radius: searchRadiusMeters.value || 5000,
-            type: 'all',
+            types: types.length ? types : ['odp', 'odc', 'customer'],
+            type: types.length === 1 ? types[0] : (types.length === 3 ? 'all' : types.join(',')),
             area_id: filterCabang.value || null,
         });
 
@@ -1131,15 +1153,19 @@ watch(showMapTiles, (val) => {
     }
 });
 
+let radiusDebounceTimer = null;
 watch(searchRadiusMeters, (newVal) => {
     if (myLocationCircle && myLocation.value) {
         myLocationCircle.setRadius(newVal || 5000);
     }
-    if (myLocation.value) {
-        handleSearchNearby();
-    } else {
-        refreshMapMarkers();
-    }
+    clearTimeout(radiusDebounceTimer);
+    radiusDebounceTimer = setTimeout(() => {
+        if (myLocation.value) {
+            handleSearchNearby();
+        } else {
+            refreshMapMarkers();
+        }
+    }, 400);
 });
 
 // Map Initialization
@@ -1486,7 +1512,7 @@ onUnmounted(() => {
                         >
                             <span>Semua</span>
                             <span class="px-1.5 py-0.2 rounded-full text-[10px] bg-gray-200 dark:bg-slate-600 text-gray-700 dark:text-slate-200 font-bold">
-                                {{ activeTabItems.length }}
+                                {{ totalNearbyCount }}
                             </span>
                         </button>
                     </div>
@@ -1501,7 +1527,7 @@ onUnmounted(() => {
                                 <span>
                                     {{ filteredActiveTabItems[0]._type === 'odp' ? 'ODP Terdekat Ditemukan (#1)' :
                                        filteredActiveTabItems[0]._type === 'odc' ? 'ODC Terdekat Ditemukan (#1)' :
-                                       filteredActiveTabItems[0]._type === 'customer' ? 'Pelanggan Terdekat Ditemukan (#1)' : 'Posisi Terdekat (#1)' }}
+                                       ['customer', 'reseller', 'booking'].includes(filteredActiveTabItems[0]._type) ? 'Pelanggan Terdekat Ditemukan (#1)' : 'Posisi Terdekat (#1)' }}
                                 </span>
                             </div>
                             <h3 class="text-xl font-extrabold tracking-tight flex items-center gap-2">
@@ -1512,15 +1538,15 @@ onUnmounted(() => {
                                 <span v-else-if="filteredActiveTabItems[0]._type === 'odc'" class="text-xs px-2.5 py-0.5 rounded-md font-bold bg-blue-500/25 text-blue-300 border border-blue-500/40">
                                     {{ filteredActiveTabItems[0].odps_count || 0 }} ODP Terhubung
                                 </span>
-                                <span v-else-if="filteredActiveTabItems[0]._type === 'customer'" class="text-xs px-2.5 py-0.5 rounded-md font-bold bg-purple-500/25 text-purple-300 border border-purple-500/40">
-                                    {{ filteredActiveTabItems[0].status || 'Aktif' }}
+                                <span v-else-if="['customer', 'reseller', 'booking'].includes(filteredActiveTabItems[0]._type)" class="text-xs px-2.5 py-0.5 rounded-md font-bold bg-purple-500/25 text-purple-300 border border-purple-500/40">
+                                    {{ filteredActiveTabItems[0].service_status === 'gratis' ? 'Gratis' : filteredActiveTabItems[0].service_status === 'free_home' ? 'Freehome' : (filteredActiveTabItems[0].status || 'Aktif') }}
                                 </span>
                             </h3>
                             <div class="text-xs text-blue-200 flex flex-wrap items-center gap-x-4 gap-y-1 font-medium">
                                 <span>📍 Jarak: <strong class="text-white font-black">{{ formatDistance(filteredActiveTabItems[0].distance_meters) }}</strong></span>
                                 <span v-if="filteredActiveTabItems[0]._type === 'odp'">🏢 ODC: <strong class="text-white">{{ filteredActiveTabItems[0].odc_name || '-' }}</strong></span>
                                 <span v-if="filteredActiveTabItems[0]._type === 'odp'">🔌 Terpakai: <strong class="text-white">{{ filteredActiveTabItems[0].used_ports || 0 }} / {{ filteredActiveTabItems[0].total_ports || 0 }}</strong></span>
-                                <span v-if="filteredActiveTabItems[0]._type === 'customer'">🔌 ODP: <strong class="text-white">{{ filteredActiveTabItems[0].odp_name || '-' }}</strong></span>
+                                <span v-if="['customer', 'reseller', 'booking'].includes(filteredActiveTabItems[0]._type)">🔌 ODP: <strong class="text-white">{{ filteredActiveTabItems[0].odp_name || '-' }}</strong></span>
                                 <span>🌐 Cabang: <strong class="text-white">{{ filteredActiveTabItems[0].area_name || '-' }}</strong></span>
                                 <span>🏠 Alamat: <span class="text-slate-300">{{ filteredActiveTabItems[0].address || '-' }}</span></span>
                             </div>
@@ -1612,7 +1638,7 @@ onUnmounted(() => {
                                                 'bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300'
                                             ]"
                                         >
-                                            {{ item._type }}
+                                            {{ item._type === 'customer' ? 'Pelanggan' : item._type === 'reseller' ? 'Reseller' : item._type === 'booking' ? 'Booking' : item._type.toUpperCase() }}
                                         </span>
                                         <h4 class="font-extrabold text-gray-900 dark:text-white text-xs truncate" :title="item.name">
                                             {{ item.name }}
@@ -1669,7 +1695,7 @@ onUnmounted(() => {
                                 </div>
 
                                 <!-- Detail Khusus Pelanggan -->
-                                <div v-else-if="item._type === 'customer'" class="space-y-1 mb-2.5">
+                                <div v-else-if="['customer', 'reseller', 'booking'].includes(item._type)" class="space-y-1 mb-2.5">
                                     <div class="flex items-center justify-between text-[11px]">
                                         <span class="font-mono text-gray-500 dark:text-slate-400 text-[10px]">
                                             {{ item.customer_code || '-' }}

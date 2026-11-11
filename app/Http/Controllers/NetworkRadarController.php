@@ -130,7 +130,8 @@ class NetworkRadarController extends Controller
             'lat' => 'required|numeric',
             'lng' => 'required|numeric',
             'radius' => 'nullable|numeric|min:1|max:500000', // meter
-            'type' => 'nullable|in:odp,odc,customer,all',
+            'type' => 'nullable|string',
+            'types' => 'nullable|array',
             'area_id' => 'nullable|numeric',
         ]);
 
@@ -139,8 +140,20 @@ class NetworkRadarController extends Controller
         $rawRadius = (float) ($request->radius ?? 5000);
         // Radius dikirim dalam satuan meter dari frontend
         $radiusKm = max(0.01, $rawRadius / 1000);
-        $type = $request->type ?? 'all';
         $areaId = $request->area_id ? (int) $request->area_id : null;
+
+        // Tentukan jenis target yang ingin dicek (ODP, ODC, Pelanggan)
+        $typesInput = $request->input('types');
+        if (is_array($typesInput) && !empty($typesInput)) {
+            $checkOdp = in_array('odp', $typesInput) || in_array('all', $typesInput);
+            $checkOdc = in_array('odc', $typesInput) || in_array('all', $typesInput);
+            $checkCustomer = in_array('customer', $typesInput) || in_array('all', $typesInput);
+        } else {
+            $type = $request->input('type', 'all');
+            $checkOdp = in_array($type, ['all', 'odp']) || str_contains($type, 'odp');
+            $checkOdc = in_array($type, ['all', 'odc']) || str_contains($type, 'odc');
+            $checkCustomer = in_array($type, ['all', 'customer']) || str_contains($type, 'customer');
+        }
 
         $results = [];
         $odpsList = [];
@@ -150,14 +163,14 @@ class NetworkRadarController extends Controller
         // Haversine formula in raw SQL (km) dengan pengaman LEAST/GREATEST agar tidak menghasilkan acos NaN/NULL
         $haversine = "(6371 * acos(LEAST(1.0, GREATEST(-1.0, cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude))))))";
 
-        if ($type === 'all' || $type === 'odp') {
+        if ($checkOdp) {
             $odpQuery = Odp::select('id', 'name', 'latitude', 'longitude', 'address', 'odc_id', 'area_id', 'total_ports', 'used_ports', 'status')
                 ->selectRaw("$haversine AS distance_km", [$lat, $lng, $lat])
                 ->whereNotNull('latitude')
                 ->whereNotNull('longitude')
                 ->having('distance_km', '<=', $radiusKm)
                 ->orderBy('distance_km')
-                ->limit(100)
+                ->limit(1000)
                 ->with(['odc:id,name', 'area:id,name']);
 
             if ($areaId) {
@@ -181,14 +194,14 @@ class NetworkRadarController extends Controller
             $results = array_merge($results, $odpsList);
         }
 
-        if ($type === 'all' || $type === 'odc') {
+        if ($checkOdc) {
             $odcQuery = Odc::select('id', 'name', 'latitude', 'longitude', 'location as address', 'capacity', 'status', 'area_id')
                 ->selectRaw("$haversine AS distance_km", [$lat, $lng, $lat])
                 ->whereNotNull('latitude')
                 ->whereNotNull('longitude')
                 ->having('distance_km', '<=', $radiusKm)
                 ->orderBy('distance_km')
-                ->limit(60)
+                ->limit(500)
                 ->with(['area:id,name'])
                 ->withCount('odps');
 
@@ -207,14 +220,14 @@ class NetworkRadarController extends Controller
             $results = array_merge($results, $odcsList);
         }
 
-        if ($type === 'all' || $type === 'customer') {
+        if ($checkCustomer) {
             $customerQuery = Customer::select('id', 'name', 'customer_code', 'latitude', 'longitude', 'address', 'is_reseller', 'status', 'service_status', 'area_id', 'area')
                 ->selectRaw("$haversine AS distance_km", [$lat, $lng, $lat])
                 ->whereNotNull('latitude')
                 ->whereNotNull('longitude')
                 ->having('distance_km', '<=', $radiusKm)
                 ->orderBy('distance_km')
-                ->limit(100)
+                ->limit(2500)
                 ->with(['areaModel:id,name', 'ont.odp:id,name,odc_id']);
 
             if ($areaId) {
@@ -249,7 +262,7 @@ class NetworkRadarController extends Controller
         $closestCustomer = !empty($customersList) ? $customersList[0] : null;
 
         return response()->json([
-            'results' => array_slice($results, 0, 100),
+            'results' => array_slice($results, 0, 3000),
             'odps' => $odpsList,
             'odcs' => $odcsList,
             'customers' => $customersList,
