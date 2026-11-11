@@ -60,7 +60,7 @@ class RadiusService
         return DB::connection(config('radius.connection', 'radius'));
     }
 
-    // ── Nama Group ─────────────────────────────────────────────
+    // â”€â”€ Nama Group â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public function packageGroup(int $packageId): string
     {
@@ -77,7 +77,7 @@ class RadiusService
         return config('radius.isolir.group', 'isolir');
     }
 
-    // ── Group (Paket / Profil Voucher / Isolir) ────────────────
+    // â”€â”€ Group (Paket / Profil Voucher / Isolir) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /**
      * Tulis ulang atribut sebuah group.
@@ -169,7 +169,7 @@ class RadiusService
         ]);
     }
 
-    // ── User ───────────────────────────────────────────────────
+    // â”€â”€ User â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public function upsertUser(string $username, string $password, string $group): void
     {
@@ -367,27 +367,84 @@ class RadiusService
      */
     public function syncVouchers(iterable $vouchers): void
     {
+        $toUpsert = [];
+        $toRemove = [];
+        $toBlock = [];
+
         foreach ($vouchers as $voucher) {
             if (!$voucher->username) {
                 continue;
             }
             if ($voucher->customer_id && $voucher->customer?->connection_disabled) {
-                $this->blockUser($voucher->username);
+                $toBlock[] = $voucher->username;
                 continue;
             }
             if ($voucher->status === 'expired' || !$voucher->is_active) {
-                $this->removeUser($voucher->username);
+                $toRemove[] = $voucher->username;
                 continue;
             }
-            $this->upsertUser(
-                $voucher->username,
-                (string) ($voucher->password ?: $voucher->username),
-                $this->voucherGroup($voucher->voucher_profile_id)
-            );
+            $toUpsert[] = [
+                'username' => $voucher->username,
+                'password' => (string) ($voucher->password ?: $voucher->username),
+                'group' => $this->voucherGroup($voucher->voucher_profile_id),
+            ];
+        }
+
+        if (!empty($toBlock)) {
+            foreach ($toBlock as $u) {
+                $this->blockUser($u);
+            }
+        }
+
+        if (!empty($toRemove)) {
+            foreach (array_chunk($toRemove, 100) as $chunk) {
+                RadCheck::whereIn('username', $chunk)->delete();
+                RadReply::whereIn('username', $chunk)->delete();
+                RadUserGroup::whereIn('username', $chunk)->delete();
+            }
+        }
+
+        if (!empty($toUpsert)) {
+            if (count($toUpsert) <= 3) {
+                // Untuk Single Voucher kustom (1-3 voucher), gunakan upsertUser langsung
+                foreach ($toUpsert as $item) {
+                    $this->upsertUser($item['username'], $item['password'], $item['group']);
+                }
+            } else {
+                // Batch bulk insert untuk performa tinggi (mencegah timeout pada ratusan voucher)
+                $usernames = array_column($toUpsert, 'username');
+                foreach (array_chunk($usernames, 200) as $chunkUsers) {
+                    RadCheck::whereIn('username', $chunkUsers)->delete();
+                    RadUserGroup::whereIn('username', $chunkUsers)->delete();
+                }
+
+                $radChecks = [];
+                $radGroups = [];
+                foreach ($toUpsert as $item) {
+                    $radChecks[] = [
+                        'username' => $item['username'],
+                        'attribute' => 'Cleartext-Password',
+                        'op' => ':=',
+                        'value' => $item['password'],
+                    ];
+                    $radGroups[] = [
+                        'username' => $item['username'],
+                        'groupname' => $item['group'],
+                        'priority' => 1,
+                    ];
+                }
+
+                foreach (array_chunk($radChecks, 200) as $chunkChecks) {
+                    RadCheck::insert($chunkChecks);
+                }
+                foreach (array_chunk($radGroups, 200) as $chunkGroups) {
+                    RadUserGroup::insert($chunkGroups);
+                }
+            }
         }
     }
 
-    // ── Sesi & NAS ─────────────────────────────────────────────
+    // â”€â”€ Sesi & NAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /**
      * Putuskan semua sesi aktif user (Disconnect-Request ke NAS, port CoA).
@@ -523,7 +580,7 @@ class RadiusService
         return [$result->successful(), trim($result->output() . ' ' . $result->errorOutput())];
     }
 
-    // ── Full Sync ──────────────────────────────────────────────
+    // â”€â”€ Full Sync â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /**
      * Sinkron ulang seluruh data ke RADIUS (dipakai saat setup awal / perbaikan).
@@ -561,7 +618,7 @@ class RadiusService
         return $stats;
     }
 
-    // ── Helpers ────────────────────────────────────────────────
+    // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /**
      * Ubah durasi format MikroTik ("30m", "1h", "1d12h", "1w") atau teks Indonesia ("1 jam", "30 menit", "1 hari") ke detik.

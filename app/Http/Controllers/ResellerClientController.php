@@ -337,19 +337,6 @@ class ResellerClientController extends Controller
             ]);
         }
 
-        // Deduct balance
-        $reseller->balance -= $totalCost;
-        $reseller->save();
-
-        // Record debit transaction
-        \App\Models\ResellerTransaction::create([
-            'reseller_id' => $reseller->id,
-            'type' => 'debit',
-            'amount' => $totalCost,
-            'description' => "Pembelian {$validated['qty']} Voucher {$profile->name} (Modal: Rp " . number_format($costPerVoucher, 0, ',', '.') . "/voucher, Margin: Rp " . number_format($margin, 0, ',', '.') . "/voucher)",
-            'reference_id' => 'VOUCHER-CLIENT-GEN',
-        ]);
-
         $combination = $validated['combination'] ?? 'alphanumeric';
         
         $generateString = function($len, $comb) {
@@ -410,6 +397,7 @@ class ResellerClientController extends Controller
         };
 
         $vouchers = [];
+        $batchCodes = [];
         $now = now();
         for ($i = 0; $i < $validated['qty']; $i++) {
             $code = $generateString(6, $combination);
@@ -417,12 +405,15 @@ class ResellerClientController extends Controller
                 $code = strtoupper($code);
             }
 
-            while (Voucher::where('code', $code)->exists()) {
+            $attempts = 0;
+            while ((isset($batchCodes[$code]) || Voucher::where('code', $code)->exists()) && $attempts < 20) {
                 $code = $generateString(6, $combination);
                 if (!in_array($combination, ['alphanumeric_lower', 'alpha_lower', 'clean_readable_lower', 'alphanumeric_mixed'])) {
                     $code = strtoupper($code);
                 }
+                $attempts++;
             }
+            $batchCodes[$code] = true;
             
             $vouchers[] = [
                 'voucher_profile_id' => $profile->id,
@@ -439,11 +430,39 @@ class ResellerClientController extends Controller
             ];
         }
 
-        Voucher::insert($vouchers);
+        try {
+            \DB::transaction(function () use ($reseller, $totalCost, $costPerVoucher, $margin, $validated, $profile, $vouchers) {
+                $lockedReseller = \App\Models\Reseller::lockForUpdate()->find($reseller->id);
+                if ($lockedReseller->balance < $totalCost) {
+                    throw new \Exception('Saldo Anda tidak mencukupi untuk generate ' . $validated['qty'] . ' voucher.');
+                }
+
+                $lockedReseller->balance -= $totalCost;
+                $lockedReseller->save();
+
+                \App\Models\ResellerTransaction::create([
+                    'reseller_id' => $lockedReseller->id,
+                    'type' => 'debit',
+                    'amount' => $totalCost,
+                    'description' => "Pembelian {$validated['qty']} Voucher {$profile->name} (Modal: Rp " . number_format($costPerVoucher, 0, ',', '.') . "/voucher, Margin: Rp " . number_format($margin, 0, ',', '.') . "/voucher)",
+                    'reference_id' => 'VOUCHER-CLIENT-GEN',
+                ]);
+
+                foreach (array_chunk($vouchers, 100) as $chunk) {
+                    Voucher::insert($chunk);
+                }
+            });
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors(['error' => $e->getMessage()]);
+        }
 
         // Sync ke RADIUS
-        $createdVouchers = Voucher::whereIn('code', array_column($vouchers, 'code'))->get();
-        app(\App\Services\RadiusService::class)->syncVouchers($createdVouchers);
+        $createdVouchers = Voucher::whereIn('code', array_keys($batchCodes))->get();
+        try {
+            app(\App\Services\RadiusService::class)->syncVouchers($createdVouchers);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Radius sync error in client generator: " . $e->getMessage());
+        }
 
         return redirect()->back()->with('success', $validated['qty'] . ' Voucher berhasil digenerate. Saldo terpotong Rp ' . number_format($totalCost, 0, ',', '.') . ' (Modal Rp ' . number_format($costPerVoucher, 0, ',', '.') . '/voucher, Estimasi Keuntungan Rp ' . number_format($totalProfit, 0, ',', '.') . ').');
     }
