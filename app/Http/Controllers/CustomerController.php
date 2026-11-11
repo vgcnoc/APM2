@@ -763,12 +763,18 @@ class CustomerController extends Controller
         // Ambil ID semua pelanggan berbayar untuk kalkulasi agregat invoice
         $customerIds = (clone $baseQuery)->pluck('id')->toArray();
 
+        $selectedPeriodEnd = \Carbon\Carbon::createFromDate($selectedYear, $selectedMonth, 1)->endOfMonth();
+
         // Ambil invoice untuk periode terpilih (termasuk prorata pascabayar yang terbit pada siklus bulan ini)
         $periodInvoices = \App\Models\Invoice::whereIn('customer_id', $customerIds)
-            ->where(function($q) use ($selectedMonth, $selectedYear) {
-                $q->where(function($sub) use ($selectedMonth, $selectedYear) {
+            ->where(function($q) use ($selectedMonth, $selectedYear, $selectedPeriodEnd) {
+                $q->where(function($sub) use ($selectedMonth, $selectedYear, $selectedPeriodEnd) {
                     $sub->where('period_month', $selectedMonth)
-                        ->where('period_year', $selectedYear);
+                        ->where('period_year', $selectedYear)
+                        ->where(function($dateQ) use ($selectedPeriodEnd) {
+                            $dateQ->whereNull('issued_date')
+                                  ->orWhereDate('issued_date', '<=', $selectedPeriodEnd);
+                        });
                 })->orWhere(function($sub) use ($selectedMonth, $selectedYear) {
                     $sub->where('is_prorata', true)
                         ->whereYear('issued_date', $selectedYear)
@@ -891,11 +897,15 @@ class CustomerController extends Controller
         // Filter Status Pembayaran
         if ($request->filled('payment_status')) {
             $pStatus = $request->payment_status;
-            $periodInvoiceScope = function($iq) use ($selectedMonth, $selectedYear) {
-                $iq->where(function($sub) use ($selectedMonth, $selectedYear) {
-                    $sub->where(function($mQ) use ($selectedMonth, $selectedYear) {
+            $periodInvoiceScope = function($iq) use ($selectedMonth, $selectedYear, $selectedPeriodEnd) {
+                $iq->where(function($sub) use ($selectedMonth, $selectedYear, $selectedPeriodEnd) {
+                    $sub->where(function($mQ) use ($selectedMonth, $selectedYear, $selectedPeriodEnd) {
                         $mQ->where('period_month', $selectedMonth)
-                           ->where('period_year', $selectedYear);
+                           ->where('period_year', $selectedYear)
+                           ->where(function($dateQ) use ($selectedPeriodEnd) {
+                               $dateQ->whereNull('issued_date')
+                                     ->orWhereDate('issued_date', '<=', $selectedPeriodEnd);
+                           });
                     })->orWhere(function($prQ) use ($selectedMonth, $selectedYear) {
                         $prQ->where('is_prorata', true)
                             ->whereYear('issued_date', $selectedYear)

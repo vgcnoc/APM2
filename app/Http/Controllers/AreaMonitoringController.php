@@ -35,13 +35,19 @@ class AreaMonitoringController extends Controller
         }
         $areas = $areasQuery->get();
 
+        $endOfMonth = Carbon::createFromDate($year, $month, 1)->endOfMonth();
+
         // 1. Ambil Invoices pada periode bulan & tahun yang dipilih (sinkron dengan siklus penagihan pelanggan)
         $invoiceQuery = Invoice::query()
             ->with(['customer:id,customer_code,name,phone,address,area_id,area,status,service_status,package_id', 'customer.package:id,name,price'])
-            ->where(function ($q) use ($month, $year) {
-                $q->where(function ($sub) use ($month, $year) {
+            ->where(function ($q) use ($month, $year, $endOfMonth) {
+                $q->where(function ($sub) use ($month, $year, $endOfMonth) {
                     $sub->where('period_month', $month)
-                        ->where('period_year', $year);
+                        ->where('period_year', $year)
+                        ->where(function ($dateQ) use ($endOfMonth) {
+                            $dateQ->whereNull('issued_date')
+                                  ->orWhereDate('issued_date', '<=', $endOfMonth);
+                        });
                 })->orWhere(function ($sub) use ($month, $year) {
                     $sub->whereMonth('issued_date', $month)
                         ->whereYear('issued_date', $year);
@@ -357,6 +363,8 @@ class AreaMonitoringController extends Controller
         }
 
         if ($isBillingCategory) {
+            $endOfMonth = Carbon::createFromDate($year, $month, 1)->endOfMonth();
+
             // Drill-down data Invoices
             $query = Invoice::query()
                 ->with([
@@ -364,10 +372,14 @@ class AreaMonitoringController extends Controller
                     'customer.package:id,name,price',
                     'customer.areaModel:id,name'
                 ])
-                ->where(function ($q) use ($month, $year) {
-                    $q->where(function ($sub) use ($month, $year) {
+                ->where(function ($q) use ($month, $year, $endOfMonth) {
+                    $q->where(function ($sub) use ($month, $year, $endOfMonth) {
                         $sub->where('period_month', $month)
-                            ->where('period_year', $year);
+                            ->where('period_year', $year)
+                            ->where(function ($dateQ) use ($endOfMonth) {
+                                $dateQ->whereNull('issued_date')
+                                      ->orWhereDate('issued_date', '<=', $endOfMonth);
+                            });
                     })->orWhere(function ($sub) use ($month, $year) {
                         $sub->whereMonth('issued_date', $month)
                             ->whereYear('issued_date', $year);
@@ -609,11 +621,16 @@ class AreaMonitoringController extends Controller
         $monthLabel = $monthNames[$month] ?? $month;
 
         $areas = Area::orderBy('name')->get();
+        $endOfMonth = Carbon::createFromDate($year, $month, 1)->endOfMonth();
         $invoices = Invoice::with(['customer:id,area_id,area'])
-            ->where(function ($q) use ($month, $year) {
-                $q->where(function ($sub) use ($month, $year) {
+            ->where(function ($q) use ($month, $year, $endOfMonth) {
+                $q->where(function ($sub) use ($month, $year, $endOfMonth) {
                     $sub->where('period_month', $month)
-                        ->where('period_year', $year);
+                        ->where('period_year', $year)
+                        ->where(function ($dateQ) use ($endOfMonth) {
+                            $dateQ->whereNull('issued_date')
+                                  ->orWhereDate('issued_date', '<=', $endOfMonth);
+                        });
                 })->orWhere(function ($sub) use ($month, $year) {
                     $sub->whereMonth('issued_date', $month)
                         ->whereYear('issued_date', $year);
