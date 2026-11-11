@@ -567,6 +567,13 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/monitoring-pelanggan/{invoice}/print-promise', [\App\Http\Controllers\CustomerMonitoringController::class, 'printPromise'])->name('monitoring-pelanggan.print-promise');
     });
 
+    // ── Monitoring Belum Bayar Per Area / Wilayah & Rekapitulasi All Area ──────
+    Route::middleware(['permission:menu_monitoring_area|menu_monitoring_pelanggan|menu_customers_all|menu_invoices'])->group(function () {
+        Route::get('/monitoring-area', [\App\Http\Controllers\AreaMonitoringController::class, 'index'])->name('monitoring-area.index');
+        Route::get('/monitoring-area/customers', [\App\Http\Controllers\AreaMonitoringController::class, 'customers'])->name('monitoring-area.customers');
+        Route::get('/monitoring-area/export', [\App\Http\Controllers\AreaMonitoringController::class, 'export'])->name('monitoring-area.export');
+    });
+
     // ── Monitoring Kinerja Teknisi (Penanganan Gangguan & Pemasangan Instalasi) ──
     Route::middleware(['permission:menu_monitoring_teknisi|menu_customers_installed'])->group(function () {
         Route::get('/monitoring-teknisi', [\App\Http\Controllers\TechnicianMonitoringController::class, 'index'])->name('technician-monitoring.index');

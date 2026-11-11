@@ -979,6 +979,15 @@ const menuItems = [
         permission: 'menu_monitoring_pelanggan',
     },
     {
+        type: 'link',
+        href: '/monitoring-area',
+        icon: 'presentation-chart-line',
+        label: 'Monitoring Belum Bayar Area',
+        theme: 'blue',
+        active: (url) => (url || '').startsWith('/monitoring-area'),
+        permission: ['menu_monitoring_area', 'menu_monitoring_pelanggan', 'menu_customers_all'],
+    },
+    {
         type: 'dropdown',
         icon: 'clipboard-check',
         label: 'Pemasangan Baru (PSB)',
