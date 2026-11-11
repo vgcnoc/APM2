@@ -35,12 +35,20 @@ class AreaMonitoringController extends Controller
         }
         $areas = $areasQuery->get();
 
-        // 1. Ambil Invoices pada periode bulan & tahun yang dipilih
+        // 1. Ambil Invoices pada periode bulan & tahun yang dipilih (sinkron dengan siklus penagihan pelanggan)
         $invoiceQuery = Invoice::query()
             ->with(['customer:id,customer_code,name,phone,address,area_id,area,status,service_status,package_id', 'customer.package:id,name,price'])
-            ->where('period_month', $month)
-            ->where('period_year', $year)
+            ->where(function ($q) use ($month, $year) {
+                $q->where(function ($sub) use ($month, $year) {
+                    $sub->where('period_month', $month)
+                        ->where('period_year', $year);
+                })->orWhere(function ($sub) use ($month, $year) {
+                    $sub->whereMonth('issued_date', $month)
+                        ->whereYear('issued_date', $year);
+                });
+            })
             ->where('is_reseller_balance', false)
+            ->where('status', '!=', 'cancelled')
             ->where('invoice_number', 'not like', 'INV-MIG-%');
 
         if ($isAreaRestricted && !empty($userAreaIds)) {
@@ -282,7 +290,7 @@ class AreaMonitoringController extends Controller
             'total_nunggak_amount' => $allAreasSummary['billing']['nunggak']['amount'],
             'total_janji_count' => $allAreasSummary['billing']['janji_bayar']['count'],
             'total_janji_amount' => $allAreasSummary['billing']['janji_bayar']['amount'],
-            'total_active_customers' => $allAreasSummary['customer']['aktif']['count'],
+            'total_active_customers' => $allAreasSummary['customer']['aktif']['count'] + $allAreasSummary['customer']['psb']['count'],
             'total_all_customers' => $allAreasSummary['customer']['total']['count'],
             'total_special_customers' => $allAreasSummary['customer']['psb']['count'] + $allAreasSummary['customer']['gratis']['count'] + $allAreasSummary['customer']['free_home']['count'],
         ];
@@ -356,9 +364,17 @@ class AreaMonitoringController extends Controller
                     'customer.package:id,name,price',
                     'customer.areaModel:id,name'
                 ])
-                ->where('period_month', $month)
-                ->where('period_year', $year)
+                ->where(function ($q) use ($month, $year) {
+                    $q->where(function ($sub) use ($month, $year) {
+                        $sub->where('period_month', $month)
+                            ->where('period_year', $year);
+                    })->orWhere(function ($sub) use ($month, $year) {
+                        $sub->whereMonth('issued_date', $month)
+                            ->whereYear('issued_date', $year);
+                    });
+                })
                 ->where('is_reseller_balance', false)
+                ->where('status', '!=', 'cancelled')
                 ->where('invoice_number', 'not like', 'INV-MIG-%');
 
             // Filter Area
@@ -584,9 +600,17 @@ class AreaMonitoringController extends Controller
 
         $areas = Area::orderBy('name')->get();
         $invoices = Invoice::with(['customer:id,area_id,area'])
-            ->where('period_month', $month)
-            ->where('period_year', $year)
+            ->where(function ($q) use ($month, $year) {
+                $q->where(function ($sub) use ($month, $year) {
+                    $sub->where('period_month', $month)
+                        ->where('period_year', $year);
+                })->orWhere(function ($sub) use ($month, $year) {
+                    $sub->whereMonth('issued_date', $month)
+                        ->whereYear('issued_date', $year);
+                });
+            })
             ->where('is_reseller_balance', false)
+            ->where('status', '!=', 'cancelled')
             ->where('invoice_number', 'not like', 'INV-MIG-%')
             ->get();
 
