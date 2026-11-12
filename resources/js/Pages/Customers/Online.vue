@@ -3,12 +3,17 @@
         <!-- Top Toolbar: NOC Status & Auto-Refresh Controls -->
         <div class="mb-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div class="flex items-center gap-2">
-                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shadow-sm">
-                    <span class="relative flex h-2.5 w-2.5">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                <span :class="[
+                    'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-xs transition-colors',
+                    stats.online > 0
+                        ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                        : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                ]">
+                    <span class="relative flex h-2 w-2">
+                        <span v-if="stats.online > 0" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span :class="['relative inline-flex rounded-full h-2 w-2', stats.online > 0 ? 'bg-emerald-500' : 'bg-amber-500']"></span>
                     </span>
-                    RADIUS NOC SYNC
+                    <span>{{ stats.online > 0 ? `RADIUS NOC LIVE (${stats.online} SESI)` : 'RADIUS STANDBY' }}</span>
                 </span>
                 <span class="text-xs text-gray-400 dark:text-gray-500">|</span>
                 <span class="text-xs text-gray-500 dark:text-gray-400 font-medium">
@@ -489,13 +494,13 @@
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                             </button>
                         </div>
-                        <div v-else-if="!row.is_online" class="text-[10px]">
+                        <div v-else-if="!row.is_online && row.disconnect_cause" class="text-[10px]">
                             <span
                                 :class="[
                                     'inline-flex px-1.5 py-0.5 rounded border text-[9px] font-semibold',
                                     getDisconnectCauseStyle(row.disconnect_cause)
                                 ]"
-                                :title="row.disconnect_cause || 'Tidak ada riwayat sesi'"
+                                :title="row.disconnect_cause"
                             >
                                 {{ humanizeDisconnectCause(row.disconnect_cause) }}
                             </span>
@@ -612,12 +617,11 @@
                         <!-- Link Detail Pelanggan -->
                         <Link
                             :href="`/customers/${row.id}`"
-                            class="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-700 rounded-lg transition-colors border border-transparent hover:border-blue-100 dark:hover:border-gray-600"
+                            class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 bg-slate-50 dark:bg-gray-700/70 hover:bg-blue-50 dark:hover:bg-gray-700 rounded-lg transition-colors border border-slate-200 dark:border-gray-600 hover:border-blue-200 dark:hover:border-blue-500 shadow-2xs"
                             title="Buka Profil Pelanggan"
                         >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                            </svg>
+                            <span>Detail</span>
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                         </Link>
                     </div>
                 </td>
@@ -796,20 +800,12 @@ function filterCardMode(mode) {
 }
 
 function filterStatusTab(status) {
-    if (filterStatus.value === status && status !== 'all') {
-        filterStatus.value = 'all';
-    } else {
-        filterStatus.value = status;
-    }
+    filterStatus.value = status;
     applyFilters();
 }
 
 function filterModePill(mode) {
-    if (filterMode.value === mode && mode !== 'all') {
-        filterMode.value = 'all';
-    } else {
-        filterMode.value = mode;
-    }
+    filterMode.value = mode;
     applyFilters();
 }
 
@@ -1015,7 +1011,7 @@ function formatTimeAgo(isoString) {
 }
 
 function humanizeDisconnectCause(cause) {
-    if (!cause) return 'Belum Login';
+    if (!cause) return '';
     const c = String(cause).toLowerCase();
     if (c.includes('lost-carrier') || c.includes('lost carrier')) return 'Kabel Lepas / Redaman';
     if (c.includes('user-request') || c.includes('user request')) return 'User / Router Logout';

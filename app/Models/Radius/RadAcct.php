@@ -25,7 +25,11 @@ class RadAcct extends RadiusModel
 
     public function scopeOnline($query)
     {
-        return $query->whereNull('acctstoptime');
+        return $query->where(function ($q) {
+            $q->whereNull('acctstoptime')
+              ->orWhere('acctstoptime', '0000-00-00 00:00:00')
+              ->orWhere('acctstoptime', '');
+        });
     }
 
     public static function freshnessSeconds(): int

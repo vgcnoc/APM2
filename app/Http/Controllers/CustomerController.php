@@ -312,23 +312,33 @@ class CustomerController extends Controller
         }
         $offlineUsernames = array_values(array_unique(array_filter($offlineUsernames)));
 
-        $lastOfflineSessions = collect();
+        $lastOfflineLookup = [];
         if (!empty($offlineUsernames)) {
             try {
                 // FreeRADIUS table column is 'acctterminatecause' (NOT 'terminate_cause')
-                $lastOfflineSessions = \App\Models\Radius\RadAcct::whereIn('username', $offlineUsernames)
+                $offlineSessions = \App\Models\Radius\RadAcct::whereIn('username', $offlineUsernames)
                     ->whereNotNull('acctstoptime')
+                    ->where('acctstoptime', '!=', '0000-00-00 00:00:00')
                     ->orderByDesc('acctstoptime')
-                    ->get(['username', 'acctstoptime', 'callingstationid', 'acctterminatecause'])
-                    ->unique(fn ($item) => mb_strtolower(trim(explode('@', (string) $item->username)[0])))
-                    ->keyBy(fn ($item) => mb_strtolower(trim((string) $item->username)));
+                    ->get(['username', 'acctstoptime', 'callingstationid', 'acctterminatecause']);
+
+                foreach ($offlineSessions as $item) {
+                    $u = mb_strtolower(trim((string) $item->username));
+                    $uNoRealm = explode('@', $u)[0];
+                    if (!isset($lastOfflineLookup[$u])) {
+                        $lastOfflineLookup[$u] = $item;
+                    }
+                    if (!isset($lastOfflineLookup[$uNoRealm])) {
+                        $lastOfflineLookup[$uNoRealm] = $item;
+                    }
+                }
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('[CustomerController::connections] Offline radacct query error: ' . $e->getMessage());
             }
         }
 
         // 4. Transformasi Data Baris
-        $rows = $customers->map(function (Customer $c) use ($onlineLookup, $lastOfflineSessions) {
+        $rows = $customers->map(function (Customer $c) use ($onlineLookup, $lastOfflineLookup) {
             $mode = mb_strtolower((string) ($c->package?->access_mode ?? $c->ont?->access_mode ?? 'pppoe'));
             $isHotspot = str_contains($mode, 'hotspot');
             $primaryUsername = $isHotspot
@@ -373,12 +383,12 @@ class CustomerController extends Controller
                 foreach ($candidates as $cand) {
                     $candKey = mb_strtolower(trim((string) $cand));
                     $candNoRealm = explode('@', $candKey)[0];
-                    if ($lastOfflineSessions->has($candKey)) {
-                        $lastSession = $lastOfflineSessions->get($candKey);
+                    if (isset($lastOfflineLookup[$candKey])) {
+                        $lastSession = $lastOfflineLookup[$candKey];
                         break;
                     }
-                    if ($lastOfflineSessions->has($candNoRealm)) {
-                        $lastSession = $lastOfflineSessions->get($candNoRealm);
+                    if (isset($lastOfflineLookup[$candNoRealm])) {
+                        $lastSession = $lastOfflineLookup[$candNoRealm];
                         break;
                     }
                 }
