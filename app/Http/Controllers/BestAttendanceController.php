@@ -153,7 +153,8 @@ class BestAttendanceController extends Controller
                 $attSettings
             );
 
-            $isMaintenance = (bool) preg_match('/maintenance/i', $position);
+            $empDept = (string) ($emp->department ?? '');
+            $isMaintenance = (bool) preg_match('/maintenance/i', $position . ' ' . $empDept);
             $perf['is_maintenance'] = $isMaintenance;
 
             $calculatedEmployees[] = $perf;
@@ -293,7 +294,14 @@ class BestAttendanceController extends Controller
                 $reward = $rewardsConfig['branch'][$rank] ?? 0;
                 $winner['rank'] = $rank;
                 $winner['reward_amount'] = $reward;
-                $winner['reward_title'] = "Juara #{$rank} Cabang";
+                $branchTitle = "Juara #{$rank} Cabang";
+                if ($selectedAreaId) {
+                    $matchedArea = $areas->firstWhere('id', $selectedAreaId);
+                    if ($matchedArea) {
+                        $branchTitle = "Juara #{$rank} Cabang {$matchedArea->name}";
+                    }
+                }
+                $winner['reward_title'] = $branchTitle;
                 $winner['is_branch_winner'] = true;
                 $podiumList[] = $winner;
             }
@@ -374,6 +382,11 @@ class BestAttendanceController extends Controller
      */
     public function employeeDetail(Request $request, $employeeId)
     {
+        $user = auth()->user();
+        if ($user && !$user->hasRole('admin') && $user->role !== 'admin' && !$user->can('attendance_tab_best')) {
+            abort(403, 'Anda tidak memiliki hak akses ke detail presensi karyawan.');
+        }
+
         $month = (int) $request->input('month', Carbon::now()->month);
         $year = (int) $request->input('year', Carbon::now()->year);
 

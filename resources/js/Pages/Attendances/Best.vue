@@ -47,7 +47,7 @@
                                 </option>
                             </select>
                             <svg class="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7 7"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                             </svg>
                         </div>
 
@@ -63,7 +63,7 @@
                                 </option>
                             </select>
                             <svg class="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7 7"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                             </svg>
                         </div>
 
@@ -169,7 +169,7 @@
                                 </option>
                             </select>
                             <svg class="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7 7"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                             </svg>
                         </div>
                     </div>
@@ -198,7 +198,7 @@
                         stroke="currentColor"
                         viewBox="0 0 24 24"
                     >
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7 7"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                     </svg>
                 </button>
 
@@ -1140,9 +1140,9 @@
                         </div>
 
                         <!-- Top 3 Winners in Print -->
-                        <div v-if="podium && podium.length > 0" class="grid grid-cols-3 gap-4 pt-2">
+                        <div v-if="podium && podium.length > 0" :class="['grid gap-4 pt-2', podium.length === 1 ? 'grid-cols-1 max-w-sm mx-auto' : (podium.length === 2 ? 'grid-cols-2 max-w-xl mx-auto' : 'grid-cols-3')]">
                             <!-- Juara 1 -->
-                            <div class="border-2 border-amber-400 bg-amber-50/50 p-4 rounded-xl space-y-2">
+                            <div v-if="podium[0]" class="border-2 border-amber-400 bg-amber-50/50 p-4 rounded-xl space-y-2">
                                 <span class="text-2xl">🥇</span>
                                 <div class="text-xs font-black text-amber-800">{{ podium[0]?.reward_title ? podium[0]?.reward_title.toUpperCase() : 'JUARA 1' }}</div>
                                 <div class="font-black text-sm text-slate-900 truncate">{{ podium[0]?.name || '-' }}</div>
@@ -1154,7 +1154,7 @@
                                 </div>
                             </div>
                             <!-- Juara 2 -->
-                            <div class="border-2 border-slate-300 bg-slate-50 p-4 rounded-xl space-y-2">
+                            <div v-if="podium[1]" class="border-2 border-slate-300 bg-slate-50 p-4 rounded-xl space-y-2">
                                 <span class="text-2xl">🥈</span>
                                 <div class="text-xs font-black text-slate-800">{{ podium[1]?.reward_title ? podium[1]?.reward_title.toUpperCase() : 'JUARA 2' }}</div>
                                 <div class="font-black text-sm text-slate-900 truncate">{{ podium[1]?.name || '-' }}</div>
@@ -1166,7 +1166,7 @@
                                 </div>
                             </div>
                             <!-- Juara 3 -->
-                            <div class="border-2 border-amber-500/60 bg-orange-50/30 p-4 rounded-xl space-y-2">
+                            <div v-if="podium[2]" class="border-2 border-amber-500/60 bg-orange-50/30 p-4 rounded-xl space-y-2">
                                 <span class="text-2xl">🥉</span>
                                 <div class="text-xs font-black text-amber-900">{{ podium[2]?.reward_title ? podium[2]?.reward_title.toUpperCase() : 'JUARA 3' }}</div>
                                 <div class="font-black text-sm text-slate-900 truncate">{{ podium[2]?.name || '-' }}</div>
@@ -1249,8 +1249,9 @@ const props = defineProps({
 });
 
 // Month & Year state
-const selectedMonth = ref(Number(props.filters.month) || 10);
-const selectedYear = ref(Number(props.filters.year) || 2026);
+const now = new Date();
+const selectedMonth = ref(Number(props.filters.month) || (now.getMonth() + 1));
+const selectedYear = ref(Number(props.filters.year) || now.getFullYear());
 const currentScope = ref(props.filters.scope || 'global');
 const selectedAreaId = ref(props.filters.area_id || null);
 
@@ -1291,7 +1292,10 @@ const monthNames = [
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
 
-const yearOptions = [2024, 2025, 2026, 2027, 2028];
+const yearOptions = computed(() => {
+    const curYear = new Date().getFullYear();
+    return [curYear - 2, curYear - 1, curYear, curYear + 1, curYear + 2];
+});
 
 const showFormulaInfo = ref(false);
 const searchQuery = ref('');
