@@ -1117,7 +1117,20 @@ class CustomerController extends Controller
                 $mode = strtolower(trim($request->access_mode));
                 $q->where(function($sq) use ($mode) {
                     $sq->whereHas('package', fn($pq) => $pq->where('access_mode', $mode))
-                       ->orWhereHas('ont', fn($oq) => $oq->where('access_mode', $mode));
+                       ->orWhereHas('ont', function($oq) use ($mode) {
+                           if ($mode === 'hotspot') {
+                               $oq->whereIn('access_mode', ['hotspot', 'HOTSPOT', 'Hotspot', 'HOTSPOT/MEMBER', 'MEMBER'])
+                                  ->orWhere('access_mode', 'LIKE', '%HOTSPOT%');
+                           } elseif ($mode === 'static_ip' || $mode === 'static') {
+                               $oq->whereIn('access_mode', ['static_ip', 'static', 'STATIC', 'Static'])
+                                  ->orWhere('access_mode', 'LIKE', '%STATIC%');
+                           } elseif ($mode === 'pppoe') {
+                               $oq->whereIn('access_mode', ['pppoe', 'PPPOE', 'Pppoe'])
+                                  ->orWhere('access_mode', 'LIKE', '%PPPOE%');
+                           } else {
+                               $oq->where('access_mode', $mode);
+                           }
+                       });
                 });
             });
 

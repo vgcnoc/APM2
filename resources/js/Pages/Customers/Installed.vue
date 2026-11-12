@@ -1043,9 +1043,10 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Mode Akses (Catatan)</label>
                                 <select v-model="activationForm.access_mode" class="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 shadow-sm transition-all">
                                     <option value="PPPOE">PPPoE</option>
+                                    <option value="HOTSPOT/MEMBER">Hotspot / Member</option>
                                     <option value="STATIC">Static IP</option>
                                     <option value="DHCP">DHCP / Dynamic</option>
-                                    <option value="Hotspot">Hotspot</option>
+                                    <option value="Bridge">Bridge</option>
                                 </select>
                             </div>
                             
@@ -2245,6 +2246,16 @@ function resolveDefaultPppoeVlan(customer) {
     return olt?.default_vlan ? String(olt.default_vlan) : '';
 }
 
+function normalizeAccessMode(val, fallback = 'PPPOE') {
+    const raw = String(val || fallback).trim().toUpperCase();
+    if (raw.includes('HOTSPOT') || raw.includes('MEMBER')) return 'HOTSPOT/MEMBER';
+    if (raw === 'PPPOE') return 'PPPOE';
+    if (raw.includes('STATIC')) return 'STATIC';
+    if (raw === 'DHCP') return 'DHCP';
+    if (raw === 'BRIDGE') return 'Bridge';
+    return fallback;
+}
+
 function openActivationModal(customer) {
     activeCustomer.value = customer;
     activationForm.reset();
@@ -2257,7 +2268,7 @@ function openActivationModal(customer) {
 
     activationForm.vlan_mode = customer.ont?.vlan_mode || (customer.ont?.vlan_id || defaultPppoeVlan ? 'VLAN' : '');
     activationForm.vlan_id = customer.ont?.vlan_id || defaultPppoeVlan || '';
-    activationForm.access_mode = customer.ont?.access_mode || 'PPPOE';
+    activationForm.access_mode = normalizeAccessMode(customer.ont?.access_mode || customer.package?.access_mode);
     activationForm.ip_login = customer.ont?.ip_login || '192.168.1.1';
     activationForm.login_user = customer.ont?.login_user || 'admin';
     activationForm.login_password = customer.ont?.login_password || 'admin';

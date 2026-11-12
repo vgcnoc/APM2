@@ -219,8 +219,10 @@ class RadiusService
 
         // Akun hotspot aktif jika paket bertipe hotspot atau fitur free_hotspot aktif atau access_mode HOTSPOT/MEMBER
         $isHotspotPackage = strtolower($customer->package?->access_mode ?? '') === 'hotspot'
-            || in_array(strtoupper($ont?->access_mode ?? ''), ['HOTSPOT', 'HOTSPOT/MEMBER', 'MEMBER']);
-        $isHotspotMode = in_array(strtoupper($ont->access_mode ?? ''), ['HOTSPOT', 'HOTSPOT/MEMBER', 'MEMBER']);
+            || str_contains(strtoupper($ont?->access_mode ?? ''), 'HOTSPOT')
+            || strtoupper($ont?->access_mode ?? '') === 'MEMBER';
+        $isHotspotMode = str_contains(strtoupper($ont?->access_mode ?? ''), 'HOTSPOT')
+            || strtoupper($ont?->access_mode ?? '') === 'MEMBER';
         if (($ont->free_hotspot || $isHotspotPackage || $isHotspotMode) && $ont->hotspot_user && $ont->hotspot_password) {
             $accounts[$ont->hotspot_user] = $ont->hotspot_password;
         }
@@ -269,7 +271,8 @@ class RadiusService
         };
 
         $isHotspotPackage = strtolower($customer->package?->access_mode ?? '') === 'hotspot'
-            || in_array(strtoupper($ont?->access_mode ?? ''), ['HOTSPOT', 'HOTSPOT/MEMBER', 'MEMBER']);
+            || str_contains(strtoupper($ont?->access_mode ?? ''), 'HOTSPOT')
+            || strtoupper($ont?->access_mode ?? '') === 'MEMBER';
 
         // 1. Sinkronkan akun PPPoE / Primary Connection
         if ($ont && $ont->pppoe_user && $ont->pppoe_password) {

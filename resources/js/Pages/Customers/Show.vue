@@ -1658,9 +1658,10 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Mode Akses (Catatan)</label>
                                 <select v-model="activationForm.access_mode" class="w-full border rounded-lg px-4 py-2.5 shadow-sm transition-all" :class="!isEditingOnt ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white border-gray-300 focus:ring-2 focus:ring-amber-500 focus:border-amber-500'" :disabled="!isEditingOnt">
                                     <option value="PPPOE">PPPoE</option>
+                                    <option value="HOTSPOT/MEMBER">Hotspot / Member</option>
                                     <option value="STATIC">Static IP</option>
                                     <option value="DHCP">DHCP / Dynamic</option>
-                                    <option value="HOTSPOT">Hotspot</option>
+                                    <option value="Bridge">Bridge</option>
                                 </select>
                             </div>
                             
@@ -1948,9 +1949,10 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Mode Akses (Catatan)</label>
                                 <select v-model="activeConfigForm.access_mode" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all">
                                     <option value="PPPOE">PPPoE</option>
+                                    <option value="HOTSPOT/MEMBER">Hotspot / Member</option>
                                     <option value="STATIC">Static IP</option>
                                     <option value="DHCP">DHCP / Dynamic</option>
-                                    <option value="HOTSPOT">Hotspot</option>
+                                    <option value="Bridge">Bridge</option>
                                 </select>
                             </div>
                             
@@ -4910,6 +4912,16 @@ function resolveDefaultPppoeVlan(customer) {
     return olt?.default_vlan ? String(olt.default_vlan) : '';
 }
 
+function normalizeAccessMode(val, fallback = 'PPPOE') {
+    const raw = String(val || fallback).trim().toUpperCase();
+    if (raw.includes('HOTSPOT') || raw.includes('MEMBER')) return 'HOTSPOT/MEMBER';
+    if (raw === 'PPPOE') return 'PPPOE';
+    if (raw.includes('STATIC')) return 'STATIC';
+    if (raw === 'DHCP') return 'DHCP';
+    if (raw === 'BRIDGE') return 'Bridge';
+    return fallback;
+}
+
 const defaultPppoeVlanCust = resolveDefaultPppoeVlan(props.customer);
 const defaultHsVlanCust = resolveDefaultHotspotVlan(props.customer);
 
@@ -4925,7 +4937,7 @@ const activationForm = useForm({
     pppoe_password: props.customer?.ont?.pppoe_password || props.customer?.ont?.hotspot_password || props.customer?.pppoe_password || '',
     vlan_mode: props.customer?.ont?.vlan_mode || (props.customer?.ont?.vlan_id || defaultPppoeVlanCust ? 'VLAN' : ''),
     vlan_id: props.customer?.ont?.vlan_id || defaultPppoeVlanCust || '',
-    access_mode: props.customer?.ont?.access_mode || 'PPPOE',
+    access_mode: normalizeAccessMode(props.customer?.ont?.access_mode || props.customer?.package?.access_mode),
     free_hotspot: props.customer?.ont?.free_hotspot || false,
     hotspot_user: props.customer?.ont?.hotspot_user || '',
     hotspot_password: props.customer?.ont?.hotspot_password || '',
@@ -5152,7 +5164,7 @@ function openEditActiveModal() {
 
         activeConfigForm.vlan_mode = props.customer.ont?.vlan_mode || (props.customer.ont?.vlan_id || defPppoe ? 'VLAN' : '');
         activeConfigForm.vlan_id = props.customer.ont?.vlan_id || defPppoe || '';
-        activeConfigForm.access_mode = props.customer.ont?.access_mode || 'PPPOE';
+        activeConfigForm.access_mode = normalizeAccessMode(props.customer.ont?.access_mode || props.customer.package?.access_mode);
         activeConfigForm.free_hotspot = props.customer.ont?.free_hotspot || false;
         activeConfigForm.hotspot_user = props.customer.ont?.hotspot_user || props.customer.ont?.pppoe_user || props.customer.pppoe_username || '';
         activeConfigForm.hotspot_password = props.customer.ont?.hotspot_password || props.customer.ont?.pppoe_password || props.customer.pppoe_password || '';

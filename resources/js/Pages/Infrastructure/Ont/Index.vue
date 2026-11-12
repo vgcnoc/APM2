@@ -411,10 +411,11 @@
                             class="w-full py-2 px-3 bg-gray-50 hover:bg-gray-100/50 focus:bg-white border border-gray-200 rounded-xl text-xs transition-all focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                         >
                             <option value="">Semua Akses</option>
-                            <option value="PPPOE">PPPOE</option>
-                            <option value="STATIC">STATIC</option>
-                            <option value="DHCP">DHCP</option>
-                            <option value="BRIDGE">BRIDGE</option>
+                            <option value="PPPOE">PPPoE</option>
+                            <option value="HOTSPOT/MEMBER">Hotspot / Member</option>
+                            <option value="STATIC">Static IP</option>
+                            <option value="DHCP">DHCP / Dynamic</option>
+                            <option value="Bridge">Bridge</option>
                         </select>
                     </div>
 
@@ -847,11 +848,11 @@
                                 <div>
                                     <label class="block text-xs font-bold text-gray-700 mb-1">Mode Akses (Catatan)</label>
                                     <select v-model="form.access_mode" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                        <option value="PPPOE">PPPOE</option>
-                                        <option value="Static">Static</option>
-                                        <option value="DHCP">DHCP</option>
+                                        <option value="PPPOE">PPPoE</option>
+                                        <option value="HOTSPOT/MEMBER">Hotspot / Member</option>
+                                        <option value="STATIC">Static IP</option>
+                                        <option value="DHCP">DHCP / Dynamic</option>
                                         <option value="Bridge">Bridge</option>
-                                        <option value="Hotspot">Hotspot</option>
                                     </select>
                                 </div>
                             </div>
@@ -875,7 +876,7 @@
                             </div>
 
                             <!-- Akun Member / PPPoE (Hanya muncul jika bukan mode Hotspot) -->
-                            <div v-if="String(form.access_mode || '').trim().toLowerCase() !== 'hotspot'" class="px-4 pb-4 border-t border-gray-100 pt-4">
+                            <div v-if="!String(form.access_mode || '').trim().toLowerCase().includes('hotspot')" class="px-4 pb-4 border-t border-gray-100 pt-4">
                                 <div class="flex items-center justify-between mb-2.5 flex-wrap gap-2">
                                     <div class="flex items-center gap-2">
                                         <h4 class="text-xs font-bold text-gray-800">Akun Member / PPPoE</h4>
@@ -1926,13 +1927,19 @@ function openEditModal(ont) {
     form.mac_address = ont.mac_address || '';
     form.vlan_mode = ont.vlan_mode || 'Non-VLAN';
     form.vlan_id = ont.vlan_id || '';
-    form.access_mode = ont.access_mode || 'PPPOE';
+    let rawMode = String(ont.access_mode || 'PPPOE').trim().toUpperCase();
+    if (rawMode.includes('HOTSPOT') || rawMode.includes('MEMBER')) rawMode = 'HOTSPOT/MEMBER';
+    else if (rawMode.includes('STATIC')) rawMode = 'STATIC';
+    else if (rawMode === 'DHCP') rawMode = 'DHCP';
+    else if (rawMode === 'BRIDGE') rawMode = 'Bridge';
+    else if (rawMode === 'PPPOE') rawMode = 'PPPOE';
+    form.access_mode = rawMode;
     form.ip_login = ont.ip_login || '192.168.1.1';
     form.login_user = ont.login_user || '';
     form.login_password = ont.login_password || '';
     
     // Jika mode hotspot, user/pass member tidak disimpan di ONT (diset saat aktivasi)
-    if (String(form.access_mode || '').trim().toLowerCase() === 'hotspot') {
+    if (String(form.access_mode || '').trim().toLowerCase().includes('hotspot')) {
         form.pppoe_user = '';
         form.pppoe_password = '';
     } else {
@@ -2136,14 +2143,14 @@ function onPppoeUserInput() {
 }
 
 watch(() => form.access_mode, (val) => {
-    if (String(val || '').trim().toLowerCase() === 'hotspot') {
+    if (String(val || '').trim().toLowerCase().includes('hotspot')) {
         form.pppoe_user = '';
         form.pppoe_password = '';
     }
 });
 
 async function submit() {
-    if (String(form.access_mode || '').trim().toLowerCase() === 'hotspot') {
+    if (String(form.access_mode || '').trim().toLowerCase().includes('hotspot')) {
         form.pppoe_user = '';
         form.pppoe_password = '';
     } else if (form.pppoe_user && form.pppoe_user.trim() !== '') {

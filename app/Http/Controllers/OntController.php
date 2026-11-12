@@ -106,7 +106,22 @@ class OntController extends Controller
             })
             ->when($request->area_id, fn ($q, $id) => $q->where('area_id', $id))
             ->when($request->brand, fn ($q, $b) => $q->where('brand', $b))
-            ->when($request->access_mode, fn ($q, $m) => $q->where('access_mode', $m))
+            ->when($request->access_mode, function ($q, $m) {
+                $upper = strtoupper(trim($m));
+                if (str_contains($upper, 'HOTSPOT') || str_contains($upper, 'MEMBER')) {
+                    $q->where(function ($sq) {
+                        $sq->whereIn('access_mode', ['hotspot', 'Hotspot', 'HOTSPOT', 'HOTSPOT/MEMBER', 'MEMBER'])
+                           ->orWhere('access_mode', 'LIKE', '%HOTSPOT%');
+                    });
+                } elseif (str_contains($upper, 'STATIC')) {
+                    $q->where(function ($sq) {
+                        $sq->whereIn('access_mode', ['static_ip', 'static', 'STATIC', 'Static'])
+                           ->orWhere('access_mode', 'LIKE', '%STATIC%');
+                    });
+                } else {
+                    $q->where('access_mode', $m);
+                }
+            })
             ->when($request->vlan_mode, fn ($q, $vm) => $q->where('vlan_mode', $vm))
             ->when($request->date_from, fn ($q, $d) => $q->whereDate('created_at', '>=', $d))
             ->when($request->date_to, fn ($q, $d) => $q->whereDate('created_at', '<=', $d))

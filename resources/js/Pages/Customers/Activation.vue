@@ -2427,7 +2427,7 @@ function openEditActivationModal(customer) {
         mode = 'HOTSPOT/MEMBER';
     } else if (upperMode === 'PPPOE') {
         mode = 'PPPOE';
-    } else if (upperMode === 'STATIC') {
+    } else if (upperMode.includes('STATIC')) {
         mode = 'STATIC';
     } else if (upperMode === 'DHCP') {
         mode = 'DHCP';
@@ -2968,7 +2968,7 @@ function openActivationModal(customer) {
         mode = 'HOTSPOT/MEMBER';
     } else if (upperMode === 'PPPOE') {
         mode = 'PPPOE';
-    } else if (upperMode === 'STATIC') {
+    } else if (upperMode.includes('STATIC')) {
         mode = 'STATIC';
     } else if (upperMode === 'DHCP') {
         mode = 'DHCP';
