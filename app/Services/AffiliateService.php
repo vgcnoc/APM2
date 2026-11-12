@@ -151,6 +151,18 @@ class AffiliateService
     }
 
     /**
+     * Dapatkan tanggal jatuh tempo insentif komisi affiliate bulanan/upline karyawan.
+     * Komisi affiliate bulanan/downline (5.000, 2.000, 1.000) bulan November ditunda dan ditotalkan di bulan Desember.
+     */
+    public static function getEmployeeAffiliateIncentiveDate(): Carbon
+    {
+        if (now()->month == 11 && now()->year == 2026) {
+            return Carbon::create(2026, 12, 1);
+        }
+        return now();
+    }
+
+    /**
      * Generate Kode Referral Unik.
      */
     public static function generateReferralCode(?string $name = null): string
@@ -674,7 +686,7 @@ class AffiliateService
                         'type' => 'auto',
                         'description' => "Komisi Pasif Bulanan Invoice #{$invoice->invoice_number} ({$customer->name})",
                         'reference_id' => "aff_monthly_inv_{$invoice->id}",
-                        'incentive_date' => now(),
+                        'incentive_date' => self::getEmployeeAffiliateIncentiveDate(),
                         'status' => 'pending',
                     ]);
 
@@ -730,7 +742,7 @@ class AffiliateService
                                 'type' => 'auto',
                                 'description' => "Komisi Downline Level 1 dari Mitra {$directUser->name} (Inv #{$invoice->invoice_number})",
                                 'reference_id' => "aff_upline_1_inv_{$invoice->id}",
-                                'incentive_date' => now(),
+                                'incentive_date' => self::getEmployeeAffiliateIncentiveDate(),
                                 'status' => 'pending',
                             ]);
 
@@ -785,7 +797,7 @@ class AffiliateService
                                             'type' => 'auto',
                                             'description' => "Komisi Downline Level 2 dari Mitra {$directUser->name} (Inv #{$invoice->invoice_number})",
                                             'reference_id' => "aff_upline_2_inv_{$invoice->id}",
-                                            'incentive_date' => now(),
+                                            'incentive_date' => self::getEmployeeAffiliateIncentiveDate(),
                                             'status' => 'pending',
                                         ]);
 

@@ -165,6 +165,18 @@ class PayrollController extends Controller
                             $pq->where('month', $month)->where('year', $year);
                         });
                     });
+
+                    // Komisi bulanan & upline affiliate karyawan (5.000, 2.000, 1.000) ditunda ke Desember 2026
+                    if ($month == 11 && $year == 2026) {
+                        $q->where(function($affQ) {
+                            $affQ->whereNull('reference_id')
+                                ->orWhere(function($sq) {
+                                    $sq->where('reference_id', 'not like', 'aff_monthly_%')
+                                       ->where('reference_id', 'not like', 'aff_upline_1_%')
+                                       ->where('reference_id', 'not like', 'aff_upline_2_%');
+                                });
+                        });
+                    }
                 }, 
                 'deductions' => function($q) use ($month, $year) {
                     $q->where(function($sub) use ($month, $year) {
@@ -623,11 +635,24 @@ class PayrollController extends Controller
         DB::beginTransaction();
         try {
             // Get all pending incentives for this month
-            $pendingIncentives = Incentive::where('user_id', $user->id)
+            $pendingIncentivesQuery = Incentive::where('user_id', $user->id)
                 ->whereMonth('incentive_date', $month)
                 ->whereYear('incentive_date', $year)
-                ->where('status', 'pending')
-                ->get();
+                ->where('status', 'pending');
+
+            // Komisi bulanan & upline affiliate karyawan (5.000, 2.000, 1.000) ditunda ke Desember 2026
+            if ($month == 11 && $year == 2026) {
+                $pendingIncentivesQuery->where(function($affQ) {
+                    $affQ->whereNull('reference_id')
+                        ->orWhere(function($sq) {
+                            $sq->where('reference_id', 'not like', 'aff_monthly_%')
+                               ->where('reference_id', 'not like', 'aff_upline_1_%')
+                               ->where('reference_id', 'not like', 'aff_upline_2_%');
+                        });
+                });
+            }
+
+            $pendingIncentives = $pendingIncentivesQuery->get();
 
             // Get all pending deductions for this month
             $pendingDeductions = \App\Models\Deduction::where('user_id', $user->id)
@@ -860,11 +885,24 @@ class PayrollController extends Controller
                     continue;
                 }
 
-                $pendingIncentives = Incentive::where('user_id', $user->id)
+                $pendingIncentivesQuery = Incentive::where('user_id', $user->id)
                     ->whereMonth('incentive_date', $month)
                     ->whereYear('incentive_date', $year)
-                    ->where('status', 'pending')
-                    ->get();
+                    ->where('status', 'pending');
+
+                // Komisi bulanan & upline affiliate karyawan (5.000, 2.000, 1.000) ditunda ke Desember 2026
+                if ($month == 11 && $year == 2026) {
+                    $pendingIncentivesQuery->where(function($affQ) {
+                        $affQ->whereNull('reference_id')
+                            ->orWhere(function($sq) {
+                                $sq->where('reference_id', 'not like', 'aff_monthly_%')
+                                   ->where('reference_id', 'not like', 'aff_upline_1_%')
+                                   ->where('reference_id', 'not like', 'aff_upline_2_%');
+                            });
+                    });
+                }
+
+                $pendingIncentives = $pendingIncentivesQuery->get();
 
                 $pendingDeductions = \App\Models\Deduction::where('user_id', $user->id)
                     ->whereMonth('deduction_date', $month)
