@@ -298,8 +298,8 @@
                     <tbody v-for="(row, idx) in filteredRows" :key="row.area_id" class="border-b-4 border-slate-400 dark:border-slate-700">
                         <!-- Baris 1: LUNAS & AKTIF -->
                         <tr class="divide-x divide-slate-200 dark:divide-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
-                            <!-- Area Name Cell with rowspan 7 -->
-                            <td rowspan="7" class="py-4 px-4 font-black text-center align-middle bg-slate-50/80 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-800 text-slate-800 dark:text-slate-100 text-sm">
+                            <!-- Area Name Cell with rowspan 8 -->
+                            <td rowspan="8" class="py-4 px-4 font-black text-center align-middle bg-slate-50/80 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-800 text-slate-800 dark:text-slate-100 text-sm">
                                 <div class="flex flex-col items-center justify-center">
                                     <span class="text-base font-extrabold tracking-tight text-blue-600 dark:text-blue-400">{{ row.area_name }}</span>
                                     <span v-if="row.description" class="text-[10px] text-slate-400 font-normal mt-0.5 line-clamp-1">{{ row.description }}</span>
@@ -354,7 +354,7 @@
                             </td>
                         </tr>
 
-                        <!-- Baris 2: BELUM BAYAR & STOP SEMENTARA -->
+                        <!-- Baris 2: BELUM BAYAR & TERISOLIR (ISOLIR) -->
                         <tr class="divide-x divide-slate-200 dark:divide-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
                             <!-- BELUM BAYAR (Highlight pink/soft red matching mockup) -->
                             <td class="py-2 px-3 font-bold bg-rose-50/70 dark:bg-rose-950/30 text-rose-800 dark:text-rose-300 border border-slate-300 dark:border-slate-800">
@@ -378,24 +378,27 @@
                                 {{ row.billing.belum_bayar.percentage }}%
                             </td>
 
-                            <!-- STOP SEMENTARA -->
-                            <td class="py-2 px-3 font-medium text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-800">
-                                STOP SEMENTARA
+                            <!-- TERISOLIR (ISOLIR) -->
+                            <td class="py-2 px-3 font-medium text-rose-700 dark:text-rose-400 border border-slate-300 dark:border-slate-800">
+                                <span class="inline-flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                                    TERISOLIR (ISOLIR)
+                                </span>
                             </td>
                             <td class="py-2 px-3 text-center border border-slate-300 dark:border-slate-800">
                                 <button 
-                                    @click="openDrillDown(row.area_id, 'stop_sementara')" 
-                                    class="font-bold text-amber-600 dark:text-amber-400 hover:underline px-2 py-0.5 rounded hover:bg-amber-50 dark:hover:bg-amber-950/40"
+                                    @click="openDrillDown(row.area_id, 'terisolir')" 
+                                    class="font-bold text-rose-600 dark:text-rose-400 hover:underline px-2 py-0.5 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40"
                                 >
-                                    {{ row.customer.stop_sementara.count }}
+                                    {{ row.customer.terisolir ? row.customer.terisolir.count : 0 }}
                                 </button>
                             </td>
                             <td class="py-2 px-3 text-center font-medium text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-800">
-                                {{ row.customer.stop_sementara.percentage }}%
+                                {{ row.customer.terisolir ? row.customer.terisolir.percentage : 0 }}%
                             </td>
                         </tr>
 
-                        <!-- Baris 3: BAYAR SEBAGIAN & STOP PERMANEN -->
+                        <!-- Baris 3: BAYAR SEBAGIAN & STOP SEMENTARA (CUTI) -->
                         <tr class="divide-x divide-slate-200 dark:divide-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
                             <!-- BAYAR SEBAGIAN -->
                             <td class="py-2 px-3 font-medium text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-800">
@@ -416,24 +419,27 @@
                                 {{ row.billing.bayar_sebagian.percentage }}%
                             </td>
 
-                            <!-- STOP PERMANEN -->
-                            <td class="py-2 px-3 font-medium text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-800">
-                                STOP PERMANEN
+                            <!-- STOP SEMENTARA (CUTI) -->
+                            <td class="py-2 px-3 font-medium text-amber-700 dark:text-amber-400 border border-slate-300 dark:border-slate-800">
+                                <span class="inline-flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                                    STOP SEMENTARA (CUTI)
+                                </span>
                             </td>
                             <td class="py-2 px-3 text-center border border-slate-300 dark:border-slate-800">
                                 <button 
-                                    @click="openDrillDown(row.area_id, 'stop_permanen')" 
-                                    class="font-bold text-slate-600 dark:text-slate-400 hover:underline px-2 py-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
+                                    @click="openDrillDown(row.area_id, 'stop_sementara')" 
+                                    class="font-bold text-amber-600 dark:text-amber-400 hover:underline px-2 py-0.5 rounded hover:bg-amber-50 dark:hover:bg-amber-950/40"
                                 >
-                                    {{ row.customer.stop_permanen.count }}
+                                    {{ row.customer.stop_sementara.count }}
                                 </button>
                             </td>
                             <td class="py-2 px-3 text-center font-medium text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-800">
-                                {{ row.customer.stop_permanen.percentage }}%
+                                {{ row.customer.stop_sementara.percentage }}%
                             </td>
                         </tr>
 
-                        <!-- Baris 4: JANJI BAYAR & PSB -->
+                        <!-- Baris 4: JANJI BAYAR & STOP PERMANEN -->
                         <tr class="divide-x divide-slate-200 dark:divide-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
                             <!-- JANJI BAYAR -->
                             <td class="py-2 px-3 font-medium text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-800">
@@ -454,24 +460,24 @@
                                 {{ row.billing.janji_bayar.percentage }}%
                             </td>
 
-                            <!-- PSB -->
+                            <!-- STOP PERMANEN -->
                             <td class="py-2 px-3 font-medium text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-800">
-                                PSB (Pemasangan Baru)
+                                STOP PERMANEN
                             </td>
                             <td class="py-2 px-3 text-center border border-slate-300 dark:border-slate-800">
                                 <button 
-                                    @click="openDrillDown(row.area_id, 'psb')" 
-                                    class="font-bold text-indigo-600 dark:text-indigo-400 hover:underline px-2 py-0.5 rounded hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+                                    @click="openDrillDown(row.area_id, 'stop_permanen')" 
+                                    class="font-bold text-slate-600 dark:text-slate-400 hover:underline px-2 py-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800"
                                 >
-                                    {{ row.customer.psb.count }}
+                                    {{ row.customer.stop_permanen.count }}
                                 </button>
                             </td>
                             <td class="py-2 px-3 text-center font-medium text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-800">
-                                {{ row.customer.psb.percentage }}%
+                                {{ row.customer.stop_permanen.percentage }}%
                             </td>
                         </tr>
 
-                        <!-- Baris 5: NUNGGAK & GRATIS -->
+                        <!-- Baris 5: NUNGGAK & PSB -->
                         <tr class="divide-x divide-slate-200 dark:divide-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
                             <!-- NUNGGAK -->
                             <td class="py-2 px-3 font-medium text-rose-700 dark:text-rose-400 border border-slate-300 dark:border-slate-800">
@@ -492,6 +498,30 @@
                                 {{ row.billing.nunggak.percentage }}%
                             </td>
 
+                            <!-- PSB -->
+                            <td class="py-2 px-3 font-medium text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-800">
+                                PSB (Pemasangan Baru)
+                            </td>
+                            <td class="py-2 px-3 text-center border border-slate-300 dark:border-slate-800">
+                                <button 
+                                    @click="openDrillDown(row.area_id, 'psb')" 
+                                    class="font-bold text-indigo-600 dark:text-indigo-400 hover:underline px-2 py-0.5 rounded hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+                                >
+                                    {{ row.customer.psb.count }}
+                                </button>
+                            </td>
+                            <td class="py-2 px-3 text-center font-medium text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-800">
+                                {{ row.customer.psb.percentage }}%
+                            </td>
+                        </tr>
+
+                        <!-- Baris 6: KOSONG & GRATIS -->
+                        <tr class="divide-x divide-slate-200 dark:divide-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+                            <td class="py-2 px-3 bg-slate-50/50 dark:bg-slate-800/20 border border-slate-300 dark:border-slate-800"></td>
+                            <td class="py-2 px-3 bg-slate-50/50 dark:bg-slate-800/20 border border-slate-300 dark:border-slate-800"></td>
+                            <td v-if="showNominal" class="py-2 px-3 bg-slate-50/50 dark:bg-slate-800/20 border border-slate-300 dark:border-slate-800"></td>
+                            <td class="py-2 px-3 bg-amber-50/30 dark:bg-amber-950/10 border border-amber-200 dark:border-amber-900/60"></td>
+
                             <!-- GRATIS -->
                             <td class="py-2 px-3 font-medium text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-800">
                                 GRATIS (CSR)
@@ -509,7 +539,7 @@
                             </td>
                         </tr>
 
-                        <!-- Baris 6: KOSONG (LEFT) & FREE HOME (RIGHT) -->
+                        <!-- Baris 7: KOSONG & FREE HOME -->
                         <tr class="divide-x divide-slate-200 dark:divide-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
                             <td class="py-2 px-3 bg-slate-50/50 dark:bg-slate-800/20 border border-slate-300 dark:border-slate-800"></td>
                             <td class="py-2 px-3 bg-slate-50/50 dark:bg-slate-800/20 border border-slate-300 dark:border-slate-800"></td>
@@ -533,7 +563,7 @@
                             </td>
                         </tr>
 
-                        <!-- Baris 7: TOTAL (Highlight soft purple/lavender matching mockup) -->
+                        <!-- Baris 8: TOTAL (Highlight soft purple/lavender matching mockup) -->
                         <tr class="divide-x divide-slate-200 dark:divide-slate-800 bg-purple-100/60 dark:bg-purple-950/40 font-black">
                             <!-- TOTAL TAGIHAN -->
                             <td class="py-2.5 px-3 uppercase text-purple-900 dark:text-purple-200 border border-slate-300 dark:border-slate-800">
@@ -576,7 +606,7 @@
                     <tfoot class="border-t-4 border-slate-800 bg-slate-900 text-white font-bold">
                         <tr class="divide-x divide-slate-700">
                             <!-- Area Cell -->
-                            <td rowspan="7" class="py-4 px-4 font-black text-center align-middle bg-slate-950 border border-slate-700 text-amber-400 text-sm">
+                            <td rowspan="8" class="py-4 px-4 font-black text-center align-middle bg-slate-950 border border-slate-700 text-amber-400 text-sm">
                                 <div class="flex flex-col items-center justify-center gap-1">
                                     <span class="inline-block px-2 py-0.5 rounded bg-amber-400/20 text-amber-300 text-[10px] font-black tracking-widest uppercase">KONSOLIDASI</span>
                                     <span class="text-base font-black tracking-tight text-white leading-tight">SEMUA AREA</span>
@@ -616,7 +646,7 @@
                             </td>
                         </tr>
 
-                        <!-- Grand BELUM BAYAR & STOP SEMENTARA -->
+                        <!-- Grand BELUM BAYAR & TERISOLIR (ISOLIR) -->
                         <tr class="divide-x divide-slate-700">
                             <td class="py-2 px-3 border border-slate-700 text-rose-300">BELUM BAYAR</td>
                             <td class="py-2 px-3 text-center border border-slate-700">
@@ -631,18 +661,19 @@
                                 {{ summary.billing.belum_bayar.percentage }}%
                             </td>
 
-                            <td class="py-2 px-3 border border-slate-700 text-slate-300">STOP SEMENTARA</td>
+                            <!-- Grand TERISOLIR -->
+                            <td class="py-2 px-3 border border-slate-700 text-rose-400">TERISOLIR (ISOLIR)</td>
                             <td class="py-2 px-3 text-center border border-slate-700">
-                                <button @click="openDrillDown('all', 'stop_sementara')" class="font-bold text-amber-400 hover:underline">
-                                    {{ summary.customer.stop_sementara.count }}
+                                <button @click="openDrillDown('all', 'terisolir')" class="font-bold text-rose-400 hover:underline">
+                                    {{ summary.customer.terisolir ? summary.customer.terisolir.count : 0 }}
                                 </button>
                             </td>
                             <td class="py-2 px-3 text-center border border-slate-700 text-slate-300">
-                                {{ summary.customer.stop_sementara.percentage }}%
+                                {{ summary.customer.terisolir ? summary.customer.terisolir.percentage : 0 }}%
                             </td>
                         </tr>
 
-                        <!-- Grand BAYAR SEBAGIAN & STOP PERMANEN -->
+                        <!-- Grand BAYAR SEBAGIAN & STOP SEMENTARA (CUTI) -->
                         <tr class="divide-x divide-slate-700">
                             <td class="py-2 px-3 border border-slate-700 text-sky-300">BAYAR SEBAGIAN</td>
                             <td class="py-2 px-3 text-center border border-slate-700">
@@ -657,18 +688,19 @@
                                 {{ summary.billing.bayar_sebagian.percentage }}%
                             </td>
 
-                            <td class="py-2 px-3 border border-slate-700 text-slate-300">STOP PERMANEN</td>
+                            <!-- Grand STOP SEMENTARA -->
+                            <td class="py-2 px-3 border border-slate-700 text-amber-400">STOP SEMENTARA (CUTI)</td>
                             <td class="py-2 px-3 text-center border border-slate-700">
-                                <button @click="openDrillDown('all', 'stop_permanen')" class="font-bold text-slate-400 hover:underline">
-                                    {{ summary.customer.stop_permanen.count }}
+                                <button @click="openDrillDown('all', 'stop_sementara')" class="font-bold text-amber-400 hover:underline">
+                                    {{ summary.customer.stop_sementara.count }}
                                 </button>
                             </td>
                             <td class="py-2 px-3 text-center border border-slate-700 text-slate-300">
-                                {{ summary.customer.stop_permanen.percentage }}%
+                                {{ summary.customer.stop_sementara.percentage }}%
                             </td>
                         </tr>
 
-                        <!-- Grand JANJI BAYAR & PSB -->
+                        <!-- Grand JANJI BAYAR & STOP PERMANEN -->
                         <tr class="divide-x divide-slate-700">
                             <td class="py-2 px-3 border border-slate-700 text-amber-300">JANJI BAYAR</td>
                             <td class="py-2 px-3 text-center border border-slate-700">
@@ -683,18 +715,18 @@
                                 {{ summary.billing.janji_bayar.percentage }}%
                             </td>
 
-                            <td class="py-2 px-3 border border-slate-700 text-slate-300">PSB (Pemasangan Baru)</td>
+                            <td class="py-2 px-3 border border-slate-700 text-slate-300">STOP PERMANEN</td>
                             <td class="py-2 px-3 text-center border border-slate-700">
-                                <button @click="openDrillDown('all', 'psb')" class="font-bold text-indigo-400 hover:underline">
-                                    {{ summary.customer.psb.count }}
+                                <button @click="openDrillDown('all', 'stop_permanen')" class="font-bold text-slate-400 hover:underline">
+                                    {{ summary.customer.stop_permanen.count }}
                                 </button>
                             </td>
                             <td class="py-2 px-3 text-center border border-slate-700 text-slate-300">
-                                {{ summary.customer.psb.percentage }}%
+                                {{ summary.customer.stop_permanen.percentage }}%
                             </td>
                         </tr>
 
-                        <!-- Grand NUNGGAK & GRATIS -->
+                        <!-- Grand NUNGGAK & PSB -->
                         <tr class="divide-x divide-slate-700">
                             <td class="py-2 px-3 border border-slate-700 text-rose-400">NUNGGAK (Lewat Tempo)</td>
                             <td class="py-2 px-3 text-center border border-slate-700">
@@ -709,7 +741,25 @@
                                 {{ summary.billing.nunggak.percentage }}%
                             </td>
 
-                            <td class="py-2 px-3 border border-slate-700 text-slate-300">GRATIS (CSR)</td>
+                            <td class="py-2 px-3 border border-slate-700 text-indigo-400">PSB (Pemasangan Baru)</td>
+                            <td class="py-2 px-3 text-center border border-slate-700">
+                                <button @click="openDrillDown('all', 'psb')" class="font-bold text-indigo-400 hover:underline">
+                                    {{ summary.customer.psb.count }}
+                                </button>
+                            </td>
+                            <td class="py-2 px-3 text-center border border-slate-700 text-slate-300">
+                                {{ summary.customer.psb.percentage }}%
+                            </td>
+                        </tr>
+
+                        <!-- Grand KOSONG & GRATIS -->
+                        <tr class="divide-x divide-slate-700">
+                            <td class="py-2 px-3 border border-slate-700"></td>
+                            <td class="py-2 px-3 border border-slate-700"></td>
+                            <td v-if="showNominal" class="py-2 px-3 border border-slate-700"></td>
+                            <td class="py-2 px-3 border border-slate-700"></td>
+
+                            <td class="py-2 px-3 border border-slate-700 text-teal-400">GRATIS (CSR)</td>
                             <td class="py-2 px-3 text-center border border-slate-700">
                                 <button @click="openDrillDown('all', 'gratis')" class="font-bold text-teal-400 hover:underline">
                                     {{ summary.customer.gratis.count }}
@@ -720,7 +770,7 @@
                             </td>
                         </tr>
 
-                        <!-- Grand FREE HOME -->
+                        <!-- Grand KOSONG & FREE HOME -->
                         <tr class="divide-x divide-slate-700">
                             <td class="py-2 px-3 border border-slate-700"></td>
                             <td class="py-2 px-3 border border-slate-700"></td>
@@ -839,15 +889,21 @@
                     </div>
 
                     <!-- Customer Lifecycle Mini Badges -->
-                    <div class="grid grid-cols-3 gap-2 text-center text-[11px] mb-4">
+                    <div class="grid grid-cols-4 gap-1.5 text-center text-[11px] mb-4">
                         <div class="bg-blue-50 dark:bg-blue-950/40 p-2 rounded-lg border border-blue-100 dark:border-blue-900">
                             <div class="text-slate-400 text-[10px]">Aktif</div>
                             <button @click="openDrillDown(row.area_id, 'aktif')" class="font-black text-blue-600 dark:text-blue-400 hover:underline">
                                 {{ row.customer.aktif.count }}
                             </button>
                         </div>
-                        <div class="bg-slate-50 dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
-                            <div class="text-slate-400 text-[10px]">Suspended</div>
+                        <div class="bg-rose-50 dark:bg-rose-950/40 p-2 rounded-lg border border-rose-100 dark:border-rose-900">
+                            <div class="text-slate-400 text-[10px]">Terisolir</div>
+                            <button @click="openDrillDown(row.area_id, 'terisolir')" class="font-black text-rose-600 hover:underline">
+                                {{ row.customer.terisolir ? row.customer.terisolir.count : 0 }}
+                            </button>
+                        </div>
+                        <div class="bg-amber-50 dark:bg-amber-950/40 p-2 rounded-lg border border-amber-100 dark:border-amber-900">
+                            <div class="text-slate-400 text-[10px]">Cuti/Stop</div>
                             <button @click="openDrillDown(row.area_id, 'stop_sementara')" class="font-black text-amber-600 hover:underline">
                                 {{ row.customer.stop_sementara.count }}
                             </button>

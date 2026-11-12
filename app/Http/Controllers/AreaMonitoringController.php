@@ -73,7 +73,7 @@ class AreaMonitoringController extends Controller
         // 2. Ambil Pelanggan untuk Lifecycle Status
         $customerQuery = Customer::query()
             ->with(['package:id,name,price', 'areaModel:id,name'])
-            ->select('id', 'customer_code', 'name', 'phone', 'address', 'area_id', 'area', 'package_id', 'status', 'service_status', 'billing_type', 'activation_date', 'registration_date', 'billing_isolated_at', 'suspend_start');
+            ->select('id', 'customer_code', 'name', 'phone', 'address', 'area_id', 'area', 'package_id', 'status', 'service_status', 'billing_type', 'activation_date', 'registration_date', 'billing_isolated_at', 'suspend_start', 'suspend_end');
 
         if ($isAreaRestricted && !empty($userAreaIds)) {
             $customerQuery->whereIn('area_id', $userAreaIds);
@@ -124,6 +124,7 @@ class AreaMonitoringController extends Controller
                 // Status Pelanggan / Operational Lifecycle
                 'customer' => [
                     'aktif' => ['count' => 0, 'percentage' => 0.0],
+                    'terisolir' => ['count' => 0, 'percentage' => 0.0],
                     'stop_sementara' => ['count' => 0, 'percentage' => 0.0],
                     'stop_permanen' => ['count' => 0, 'percentage' => 0.0],
                     'psb' => ['count' => 0, 'percentage' => 0.0],
@@ -149,6 +150,7 @@ class AreaMonitoringController extends Controller
             ],
             'customer' => [
                 'aktif' => ['count' => 0, 'percentage' => 0.0],
+                'terisolir' => ['count' => 0, 'percentage' => 0.0],
                 'stop_sementara' => ['count' => 0, 'percentage' => 0.0],
                 'stop_permanen' => ['count' => 0, 'percentage' => 0.0],
                 'psb' => ['count' => 0, 'percentage' => 0.0],
@@ -238,6 +240,7 @@ class AreaMonitoringController extends Controller
             ],
             'customer' => [
                 'aktif' => ['count' => 0, 'percentage' => 0.0],
+                'terisolir' => ['count' => 0, 'percentage' => 0.0],
                 'stop_sementara' => ['count' => 0, 'percentage' => 0.0],
                 'stop_permanen' => ['count' => 0, 'percentage' => 0.0],
                 'psb' => ['count' => 0, 'percentage' => 0.0],
@@ -256,7 +259,7 @@ class AreaMonitoringController extends Controller
             $row['billing']['total']['percentage'] = $totalBilling > 0 ? 100.0 : 0.0;
 
             $totalCustomer = $row['customer']['total']['count'];
-            foreach (['aktif', 'stop_sementara', 'stop_permanen', 'psb', 'gratis', 'free_home'] as $cat) {
+            foreach (['aktif', 'terisolir', 'stop_sementara', 'stop_permanen', 'psb', 'gratis', 'free_home'] as $cat) {
                 $c = $row['customer'][$cat]['count'];
                 $row['customer'][$cat]['percentage'] = $totalCustomer > 0 ? round(($c / $totalCustomer) * 100, 2) : 0.0;
             }
@@ -272,7 +275,7 @@ class AreaMonitoringController extends Controller
                 $allAreasSummary['billing'][$cat]['count'] += $item['billing'][$cat]['count'];
                 $allAreasSummary['billing'][$cat]['amount'] += $item['billing'][$cat]['amount'];
             }
-            foreach (['aktif', 'stop_sementara', 'stop_permanen', 'psb', 'gratis', 'free_home', 'total'] as $cat) {
+            foreach (['aktif', 'terisolir', 'stop_sementara', 'stop_permanen', 'psb', 'gratis', 'free_home', 'total'] as $cat) {
                 $allAreasSummary['customer'][$cat]['count'] += $item['customer'][$cat]['count'];
             }
 
@@ -286,7 +289,7 @@ class AreaMonitoringController extends Controller
                 $allAreasSummary['billing'][$cat]['count'] += $unassignedArea['billing'][$cat]['count'];
                 $allAreasSummary['billing'][$cat]['amount'] += $unassignedArea['billing'][$cat]['amount'];
             }
-            foreach (['aktif', 'stop_sementara', 'stop_permanen', 'psb', 'gratis', 'free_home', 'total'] as $cat) {
+            foreach (['aktif', 'terisolir', 'stop_sementara', 'stop_permanen', 'psb', 'gratis', 'free_home', 'total'] as $cat) {
                 $allAreasSummary['customer'][$cat]['count'] += $unassignedArea['customer'][$cat]['count'];
             }
             $rows[] = $unassignedArea;
@@ -368,7 +371,8 @@ class AreaMonitoringController extends Controller
             'nunggak' => 'Pelanggan Menunggak (Lewat Jatuh Tempo)',
             'total_tagihan' => 'Semua Tagihan Pelanggan Periode Ini',
             'aktif' => 'Pelanggan Aktif Berbayar',
-            'stop_sementara' => 'Pelanggan Stop Sementara (Suspended)',
+            'terisolir' => 'Pelanggan Terisolir (Isolir Tagihan)',
+            'stop_sementara' => 'Pelanggan Stop Sementara (Cuti Berlangganan)',
             'stop_permanen' => 'Pelanggan Stop Permanen (Terminated)',
             'psb' => 'Pelanggan Pemasangan Baru (PSB)',
             'gratis' => 'Pelanggan Layanan Gratis & CSR',
@@ -566,12 +570,19 @@ class AreaMonitoringController extends Controller
                       $sub->where('status', 'canceled')->whereNotNull('activation_date');
                   });
             });
-        } elseif ($category === 'stop_sementara') {
+        } elseif ($category === 'terisolir') {
             $query->where(function ($q) {
-                $q->whereIn('status', ['suspended', 'isolir'])
-                  ->orWhereNotNull('billing_isolated_at')
-                  ->orWhereNotNull('suspend_start');
+                $q->where(function ($sub) {
+                    $sub->whereIn('status', ['suspended', 'isolir'])
+                        ->whereNull('suspend_end');
+                })->orWhere(function ($sub) {
+                    $sub->whereNotNull('billing_isolated_at')
+                        ->whereNull('suspend_end');
+                });
             });
+        } elseif ($category === 'stop_sementara') {
+            $query->where('status', 'suspended')
+                  ->whereNotNull('suspend_end');
         } elseif ($category === 'free_home') {
             $query->where('service_status', 'free_home')
                   ->whereNotIn('status', ['booking', 'survey', 'installing', 'pending', 'terminated', 'canceled', 'berhenti']);
@@ -595,7 +606,8 @@ class AreaMonitoringController extends Controller
                           ->orWhereYear('registration_date', '!=', $year);
                   })
                   ->whereNull('billing_isolated_at')
-                  ->whereNull('suspend_start');
+                  ->whereNull('suspend_start')
+                  ->whereNull('suspend_end');
         }
 
         // Search
@@ -678,7 +690,7 @@ class AreaMonitoringController extends Controller
             ->where('invoice_number', 'not like', 'INV-MIG-%')
             ->get();
 
-        $customers = Customer::select('id', 'area_id', 'area', 'status', 'service_status', 'activation_date', 'registration_date', 'billing_isolated_at', 'suspend_start')->get();
+        $customers = Customer::select('id', 'area_id', 'area', 'status', 'service_status', 'activation_date', 'registration_date', 'billing_isolated_at', 'suspend_start', 'suspend_end')->get();
 
         $areaMap = [];
         foreach ($areas as $a) {
@@ -710,7 +722,7 @@ class AreaMonitoringController extends Controller
                     'JANJI BAYAR' => 0, 'NUNGGAK' => 0, 'TOTAL' => 0,
                 ],
                 'customer' => [
-                    'AKTIF' => 0, 'STOP SEMENTARA' => 0, 'STOP PERMANEN' => 0,
+                    'AKTIF' => 0, 'TERISOLIR' => 0, 'STOP SEMENTARA' => 0, 'STOP PERMANEN' => 0,
                     'PSB' => 0, 'GRATIS' => 0, 'FREE HOME' => 0, 'TOTAL' => 0,
                 ]
             ];
@@ -745,6 +757,7 @@ class AreaMonitoringController extends Controller
 
             $catMap = [
                 'aktif' => 'AKTIF',
+                'terisolir' => 'TERISOLIR',
                 'stop_sementara' => 'STOP SEMENTARA',
                 'stop_permanen' => 'STOP PERMANEN',
                 'psb' => 'PSB',
@@ -773,7 +786,7 @@ class AreaMonitoringController extends Controller
             fputcsv($handle, ['AREA', 'STATUS TAGIHAN', 'JUMLAH', 'PERSENTASE (%)', 'STATUS PELANGGAN', 'JUMLAH']);
 
             $grandBilling = ['LUNAS' => 0, 'BELUM BAYAR' => 0, 'BAYAR SEBAGIAN' => 0, 'JANJI BAYAR' => 0, 'NUNGGAK' => 0, 'TOTAL' => 0];
-            $grandCustomer = ['AKTIF' => 0, 'STOP SEMENTARA' => 0, 'STOP PERMANEN' => 0, 'PSB' => 0, 'GRATIS' => 0, 'FREE HOME' => 0, 'TOTAL' => 0];
+            $grandCustomer = ['AKTIF' => 0, 'TERISOLIR' => 0, 'STOP SEMENTARA' => 0, 'STOP PERMANEN' => 0, 'PSB' => 0, 'GRATIS' => 0, 'FREE HOME' => 0, 'TOTAL' => 0];
 
             foreach ($data as $areaItem) {
                 $name = $areaItem['name'];
@@ -787,17 +800,19 @@ class AreaMonitoringController extends Controller
 
                 // Baris 1: LUNAS & AKTIF
                 fputcsv($handle, [$name, 'LUNAS', $b['LUNAS'], $pct($b['LUNAS']), 'AKTIF', $c['AKTIF']]);
-                // Baris 2: BELUM BAYAR & STOP SEMENTARA
-                fputcsv($handle, ['', 'BELUM BAYAR', $b['BELUM BAYAR'], $pct($b['BELUM BAYAR']), 'STOP SEMENTARA', $c['STOP SEMENTARA']]);
-                // Baris 3: BAYAR SEBAGIAN & STOP PERMANEN
-                fputcsv($handle, ['', 'BAYAR SEBAGIAN', $b['BAYAR SEBAGIAN'], $pct($b['BAYAR SEBAGIAN']), 'STOP PERMANEN', $c['STOP PERMANEN']]);
-                // Baris 4: JANJI BAYAR & PSB
-                fputcsv($handle, ['', 'JANJI BAYAR', $b['JANJI BAYAR'], $pct($b['JANJI BAYAR']), 'PSB', $c['PSB']]);
-                // Baris 5: NUNGGAK & GRATIS
-                fputcsv($handle, ['', 'NUNGGAK', $b['NUNGGAK'], $pct($b['NUNGGAK']), 'GRATIS', $c['GRATIS']]);
-                // Baris 6: FREE HOME
+                // Baris 2: BELUM BAYAR & TERISOLIR
+                fputcsv($handle, ['', 'BELUM BAYAR', $b['BELUM BAYAR'], $pct($b['BELUM BAYAR']), 'TERISOLIR', $c['TERISOLIR']]);
+                // Baris 3: BAYAR SEBAGIAN & STOP SEMENTARA
+                fputcsv($handle, ['', 'BAYAR SEBAGIAN', $b['BAYAR SEBAGIAN'], $pct($b['BAYAR SEBAGIAN']), 'STOP SEMENTARA', $c['STOP SEMENTARA']]);
+                // Baris 4: JANJI BAYAR & STOP PERMANEN
+                fputcsv($handle, ['', 'JANJI BAYAR', $b['JANJI BAYAR'], $pct($b['JANJI BAYAR']), 'STOP PERMANEN', $c['STOP PERMANEN']]);
+                // Baris 5: NUNGGAK & PSB
+                fputcsv($handle, ['', 'NUNGGAK', $b['NUNGGAK'], $pct($b['NUNGGAK']), 'PSB', $c['PSB']]);
+                // Baris 6: KOSONG & GRATIS
+                fputcsv($handle, ['', '', '', '', 'GRATIS', $c['GRATIS']]);
+                // Baris 7: KOSONG & FREE HOME
                 fputcsv($handle, ['', '', '', '', 'FREE HOME', $c['FREE HOME']]);
-                // Baris 7: TOTAL
+                // Baris 8: TOTAL
                 fputcsv($handle, ['', 'TOTAL', $totB, $totB > 0 ? '100.00%' : '0.00%', 'TOTAL', $c['TOTAL']]);
                 // Pemisah antar area
                 fputcsv($handle, ['', '', '', '', '', '']);
@@ -814,10 +829,11 @@ class AreaMonitoringController extends Controller
             };
 
             fputcsv($handle, ['SEMUA AREA (KONSOLIDASI ISP)', 'LUNAS', $grandBilling['LUNAS'], $grandPct($grandBilling['LUNAS']), 'AKTIF', $grandCustomer['AKTIF']]);
-            fputcsv($handle, ['', 'BELUM BAYAR', $grandBilling['BELUM BAYAR'], $grandPct($grandBilling['BELUM BAYAR']), 'STOP SEMENTARA', $grandCustomer['STOP SEMENTARA']]);
-            fputcsv($handle, ['', 'BAYAR SEBAGIAN', $grandBilling['BAYAR SEBAGIAN'], $grandPct($grandBilling['BAYAR SEBAGIAN']), 'STOP PERMANEN', $grandCustomer['STOP PERMANEN']]);
-            fputcsv($handle, ['', 'JANJI BAYAR', $grandBilling['JANJI BAYAR'], $grandPct($grandBilling['JANJI BAYAR']), 'PSB', $grandCustomer['PSB']]);
-            fputcsv($handle, ['', 'NUNGGAK', $grandBilling['NUNGGAK'], $grandPct($grandBilling['NUNGGAK']), 'GRATIS', $grandCustomer['GRATIS']]);
+            fputcsv($handle, ['', 'BELUM BAYAR', $grandBilling['BELUM BAYAR'], $grandPct($grandBilling['BELUM BAYAR']), 'TERISOLIR', $grandCustomer['TERISOLIR']]);
+            fputcsv($handle, ['', 'BAYAR SEBAGIAN', $grandBilling['BAYAR SEBAGIAN'], $grandPct($grandBilling['BAYAR SEBAGIAN']), 'STOP SEMENTARA', $grandCustomer['STOP SEMENTARA']]);
+            fputcsv($handle, ['', 'JANJI BAYAR', $grandBilling['JANJI BAYAR'], $grandPct($grandBilling['JANJI BAYAR']), 'STOP PERMANEN', $grandCustomer['STOP PERMANEN']]);
+            fputcsv($handle, ['', 'NUNGGAK', $grandBilling['NUNGGAK'], $grandPct($grandBilling['NUNGGAK']), 'PSB', $grandCustomer['PSB']]);
+            fputcsv($handle, ['', '', '', '', 'GRATIS', $grandCustomer['GRATIS']]);
             fputcsv($handle, ['', '', '', '', 'FREE HOME', $grandCustomer['FREE HOME']]);
             fputcsv($handle, ['', 'TOTAL', $totGrandB, $totGrandB > 0 ? '100.00%' : '0.00%', 'TOTAL', $grandCustomer['TOTAL']]);
 
@@ -833,7 +849,8 @@ class AreaMonitoringController extends Controller
      * Sesuai ketentuan operasional ISP:
      * - psb: Pelanggan yang SUDAH AKTIVASI pada bulan & tahun periode laporan
      * - stop_permanen: terminated, canceled, berhenti
-     * - stop_sementara: suspended, isolir, atau memiliki billing_isolated_at / suspend_start
+     * - stop_sementara: suspended dengan suspend_end (cuti langganan resmi)
+     * - terisolir: suspended tanpa suspend_end atau billing_isolated_at (isolir nunggak tagihan)
      * - free_home: service_status === 'free_home'
      * - gratis: service_status === 'gratis'
      * - aktif: pelanggan aktif berbayar yang diaktivasi sebelum bulan berjalan
@@ -862,17 +879,22 @@ class AreaMonitoringController extends Controller
             return 'stop_permanen';
         }
 
-        // 3. Stop Sementara (Isolir / Suspended)
-        if (in_array($status, ['suspended', 'isolir']) || !empty($c->billing_isolated_at) || !empty($c->suspend_start)) {
+        // 3. Stop Sementara (Cuti Berlangganan Resmi dengan jadwal cuti / suspend_end)
+        if ($status === 'suspended' && !empty($c->suspend_end)) {
             return 'stop_sementara';
         }
 
-        // 4. Free Home
+        // 4. Terisolir (Isolir karena tunggakan tagihan / tanpa jadwal cuti)
+        if (in_array($status, ['suspended', 'isolir']) || !empty($c->billing_isolated_at)) {
+            return 'terisolir';
+        }
+
+        // 5. Free Home
         if ($serviceStatus === 'free_home') {
             return 'free_home';
         }
 
-        // 5. Gratis / CSR
+        // 6. Gratis / CSR
         if ($serviceStatus === 'gratis') {
             return 'gratis';
         }

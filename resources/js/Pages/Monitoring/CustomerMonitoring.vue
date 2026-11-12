@@ -1,5 +1,5 @@
 <template>
-    <AppLayout title="Pantauan Pelanggan" subtitle="Monitoring pelanggan menunggak, janji bayar, dan stop sementara layanan">
+    <AppLayout title="Pantauan Pelanggan" subtitle="Monitoring pelanggan menunggak, janji bayar, dan isolir layanan">
         <!-- 4 Top KPI Stat Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <!-- Card 1: Sering Menunggak -->
@@ -76,34 +76,39 @@
                 </div>
             </div>
 
-            <!-- Card 3: Stop Sementara (Isolir) -->
+            <!-- Card 3: Pelanggan Terisolir -->
             <div 
                 @click="switchTab('stop_sementara')"
                 :class="[
                     'bg-white rounded-2xl p-5 border shadow-sm hover:shadow-md transition-all relative overflow-hidden group cursor-pointer select-none',
-                    tab === 'stop_sementara' ? 'border-orange-400 ring-2 ring-orange-200/70 shadow-orange-50' : 'border-gray-100 hover:border-orange-200'
+                    tab === 'stop_sementara' ? 'border-rose-400 ring-2 ring-rose-200/70 shadow-rose-50' : 'border-gray-100 hover:border-rose-200'
                 ]"
-                title="Klik untuk membuka tab Stop Sementara (Isolir)"
+                title="Klik untuk membuka tab Pelanggan Terisolir"
             >
                 <div class="flex items-center justify-between mb-2">
-                    <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Stop Sementara (Isolir)</span>
-                    <div class="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center border border-orange-100 group-hover:scale-105 transition-transform shadow-inner">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Pelanggan Terisolir</span>
+                    <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 group-hover:scale-105 transition-transform shadow-inner">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
                     </div>
                 </div>
                 <div class="flex items-baseline gap-1.5">
-                    <span class="text-2xl font-black text-orange-600">{{ stats.stop_sementara_count }}</span>
+                    <span class="text-2xl font-black text-rose-600">{{ stats.terisolir_count ?? stats.stop_karena_tunggakan_count ?? stats.stop_sementara_count }}</span>
                     <span class="text-xs font-semibold text-gray-400">Pelanggan</span>
                 </div>
                 <div class="mt-2 text-xs font-medium text-gray-500 flex items-center justify-between pt-2 border-t border-gray-50">
-                    <span>Karena Tunggakan:</span>
                     <span 
                         @click.stop="switchTab('stop_sementara', { stop_reason: 'tunggakan' })"
-                        class="font-bold text-orange-600 hover:underline cursor-pointer px-1.5 py-0.5 rounded hover:bg-orange-50 transition-colors"
-                        :class="{ 'ring-1 ring-orange-400 bg-orange-50': tab === 'stop_sementara' && localFilters.stop_reason === 'tunggakan' }"
-                        title="Klik untuk filter stop sementara karena tunggakan tagihan"
+                        class="cursor-pointer hover:underline"
+                        title="Klik untuk filter terisolir tunggakan"
                     >
-                        {{ stats.stop_karena_tunggakan_count }} Pelanggan
+                        Tunggakan: <strong class="text-rose-600 font-bold">{{ stats.stop_karena_tunggakan_count }}</strong>
+                    </span>
+                    <span 
+                        @click.stop="switchTab('stop_sementara', { stop_reason: 'manual' })"
+                        class="text-gray-500 hover:text-amber-700 cursor-pointer hover:underline"
+                        title="Klik untuk filter cuti langganan"
+                    >
+                        Cuti: <strong class="text-amber-600 font-bold">{{ stats.stop_sementara_cuti_count ?? stats.stop_manual_count ?? 0 }}</strong>
                     </span>
                 </div>
             </div>
@@ -176,20 +181,20 @@
                     </span>
                 </button>
 
-                <!-- Tab 3: Stop Sementara -->
+                <!-- Tab 3: Pelanggan Terisolir -->
                 <button
                     @click="switchTab('stop_sementara')"
                     :class="[
                         'px-4 py-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-all whitespace-nowrap',
                         tab === 'stop_sementara'
-                            ? 'border-orange-600 text-orange-600'
+                            ? 'border-rose-600 text-rose-600'
                             : 'border-transparent text-gray-500 hover:text-gray-800'
                     ]"
                 >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    Stop Sementara (Isolir)
-                    <span :class="['px-2 py-0.5 rounded-full text-xs font-extrabold', tab === 'stop_sementara' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600']">
-                        {{ stats.stop_sementara_count }}
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                    Pelanggan Terisolir
+                    <span :class="['px-2 py-0.5 rounded-full text-xs font-extrabold', tab === 'stop_sementara' ? 'bg-rose-100 text-rose-700' : 'bg-gray-100 text-gray-600']">
+                        {{ stats.terisolir_count ?? stats.stop_karena_tunggakan_count ?? stats.stop_sementara_count }}
                     </span>
                 </button>
             </div>
@@ -262,11 +267,11 @@
                         v-if="tab === 'stop_sementara'"
                         v-model="localFilters.stop_reason"
                         @change="applyFilters"
-                        class="text-xs rounded-xl border border-gray-300 bg-white py-2 px-3 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 shadow-sm cursor-pointer"
+                        class="text-xs rounded-xl border border-gray-300 bg-white py-2 px-3 focus:ring-2 focus:ring-rose-500 focus:border-rose-500 shadow-sm cursor-pointer"
                     >
-                        <option value="all">Semua Alasan Stop</option>
-                        <option value="tunggakan">Karena Nunggak Tagihan</option>
-                        <option value="manual">Cuti / Stop Manual</option>
+                        <option value="all">Semua Status (Terisolir & Cuti)</option>
+                        <option value="tunggakan">Terisolir Tunggakan ({{ stats.stop_karena_tunggakan_count }})</option>
+                        <option value="manual">Stop Sementara / Cuti ({{ stats.stop_sementara_cuti_count ?? stats.stop_manual_count ?? 0 }})</option>
                     </select>
 
                     <!-- Tombol Terapkan & Reset -->
@@ -377,9 +382,13 @@
                                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                                     Aktif
                                 </span>
-                                <span v-else-if="row.status === 'suspended'" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-50 text-orange-700 border border-orange-200">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
-                                    Isolir
+                                <span v-else-if="row.status === 'suspended' && row.suspend_end" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                    Stop Sementara
+                                </span>
+                                <span v-else-if="row.status === 'suspended'" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                    Terisolir
                                 </span>
                                 <span v-else class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600">
                                     {{ row.status }}
@@ -594,14 +603,14 @@
                     </tbody>
                 </table>
 
-                <!-- ================= TAB 3: STOP SEMENTARA ================= -->
+                <!-- ================= TAB 3: PELANGGAN TERISOLIR & STOP SEMENTARA ================= -->
                 <table v-else-if="tab === 'stop_sementara'" class="min-w-full divide-y divide-gray-200 text-left text-sm">
                     <thead class="bg-gray-50/75 text-xs font-bold uppercase tracking-wider text-gray-500">
                         <tr>
                             <th class="py-3.5 pl-4 pr-3 sm:pl-6">Pelanggan</th>
                             <th class="px-3 py-3.5">Kontak / WA</th>
                             <th class="px-3 py-3.5">Paket & Area</th>
-                            <th class="px-3 py-3.5">Periode Stop</th>
+                            <th class="px-3 py-3.5">Tanggal / Status Periode</th>
                             <th class="px-3 py-3.5">Alasan / Status Tunggakan</th>
                             <th class="py-3.5 pl-3 pr-4 sm:pr-6 text-right">Aksi</th>
                         </tr>
@@ -613,6 +622,8 @@
                                 <div class="font-bold text-gray-900">{{ cust.name }}</div>
                                 <div class="text-xs font-mono text-gray-500 flex items-center gap-1.5 mt-0.5">
                                     <span class="bg-gray-100 px-1.5 py-0.5 rounded text-[11px] font-semibold text-gray-700">{{ cust.customer_code }}</span>
+                                    <span v-if="cust.suspend_end" class="bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded text-[10px] font-bold">Cuti</span>
+                                    <span v-else class="bg-rose-100 text-rose-800 px-1.5 py-0.2 rounded text-[10px] font-bold">Terisolir</span>
                                 </div>
                                 <div class="text-[11px] text-gray-400 truncate max-w-[200px] mt-0.5" :title="cust.address">{{ cust.address || '-' }}</div>
                             </td>
@@ -638,11 +649,15 @@
                                 <div class="text-[11px] text-gray-500">{{ cust.area_model ? cust.area_model.name : '-' }}</div>
                             </td>
 
-                            <!-- Periode Stop -->
+                            <!-- Tanggal / Status Periode -->
                             <td class="whitespace-nowrap px-3 py-3.5 text-xs">
-                                <div v-if="cust.suspend_start">
-                                    <span class="font-bold text-gray-800">{{ formatDate(cust.suspend_start) }}</span>
-                                    <span v-if="cust.suspend_end" class="text-gray-500"> s/d {{ formatDate(cust.suspend_end) }}</span>
+                                <div v-if="cust.suspend_end">
+                                    <div class="font-bold text-amber-700">Cuti Berlangganan</div>
+                                    <div class="text-[11px] text-gray-500">{{ formatDate(cust.suspend_start) }} s/d {{ formatDate(cust.suspend_end) }}</div>
+                                </div>
+                                <div v-else-if="cust.billing_isolated_at">
+                                    <div class="font-bold text-rose-600">Diisolir Sistem</div>
+                                    <div class="text-[11px] text-gray-500">{{ formatDate(cust.billing_isolated_at) }}</div>
                                 </div>
                                 <div v-else class="text-gray-500 font-medium">
                                     Sejak {{ formatDate(cust.updated_at) }}
@@ -659,8 +674,11 @@
                                         Total: <strong class="text-rose-600">{{ formatRupiah(cust.total_unpaid_amount) }}</strong>
                                     </span>
                                 </div>
-                                <div v-else class="text-blue-700 font-semibold bg-blue-50 px-2 py-0.5 rounded inline-block">
-                                    Cuti / Permintaan Manual
+                                <div v-else-if="cust.suspend_end" class="text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded inline-block">
+                                    Cuti Berlangganan (Stop Sementara)
+                                </div>
+                                <div v-else class="text-rose-700 font-semibold bg-rose-50 px-2 py-0.5 rounded inline-block">
+                                    Isolir Manual / Teknis
                                 </div>
                             </td>
 
@@ -693,10 +711,10 @@
                         <!-- Empty State -->
                         <tr v-if="!items.data || items.data.length === 0">
                             <td colspan="6" class="text-center py-12 text-gray-500">
-                                <div class="w-12 h-12 rounded-full bg-orange-50 text-orange-600 mx-auto flex items-center justify-center mb-2">
-                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <div class="w-12 h-12 rounded-full bg-rose-50 text-rose-600 mx-auto flex items-center justify-center mb-2">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
                                 </div>
-                                <p class="text-sm font-bold text-gray-800">Tidak ada pelanggan stop sementara</p>
+                                <p class="text-sm font-bold text-gray-800">Tidak ada pelanggan terisolir</p>
                                 <p class="text-xs text-gray-400 mt-0.5">Semua layanan internet pelanggan berjalan aktif normal.</p>
                             </td>
                         </tr>

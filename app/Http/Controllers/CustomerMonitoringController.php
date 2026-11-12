@@ -134,18 +134,28 @@ class CustomerMonitoringController extends Controller
         $janjiHariIniCount = (clone $janjiBayarQuery)->where('promise_date', '=', $today)->count();
         $janjiMendatangCount = (clone $janjiBayarQuery)->where('promise_date', '>', $today)->count();
 
-        // Stop Sementara (Suspended)
-        $stopSementaraQuery = Customer::where('status', 'suspended');
-        $scopeCustomerArea($stopSementaraQuery);
-        $applyCustomerFilter($stopSementaraQuery);
-        $stopSementaraCount = $stopSementaraQuery->count();
+        // Pelanggan Terisolir (Status suspended karena isolir tunggakan atau tanpa suspend_end)
+        $terisolirQuery = Customer::where('status', 'suspended')->whereNull('suspend_end');
+        $scopeCustomerArea($terisolirQuery);
+        $applyCustomerFilter($terisolirQuery);
+        $terisolirCount = $terisolirQuery->count();
 
+        // Pelanggan Stop Sementara Murni (Cuti langganan resmi dengan suspend_end)
+        $stopSementaraCutiQuery = Customer::where('status', 'suspended')->whereNotNull('suspend_end');
+        $scopeCustomerArea($stopSementaraCutiQuery);
+        $applyCustomerFilter($stopSementaraCutiQuery);
+        $stopSementaraCutiCount = $stopSementaraCutiQuery->count();
+
+        // Terisolir karena tunggakan tagihan
         $stopKarenaTunggakanQuery = Customer::where('status', 'suspended')
-            ->whereHas('invoices', function ($q) use ($today) {
-                $q->whereIn('status', ['unpaid', 'partial'])
-                  ->where('invoice_number', 'not like', 'INV-MIG-%')
-                  ->where('is_reseller_balance', false)
-                  ->where('due_date', '<', $today);
+            ->where(function ($q) use ($today) {
+                $q->whereNotNull('billing_isolated_at')
+                  ->orWhereHas('invoices', function ($iq) use ($today) {
+                      $iq->whereIn('status', ['unpaid', 'partial'])
+                         ->where('invoice_number', 'not like', 'INV-MIG-%')
+                         ->where('is_reseller_balance', false)
+                         ->where('due_date', '<', $today);
+                  });
             });
         $scopeCustomerArea($stopKarenaTunggakanQuery);
         $applyCustomerFilter($stopKarenaTunggakanQuery);
@@ -159,7 +169,9 @@ class CustomerMonitoringController extends Controller
             'janji_terlewat_count' => $janjiTerlewatCount,
             'janji_hari_ini_count' => $janjiHariIniCount,
             'janji_mendatang_count' => $janjiMendatangCount,
-            'stop_sementara_count' => $stopSementaraCount,
+            'terisolir_count' => $terisolirCount,
+            'stop_sementara_count' => $terisolirCount + $stopSementaraCutiCount,
+            'stop_sementara_cuti_count' => $stopSementaraCutiCount,
             'stop_karena_tunggakan_count' => $stopKarenaTunggakanCount,
         ];
 
@@ -208,8 +220,8 @@ class CustomerMonitoringController extends Controller
             $scopeInvoiceArea($q);
             $items = $q->orderBy('promise_date', 'asc')->paginate(15)->withQueryString();
 
-        } elseif ($tab === 'stop_sementara') {
-            // TAB: STOP SEMENTARA (SUSPENDED)
+        } elseif ($tab === 'stop_sementara' || $tab === 'terisolir') {
+            // TAB: PELANGGAN TERISOLIR & STOP SEMENTARA
             $q = Customer::with([
                 'areaModel:id,name',
                 'package:id,name,price',
@@ -237,19 +249,17 @@ class CustomerMonitoringController extends Controller
             }
 
             if ($stopReason === 'tunggakan') {
-                $q->whereHas('invoices', function ($sub) use ($today) {
-                    $sub->whereIn('status', ['unpaid', 'partial'])
-                        ->where('invoice_number', 'not like', 'INV-MIG-%')
-                        ->where('is_reseller_balance', false)
-                        ->where('due_date', '<', $today);
+                $q->where(function ($sub) use ($today) {
+                    $sub->whereNotNull('billing_isolated_at')
+                        ->orWhereHas('invoices', function ($iq) use ($today) {
+                            $iq->whereIn('status', ['unpaid', 'partial'])
+                               ->where('invoice_number', 'not like', 'INV-MIG-%')
+                               ->where('is_reseller_balance', false)
+                               ->where('due_date', '<', $today);
+                        });
                 });
-            } elseif ($stopReason === 'manual') {
-                $q->whereDoesntHave('invoices', function ($sub) use ($today) {
-                    $sub->whereIn('status', ['unpaid', 'partial'])
-                        ->where('invoice_number', 'not like', 'INV-MIG-%')
-                        ->where('is_reseller_balance', false)
-                        ->where('due_date', '<', $today);
-                });
+            } elseif ($stopReason === 'manual' || $stopReason === 'cuti') {
+                $q->whereNotNull('suspend_end');
             }
 
             $scopeCustomerArea($q);
