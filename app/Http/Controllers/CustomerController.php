@@ -72,7 +72,7 @@ class CustomerController extends Controller
         \App\Services\DataPrivacyMaskingService::applyCustomerFilter($baseQuery, 'customers.id', null, 'customers');
 
         $baseQuery->when($isolirOnly, fn ($q) => $q->where('status', 'suspended'))
-            ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->can('customers_all_view_all'), function($q) {
+            ->when(auth()->check() && !auth()->user()->hasRole('admin') && !auth()->user()->hasRole('super admin') && !auth()->user()->hasRole('superadmin') && !auth()->user()->can('customers_all_view_all'), function($q) {
                 if (auth()->user()->can('customers_all_view_area')) {
                     $accessibleAreas = auth()->user()->getAccessibleAreaIds();
                     $q->where(function($sub) use ($accessibleAreas) {
@@ -169,7 +169,7 @@ class CustomerController extends Controller
                 } elseif ($status === 'inactive') {
                     $q->where(fn ($sub) => $sub->where('status', 'suspended')->orWhere('connection_disabled', true));
                 } elseif ($status === 'active') {
-                    $q->where('status', 'active')->where('connection_disabled', false);
+                    $q->where('status', 'active')->where(fn ($sub) => $sub->where('connection_disabled', false)->orWhereNull('connection_disabled'));
                 } else {
                     $q->where('status', $status);
                 }
@@ -3575,6 +3575,8 @@ class CustomerController extends Controller
         $user = auth()->user();
         $canDelete = $user && (
             $user->hasRole('admin') ||
+            $user->hasRole('super admin') ||
+            $user->hasRole('superadmin') ||
             $user->can('customers_delete') ||
             $user->can('customers_booking_delete') ||
             $user->can('customers_survey_delete') ||
@@ -6938,6 +6940,8 @@ class CustomerController extends Controller
         $user = auth()->user();
         $canDelete = $user && (
             $user->hasRole('admin') ||
+            $user->hasRole('super admin') ||
+            $user->hasRole('superadmin') ||
             $user->can('customers_delete') ||
             $user->can('customers_booking_delete') ||
             $user->can('customers_survey_delete') ||
