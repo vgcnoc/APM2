@@ -10,7 +10,7 @@ class VoucherProfileController extends Controller
 {
     public function index()
     {
-        $profiles = VoucherProfile::latest()->get();
+        $profiles = VoucherProfile::withCount('vouchers')->latest()->get();
         return Inertia::render('Vouchers/Profiles/Index', [
             'profiles' => $profiles
         ]);
@@ -19,6 +19,12 @@ class VoucherProfileController extends Controller
     public function store(Request $request)
     {
         $isCustomerFree = $request->boolean('is_customer_free');
+
+        if ($isCustomerFree && VoucherProfile::where('is_customer_free', true)->exists()) {
+            return redirect()->back()->withErrors([
+                'is_customer_free' => 'Profil khusus voucher gratis pelanggan sudah ada di sistem (hanya boleh ada 1 master profil gratis).'
+            ])->withInput();
+        }
 
         $rules = [
             'name' => 'required|string|max:255',
@@ -77,6 +83,14 @@ class VoucherProfileController extends Controller
     public function update(Request $request, VoucherProfile $voucherProfile)
     {
         $isCustomerFree = $request->boolean('is_customer_free') || $voucherProfile->is_customer_free;
+
+        if ($request->boolean('is_customer_free') && !$voucherProfile->is_customer_free) {
+            if (VoucherProfile::where('is_customer_free', true)->where('id', '!=', $voucherProfile->id)->exists()) {
+                return redirect()->back()->withErrors([
+                    'is_customer_free' => 'Profil khusus voucher gratis pelanggan sudah ada di sistem.'
+                ])->withInput();
+            }
+        }
 
         $rules = [
             'name' => 'required|string|max:255',
@@ -138,8 +152,19 @@ class VoucherProfileController extends Controller
             return redirect()->back()->with('error', 'Profil khusus voucher gratis pelanggan tidak dapat dihapus karena digunakan oleh sistem aktivasi pelanggan.');
         }
 
+        if ($voucherProfile->vouchers()->exists()) {
+            return redirect()->back()->with('error', 'Profil Voucher ini tidak dapat dihapus karena masih digunakan oleh ' . $voucherProfile->vouchers()->count() . ' data voucher.');
+        }
+
+        $profileId = $voucherProfile->id;
         $voucherProfile->delete();
 
-        return redirect()->back()->with('success', 'Profil Voucher berhasil dihapus.');
+        try {
+            app(\App\Services\RadiusService::class)->removeGroup("voucher_{$profileId}");
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("[RADIUS] Remove Voucher Profile Group voucher_{$profileId} error: " . $e->getMessage());
+        }
+
+        return redirect()->back()->with('success', 'Profil Voucher berhasil dihapus dan dibersihkan dari RADIUS.');
     }
 }

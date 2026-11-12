@@ -36,6 +36,9 @@
                                     <span v-if="profile.is_customer_free" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-purple-100 text-purple-800 border border-purple-200 shadow-sm">
                                         ⭐ Hotspot Gratis Pelanggan
                                     </span>
+                                    <span v-if="profile.vouchers_count" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                                        {{ profile.vouchers_count }} Voucher
+                                    </span>
                                 </div>
                                 <div v-if="profile.description" class="text-xs text-slate-500 mt-1 line-clamp-1">{{ profile.description }}</div>
                             </td>
@@ -81,7 +84,7 @@
                                     <button @click="openEditModal(profile)" class="px-3 py-1.5 bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 rounded-lg text-xs font-bold transition-colors">
                                         Edit
                                     </button>
-                                    <button v-if="!profile.is_customer_free" @click="deleteProfile(profile.id)" class="px-3 py-1.5 bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-600 rounded-lg text-xs font-bold transition-colors">
+                                    <button v-if="!profile.is_customer_free" @click="deleteProfile(profile)" class="px-3 py-1.5 bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-600 rounded-lg text-xs font-bold transition-colors">
                                         Hapus
                                     </button>
                                     <span v-else class="text-slate-400 text-xs italic font-medium px-2">Sistem</span>
@@ -409,6 +412,7 @@ const openCreateModal = () => {
     editId.value = null;
     customDuration.value = false;
     form.reset();
+    form.clearErrors();
     form.shared_users = 1;
     form.price = 0;
     form.fee_reseller = 0;
@@ -424,6 +428,7 @@ const openEditModal = (profile) => {
     editMode.value = true;
     editId.value = profile.id;
     customDuration.value = false;
+    form.clearErrors();
     form.name = profile.name;
     form.price = parseFloat(profile.price || 0);
     form.fee_admin = parseFloat(profile.fee_admin || 0);
@@ -445,9 +450,26 @@ const openEditModal = (profile) => {
 const closeModal = () => {
     showModal.value = false;
     form.reset();
+    form.clearErrors();
 };
 
 const triggerSubmit = () => {
+    if (!form.name || form.name.trim() === '') {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Nama Profil Wajib Diisi',
+            text: 'Silakan masukkan nama profil voucher.',
+        });
+        return;
+    }
+    if (!form.is_customer_free && (!form.duration || form.duration.trim() === '')) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Durasi Sesi Wajib Dipilih',
+            text: 'Silakan pilih durasi sesi MikroTik untuk profil voucher ini.',
+        });
+        return;
+    }
     if (isFeeExceeded.value) {
         Swal.fire({
             icon: 'warning',
@@ -460,6 +482,15 @@ const triggerSubmit = () => {
 };
 
 const submitForm = () => {
+    if (isFeeExceeded.value) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Fee Reseller Melebihi Harga Jual',
+            text: 'Fee reseller tidak boleh melebihi harga jual voucher.',
+        });
+        return;
+    }
+
     if (editMode.value) {
         form.post(route('vouchers.profiles.update.post', editId.value), {
             onSuccess: () => {
@@ -477,10 +508,19 @@ const submitForm = () => {
     }
 };
 
-const deleteProfile = (id) => {
+const deleteProfile = (profile) => {
+    if (profile.vouchers_count && profile.vouchers_count > 0) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Profil Sedang Digunakan',
+            text: `Profil "${profile.name}" tidak dapat dihapus karena masih digunakan oleh ${profile.vouchers_count} data voucher aktif/terjual.`,
+        });
+        return;
+    }
+
     Swal.fire({
         title: 'Hapus Profil?',
-        text: "Anda yakin ingin menghapus profil ini? Template dan konfigurasi RADIUS profil ini akan dibersihkan.",
+        text: `Anda yakin ingin menghapus profil "${profile.name}"? Template dan konfigurasi RADIUS profil ini akan dibersihkan.`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
@@ -488,7 +528,7 @@ const deleteProfile = (id) => {
         confirmButtonText: 'Ya, Hapus!'
     }).then((result) => {
         if (result.isConfirmed) {
-            router.post(route('vouchers.profiles.destroy.post', id), {}, {
+            router.post(route('vouchers.profiles.destroy.post', profile.id), {}, {
                 onSuccess: () => {
                     Swal.fire('Terhapus!', 'Profil berhasil dihapus dari sistem.', 'success');
                 }
