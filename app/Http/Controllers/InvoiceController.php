@@ -21,7 +21,7 @@ class InvoiceController extends Controller
             ->update(['status' => 'paid']);
 
         $query = Invoice::with(['customer' => function($q) use ($today, $cycleEnd) {
-            $q->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'package_id', 'billing_type', 'tax_ppn', 'created_at', 'status', 'registration_date', 'activation_date')
+            $q->select('id', 'name', 'customer_code', 'phone', 'address', 'area_id', 'package_id', 'billing_type', 'tax_ppn', 'created_at', 'status', 'registration_date', 'activation_date', 'suspend_start', 'suspend_end')
               ->withCount(['invoices as unpaid_invoices_count' => function ($query) use ($cycleEnd) {
                   $query->whereIn('status', ['unpaid', 'partial', 'overdue'])
                         ->where('invoice_number', 'not like', 'INV-MIG-%')
@@ -333,7 +333,7 @@ class InvoiceController extends Controller
                   ->orWhere('notes', 'like', '%Downgrade%');
             })->count(),
             'janji_bayar' => (clone $activeBaseQuery)->whereNotNull('promise_date')->whereIn('status', ['unpaid', 'partial', 'overdue'])->count(),
-            'stop_sementara' => (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', 'suspended'))->count(),
+            'stop_sementara' => (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', 'suspended')->whereNotNull('suspend_end'))->count(),
             'stop_permanen' => (clone $baseQuery)->whereHas('customer', fn($q) => $q->where('status', 'terminated'))->count(),
 
             // Amounts for cards (Konsisten dengan data aktif & filter)
@@ -1572,7 +1572,7 @@ class InvoiceController extends Controller
                     ->whereIn('status', ['unpaid', 'partial', 'overdue'])
                     ->whereHas('customer', fn($q) => $q->where('status', '!=', 'terminated'));
             } elseif ($tab === 'stop_sementara') {
-                $targetQuery->whereHas('customer', fn($q) => $q->where('status', 'suspended'));
+                $targetQuery->whereHas('customer', fn($q) => $q->where('status', 'suspended')->whereNotNull('suspend_end'));
             } elseif ($tab === 'stop_permanen') {
                 $targetQuery->whereHas('customer', fn($q) => $q->where('status', 'terminated'));
             }

@@ -443,10 +443,11 @@
                     <span v-if="row.customer" :class="[
                         'px-2 py-1 text-[10px] font-bold uppercase rounded-md text-white whitespace-nowrap',
                         (row.customer.status === 'active' || row.customer.status === 'aktif') ? 'bg-emerald-600' :
-                        row.customer.status === 'suspended' ? 'bg-amber-600' :
-                        row.customer.status === 'terminated' ? 'bg-rose-600' : 'bg-gray-500'
+                        (row.customer.status === 'suspended' && row.customer.suspend_end) ? 'bg-orange-600' :
+                        row.customer.status === 'suspended' ? 'bg-rose-600' :
+                        row.customer.status === 'terminated' ? 'bg-slate-700' : 'bg-gray-500'
                     ]">
-                        {{ (row.customer.status === 'active' || row.customer.status === 'aktif') ? 'Aktif' : row.customer.status }}
+                        {{ (row.customer.status === 'active' || row.customer.status === 'aktif') ? 'Aktif' : (row.customer.status === 'suspended' ? (row.customer.suspend_end ? 'Stop Sementara' : 'Terisolir') : row.customer.status === 'terminated' ? 'Stop Permanen' : row.customer.status) }}
                     </span>
                 </td>
                 <td>
@@ -718,7 +719,7 @@
                         <!-- Stop Sementara -->
                         <button 
                             v-can="'customers_active_suspend'"
-                            v-if="activeDropdownRow.customer.status !== 'suspended'"
+                            v-if="activeDropdownRow.customer.status !== 'terminated' && !(activeDropdownRow.customer.status === 'suspended' && activeDropdownRow.customer.suspend_end)"
                             type="button" 
                             @click="stopSementara(activeDropdownRow); closeDropdown()"
                             class="w-full px-4 py-2 text-left flex items-center gap-2.5 text-gray-700 hover:bg-orange-50 hover:text-orange-800 transition-colors font-medium cursor-pointer"
