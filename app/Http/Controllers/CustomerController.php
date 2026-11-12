@@ -192,9 +192,17 @@ class CustomerController extends Controller
             $totalActiveAll = Customer::where('status', 'active')->count();
             $totalSuspendedAll = (clone $baseQuery)->count();
             $suspendedIds = (clone $baseQuery)->pluck('id');
-            $tunggakanIsolir = $suspendedIds->isNotEmpty() ? (float) \App\Models\Invoice::whereIn('customer_id', $suspendedIds)
-                ->whereIn('status', ['unpaid', 'partial', 'overdue'])
-                ->sum('remaining_amount') : 0;
+            $tunggakanIsolir = 0;
+            if ($suspendedIds->isNotEmpty()) {
+                $unpaidInvoices = \App\Models\Invoice::whereIn('customer_id', $suspendedIds)
+                    ->whereIn('status', ['unpaid', 'partial'])
+                    ->where('invoice_number', 'not like', 'INV-MIG-%')
+                    ->where('is_reseller_balance', false)
+                    ->with(['payments' => fn ($pq) => $pq->where('status', 'verified')->select('id', 'invoice_id', 'amount', 'status')])
+                    ->get(['id', 'customer_id', 'amount', 'status']);
+
+                $tunggakanIsolir = (float) $unpaidInvoices->sum(fn ($inv) => $inv->remaining);
+            }
 
             $isolirSummary = [
                 'total_isolir' => $totalSuspendedAll,
