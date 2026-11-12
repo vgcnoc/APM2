@@ -189,7 +189,7 @@
 
                 <!-- Table Content -->
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse text-xs min-w-[1240px]">
+                    <table class="w-full text-left border-collapse text-xs min-w-[1080px]">
                         <thead>
                             <tr class="bg-slate-50/80 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
                                 <th class="px-5 py-3.5">Karyawan &amp; Status BPJS</th>
@@ -199,7 +199,7 @@
                                 <th class="px-5 py-3.5">Potongan (BPJS &amp; Kasbon)</th>
                                 <th class="px-5 py-3.5">Gaji Bersih (Net)</th>
                                 <th class="px-5 py-3.5 text-center">Status</th>
-                                <th class="px-4 py-3.5 text-center sticky right-0 bg-slate-50/95 backdrop-blur-xs shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] z-20 min-w-[310px]">Aksi</th>
+                                <th class="px-5 py-3.5 text-right whitespace-nowrap min-w-[280px]">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
@@ -349,7 +349,7 @@
                                 </td>
 
                                 <!-- Aksi -->
-                                <td class="px-4 py-4 whitespace-nowrap text-right sticky right-0 bg-white group-hover:bg-slate-50 transition-colors shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.05)] z-10 min-w-[310px]">
+                                <td class="px-5 py-4 whitespace-nowrap text-right min-w-[280px]">
                                     <div class="flex items-center justify-end gap-1.5">
                                         <!-- Tombol Lihat Slip Gaji -->
                                         <button
