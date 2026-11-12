@@ -604,12 +604,12 @@
                                             required
                                         >
                                             <option value="">-- Pilih Material dari Inventory Gudang --</option>
+                                            <!-- Fallback jika record sebelumnya/alokasi tiket tidak ada di daftar stok tersedia -->
+                                            <option v-if="item.selected_key && !availableMaterialItems.some(ord => ord.unique_key === item.selected_key)" :value="item.selected_key">
+                                                {{ item.name || 'Material FO' }} — Alokasi Tiket Ini: {{ item.quantity }} {{ item.unit }} {{ item.trx_number ? '(PO: ' + item.trx_number + ')' : '' }}
+                                            </option>
                                             <option v-for="ord in availableMaterialItems" :key="ord.unique_key" :value="ord.unique_key">
                                                 {{ ord.name }} — Stok Gudang: {{ ord.area_stock }} {{ ord.unit }} {{ ord.trx_number ? '(PO: ' + ord.trx_number + ')' : '' }} [{{ ord.area_name }}]
-                                            </option>
-                                            <!-- Fallback jika record sebelumnya tidak memiliki key baru -->
-                                            <option v-if="!item.selected_key && item.material_id" :value="''">
-                                                📦 {{ item.name || 'Material Sebelumnya' }} (Data Lama)
                                             </option>
                                         </select>
                                     </div>
@@ -1156,15 +1156,27 @@ const availableMaterialItems = computed(() => {
                 const isRegistered = item.is_registered_to_ont === 1 || item.is_registered_to_ont === true;
 
                 if (!isRegistered && !name.includes('modem') && !category.includes('modem') && !name.includes('ont') && !category.includes('ont')) {
-                    let remainingInOrder = typeof item.remaining_quantity !== 'undefined'
+                    // Cek apakah item ini sudah dialokasikan ke tiket yang sedang diedit/dijadwalkan
+                    let existingAllocation = 0;
+                    if (selectedTicket.value && selectedTicket.value.materials) {
+                        const existing = selectedTicket.value.materials.find(m => 
+                            (m.material_transaction_item_id && m.material_transaction_item_id == item.id) ||
+                            (!m.material_transaction_item_id && m.material_id == item.material_id && (!m.trx_number || m.trx_number === trx.transaction_number))
+                        );
+                        if (existing) {
+                            existingAllocation = parseFloat(existing.quantity_prepared || existing.quantity || 0);
+                        }
+                    }
+
+                    let remainingInOrder = (typeof item.remaining_quantity !== 'undefined'
                         ? parseFloat(item.remaining_quantity)
-                        : parseFloat(item.quantity);
+                        : parseFloat(item.quantity)) + existingAllocation;
 
                     let areaStock = null;
                     if (item.material.stocks && areaId) {
                         const stockObj = item.material.stocks.find(s => s.area_id == areaId);
                         if (stockObj) {
-                            areaStock = parseFloat(stockObj.stock) || 0;
+                            areaStock = (parseFloat(stockObj.stock) || 0) + existingAllocation;
                         }
                     }
 
@@ -1204,13 +1216,21 @@ const availableMaterialItems = computed(() => {
             return;
         }
 
+        let existingMatAllocation = 0;
+        if (selectedTicket.value && selectedTicket.value.materials) {
+            const existing = selectedTicket.value.materials.find(mat => mat.material_id == m.id && !mat.material_transaction_item_id);
+            if (existing) {
+                existingMatAllocation = parseFloat(existing.quantity_prepared || existing.quantity || 0);
+            }
+        }
+
         let areaStock = 0;
         let hasAreaStock = false;
         if (m.stocks && areaId) {
             const stockObj = m.stocks.find(s => s.area_id == areaId);
             if (stockObj) {
                 hasAreaStock = true;
-                areaStock = parseFloat(stockObj.stock) || 0;
+                areaStock = (parseFloat(stockObj.stock) || 0) + existingMatAllocation;
             }
         }
 
@@ -1219,7 +1239,7 @@ const availableMaterialItems = computed(() => {
                 return;
             }
         } else {
-            areaStock = parseFloat(m.stock) || 0;
+            areaStock = (parseFloat(m.stock) || 0) + existingMatAllocation;
             if (areaStock <= 0) return;
         }
 
@@ -1285,16 +1305,17 @@ const openScheduleModal = (ticket) => {
                 i => i.id === m.material_transaction_item_id || (i.material_id === m.material_id && (!m.trx_number || i.trx_number === m.trx_number))
             );
             const selKey = m.material_transaction_item_id ? ('ord-' + m.material_transaction_item_id) : (matchedOrder ? matchedOrder.unique_key : ('mat-' + m.material_id));
+            const curQty = parseFloat(m.quantity_prepared || m.quantity || 1);
             return {
                 selected_key: selKey,
                 material_transaction_item_id: m.material_transaction_item_id || null,
                 material_id: m.material_id,
                 trx_number: m.trx_number || (matchedOrder ? matchedOrder.trx_number : ''),
                 name: m.material?.name || 'Material FO',
-                quantity: parseFloat(m.quantity_prepared || m.quantity || 1),
-                quantity_prepared: parseFloat(m.quantity_prepared || m.quantity || 1),
+                quantity: curQty,
+                quantity_prepared: curQty,
                 unit: m.unit || m.material?.unit || '',
-                max_stock: matchedOrder ? matchedOrder.area_stock : (parseFloat(m.material?.stock) || 9999),
+                max_stock: matchedOrder ? Math.max(curQty, parseFloat(matchedOrder.area_stock || 0)) : Math.max(curQty, parseFloat(m.material?.stock || 0)),
                 notes: m.notes || '',
             };
         });

@@ -1316,6 +1316,10 @@
                                             required
                                         >
                                             <option value="">-- Pilih Material dari Inventory Gudang --</option>
+                                            <!-- Fallback jika record alokasi saat ini tidak ada di daftar stok tersedia -->
+                                            <option v-if="item.selected_key && !availableMaterialItems.some(ord => ord.unique_key === item.selected_key)" :value="item.selected_key">
+                                                {{ item.name || 'Material' }} — Alokasi: {{ item.quantity }} {{ item.unit }} {{ item.trx_number ? '(PO: ' + item.trx_number + ')' : '' }}
+                                            </option>
                                             <option v-for="ord in availableMaterialItems" :key="ord.unique_key" :value="ord.unique_key">
                                                 {{ ord.name }} — Stok: {{ ord.area_stock }} {{ ord.unit }} {{ ord.trx_number ? '(PO: ' + ord.trx_number + ')' : '' }} [{{ ord.area_name }}]
                                             </option>
@@ -2386,7 +2390,7 @@ const filteredOdcs = computed(() => {
 // Daftar Material Persiapan Gudang (Bekal Petugas)
 const availableMaterialItems = computed(() => {
     let items = [];
-    const areaId = customerAreaId.value;
+    const areaId = createForm.value.area_id || null;
     const handledMaterialIds = new Set();
 
     // 1. Ambil dari Order Toko / Restock Area jika ada
