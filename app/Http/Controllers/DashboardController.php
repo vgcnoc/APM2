@@ -1068,6 +1068,7 @@ class DashboardController extends Controller
         $selectedService = $request->input('service', 'all');
         $selectedStatus = $request->input('status', 'all');
         $searchQuery = (string) $request->input('search', '');
+        $forceRefresh = $request->boolean('force') || $request->has('_refresh');
 
         $stats = $this->getRealtimeData(
             $user,
@@ -1076,7 +1077,8 @@ class DashboardController extends Controller
             $selectedPeriod,
             $selectedService,
             $selectedStatus,
-            $searchQuery
+            $searchQuery,
+            $forceRefresh
         );
 
         return response()->json($stats);
@@ -1293,7 +1295,8 @@ class DashboardController extends Controller
         $period = 'today',
         $service = 'all',
         $statusFilter = 'all',
-        string $search = ''
+        string $search = '',
+        bool $forceRefresh = false
     ): array {
         $user = $user ?? auth()->user();
         $cacheKey = 'realtime_dash_' . md5(json_encode([
@@ -1305,6 +1308,10 @@ class DashboardController extends Controller
             $statusFilter,
             $search
         ]));
+
+        if ($forceRefresh) {
+            \Illuminate\Support\Facades\Cache::forget($cacheKey);
+        }
 
         return \Illuminate\Support\Facades\Cache::remember($cacheKey, 15, function () use ($user, $areaId, $nasId, $period, $service, $statusFilter, $search) {
             Carbon::setLocale('id');
@@ -1320,14 +1327,33 @@ class DashboardController extends Controller
 
         $userAccessibleAreaIds = $user ? $user->getAccessibleAreaIds() : [];
 
-        // Scope filter helper untuk tabel dengan kolom area_id
-        $applyAreaScope = function ($query, $tablePrefix = '') use ($areaId, $canViewAllAreas, $userAccessibleAreaIds) {
+        // Scope filter helper untuk tabel dengan kolom area_id (mendukung filter area spesifik maupun Router NAS spesifik)
+        $applyAreaScope = function ($query, $tablePrefix = '') use ($areaId, $nasId, $canViewAllAreas, $userAccessibleAreaIds) {
             $col = $tablePrefix ? "{$tablePrefix}.area_id" : 'area_id';
             if (!$canViewAllAreas) $query->whereIn($col, $userAccessibleAreaIds);
             if (is_numeric($areaId)) {
                 $query->where($col, (int) $areaId);
+            } elseif (is_numeric($nasId)) {
+                $nasAreaIds = Router::where('nas_id', (int) $nasId)->whereNotNull('area_id')->pluck('area_id')->all();
+                if (!empty($nasAreaIds)) {
+                    $query->whereIn($col, $nasAreaIds);
+                }
             }
             return $query;
+        };
+
+        // Hitung batas periode waktu (Periode: Hari Ini, 24 Jam Terakhir, 7 Hari Terakhir, Bulan Ini)
+        $periodStart = match ($period) {
+            '24h' => now()->subHours(24),
+            '7d'  => now()->subDays(7)->startOfDay(),
+            '30d' => now()->startOfMonth(),
+            default => today()->startOfDay(),
+        };
+        $periodLabel = match ($period) {
+            '24h' => '24 Jam Terakhir',
+            '7d'  => '7 Hari Terakhir',
+            '30d' => 'Bulan Ini',
+            default => 'Hari Ini',
         };
 
         // ── 0. Pengukuran Trafik Jaringan Internet 100% Real (RouterOS API / RADIUS) ──
@@ -1415,6 +1441,21 @@ class DashboardController extends Controller
             ->whereNotNull('package_id')
             ->with(['areaModel', 'ont.odp', 'package']);
         $applyAreaScope($custBase);
+
+        if (!empty($search)) {
+            $custBase->where(function ($sub) use ($search) {
+                $sub->where('name', 'like', "%{$search}%")
+                    ->orWhere('customer_code', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('address', 'like', "%{$search}%")
+                    ->orWhereHas('ont', function ($oq) use ($search) {
+                        $oq->where('pppoe_user', 'like', "%{$search}%")
+                           ->orWhere('hotspot_user', 'like', "%{$search}%")
+                           ->orWhere('mac_address', 'like', "%{$search}%");
+                    });
+            });
+        }
+
         // Monitoring realtime hanya untuk layanan yang masih berjalan atau
         // sedang diisolir (memiliki ONT dan bukan paket voucher). Pelanggan booking,
         // survey, instalasi, terminated, maupun canceled adalah arsip proses layanan
@@ -1646,10 +1687,10 @@ class DashboardController extends Controller
                         'time_ago'        => Carbon::parse($v->updated_at)->diffForHumans(),
                     ]);
 
-                // Voucher yang digunakan / terjual hari ini
+                // Voucher yang digunakan / terjual sesuai periode
                 $todayUsedVouchers = Voucher::with(['profile', 'reseller.user'])
                     ->where('status', 'used')
-                    ->whereDate('used_at', today())
+                    ->where('used_at', '>=', $periodStart)
                     ->get();
 
                 $voucherCountToday = $todayUsedVouchers->count();
@@ -1754,7 +1795,7 @@ class DashboardController extends Controller
 
         try {
             if (class_exists(ResellerTransaction::class)) {
-                $topupTodayQuery = ResellerTransaction::where('type', 'credit')->whereDate('created_at', today());
+                $topupTodayQuery = ResellerTransaction::where('type', 'credit')->where('created_at', '>=', $periodStart);
                 $topupAmountToday = (float) $topupTodayQuery->sum('amount');
                 $topupCountToday = $topupTodayQuery->count();
 
@@ -1948,15 +1989,21 @@ class DashboardController extends Controller
             $capacity = ['max_capacity' => 0, 'source' => 'unknown', 'cpu_load' => null, 'devices' => []];
         }
         $maxCapacity = max(1, (int) $capacity['max_capacity']);
-        $realOnline = $pppoeOnlineCount + $hotspotOnlineCount;
+        if ($service === 'pppoe') {
+            $effectiveOnline = $pppoeOnlineCount;
+        } elseif ($service === 'hotspot') {
+            $effectiveOnline = $hotspotOnlineCount;
+        } else {
+            $effectiveOnline = $pppoeOnlineCount + $hotspotOnlineCount;
+        }
 
         return [
             // Metrik Utama Realtime
-            'real_online'        => $realOnline,
-            'max_capacity'       => $maxCapacity,
-            'capacity_source'    => $capacity['source'],
-            'capacity_cpu_load'  => $capacity['cpu_load'],
-            'capacity_devices'   => $capacity['devices'],
+            'real_online'           => $effectiveOnline,
+            'max_capacity'          => $maxCapacity,
+            'capacity_source'       => $capacity['source'],
+            'capacity_cpu_load'     => $capacity['cpu_load'],
+            'capacity_devices'      => $capacity['devices'],
             'online_voucher'        => $hotspotOnlineCount,
             'online_billing'        => $pppoeOnlineCount,
             'pending_count'         => (clone $custBase)->whereIn('status', ['booking', 'survey', 'installing', 'menunggu_aktivasi'])->count(),
@@ -1966,6 +2013,7 @@ class DashboardController extends Controller
             'isolir_count'          => $isolirCount,
             'unpaid_customers'      => $unpaidCustomers,
             'isolir_customers'      => $isolirCustomers,
+            'period_label'          => $periodLabel,
 
             // Trafik Internet Lengkap (100% Real)
             // Preserve unavailable/null and coverage metadata all the way to the UI.
@@ -1992,7 +2040,7 @@ class DashboardController extends Controller
                 'items'       => array_slice($hotspotItems, 0, 100),
             ],
 
-            // Isi Saldo Hari Ini
+            // Transaksi Isi Saldo
             'topup' => [
                 'today_amount'           => $topupAmountToday,
                 'today_amount_formatted' => 'Rp ' . number_format($topupAmountToday, 0, ',', '.'),
@@ -2000,15 +2048,17 @@ class DashboardController extends Controller
                 'total_all_time'         => $topupTotalAll,
                 'total_all_formatted'    => 'Rp ' . number_format($topupTotalAll, 0, ',', '.'),
                 'recent_topups'          => $recentTopups,
+                'period_label'           => $periodLabel,
             ],
 
-            // Voucher Terjual Hari Ini
+            // Voucher Terjual Sesuai Periode
             'voucher_sales' => [
                 'today_amount'           => $voucherSalesToday,
                 'today_amount_formatted' => 'Rp ' . number_format($voucherSalesToday, 0, ',', '.'),
                 'today_count'            => $voucherCountToday,
                 'breakdown'              => $voucherBreakdown,
                 'recent_vouchers'        => $recentVouchers,
+                'period_label'           => $periodLabel,
             ],
 
             // Live Connection Events Feed (UP & DOWN dengan Waktu Lengkap)
@@ -2071,6 +2121,11 @@ class DashboardController extends Controller
             \Illuminate\Support\Facades\Log::warning('[DashboardController] Error membersihkan FreeRADIUS: ' . $e->getMessage());
         }
 
+        // Invalidate realtime cache agar counter segera terupdate
+        try {
+            \Illuminate\Support\Facades\Cache::flush();
+        } catch (\Throwable $e) {}
+
         return response()->json([
             'success' => true,
             'deleted_count' => $count,
@@ -2098,6 +2153,11 @@ class DashboardController extends Controller
             if ($radius && $radius->enabled()) {
                 $radius->removeUser($username);
             }
+        } catch (\Throwable $e) {}
+
+        // Invalidate realtime cache agar counter segera terupdate
+        try {
+            \Illuminate\Support\Facades\Cache::flush();
         } catch (\Throwable $e) {}
 
         return response()->json([

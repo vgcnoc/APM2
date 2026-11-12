@@ -259,15 +259,17 @@
                     <div class="relative">
                         <input
                             v-model="searchKeyword"
+                            @keydown.enter="triggerManualRefresh"
+                            @change="onFilterChange"
                             type="text"
                             placeholder="Cari Nama/IP/ODP/HP..."
                             class="w-full text-xs rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 py-2 pl-3 pr-7 focus:ring-purple-500 focus:border-purple-500"
                         />
                         <button
                             v-if="searchKeyword"
-                            @click="searchKeyword = ''"
+                            @click="searchKeyword = ''; onFilterChange();"
                             type="button"
-                            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+                            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs cursor-pointer"
                         >
                             ✕
                         </button>
@@ -279,12 +281,14 @@
         <!-- ═══ 3. TOP SECTION: REALTIME CARD + TRAFIK INTERNET BANDWIDTH LIVE ═══ -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
             <!-- Left: RealtimeWidget Core (6 Cols) -->
-            <div class="lg:col-span-6">
+            <div class="lg:col-span-6 flex flex-col">
                 <RealtimeWidget
                     ref="realtimeWidgetRef"
                     :stats="stats"
                     :area-id="activeAreaId"
                     :auto-poll="false"
+                    @refresh="triggerManualRefresh"
+                    class="h-full"
                 />
             </div>
 
@@ -606,7 +610,7 @@
 
                     <!-- Big Stat Topup -->
                     <div class="p-3 rounded-xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-transparent border border-emerald-500/20 mb-3">
-                        <p class="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">Total Top-up Hari Ini</p>
+                        <p class="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">Total Top-up {{ topupStats.period_label || 'Hari Ini' }}</p>
                         <p class="text-xl font-black text-slate-900 dark:text-white tracking-tight mt-0.5 font-mono">
                             {{ topupStats.today_amount_formatted }}
                         </p>
@@ -662,7 +666,7 @@
 
                     <!-- Big Stat Voucher Sales -->
                     <div class="p-3 rounded-xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-transparent border border-amber-500/20 mb-3">
-                        <p class="text-[11px] font-bold text-amber-700 dark:text-amber-300">Pendapatan Voucher Hari Ini</p>
+                        <p class="text-[11px] font-bold text-amber-700 dark:text-amber-300">Pendapatan Voucher {{ voucherSalesStats.period_label || 'Hari Ini' }}</p>
                         <p class="text-xl font-black text-slate-900 dark:text-white tracking-tight mt-0.5 font-mono">
                             {{ voucherSalesStats.today_amount_formatted }}
                         </p>
@@ -973,7 +977,7 @@
         </div>
 
         <!-- ═══ 6. MODAL INVESTIGASI GANGGUAN MASSAL (SMART OUTAGE) ═══ -->
-        <div v-if="activeModal === 'outage'" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+        <div v-if="activeModal === 'outage'" class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
             <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-xl w-full shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden">
                 <div class="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-rose-50 dark:bg-rose-950/30">
                     <div class="flex items-center gap-3">
@@ -1025,7 +1029,7 @@
         </div>
 
         <!-- ═══ 7. MODAL DETAIL ISI SALDO & VOUCHER TERJUAL ═══ -->
-        <div v-if="activeModal === 'topup_details' || activeModal === 'voucher_details'" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+        <div v-if="activeModal === 'topup_details' || activeModal === 'voucher_details'" class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
             <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-xl w-full shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden">
                 <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                     <div class="flex items-center gap-2.5">
@@ -1080,7 +1084,7 @@
         </div>
 
         <!-- ═══ 8. MODAL DETAIL PPPOE & HOTSPOT KONEKSI ═══ -->
-        <div v-if="activeModal === 'pppoe_all' || activeModal === 'hotspot_all'" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+        <div v-if="activeModal === 'pppoe_all' || activeModal === 'hotspot_all'" class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
             <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-3xl w-full shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden">
                 <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                     <div class="flex items-center gap-2.5">
@@ -1139,7 +1143,7 @@
         </div>
 
         <!-- ═══ 9. MODAL DETAIL VOUCHER HOTSPOT EXPIRED (BISA DIHAPUS) ═══ -->
-        <div v-if="activeModal === 'expired_vouchers'" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+        <div v-if="activeModal === 'expired_vouchers'" class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
             <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 duration-200">
                 <!-- Header -->
                 <div class="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-rose-500/10">
@@ -1574,6 +1578,7 @@ const onFilterChange = () => {
 };
 
 const triggerManualRefresh = async () => {
+    if (isRefreshing.value) return;
     isRefreshing.value = true;
     try {
         const res = await axios.get('/dashboard/realtime-api', {
@@ -1584,6 +1589,7 @@ const triggerManualRefresh = async () => {
                 service: activeService.value,
                 status: activeStatus.value,
                 search: searchKeyword.value,
+                _refresh: 1,
             },
         });
         if (res.data) {

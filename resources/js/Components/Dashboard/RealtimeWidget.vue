@@ -1,5 +1,5 @@
 <template>
-    <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-5 md:p-6 transition-all hover:shadow-md relative overflow-hidden">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-5 md:p-6 transition-all hover:shadow-md relative overflow-hidden flex flex-col justify-between">
         <!-- Card Header -->
         <div class="flex items-center justify-between mb-5">
             <div class="flex items-center gap-2.5">
@@ -18,9 +18,9 @@
                     <span>LIVE</span>
                 </span>
                 <button
-                    @click="refreshData"
+                    @click="onRefreshClick"
                     :disabled="isLoading"
-                    class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                     title="Refresh Data Realtime"
                 >
                     <svg class="w-4 h-4" :class="{ 'animate-spin text-purple-600': isLoading }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -107,7 +107,7 @@
                 </div>
 
                 <!-- Dual Striped Bar: Green (Voucher) + Cyan (Billing) -->
-                <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-5 overflow-hidden shadow-inner flex relative">
+                <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-5 overflow-hidden shadow-inner flex relative items-center">
                     <!-- Voucher Segment -->
                     <div
                         v-if="currentStats.online_voucher > 0"
@@ -131,6 +131,14 @@
                             {{ formatNumber(currentStats.online_billing) }}
                         </span>
                     </div>
+
+                    <!-- Zero Online State -->
+                    <span
+                        v-if="!currentStats.online_voucher && !currentStats.online_billing"
+                        class="text-[10px] font-bold text-slate-400 dark:text-slate-500 px-2.5 flex items-center h-full select-none"
+                    >
+                        0 Sesi Online
+                    </span>
                 </div>
             </div>
 
@@ -152,7 +160,7 @@
                             v-can="'dashboard_realtime_btn_unpaid'"
                             @click="openModal('unpaid')"
                             type="button"
-                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black text-white bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-sm shadow-amber-500/20 active:scale-95 transition-all"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black text-white bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-sm shadow-amber-500/20 active:scale-95 transition-all cursor-pointer"
                             title="Aksi Pelanggan Unpaid"
                         >
                             <span>📢</span>
@@ -164,7 +172,7 @@
                             v-can="'dashboard_realtime_btn_isolir'"
                             @click="openModal('isolir')"
                             type="button"
-                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black text-white bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 shadow-sm shadow-rose-500/20 active:scale-95 transition-all"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black text-white bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 shadow-sm shadow-rose-500/20 active:scale-95 transition-all cursor-pointer"
                             title="Aksi Pelanggan Isolir"
                         >
                             <span>📢</span>
@@ -174,7 +182,7 @@
                 </div>
 
                 <!-- Dual Striped Bar: Orange (Unpaid) + Red (Isolir) -->
-                <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-5 overflow-hidden shadow-inner flex relative">
+                <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-5 overflow-hidden shadow-inner flex relative items-center">
                     <!-- Unpaid Segment -->
                     <div
                         v-if="currentStats.unpaid_count > 0"
@@ -198,12 +206,29 @@
                             {{ formatNumber(currentStats.isolir_count) }}
                         </span>
                     </div>
+
+                    <!-- Zero State -->
+                    <span
+                        v-if="!currentStats.unpaid_count && !currentStats.isolir_count"
+                        class="text-[10px] font-bold text-slate-400 dark:text-slate-500 px-2.5 flex items-center h-full select-none"
+                    >
+                        0 Tagihan / 0 Isolir
+                    </span>
                 </div>
             </div>
         </div>
 
+        <!-- Footer Status -->
+        <div class="pt-3 mt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-400">
+            <span>Status Sistem: <strong class="text-slate-700 dark:text-slate-300 font-mono">{{ currentStats.capacity_source === 'router' ? 'Router MikroTik Online' : 'Kapasitas Server' }}</strong></span>
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Monitoring Aktif
+            </span>
+        </div>
+
         <!-- ═══ MODAL DETAIL & QUICK BLAST / EXPIRED ═══ -->
-        <div v-if="activeModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+        <div v-if="activeModal" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
             <div class="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
                 <!-- Modal Header -->
                 <div class="px-6 py-4 flex items-center justify-between border-b border-slate-100 dark:border-slate-800"
@@ -415,6 +440,8 @@ const props = defineProps({
     },
 });
 
+const emit = defineEmits(['refresh']);
+
 const currentStats = ref({ ...props.stats });
 watch(() => props.stats, (newVal) => {
     if (newVal) currentStats.value = { ...newVal };
@@ -615,11 +642,16 @@ const deleteAllExpiredVouchers = async () => {
 };
 
 
+const onRefreshClick = () => {
+    emit('refresh');
+    refreshData();
+};
+
 const refreshData = async () => {
     isLoading.value = true;
     try {
         const res = await axios.get('/dashboard/realtime-api', {
-            params: { area_id: props.areaId },
+            params: { area_id: props.areaId, _refresh: 1 },
         });
         if (res.data) {
             currentStats.value = { ...res.data };
