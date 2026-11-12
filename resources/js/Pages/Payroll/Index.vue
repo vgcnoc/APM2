@@ -196,7 +196,7 @@
                                 <th class="px-5 py-3.5">Rekening Transfer</th>
                                 <th class="px-5 py-3.5">Gaji Pokok</th>
                                 <th class="px-5 py-3.5">Insentif &amp; Bonus</th>
-                                <th class="px-5 py-3.5">Potongan (BPJS &amp; Kasbon)</th>
+                                <th class="px-5 py-3.5">Potongan (BPJS, Absensi &amp; Kasbon)</th>
                                 <th class="px-5 py-3.5">Gaji Bersih (Net)</th>
                                 <th class="px-5 py-3.5 text-center">Status</th>
                                 <th class="px-5 py-3.5 text-right whitespace-nowrap min-w-[280px]">Aksi</th>
@@ -279,7 +279,7 @@
                                     </div>
                                 </td>
 
-                                <!-- Potongan (BPJS & Kasbon) -->
+                                <!-- Potongan (BPJS, Absensi & Kasbon) -->
                                 <td class="px-5 py-4 whitespace-nowrap">
                                     <div class="font-bold text-rose-600 font-mono">
                                         - Rp {{ formatRupiah(user.total_deduction + (user.bpjs?.total_employee || 0)) }}
@@ -288,8 +288,11 @@
                                         <span v-if="user.bpjs?.total_employee > 0" class="text-rose-700 font-semibold">
                                             ↳ BPJS: -Rp {{ formatRupiah(user.bpjs.total_employee) }}
                                         </span>
-                                        <span v-if="user.total_deduction > 0" class="text-slate-500">
-                                            ↳ Kasbon/Lain: -Rp {{ formatRupiah(user.total_deduction) }}
+                                        <span v-if="user.attendance_deduction > 0" class="text-amber-700 font-semibold">
+                                            ↳ Absensi: -Rp {{ formatRupiah(user.attendance_deduction) }}
+                                        </span>
+                                        <span v-if="user.kasbon_deduction > 0" class="text-rose-600 font-semibold">
+                                            ↳ Kasbon: -Rp {{ formatRupiah(user.kasbon_deduction) }}
                                         </span>
                                     </div>
                                 </td>
@@ -476,9 +479,9 @@
                             </div>
                         </div>
 
-                        <!-- 2. Potongan (BPJS & Kasbon) -->
+                        <!-- 2. Potongan (BPJS, Absensi & Kasbon) -->
                         <div class="space-y-1.5 border border-slate-100 rounded-2xl p-4 bg-white">
-                            <span class="font-extrabold text-xs text-slate-900 uppercase tracking-wider block mb-2">B. Potongan (Iuran BPJS &amp; Kasbon)</span>
+                            <span class="font-extrabold text-xs text-slate-900 uppercase tracking-wider block mb-2">B. Potongan (Iuran BPJS, Absensi &amp; Kasbon)</span>
                             <div v-if="selectedSlipUser.bpjs?.has_kesehatan" class="flex justify-between text-slate-700">
                                 <span>BPJS Kesehatan Karyawan (1%):</span>
                                 <span class="font-bold text-rose-600 font-mono">- Rp {{ formatRupiah(selectedSlipUser.bpjs.kesehatan_employee) }}</span>
@@ -491,9 +494,13 @@
                                 <span>BPJS Ketenagakerjaan JP Karyawan (1%):</span>
                                 <span class="font-bold text-rose-600 font-mono">- Rp {{ formatRupiah(selectedSlipUser.bpjs.tk_jp_employee) }}</span>
                             </div>
-                            <div v-if="selectedSlipUser.total_deduction > 0" class="flex justify-between text-slate-700">
+                            <div v-if="selectedSlipUser.attendance_deduction > 0" class="flex justify-between text-slate-700">
+                                <span>Potongan Absensi / Kehadiran:</span>
+                                <span class="font-bold text-amber-700 font-mono">- Rp {{ formatRupiah(selectedSlipUser.attendance_deduction) }}</span>
+                            </div>
+                            <div v-if="selectedSlipUser.kasbon_deduction > 0" class="flex justify-between text-slate-700">
                                 <span>Potongan Kasbon / Lainnya:</span>
-                                <span class="font-bold text-rose-600 font-mono">- Rp {{ formatRupiah(selectedSlipUser.total_deduction) }}</span>
+                                <span class="font-bold text-rose-600 font-mono">- Rp {{ formatRupiah(selectedSlipUser.kasbon_deduction) }}</span>
                             </div>
 
                             <!-- Rincian Item Potongan jika ada -->
@@ -818,7 +825,7 @@
                         <div>
                             <div class="flex items-center justify-between mb-2">
                                 <span class="font-extrabold text-slate-800 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                                    <span>📉</span> Potongan Kasbon / Lain (-Rp {{ formatRupiah(selectedDetailsUser.total_deduction) }})
+                                    <span>📉</span> Potongan Absensi &amp; Kasbon (-Rp {{ formatRupiah(selectedDetailsUser.total_deduction) }})
                                 </span>
                             </div>
                             <div v-if="selectedDetailsUser.deductions_list && selectedDetailsUser.deductions_list.length > 0" class="divide-y divide-slate-100 border border-slate-100 rounded-2xl overflow-hidden bg-slate-50/50">
@@ -846,7 +853,7 @@
                                 </div>
                             </div>
                             <div v-else class="p-4 text-center text-slate-400 border border-dashed border-slate-200 rounded-2xl">
-                                Tidak ada potongan kasbon tercatat pada periode ini.
+                                Tidak ada potongan absensi atau kasbon tercatat pada periode ini.
                             </div>
                         </div>
                     </div>

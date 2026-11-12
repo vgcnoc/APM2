@@ -254,6 +254,12 @@ class PayrollController extends Controller
                     $relevantDeductions = $pendingDeductions;
                 }
 
+                $attendanceDeduction = (float) $relevantDeductions->filter(function($d) {
+                    $ref = $d->reference_id ?? '';
+                    return str_starts_with($ref, 'ATT_') || str_starts_with($ref, 'SPECIAL_DED_');
+                })->sum('amount');
+                $kasbonDeduction = max(0, $finalDeduction - $attendanceDeduction);
+
                 // Hitung / Ambil rincian BPJS
                 if ($isPaid) {
                     $bpjs = [
@@ -304,6 +310,8 @@ class PayrollController extends Controller
                     'total_manual_incentive' => $totalManual,
                     'total_incentive' => $totalIncentive,
                     'total_deduction' => $finalDeduction,
+                    'attendance_deduction' => $attendanceDeduction,
+                    'kasbon_deduction' => $kasbonDeduction,
                     'bpjs' => $bpjs,
                     'net_salary' => $netSalary,
                     'is_paid' => $isPaid,

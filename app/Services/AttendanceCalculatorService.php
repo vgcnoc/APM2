@@ -1539,6 +1539,27 @@ class AttendanceCalculatorService
      */
     public static function syncMonthlyToPayroll(string $month, ?array $overrideSettings = null): array
     {
+        $startTrackingPeriod = Setting::get('attendance_payroll_start_period', '2026-11');
+        if ($month < $startTrackingPeriod) {
+            // Sebelum periode absensi resmi aktif, bersihkan seluruh potongan penalti absensi otomatis
+            $parsedDate = Carbon::parse($month . '-01');
+            Deduction::where('status', 'pending')
+                ->where(function($q) {
+                    $q->where('reference_id', 'like', 'ATT_%')
+                      ->orWhere('reference_id', 'like', 'SPECIAL_DED_%');
+                })
+                ->whereMonth('deduction_date', $parsedDate->month)
+                ->whereYear('deduction_date', $parsedDate->year)
+                ->delete();
+
+            return [
+                'status' => 'skipped',
+                'message' => "Periode {$month} sebelum sistem presensi aktif ({$startTrackingPeriod}). Tidak ada potongan absensi.",
+                'synced_deductions' => 0,
+                'affected_employees' => 0,
+            ];
+        }
+
         $periodDetails = self::getMonthPeriodDetails($month);
         $settings = array_merge(self::getAttendanceSettings(), $overrideSettings ?? []);
         $monthEnd = $periodDetails['end_datetime'];
