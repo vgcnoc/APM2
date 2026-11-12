@@ -133,7 +133,14 @@ class PayrollController extends Controller
 
         $excludedRoles = ['customer', 'pelanggan', 'reseller', 'superadmin', 'super admin', 'toko', 'demo', 'affiliate', 'mitra', 'affiliator'];
 
-        $usersQuery = User::where('is_active', true)
+        $usersQuery = User::where(function($q) use ($month, $year) {
+                $q->where('is_active', true)
+                  ->orWhereHas('incentives', function($iq) use ($month, $year) {
+                      $iq->where('status', 'pending')
+                         ->whereMonth('incentive_date', $month)
+                         ->whereYear('incentive_date', $year);
+                  });
+            })
             ->excludeTokoAndDemo()
             ->whereNotIn('role', $excludedRoles)
             ->whereDoesntHave('roles', function($q) use ($excludedRoles) {
@@ -223,7 +230,8 @@ class PayrollController extends Controller
                     $emp->update(['base_salary' => $rawBaseSalary]);
                 }
 
-                $baseSalary = $isPaid ? (float) $payroll->base_salary : $rawBaseSalary;
+                $isStaffActive = $user->is_active && (!$emp || $emp->status !== 'resigned');
+                $baseSalary = $isPaid ? (float) $payroll->base_salary : ($isStaffActive ? $rawBaseSalary : 0);
 
                 if ($isPaid) {
                     $relevantIncentives = $user->incentives->filter(function ($inc) use ($payroll) {
@@ -690,8 +698,10 @@ class PayrollController extends Controller
             } elseif ($emp && (float) $emp->base_salary <= 0) {
                 $emp->update(['base_salary' => $rawBaseSalary]);
             }
-            $bpjs = self::calculateBpjs($user, $rawBaseSalary);
-            $netSalary = max(0, $rawBaseSalary + $totalIncentive - $totalDeduction - $bpjs['total_employee']);
+            $isStaffActive = $user->is_active && (!$emp || $emp->status !== 'resigned');
+            $baseSalary = $isStaffActive ? $rawBaseSalary : 0;
+            $bpjs = self::calculateBpjs($user, $baseSalary);
+            $netSalary = max(0, $baseSalary + $totalIncentive - $totalDeduction - $bpjs['total_employee']);
 
             $bpjsNotes = [];
             if ($bpjs['total_employee'] > 0) {
@@ -837,7 +847,14 @@ class PayrollController extends Controller
 
         $excludedRoles = ['customer', 'pelanggan', 'reseller', 'superadmin', 'super admin', 'toko', 'demo', 'affiliate', 'mitra', 'affiliator'];
 
-        $usersQuery = User::where('is_active', true)
+        $usersQuery = User::where(function($q) use ($month, $year) {
+                $q->where('is_active', true)
+                  ->orWhereHas('incentives', function($iq) use ($month, $year) {
+                      $iq->where('status', 'pending')
+                         ->whereMonth('incentive_date', $month)
+                         ->whereYear('incentive_date', $year);
+                  });
+            })
             ->excludeTokoAndDemo()
             ->whereNotIn('role', $excludedRoles)
             ->whereDoesntHave('roles', function($q) use ($excludedRoles) {
@@ -937,8 +954,10 @@ class PayrollController extends Controller
                 } elseif ($emp && (float) $emp->base_salary <= 0) {
                     $emp->update(['base_salary' => $rawBaseSalary]);
                 }
-                $bpjs = self::calculateBpjs($user, $rawBaseSalary);
-                $netSalary = max(0, $rawBaseSalary + $totalIncentive - $totalDeduction - $bpjs['total_employee']);
+                $isStaffActive = $user->is_active && (!$emp || $emp->status !== 'resigned');
+                $baseSalary = $isStaffActive ? $rawBaseSalary : 0;
+                $bpjs = self::calculateBpjs($user, $baseSalary);
+                $netSalary = max(0, $baseSalary + $totalIncentive - $totalDeduction - $bpjs['total_employee']);
 
                 $bpjsNotes = [];
                 if ($bpjs['total_employee'] > 0) {
