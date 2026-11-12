@@ -40,6 +40,8 @@ return new class extends Migration
 
             $codeLabel = ($customer->customer_code) ? " ({$customer->customer_code})" : '';
 
+            $targetIncentiveDate = $customer->activation_date ?: ($customer->registration_date ?: now());
+
             // 1. Fee Booking (Rp 35.000) ke Sales Karyawan
             if ($customer->sales_id) {
                 $salesUser = User::find($customer->sales_id);
@@ -59,7 +61,7 @@ return new class extends Migration
                                 'type' => 'auto',
                                 'description' => "Fee Booking Pelanggan: {$customer->name}{$codeLabel}",
                                 'reference_id' => $bookingRef,
-                                'incentive_date' => now(),
+                                'incentive_date' => $targetIncentiveDate,
                                 'status' => 'pending',
                             ]);
 
@@ -111,7 +113,7 @@ return new class extends Migration
                             'type' => 'auto',
                             'description' => "Fee Survey Pelanggan: {$customer->name}{$codeLabel}",
                             'reference_id' => $surveyRef,
-                            'incentive_date' => now(),
+                            'incentive_date' => $targetIncentiveDate,
                             'status' => 'pending',
                         ]);
                     }
@@ -144,7 +146,7 @@ return new class extends Migration
                             'type' => 'auto',
                             'description' => "Fee Pasang Pelanggan: {$customer->name}{$codeLabel}",
                             'reference_id' => $installRef,
-                            'incentive_date' => now(),
+                            'incentive_date' => $targetIncentiveDate,
                             'status' => 'pending',
                         ]);
                     }
@@ -161,3 +163,4 @@ return new class extends Migration
         // No-op
     }
 };
+

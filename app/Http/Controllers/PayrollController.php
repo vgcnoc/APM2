@@ -167,7 +167,7 @@ class PayrollController extends Controller
                     });
 
                     // Komisi bulanan & upline affiliate karyawan (5.000, 2.000, 1.000) ditunda ke Desember 2026
-                    if ($month == 11 && $year == 2026) {
+                    if (($month == 10 || $month == 11) && $year == 2026) {
                         $q->where(function($affQ) {
                             $affQ->whereNull('reference_id')
                                 ->orWhere(function($sq) {
@@ -641,7 +641,7 @@ class PayrollController extends Controller
                 ->where('status', 'pending');
 
             // Komisi bulanan & upline affiliate karyawan (5.000, 2.000, 1.000) ditunda ke Desember 2026
-            if ($month == 11 && $year == 2026) {
+            if (($month == 10 || $month == 11) && $year == 2026) {
                 $pendingIncentivesQuery->where(function($affQ) {
                     $affQ->whereNull('reference_id')
                         ->orWhere(function($sq) {
@@ -891,7 +891,7 @@ class PayrollController extends Controller
                     ->where('status', 'pending');
 
                 // Komisi bulanan & upline affiliate karyawan (5.000, 2.000, 1.000) ditunda ke Desember 2026
-                if ($month == 11 && $year == 2026) {
+                if (($month == 10 || $month == 11) && $year == 2026) {
                     $pendingIncentivesQuery->where(function($affQ) {
                         $affQ->whereNull('reference_id')
                             ->orWhere(function($sq) {

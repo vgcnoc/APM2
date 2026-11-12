@@ -4557,6 +4557,7 @@ class CustomerController extends Controller
                     : '';
 
                 $isOperationalFeeEligible = !$isResellerVoucher && \App\Services\AffiliateService::isOperationalFeeEligible($customer);
+                $targetIncentiveDate = $validated['activation_date'] ?? $customer->activation_date ?? now();
 
                 // 1. Fee Booking (Sales / Referral)
                 if ($customer->sales_id) {
@@ -4592,7 +4593,7 @@ class CustomerController extends Controller
                                         'type' => 'auto',
                                         'description' => "Fee Booking Pelanggan: {$customer->name}{$codeLabel}",
                                         'reference_id' => $bookingRef,
-                                        'incentive_date' => now(),
+                                        'incentive_date' => $targetIncentiveDate,
                                         'status' => 'pending',
                                     ]);
                                 }
@@ -4655,7 +4656,7 @@ class CustomerController extends Controller
                                     'type' => 'auto',
                                     'description' => "Fee Survey Pelanggan: {$customer->name}{$codeLabel}",
                                     'reference_id' => $surveyRef,
-                                    'incentive_date' => now(),
+                                    'incentive_date' => $targetIncentiveDate,
                                     'status' => 'pending',
                                 ]);
                             }
@@ -4715,7 +4716,7 @@ class CustomerController extends Controller
                                     'type' => 'auto',
                                     'description' => "Fee Pasang Pelanggan: {$customer->name}{$codeLabel}",
                                     'reference_id' => $installRef,
-                                    'incentive_date' => now(),
+                                    'incentive_date' => $targetIncentiveDate,
                                     'status' => 'pending'
                                 ]);
                             }
