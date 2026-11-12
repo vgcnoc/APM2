@@ -187,8 +187,25 @@ class CustomerController extends Controller
             ->paginate($request->per_page ?? 10)
             ->withQueryString();
 
+        $isolirSummary = null;
+        if ($isolirOnly) {
+            $totalActiveAll = Customer::where('status', 'active')->count();
+            $totalSuspendedAll = (clone $baseQuery)->count();
+            $suspendedIds = (clone $baseQuery)->pluck('id');
+            $tunggakanIsolir = $suspendedIds->isNotEmpty() ? (float) \App\Models\Invoice::whereIn('customer_id', $suspendedIds)
+                ->whereIn('status', ['unpaid', 'partial', 'overdue'])
+                ->sum('remaining_amount') : 0;
+
+            $isolirSummary = [
+                'total_isolir' => $totalSuspendedAll,
+                'total_active' => $totalActiveAll,
+                'total_tunggakan' => $tunggakanIsolir,
+            ];
+        }
+
         return Inertia::render('Customers/Index', [
             'isolirOnly' => $isolirOnly,
+            'isolirSummary' => $isolirSummary,
             'customers' => $customers,
             'packages' => fn () => InternetPackage::active()->get(['id', 'name', 'price', 'speed_mbps']),
             'areas' => fn () => DataScopeService::getScopedAreas($request->user(), 'customers_all'),

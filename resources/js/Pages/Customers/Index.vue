@@ -1,6 +1,62 @@
 <template>
     <AppLayout :title="isolirOnly ? 'Pelanggan Isolir' : 'Data Pelanggan'" :subtitle="isolirOnly ? 'Daftar pelanggan yang layanannya sedang diisolir' : 'Kelola semua data pelanggan ISP'">
-        <!-- STATS SECTION -->
+        <!-- STATS SECTION FOR ISOLIR -->
+        <div v-if="isolirOnly" v-can="'customers_card_summary'" class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <!-- Total Pelanggan Isolir -->
+            <div class="glass-card p-5 flex items-center justify-between border-rose-100 bg-rose-50/20 shadow-2xs">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-500 to-red-600 flex items-center justify-center text-white shadow-sm">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zM10 11V7a2 2 0 114 0v4H10z"/></svg>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-500 font-bold uppercase tracking-wider">Total Pelanggan Isolir</p>
+                        <h3 class="text-2xl font-black text-slate-900 mt-0.5">{{ isolirSummary?.total_isolir ?? stats?.total?.value ?? 0 }}</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Layanan ditangguhkan</p>
+                    </div>
+                </div>
+                <div class="flex flex-col items-end">
+                    <span :class="['inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border', (isolirSummary?.total_isolir ?? 0) === 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200']">
+                        <span :class="['w-1.5 h-1.5 rounded-full', (isolirSummary?.total_isolir ?? 0) === 0 ? 'bg-emerald-500' : 'bg-rose-500']"></span>
+                        {{ (isolirSummary?.total_isolir ?? 0) === 0 ? 'Aman / Normal' : 'Perlu Tindak Lanjut' }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Total Tunggakan Isolir -->
+            <div class="glass-card p-5 flex items-center justify-between border-amber-100 bg-amber-50/20 shadow-2xs">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white shadow-sm">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-500 font-bold uppercase tracking-wider">Tunggakan Tagihan</p>
+                        <h3 class="text-2xl font-black text-slate-900 mt-0.5">{{ formatRupiah(isolirSummary?.total_tunggakan ?? 0) }}</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Total tagihan terisolir</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pelanggan Aktif Normal -->
+            <div class="glass-card p-5 flex items-center justify-between border-emerald-100 bg-emerald-50/20 shadow-2xs">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-sm">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-500 font-bold uppercase tracking-wider">Pelanggan Aktif Normal</p>
+                        <h3 class="text-2xl font-black text-slate-900 mt-0.5">{{ isolirSummary?.total_active ?? 0 }}</h3>
+                        <p class="text-xs text-emerald-600 font-semibold mt-0.5">Layanan berjalan lancar</p>
+                    </div>
+                </div>
+                <div class="flex flex-col items-end">
+                    <Link href="/customers" class="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1">
+                        <span>Lihat Semua</span> &rarr;
+                    </Link>
+                </div>
+            </div>
+        </div>
+
+        <!-- STATS SECTION FOR ALL CUSTOMERS -->
         <div v-if="stats && !isolirOnly" v-can="'customers_card_summary'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <!-- Total Pelanggan -->
             <div 
@@ -122,6 +178,8 @@
             searchPlaceholder="Cari nama, kode pelanggan, telepon, atau alamat..."
             :searchRoute="customerListRoute"
             :filters="activeFiltersPayload"
+            :emptyTitle="isolirOnly ? (hasActiveFilters ? 'Tidak Ada Pelanggan Isolir yang Cocok' : 'Tidak Ada Pelanggan Terisolir') : 'Tidak ada data ditemukan'"
+            :emptySubtitle="isolirOnly ? (hasActiveFilters ? 'Coba ubah kriteria pencarian atau bersihkan filter di atas.' : 'Semua layanan pelanggan saat ini aktif dan berjalan normal.') : ''"
             selectable
             v-model:selected="selectedIds"
         >
@@ -167,7 +225,7 @@
                     </div>
 
                     <!-- 6 Filter Grid: Responsive, Pixel-Perfect Alignment -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-2.5 w-full">
+                    <div :class="['grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-2.5 w-full', isolirOnly ? 'xl:grid-cols-5' : 'xl:grid-cols-6']">
                         <!-- 1. Status -->
                         <div 
                             v-if="!isolirOnly" 
@@ -299,18 +357,34 @@
                         <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                         <span>Hapus Terpilih ({{ selectedIds.length }})</span>
                     </button>
-                    <Link v-can="'menu_customers_gratis'" href="/customers/gratis" class="px-3 py-2 rounded-lg text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors flex items-center gap-1.5 shadow-sm">
-                        <span>🎁</span> Pelanggan Gratis
-                    </Link>
-                    <Link v-can="'menu_customers_free_home'" href="/customers/free-home" class="px-3 py-2 rounded-lg text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors flex items-center gap-1.5 shadow-sm">
-                        <span>🏠</span> Pelanggan Free Home
-                    </Link>
-                    <Link v-can="'customers_all_create'" href="/customers/create" class="btn-primary">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                        </svg>
-                        Tambah Pelanggan
-                    </Link>
+
+                    <!-- Navigasi khusus Pelanggan Isolir -->
+                    <template v-if="isolirOnly">
+                        <Link href="/customers" class="px-3 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-2xs">
+                            <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                            <span>Semua Pelanggan</span>
+                        </Link>
+                        <Link href="/customers/online" class="px-3 py-2 rounded-xl text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors flex items-center gap-1.5 shadow-2xs">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            <span>Monitoring Online</span>
+                        </Link>
+                    </template>
+
+                    <!-- Navigasi umum Data Pelanggan -->
+                    <template v-else>
+                        <Link v-can="'menu_customers_gratis'" href="/customers/gratis" class="px-3 py-2 rounded-lg text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors flex items-center gap-1.5 shadow-sm">
+                            <span>🎁</span> Pelanggan Gratis
+                        </Link>
+                        <Link v-can="'menu_customers_free_home'" href="/customers/free-home" class="px-3 py-2 rounded-lg text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors flex items-center gap-1.5 shadow-sm">
+                            <span>🏠</span> Pelanggan Free Home
+                        </Link>
+                        <Link v-can="'customers_all_create'" href="/customers/create" class="btn-primary">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            Tambah Pelanggan
+                        </Link>
+                    </template>
                 </div>
             </template>
 
@@ -1062,6 +1136,7 @@ import StatusBadge from '@/Components/StatusBadge.vue';
 
 const props = defineProps({
     isolirOnly: { type: Boolean, default: false },
+    isolirSummary: { type: Object, default: () => null },
     customers: Object,
     packages: Array,
     areas: Array,
@@ -1218,9 +1293,13 @@ const activeFiltersPayload = computed(() => {
     return payload;
 });
 
+function formatRupiah(amount) {
+    return 'Rp ' + Number(amount || 0).toLocaleString('id-ID');
+}
+
 const hasActiveFilters = computed(() => {
     return Boolean(
-        filterStatus.value ||
+        (!props.isolirOnly && filterStatus.value) ||
         filterServiceStatus.value ||
         filterPackage.value ||
         filterArea.value ||
@@ -1232,7 +1311,7 @@ const hasActiveFilters = computed(() => {
 
 const activeFiltersCount = computed(() => {
     let count = 0;
-    if (filterStatus.value) count++;
+    if (!props.isolirOnly && filterStatus.value) count++;
     if (filterServiceStatus.value) count++;
     if (filterPackage.value) count++;
     if (filterArea.value) count++;
@@ -1300,7 +1379,9 @@ function setQuickStatus(status) {
 }
 
 function resetFilters() {
-    filterStatus.value = '';
+    if (!props.isolirOnly) {
+        filterStatus.value = '';
+    }
     filterServiceStatus.value = '';
     filterPackage.value = '';
     filterArea.value = '';

@@ -76,14 +76,19 @@
                 <tbody>
                     <tr v-if="!data || data.length === 0">
                         <td :colspan="columns.length + (selectable ? 1 : 0) + ($slots.rowActions ? 1 : 0)" class="text-center py-16">
-                            <div class="flex flex-col items-center gap-4">
-                                <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
-                                    <svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
-                                    </svg>
+                            <slot name="empty">
+                                <div class="flex flex-col items-center gap-3">
+                                    <div class="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">
+                                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                                        </svg>
+                                    </div>
+                                    <div class="space-y-0.5">
+                                        <p class="text-slate-700 text-sm font-bold">{{ emptyTitle }}</p>
+                                        <p v-if="emptySubtitle" class="text-slate-400 text-xs">{{ emptySubtitle }}</p>
+                                    </div>
                                 </div>
-                                <p class="text-gray-500 text-sm font-medium">Tidak ada data ditemukan</p>
-                            </div>
+                            </slot>
                         </td>
                     </tr>
                     <tr v-else v-for="(row, index) in data" :key="row.id || index">
@@ -147,6 +152,8 @@ const props = defineProps({
     selectable: { type: Boolean, default: false },
     selected: { type: Array, default: () => [] },
     filters: { type: Object, default: () => ({}) },
+    emptyTitle: { type: String, default: 'Tidak ada data ditemukan' },
+    emptySubtitle: { type: String, default: '' },
 });
 
 const emit = defineEmits(['update:selected']);
